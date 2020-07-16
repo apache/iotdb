@@ -30,8 +30,7 @@ public class SingleDataSet extends QueryDataSet {
   private RowRecord record;
   private int i = 0;
 
-  public SingleDataSet(List<Path> paths,
-      List<TSDataType> dataTypes) {
+  public SingleDataSet(List<Path> paths, List<TSDataType> dataTypes) {
     super(paths, dataTypes);
   }
 
@@ -40,12 +39,12 @@ public class SingleDataSet extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() throws IOException {
     return i == 0;
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord nextWithoutConstraint() throws IOException {
     i++;
     return record;
   }

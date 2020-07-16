@@ -19,11 +19,11 @@
 package org.apache.iotdb.tsfile.read.reader;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.CachedChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -51,6 +51,7 @@ public class ReaderTest {
   @Before
   public void before() throws IOException {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
+    TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     TsFileGeneratorForTest.generateFile(rowCount, 10 * 1024 * 1024, 10000);
     fileReader = new TsFileSequenceReader(FILE_PATH);
     metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);
@@ -59,18 +60,19 @@ public class ReaderTest {
   @After
   public void after() throws IOException {
     fileReader.close();
+    TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(1024);
     TsFileGeneratorForTest.after();
   }
 
   @Test
   public void readTest() throws IOException {
     int count = 0;
-    ChunkLoaderImpl seriesChunkLoader = new ChunkLoaderImpl(fileReader);
-    List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
+    CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
+    List<ChunkMetadata> chunkMetadataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d1.s1"));
 
     AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
-        chunkMetaDataList, null);
+        chunkMetadataList, null);
     long startTime = TsFileGeneratorForTest.START_TIMESTAMP;
     BatchData data = null;
 
@@ -85,8 +87,8 @@ public class ReaderTest {
     }
     Assert.assertEquals(rowCount, count);
 
-    chunkMetaDataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d1.s4"));
-    seriesReader = new FileSeriesReader(seriesChunkLoader, chunkMetaDataList, null);
+    chunkMetadataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d1.s4"));
+    seriesReader = new FileSeriesReader(seriesChunkLoader, chunkMetadataList, null);
     count = 0;
 
     while (seriesReader.hasNextBatch()) {
@@ -101,8 +103,8 @@ public class ReaderTest {
 
   @Test
   public void readWithFilterTest() throws IOException {
-    ChunkLoaderImpl seriesChunkLoader = new ChunkLoaderImpl(fileReader);
-    List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
+    CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
+    List<ChunkMetadata> chunkMetadataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d1.s1"));
 
     Filter filter = new FilterFactory().or(
@@ -110,7 +112,7 @@ public class ReaderTest {
         FilterFactory.and(ValueFilter.gtEq(9520331), ValueFilter.ltEq(9520361)));
     SingleSeriesExpression singleSeriesExp = new SingleSeriesExpression(new Path("d1.s1"), filter);
     AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
-        chunkMetaDataList,
+        chunkMetadataList,
         singleSeriesExp.getFilter());
 
     BatchData data;

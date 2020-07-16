@@ -38,13 +38,16 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
-import org.apache.iotdb.rpc.IoTDBRPCException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,13 +56,13 @@ import org.slf4j.LoggerFactory;
 public class IoTDBConnection implements Connection {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
-  private static final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1;
+  private static final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
   private TSIService.Iface client = null;
   private long sessionId = -1;
   private IoTDBConnectionParams params;
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
-  private TSocket transport;
+  private TTransport transport;
   private ZoneId zoneId;
   private boolean autoCommit;
 
@@ -403,14 +406,15 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openTransport() throws TTransportException {
-    transport = new TSocket(params.getHost(), params.getPort(), Config.connectionTimeoutInMs);
+    transport = new TFastFramedTransport(new TSocket(params.getHost(), params.getPort(),
+        Config.connectionTimeoutInMs));
     if (!transport.isOpen()) {
       transport.open();
     }
   }
 
   private void openSession() throws SQLException {
-    TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1);
+    TSOpenSessionReq openReq = new TSOpenSessionReq();
 
     openReq.setUsername(params.getUsername());
     openReq.setPassword(params.getPassword());
@@ -423,11 +427,14 @@ public class IoTDBConnection implements Connection {
       RpcUtils.verifySuccess(openResp.getStatus());
 
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
-        throw new TException(String
-            .format("Protocol not supported, Client version is %d, but Server version is %d",
-                protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
+        logger.warn("Protocol differ, Client version is {}}, but Server version is {}",
+            protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue());
+        if (openResp.getServerProtocolVersion().getValue() == 0) {// less than 0.10
+          throw new TException(String
+              .format("Protocol not supported, Client version is %s, but Server version is %s",
+                  protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
+        }
       }
-      setProtocol(openResp.getServerProtocolVersion());
 
       if (zoneId != null) {
         setTimeZone(zoneId.toString());
@@ -437,9 +444,15 @@ public class IoTDBConnection implements Connection {
 
     } catch (TException e) {
       transport.close();
-      throw new SQLException(String.format("Can not establish connection with %s.",
-          params.getJdbcUriString()), e);
-    } catch (IoTDBRPCException e) {
+      if (e.getMessage().contains("Required field 'client_protocol' was not present!")) {
+        // the server is an old version (less than 0.10)
+        throw new SQLException(String.format(
+            "Can not establish connection with %s : You may try to connect an old version IoTDB instance using a client with new version: %s. ",
+            params.getJdbcUriString(), e.getMessage()), e);
+      }
+      throw new SQLException(String.format("Can not establish connection with %s : %s. ",
+          params.getJdbcUriString(), e.getMessage()), e);
+    } catch (StatementExecutionException e) {
       // failed to connect, disconnect from the server
       transport.close();
       throw new IoTDBSQLException(e.getMessage(), openResp.getStatus());
@@ -484,7 +497,7 @@ public class IoTDBConnection implements Connection {
     TSGetTimeZoneResp resp = getClient().getTimeZone(sessionId);
     try {
       RpcUtils.verifySuccess(resp.getStatus());
-    } catch (IoTDBRPCException e) {
+    } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
     }
     return resp.getTimeZone();
@@ -495,7 +508,7 @@ public class IoTDBConnection implements Connection {
     TSStatus resp = getClient().setTimeZone(req);
     try {
       RpcUtils.verifySuccess(resp);
-    } catch (IoTDBRPCException e) {
+    } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), resp);
     }
     this.zoneId = ZoneId.of(zoneId);
@@ -505,7 +518,5 @@ public class IoTDBConnection implements Connection {
     return getClient().getProperties();
   }
 
-  private void setProtocol(TSProtocolVersion protocol) {
-  }
 
 }

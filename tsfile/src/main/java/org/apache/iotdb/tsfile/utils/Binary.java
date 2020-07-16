@@ -19,8 +19,8 @@
 package org.apache.iotdb.tsfile.utils;
 
 import java.io.Serializable;
-import java.nio.charset.Charset;
 import java.util.Arrays;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 /**
@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 public class Binary implements Comparable<Binary>, Serializable {
 
   private static final long serialVersionUID = 6394197743397020735L;
-
   private byte[] values;
 
   /**
@@ -109,7 +108,6 @@ public class Binary implements Comparable<Binary>, Serializable {
     return TSFileConfig.STRING_ENCODING;
   }
 
-
   @Override
   public String toString() {
     return getStringValue();
@@ -117,5 +115,9 @@ public class Binary implements Comparable<Binary>, Serializable {
 
   public byte[] getValues() {
     return values;
+  }
+
+  public void setValues(byte[] values) {
+    this.values = values;
   }
 }

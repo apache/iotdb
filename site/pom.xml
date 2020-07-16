@@ -1,0 +1,428 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>iotdb-parent</artifactId>
+        <groupId>org.apache.iotdb</groupId>
+        <version>0.11.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>iotdb-website</artifactId>
+    <properties>
+        <frontend-maven-plugin.version>1.9.1</frontend-maven-plugin.version>
+    </properties>
+    <distributionManagement>
+        <site>
+            <id>apache.website</id>
+            <url>scm:git:https://gitbox.apache.org/repos/asf/incubator-iotdb-website.git</url>
+        </site>
+    </distributionManagement>
+    <build>
+        <plugins>
+            <!-- copy source codes into vue required folders-->
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-source-code-to-docs-folder</id>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/vue-source/src</outputDirectory>
+                            <!-- output directory -->
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/src/main/</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Copy master documents-->
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-master-docs-to-docs</id>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/vue-source/src</outputDirectory>
+                            <!-- output directory -->
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/../docs</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-other-md-files-to-development</id>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/vue-source/src/Development</outputDirectory>
+                            <!-- output directory -->
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/../tsfile</directory>
+                                    <includes>
+                                        <include>format-changelist.md</include>
+                                    </includes>
+                                </resource>
+                                <resource>
+                                    <directory>${basedir}/../thrift</directory>
+                                    <includes>
+                                        <include>rpc-changelist.md</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-other-md-files-to-zh-development</id>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/vue-source/src/zh/Development</outputDirectory>
+                            <!-- output directory -->
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/../tsfile</directory>
+                                    <includes>
+                                        <include>format-changelist.md</include>
+                                    </includes>
+                                </resource>
+                                <resource>
+                                    <directory>${basedir}/../thrift</directory>
+                                    <includes>
+                                        <include>rpc-changelist.md</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- mv UserGuide of master into master folder -->
+            <plugin>
+                <groupId>com.coderplus.maven.plugins</groupId>
+                <artifactId>copy-rename-maven-plugin</artifactId>
+                <version>1.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-package-json</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <fileSets>
+                                <fileSet>
+                                    <sourceFile>${basedir}/src/main/package.json</sourceFile>
+                                    <destinationFile>${project.build.directory}/vue-source/package.json</destinationFile>
+                                </fileSet>
+                                <fileSet>
+                                    <sourceFile>${basedir}/src/main/deploy.js</sourceFile>
+                                    <destinationFile>${project.build.directory}/vue-source/deploy.js</destinationFile>
+                                </fileSet>
+                            </fileSets>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>mv-master-userguide-to-tmp-folder</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>rename</goal>
+                        </goals>
+                        <configuration>
+                            <sourceFile>${project.build.directory}/vue-source/src/UserGuide</sourceFile>
+                            <destinationFile>${project.build.directory}/vue-source/src/tmpUserGuide/Master</destinationFile>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>mv-master-zh-userguide-to-tmp-folder</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>rename</goal>
+                        </goals>
+                        <configuration>
+                            <sourceFile>${project.build.directory}/vue-source/src/zh/UserGuide</sourceFile>
+                            <destinationFile>${project.build.directory}/vue-source/src/zh/tmpUserGuide/Master</destinationFile>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- download lagecy docs from iotdb repo -->
+            <plugin>
+                <groupId>com.googlecode.maven-download-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <version>1.3.0</version>
+                <executions>
+                    <execution>
+                        <id>get-0.10-docs</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>https://github.com/apache/incubator-iotdb/archive/rel/0.10.zip</url>
+                            <outputDirectory>${project.build.directory}/download</outputDirectory>
+                            <outputFileName>0.10.x.zip</outputFileName>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>get-0.9-docs</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>https://github.com/apache/incubator-iotdb/archive/rel/0.9.zip</url>
+                            <outputDirectory>${project.build.directory}/download</outputDirectory>
+                            <outputFileName>0.9.x.zip</outputFileName>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>get-0.8-docs</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>https://github.com/apache/incubator-iotdb/archive/rel/0.8.zip</url>
+                            <outputDirectory>${project.build.directory}/download</outputDirectory>
+                            <outputFileName>0.8.x.zip</outputFileName>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- unpack lagecy docs from the zip files-->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>truezip-maven-plugin</artifactId>
+                <version>1.2</version>
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <id>copy-0.10-documentation</id>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <fileset>
+                                <directory>${project.build.directory}/download/0.10.x.zip/incubator-iotdb-rel-0.10/docs/UserGuide</directory>
+                                <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.10.x</outputDirectory>
+                            </fileset>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-0.10-zh-documentation</id>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <fileset>
+                                <directory>${project.build.directory}/download/0.10.x.zip/incubator-iotdb-rel-0.10/docs/zh/UserGuide</directory>
+                                <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.10.x</outputDirectory>
+                            </fileset>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-0.9-documentation</id>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <fileset>
+                                <directory>${project.build.directory}/download/0.9.x.zip/incubator-iotdb-rel-0.9/docs/UserGuide</directory>
+                                <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.9.x</outputDirectory>
+                            </fileset>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-0.9-zh-documentation</id>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <fileset>
+                                <directory>${project.build.directory}/download/0.9.x.zip/incubator-iotdb-rel-0.9/docs/zh/UserGuide</directory>
+                                <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.9.x</outputDirectory>
+                            </fileset>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-0.8-documentation</id>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <fileset>
+                                <directory>${project.build.directory}/download/0.8.x.zip/incubator-iotdb-rel-0.8/docs/UserGuide</directory>
+                                <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.8.x</outputDirectory>
+                            </fileset>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-0.8-zh-documentation</id>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <fileset>
+                                <directory>${project.build.directory}/download/0.8.x.zip/incubator-iotdb-rel-0.8/docs/zh/UserGuide</directory>
+                                <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.8.x</outputDirectory>
+                            </fileset>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- mv UserGuide of master back -->
+            <plugin>
+                <groupId>com.coderplus.maven.plugins</groupId>
+                <artifactId>copy-rename-maven-plugin</artifactId>
+                <version>1.0</version>
+                <executions>
+                    <execution>
+                        <id>mv-master-userguide-to-docs</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>rename</goal>
+                        </goals>
+                        <configuration>
+                            <sourceFile>${project.build.directory}/vue-source/src/tmpUserGuide</sourceFile>
+                            <destinationFile>${project.build.directory}/vue-source/src/UserGuide</destinationFile>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>mv-master-zh-userguide-to-docs</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>rename</goal>
+                        </goals>
+                        <configuration>
+                            <sourceFile>${project.build.directory}/vue-source/src/zh/tmpUserGuide</sourceFile>
+                            <destinationFile>${project.build.directory}/vue-source/src/zh/UserGuide</destinationFile>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--install node and npm， then run `npm install` and `npm run build`-->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>1.9.1</version>
+                <configuration>
+                    <installDirectory>${project.build.directory}/tools</installDirectory>
+                    <workingDirectory>${project.build.directory}/vue-source</workingDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <phase>package</phase>
+                        <configuration>
+                            <nodeVersion>v12.16.2</nodeVersion>
+                            <npmVersion>6.14.4</npmVersion>
+                        </configuration>
+                    </execution>
+                    <!-- Install all project dependencies -->
+                    <execution>
+                        <id>npm install</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <!-- optional: default phase is "generate-resources" -->
+                        <phase>package</phase>
+                        <!-- Optional configuration which provides for running any npm command -->
+                        <configuration>
+                            <arguments>install</arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Build and minify static files -->
+                    <execution>
+                        <id>npm run build</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>run build</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-scm-publish-plugin</artifactId>
+                <configuration>
+                    <!-- mono-module doesn't require site:stage -->
+                    <content>${project.build.directory}/vue-source/src/.vuepress/dist</content>
+                    <!-- branch where to deploy -->
+                    <scmBranch>asf-site</scmBranch>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.simplify4u.plugins</groupId>
+                <artifactId>sitemapxml-maven-plugin</artifactId>
+                <version>2.0.0</version>
+                <configuration>
+                    <siteOutputDirectory>${project.build.directory}/vue-source/src/.vuepress/dist</siteOutputDirectory>
+                    <maxDepth>5</maxDepth>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>gen</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

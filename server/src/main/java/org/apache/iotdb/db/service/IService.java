@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StartupException;
 
 public interface IService {
@@ -32,6 +33,10 @@ public interface IService {
    * current service should guarantee to putBack thread or thread pool.
    */
   void stop();
+
+  default void waitAndStop(long millseconds) {stop();}
+
+  default void shutdown(long millseconds) throws ShutdownException {waitAndStop(millseconds);}
 
   /**
    * Get the name of the the service.

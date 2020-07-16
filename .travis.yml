@@ -31,15 +31,6 @@ matrix:
     - os: osx
       osx_image: xcode10.1 # with JDK11.0.1+13 installed
       name: osx-oraclejdk11
-      script:
-        - java -version
-        - mvn -version
-        - mvn -B apache-rat:check
-        # Output something every 10 minutes or Travis kills the job
-        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
-        # Killing background sleep loop
-        - kill %1
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
       name: osx-oraclejdk8
@@ -53,15 +44,6 @@ matrix:
             - AdoptOpenJDK/openjdk
           update: true
           casks: adoptopenjdk-openjdk11
-      script:
-        - java -version
-        - mvn -version
-        - mvn -B apache-rat:check
-        # Output something every 10 minutes or Travis kills the job
-        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
-        # Killing background sleep loop
-        - kill %1
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
       name: osx-openjdk8
@@ -72,23 +54,16 @@ matrix:
             - AdoptOpenJDK/openjdk
           update: true
           casks: adoptopenjdk-openjdk8
-          #    - os: windows
-          #      language: c
-          #      name: win-oraclejdk11
-          #      install:
-          #        - choco install jdk11 -params 'installdir=c:\\java11'
-          #        - export PATH=$PATH:"/c/java11/bin"
-          #        - export JAVA_HOME="/c/java11"
-          #        - wget -q https://www-eu.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
-          #        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.3-bin.zip -o/c/mvn363
-          #        - export "MAVEN_HOME=/c/mvn363/apache-maven-3.6.3"
-          #        - export "M2_HOME=/c/mvn363/apache-maven-3.6.3"
-          #        - export "PATH=$MAVEN_HOME/bin:$PATH"
-          #      script:
-          #        - java -version
-          #        - mvn -version
-          #        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
-
+    - os: linux
+      name: linux-openjdk11
+      dist: xenial
+      sudo: required
+      jdk:
+        - openjdk11
+    - os: linux
+      name: linux-openjdk8
+      dist: xenial
+      jdk: openjdk8
     - os: windows
       language: c
       name: win-openjdk11
@@ -121,7 +96,6 @@ matrix:
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.pdb -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -o C:\hadoop\bin
-
       before_script:
         - export "JAVA_HOME=/c/java/jdk-11.0.2"
         - export "PATH=$JAVA_HOME/bin:$PATH"
@@ -131,49 +105,6 @@ matrix:
         - export "PATH=/c/mvn363/apache-maven-3.6.3/bin:$PATH"
         - export "HADOOP_HOME=/c/hadoop"
         - export "PATH=/c/hadoop/bin:$PATH"
-      script:
-        - java -version
-        - mvn -version
-        # Output something every 10 minutes or Travis kills the job
-        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-        - travis_wait 40 mvn -B clean integration-test
-        # Killing background sleep loop
-        - kill %1
-
-    - os: linux
-      name: linux-openjdk11
-      dist: xenial
-      sudo: required
-      before_install:
-        - wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz -O jdk11.tar.gz
-        - tar -xzf jdk11.tar.gz
-      before_script:
-        - export JAVA_HOME=$PWD/jdk-11.0.2/
-        - export PATH=$JAVA_HOME/bin:$PATH
-      script:
-        - java -version
-        # Output something every 10 minutes or Travis kills the job
-        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
-        # Killing background sleep loop
-        - kill %1
-    - os: linux
-      name: linux-openjdk8
-      dist: xenial
-      jdk: openjdk8
-#    - os: linux
-#      name: linux-oraclejdk8
-#      dist: xenial
-#      jdk: oraclejdk8
-#    - os: linux
-#      name: linux-oraclejdk11
-#      dist: trusty
-#      jdk: oraclejdk11
-#      script:
-#        - java -version
-#        - mvn -version
-#        - mvn -B apache-rat:check
-#        - mvn -B clean package -pl server,grafana,client,example,:kafka-example,:rocketmq-example -am integration-test
     - os: linux
       if: fork = false #only fork=true (i.e., the committer has permission to write the repo)
       name: sonar-analysis
@@ -186,7 +117,7 @@ matrix:
           token:
             secure: "a2n2+MFfuOb3hsrw5vjiIUZzjt6S0j4YmRVrms6NVKF+EpEAWU/zOjzfccLGRr3VFUAlkoM2p578c/0DMMGew2oj3Yl1iJe2n35BWIV6r/psUKRUMdgMAogdshQzZGMYmY1XL2xA3ATu8cf4F8WoRAafd/S58JGQdTfsQ5svh31BxK0iuh+nMIZb4dYxO717dSVD45D9hoF5ROxdtTRbyAaXFPs5djxWrdzKw0J3e6a8m82K9FGcpy4pY9ct3ttbyEzGqMnzE4fhd3KgopFJj+3QdAi/3Cmkf1voxorQdCSbktl4PtlzMY/nxF6XETI2E4T+GLUVMw4iHiXCabqwOiudGnEj5DjNz6X5MVCOyj7lrFBTlDirGzv9fNpvQ2I47WOL8DzBJPqFwQ0nRAlbvcWVtE4aAqj8YF1QwwLxEIi4abDfOwaxGG2TOixQf627pvhh1o0RdEf9R6aRyur7vbMt7H9+4tQaHGI2PY1KbCkjhppIrEsarI07uvfPic3By/yOWj6iqZ1QiVAgPTec/o1blNWlMeGwdcCPfCxMjy9iqzpzNIB9fld28CN1Yvzpg74iIKnMU5mL1wB5yT8Vo9Q28JNSEwKIBhuayZLloGbnl/PX8jvDDWSm7yYoZYEI42tgVOXAXX7R53rOcxJMEgCa5RsVDRmJn5n7o6hwhn8="
       script:
-        - mvn verify sonar:sonar -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -DskipTests
+        - mvn verify sonar:sonar -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -DskipTests -pl '!distribution' -am
     - os: linux
       if: fork = false #only fork=true (i.e., the committer has permission to write the repo)
       name: code-coverage
@@ -194,9 +125,34 @@ matrix:
       jdk: openjdk8
       script:
         # now, grafana has no tests; spark-* tests are written by scala
-        - mvn post-integration-test -Pcode-coverage 
-        - mvn coveralls:report -Dservice_name=travis_ci -pl tsfile,jdbc,server,session,client,hadoop,hive-connector
-
+        - mvn post-integration-test -Pcode-coverage -Pcoveralls -pl '!distribution' -am
+      after_success:
+        - mvn coveralls:report -DserviceName=travis_ci -pl tsfile,server,jdbc,client,session,hive-connector,flink-iotdb-connector,flink-tsfile-connector
+    - os: linux
+      name: linux-website checker
+      dist: xenial
+      jdk: openjdk8
+      script:
+        - mvn -P site clean package -pl site
+    - os: windows
+      name: windows-website checker
+      language: c
+      before_install:
+        # - choco install openjdk11 --version=11.0.2.01 -y
+        # can get the download links from https://jdk.java.net/archive/
+        - wget --no-check-certificate https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_windows-x64_bin.zip
+        - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
+        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.3-bin.zip -o/c/mvn363
+        - /C/Progra~1/7-Zip/7z.exe x openjdk-11.0.2_windows-x64_bin.zip -o/c/java
+      before_script:
+        - export "JAVA_HOME=/c/java/jdk-11.0.2"
+        - export "PATH=$JAVA_HOME/bin:$PATH"
+        - export "PATH=$JAVA_HOME/jre/bin:$PATH"
+        - export "MAVEN_HOME=/c/mvn363/apache-maven-3.6.3"
+        - export "M2_HOME=/c/mvn363/apache-maven-3.6.3"
+        - export "PATH=/c/mvn363/apache-maven-3.6.3/bin:$PATH"
+      script:
+        - mvn -P site clean package -pl site
 cache:
   directories:
     - '$HOME/.m2/repository'
@@ -211,9 +167,15 @@ before_install: true
 install: true
 
 script:
-  - java -version
-  - ./mvnw.sh -B -ntp apache-rat:check
-  - ./mvnw.sh -B -ntp clean integration-test
-
+    - rm -rf /Users/travis/.m2/repository/org/apache/maven/plugins
+    - rm -rf /Users/travis/.m2/repository/org/apache/tomcat
+    - java -version
+    - mvn -version
+    - mvn -B apache-rat:check
+    # Output something every 10 minutes or Travis kills the job
+    - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
+    - mvn -B clean test integration-test
+    # Killing background sleep loop
+    - kill %1
 
 after_success:

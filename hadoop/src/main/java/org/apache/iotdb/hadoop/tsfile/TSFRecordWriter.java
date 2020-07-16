@@ -40,13 +40,13 @@ public class TSFRecordWriter extends RecordWriter<NullWritable, HDFSTSRecord> {
 
 
   public TSFRecordWriter(TaskAttemptContext job, Path path, Schema schema) throws IOException {
-
     HDFSOutput hdfsOutput = new HDFSOutput(path.toString(), job.getConfiguration(), false);
     writer = new TsFileWriter(hdfsOutput, schema);
   }
 
   @Override
-  public synchronized void write(NullWritable key, HDFSTSRecord value) throws IOException, InterruptedException {
+  public synchronized void write(NullWritable key, HDFSTSRecord value)
+      throws IOException, InterruptedException {
     try {
       writer.write(value.convertToTSRecord());
     } catch (WriteProcessException e) {

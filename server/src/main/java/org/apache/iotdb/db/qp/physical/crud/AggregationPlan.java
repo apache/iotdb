@@ -22,10 +22,16 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
 
-public class AggregationPlan extends QueryPlan {
+public class AggregationPlan extends RawDataQueryPlan {
+
+  // e.g., for select count(s1), count(s1), count(s2), count(s2), sum (s1)
+  // aggregations are count, count, count, count, sum
+  // deduplicatedAggregations are count, count, sum
 
   private List<String> aggregations = new ArrayList<>();
   private List<String> deduplicatedAggregations = new ArrayList<>();
+
+  private int level = -1;
 
   public AggregationPlan() {
     super();
@@ -51,5 +57,13 @@ public class AggregationPlan extends QueryPlan {
 
   public void setDeduplicatedAggregations(List<String> deduplicatedAggregations) {
     this.deduplicatedAggregations = deduplicatedAggregations;
+  }
+
+  public int getLevel() {
+    return level;
+  }
+
+  public void setLevel(int level) {
+    this.level = level;
   }
 }

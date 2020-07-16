@@ -21,6 +21,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -47,13 +48,11 @@ public class IoTDBAutoCreateSchemaIT {
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    conf.setAutoCreateSchemaEnabled(true);
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    conf.setAutoCreateSchemaEnabled(false);
   }
 
   /**
@@ -125,7 +124,7 @@ public class IoTDBAutoCreateSchemaIT {
             result = "";
             while (resultSet.next()) {
               for (int i = 1; i <= count; i++) {
-                if (now_start > 0L && column[i - 1] == Constant.TIMESTAMP_STR) {
+                if (now_start > 0L && column[i - 1] == TestConstant.TIMESTAMP_STR) {
                   String timestr = resultSet.getString(i);
                   Long tn = Long.valueOf(timestr);
                   Long now = System.currentTimeMillis();

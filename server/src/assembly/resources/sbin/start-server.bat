@@ -42,11 +42,14 @@ for /f tokens^=2-5^ delims^=.-_+^" %%j in ('java -fullversion 2^>^&1') do (
 
 set JAVA_VERSION=%MAJOR_VERSION%
 
-IF NOT "%JAVA_VERSION%" == "8" (
-	IF NOT "%JAVA_VERSION%" == "11" (
-		echo IoTDB only supports jdk8 or jdk11, please check your java version.
+@REM we do not check jdk that version less than 1.6 because they are too stale...
+IF "%JAVA_VERSION%" == "6" (
+		echo IoTDB only supports jdk >= 8, please check your java version.
 		goto finally
-	)
+)
+IF "%JAVA_VERSION%" == "7" (
+		echo IoTDB only supports jdk >= 8, please check your java version.
+		goto finally
 )
 
 if "%OS%" == "Windows_NT" setlocal
@@ -57,6 +60,19 @@ popd
 
 set IOTDB_CONF=%IOTDB_HOME%\conf
 set IOTDB_LOGS=%IOTDB_HOME%\logs
+
+@setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
+set is_conf_path=false
+for %%i in (%*) do (
+	IF "%%i" == "-c" (
+		set is_conf_path=true
+	) ELSE IF "!is_conf_path!" == "true" (
+		set is_conf_path=false
+		set IOTDB_CONF=%%i
+	) ELSE (
+		set CONF_PARAMS=!CONF_PARAMS! %%i
+	)
+)
 
 IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
     CALL "%IOTDB_CONF%\iotdb-env.bat" %1
@@ -73,15 +89,13 @@ set JAVA_OPTS=-ea^
  -Dlogback.configurationFile="%IOTDB_CONF%\logback.xml"^
  -DIOTDB_HOME="%IOTDB_HOME%"^
  -DTSFILE_HOME="%IOTDB_HOME%"^
+ -DTSFILE_CONF="%IOTDB_CONF%"^
  -DIOTDB_CONF="%IOTDB_CONF%"
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
-set CLASSPATH="%IOTDB_HOME%\lib"
+set CLASSPATH="%IOTDB_HOME%\lib\*"
 
-@REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
-for %%i in ("%IOTDB_HOME%\lib\*.jar") do call :append "%%i"
-set CLASSPATH=%CLASSPATH%;iotdb.IoTDB
 goto okClasspath
 
 :append
@@ -93,7 +107,7 @@ goto :eof
 
 rem echo CLASSPATH: %CLASSPATH%
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS%
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
 goto finally
 
 :err

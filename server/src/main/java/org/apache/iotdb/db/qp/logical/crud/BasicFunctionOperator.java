@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import java.util.Map;
 import java.util.Objects;
-import org.apache.iotdb.db.exception.path.PathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -75,10 +75,11 @@ public class BasicFunctionOperator extends FunctionOperator {
 
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
-      IQueryProcessExecutor executor) throws LogicalOperatorException, PathException {
-    TSDataType type = executor.getSeriesType(singlePath);
+      Map<Path, TSDataType> pathTSDataTypeHashMap)
+      throws LogicalOperatorException, MetadataException {
+    TSDataType type = pathTSDataTypeHashMap.get(singlePath);
     if (type == null) {
-      throw new PathException(
+      throw new MetadataException(
           "given seriesPath:{" + singlePath.getFullPath() + "} don't exist in metadata");
     }
     IUnaryExpression ret;
@@ -134,6 +135,7 @@ public class BasicFunctionOperator extends FunctionOperator {
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
+    ret.pathSet = pathSet;
     return ret;
   }
 

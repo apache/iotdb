@@ -18,11 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.net.InetAddress;
-import java.util.HashMap;
-import java.util.Map;
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanRegistrationException;
@@ -30,9 +26,6 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
-import javax.management.remote.JMXConnectorServer;
-import javax.management.remote.JMXConnectorServerFactory;
-import javax.management.remote.JMXServiceURL;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.slf4j.Logger;
@@ -41,8 +34,6 @@ import org.slf4j.LoggerFactory;
 public class JMXService implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(JMXService.class);
-
-  private JMXConnectorServer jmxConnectorServer;
 
   private JMXService() {
   }
@@ -84,19 +75,6 @@ public class JMXService implements IService {
     }
   }
 
-  private JMXConnectorServer createJMXServer(boolean local) throws IOException {
-    Map<String, Object> env = new HashMap<>();
-
-    InetAddress serverAddress;
-    if (local) {
-      serverAddress = InetAddress.getLoopbackAddress();
-      System.setProperty(IoTDBConstant.RMI_SERVER_HOST_NAME, serverAddress.getHostAddress());
-    }
-    int rmiPort = Integer.getInteger(IoTDBConstant.JMX_REMOTE_RMI_PORT, 0);
-
-    return JMXConnectorServerFactory.newJMXConnectorServer(
-        new JMXServiceURL("rmi", null, rmiPort), env, ManagementFactory.getPlatformMBeanServer());
-  }
 
   @Override
   public ServiceType getID() {
@@ -105,51 +83,15 @@ public class JMXService implements IService {
 
   @Override
   public void start() throws StartupException {
-    if (System.getProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME) != null) {
-      logger.warn(
-          "JMX settings in conf/{}.sh(Unix or OS X, if you use Windows, check conf/{}.bat) have "
-              + "been bypassed as the JMX connector server is "
-              + "already initialized. Please refer to {}.sh/bat for JMX configuration info",
-          IoTDBConstant.ENV_FILE_NAME, IoTDBConstant.ENV_FILE_NAME, IoTDBConstant.ENV_FILE_NAME);
-      return;
-    }
-    System.setProperty(IoTDBConstant.SERVER_RMI_ID, "true");
-    boolean localOnly = false;
-    String jmxPort = System.getProperty(IoTDBConstant.IOTDB_REMOTE_JMX_PORT_NAME);
-
+    String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
     if (jmxPort == null) {
-      localOnly = true;
-      jmxPort = System.getProperty(IoTDBConstant.IOTDB_LOCAL_JMX_PORT_NAME);
-    }
-
-    if (jmxPort == null) {
-      logger.warn("Failed to start {} because JMX port is undefined", this.getID().getName());
-      return;
-    }
-    try {
-      jmxConnectorServer = createJMXServer(localOnly);
-      if (jmxConnectorServer == null) {
-        return;
-      }
-      jmxConnectorServer.start();
-      logger
-          .info("{}: start {} successfully.", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-    } catch (IOException e) {
-      throw new StartupException(this.getID().getName(), e.getMessage());
+      logger.debug("{} JMX port is undefined", this.getID().getName());
     }
   }
 
   @Override
   public void stop() {
-    if (jmxConnectorServer != null) {
-      try {
-        jmxConnectorServer.stop();
-        logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME,
-            this.getID().getName());
-      } catch (IOException e) {
-        logger.error("Failed to stop {} because of: ", this.getID().getName(), e);
-      }
-    }
+    // do nothing.
   }
 
   private static class JMXServerHolder {

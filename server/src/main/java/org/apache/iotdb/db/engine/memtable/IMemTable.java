@@ -18,13 +18,17 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.io.IOException;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
@@ -37,10 +41,10 @@ public interface IMemTable {
 
   Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
 
-  void write(String deviceId, String measurement, TSDataType dataType,
+  void write(String deviceId, String measurement, MeasurementSchema schema,
       long insertTime, Object objectValue);
 
-  void write(BatchInsertPlan batchInsertPlan, int start, int end);
+  void write(InsertTabletPlan insertTabletPlan, int start, int end);
 
   /**
    * @return the number of points
@@ -52,12 +56,27 @@ public interface IMemTable {
    */
   long memSize();
 
-  void insert(InsertPlan insertPlan) throws QueryProcessException;
+  /**
+   * @return whether the average number of points in each WritableChunk reaches the threshold
+   */
+  boolean reachTotalPointNumThreshold();
 
-  void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end) throws QueryProcessException;
+  int getSeriesNumber();
+
+  long getTotalPointsNum();
+
+
+  void insert(InsertRowPlan insertRowPlan) throws WriteProcessException;
+
+  /**
+   * [start, end)
+   */
+  void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
+      throws WriteProcessException;
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props, long timeLowerBound);
+      TSEncoding encoding, Map<String, String> props, long timeLowerBound)
+      throws IOException, QueryProcessException;
 
   /**
    * putBack all the memory resources.
@@ -72,9 +91,10 @@ public interface IMemTable {
    *
    * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp the upper-bound of deletion time.
+   * @param startTimestamp the lower-bound of deletion time.
+   * @param endTimestamp the upper-bound of deletion time
    */
-  void delete(String deviceId, String measurementId, long timestamp);
+  void delete(String deviceId, String measurementId, long startTimestamp, long endTimestamp);
 
   /**
    * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries

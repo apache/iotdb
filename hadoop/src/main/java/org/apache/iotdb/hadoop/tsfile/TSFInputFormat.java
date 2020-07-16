@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
@@ -27,22 +29,13 @@ import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
-import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * @author Yuan Tian
- */
 public class
 TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
 
@@ -77,12 +70,12 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
    */
   public static final String READ_MEASUREMENTID = "tsfile.read.measurement";
   private static final Logger logger = LoggerFactory.getLogger(TSFInputFormat.class);
-  private static final String SPERATOR = ",";
+  private static final String SEPARATOR = ",";
 
   /**
    * Set the deltaObjectIds which want to be read
    *
-   * @param job hadoop job
+   * @param job   hadoop job
    * @param value the deltaObjectIds will be read
    * @throws TSFHadoopException
    */
@@ -92,7 +85,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
     } else {
       StringBuilder deltaObjectIdsBuilder = new StringBuilder();
       for (String deltaObjectId : value) {
-        deltaObjectIdsBuilder.append(deltaObjectId).append(SPERATOR);
+        deltaObjectIdsBuilder.append(deltaObjectId).append(SEPARATOR);
       }
       String deltaObjectIds = deltaObjectIdsBuilder.toString();
       job.getConfiguration().set(READ_DELTAOBJECTS,
@@ -104,23 +97,23 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
    * Get the deltaObjectIds which want to be read
    *
    * @param configuration
-   * @return List of device, if configuration has been set the deviceIds.
-   * 		   null, if configuration has not been set the deviceIds.
+   * @return List of device, if configuration has been set the deviceIds. null, if configuration has
+   * not been set the deviceIds.
    */
   public static List<String> getReadDeviceIds(Configuration configuration) {
     String deviceIds = configuration.get(READ_DELTAOBJECTS);
     if (deviceIds == null || deviceIds.length() < 1) {
-      return null;
+      return new LinkedList<>();
     } else {
 
-      return Arrays.stream(deviceIds.split(SPERATOR)).collect(Collectors.toList());
+      return Arrays.stream(deviceIds.split(SEPARATOR)).collect(Collectors.toList());
     }
   }
 
   /**
    * Set the measurementIds which want to be read
    *
-   * @param job hadoop job
+   * @param job   hadoop job
    * @param value the measurementIds will be read
    * @throws TSFHadoopException
    */
@@ -130,7 +123,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
     } else {
       StringBuilder measurementIdsBuilder = new StringBuilder();
       for (String measurementId : value) {
-        measurementIdsBuilder.append(measurementId).append(SPERATOR);
+        measurementIdsBuilder.append(measurementId).append(SEPARATOR);
       }
       String measurementIds = measurementIdsBuilder.toString();
       // Get conf type
@@ -148,9 +141,9 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
   public static List<String> getReadMeasurementIds(Configuration configuration) {
     String measurementIds = configuration.get(READ_MEASUREMENTID);
     if (measurementIds == null || measurementIds.length() < 1) {
-      return null;
+      return new LinkedList<>();
     } else {
-      return Arrays.stream(measurementIds.split(SPERATOR)).collect(Collectors.toList());
+      return Arrays.stream(measurementIds.split(SEPARATOR)).collect(Collectors.toList());
     }
   }
 
@@ -239,18 +232,19 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
 
   @Override
   public RecordReader<NullWritable, MapWritable> createRecordReader(InputSplit split,
-      TaskAttemptContext context)
-      throws IOException, InterruptedException {
+      TaskAttemptContext context) {
     return new TSFRecordReader();
   }
 
   @Override
   public List<InputSplit> getSplits(JobContext job) throws IOException {
+    job.getConfiguration().setBoolean(INPUT_DIR_RECURSIVE, true);
     List<FileStatus> listFileStatus = super.listStatus(job);
     return new ArrayList<>(getTSFInputSplit(job.getConfiguration(), listFileStatus, logger));
   }
 
-  public static List<TSFInputSplit> getTSFInputSplit(Configuration configuration, List<FileStatus> listFileStatus, Logger logger) throws IOException {
+  public static List<TSFInputSplit> getTSFInputSplit(Configuration configuration,
+      List<FileStatus> listFileStatus, Logger logger) throws IOException {
     BlockLocation[] blockLocations;
     List<TSFInputSplit> splits = new ArrayList<>();
     // get the all file in the directory
@@ -260,6 +254,9 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
       logger.info("The file path is {}", fileStatus.getPath());
       // Get the file path
       Path path = fileStatus.getPath();
+      if (!path.toString().endsWith(TSFILE_SUFFIX)) {
+        continue;
+      }
       // Get the file length
       long length = fileStatus.getLen();
       // Check the file length. if the length is less than 0, return the
@@ -271,9 +268,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
         blockLocations = fileSystem.getFileBlockLocations(fileStatus, 0, length);
 
         logger.info("The block location information is {}", Arrays.toString(blockLocations));
-        try (TsFileSequenceReader fileReader = new TsFileSequenceReader(new HDFSInput(path, configuration))) {
-          splits.addAll(generateSplits(path, fileReader, blockLocations, logger));
-        }
+        splits.addAll(generateSplits(path, blockLocations));
       } else {
         logger.warn("The file length is " + length);
       }
@@ -285,87 +280,18 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
   }
 
   /**
-   * get the TSFInputSplit from tsfMetaData and hdfs block location
-   * information with the filter
+   * get the TSFInputSplit from tsfMetaData and hdfs block location information with the filter
    *
-   * @param path
-   * @param fileReader
-   * @param blockLocations
-   * @return
    * @throws IOException
    */
-  private static List<TSFInputSplit> generateSplits(Path path, TsFileSequenceReader fileReader,
-      BlockLocation[] blockLocations, Logger logger)
+  private static List<TSFInputSplit> generateSplits(Path path, BlockLocation[] blockLocations)
       throws IOException {
     List<TSFInputSplit> splits = new ArrayList<>();
-
-    Arrays.sort(blockLocations, Comparator.comparingLong(BlockLocation::getOffset));
-
-    List<ChunkGroupMetaData> chunkGroupMetaDataList = new ArrayList<>();
-    int currentBlockIndex = 0;
-    long splitSize = 0;
-    List<String> hosts = new ArrayList<>();
-    for (ChunkGroupMetaData chunkGroupMetaData : fileReader.getSortedChunkGroupMetaDataListByDeviceIds()) {
-      logger.info("The chunkGroupMetaData information is {}", chunkGroupMetaData);
-
-      // middle offset point of the chunkGroup
-      long middle = (chunkGroupMetaData.getStartOffsetOfChunkGroup() + chunkGroupMetaData.getEndOffsetOfChunkGroup()) / 2;
-      int blkIndex = getBlockLocationIndex(blockLocations, middle, logger);
-      if (hosts.size() == 0) {
-        hosts.addAll(Arrays.asList(blockLocations[blkIndex].getHosts()));
-      }
-
-      if (blkIndex != currentBlockIndex) {
-        TSFInputSplit tsfInputSplit = makeSplit(path, chunkGroupMetaDataList, splitSize, hosts);
-        logger.info("The tsfile inputSplit information is {}", tsfInputSplit);
-        splits.add(tsfInputSplit);
-
-        currentBlockIndex = blkIndex;
-        chunkGroupMetaDataList.clear();
-        chunkGroupMetaDataList.add(chunkGroupMetaData);
-        splitSize = getTotalByteSizeOfChunkGroup(chunkGroupMetaData);
-        hosts.clear();
-      } else {
-        chunkGroupMetaDataList.add(chunkGroupMetaData);
-        splitSize += getTotalByteSizeOfChunkGroup(chunkGroupMetaData);
-      }
+    for (BlockLocation blockLocation : blockLocations) {
+      splits.add(new TSFInputSplit(path, blockLocation.getHosts(), blockLocation.getOffset(),
+          blockLocation.getLength()));
     }
-    TSFInputSplit tsfInputSplit = makeSplit(path, chunkGroupMetaDataList, splitSize, hosts);
-    logger.info("The tsfile inputSplit information is {}", tsfInputSplit);
-    splits.add(tsfInputSplit);
     return splits;
   }
 
-  private static long getTotalByteSizeOfChunkGroup(ChunkGroupMetaData chunkGroupMetaData) {
-    return chunkGroupMetaData.getEndOffsetOfChunkGroup() - chunkGroupMetaData.getStartOffsetOfChunkGroup();
-  }
-
-
-  /**
-   * Calculate the index of blockLocation that the chunkGroup belongs to
-   * @param blockLocations The Array of blockLocation
-   * @param middle Middle offset point of the chunkGroup
-   * @return the index of blockLocation or -1 if no block could be found
-   */
-  private static int getBlockLocationIndex(BlockLocation[] blockLocations, long middle, Logger logger) {
-    for (int i = 0; i < blockLocations.length; i++) {
-      if (blockLocations[i].getOffset() <= middle
-          && middle < blockLocations[i].getOffset() + blockLocations[i].getLength()) {
-        return i;
-      }
-    }
-    logger.warn("Can't find the block. The middle is {}. the last block is {}", middle,
-        blockLocations[blockLocations.length - 1].getOffset()
-            + blockLocations[blockLocations.length - 1].getLength());
-    return -1;
-  }
-
-  private static TSFInputSplit makeSplit(Path path, List<ChunkGroupMetaData> chunkGroupMetaDataList,
-                                  long length, List<String> hosts) {
-    return new TSFInputSplit(path, hosts.toArray(new String[0]), length,
-            chunkGroupMetaDataList.stream()
-                    .map(TSFInputSplit.ChunkGroupInfo::new)
-                    .collect(Collectors.toList())
-    );
-  }
 }

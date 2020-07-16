@@ -18,14 +18,16 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for string type.
@@ -42,23 +44,34 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public int getStatsSize() {
-    return 4 + firstValue.getValues().length
-        + 4 + lastValue.getValues().length;
+    return 4 + firstValue.getValues().length + 4 + lastValue.getValues().length;
   }
 
   /**
    * initialize Statistics.
    *
    * @param first the first value
-   * @param last the last value
+   * @param last  the last value
    */
-  private void initializeStats(Binary first, Binary last) {
+  public void initializeStats(Binary first, Binary last) {
     this.firstValue = first;
     this.lastValue = last;
   }
 
   private void updateStats(Binary firstValue, Binary lastValue) {
     this.lastValue = lastValue;
+  }
+
+  private void updateStats(Binary firstValue, Binary lastValue, long startTime, long endTime) {
+    // only if endTime greater or equals to the current endTime need we update the last value
+    // only if startTime less or equals to the current startTime need we update the first value
+    // otherwise, just ignore
+    if (startTime <= this.getStartTime()) {
+      this.firstValue = firstValue;
+    }
+    if (endTime >= this.getEndTime()) {
+      this.lastValue = lastValue;
+    }
   }
 
   @Override
@@ -97,7 +110,7 @@ public class BinaryStatistics extends Statistics<Binary> {
       initializeStats(stringStats.getFirstValue(), stringStats.getLastValue());
       isEmpty = false;
     } else {
-      updateStats(stringStats.getFirstValue(), stringStats.getLastValue());
+      updateStats(stringStats.getFirstValue(), stringStats.getLastValue(), stats.getStartTime(), stats.getEndTime());
     }
   }
 
@@ -116,6 +129,11 @@ public class BinaryStatistics extends Statistics<Binary> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+  }
+
+  @Override
+  public long calculateRamSize() {
+    return RamUsageEstimator.sizeOf(this);
   }
 
   @Override
@@ -190,7 +208,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public String toString() {
-    return "[fistValue:" + firstValue + ",lastValue:" + lastValue + "]";
+    return super.toString() + " [firstValue:" + firstValue + ",lastValue:" + lastValue + "]";
   }
 
 }

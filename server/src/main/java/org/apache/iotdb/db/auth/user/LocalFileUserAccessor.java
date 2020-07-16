@@ -107,7 +107,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
       }
       user.setRoleList(roleList);
 
-      // for online upgrading, profile for 0.8.x does not contain waterMark
+      // for online upgrading, profile for v0.9.x/v1 does not contain waterMark
       long userProfileLength = userProfile.length();
       try {
         user.setUseWaterMark(dataInputStream.readInt() != 0);

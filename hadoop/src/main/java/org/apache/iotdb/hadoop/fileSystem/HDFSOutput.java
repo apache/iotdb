@@ -26,8 +26,6 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 /**
@@ -39,13 +37,11 @@ public class HDFSOutput implements TsFileOutput {
   private FSDataOutputStream fsDataOutputStream;
   private FileSystem fs;
   private Path path;
-  private static final Logger logger = LoggerFactory.getLogger(HDFSOutput.class);
 
   public HDFSOutput(String filePath, boolean overwrite) throws IOException {
     this(filePath, new Configuration(), overwrite);
     path = new Path(filePath);
   }
-
 
   public HDFSOutput(String filePath, Configuration configuration, boolean overwrite)
       throws IOException {
@@ -95,9 +91,7 @@ public class HDFSOutput implements TsFileOutput {
     if (fs.exists(path)) {
       fsDataOutputStream.close();
     }
-    if (!fs.truncate(path, position)) {
-      logger.error("Failed to truncate file {}. ", path.toUri().toString());
-    }
+    fs.truncate(path, position);
     if (fs.exists(path)) {
       fsDataOutputStream = fs.append(path);
     }

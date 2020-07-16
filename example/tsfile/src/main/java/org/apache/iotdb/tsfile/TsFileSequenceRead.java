@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -29,11 +29,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -54,12 +50,12 @@ public class TsFileSequenceRead {
     System.out.println("file magic tail: " + reader.readTailMagic());
     System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
     System.out.println("Level 1 metadata size: " + reader.getFileMetadataSize());
-    TsFileMetaData metaData = reader.readFileMetadata();
     // Sequential reading of one ChunkGroup now follows this order:
     // first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
     // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
     // judge accordingly.
-    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length);
+    reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+        .getBytes().length);
     System.out.println("[Chunk Group]");
     System.out.println("position: " + reader.position());
     byte marker;
@@ -100,24 +96,22 @@ public class TsFileSequenceRead {
           ChunkGroupFooter chunkGroupFooter = reader.readChunkGroupFooter();
           System.out.println("device: " + chunkGroupFooter.getDeviceID());
           break;
+        case MetaMarker.VERSION:
+          long version = reader.readVersion();
+          System.out.println("version: " + version);
+          break;
         default:
           MetaMarker.handleUnexpectedMarker(marker);
       }
     }
     System.out.println("[Metadata]");
-    List<TsDeviceMetadataIndex> deviceMetadataIndexList = metaData.getDeviceMap().values().stream()
-        .sorted((x, y) -> (int) (x.getOffset() - y.getOffset())).collect(Collectors.toList());
-    for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
-      TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
-      List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
-      for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
-        System.out.println(String
-            .format("\t[Device]File Offset: %d, Device %s, Number of Chunk Groups %d",
-                index.getOffset(), chunkGroupMetaData.getDeviceID(),
-                chunkGroupMetaDataList.size()));
-
-        for (ChunkMetaData chunkMetadata : chunkGroupMetaData.getChunkMetaDataList()) {
-          System.out.println("\t\tMeasurement:" + chunkMetadata.getMeasurementUid());
+    for (String device : reader.getAllDevices()) {
+      Map<String, List<ChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);
+      System.out.println(String
+          .format("\t[Device]Device %s, Number of Measurements %d", device, seriesMetaData.size()));
+      for (Map.Entry<String, List<ChunkMetadata>> serie : seriesMetaData.entrySet()) {
+        System.out.println("\t\tMeasurement:" + serie.getKey());
+        for (ChunkMetadata chunkMetadata : serie.getValue()) {
           System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
         }
       }

@@ -20,10 +20,12 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
+import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,15 +35,7 @@ public class MetricsPage {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricsPage.class);
   private MetricRegistry mr;
-  private List<SqlArgument> list;
-
-  public List<SqlArgument> getList() {
-    return list;
-  }
-
-  public void setList(List<SqlArgument> list) {
-    this.list = list;
-  }
+  private final List<SqlArgument> sqlArguments = TSServiceImpl.getSqlArgumentList();
 
   public MetricsPage(MetricRegistry metricRegistry) {
     this.mr = metricRegistry;
@@ -97,43 +91,46 @@ public class MetricsPage {
     TSExecuteStatementResp resp;
     String errMsg;
     int statusCode;
-    for (int i = (list.size() - 1); i >= 0; i--) {
-      sqlArgument = list.get(i);
-      resp = sqlArgument.getTSExecuteStatementResp();
-      errMsg = resp.getStatus().getStatusType().getMessage();
-      statusCode = resp.getStatus().getStatusType().getCode();
-      String status;
-      if (statusCode == 200) {
-        status = "FINISHED";
-      } else if (statusCode == 201) {
-        status = "EXECUTING";
-      } else if (statusCode == 202) {
-        status = "INVALID_HANDLE";
-      } else {
-        status = "FAILED";
-      }
 
-      table.append(
-          "<tr>"
-          + "<td>" + resp.getOperationType() + "</td>"
-          + "<td>" + sdf.format(new Date(sqlArgument.getStartTime())) + "</td>"
-          + "<td>" + sdf.format(new Date(sqlArgument.getEndTime())) + "</td>"
-          + "<td>" + (int) (sqlArgument.getEndTime() - sqlArgument.getStartTime()) + " ms</td>"
-          + "<td class=\"sql\">" + sqlArgument.getStatement() + "</td>"
-          + "<td>" + status + "</td>"
-          + "<td>" + (errMsg.equals("") ? "== Parsed Physical Plan ==" : errMsg)
-          +   "<span class=\"expand-details\" onclick=\"this.parentNode.querySelector('.stacktrace-details').classList.toggle('collapsed')\">+ details</span>"
-          +   "<div class=\"stacktrace-details collapsed\">"
-          +     "<pre>"
-          +       "Physical Plan: " + sqlArgument.getPlan().getClass().getSimpleName()
-          +       "</br>===========================</br>"
-          +       "OperatorType: " + sqlArgument.getPlan().getOperatorType()
-          +       "</br>===========================</br>"
-          +       "Path: " + sqlArgument.getPlan().getPaths().toString()
-          +     "</pre>"
-          +   "</div>"
-          + "</td>"
-          +"</tr>");
+    synchronized (sqlArguments) {
+      for (int i = (sqlArguments.size() - 1); i >= 0; i--) {
+        sqlArgument = sqlArguments.get(i);
+        resp = sqlArgument.getTSExecuteStatementResp();
+        errMsg = resp.getStatus().message;
+        statusCode = resp.getStatus().code;
+        String status;
+        if (statusCode == 200) {
+          status = "FINISHED";
+        } else if (statusCode == 201) {
+          status = "EXECUTING";
+        } else if (statusCode == 202) {
+          status = "INVALID_HANDLE";
+        } else {
+          status = "FAILED";
+        }
+
+        table.append(
+            "<tr>"
+                + "<td>" + resp.getOperationType() + "</td>"
+                + "<td>" + sdf.format(new Date(sqlArgument.getStartTime())) + "</td>"
+                + "<td>" + sdf.format(new Date(sqlArgument.getEndTime())) + "</td>"
+                + "<td>" + (int) (sqlArgument.getEndTime() - sqlArgument.getStartTime()) + " ms</td>"
+                + "<td class=\"sql\">" + sqlArgument.getStatement() + "</td>"
+                + "<td>" + status + "</td>"
+                + "<td>" + (errMsg.equals("") ? "== Parsed Physical Plan ==" : errMsg)
+                +   "<span class=\"expand-details\" onclick=\"this.parentNode.querySelector('.stacktrace-details').classList.toggle('collapsed')\">+ details</span>"
+                +   "<div class=\"stacktrace-details collapsed\">"
+                +     "<pre>"
+                +       "Physical Plan: " + sqlArgument.getPlan().getClass().getSimpleName()
+                +       "</br>===========================</br>"
+                +       "OperatorType: " + sqlArgument.getPlan().getOperatorType()
+                +       "</br>===========================</br>"
+                +       "Path: " + sqlArgument.getPlan().getPaths().toString()
+                +     "</pre>"
+                +   "</div>"
+                + "</td>"
+                +"</tr>");
+      }
     }
     return table;
   }

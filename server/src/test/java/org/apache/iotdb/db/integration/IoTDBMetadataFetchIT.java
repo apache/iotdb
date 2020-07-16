@@ -19,10 +19,8 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.Constant;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -87,16 +85,16 @@ public class IoTDBMetadataFetchIT {
           "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
       };
       String[] standards = new String[]{
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n"
-              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
+              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n"
-              + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
+              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n"
-                  + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
+                  + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
           "",
 
@@ -118,7 +116,7 @@ public class IoTDBMetadataFetchIT {
               }
             }
           }
-          Assert.assertEquals(builder.toString(), standard);
+          Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
           e.printStackTrace();
           fail(e.getMessage());
@@ -276,8 +274,8 @@ public class IoTDBMetadataFetchIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[]{"COUNT TIMESERIES root.ln"};
-      String[] standards = new String[]{"2,\n"};
+      String[] sqls = new String[]{"COUNT TIMESERIES root.ln", "COUNT TIMESERIES"};
+      String[] standards = new String[]{"2,\n", "2,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -295,7 +293,7 @@ public class IoTDBMetadataFetchIT {
               }
             }
           }
-          Assert.assertEquals(builder.toString(), standard);
+          Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
           e.printStackTrace();
           fail(e.getMessage());
@@ -399,7 +397,7 @@ public class IoTDBMetadataFetchIT {
             + "\t\t\t\t\t\t\"args\":\"{}\",\n"
             + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01.wt01\",\n"
             + "\t\t\t\t\t\t\"DataType\":\"BOOLEAN\",\n"
-            + "\t\t\t\t\t\t\"Compressor\":\"UNCOMPRESSED\",\n"
+            + "\t\t\t\t\t\t\"Compressor\":\"SNAPPY\",\n"
             + "\t\t\t\t\t\t\"Encoding\":\"PLAIN\"\n"
             + "\t\t\t\t\t}\n"
             + "\t\t\t\t}\n"

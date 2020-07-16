@@ -19,47 +19,39 @@
 
 package org.apache.iotdb.tsfile.read.reader.series;
 
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import java.io.IOException;
+import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IAggregateReader;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-
-import java.io.IOException;
-import java.util.List;
 
 /**
  * Series reader is used to query one series of one tsfile.
  */
-public abstract class AbstractFileSeriesReader implements IAggregateReader {
+public abstract class AbstractFileSeriesReader implements IBatchReader {
 
   protected IChunkLoader chunkLoader;
-  protected List<ChunkMetaData> chunkMetaDataList;
+  protected List<ChunkMetadata> chunkMetadataList;
   protected ChunkReader chunkReader;
   private int chunkToRead;
-
-  private BatchData data;
 
   protected Filter filter;
 
   /**
    * constructor of FileSeriesReader.
    */
-  public AbstractFileSeriesReader(IChunkLoader chunkLoader, List<ChunkMetaData> chunkMetaDataList,
+  public AbstractFileSeriesReader(IChunkLoader chunkLoader, List<ChunkMetadata> chunkMetadataList,
       Filter filter) {
     this.chunkLoader = chunkLoader;
-    this.chunkMetaDataList = chunkMetaDataList;
+    this.chunkMetadataList = chunkMetadataList;
     this.filter = filter;
     this.chunkToRead = 0;
   }
 
-  /**
-   * check if current chunk has next batch data.
-   *
-   * @return True if current chunk has next batch data
-   */
+  @Override
   public boolean hasNextBatch() throws IOException {
 
     // current chunk has additional batch
@@ -68,9 +60,9 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
     }
 
     // current chunk does not have additional batch, init new chunk reader
-    while (chunkToRead < chunkMetaDataList.size()) {
+    while (chunkToRead < chunkMetadataList.size()) {
 
-      ChunkMetaData chunkMetaData = nextChunkMeta();
+      ChunkMetadata chunkMetaData = nextChunkMeta();
       if (chunkSatisfied(chunkMetaData)) {
         // chunk metadata satisfy the condition
         initChunkReader(chunkMetaData);
@@ -83,35 +75,20 @@ public abstract class AbstractFileSeriesReader implements IAggregateReader {
     return false;
   }
 
-  /**
-   * get next batch data.
-   */
+  @Override
   public BatchData nextBatch() throws IOException {
-    data = chunkReader.nextPageData();
-    return data;
+    return chunkReader.nextPageData();
   }
 
-  public BatchData currentBatch() {
-    return data;
-  }
+  protected abstract void initChunkReader(ChunkMetadata chunkMetaData) throws IOException;
 
-  public PageHeader nextPageHeader() {
-    return chunkReader.nextPageHeader();
-  }
-
-  public void skipPageData() {
-    chunkReader.skipPageData();
-  }
-
-  protected abstract void initChunkReader(ChunkMetaData chunkMetaData) throws IOException;
-
-  protected abstract boolean chunkSatisfied(ChunkMetaData chunkMetaData);
+  protected abstract boolean chunkSatisfied(ChunkMetadata chunkMetaData);
 
   public void close() throws IOException {
     chunkLoader.close();
   }
 
-  private ChunkMetaData nextChunkMeta() {
-    return chunkMetaDataList.get(chunkToRead++);
+  private ChunkMetadata nextChunkMeta() {
+    return chunkMetadataList.get(chunkToRead++);
   }
 }

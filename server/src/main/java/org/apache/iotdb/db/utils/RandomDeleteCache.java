@@ -44,29 +44,25 @@ public abstract class RandomDeleteCache<K, V> implements Cache<K, V> {
     return v;
   }
 
-  private void randomRemoveObjectIfCacheIsFull() throws CacheException {
+  private void randomRemoveObjectIfCacheIsFull() {
     if (cache.size() == this.cacheSize) {
       removeFirstObject();
     }
   }
 
-  private void removeFirstObject() throws CacheException {
+  private void removeFirstObject() {
     if (cache.size() == 0) {
       return;
     }
     K key = cache.keySet().iterator().next();
-    beforeRemove(cache.get(key));
     cache.remove(key);
   }
 
-  /**
-   * Do something before remove object from cache.
-   *
-   * @param object value of k-v pair
-   */
-  public abstract void beforeRemove(V object) throws CacheException;
-
   public abstract V loadObjectByKey(K key) throws CacheException;
+
+  public void removeObject(K key) {
+    cache.remove(key);
+  }
 
   @Override
   public void clear() {

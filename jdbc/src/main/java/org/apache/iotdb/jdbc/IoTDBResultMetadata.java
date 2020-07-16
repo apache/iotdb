@@ -59,11 +59,8 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   }
 
   @Override
-  public int getColumnCount() throws SQLException {
-    if (columnInfoList == null || columnInfoList.isEmpty()) {
-      throw new SQLException("No column exists");
-    }
-    return columnInfoList.size();
+  public int getColumnCount() {
+    return columnInfoList == null ? 0 : columnInfoList.size();
   }
 
   @Override

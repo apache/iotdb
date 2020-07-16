@@ -46,7 +46,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   public static final String WAL_FILE_NAME = "wal";
   private static final Logger logger = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
-  private static int logBufferSize = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
 
   private String identifier;
 
@@ -56,7 +55,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private ByteBuffer logBuffer = ByteBuffer.allocate(logBufferSize);
+  private ByteBuffer logBuffer = ByteBuffer
+      .allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
 
   private ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -88,7 +88,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         sync();
       }
     } catch (BufferOverflowException e) {
-      throw new IOException("Log cannot fit into buffer, please increase wal_buffer_size", e);
+      throw new IOException(
+          "Log cannot fit into buffer, if you don't enable Dynamic Parameter Adapter, please increase wal_buffer_size;"
+              + "otherwise, please increase the JVM memory", e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -97,12 +99,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private void putLog(PhysicalPlan plan) {
     logBuffer.mark();
     try {
-      plan.serializeTo(logBuffer);
+      plan.serialize(logBuffer);
     } catch (BufferOverflowException e) {
       logger.info("WAL BufferOverflow !");
       logBuffer.reset();
       sync();
-      plan.serializeTo(logBuffer);
+      plan.serialize(logBuffer);
     }
     bufferedLogNum ++;
   }

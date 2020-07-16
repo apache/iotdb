@@ -21,10 +21,11 @@ package org.apache.iotdb.db.writelog.manager;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.db.concurrent.ThreadName;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -42,11 +43,10 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   private static final Logger logger = LoggerFactory.getLogger(MultiFileLogNodeManager.class);
   private Map<String, WriteLogNode> nodeMap;
 
-  private Thread forceThread;
+  private ScheduledExecutorService executorService;
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final Runnable forceTask = () -> {
-      while (true) {
+  private final void forceTask(){
         if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
           logger.warn("system mode is read-only, the force flush WAL task is stopped");
           return;
@@ -63,15 +63,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
             logger.error("Cannot force {}, because ", node, e);
           }
         }
-        try {
-          Thread.sleep(config.getForceWalPeriodInMs());
-        } catch (InterruptedException e) {
-          logger.info("WAL force thread exits.");
-          Thread.currentThread().interrupt();
-          break;
-        }
-      }
-  };
+  }
 
   private MultiFileLogNodeManager() {
     nodeMap = new ConcurrentHashMap<>();
@@ -105,18 +97,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   @Override
   public void close() {
-    if (!isActivated(forceThread)) {
-      logger.warn("MultiFileLogNodeManager has not yet started");
-      return;
-    }
-    logger.info("LogNodeManager starts closing..");
-    if (isActivated(forceThread)) {
-      forceThread.interrupt();
-      logger.info("Waiting for force thread to stop");
-      while (forceThread.isAlive()) {
-        // wait for forceThread
-      }
-    }
     logger.info("{} nodes to be closed", nodeMap.size());
     for (WriteLogNode node : nodeMap.values()) {
       try {
@@ -135,14 +115,10 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       if (!config.isEnableWal()) {
         return;
       }
-      if (!isActivated(forceThread)) {
-        if (config.getForceWalPeriodInMs() > 0) {
-          InstanceHolder.instance.forceThread = new Thread(InstanceHolder.instance.forceTask,
-              ThreadName.WAL_FORCE_DAEMON.getName());
-          InstanceHolder.instance.forceThread.start();
-        }
-      } else {
-        logger.warn("MultiFileLogNodeManager has already started");
+      if (config.getForceWalPeriodInMs() > 0) {
+        executorService = Executors.newSingleThreadScheduledExecutor();
+        executorService.scheduleAtFixedRate(this::forceTask, config.getForceWalPeriodInMs(),
+            config.getForceWalPeriodInMs(), TimeUnit.MILLISECONDS);
       }
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
@@ -154,16 +130,21 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     if (!config.isEnableWal()) {
       return;
     }
+    if (executorService != null) {
+      executorService.shutdown();
+      try {
+        executorService.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("force flush wal thread still doesn't exit after 30s");
+        Thread.currentThread().interrupt();
+      }
+    }
     close();
   }
 
   @Override
   public ServiceType getID() {
     return ServiceType.WAL_SERVICE;
-  }
-
-  private boolean isActivated(Thread thread) {
-    return thread != null && thread.isAlive();
   }
 
   private static class InstanceHolder {

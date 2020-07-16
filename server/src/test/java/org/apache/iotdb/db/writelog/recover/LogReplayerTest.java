@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.Iterator;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -36,23 +28,47 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
+
+import static org.junit.Assert.*;
 
 public class LogReplayerTest {
 
+  @Before
+  public void before() {
+    EnvironmentUtils.envSetUp();
+  }
+
+  @After
+  public void after() throws IOException, StorageEngineException {
+    EnvironmentUtils.cleanEnv();
+  }
+
   @Test
-  public void test() throws IOException, StorageGroupProcessorException {
+  public void test()
+      throws IOException, StorageGroupProcessorException, QueryProcessException, MetadataException {
     String logNodePrefix = "testLogNode";
     File tsFile = SystemFileFactory.INSTANCE.getFile("temp", "1-1-1.tsfile");
     File modF = SystemFileFactory.INSTANCE.getFile("test.mod");
@@ -70,54 +86,64 @@ public class LogReplayerTest {
     };
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
-    Schema schema = new Schema();
 
+    IoTDB.metaManager.setStorageGroup("root.sg");
     try {
       for (int i = 0; i < 5; i++) {
-        schema.registerMeasurement(
-            new MeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN));
+        for (int j = 0; j < 5; j++) {
+          IoTDB.metaManager
+              .createTimeseries("root.sg.device" + i + ".sensor" + j, TSDataType.INT64,
+                  TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                  Collections.emptyMap());
+        }
       }
 
       LogReplayer replayer = new LogReplayer(logNodePrefix, tsFile.getPath(), modFile,
-          versionController, tsFileResource, schema, memTable, true);
+          versionController, tsFileResource, memTable, true);
 
       WriteLogNode node =
           MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsFile.getName());
-      node.write(new InsertPlan("device0", 100, "sensor0", String.valueOf(0)));
-      node.write(new InsertPlan("device0", 2, "sensor1", String.valueOf(0)));
+      node.write(
+          new InsertRowPlan("root.sg.device0", 100, "sensor0", TSDataType.INT64, String.valueOf(0)));
+      node.write(
+          new InsertRowPlan("root.sg.device0", 2, "sensor1", TSDataType.INT64, String.valueOf(0)));
       for (int i = 1; i < 5; i++) {
-        node.write(new InsertPlan("device" + i, i, "sensor" + i, String.valueOf(i)));
+        node.write(new InsertRowPlan("root.sg.device" + i, i, "sensor" + i, TSDataType.INT64,
+            String.valueOf(i)));
       }
-      DeletePlan deletePlan = new DeletePlan(200, new Path("device0", "sensor0"));
+      DeletePlan deletePlan = new DeletePlan(0, 200, new Path("root.sg.device0", "sensor0"));
       node.write(deletePlan);
       node.close();
 
       replayer.replayLogs();
 
       for (int i = 0; i < 5; i++) {
-        ReadOnlyMemChunk chunk = memTable.query("device" + i, "sensor" + i, TSDataType.INT64,
-            Collections.emptyMap(), Long.MIN_VALUE);
-        Iterator<TimeValuePair> iterator = chunk.getIterator();
+        ReadOnlyMemChunk memChunk = memTable
+            .query("root.sg.device" + i, "sensor" + i, TSDataType.INT64,
+                TSEncoding.RLE, Collections.emptyMap(), Long.MIN_VALUE);
+        IPointReader iterator = memChunk.getPointReader();
         if (i == 0) {
-          assertFalse(iterator.hasNext());
+          assertFalse(iterator.hasNextTimeValuePair());
         } else {
-          assertTrue(iterator.hasNext());
-          TimeValuePair timeValuePair = iterator.next();
+          assertTrue(iterator.hasNextTimeValuePair());
+          TimeValuePair timeValuePair = iterator.nextTimeValuePair();
           assertEquals(i, timeValuePair.getTimestamp());
           assertEquals(i, timeValuePair.getValue().getLong());
-          assertFalse(iterator.hasNext());
+          assertFalse(iterator.hasNextTimeValuePair());
         }
       }
 
       Modification[] mods = modFile.getModifications().toArray(new Modification[0]);
       assertEquals(1, mods.length);
-      assertEquals(new Deletion(new Path("device0", "sensor0"), 5, 200), mods[0]);
+      assertEquals(mods[0].getPathString(), "root.sg.device0.sensor0");
+      assertEquals(mods[0].getVersionNum(), 5);
+      assertEquals(((Deletion)mods[0]).getEndTime(), 200);
 
-      assertEquals(2, (long) tsFileResource.getStartTimeMap().get("device0"));
-      assertEquals(100, (long) tsFileResource.getEndTimeMap().get("device0"));
+      assertEquals(2, (long) tsFileResource.getStartTime("root.sg.device0"));
+      assertEquals(100, (long) tsFileResource.getEndTime("root.sg.device0"));
       for (int i = 1; i < 5; i++) {
-        assertEquals(i, (long) tsFileResource.getStartTimeMap().get("device" + i));
-        assertEquals(i, (long) tsFileResource.getEndTimeMap().get("device" + i));
+        assertEquals(i, (long) tsFileResource.getStartTime("root.sg.device" + i));
+        assertEquals(i, (long) tsFileResource.getEndTime("root.sg.device" + i));
       }
     } finally {
       modFile.close();

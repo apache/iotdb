@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,15 +19,6 @@
 
 package org.apache.iotdb.tsfile.write;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Arrays;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -40,7 +31,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
@@ -49,6 +40,13 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Arrays;
+
+import static org.junit.Assert.*;
 
 public class TsFileWriterTest {
   TsFileWriter writer = null;
@@ -82,7 +80,7 @@ public class TsFileWriterTest {
     try {
       //String measurementId, TSDataType type, TSEncoding encoding,
       //      CompressionType compressionType
-      writer.addMeasurement(
+      writer.registerTimeseries(new Path("d1.s1"),
           new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       e.printStackTrace();
@@ -91,16 +89,25 @@ public class TsFileWriterTest {
     try {
       //String measurementId, TSDataType type, TSEncoding encoding,
       //      CompressionType compressionType
-      writer.addMeasurement(
+      writer.registerTimeseries(new Path("d1.s1"),
           new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
-      Assert.assertEquals("given measurement has exists! s1", e.getMessage());
+      Assert.assertEquals("given timeseries has exists! d1.s1", e.getMessage());
     }
     try {
       //String measurementId, TSDataType type, TSEncoding encoding,
       //      CompressionType compressionType
-      writer.addMeasurement(
+      writer.registerTimeseries(new Path("d1.s2"),
           new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
+    } catch (WriteProcessException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+    try {
+      for(int i = 2; i < 3; i++) {
+        writer.registerTimeseries(new Path("d"+ i + ".s1"),
+            new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
+      }
     } catch (WriteProcessException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -184,30 +191,28 @@ public class TsFileWriterTest {
   }
 
   @Test
-  public void writeRowBatch() throws IOException, WriteProcessException {
-    RowBatch rowBatch = new RowBatch("d1", Arrays.asList(new MeasurementSchema[]{
+  public void writeTablet() throws IOException, WriteProcessException {
+    Tablet tablet = new Tablet("d1", Arrays.asList(
         new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY),
-        new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY)
-    }));
-    rowBatch.timestamps[0] = 10000;
-    ((float[])rowBatch.values[0])[0] = 5.0f;
-    ((int[])rowBatch.values[1])[0] = 5;
-    rowBatch.batchSize = 1;
-    writer.write(rowBatch);
+        new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY)));
+    tablet.timestamps[0] = 10000;
+    ((float[]) tablet.values[0])[0] = 5.0f;
+    ((int[]) tablet.values[1])[0] = 5;
+    tablet.rowSize = 1;
+    writer.write(tablet);
     closeFile();
     readOneRow();
   }
 
   @Test
-  public void writeRowBatch2() throws IOException, WriteProcessException {
-    RowBatch rowBatch = new RowBatch("d1", Arrays.asList(new MeasurementSchema[]{
+  public void writeTablet2() throws IOException, WriteProcessException {
+    Tablet tablet = new Tablet("d1", Arrays.asList(
         new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY),
-        new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY)
-    }));
-    rowBatch.timestamps[0] = 10000;
-    ((float[])rowBatch.values[0])[0] = 5.0f;
-    rowBatch.batchSize = 1;
-    writer.write(rowBatch);
+        new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY)));
+    tablet.timestamps[0] = 10000;
+    ((float[]) tablet.values[0])[0] = 5.0f;
+    tablet.rowSize = 1;
+    writer.write(tablet);
     closeFile();
     //in this case, the value of s2 = 0 at time 10000.
     readOneRow(0);
@@ -224,7 +229,16 @@ public class TsFileWriterTest {
   @Test
   public void flushForTest() throws IOException {
     //The interface is just for test
-    writer.flushForTest();
+    writer.flushAllChunkGroups();
+    closeFile();
+    readNothing();
+  }
+
+  @Test
+  public void flushForTestWithVersion() throws IOException {
+    //The interface is just for test
+    writer.flushAllChunkGroups();
+    writer.writeVersion(10L);
     closeFile();
     readNothing();
   }

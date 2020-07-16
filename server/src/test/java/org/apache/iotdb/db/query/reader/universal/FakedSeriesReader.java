@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -59,12 +59,12 @@ public class FakedSeriesReader implements IPointReader {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNextTimeValuePair() {
     return index < size;
   }
 
   @Override
-  public TimeValuePair next() {
+  public TimeValuePair nextTimeValuePair() {
     if (initWithTimeList) {
       return new TimeValuePair(timestamps[index++], TsPrimitiveType.getByType(DATA_TYPE, value));
     } else {
@@ -77,7 +77,7 @@ public class FakedSeriesReader implements IPointReader {
   }
 
   @Override
-  public TimeValuePair current() throws IOException {
+  public TimeValuePair currentTimeValuePair() throws IOException {
     throw new IOException("current() in FakedPrioritySeriesReader is an empty method.");
   }
 

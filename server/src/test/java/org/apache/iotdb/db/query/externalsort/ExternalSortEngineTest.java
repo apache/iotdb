@@ -19,25 +19,25 @@
 
 package org.apache.iotdb.db.query.externalsort;
 
+import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.reader.chunk.ChunkReaderWrap;
+import org.apache.iotdb.db.query.reader.universal.FakedSeriesReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-
-import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
-import org.apache.iotdb.db.query.reader.universal.FakedSeriesReader;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
 public class ExternalSortEngineTest {
 
@@ -113,10 +113,10 @@ public class ExternalSortEngineTest {
     readerList1 = engine.executeForIPointReader(queryId, chunkReaderWrapList);
     PriorityMergeReader reader1 = new PriorityMergeReader();
     for (int i = 0; i < readerList1.size(); i++) {
-      reader1.addReaderWithPriority(readerList1.get(i), i);
+      reader1.addReader(readerList1.get(i), i);
     }
-    while (reader1.hasNext()) {
-      reader1.next();
+    while (reader1.hasNextTimeValuePair()) {
+      reader1.nextTimeValuePair();
     }
     System.out.println(
         "Time used WITH external sort:" + (System.currentTimeMillis() - startTimestamp) + "ms");
@@ -125,10 +125,10 @@ public class ExternalSortEngineTest {
     startTimestamp = System.currentTimeMillis();
     PriorityMergeReader reader2 = new PriorityMergeReader();
     for (int i = 0; i < readerList2.size(); i++) {
-      reader2.addReaderWithPriority(readerList2.get(i), i);
+      reader2.addReader(readerList2.get(i), i);
     }
-    while (reader2.hasNext()) {
-      reader2.next();
+    while (reader2.hasNextTimeValuePair()) {
+      reader2.nextTimeValuePair();
     }
     System.out.println(
         "Time used WITHOUT external sort:" + (System.currentTimeMillis() - startTimestamp) + "ms");
@@ -160,14 +160,14 @@ public class ExternalSortEngineTest {
   }
 
   private void check(IPointReader reader1, IPointReader reader2) throws IOException {
-    while (reader1.hasNext() && reader2.hasNext()) {
-      TimeValuePair tv1 = reader1.next();
-      TimeValuePair tv2 = reader2.next();
+    while (reader1.hasNextTimeValuePair() && reader2.hasNextTimeValuePair()) {
+      TimeValuePair tv1 = reader1.nextTimeValuePair();
+      TimeValuePair tv2 = reader2.nextTimeValuePair();
       Assert.assertEquals(tv1.getTimestamp(), tv2.getTimestamp());
       Assert.assertEquals(tv1.getValue(), tv2.getValue());
     }
-    Assert.assertFalse(reader2.hasNext());
-    Assert.assertFalse(reader1.hasNext());
+    Assert.assertFalse(reader2.hasNextTimeValuePair());
+    Assert.assertFalse(reader1.hasNextTimeValuePair());
   }
 
   private List<IPointReader> genSimple() {

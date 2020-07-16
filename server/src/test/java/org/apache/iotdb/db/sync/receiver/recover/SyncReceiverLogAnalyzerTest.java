@@ -18,40 +18,36 @@
  */
 package org.apache.iotdb.db.sync.receiver.recover;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderTest;
 import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.*;
+
+import static org.junit.Assert.*;
 
 public class SyncReceiverLogAnalyzerTest {
 
@@ -74,12 +70,11 @@ public class SyncReceiverLogAnalyzerTest {
   }
 
   private void initMetadata() throws MetadataException {
-    MManager mmanager = MManager.getInstance();
+    MManager mmanager = IoTDB.metaManager;
     mmanager.init();
-    mmanager.clear();
-    mmanager.setStorageGroupToMTree("root.sg0");
-    mmanager.setStorageGroupToMTree("root.sg1");
-    mmanager.setStorageGroupToMTree("root.sg2");
+    mmanager.setStorageGroup("root.sg0");
+    mmanager.setStorageGroup("root.sg1");
+    mmanager.setStorageGroup("root.sg2");
   }
 
   @After
@@ -106,8 +101,8 @@ public class SyncReceiverLogAnalyzerTest {
         String rand = String.valueOf(r.nextInt(10000) + i * j);
         String fileName =
             getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + System
-                .currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
-                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
+                .currentTimeMillis() + IoTDBConstant.FILE_NAME_SEPARATOR + rand
+                + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
         Thread.sleep(1);
         File syncFile = new File(fileName);
         receiverLogger
@@ -131,8 +126,8 @@ public class SyncReceiverLogAnalyzerTest {
           LOGGER.error("Can not create new file {}", syncFile.getPath());
         }
         TsFileResource tsFileResource = new TsFileResource(syncFile);
-        tsFileResource.getStartTimeMap().put(String.valueOf(i), (long) j * 10);
-        tsFileResource.getEndTimeMap().put(String.valueOf(i), (long) j * 10 + 5);
+        tsFileResource.putStartTime(String.valueOf(i), (long) j * 10);
+        tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
         tsFileResource.serialize();
       }
     }

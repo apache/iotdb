@@ -24,11 +24,11 @@
     <parent>
         <groupId>org.apache</groupId>
         <artifactId>apache</artifactId>
-        <version>21</version>
+        <version>23</version>
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>iotdb-parent</artifactId>
-    <version>0.10.0-SNAPSHOT</version>
+    <version>0.11.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Apache IoTDB (incubating) Project Parent POM</name>
     <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration libs.</description>
@@ -44,18 +44,56 @@
         <url>ssh://git@github.com:apache/incubator-iotdb.git</url>
         <tag>rel/0.10</tag>
     </scm>
+    <!-- Only configure the site distribution as the rest is handled by the apache parent -->
+    <distributionManagement>
+        <site>
+            <id>apache.website</id>
+            <url>scm:git:https://gitbox.apache.org/repos/asf/incubator-iotdb-website.git</url>
+        </site>
+    </distributionManagement>
+    <issueManagement>
+        <system>Jira</system>
+        <url>https://issues.apache.org/jira/browse/iotdb</url>
+    </issueManagement>
+    <mailingLists>
+        <mailingList>
+            <name>Apache IoTDB Developer List</name>
+            <subscribe>mailto:dev-subscribe@iotdb.apache.org</subscribe>
+            <unsubscribe>mailto:dev-unsubscribe@iotdb.apache.org</unsubscribe>
+            <post>mailto:dev@iotdb.apache.org</post>
+            <archive>http://mail-archives.apache.org/mod_mbox/iotdb-dev/</archive>
+        </mailingList>
+        <mailingList>
+            <name>IoTDB Commits List</name>
+            <subscribe>mailto:commit-subscribe@iotdb.apache.org</subscribe>
+            <unsubscribe>mailto:commits-unsubscribe@iotdb.apache.org</unsubscribe>
+            <post>mailto:commits@iotdb.apache.org</post>
+            <archive>http://mail-archives.apache.org/mod_mbox/iotdb-commits/</archive>
+        </mailingList>
+        <mailingList>
+            <name>IoTDB Jira Notifications List</name>
+            <subscribe>mailto:notifications-subscribe@iotdb.apache.org</subscribe>
+            <unsubscribe>mailto:notifications-unsubscribe@iotdb.apache.org</unsubscribe>
+            <post>mailto:notifications@iotdb.apache.org</post>
+            <archive>http://mail-archives.apache.org/mod_mbox/iotdb-notifications/</archive>
+        </mailingList>
+    </mailingLists>
     <modules>
         <module>tsfile</module>
+        <module>antlr</module>
+        <module>thrift</module>
         <module>service-rpc</module>
         <module>jdbc</module>
         <module>session</module>
-        <module>client</module>
+        <module>cli</module>
         <module>server</module>
         <module>example</module>
         <module>grafana</module>
         <module>spark-tsfile</module>
         <module>hadoop</module>
         <module>spark-iotdb-connector</module>
+        <module>flink-tsfile-connector</module>
+        <module>flink-iotdb-connector</module>
         <module>distribution</module>
         <module>hive-connector</module>
     </modules>
@@ -63,7 +101,7 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.assembly.version>2.5.5</maven.assembly.version>
+        <maven.assembly.version>3.1.0</maven.assembly.version>
         <scala.version>2.11.12</scala.version>
         <hadoop2.version>2.7.3</hadoop2.version>
         <hive2.version>2.3.6</hive2.version>
@@ -72,22 +110,26 @@
         <logback.version>1.1.11</logback.version>
         <joda.version>2.9.9</joda.version>
         <spark.version>2.4.3</spark.version>
+        <flink.version>1.10.0</flink.version>
         <common.io.version>2.5</common.io.version>
         <commons.collections4>4.0</commons.collections4>
         <thrift.version>0.13.0</thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.10.0</jackson.version>
-        <antlr4.version>4.7.1</antlr4.version>
+        <antlr4.version>4.8-1</antlr4.version>
         <common.cli.version>1.3.1</common.cli.version>
         <common.codec.version>1.13</common.codec.version>
         <common.collections.version>3.2.2</common.collections.version>
         <common.lang.version>2.6</common.lang.version>
         <common.lang3.version>3.8.1</common.lang3.version>
         <common.logging.version>1.1.3</common.logging.version>
+        <guava.version>21.0</guava.version>
+        <fastjson.version>1.2.70</fastjson.version>
         <jline.version>2.14.5</jline.version>
         <jetty.version>9.4.24.v20191120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
         <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
+        <felix.version>4.2.1</felix.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>apache</sonar.organization>
@@ -115,7 +157,7 @@
             <dependency>
                 <groupId>com.alibaba</groupId>
                 <artifactId>fastjson</artifactId>
-                <version>1.2.31</version>
+                <version>${fastjson.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
@@ -143,24 +185,9 @@
                 <version>${jackson.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.google.code.findbugs</groupId>
-                <artifactId>jsr305</artifactId>
-                <version>3.0.2</version>
-            </dependency>
-            <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>21.0</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sun.istack</groupId>
-                <artifactId>istack-commons-runtime</artifactId>
-                <version>3.0.8</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sun.xml.fastinfoset</groupId>
-                <artifactId>FastInfoset</artifactId>
-                <version>1.2.16</version>
+                <version>${guava.version}</version>
             </dependency>
             <dependency>
                 <groupId>commons-lang</groupId>
@@ -420,6 +447,11 @@
                 <artifactId>airline</artifactId>
                 <version>${airline.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.fusesource.mqtt-client</groupId>
+                <artifactId>mqtt-client</artifactId>
+                <version>1.12</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -505,12 +537,16 @@
                             <exclude>**/*.cvs</exclude>
                             <!-- licenses -->
                             <exclude>licenses/*</exclude>
+                            <!-- only for Travis CI with WinOS-->
+                            <exclude>hadoopbin</exclude>
+                            <exclude>windowssystem32</exclude>
                             <!-- generated by Github -->
                             <exclude>.github/**</exclude>
                             <!-- figures -->
                             <exclude>**/.eps</exclude>
                             <exclude>**/.png</exclude>
                             <exclude>**/.jpg</exclude>
+                            <exclude>**/.jpeg</exclude>
                             <!--Generated by Apache Release -->
                             <exclude>local-snapshots-dir/**</exclude>
                             <!-- JSON can't contain comments and therefore no Apache header -->
@@ -519,6 +555,8 @@
                             <exclude>**/*.plan</exclude>
                             <exclude>NOTICE-binary</exclude>
                             <exclude>LICENSE-binary</exclude>
+                            <!-- json does not support comments-->
+                            <exclude>**/*.json</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
@@ -892,6 +930,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${maven.assembly.version}</version>
                         <executions>
                             <execution>
                                 <id>source-release-assembly</id>
@@ -906,6 +945,12 @@
                                  -->
                                 <configuration combine.self="append">
                                     <finalName>apache-iotdb-${project.version}-incubating</finalName>
+                                    <archive>
+                                        <manifest>
+                                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                                        </manifest>
+                                    </archive>
                                 </configuration>
                             </execution>
                         </executions>
@@ -1171,18 +1216,13 @@
         </profile>
         <!-- upload code coverage report to coveralls.io-->
         <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/incubator-iotdb.
-             use `mvn post-integration-test -pl hadoop  -Pcode-coverage -Pcoveralls -DrepoToken=TOKEN`-->
+             use `mvn post-integration-test -Pcode-coverage -DrepoToken=TOKEN`-->
+        <!-- enable site-->
+        <!-- use `mvn package -P site -pl site` to compile the site module only -->
         <profile>
-            <id>coveralls</id>
+            <id>site</id>
             <modules>
-                <!-- make sure the modules are synced with profile code-coverage-->
-                <module>tsfile</module>
-                <module>client</module>
-                <module>session</module>
-                <module>server</module>
-                <module>jdbc</module>
-                <module>hadoop</module>
-                <module>hive-connector</module>
+                <module>site</module>
             </modules>
         </profile>
     </profiles>

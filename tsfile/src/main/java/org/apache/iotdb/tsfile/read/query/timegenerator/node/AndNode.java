@@ -31,7 +31,7 @@ public class AndNode implements Node {
   /**
    * Constructor of AndNode.
    *
-   * @param leftChild left child
+   * @param leftChild  left child
    * @param rightChild right child
    */
   public AndNode(Node leftChild, Node rightChild) {
@@ -71,16 +71,13 @@ public class AndNode implements Node {
     return false;
   }
 
-  /**
-   * If there is no value in current Node, -1 will be returned if {@code next()} is invoked.
-   */
   @Override
   public long next() throws IOException {
     if (hasNext()) {
       hasCachedValue = false;
       return cachedValue;
     }
-    return -1;
+    throw new IOException("no more data");
   }
 
   @Override

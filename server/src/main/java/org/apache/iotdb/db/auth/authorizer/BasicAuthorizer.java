@@ -18,9 +18,12 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
@@ -28,6 +31,7 @@ import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.auth.role.IRoleManager;
 import org.apache.iotdb.db.auth.user.IUserManager;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -40,6 +44,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   private static final Logger logger = LoggerFactory.getLogger(BasicAuthorizer.class);
   private static final Set<Integer> ADMIN_PRIVILEGES;
   private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
+  private static final String NO_SUCH_USER_EXCEPTION = "No such user : %s";
 
   static {
     ADMIN_PRIVILEGES = new HashSet<>();
@@ -48,8 +53,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
-  private IUserManager userManager;
-  private IRoleManager roleManager;
+  IUserManager userManager;
+  IRoleManager roleManager;
 
   BasicAuthorizer(IUserManager userManager, IRoleManager roleManager) throws AuthException {
     this.userManager = userManager;
@@ -62,6 +67,38 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     roleManager.reset();
     logger.info("Initialization of Authorizer completes");
   }
+
+  /**
+   * function for getting the instance of the local file authorizer.
+   */
+  public static IAuthorizer getInstance() throws AuthException {
+    if (InstanceHolder.instance == null) {
+      throw new AuthException("Authorizer uninitialized");
+    }
+    return InstanceHolder.instance;
+  }
+
+  private static class InstanceHolder {
+    private static IAuthorizer instance;
+
+    static {
+        Class<BasicAuthorizer> c = null;
+        try {
+          c = (Class<BasicAuthorizer>) Class.forName(IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
+          logger.info("Authorizer provider class: {}", IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
+          instance = c.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+          instance = null;
+          //startup failed.
+          throw new IllegalStateException("Authorizer could not be initialized!", e);
+        }
+    }
+  }
+
+
+
+  /** Checks if a user has admin privileges */
+  abstract boolean isAdmin(String username);
 
   @Override
   public boolean login(String username, String password) throws AuthException {
@@ -78,7 +115,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void deleteUser(String username) throws AuthException {
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       throw new AuthException("Default administrator cannot be deleted");
     }
     if (!userManager.deleteUser(username)) {
@@ -90,7 +127,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void grantPrivilegeToUser(String username, String path, int privilegeId)
       throws AuthException {
     String newPath = path;
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       throw new AuthException("Invalid operation, administrator already has all privileges");
     }
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
@@ -105,7 +142,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void revokePrivilegeFromUser(String username, String path, int privilegeId)
       throws AuthException {
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       throw new AuthException("Invalid operation, administrator must have all privileges");
     }
     String p = path;
@@ -152,7 +189,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
       p = IoTDBConstant.PATH_ROOT;
     }
-    if(!roleManager.grantPrivilegeToRole(roleName, p, privilegeId)) {
+    if (!roleManager.grantPrivilegeToRole(roleName, p, privilegeId)) {
       throw new AuthException(String.format("Role %s already has %s on %s", roleName,
           PrivilegeType.values()[privilegeId], path));
     }
@@ -186,7 +223,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       }
     } else {
       throw new AuthException(String.format("User %s already has role %s",
-       username, roleName));
+          username, roleName));
     }
   }
 
@@ -204,12 +241,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public Set<Integer> getPrivileges(String username, String path) throws AuthException {
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       return ADMIN_PRIVILEGES;
     }
     User user = userManager.getUser(username);
     if (user == null) {
-      throw new AuthException(String.format("No such user : %s", username));
+      throw new AuthException(String.format(NO_SUCH_USER_EXCEPTION, username));
     }
     // get privileges of the user
     Set<Integer> privileges = user.getPrivileges(path);
@@ -233,12 +270,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean checkUserPrivileges(String username, String path, int privilegeId)
       throws AuthException {
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       return true;
     }
     User user = userManager.getUser(username);
     if (user == null) {
-      throw new AuthException(String.format("No such user : %s", username));
+      throw new AuthException(String.format(NO_SUCH_USER_EXCEPTION, username));
     }
     // get privileges of the user
     if (user.checkPrivilege(path, privilegeId)) {
@@ -253,6 +290,50 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     return false;
   }
+
+  @Override
+  public Map<String, Boolean> getAllUserWaterMarkStatus() {
+    Map<String, Boolean> userWaterMarkStatus = new HashMap<>();
+    List<String> allUsers = listAllUsers();
+    for (String user : allUsers) {
+      try {
+        userWaterMarkStatus.put(user, isUserUseWaterMark(user));
+      } catch (AuthException e) {
+        logger.error(String.format(NO_SUCH_USER_EXCEPTION, user));
+      }
+    }
+    return userWaterMarkStatus;
+  }
+
+  @Override
+  public Map<String, User> getAllUsers() {
+    Map<String, User> allUsers = new HashMap<>();
+    List<String> userNames = listAllUsers();
+    for (String userName : userNames) {
+      try {
+        allUsers.put(userName, getUser(userName));
+      } catch (AuthException e) {
+        logger.error(String.format("get all users failed, No such user : %s", userName));
+      }
+    }
+    return allUsers;
+  }
+
+
+  @Override
+  public Map<String, Role> getAllRoles() {
+    Map<String, Role> allRoles = new HashMap<>();
+    List<String> roleNames = listAllRoles();
+    for (String roleName : roleNames) {
+      try {
+        allRoles.put(roleName, getRole(roleName));
+      } catch (AuthException e) {
+        logger.error(String.format("get all roles failed, No such role : %s", roleName));
+      }
+    }
+    return allRoles;
+  }
+
 
   @Override
   public void reset() throws AuthException {
@@ -306,5 +387,15 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException {
     userManager.setUserUseWaterMark(userName, useWaterMark);
+  }
+
+  @Override
+  public void replaceAllUsers(Map<String, User> users) throws AuthException {
+    userManager.replaceAllUsers(users);
+  }
+
+  @Override
+  public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
+    roleManager.replaceAllRoles(roles);
   }
 }

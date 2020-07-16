@@ -18,29 +18,24 @@
  */
 package org.apache.iotdb.db.sync.sender.manage;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class SyncFileManager implements ISyncFileManager {
 
@@ -77,7 +72,7 @@ public class SyncFileManager implements ISyncFileManager {
   private Map<String, Map<Long, Set<File>>> toBeSyncedFilesMap;
 
   private SyncFileManager() {
-    MManager.getInstance().init();
+    IoTDB.metaManager.init();
   }
 
   public static SyncFileManager getInstance() {
@@ -100,16 +95,6 @@ public class SyncFileManager implements ISyncFileManager {
     for (File sgFolder : allSgFolders) {
       if (!sgFolder.getName().startsWith(IoTDBConstant.PATH_ROOT) || sgFolder.getName()
           .equals(TsFileConstant.PATH_UPGRADE)) {
-        continue;
-      }
-      try {
-        if (!MManager.getInstance().getStorageGroupNameByPath(sgFolder.getName())
-            .equals(sgFolder.getName())) {
-          // the folder is not a sg folder
-          continue;
-        }
-      } catch (StorageGroupException e) {
-        // the folder is not a sg folder
         continue;
       }
       allSGs.putIfAbsent(sgFolder.getName(), new HashSet<>());
@@ -135,7 +120,7 @@ public class SyncFileManager implements ISyncFileManager {
           if (!file.getName().endsWith(TSFILE_SUFFIX)) {
             continue;
           }
-          if(checkFileValidity(file)){
+          if (checkFileValidity(file)) {
             currentSealedLocalFilesMap.get(sgName).get(timeRangeId).add(file);
           }
         }
@@ -143,7 +128,7 @@ public class SyncFileManager implements ISyncFileManager {
     }
   }
 
-  private boolean checkFileValidity(File file){
+  private boolean checkFileValidity(File file) {
     return new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
         && !new File(
         file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists() && !new File(
@@ -182,7 +167,7 @@ public class SyncFileManager implements ISyncFileManager {
     for (String sgName : allSGs.keySet()) {
       toBeSyncedFilesMap.putIfAbsent(sgName, new HashMap<>());
       deletedFilesMap.putIfAbsent(sgName, new HashMap<>());
-      for(Entry<Long, Set<File>> entry: currentSealedLocalFilesMap
+      for (Entry<Long, Set<File>> entry : currentSealedLocalFilesMap
           .getOrDefault(sgName, Collections.emptyMap()).entrySet()) {
         Long timeRangeId = entry.getKey();
         toBeSyncedFilesMap.get(sgName).putIfAbsent(timeRangeId, new HashSet<>());

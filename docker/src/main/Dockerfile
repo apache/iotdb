@@ -17,6 +17,7 @@
 # under the License.
 #
 
+# this docker file shows how to build an IoTDB image from IoTDB source codes.
 FROM ubuntu:18.04
 RUN apt update \
   && apt install wget unzip lsof maven thrift-compiler=0.9.1-2.1 -y \
@@ -31,9 +32,9 @@ RUN apt update \
   && cd incubator-iotdb-master \
   && mvn package -pl server,client -am -Papache-release -DskipTests -Dthrift.download-url="http://www.apache.org/licenses/LICENSE-2.0.txt" -Dthrift.exec.absolute.path="/usr/bin/thrift" \
   && cd target/ \
-  && unzip apache-iotdb-0.10.0-SNAPSHOT-incubating-bin.zip \
+  && unzip apache-iotdb-0.11.0-SNAPSHOT-incubating-bin.zip \
   && mkdir /iotdb \
-  && mv apache-iotdb-0.10.0-SNAPSHOT-incubating/* /iotdb/ \
+  && mv apache-iotdb-0.11.0-SNAPSHOT-incubating/* /iotdb/ \
   && cd ../../ \
   && mvn clean \
   && ls -lh ~/.m2 \

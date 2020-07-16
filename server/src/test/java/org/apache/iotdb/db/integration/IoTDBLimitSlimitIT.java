@@ -27,7 +27,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBDatabaseMetadata;
@@ -181,7 +181,7 @@ public class IoTDBLimitSlimitIT {
               result = "";
               while (resultSet.next()) {
                 for (int i = 1; i <= count; i++) {
-                  if (now_start > 0L && column[i - 1] == Constant.TIMESTAMP_STR) {
+                  if (now_start > 0L && column[i - 1] == TestConstant.TIMESTAMP_STR) {
                     String timestr = resultSet.getString(i);
                     Long tn = Long.valueOf(timestr);
                     Long now = System.currentTimeMillis();

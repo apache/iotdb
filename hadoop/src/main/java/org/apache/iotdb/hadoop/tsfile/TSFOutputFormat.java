@@ -31,9 +31,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Objects;
 
-/**
- * @author Yuan Tian
- */
 public class TSFOutputFormat extends FileOutputFormat<NullWritable, HDFSTSRecord> {
 
   private static final Logger logger = LoggerFactory.getLogger(TSFOutputFormat.class);

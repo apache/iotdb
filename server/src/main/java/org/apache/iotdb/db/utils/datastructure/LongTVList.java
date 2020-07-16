@@ -24,6 +24,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class LongTVList extends TVList {
 
@@ -125,7 +128,8 @@ public class LongTVList extends TVList {
 
   @Override
   protected void setFromSorted(int src, int dest) {
-    set(dest, sortedTimestamps[src/ARRAY_SIZE][src%ARRAY_SIZE], sortedValues[src/ARRAY_SIZE][src%ARRAY_SIZE]);
+    set(dest, sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
+        sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
   }
 
   protected void set(int src, int dest) {
@@ -135,8 +139,8 @@ public class LongTVList extends TVList {
   }
 
   protected void setToSorted(int src, int dest) {
-    sortedTimestamps[dest/ARRAY_SIZE][dest% ARRAY_SIZE] = getTime(src);
-    sortedValues[dest/ARRAY_SIZE][dest%ARRAY_SIZE] = getLong(src);
+    sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
+    sortedValues[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getLong(src);
   }
 
   protected void reverseRange(int lo, int hi) {
@@ -169,6 +173,18 @@ public class LongTVList extends TVList {
   }
 
   @Override
+  public TimeValuePair getTimeValuePair(int index) {
+    return new TimeValuePair(getTime(index),
+        TsPrimitiveType.getByType(TSDataType.INT64, getLong(index)));
+  }
+
+  @Override
+  protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision,
+      TSEncoding encoding) {
+    return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64, getLong(index)));
+  }
+
+  @Override
   protected void releaseLastValueArray() {
     PrimitiveArrayPool.getInstance().release(values.remove(values.size() - 1));
   }
@@ -185,7 +201,7 @@ public class LongTVList extends TVList {
       int inputRemaining = length - idx;
       int arrayIdx = size / ARRAY_SIZE;
       int elementIdx = size % ARRAY_SIZE;
-      int internalRemaining  = ARRAY_SIZE - elementIdx;
+      int internalRemaining = ARRAY_SIZE - elementIdx;
       if (internalRemaining >= inputRemaining) {
         // the remaining inputs can fit the last array, copy all remaining inputs into last array
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
@@ -215,7 +231,7 @@ public class LongTVList extends TVList {
       int inputRemaining = end - idx;
       int arrayIdx = size / ARRAY_SIZE;
       int elementIdx = size % ARRAY_SIZE;
-      int internalRemaining  = ARRAY_SIZE - elementIdx;
+      int internalRemaining = ARRAY_SIZE - elementIdx;
       if (internalRemaining >= inputRemaining) {
         // the remaining inputs can fit the last array, copy all remaining inputs into last array
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);

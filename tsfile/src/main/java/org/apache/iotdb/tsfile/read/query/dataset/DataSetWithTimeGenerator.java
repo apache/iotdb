@@ -69,14 +69,14 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
       // get value from readers in time generator
       if (cached.get(i)) {
         Object value = timeGenerator.getValue(paths.get(i), timestamp);
-        rowRecord.addField(getField(value, dataTypes.get(i)));
+        rowRecord.addField(value, dataTypes.get(i));
         continue;
       }
 
       // get value from series reader without filter
       FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp = readers.get(i);
       Object value = fileSeriesReaderByTimestamp.getValueInTimestamp(timestamp);
-      rowRecord.addField(getField(value, dataTypes.get(i)));
+      rowRecord.addField(value, dataTypes.get(i));
     }
 
     return rowRecord;

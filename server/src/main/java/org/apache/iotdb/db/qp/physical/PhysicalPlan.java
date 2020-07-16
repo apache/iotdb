@@ -18,14 +18,25 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -34,9 +45,21 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  */
 public abstract class PhysicalPlan {
 
+  private static final String SERIALIZATION_UNIMPLEMENTED = "serialization unimplemented";
+
   private boolean isQuery;
   private Operator.OperatorType operatorType;
   private static final int NULL_VALUE_LEN = -1;
+
+  //for cluster mode, whether the plan may be splitted into several sub plans
+  protected boolean canBeSplit = true;
+
+  /**
+   * whether the plan can be split into more than one Plans. Only used in the cluster mode.
+   */
+  public boolean canBeSplit() {
+    return canBeSplit;
+  }
 
   protected PhysicalPlan(boolean isQuery) {
     this.isQuery = isQuery;
@@ -73,12 +96,34 @@ public abstract class PhysicalPlan {
     isQuery = query;
   }
 
-  public void serializeTo(ByteBuffer buffer) {
-    throw new UnsupportedOperationException("serialize of unimplemented");
+  /**
+   * Serialize the plan into the given buffer. All necessary fields will be serialized.
+   *
+   * @param stream
+   * @throws IOException
+   */
+  public void serialize(DataOutputStream stream) throws IOException {
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
-  public void deserializeFrom(ByteBuffer buffer) {
-    throw new UnsupportedOperationException("serialize of unimplemented");
+  /**
+   * Serialize the plan into the given buffer. This is provided for WAL, so fields that can be
+   * recovered will not be serialized.
+   *
+   * @param buffer
+   */
+  public void serialize(ByteBuffer buffer) {
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
+  }
+
+  /**
+   * Deserialize the plan from the given buffer. This is provided for WAL, and must be used with
+   * serializeToWAL.
+   *
+   * @param buffer
+   */
+  public void deserialize(ByteBuffer buffer) {
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
   protected void putString(ByteBuffer buffer, String value) {
@@ -86,6 +131,14 @@ public abstract class PhysicalPlan {
       buffer.putInt(NULL_VALUE_LEN);
     } else {
       ReadWriteIOUtils.write(value, buffer);
+    }
+  }
+
+  protected void putString(DataOutputStream stream, String value) throws IOException {
+    if (value == null) {
+      stream.writeInt(NULL_VALUE_LEN);
+    } else {
+      ReadWriteIOUtils.write(value, stream);
     }
   }
 
@@ -110,18 +163,99 @@ public abstract class PhysicalPlan {
       }
       PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
       PhysicalPlan plan;
+      // TODO-Cluster: support more plans
       switch (type) {
         case INSERT:
-          plan = new InsertPlan();
-          plan.deserializeFrom(buffer);
+          plan = new InsertRowPlan();
+          plan.deserialize(buffer);
+          break;
+        case BATCHINSERT:
+          plan = new InsertTabletPlan();
+          plan.deserialize(buffer);
           break;
         case DELETE:
           plan = new DeletePlan();
-          plan.deserializeFrom(buffer);
+          plan.deserialize(buffer);
           break;
-        case BATCHINSERT:
-          plan = new BatchInsertPlan();
-          plan.deserializeFrom(buffer);
+        case SET_STORAGE_GROUP:
+          plan = new SetStorageGroupPlan();
+          plan.deserialize(buffer);
+          break;
+        case CREATE_TIMESERIES:
+          plan = new CreateTimeSeriesPlan();
+          plan.deserialize(buffer);
+          break;
+        case DELETE_TIMESERIES:
+          plan = new DeleteTimeSeriesPlan();
+          plan.deserialize(buffer);
+          break;
+        case TTL:
+          plan = new SetTTLPlan();
+          plan.deserialize(buffer);
+          break;
+        case GRANT_WATERMARK_EMBEDDING:
+          plan = new DataAuthPlan(OperatorType.GRANT_WATERMARK_EMBEDDING);
+          plan.deserialize(buffer);
+          break;
+        case REVOKE_WATERMARK_EMBEDDING:
+          plan = new DataAuthPlan(OperatorType.REVOKE_WATERMARK_EMBEDDING);
+          plan.deserialize(buffer);
+          break;
+        case CREATE_ROLE:
+          plan = new AuthorPlan(OperatorType.CREATE_ROLE);
+          plan.deserialize(buffer);
+          break;
+        case DELETE_ROLE:
+          plan = new AuthorPlan(OperatorType.DELETE_ROLE);
+          plan.deserialize(buffer);
+          break;
+        case CREATE_USER:
+          plan = new AuthorPlan(OperatorType.CREATE_USER);
+          plan.deserialize(buffer);
+          break;
+        case REVOKE_USER_ROLE:
+          plan = new AuthorPlan(OperatorType.REVOKE_USER_ROLE);
+          plan.deserialize(buffer);
+          break;
+        case REVOKE_ROLE_PRIVILEGE:
+          plan = new AuthorPlan(OperatorType.REVOKE_ROLE_PRIVILEGE);
+          plan.deserialize(buffer);
+          break;
+        case REVOKE_USER_PRIVILEGE:
+          plan = new AuthorPlan(OperatorType.REVOKE_USER_PRIVILEGE);
+          plan.deserialize(buffer);
+          break;
+        case GRANT_ROLE_PRIVILEGE:
+          plan = new AuthorPlan(OperatorType.GRANT_ROLE_PRIVILEGE);
+          plan.deserialize(buffer);
+          break;
+        case GRANT_USER_PRIVILEGE:
+          plan = new AuthorPlan(OperatorType.GRANT_USER_PRIVILEGE);
+          plan.deserialize(buffer);
+          break;
+        case GRANT_USER_ROLE:
+          plan = new AuthorPlan(OperatorType.GRANT_USER_ROLE);
+          plan.deserialize(buffer);
+          break;
+        case MODIFY_PASSWORD:
+          plan = new AuthorPlan(OperatorType.MODIFY_PASSWORD);
+          plan.deserialize(buffer);
+          break;
+        case DELETE_USER:
+          plan = new AuthorPlan(OperatorType.DELETE_USER);
+          plan.deserialize(buffer);
+          break;
+        case DELETE_STORAGE_GROUP:
+          plan = new DeleteStorageGroupPlan();
+          plan.deserialize(buffer);
+          break;
+        case SHOW_TIMESERIES:
+          plan = new ShowTimeSeriesPlan();
+          plan.deserialize(buffer);
+          break;
+        case LOAD_CONFIGURATION:
+          plan = new LoadConfigurationPlan();
+          plan.deserialize(buffer);
           break;
         default:
           throw new IOException("unrecognized log type " + type);
@@ -131,7 +265,9 @@ public abstract class PhysicalPlan {
   }
 
   public enum PhysicalPlanType {
-    INSERT, DELETE, BATCHINSERT
+    INSERT, DELETE, BATCHINSERT, SET_STORAGE_GROUP, CREATE_TIMESERIES, TTL, GRANT_WATERMARK_EMBEDDING, REVOKE_WATERMARK_EMBEDDING,
+    CREATE_ROLE, DELETE_ROLE, CREATE_USER, REVOKE_USER_ROLE, REVOKE_ROLE_PRIVILEGE, REVOKE_USER_PRIVILEGE, GRANT_ROLE_PRIVILEGE, GRANT_USER_PRIVILEGE, GRANT_USER_ROLE, MODIFY_PASSWORD, DELETE_USER,
+    DELETE_STORAGE_GROUP, SHOW_TIMESERIES, DELETE_TIMESERIES, LOAD_CONFIGURATION
   }
 
 

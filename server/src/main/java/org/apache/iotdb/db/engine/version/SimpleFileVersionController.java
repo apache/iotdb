@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.version;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -33,7 +32,8 @@ import org.slf4j.LoggerFactory;
 public class SimpleFileVersionController implements VersionController {
 
   private static final Logger logger = LoggerFactory.getLogger(SimpleFileVersionController.class);
-  private static final String FILE_PREFIX = "Version-";
+  public static final String FILE_PREFIX = "Version-";
+  public static final String UPGRADE_DIR = "upgrade";
   /**
    * Every time currVersion - prevVersion >= saveInterval, currVersion is persisted and prevVersion
    * is set to currVersion. When recovering from file, the version number is automatically increased
@@ -51,6 +51,14 @@ public class SimpleFileVersionController implements VersionController {
       throws IOException {
     this.directoryPath = directoryPath + File.separator + timePartitionId;
     this.timePartitionId = timePartitionId;
+    restore();
+  }
+
+  /**
+   * only used for upgrading
+   */
+  public SimpleFileVersionController(String directoryPath) throws IOException {
+    this.directoryPath = directoryPath + File.separator + UPGRADE_DIR;
     restore();
   }
 
@@ -134,7 +142,9 @@ public class SimpleFileVersionController implements VersionController {
     } else {
       versionFile = SystemFileFactory.INSTANCE.getFile(directory, FILE_PREFIX + "0");
       prevVersion = 0;
-      new FileOutputStream(versionFile).close();
+      if (!versionFile.createNewFile()) {
+        logger.warn("Cannot create new version file {}", versionFile);
+      }
     }
     // prevent overlapping in case of failure
     currVersion = prevVersion + saveInterval;
