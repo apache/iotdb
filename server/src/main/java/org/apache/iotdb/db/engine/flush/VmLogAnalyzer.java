@@ -19,11 +19,17 @@
 
 package org.apache.iotdb.db.engine.flush;
 
+import static org.apache.iotdb.db.engine.flush.VmLogger.MERGE_FINISHED;
+import static org.apache.iotdb.db.engine.flush.VmLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.flush.VmLogger.TARGET_NAME;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -32,26 +38,59 @@ public class VmLogAnalyzer {
   static final String STR_DEVICE_OFFSET_SEPERATOR = " ";
 
   private File logFile;
+  private boolean isMergeFinished = false;
+  private Set<String> deviceSet = new HashSet<>();
+  private long offset = 0;
+  private List<File> sourceFiles = new ArrayList<>();
+  private File targetFile = null;
 
   public VmLogAnalyzer(File logFile) {
     this.logFile = logFile;
   }
 
   /**
-   * @return (written device set, last offset)
+   * @return analyze (written device set, last offset, source file list, target file , is contains
+   * merge finished)
    */
-  public Pair<Set<String>, Long> analyze() throws IOException {
-    Set<String> deviceSet = new HashSet<>();
-    long offset = 0;
+  public void analyze() throws IOException {
     String currLine;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
       currLine = bufferedReader.readLine();
       if (currLine != null) {
-        String[] resultList = currLine.split(STR_DEVICE_OFFSET_SEPERATOR);
-        deviceSet.add(resultList[0]);
-        offset = Long.parseLong(resultList[1]);
+        if (currLine.equals(SOURCE_NAME)) {
+          currLine = bufferedReader.readLine();
+          sourceFiles.add(new File(currLine));
+        } else if (currLine.equals(TARGET_NAME)) {
+          currLine = bufferedReader.readLine();
+          targetFile = new File(currLine);
+        } else if (currLine.equals(MERGE_FINISHED)) {
+          isMergeFinished = true;
+        } else {
+          String[] resultList = currLine.split(STR_DEVICE_OFFSET_SEPERATOR);
+          deviceSet.add(resultList[0]);
+          offset = Long.parseLong(resultList[1]);
+        }
       }
     }
-    return new Pair<>(deviceSet, offset);
+  }
+
+  public boolean isMergeFinished() {
+    return isMergeFinished;
+  }
+
+  public Set<String> getDeviceSet() {
+    return deviceSet;
+  }
+
+  public long getOffset() {
+    return offset;
+  }
+
+  public List<File> getSourceFiles() {
+    return sourceFiles;
+  }
+
+  public File getTargetFile() {
+    return targetFile;
   }
 }

@@ -556,21 +556,6 @@ public class StorageGroupProcessor {
                 TMP_SUFFIX)) {
               Files.delete(tmpFile.toPath());
             }
-            for (File mergedFile : fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(),
-                MERGED_SUFFIX)) {
-              int vmLevel = getVmLevel(mergedFile);
-              for (File shouldRemove : fsFactory
-                  .listFilesBySuffix(partitionFolder.getAbsolutePath(), VM_SUFFIX)) {
-                if (getVmLevel(shouldRemove) == vmLevel - 1) {
-                  Files.delete(shouldRemove.toPath());
-                }
-              }
-              File newVMFile = FSFactoryProducer.getFSFactory().getFile(mergedFile.getParent(),
-                  mergedFile.getName().split(MERGED_SUFFIX)[0]);
-              if (!mergedFile.renameTo(newVMFile)) {
-                logger.error("Failed to rename {} to {}", mergedFile, newVMFile);
-              }
-            }
             Collections.addAll(vmFiles,
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), VM_SUFFIX));
           }
@@ -598,7 +583,7 @@ public class StorageGroupProcessor {
     return vmTsFileResourceMap;
   }
 
-  private int getVmLevel(File file) {
+  public static int getVmLevel(File file) {
     String vmLevelStr = file.getPath()
         .substring(file.getPath().lastIndexOf(TSFILE_SUFFIX)).replaceAll(TSFILE_SUFFIX, "")
         .split(IoTDBConstant.FILE_NAME_SEPARATOR)[0];

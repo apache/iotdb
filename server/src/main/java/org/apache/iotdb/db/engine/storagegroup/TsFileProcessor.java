@@ -19,9 +19,12 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter.MEMTABLE_NUM_FOR_EACH_PARTITION;
+import static org.apache.iotdb.db.engine.flush.VmLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.flush.VmLogger.TARGET_NAME;
 import static org.apache.iotdb.db.engine.flush.VmLogger.VM_LOG_NAME;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.MERGED_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.getVmLevel;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
 import java.io.File;
@@ -657,41 +660,90 @@ public class TsFileProcessor {
    * recover vm processor and files
    */
   public void recover() {
+    File logFile = FSFactoryProducer.getFSFactory()
+        .getFile(tsFileResource.getTsFile().getParent(),
+            tsFileResource.getTsFile().getName() + VM_LOG_NAME);
     try {
-      File logFile = FSFactoryProducer.getFSFactory()
-          .getFile(tsFileResource.getTsFile().getParent(),
-              tsFileResource.getTsFile().getName() + VM_LOG_NAME);
-      Set<String> deviceSet = new HashSet<>();
-      Pair<Set<String>, Long> result = new Pair<>(deviceSet, 0L);
       if (logFile.exists()) {
         VmLogAnalyzer logAnalyzer = new VmLogAnalyzer(logFile);
-        result = logAnalyzer.analyze();
-        deviceSet = result.left;
-      }
-      if (!deviceSet.isEmpty()) {
-        writer.getIOWriterOut().truncate(result.right - 1);
-        VmMergeUtils.fullMerge(writer, vmWriters,
-            storageGroupName,
-            new VmLogger(tsFileResource.getTsFile().getParent(),
-                tsFileResource.getTsFile().getName()),
-            deviceSet, sequence);
-        for (int i = 0; i < vmWriters.size(); i++) {
-          deleteVmFiles(vmTsFileResources.get(i), vmWriters.get(i));
+        logAnalyzer.analyze();
+        Set<String> deviceSet = logAnalyzer.getDeviceSet();
+        List<File> sourceFileList = logAnalyzer.getSourceFiles();
+        long offset = logAnalyzer.getOffset();
+        File targetFile = logAnalyzer.getTargetFile();
+        boolean isMergeFinished = logAnalyzer.isMergeFinished();
+        if (targetFile == null) {
+          if (logFile.exists()) {
+            Files.delete(logFile.toPath());
+          }
+          return;
         }
-        if (logFile.exists()) {
-          Files.delete(logFile.toPath());
-        }
-      } else {
-        File[] tmpFiles = FSFactoryProducer.getFSFactory()
-            .listFilesBySuffix(writer.getFile().getParent(), TMP_SUFFIX);
-        if (tmpFiles.length > 0) {
-          for (File file : tmpFiles) {
-            Files.delete(file.toPath());
+        //
+        if (targetFile.getName().endsWith(TSFILE_SUFFIX)) {
+          if (!isMergeFinished) {
+            VmMergeUtils.fullMerge(writer, vmWriters,
+                storageGroupName,
+                new VmLogger(tsFileResource.getTsFile().getParent(),
+                    tsFileResource.getTsFile().getName()),
+                deviceSet, sequence);
+            for (int i = 0; i < vmWriters.size(); i++) {
+              deleteVmFiles(vmTsFileResources.get(i), vmWriters.get(i));
+            }
+          }
+        } else {
+          RestorableTsFileIOWriter newVmWriter = new RestorableTsFileIOWriter(targetFile);
+          if (sourceFileList.isEmpty()) {
+            return;
+          }
+          int level = getVmLevel(sourceFileList.get(0));
+          if (isMergeFinished) {
+            File newVmFile = createNewVMFile(tsFileResource, level + 1);
+            if (!targetFile.renameTo(newVmFile)) {
+              logger.error("Failed to rename {} to {}", targetFile, newVmFile);
+            } else {
+              newVmWriter.setFile(newVmFile);
+            }
+          } else {
+            if (deviceSet.isEmpty()) {
+              Files.delete(targetFile.toPath());
+            } else {
+              newVmWriter.getIOWriterOut().truncate(offset - 1);
+              // vm files must be sequence, so we just have to find the first file
+              int startIndex = 0;
+              for (startIndex = 0; startIndex < vmWriters.get(level).size(); startIndex++) {
+                RestorableTsFileIOWriter levelVmWriter = vmWriters.get(level).get(startIndex);
+                if (levelVmWriter.getFile().getAbsolutePath()
+                    .equals(sourceFileList.get(0).getAbsolutePath())) {
+                  break;
+                }
+              }
+              List<RestorableTsFileIOWriter> levelVmWriters = new ArrayList<>(
+                  vmWriters.get(level).subList(startIndex, startIndex + sourceFileList.size()));
+              List<TsFileResource> levelVmFiles = new ArrayList<>(
+                  vmTsFileResources.get(level)
+                      .subList(startIndex, startIndex + sourceFileList.size()));
+              VmMergeUtils.levelMerge(newVmWriter, levelVmWriters,
+                  storageGroupName,
+                  new VmLogger(tsFileResource.getTsFile().getParent(),
+                      tsFileResource.getTsFile().getName()),
+                  deviceSet, sequence);
+              for (int i = 0; i < vmWriters.size(); i++) {
+                deleteVmFiles(levelVmFiles, levelVmWriters);
+              }
+            }
           }
         }
       }
     } catch (IOException e) {
       logger.error("recover vm error ", e);
+    } finally {
+      if (logFile.exists()) {
+        try {
+          Files.delete(logFile.toPath());
+        } catch (IOException e) {
+          logger.error("delete vm log file error ", e);
+        }
+      }
     }
   }
 
@@ -780,7 +832,16 @@ public class TsFileProcessor {
           }
         }
         logger.info("[Flush] merge all {} vms to TsFile", vmTsFileResources.size() + 1);
-        flushAllVmToTsFile(vmWriters, vmTsFileResources);
+        VmLogger vmLogger = new VmLogger(tsFileResource.getTsFile().getParent(),
+            tsFileResource.getTsFile().getName());
+        flushAllVmToTsFile(vmWriters, vmTsFileResources, vmLogger);
+        vmLogger.logMergeFinish();
+        File logFile = FSFactoryProducer.getFSFactory()
+            .getFile(tsFileResource.getTsFile().getParent(),
+                tsFileResource.getTsFile().getName() + VM_LOG_NAME);
+        if (logFile.exists()) {
+          Files.delete(logFile.toPath());
+        }
         writer.mark();
         try {
           double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
@@ -1046,20 +1107,11 @@ public class TsFileProcessor {
   }
 
   private void flushAllVmToTsFile(List<List<RestorableTsFileIOWriter>> currMergeVmWriters,
-      List<List<TsFileResource>> currMergeVmFiles) throws IOException {
+      List<List<TsFileResource>> currMergeVmFiles, VmLogger vmLogger) throws IOException {
     VmMergeUtils.fullMerge(writer, currMergeVmWriters,
-        storageGroupName,
-        new VmLogger(tsFileResource.getTsFile().getParent(),
-            tsFileResource.getTsFile().getName()),
-        new HashSet<>(), sequence);
+        storageGroupName, vmLogger, new HashSet<>(), sequence);
     for (int i = 0; i < currMergeVmFiles.size(); i++) {
       deleteVmFiles(currMergeVmFiles.get(i), currMergeVmWriters.get(i));
-    }
-    File logFile = FSFactoryProducer.getFSFactory()
-        .getFile(tsFileResource.getTsFile().getParent(),
-            tsFileResource.getTsFile().getName() + VM_LOG_NAME);
-    if (logFile.exists()) {
-      Files.delete(logFile.toPath());
     }
   }
 
@@ -1106,18 +1158,27 @@ public class TsFileProcessor {
         }
         logger.info("{}: {} current vm point num: {}, measurement num: {}", storageGroupName,
             tsFileResource.getTsFile().getName(), vmPointNum, pathMeasurementSchemaMap.size());
+        VmLogger vmLogger = new VmLogger(tsFileResource.getTsFile().getParent(),
+            tsFileResource.getTsFile().getName());
         if (pathMeasurementSchemaMap.size() > 0
             && vmPointNum / pathMeasurementSchemaMap.size() > config
             .getMergeChunkPointNumberThreshold() || flushVmTimes >= config
             .getMaxMergeChunkNumInTsFile()) {
           // merge vm to tsfile
           flushVmTimes = 0;
-          logger.info("{}: {} merge {} vms to TsFile", storageGroupName,
+          logger.info("{}: {} merge {} level vms to TsFile", storageGroupName,
               tsFileResource.getTsFile().getName(), vmMergeWriters.size());
-          flushAllVmToTsFile(vmMergeWriters, vmMergeTsFiles);
+          vmLogger.logFile(TARGET_NAME, writer.getFile());
+          flushAllVmToTsFile(vmMergeWriters, vmMergeTsFiles, vmLogger);
+          vmLogger.logMergeFinish();
         } else {
           for (int i = 0; i < vmMergeWriters.size(); i++) {
             if (config.getMaxVmNum() <= vmMergeWriters.get(i).size()) {
+              for (RestorableTsFileIOWriter vmWriter : vmMergeWriters.get(i)) {
+                vmLogger.logFile(SOURCE_NAME, vmWriter.getFile());
+              }
+              File newVmFile = createNewVMFile(tsFileResource, i + 1);
+              vmLogger.logFile(TARGET_NAME, newVmFile);
               // merge vm files
               logger.info("{}: {} merge level {} {} vms to vm", storageGroupName,
                   tsFileResource.getTsFile().getName(), i, vmMergeTsFiles.size());
@@ -1125,19 +1186,14 @@ public class TsFileProcessor {
               File tmpFile = createNewTmpFile();
               RestorableTsFileIOWriter tmpWriter = new RestorableTsFileIOWriter(tmpFile);
               VmMergeUtils.levelMerge(tmpWriter, vmMergeWriters.get(i),
-                  storageGroupName, null, new HashSet<>(), sequence);
+                  storageGroupName, vmLogger, new HashSet<>(), sequence);
               tmpWriter.close();
-              File newVmFile = createNewVMFile(tsFileResource, i + 1);
-              File mergedFile = FSFactoryProducer.getFSFactory()
-                  .getFile(newVmFile.getPath() + MERGED_SUFFIX);
-              if (tmpFile == null || !tmpFile.renameTo(mergedFile)) {
-                logger.error("Failed to rename {} to {}", newVmFile, mergedFile);
-              }
               vmMergeLock.writeLock().lock();
               try {
                 deleteVmFiles(vmMergeTsFiles.get(i), vmMergeWriters.get(i));
-                if (!mergedFile.renameTo(newVmFile)) {
-                  logger.error("Failed to rename {} to {}", mergedFile, newVmFile);
+                vmLogger.logMergeFinish();
+                if (!tmpFile.renameTo(newVmFile)) {
+                  logger.error("Failed to rename {} to {}", tmpFile, newVmFile);
                 }
                 TsFileResource newMergedVmFile = new TsFileResource(newVmFile);
                 if (vmWriters.size() <= i + 1) {
@@ -1158,6 +1214,13 @@ public class TsFileProcessor {
               }
             }
           }
+        }
+        vmLogger.close();
+        File logFile = FSFactoryProducer.getFSFactory()
+            .getFile(tsFileResource.getTsFile().getParent(),
+                tsFileResource.getTsFile().getName() + VM_LOG_NAME);
+        if (logFile.exists()) {
+          Files.delete(logFile.toPath());
         }
       } catch (Exception e) {
         logger.error("Error occurred in Vm Merge thread", e);

@@ -30,6 +30,9 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 public class VmLogger {
 
   public static final String VM_LOG_NAME = ".vm.log";
+  public static final String SOURCE_NAME = "source";
+  public static final String TARGET_NAME = "target";
+  public static final String MERGE_FINISHED = "merge finished";
 
   private static final String FORMAT_DEVICE_OFFSET = "%s %s";
 
@@ -47,6 +50,19 @@ public class VmLogger {
 
   public void logDevice(String device, long offset) throws IOException {
     logStream.write(String.format(FORMAT_DEVICE_OFFSET, device, offset));
+    logStream.newLine();
+    logStream.flush();
+  }
+
+  public void logFile(String prefix, File file) throws IOException {
+    logStream.write(prefix);
+    logStream.write(file.getAbsolutePath());
+    logStream.newLine();
+    logStream.flush();
+  }
+
+  public void logMergeFinish() throws IOException {
+    logStream.write(MERGE_FINISHED);
     logStream.newLine();
     logStream.flush();
   }

@@ -120,9 +120,6 @@ public class VmMergeUtils {
       reader.close();
       logger.info("{} vm file close a reader", reader.getFileName());
     }
-    if (vmLogger != null) {
-      vmLogger.close();
-    }
   }
 
   private static Pair<ChunkMetadata, Chunk> writeSeqChunk(RestorableTsFileIOWriter writer,
@@ -271,9 +268,6 @@ public class VmMergeUtils {
     for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
       reader.close();
       logger.info("{} vm file close a reader", reader.getFileName());
-    }
-    if (vmLogger != null) {
-      vmLogger.close();
     }
   }
 
