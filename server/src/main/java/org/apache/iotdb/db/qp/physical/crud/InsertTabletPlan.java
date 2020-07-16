@@ -62,6 +62,8 @@ public class InsertTabletPlan extends InsertPlan {
   private int end;
   private List<Integer> range;
 
+  private List<Object> failedColumns;
+
 
   public InsertTabletPlan() {
     super(OperatorType.BATCHINSERT);
@@ -500,8 +502,27 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
     super.markFailedMeasurementInsertion(index, e);
+    if (failedColumns == null) {
+      failedColumns = new ArrayList<>();
+    }
+    failedColumns.add(columns[index]);
     columns[index] = null;
+  }
+
+
+  @Override
+  public InsertPlan getPlanFromFailed() {
+    if (super.getPlanFromFailed() == null) {
+      return null;
+    }
+    // TODO anything else?
+    columns = failedColumns.toArray(new Object[0]);
+    failedColumns = null;
+    return this;
   }
 
   @Override
@@ -532,4 +553,5 @@ public class InsertTabletPlan extends InsertPlan {
     result = 31 * result + Arrays.hashCode(times);
     return result;
   }
+
 }

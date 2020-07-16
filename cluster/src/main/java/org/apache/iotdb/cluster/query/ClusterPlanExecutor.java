@@ -695,7 +695,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     List<MeasurementSchema> schemas = metaGroupMember.pullTimeSeriesSchemas(schemasToPull);
     for (MeasurementSchema schema : schemas) {
       IoTDB.metaManager
-          .cacheMeta(deviceId + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), new MeasurementMeta(schema));
+          .cacheMeta(deviceId + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(),
+              new MeasurementMeta(schema));
     }
     logger.debug("Pulled {}/{} schemas from remote", schemas.size(), measurementList.length);
   }

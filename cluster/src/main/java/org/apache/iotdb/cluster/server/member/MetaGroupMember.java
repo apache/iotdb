@@ -19,7 +19,51 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import static org.apache.iotdb.cluster.utils.ClusterUtils.STARTUP_CHECK_THREAD_POOL_SIZE;
+import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME;
+import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_UNIT;
+import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.lang.reflect.Array;
 import java.net.SocketTimeoutException;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
@@ -32,7 +76,13 @@ import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient.FactorySync;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.*;
+import org.apache.iotdb.cluster.exception.AddSelfException;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.exception.LogExecutionException;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.exception.QueryTimeOutException;
+import org.apache.iotdb.cluster.exception.RequestTimeOutException;
+import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
@@ -40,18 +90,49 @@ import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
-import org.apache.iotdb.cluster.partition.*;
+import org.apache.iotdb.cluster.partition.NodeAdditionResult;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.fill.PreviousFillArguments;
 import org.apache.iotdb.cluster.query.groupby.RemoteGroupByExecutor;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
-import org.apache.iotdb.cluster.query.reader.*;
-import org.apache.iotdb.cluster.rpc.thrift.*;
+import org.apache.iotdb.cluster.query.reader.DataSourceInfo;
+import org.apache.iotdb.cluster.query.reader.EmptyReader;
+import org.apache.iotdb.cluster.query.reader.ManagedMergeReader;
+import org.apache.iotdb.cluster.query.reader.MergedReaderByTime;
+import org.apache.iotdb.cluster.query.reader.RemoteSeriesReaderByTimestamp;
+import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
+import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
+import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
+import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
-import org.apache.iotdb.cluster.server.*;
+import org.apache.iotdb.cluster.server.ClientServer;
+import org.apache.iotdb.cluster.server.DataClusterServer;
+import org.apache.iotdb.cluster.server.HardLinkCleaner;
+import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.NodeReport;
 import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
+import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
@@ -117,21 +198,6 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.*;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static org.apache.iotdb.cluster.utils.ClusterUtils.*;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
 public class MetaGroupMember extends RaftMember {
 
@@ -358,7 +424,6 @@ public class MetaGroupMember extends RaftMember {
     }
     return result;
   }
-
 
 
   /**
@@ -657,7 +722,6 @@ public class MetaGroupMember extends RaftMember {
   }
 
 
-
   /**
    * @return Whether all nodes' identifier is known.
    */
@@ -686,7 +750,7 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Process the join cluster request of "node". Only proceed when the partition table is ready.
    *
-   * @param node          cannot be the local node
+   * @param node cannot be the local node
    */
   public AddNodeResponse addNode(Node node, StartUpStatus startUpStatus)
       throws AddSelfException, LogExecutionException {
@@ -982,7 +1046,8 @@ public class MetaGroupMember extends RaftMember {
             groupRemainings[nodeIndex]--;
           }
         } else {
-          askRemoteGroupVote(node, groupRemainings, i, leaderShipStale, log, newLeaderTerm, request);
+          askRemoteGroupVote(node, groupRemainings, i, leaderShipStale, log, newLeaderTerm,
+              request);
         }
       }
 
@@ -1359,13 +1424,13 @@ public class MetaGroupMember extends RaftMember {
   DeleteTimeSeriesPlan getDeleteTimeseriesPlanWithFullPaths(DeleteTimeSeriesPlan plan)
       throws PathNotExistException {
     Pair<List<String>, List<String>> getMatchedPathsRet = getMatchedPaths(plan.getPathsStrings());
-    List<String> fullPathsStrings =  getMatchedPathsRet.left;
+    List<String> fullPathsStrings = getMatchedPathsRet.left;
     List<String> nonExistPathsStrings = getMatchedPathsRet.right;
     if (!nonExistPathsStrings.isEmpty()) {
       throw new PathNotExistException(new ArrayList<>(nonExistPathsStrings));
     }
     List<Path> fullPaths = new ArrayList<>();
-    for(String pathStr : fullPathsStrings){
+    for (String pathStr : fullPathsStrings) {
       fullPaths.add(new Path(pathStr));
     }
     plan.setPaths(fullPaths);
@@ -1458,9 +1523,9 @@ public class MetaGroupMember extends RaftMember {
               setStorageGroupResult.getCode(), storageGroupName)
       );
     }
-    if(plan instanceof InsertRowPlan){
+    if (plan instanceof InsertPlan) {
       // try to create timeseries
-      boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertRowPlan) plan);
+      boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertPlan) plan);
       if (!isAutoCreateTimeseriesSuccess) {
         throw new MetadataException(
             "Failed to create timeseries from InsertPlan automatically."
@@ -1477,10 +1542,6 @@ public class MetaGroupMember extends RaftMember {
    * @return
    */
   TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
-    InsertRowPlan backup = null;
-    if (plan instanceof InsertRowPlan) {
-      backup = (InsertRowPlan) ((InsertRowPlan) plan).clone();
-    }
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
     if (planGroupMap.size() == 1) {
@@ -1492,13 +1553,16 @@ public class MetaGroupMember extends RaftMember {
         status = forwardToMultipleGroup(planGroupMap);
       }
     }
-    if (plan instanceof InsertRowPlan
+    if (plan instanceof InsertPlan
         && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
         && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
       // try to create timeseries
-      boolean hasCreate = autoCreateTimeseries(backup);
+      if (((InsertPlan) plan).getFailedMeasurements() != null) {
+        ((InsertPlan) plan).getPlanFromFailed();
+      }
+      boolean hasCreate = autoCreateTimeseries((InsertPlan) plan);
       if (hasCreate) {
-        status = forwardPlan(planGroupMap, backup);
+        status = forwardPlan(planGroupMap, plan);
       } else {
         logger.error("{}, Cannot auto create timeseries.", thisNode);
       }
@@ -1633,7 +1697,7 @@ public class MetaGroupMember extends RaftMember {
    * @param insertPlan, some of the timeseries in it are not created yet
    * @return true of all uncreated timeseries are created
    */
-  boolean autoCreateTimeseries(InsertRowPlan insertPlan) {
+  boolean autoCreateTimeseries(InsertPlan insertPlan) {
     List<String> seriesList = new ArrayList<>();
     String deviceId = insertPlan.getDeviceId();
     String storageGroupName;
@@ -1654,8 +1718,11 @@ public class MetaGroupMember extends RaftMember {
     List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
     for (String seriesPath : unregisteredSeriesList) {
       int index = seriesList.indexOf(seriesPath);
-      TSDataType dataType = TypeInferenceUtils
-          .getPredictedDataType(insertPlan.getValues()[index], true);
+      TSDataType dataType = insertPlan.getDataTypes() != null
+          ? insertPlan.getDataTypes()[index]
+          : TypeInferenceUtils.getPredictedDataType(insertPlan instanceof InsertTabletPlan
+              ? Array.get(((InsertTabletPlan) insertPlan).getColumns()[index], 0)
+              : ((InsertRowPlan) insertPlan).getValues()[index], true);
       TSEncoding encoding = getDefaultEncoding(dataType);
       CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
       CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(new Path(seriesPath),
@@ -1931,9 +1998,8 @@ public class MetaGroupMember extends RaftMember {
     if (schemas != null) {
       if (logger.isDebugEnabled()) {
         logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
-            name,
-            schemas.size(), request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node,
-            request.getHeader());
+            name, schemas.size(), request.getPrefixPaths().get(0),
+            request.getPrefixPaths().size() - 1, node, request.getHeader());
       }
       results.addAll(schemas);
       return true;
@@ -2879,16 +2945,16 @@ public class MetaGroupMember extends RaftMember {
   }
 
 
-
   /**
    * Process the request of removing a node from the cluster. Reject the request if partition table
    * is unavailable or the node is not the MetaLeader and it does not know who the leader is.
    * Otherwise (being the MetaLeader), the request will be processed locally and broadcast to every
    * node.
    *
-   * @param node          the node to be removed.
+   * @param node the node to be removed.
    */
-  public long removeNode(Node node) throws PartitionTableUnavailableException, LogExecutionException {
+  public long removeNode(Node node)
+      throws PartitionTableUnavailableException, LogExecutionException {
     if (partitionTable == null) {
       logger.info("Cannot add node now because the partition table is not set");
       throw new PartitionTableUnavailableException(thisNode);
@@ -2900,13 +2966,12 @@ public class MetaGroupMember extends RaftMember {
   }
 
 
-
   /**
    * Process a node removal request locally and broadcast it to the whole cluster. The removal will
    * be rejected if number of nodes will fall below half of the replication number after this
    * operation.
    *
-   * @param node          the node to be removed.
+   * @param node the node to be removed.
    * @return Long.MIN_VALUE if further forwarding is required, or the execution result
    */
   private long processRemoveNodeLocally(Node node)

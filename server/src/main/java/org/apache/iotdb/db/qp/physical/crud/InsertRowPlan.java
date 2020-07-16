@@ -57,6 +57,8 @@ public class InsertRowPlan extends InsertPlan {
   // if values is object[], we could use the raw type of them, and we should set this to false
   private boolean isNeedInferType = false;
 
+  private List<Object> failedValues;
+
   public InsertRowPlan() {
     super(OperatorType.INSERT);
   }
@@ -189,7 +191,14 @@ public class InsertRowPlan extends InsertPlan {
 
   @Override
   public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
     super.markFailedMeasurementInsertion(index, e);
+    if (failedValues == null) {
+      failedValues = new ArrayList<>();
+    }
+    failedValues.add(values[index]);
     values[index] = null;
   }
 
@@ -450,6 +459,17 @@ public class InsertRowPlan extends InsertPlan {
     System.arraycopy(this.values, 0, valuesClone, 0, valuesClone.length);
     TSDataType[] typesClone = new TSDataType[this.dataTypes.length];
     System.arraycopy(this.dataTypes, 0, typesClone, 0, typesClone.length);
-    return new InsertRowPlan(deviceIdClone, timeClone, measurementsClone, typesClone, valuesClone);
+    return new InsertRowPlan(deviceIdClone, timeClone, measurementsClone, typesClone,
+        valuesClone);
+  }
+
+  @Override
+  public InsertPlan getPlanFromFailed() {
+    if (super.getPlanFromFailed() == null) {
+      return null;
+    }
+    values = failedValues.toArray(new Object[0]);
+    failedValues = null;
+    return this;
   }
 }
