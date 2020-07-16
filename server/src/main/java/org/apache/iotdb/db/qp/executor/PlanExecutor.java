@@ -304,13 +304,10 @@ public class PlanExecutor implements IPlanExecutor {
         return new EmptyDataSet();
       } else if (queryPlan instanceof GroupByFillPlan) {
         GroupByFillPlan groupByFillPlan = (GroupByFillPlan) queryPlan;
-        return  queryRouter.groupByFill(groupByFillPlan, context);
+        queryDataSet = queryRouter.groupByFill(groupByFillPlan, context);
       } else if (queryPlan instanceof GroupByPlan) {
         GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
         queryDataSet = queryRouter.groupBy(groupByPlan, context);
-        queryDataSet.setRowLimit(queryPlan.getRowLimit());
-        queryDataSet.setRowOffset(queryPlan.getRowOffset());
-        return queryDataSet;
       } else if (queryPlan instanceof AggregationPlan) {
         AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
         queryDataSet = queryRouter.aggregate(aggregationPlan, context);
