@@ -40,6 +40,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Processor;
+import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.server.service.MetaSyncService;
@@ -72,9 +73,11 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   private RegisterManager registerManager = new RegisterManager();
   private MetaAsyncService asyncService;
   private MetaSyncService syncService;
+  private MetaHeartbeatServer metaHeartbeatServer;
 
   public MetaClusterServer() throws QueryProcessException {
     super();
+    metaHeartbeatServer = new MetaHeartbeatServer();
     member = new MetaGroupMember(protocolFactory, thisNode);
     asyncService = new MetaAsyncService(member);
     syncService = new MetaSyncService(member);
@@ -91,6 +94,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   @Override
   public void start() throws TTransportException, StartupException {
     super.start();
+    metaHeartbeatServer.start();
     ioTDB = new IoTDB();
     IoTDB.setMetaManager(CMManager.getInstance());
     ioTDB.active();

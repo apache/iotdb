@@ -67,11 +67,12 @@ import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
+import org.apache.iotdb.cluster.client.async.AsyncMetaHeartbeatClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
-import org.apache.iotdb.cluster.client.sync.SyncMetaClient.FactorySync;
+import org.apache.iotdb.cluster.client.sync.SyncMetaHeartbeatClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
@@ -137,6 +138,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PreviousFillHandler;
+import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
@@ -244,6 +246,10 @@ public class MetaGroupMember extends RaftMember {
   // each node contains multiple DataGroupMembers and they are managed by a DataClusterServer
   // acting as a broker
   private DataClusterServer dataClusterServer;
+
+  // each node starts a data heartbeat server to transfer heartbeat requests
+  private DataHeartbeatServer dataHeartbeatServer;
+
   // an override of TSServiceImpl, which redirect JDBC and session requests to the
   // MetaGroupMember so they can be processed cluster-wide
   private ClientServer clientServer;
@@ -270,7 +276,9 @@ public class MetaGroupMember extends RaftMember {
 
   public MetaGroupMember(TProtocolFactory factory, Node thisNode) throws QueryProcessException {
     super("Meta", new AsyncClientPool(new AsyncMetaClient.FactoryAsync(factory)),
-        new SyncClientPool(new FactorySync(factory)));
+        new SyncClientPool(new SyncMetaClient.FactorySync(factory)),
+        new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory)),
+        new SyncClientPool(new SyncMetaHeartbeatClient.FactorySync(factory)));
     allNodes = new ArrayList<>();
     initPeerMap();
 
@@ -288,6 +296,7 @@ public class MetaGroupMember extends RaftMember {
 
     Factory dataMemberFactory = new Factory(factory, this);
     dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory, this);
+    dataHeartbeatServer = new DataHeartbeatServer(thisNode);
     clientServer = new ClientServer(this);
     startUpStatus = getNewStartUpStatus();
   }
@@ -313,6 +322,10 @@ public class MetaGroupMember extends RaftMember {
 
   public DataClusterServer getDataClusterServer() {
     return dataClusterServer;
+  }
+
+  public DataHeartbeatServer getDataHeartbeatServer() {
+    return dataHeartbeatServer;
   }
 
   /**
@@ -381,6 +394,7 @@ public class MetaGroupMember extends RaftMember {
    */
   private void initSubServers() throws TTransportException, StartupException {
     getDataClusterServer().start();
+    getDataHeartbeatServer().start();
     clientServer.start();
   }
 
