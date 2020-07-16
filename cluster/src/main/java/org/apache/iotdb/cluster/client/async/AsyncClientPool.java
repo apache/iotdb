@@ -113,10 +113,17 @@ public class AsyncClientPool {
     }
   }
 
-  public void removeClientForNodeClientNumMap(Node node) {
+  public void recreateClient(Node node) {
     ClusterNode clusterNode = new ClusterNode(node);
     synchronized (this) {
-      nodeClientNumMap.computeIfPresent(clusterNode, (k, v) -> v - 1);
+      Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+      try {
+        clientStack.push(asyncClientFactory.getAsyncClient(node, this));
+      } catch (IOException e) {
+        logger.error("Cannot create a new client for {}", node, e);
+        nodeClientNumMap.computeIfPresent(clusterNode, (n, cnt) -> cnt - 1);
+      }
+      this.notifyAll();
     }
   }
 }

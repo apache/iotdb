@@ -64,7 +64,7 @@ public class AsyncDataClient extends AsyncClient {
   @Override
   public void onError(Exception e){
     super.onError(e);
-    pool.removeClientForNodeClientNumMap(node);
+    pool.recreateClient(node);
   }
 
   public static class FactoryAsync implements AsyncClientFactory {
