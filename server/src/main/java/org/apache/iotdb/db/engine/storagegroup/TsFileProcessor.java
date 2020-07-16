@@ -677,6 +677,7 @@ public class TsFileProcessor {
         }
         if (targetFile.getName().endsWith(TSFILE_SUFFIX)) {
           if (!isMergeFinished) {
+            writer.getIOWriterOut().truncate(offset - 1);
             VmMergeUtils.fullMerge(writer, vmWriters,
                 storageGroupName,
                 new VmLogger(tsFileResource.getTsFile().getParent(),
