@@ -59,10 +59,7 @@ public class VmMergeTaskPoolManager extends AbstractPoolManager {
 
   @Override
   public void stop() {
-    if (pool != null) {
-      close();
-      pool = null;
-    }
+    super.stop();
     LOGGER.info("Vm merge task manager stopped");
   }
 
