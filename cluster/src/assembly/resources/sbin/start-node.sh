@@ -30,6 +30,17 @@ fi
 IOTDB_CONF=${IOTDB_HOME}/conf
 # IOTDB_LOGS=${IOTDB_HOME}/logs
 
+if [ -f "$IOTDB_CONF/cluster-env.sh" ]; then
+    if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+      . "$IOTDB_CONF/cluster-env.sh" "printgc"
+      shift
+    else
+        . "$IOTDB_CONF/cluster-env.sh"
+    fi
+else
+    echo "can't find $IOTDB_CONF/iotdb-env.sh"
+fi
+
 is_conf_path=false
 for arg do
     shift
@@ -47,12 +58,6 @@ for arg do
 done
 
 CONF_PARAMS="-s "$*
-
-if [ -f "$IOTDB_CONF/cluster-env.sh" ]; then
-    . "$IOTDB_CONF/cluster-env.sh"
-else
-    echo "can't find $IOTDB_CONF/cluster-env.sh"
-fi
 
 if [ -n "$JAVA_HOME" ]; then
     for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do

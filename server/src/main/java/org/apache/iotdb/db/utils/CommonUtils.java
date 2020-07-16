@@ -31,6 +31,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public class CommonUtils {
 
+  private static final int CPUS = Runtime.getRuntime().availableProcessors();
+
   private CommonUtils() {
   }
 
@@ -135,5 +137,9 @@ public class CommonUtils {
       return true;
     }
     throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
+  }
+
+  public static int getCpuCores() {
+    return CPUS;
   }
 }
