@@ -90,14 +90,14 @@ public class QueryFileManager {
   void removeUsedFilesForQuery(long queryId) {
     Set<TsFileResource> tsFiles = sealedFilePathsMap.get(queryId);
     if (tsFiles != null) {
-      for (TsFileResource tsFile : sealedFilePathsMap.get(queryId)) {
+      for (TsFileResource tsFile : tsFiles) {
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
       }
       sealedFilePathsMap.remove(queryId);
     }
     tsFiles = unsealedFilePathsMap.get(queryId);
     if (tsFiles != null) {
-      for (TsFileResource tsFile : unsealedFilePathsMap.get(queryId)) {
+      for (TsFileResource tsFile : tsFiles) {
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
       }
       unsealedFilePathsMap.remove(queryId);
@@ -111,8 +111,7 @@ public class QueryFileManager {
    * must not return null.
    */
   void addFilePathToMap(long queryId, TsFileResource tsFile, boolean isClosed) {
-    Map<Long, Set<TsFileResource>> pathMap = isClosed ? unsealedFilePathsMap :
-        sealedFilePathsMap;
+    Map<Long, Set<TsFileResource>> pathMap = isClosed ? sealedFilePathsMap : unsealedFilePathsMap;
     //TODO this is not an atomic operation, is there concurrent problem?
     if (!pathMap.get(queryId).contains(tsFile)) {
       pathMap.get(queryId).add(tsFile);
