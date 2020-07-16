@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.monitor;
 
+import java.util.List;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
@@ -85,7 +86,7 @@ public class StatMonitor implements IService {
     backLoopPeriod = config.getBackLoopPeriodSec();
     if (config.isEnableStatMonitor()) {
       try {
-        String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
+        List<String> prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX_LIST;
         if (!mmanager.isPathExist(prefix)) {
           mmanager.setStorageGroup(prefix);
         }
@@ -141,7 +142,7 @@ public class StatMonitor implements IService {
 
   void registerStatStorageGroup() {
     MManager mManager = IoTDB.metaManager;
-    String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
+    List<String> prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX_LIST;
     try {
       if (!mManager.isPathExist(prefix)) {
         mManager.setStorageGroup(prefix);
