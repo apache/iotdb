@@ -45,7 +45,7 @@ public class ClusterConfig {
   private int replicationNum = 2;
 
   @ClusterConsistent
-  private boolean useAsyncServer = false;
+  private boolean useAsyncServer = true;
 
   private int connectionTimeoutInMS = 20 * 1000;
   /**
@@ -84,6 +84,8 @@ public class ClusterConfig {
    * iotdb-engine.properties
    */
   private boolean enableAutoCreateSchema = true;
+
+  private boolean enableRaftLogPersistence = true;
 
   /**
    * consistency level, now three consistency levels are supported: strong, mid and weak. Strong
@@ -245,5 +247,13 @@ public class ClusterConfig {
 
   public void setUseAsyncServer(boolean useAsyncServer) {
     this.useAsyncServer = useAsyncServer;
+  }
+
+  public boolean isEnableRaftLogPersistence() {
+    return enableRaftLogPersistence;
+  }
+
+  public void setEnableRaftLogPersistence(boolean enableRaftLogPersistence) {
+    this.enableRaftLogPersistence = enableRaftLogPersistence;
   }
 }

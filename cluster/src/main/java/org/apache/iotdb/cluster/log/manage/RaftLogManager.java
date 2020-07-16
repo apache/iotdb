@@ -416,7 +416,9 @@ public class RaftLogManager {
         }
         try {
           getCommittedEntryManager().append(entries);
-          getStableEntryManager().append(entries);
+          if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+            getStableEntryManager().append(entries);
+          }
           Log lastLog = entries.get(entries.size() - 1);
           getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
           commitIndex = lastLog.getCurrLogIndex();
