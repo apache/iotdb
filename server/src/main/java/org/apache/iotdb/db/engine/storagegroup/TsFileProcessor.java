@@ -84,7 +84,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -678,7 +677,7 @@ public class TsFileProcessor {
         if (targetFile.getName().endsWith(TSFILE_SUFFIX)) {
           if (!isMergeFinished) {
             writer.getIOWriterOut().truncate(offset - 1);
-            VmMergeUtils.fullMerge(writer, vmWriters,
+            VmMergeUtils.merge(writer, packVmWritersToSequenceList(vmWriters),
                 storageGroupName,
                 new VmLogger(tsFileResource.getTsFile().getParent(),
                     tsFileResource.getTsFile().getName()),
@@ -719,7 +718,7 @@ public class TsFileProcessor {
               List<TsFileResource> levelVmFiles = new ArrayList<>(
                   vmTsFileResources.get(level)
                       .subList(startIndex, startIndex + sourceFileList.size()));
-              VmMergeUtils.levelMerge(newVmWriter, levelVmWriters,
+              VmMergeUtils.merge(newVmWriter, levelVmWriters,
                   storageGroupName,
                   new VmLogger(tsFileResource.getTsFile().getParent(),
                       tsFileResource.getTsFile().getName()),
@@ -1106,11 +1105,20 @@ public class TsFileProcessor {
 
   private void flushAllVmToTsFile(List<List<RestorableTsFileIOWriter>> currMergeVmWriters,
       List<List<TsFileResource>> currMergeVmFiles, VmLogger vmLogger) throws IOException {
-    VmMergeUtils.fullMerge(writer, currMergeVmWriters,
+    VmMergeUtils.merge(writer, packVmWritersToSequenceList(currMergeVmWriters),
         storageGroupName, vmLogger, new HashSet<>(), sequence);
     for (int i = 0; i < currMergeVmFiles.size(); i++) {
       deleteVmFiles(currMergeVmFiles.get(i), currMergeVmWriters.get(i));
     }
+  }
+
+  private List<RestorableTsFileIOWriter> packVmWritersToSequenceList(
+      List<List<RestorableTsFileIOWriter>> vmWriters) {
+    List<RestorableTsFileIOWriter> sequenceVmWriters = new ArrayList<>();
+    for (int i = vmWriters.size() - 1; i > 0; i--) {
+      sequenceVmWriters.addAll(vmWriters.get(i));
+    }
+    return sequenceVmWriters;
   }
 
   class VmMergeTask implements Runnable {
@@ -1183,7 +1191,7 @@ public class TsFileProcessor {
               // merge all vm files into a new vm file
               File tmpFile = createNewTmpFile();
               RestorableTsFileIOWriter tmpWriter = new RestorableTsFileIOWriter(tmpFile);
-              VmMergeUtils.levelMerge(tmpWriter, vmMergeWriters.get(i),
+              VmMergeUtils.merge(tmpWriter, vmMergeWriters.get(i),
                   storageGroupName, vmLogger, new HashSet<>(), sequence);
               tmpWriter.close();
               vmMergeLock.writeLock().lock();
