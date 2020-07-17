@@ -236,17 +236,17 @@ public class IoTDBConfig {
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
    */
-  private long tsFileSizeThreshold = 128 * 1024 * 1024L;
+  private long tsFileSizeThreshold = 512 * 1024 * 1024L;
 
   /**
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
    */
-  private long memtableSizeThreshold = 64 * 1024 * 1024L;
+  private long memtableSizeThreshold = 128 * 1024 * 1024L;
 
   /**
    * When average series point number reaches this, flush the memtable to disk
    */
-  private int avgSeriesPointNumberThreshold = 100000;
+  private int avgSeriesPointNumberThreshold = 500000;
 
   /**
    * When merge point number reaches this, merge the vmfile to the tsfile.
