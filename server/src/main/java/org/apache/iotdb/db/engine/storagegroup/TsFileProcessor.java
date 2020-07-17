@@ -1187,7 +1187,7 @@ public class TsFileProcessor {
               vmLogger.logFile(TARGET_NAME, newVmFile);
               // merge vm files
               logger.info("{}: {} merge level {} {} vms to vm", storageGroupName,
-                  tsFileResource.getTsFile().getName(), i, vmMergeTsFiles.size());
+                  tsFileResource.getTsFile().getName(), i, vmMergeTsFiles.get(i).size());
               // merge all vm files into a new vm file
               File tmpFile = createNewTmpFile();
               RestorableTsFileIOWriter tmpWriter = new RestorableTsFileIOWriter(tmpFile);
