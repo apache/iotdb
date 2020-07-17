@@ -1118,7 +1118,7 @@ public class TsFileProcessor {
   private List<RestorableTsFileIOWriter> packVmWritersToSequenceList(
       List<List<RestorableTsFileIOWriter>> vmWriters) {
     List<RestorableTsFileIOWriter> sequenceVmWriters = new ArrayList<>();
-    for (int i = vmWriters.size() - 1; i > 0; i--) {
+    for (int i = vmWriters.size() - 1; i >= 0; i--) {
       sequenceVmWriters.addAll(vmWriters.get(i));
     }
     return sequenceVmWriters;
