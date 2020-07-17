@@ -49,6 +49,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
+import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -82,6 +83,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
@@ -91,6 +93,7 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -117,6 +120,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -124,7 +128,6 @@ import org.junit.Test;
 public class MetaGroupMemberTest extends MemberTest {
 
   private DataClusterServer dataClusterServer;
-
   private boolean mockDataClusterServer;
   private Node exiledNode;
 
@@ -157,6 +160,7 @@ public class MetaGroupMemberTest extends MemberTest {
             return getDataGroupMember(partitionGroup, thisNode);
           }
         }, testMetaMember);
+
     buildDataGroups(dataClusterServer);
     testMetaMember.getThisNode().setNodeIdentifier(0);
     mockDataClusterServer = false;
@@ -192,13 +196,48 @@ public class MetaGroupMemberTest extends MemberTest {
 
       @Override
       public AsyncClient getAsyncClient(Node node) {
-        return null;
+        return getClient(node);
       }
+
+      @Override
+      public AsyncClient getAsyncHeartbeatClient(Node node) {
+        return getClient(node);
+      }
+
+      AsyncClient getClient(Node node) {
+        return new TestClient(node.nodeIdentifier) {
+          public void startElection(ElectionRequest request,
+              AsyncMethodCallback<Long> resultHandler) {
+            new Thread(() -> {
+              long resp = dummyResponse.get();
+              // MIN_VALUE means let the request time out
+              if (resp != Long.MIN_VALUE) {
+                resultHandler.onComplete(resp);
+              }
+            }).start();
+          }
+
+          @Override
+          public void sendHeartbeat(HeartBeatRequest request,
+              AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+            new Thread(() -> {
+              HeartBeatResponse response = new HeartBeatResponse();
+              response.setFollower(thisNode);
+              response.setTerm(Response.RESPONSE_AGREE);
+              resultHandler.onComplete(response);
+            }).start();
+          }
+
+        };
+      }
+
 
       @Override
       public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request) {
         return mockedPullTimeSeriesSchema(request);
       }
+
+
     };
     dataGroupMember.setLogManager(new TestPartitionedLogManager(null,
         partitionTable, group.getHeader(), TestSnapshot::new));
@@ -244,6 +283,18 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
+      public DataHeartbeatServer getDataHeartbeatServer() {
+        DataHeartbeatServer dataHeartbeatServer = new DataHeartbeatServer(thisNode,
+            dataClusterServer) {
+          @Override
+          public void start() throws TTransportException, StartupException {
+          }
+        };
+        return dataHeartbeatServer;
+      }
+
+
+      @Override
       public AsyncDataClient getAsyncDataClient(Node node) throws IOException {
         return new TestAsyncDataClient(node, dataGroupMemberMap);
       }
@@ -278,7 +329,17 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
+      public AsyncClient getAsyncHeartbeatClient(Node node) {
+        System.out.println("11111");
+        return getClient(node);
+      }
+
+      @Override
       public AsyncClient getAsyncClient(Node node) {
+        return getClient(node);
+      }
+
+      public AsyncClient getClient(Node node) {
         try {
           return new TestAsyncMetaClient(null, null, node, null) {
             @Override
@@ -298,6 +359,7 @@ public class MetaGroupMemberTest extends MemberTest {
                 AsyncMethodCallback<HeartBeatResponse> resultHandler) {
               new Thread(() -> {
                 HeartBeatResponse response = new HeartBeatResponse();
+                response.setFollower(thisNode);
                 response.setTerm(Response.RESPONSE_AGREE);
                 resultHandler.onComplete(response);
               }).start();
@@ -381,6 +443,7 @@ public class MetaGroupMemberTest extends MemberTest {
           return null;
         }
       }
+
     };
     metaGroupMember.setLeader(node);
     metaGroupMember.setAllNodes(allNodes);

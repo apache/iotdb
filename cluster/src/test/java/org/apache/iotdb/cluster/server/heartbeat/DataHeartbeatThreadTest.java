@@ -65,6 +65,11 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
       }
 
       @Override
+      public AsyncClient getAsyncHeartbeatClient(Node node) {
+        return getClient(node);
+      }
+
+      @Override
       public MetaGroupMember getMetaGroupMember() {
         return (MetaGroupMember) DataHeartbeatThreadTest.super.getMember();
       }
