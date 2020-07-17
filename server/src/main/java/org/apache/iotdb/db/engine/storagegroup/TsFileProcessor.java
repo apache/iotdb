@@ -1203,7 +1203,7 @@ public class TsFileProcessor {
               try {
                 deleteVmFiles(vmMergeTsFiles.get(i), vmMergeWriters.get(i));
                 vmLogger.logMergeFinish();
-                if (!tmpFile.renameTo(newVmFile)) {
+                if (tmpFile != null && !tmpFile.renameTo(newVmFile)) {
                   logger.error("Failed to rename {} to {}", tmpFile, newVmFile);
                 }
                 TsFileResource newMergedVmFile = new TsFileResource(newVmFile);
