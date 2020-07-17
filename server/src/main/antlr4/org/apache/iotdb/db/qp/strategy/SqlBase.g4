@@ -193,7 +193,7 @@ fromClause
 specialClause
     : specialLimit
     | groupByClause specialLimit?
-    | groupByFillClause
+    | groupByFillClause specialLimit?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
     ;
