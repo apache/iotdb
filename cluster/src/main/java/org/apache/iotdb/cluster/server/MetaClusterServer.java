@@ -133,11 +133,11 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   @Override
   TServerTransport getServerSocket() throws TTransportException {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
-          config.getLocalMetaPort()), getConnectionTimeoutInMS());
+      return new TNonblockingServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
+          config.getInternalMetaPort()), getConnectionTimeoutInMS());
     } else {
-      return new TServerSocket(new InetSocketAddress(config.getLocalIP(),
-          config.getLocalMetaPort()));
+      return new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
+          config.getInternalMetaPort()));
     }
   }
 

@@ -71,7 +71,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private long removedLogSize = 0;
   // when the removedLogSize larger than this, we actually delete logs
   private long maxRemovedLogSize = ClusterDescriptor.getInstance().getConfig()
-      .getMaxRemovedLogSize();
+      .getMaxUnsnapshotedLogSize();
   // min version of available log
   private long minAvailableVersion = 0;
   // max version of available log
