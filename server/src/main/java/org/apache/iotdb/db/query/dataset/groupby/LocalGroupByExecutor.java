@@ -42,12 +42,16 @@ import java.util.Set;
 
 public class LocalGroupByExecutor implements GroupByExecutor {
 
-  private IAggregateReader reader;
+  private final IAggregateReader reader;
   private BatchData preCachedData;
 
   // Aggregate result buffer of this path
-  private List<AggregateResult> results = new ArrayList<>();
-  private TimeRange timeRange;
+  private final List<AggregateResult> results = new ArrayList<>();
+  private final TimeRange timeRange;
+
+  // used for resetting the batch data to the last index
+  private int lastReadCurArrayIndex;
+  private int lastReadCurListIndex;
 
   private QueryDataSource queryDataSource;
 
@@ -62,6 +66,8 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         timeFilter, null, fileFilter);
     this.preCachedData = null;
     timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
+    lastReadCurArrayIndex = 0;
+    lastReadCurListIndex = 0;
   }
 
   public boolean isEmpty() {
@@ -103,7 +109,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         continue;
       }
       // lazy reset batch data for calculation
-      batchData.resetBatchData();
+      batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
       // skip points that cannot be calculated
       while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
         batchData.next();
@@ -112,6 +118,8 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         result.updateResultFromPageData(batchData, curEndTime);
       }
     }
+    lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
+    lastReadCurListIndex = batchData.getReadCurListIndex();
     // can calc for next interval
     if (batchData.getMaxTimestamp() >= curEndTime) {
       preCachedData = batchData;
@@ -228,6 +236,9 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         return true;
       }
 
+      // reset the last position to zero
+      lastReadCurArrayIndex = 0;
+      lastReadCurListIndex = 0;
       calcFromBatch(batchData, curStartTime, curEndTime);
 
       // judge whether the calculation finished
