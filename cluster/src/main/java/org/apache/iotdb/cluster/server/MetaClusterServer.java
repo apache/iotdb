@@ -77,7 +77,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   public MetaClusterServer() throws QueryProcessException {
     super();
-    metaHeartbeatServer = new MetaHeartbeatServer();
+    metaHeartbeatServer = new MetaHeartbeatServer(thisNode, this);
     member = new MetaGroupMember(protocolFactory, thisNode);
     asyncService = new MetaAsyncService(member);
     syncService = new MetaSyncService(member);

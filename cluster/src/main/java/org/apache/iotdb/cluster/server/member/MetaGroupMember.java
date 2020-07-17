@@ -296,7 +296,7 @@ public class MetaGroupMember extends RaftMember {
 
     Factory dataMemberFactory = new Factory(factory, this);
     dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory, this);
-    dataHeartbeatServer = new DataHeartbeatServer(thisNode);
+    dataHeartbeatServer = new DataHeartbeatServer(thisNode, dataClusterServer);
     clientServer = new ClientServer(this);
     startUpStatus = getNewStartUpStatus();
   }
