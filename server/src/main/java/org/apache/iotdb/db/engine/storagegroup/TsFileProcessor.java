@@ -833,6 +833,7 @@ public class TsFileProcessor {
             tsFileResource.getTsFile().getName());
         flushAllVmToTsFile(vmWriters, vmTsFileResources, vmLogger);
         vmLogger.logMergeFinish();
+        vmLogger.close();
         File logFile = FSFactoryProducer.getFSFactory()
             .getFile(tsFileResource.getTsFile().getParent(),
                 tsFileResource.getTsFile().getName() + VM_LOG_NAME);
