@@ -148,7 +148,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description|The maximum degree of the metadata index tree (that is, the max number of each node's children)|
 |Type|Int32|
 |Default| 1024 |
-|Effective|Trigger|
+|Effective|Only allowed to be modified in first start up|
 
 * max\_string\_length
 
@@ -315,7 +315,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 |
 |Type|Bool|
 |Default| false |
-|Effective|After restart system|
+|Effective|Only allowed to be modified in first start up|
 
 * partition\_interval
 
@@ -324,7 +324,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| Time range for dividing storage group, time series data will be divided into groups by this time range |
 |Type|Int64|
 |Default| 604800 |
-|Effective|Should not be changed after first start up|
+|Effective|Only allowed to be modified in first start up|
 
 
 * concurrent\_writing\_time\_partition
@@ -361,7 +361,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| The maximum persistence size of tags and attributes of each time series.|
 |Type| Int32 |
 |Default| 700 |
-|Effective|After restart system|
+|Effective|Only allowed to be modified in first start up|
 
 * enable\_partial\_insert
 
@@ -460,7 +460,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| The storage file system of Tsfile and related data files. Currently LOCAL file system and HDFS are supported.|
 |Type| String |
 |Default|LOCAL |
-|Effective|After restart system|
+|Effective|Only allowed to be modified in first start up|
 
 * core\_site\_path
 
