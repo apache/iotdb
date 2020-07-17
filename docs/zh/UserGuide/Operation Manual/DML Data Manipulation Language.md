@@ -179,8 +179,6 @@ select s1,s2 from root.sg1.* GROUP BY DEVICE
 IoTDB支持根据时间间隔和自定义的滑动步长（默认值与时间间隔相同，自定义的值必须大于等于时间间隔）对结果集进行划分，默认结果按照时间升序排列。
 同时，您也可以使用Java JDBC标准接口来执行相关的查询语句。
 
-Group By 语句不支持 limit 和 offset。
-
 GROUP BY语句为用户提供三类指定参数：
 
 * 参数1：时间轴显示时间窗参数
