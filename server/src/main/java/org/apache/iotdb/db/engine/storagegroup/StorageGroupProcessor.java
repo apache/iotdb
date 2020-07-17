@@ -682,7 +682,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  // ({systemTime}-{versionNum}-{mergeNum}.tsfile-{systemTime}.vm)
+  // ({systemTime}-{versionNum}-{mergeNum}.tsfile-{level}-{systemTime}.vm)
   private int compareVMFileName(TsFileResource o1, TsFileResource o2) {
     String[] items1 = o1.getTsFile().getName().replace(TSFILE_SUFFIX, "").replace(VM_SUFFIX, "")
         .split(FILE_NAME_SEPARATOR);
@@ -692,7 +692,7 @@ public class StorageGroupProcessor {
     long ver2 = Long.parseLong(items2[3]);
     int cmp = Long.compare(ver1, ver2);
     if (cmp == 0) {
-      return Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
+      return Long.compare(Long.parseLong(items1[4]), Long.parseLong(items2[4]));
     } else {
       return cmp;
     }
