@@ -94,7 +94,7 @@ public class SeqTsFileRecoverTest {
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         IoTDB.metaManager
-            .createTimeseries("root.sg.device" + i + ".sensor" + j, TSDataType.INT64,
+            .createTimeseries(Arrays.asList("root", "sg", "device" + i, "sensor" + j), TSDataType.INT64,
                 TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(),
                 Collections.emptyMap());
       }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -92,7 +93,7 @@ public class LogReplayerTest {
       for (int i = 0; i < 5; i++) {
         for (int j = 0; j < 5; j++) {
           IoTDB.metaManager
-              .createTimeseries("root.sg.device" + i + ".sensor" + j, TSDataType.INT64,
+              .createTimeseries(Arrays.asList("root", "sg", "device" + i, "sensor" + j), TSDataType.INT64,
                   TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(),
                   Collections.emptyMap());
         }

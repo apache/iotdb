@@ -64,16 +64,16 @@ public class PhysicalPlanTest {
     IoTDB.metaManager.init();
     IoTDB.metaManager.setStorageGroup("root.vehicle");
     IoTDB.metaManager
-        .createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+        .createTimeseries(Arrays.asList("root", "vehicle", "d1", "s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED, null);
     IoTDB.metaManager
-        .createTimeseries("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+        .createTimeseries(Arrays.asList("root", "vehicle", "d2", "s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED, null);
     IoTDB.metaManager
-        .createTimeseries("root.vehicle.d3.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+        .createTimeseries(Arrays.asList("root", "vehicle", "d3", "s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED, null);
     IoTDB.metaManager
-        .createTimeseries("root.vehicle.d4.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+        .createTimeseries(Arrays.asList("root", "vehicle", "d4", "s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED, null);
   }
 

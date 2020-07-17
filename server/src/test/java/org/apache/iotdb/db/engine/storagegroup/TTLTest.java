@@ -76,6 +76,7 @@ public class TTLTest {
   private StorageGroupProcessor storageGroupProcessor;
   private String s1 = "s1";
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
+  private List<String> g1s1List = Arrays.asList("root", "TTL_SG1", s1);
   private long prevPartitionInterval;
 
   private MNode deviceMNode = null;
@@ -109,7 +110,7 @@ public class TTLTest {
     IoTDB.metaManager.setStorageGroup(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
         .getSystemDir(), sg1, new DirectFlushPolicy());
-    IoTDB.metaManager.createTimeseries(g1s1, TSDataType.INT64, TSEncoding.PLAIN,
+    IoTDB.metaManager.createTimeseries(g1s1List, TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
   }
 

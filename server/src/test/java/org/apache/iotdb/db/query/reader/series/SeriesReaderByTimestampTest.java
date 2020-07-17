@@ -44,7 +44,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 public class SeriesReaderByTimestampTest {
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
-  private List<String> deviceIds = new ArrayList<>();
+  private List<List<String>> deviceIds = new ArrayList<>();
   private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private List<TsFileResource> seqResources = new ArrayList<>();
