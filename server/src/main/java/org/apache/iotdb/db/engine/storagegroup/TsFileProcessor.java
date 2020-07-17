@@ -828,6 +828,7 @@ public class TsFileProcessor {
           }
         }
         logger.info("[Flush] merge all {} vms to TsFile", vmTsFileResources.size() + 1);
+        long startTimeMillis = System.currentTimeMillis();
         VmLogger vmLogger = new VmLogger(tsFileResource.getTsFile().getParent(),
             tsFileResource.getTsFile().getName());
         flushAllVmToTsFile(vmWriters, vmTsFileResources, vmLogger);
@@ -839,6 +840,8 @@ public class TsFileProcessor {
         if (logFile.exists()) {
           Files.delete(logFile.toPath());
         }
+        logger.info("{}: {} vm merge end time consumption: {} ms", storageGroupName,
+            tsFileResource.getTsFile().getName(), System.currentTimeMillis() - startTimeMillis);
         writer.mark();
         try {
           double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
