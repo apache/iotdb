@@ -159,7 +159,10 @@ public class ChunkReader implements IChunkReader {
     chunkDataBuffer.get(compressedPageBody);
     Decoder valueDecoder = Decoder
             .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
-    ByteBuffer pageData = ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody));
+    byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
+    unCompressor.uncompress(compressedPageBody,0, compressedPageBodyLength,
+        uncompressedPageData, 0);
+    ByteBuffer pageData = ByteBuffer.wrap(uncompressedPageData);
     PageReader reader = new PageReader(pageHeader, pageData, chunkHeader.getDataType(),
         valueDecoder, timeDecoder, filter);
     reader.setDeleteIntervalList(deleteIntervalList);

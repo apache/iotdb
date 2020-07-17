@@ -130,25 +130,18 @@ public class ChunkMetadataCache {
     cacheRequestNum.incrementAndGet();
 
     lock.readLock().lock();
+    List<ChunkMetadata> chunkMetadataList;
     try {
-      List<ChunkMetadata> chunkMetadataList = lruCache.get(key);
-      if (chunkMetadataList != null) {
-        cacheHitNum.incrementAndGet();
-        printCacheLog(true);
-        return new ArrayList<>(chunkMetadataList);
-      }
+      chunkMetadataList = lruCache.get(key);
     } finally {
       lock.readLock().unlock();
     }
 
-    lock.writeLock().lock();
-    try {
-      List<ChunkMetadata> chunkMetadataList = lruCache.get(key);
-      if (chunkMetadataList != null) {
-        printCacheLog(true);
-        cacheHitNum.incrementAndGet();
-        return new ArrayList<>(chunkMetadataList);
-      }
+
+    if (chunkMetadataList != null) {
+      printCacheLog(true);
+      cacheHitNum.incrementAndGet();
+    } else {
       printCacheLog(false);
       // bloom filter part
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
@@ -156,13 +149,15 @@ public class ChunkMetadataCache {
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         return new ArrayList<>();
       }
-      List<ChunkMetadata> chunkMetaDataList = FileLoaderUtils
-          .getChunkMetadataList(seriesPath, filePath);
-      lruCache.put(key, chunkMetaDataList);
-      return new ArrayList<>(chunkMetaDataList);
-    } finally {
-      lock.writeLock().unlock();
+      chunkMetadataList = FileLoaderUtils.getChunkMetadataList(seriesPath, filePath);
+      lock.writeLock().lock();
+      try {
+        lruCache.put(key, chunkMetadataList);
+      } finally {
+        lock.writeLock().unlock();
+      }
     }
+    return new ArrayList<>(chunkMetadataList);
   }
 
   private void printCacheLog(boolean isHit) {

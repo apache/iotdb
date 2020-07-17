@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 
 public enum CompressionType {
-  UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA;
+  UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA, LZ4;
 
   /**
    * deserialize short number.
@@ -45,6 +45,8 @@ public enum CompressionType {
         return PAA;
       case 6:
         return PLA;
+      case 7:
+        return LZ4;
       default:
         return UNCOMPRESSED;
     }
@@ -79,6 +81,8 @@ public enum CompressionType {
         return PAA;
       case "PLA":
         return PLA;
+      case "LZ4":
+        return LZ4;
       default:
         throw new CompressionTypeNotSupportedException(name);
     }
@@ -105,6 +109,8 @@ public enum CompressionType {
         return 5;
       case PLA:
         return 6;
+      case LZ4:
+        return 7;
       default:
         return 0;
     }
@@ -131,6 +137,8 @@ public enum CompressionType {
         return ".paa";
       case PLA:
         return ".pla";
+      case LZ4:
+        return ".lz4";
       default:
         return "";
     }

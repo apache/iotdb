@@ -208,7 +208,7 @@ fromClause
 specialClause
     : specialLimit
     | groupByTimeClause specialLimit?
-    | groupByFillClause
+    | groupByFillClause specialLimit?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
     | groupByLevelClause specialLimit?
