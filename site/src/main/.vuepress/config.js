@@ -277,8 +277,8 @@ var config = {
 							['6-System Tools/2-Memory Estimation Tool','Memory Estimation Tool'],
 							['6-System Tools/3-JMX Tool','JMX Tool'],
 							['6-System Tools/4-Watermark Tool','Watermark Tool'],
-							['6-System Tools/5-Query History Visualization Tool','Query History Visualization Tool'],
-							['6-System Tools/6-Monitor and Log Tools','Monitor and Log Tools']
+							['6-System Tools/6-Query History Visualization Tool','Query History Visualization Tool'],
+							['6-System Tools/7-Monitor and Log Tools','Monitor and Log Tools']
 						]
 					},
 					{
@@ -797,8 +797,8 @@ var config = {
 							['6-System Tools/2-Memory Estimation Tool','内存预估'],
 							['6-System Tools/3-JMX Tool','JMX工具'],
 							['6-System Tools/4-Watermark Tool','水印工具'],
-							['6-System Tools/5-Query History Visualization Tool','查询历史可视化工具'],
-							['6-System Tools/6-Monitor and Log Tools','监控与日志工具']
+							['6-System Tools/6-Query History Visualization Tool','查询历史可视化工具'],
+							['6-System Tools/7-Monitor and Log Tools','监控与日志工具']
 						]
 					},
 					{
