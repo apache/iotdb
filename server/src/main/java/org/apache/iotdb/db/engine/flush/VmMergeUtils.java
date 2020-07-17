@@ -52,76 +52,6 @@ public class VmMergeUtils {
     throw new IllegalStateException("Utility class");
   }
 
-  public static void fullMerge(RestorableTsFileIOWriter writer,
-      List<List<RestorableTsFileIOWriter>> vmWriters, String storageGroup, VmLogger vmLogger,
-      Set<String> devices, boolean sequence) throws IOException {
-    Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
-    Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap = new HashMap<>();
-
-    for (List<RestorableTsFileIOWriter> subVmWriters : vmWriters) {
-      fillDeviceMeasurementMap(devices, deviceMeasurementMap, subVmWriters);
-    }
-    if (!sequence) {
-      for (Entry<String, Map<String, MeasurementSchema>> deviceMeasurementEntry : deviceMeasurementMap
-          .entrySet()) {
-        String deviceId = deviceMeasurementEntry.getKey();
-        writer.startChunkGroup(deviceId);
-        long maxVersion = Long.MIN_VALUE;
-        for (Entry<String, MeasurementSchema> entry : deviceMeasurementEntry.getValue()
-            .entrySet()) {
-          String measurementId = entry.getKey();
-          Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
-          for (int i = vmWriters.size() - 1; i >= 0; i--) {
-            maxVersion = writeUnseqChunk(writer, storageGroup, tsFileSequenceReaderMap, deviceId,
-                maxVersion, entry,
-                measurementId, timeValuePairMap, vmWriters.get(i));
-          }
-          IChunkWriter chunkWriter = new ChunkWriterImpl(entry.getValue());
-          for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
-            writeTVPair(timeValuePair, chunkWriter);
-          }
-          chunkWriter.writeToFileWriter(writer);
-        }
-        writer.writeVersion(maxVersion);
-        writer.endChunkGroup();
-        if (vmLogger != null) {
-          vmLogger.logDevice(deviceId, writer.getPos());
-        }
-      }
-    } else {
-      for (Entry<String, Map<String, MeasurementSchema>> deviceMeasurementEntry : deviceMeasurementMap
-          .entrySet()) {
-        String deviceId = deviceMeasurementEntry.getKey();
-        writer.startChunkGroup(deviceId);
-        for (Entry<String, MeasurementSchema> entry : deviceMeasurementEntry.getValue()
-            .entrySet()) {
-          String measurementId = entry.getKey();
-          ChunkMetadata newChunkMetadata = null;
-          Chunk newChunk = null;
-          for (int i = vmWriters.size() - 1; i >= 0; i--) {
-            Pair<ChunkMetadata, Chunk> chunkPair = writeSeqChunk(writer, storageGroup,
-                tsFileSequenceReaderMap, deviceId, measurementId,
-                vmWriters.get(i), newChunkMetadata, newChunk);
-            newChunkMetadata = chunkPair.left;
-            newChunk = chunkPair.right;
-          }
-          if (newChunkMetadata != null && newChunk != null) {
-            writer.writeChunk(newChunk, newChunkMetadata);
-          }
-        }
-        writer.endChunkGroup();
-        if (vmLogger != null) {
-          vmLogger.logDevice(deviceId, writer.getPos());
-        }
-      }
-    }
-
-    for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
-      reader.close();
-      logger.info("{} vm file close a reader", reader.getFileName());
-    }
-  }
-
   private static Pair<ChunkMetadata, Chunk> writeSeqChunk(RestorableTsFileIOWriter writer,
       String storageGroup,
       Map<String, TsFileSequenceReader> tsFileSequenceReaderMap, String deviceId,
@@ -211,7 +141,7 @@ public class VmMergeUtils {
     }
   }
 
-  public static void levelMerge(RestorableTsFileIOWriter writer,
+  public static void merge(RestorableTsFileIOWriter writer,
       List<RestorableTsFileIOWriter> vmWriters, String storageGroup, VmLogger vmLogger,
       Set<String> devices, boolean sequence) throws IOException {
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
