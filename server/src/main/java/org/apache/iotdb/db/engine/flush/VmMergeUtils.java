@@ -197,7 +197,7 @@ public class VmMergeUtils {
 
     for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
       reader.close();
-      logger.info("{} vm file close a reader", reader.getFileName());
+      logger.debug("{} vm file close a reader", reader.getFileName());
     }
   }
 
@@ -208,7 +208,7 @@ public class VmMergeUtils {
         path -> {
           try {
             if (vmWriter.getFile().exists()) {
-              logger.info("{} vm file create a reader", path);
+              logger.debug("{} vm file create a reader", path);
               return new TsFileSequenceReader(path);
             } else {
               logger.info("{} vm file does not exist", path);

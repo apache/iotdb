@@ -626,11 +626,11 @@ public class TsFileProcessor {
 
   private void deleteVmFiles(List<TsFileResource> vmMergeTsFiles,
       List<RestorableTsFileIOWriter> vmMergeWriters) throws IOException {
-    logger.info("{}: {} vm merge starts to delete file", storageGroupName,
+    logger.debug("{}: {} vm merge starts to delete file", storageGroupName,
         tsFileResource.getTsFile().getName());
     for (int i = 0; i < vmMergeTsFiles.size(); i++) {
       vmMergeWriters.get(i).close();
-      logger.info("{} vm file close a writer", vmMergeWriters.get(i).getFile().getName());
+      logger.debug("{} vm file close a writer", vmMergeWriters.get(i).getFile().getName());
       deleteVmFile(vmMergeTsFiles.get(i));
     }
     for (int i = 0; i < vmWriters.size(); i++) {
@@ -751,10 +751,6 @@ public class TsFileProcessor {
   public void flushOneMemTable() {
     IMemTable memTableToFlush;
     memTableToFlush = flushingMemTables.getFirst();
-    if (logger.isInfoEnabled()) {
-      logger.info("{}: {} starts to flush a memtable in a flush thread", storageGroupName,
-          tsFileResource.getTsFile().getName());
-    }
     // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
       flushVmTimes++;
@@ -762,7 +758,8 @@ public class TsFileProcessor {
         MemTableFlushTask flushTask;
         RestorableTsFileIOWriter curWriter;
         if (config.isEnableVm()) {
-          logger.info("[Flush] flush a vm");
+          logger.info("{}: {} [Flush] start to flush a memtable to a vm", storageGroupName,
+              tsFileResource.getTsFile().getName());
           File newVmFile = createNewVMFile(tsFileResource, 0);
           if (vmWriters.isEmpty()) {
             vmWriters.add(new ArrayList<>());
@@ -772,6 +769,8 @@ public class TsFileProcessor {
           curWriter = new RestorableTsFileIOWriter(newVmFile);
           vmWriters.get(0).add(curWriter);
         } else {
+          logger.info("{}: {} [Flush] start to flush a memtable to TsFile", storageGroupName,
+              tsFileResource.getTsFile().getName());
           curWriter = writer;
         }
         curWriter.mark();
@@ -827,7 +826,8 @@ public class TsFileProcessor {
             break;
           }
         }
-        logger.info("[Flush] merge all {} vms to TsFile", vmTsFileResources.size() + 1);
+        logger.info("{}: [Hot Compaction] Start to merge total {} levels' vm to TsFile {}",
+            storageGroupName, vmTsFileResources.size() + 1, tsFileResource.getTsFile().getName());
         long startTimeMillis = System.currentTimeMillis();
         VmLogger vmLogger = new VmLogger(tsFileResource.getTsFile().getParent(),
             tsFileResource.getTsFile().getName());
@@ -840,8 +840,9 @@ public class TsFileProcessor {
         if (logFile.exists()) {
           Files.delete(logFile.toPath());
         }
-        logger.info("{}: {} vm merge end time consumption: {} ms", storageGroupName,
-            tsFileResource.getTsFile().getName(), System.currentTimeMillis() - startTimeMillis);
+        logger.info("{}: [Hot Compaction] All vms are merged to TsFile {}, time consumption: {} ms",
+            storageGroupName, tsFileResource.getTsFile().getName(),
+            System.currentTimeMillis() - startTimeMillis);
         writer.mark();
         try {
           double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
@@ -1188,9 +1189,10 @@ public class TsFileProcessor {
               }
               File newVmFile = createNewVMFile(tsFileResource, i + 1);
               vmLogger.logFile(TARGET_NAME, newVmFile);
-              // merge vm files
-              logger.info("{}: {} merge level {} {} vms to vm", storageGroupName,
-                  tsFileResource.getTsFile().getName(), i, vmMergeTsFiles.get(i).size());
+              logger.info("{}: {} [Hot Compaction] merge level-{}'s {} vms to next level vm",
+                  storageGroupName, tsFileResource.getTsFile().getName(), i,
+                  vmMergeTsFiles.get(i).size());
+
               // merge all vm files into a new vm file
               File tmpFile = createNewTmpFile();
               RestorableTsFileIOWriter tmpWriter = new RestorableTsFileIOWriter(tmpFile);

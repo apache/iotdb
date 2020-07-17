@@ -246,17 +246,27 @@ public class IoTDBConfig {
   /**
    * When average series point number reaches this, flush the memtable to disk
    */
-  private int avgSeriesPointNumberThreshold = 10000;
+  private int avgSeriesPointNumberThreshold = 100000;
 
   /**
    * When merge point number reaches this, merge the vmfile to the tsfile.
    */
-  private int mergeChunkPointNumberThreshold = 10000;
+  private int mergeChunkPointNumberThreshold = 100000;
+
+  /**
+   * Is vm merge enable
+   */
+  private boolean enableVm = true;
+
+  /**
+   * The max vm num of each memtable. When vm num exceeds this, the vm files will merge to one.
+   */
+  private int maxVmNum = 5;
 
   /**
    * When vmfiles merge times exceeds this, merge the vmfile to the tsfile.
    */
-  private int maxMergeChunkNumInTsFile = 11;
+  private int maxMergeChunkNumInTsFile = 25;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -461,16 +471,6 @@ public class IoTDBConfig {
    * How many threads will be set up to perform main merge tasks.
    */
   private int mergeThreadNum = 1;
-
-  /**
-   * Is vm merge enable
-   */
-  private boolean enableVm = true;
-
-  /**
-   * The max vm num of each memtable. When vm num exceeds this, the vm files will merge to one.
-   */
-  private int maxVmNum = 5;
 
   /**
    * How many threads will be set up to perform merge chunk sub-tasks.
