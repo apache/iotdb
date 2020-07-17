@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -164,7 +165,7 @@ public abstract class HeartbeatServer {
     TThreadPoolServer.Args poolArgs =
         new TThreadPoolServer.Args(heartbeatSocket)
             .maxWorkerThreads(config.getMaxConcurrentClientNum())
-            .minWorkerThreads(1); //TODO @qhl, change to cpu core
+            .minWorkerThreads(CommonUtils.getCpuCores());
 
     poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
         poolArgs.maxWorkerThreads, poolArgs.stopTimeoutVal, poolArgs.stopTimeoutUnit,
@@ -191,7 +192,7 @@ public abstract class HeartbeatServer {
     Args poolArgs =
         new Args((TNonblockingServerTransport) heartbeatSocket)
             .maxWorkerThreads(config.getMaxConcurrentClientNum())
-            .minWorkerThreads(1); //TODO @qhl, change to cpu core
+            .minWorkerThreads(CommonUtils.getCpuCores());
 
     poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
         poolArgs.maxWorkerThreads, poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),

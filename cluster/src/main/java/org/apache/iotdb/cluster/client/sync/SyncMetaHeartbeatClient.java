@@ -40,7 +40,8 @@ public class SyncMetaHeartbeatClient extends Client {
   public SyncMetaHeartbeatClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
     super(protocolFactory.getProtocol(new TFastFramedTransport(new TSocket(node.getIp(),
-        node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()))));
+        node.getMetaPort() + ClusterUtils.META_HEARTBEAT_OFFSET,
+        RaftServer.getConnectionTimeoutInMS()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();
