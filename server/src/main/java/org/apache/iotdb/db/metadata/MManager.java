@@ -308,7 +308,7 @@ public class MManager {
         }
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
-        setStorageGroup(args[1]);
+        setStorageGroup(MetaUtils.getDeviceNodeNames(args[1]));
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP:
         List<String> storageGroups = new ArrayList<>(Arrays.asList(args).subList(1, args.length));
