@@ -86,6 +86,7 @@
         <module>jdbc</module>
         <module>session</module>
         <module>cli</module>
+        <module>client-cpp</module>
         <module>server</module>
         <module>example</module>
         <module>grafana</module>

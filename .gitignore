@@ -87,3 +87,7 @@ node_identifier
 # gitpod
 .theia/
 
+### Cmake files ###
+*.cmake
+Makefile
+**/CMakeFiles/

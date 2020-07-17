@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>iotdb-parent</artifactId>
+        <groupId>org.apache.iotdb</groupId>
+        <version>0.11.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <artifactId>client-cpp</artifactId>
+    <name>client4cpp</name>
+    <description>C++ client</description>
+    <profiles>
+        <profile>
+            <id>thrift-generation</id>
+            <activation>
+                <file>
+                    <exists>../thrift/src/main/thrift</exists>
+                </file>
+            </activation>
+            <properties>
+                <thrift.exec.absolute.path>${project.build.directory}/tools/${thrift.executable}</thrift.exec.absolute.path>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.googlecode.maven-download-plugin</groupId>
+                        <artifactId>download-maven-plugin</artifactId>
+                        <version>1.3.0</version>
+                        <executions>
+                            <execution>
+                                <id>get-thrift-executable</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>wget</goal>
+                                </goals>
+                                <configuration>
+                                    <url>${thrift.download-url}</url>
+                                    <outputDirectory>${project.build.directory}/tools</outputDirectory>
+                                    <outputFileName>${thrift.executable}</outputFileName>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>1.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>make-thrift-executable-executable</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${thrift.skip-making-executable}</skip>
+                                    <executable>${thrift.exec-cmd.executable}</executable>
+                                    <commandlineArgs>${thrift.exec-cmd.args}</commandlineArgs>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.thrift.tools</groupId>
+                        <artifactId>maven-thrift-plugin</artifactId>
+                        <version>0.1.11</version>
+                        <executions>
+                            <execution>
+                                <id>generate-thrift-sources-cpp</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <generator>cpp</generator>
+                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
+                                    <thriftSourceRoot>${basedir}/../thrift/src/main/thrift</thriftSourceRoot>
+                                    <outputDirectory>${project.build.directory}/generated-sources-cpp</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.coderplus.maven.plugins</groupId>
+                        <artifactId>copy-rename-maven-plugin</artifactId>
+                        <version>1.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-package-json</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <fileSets>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/CMakeLists.txt</sourceFile>
+                                            <destinationFile>${project.build.directory}/generated-sources-cpp/CMakeLists.txt</destinationFile>
+                                        </fileSet>
+                                    </fileSets>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <artifactId>cmake-maven-plugin</artifactId>
+                        <version>3.16.3-b2</version>
+                        <executions>
+                            <!-- Uses a CMake generator to generate the build using the build tool of choice -->
+                            <execution>
+                                <id>cmake-generate</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <configuration>
+                                    <!--
+                                      We need to use a newer version of cmake, so disable downloading
+                                      and tell the plugin where to find that version.
+                                    -->
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <!--
+                                      Actually the path to the CMakeList.txt file which then again
+                                      tells to tool where to find the sources.
+                                    -->
+                                    <sourcePath>${project.basedir}</sourcePath>
+                                    <!--
+                                      Path to where the build configuration is generated
+                                      (This directory is then used in the compile step to actually perform the build)
+                                    -->
+                                    <targetPath>${project.basedir}</targetPath>
+                                    <!--
+                                      Name of the generator the compile step will be executing.
+                                    -->
+                                    <generator>${cmake.generator}</generator>
+                                    <options>
+                                        <option>-DWITH_PROXIES:BOOL=${option.with-proxies}</option>
+                                    </options>
+                                </configuration>
+                            </execution>
+                            <!-- Actually executes the build -->
+                            <execution>
+                                <id>cmake-compile</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <!--
+                                      We need to use a newer version of cmake, so disable downloading
+                                      and tell the plugin where to find that version.
+                                    -->
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <!-- The directory where the "generate" step generated the build configuration -->
+                                    <projectDirectory>${project.basedir}</projectDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
