@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -51,8 +52,8 @@ import static org.junit.Assert.assertEquals;
 
 public class DeletionQueryTest {
 
+  private List<String> processorNameList = Arrays.asList("root", "test");
   private String processorName = "root.test";
-
   private static String[] measurements = new String[10];
   private TSDataType dataType = TSDataType.DOUBLE;
   private TSEncoding encoding = TSEncoding.PLAIN;
@@ -68,12 +69,14 @@ public class DeletionQueryTest {
   @Before
   public void setup() throws MetadataException {
     EnvironmentUtils.envSetUp();
-    deviceMNode = new MNode(null, processorName);
-    IoTDB.metaManager.setStorageGroup(processorName);
+    deviceMNode = new MNode(null, processorNameList.get(1));
+    IoTDB.metaManager.setStorageGroup(processorNameList);
     for (int i = 0; i < 10; i++) {
+      processorNameList.add(measurements[i]);
       deviceMNode.addChild(measurements[i], new MeasurementMNode(null, null, null, null));
-      IoTDB.metaManager.createTimeseries(processorName + "." + measurements[i], dataType,
+      IoTDB.metaManager.createTimeseries(processorNameList, dataType,
           encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
+      processorNameList.remove(processorNameList.size() - 1);
     }
   }
 

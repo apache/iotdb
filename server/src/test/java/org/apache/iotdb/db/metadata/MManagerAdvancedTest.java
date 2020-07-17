@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -52,30 +53,30 @@ public class MManagerAdvancedTest {
     mmanager.setStorageGroup("root.vehicle.d1");
     mmanager.setStorageGroup("root.vehicle.d2");
 
-    mmanager.createTimeseries("root.vehicle.d0.s0", TSDataType.INT32, TSEncoding.RLE,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s0"), TSDataType.INT32, TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d0.s1", TSDataType.INT64, TSEncoding.RLE,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s1"), TSDataType.INT64, TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d0.s2", TSDataType.FLOAT, TSEncoding.RLE,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s2"), TSDataType.FLOAT, TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d0.s3", TSDataType.DOUBLE, TSEncoding.RLE,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s3"), TSDataType.DOUBLE, TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d0.s4", TSDataType.BOOLEAN, TSEncoding.PLAIN,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s4"), TSDataType.BOOLEAN, TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d0.s5", TSDataType.TEXT, TSEncoding.PLAIN,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s5"), TSDataType.TEXT, TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
 
-    mmanager.createTimeseries("root.vehicle.d1.s0", TSDataType.INT32, TSEncoding.RLE,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s0"), TSDataType.INT32, TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d1.s1", TSDataType.INT64, TSEncoding.RLE,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s1"), TSDataType.INT64, TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d1.s2", TSDataType.FLOAT, TSEncoding.RLE,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s2"), TSDataType.FLOAT, TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d1.s3", TSDataType.DOUBLE, TSEncoding.RLE,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s3"), TSDataType.DOUBLE, TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d1.s4", TSDataType.BOOLEAN, TSEncoding.PLAIN,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s4"), TSDataType.BOOLEAN, TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d1.s5", TSDataType.TEXT, TSEncoding.PLAIN,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s5"), TSDataType.TEXT, TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
 
   }
@@ -119,13 +120,13 @@ public class MManagerAdvancedTest {
 
   @Test
   public void testCache() throws MetadataException {
-    mmanager.createTimeseries("root.vehicle.d2.s0", TSDataType.DOUBLE, TSEncoding.RLE,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s0"), TSDataType.DOUBLE, TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d2.s1", TSDataType.BOOLEAN, TSEncoding.PLAIN,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s1"), TSDataType.BOOLEAN, TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d2.s2.g0", TSDataType.TEXT, TSEncoding.PLAIN,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s2", "g0"), TSDataType.TEXT, TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    mmanager.createTimeseries("root.vehicle.d2.s3", TSDataType.TEXT, TSEncoding.PLAIN,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s3"), TSDataType.TEXT, TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
 
     MNode node = mmanager.getNodeByPath("root.vehicle.d0");
@@ -141,7 +142,7 @@ public class MManagerAdvancedTest {
 
   @Test
   public void testCachedLastTimeValue() throws MetadataException {
-    mmanager.createTimeseries("root.vehicle.d2.s0", TSDataType.DOUBLE, TSEncoding.RLE,
+    mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s0"), TSDataType.DOUBLE, TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
 
     TimeValuePair tv1 = new TimeValuePair(1000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0));

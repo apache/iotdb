@@ -398,17 +398,17 @@ public class MManager {
   /**
    * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
    *
-   * @param path the timeseries path
+   * @param nodes nodes of the timeseries path
    * @param dataType the dateType {@code DataType} of the timeseries
    * @param encoding the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    * @return whether the measurement occurs for the first time in this storage group (if true, the
    * measurement should be registered to the StorageEngine too)
    */
-  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
+  public void createTimeseries(List<String> nodes, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) throws MetadataException {
     createTimeseries(
-        new CreateTimeSeriesPlan(new Path(path), dataType, encoding, compressor, props, null, null,
+        new CreateTimeSeriesPlan(new Path(nodes), dataType, encoding, compressor, props, null, null,
             null));
   }
 
@@ -2045,9 +2045,8 @@ public class MManager {
           }
 
           TSDataType dataType = getTypeInLoc(plan, i);
-
-          createTimeseries(
-            deviceNode.getFullPath() + measurementList[i],
+          nodes.add(measurementList[i]);
+          createTimeseries(nodes,
             dataType,
             getDefaultEncoding(dataType),
             TSFileDescriptor.getInstance().getConfig().getCompressor(),
