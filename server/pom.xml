@@ -89,6 +89,12 @@
         <dependency>
             <groupId>io.airlift</groupId>
             <artifactId>airline</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.code.findbugs</groupId>
+                    <artifactId>jsr305</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
@@ -118,6 +124,12 @@
             <groupId>io.moquette</groupId>
             <artifactId>moquette-broker</artifactId>
             <version>0.13</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.zaxxer</groupId>
+                    <artifactId>HikariCP</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- for mocked test-->
         <dependency>
