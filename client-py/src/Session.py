@@ -1,13 +1,26 @@
-# Not yet supported:
-# 1. only supports ASCII in insertion
-# 2. Multi-thread safety
-# 3. Input checks (assumed users know what to do)
-# 4. exception capture
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
 
 import sys
 import struct
 
-sys.path.append("../target")
+# sys.path.append("../target")
+sys.path.append("../../thrift/target/generated-sources-python")
 sys.path.append("./utils")
 
 from IoTDBConstants import *
@@ -17,8 +30,8 @@ from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
 from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, TSInsertTabletReq, \
-     TSExecuteStatementReq, TSOpenSessionReq, TSInsertRecordsReq, TSCreateMultiTimeseriesReq, TSCloseSessionReq, \
-     TSInsertTabletsReq
+     TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, TSFetchResultsReq, TSCloseOperationReq, \
+     TSCreateMultiTimeseriesReq, TSCloseSessionReq, TSInsertTabletsReq, TSInsertRecordsReq
 from iotdb.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq
 
 
@@ -186,7 +199,7 @@ class Session(object):
         except TTransport.TException as e:
             print("data deletion fails because: ", e)
 
-    def insert_record(self, device_id, timestamp, measurements, string_values):
+    def insert_str_record(self, device_id, timestamp, measurements, string_values):
         """ special case for inserting one row of String (TEXT) value """
         data_types = [TSDataType.TEXT.value for _ in string_values]
         request = self.gen_insert_record_req(device_id, timestamp, measurements, data_types, string_values)
