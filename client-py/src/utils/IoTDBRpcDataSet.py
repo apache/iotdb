@@ -1,18 +1,30 @@
-import sys
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
 from IoTDBConstants import *
-sys.path.append("../../target")
 
-from thrift.transport import TSocket, TTransport
-
-from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, TSInsertTabletReq, \
-     TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, TSFetchResultsReq, TSCloseOperationReq, \
-     TSCreateMultiTimeseriesReq, TSCloseSessionReq, TSInsertTabletsReq
-from iotdb.rpc.ttypes import TSFetchMetadataReq, TSProtocolVersion
+from thrift.transport import TTransport
+from iotdb.rpc.TSIService import TSFetchResultsReq, TSCloseOperationReq
 
 
 class IoTDBRpcDataSet(object):
     TIMESTAMP_STR = "Time"
-    VALUE_IS_NULL = "The value got by %s (column name) is NULL."
+    # VALUE_IS_NULL = "The value got by %s (column name) is NULL."
     START_INDEX = 2
     FLAG = 0x80
 
@@ -94,10 +106,13 @@ class IoTDBRpcDataSet(object):
         return (self.__query_data_set is not None) and (len(self.__query_data_set.time) != 0)
 
     def construct_one_row(self):
+        # simulating buffer, read 8 bytes from data set and discard first 8 bytes which have been read.
         self.__time_bytes = self.__query_data_set.time[:8]
         self.__query_data_set.time = self.__query_data_set.time[8:]
         for i in range(len(self.__query_data_set.bitmapList)):
             bitmap_buffer = self.__query_data_set.bitmapList[i]
+
+            # another 8 new rows, should move the bitmap buffer position to next byte
             if self.__rows_index % 8 == 0:
                 self.__current_bitmap[i] = bitmap_buffer[0]
                 self.__query_data_set.bitmapList[i] = bitmap_buffer[1:]
@@ -105,6 +120,7 @@ class IoTDBRpcDataSet(object):
                 value_buffer = self.__query_data_set.valueList[i]
                 data_type = self.__column_type_deduplicated_list[i]
 
+                # simulating buffer
                 if data_type == TSDataType.BOOLEAN:
                     self.__value[i] = value_buffer[:1]
                     self.__query_data_set.valueList[i] = value_buffer[1:]
