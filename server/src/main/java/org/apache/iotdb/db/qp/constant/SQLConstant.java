@@ -45,8 +45,8 @@ public class SQLConstant {
   public static final String METADATA_PARAM_EQUAL = "=";
   public static final String QUOTE = "'";
   public static final String DQUOTE = "\"";
-  public static final String BOOLEN_TRUE = "true";
-  public static final String BOOLEN_FALSE = "false";
+  public static final String BOOLEAN_TRUE = "true";
+  public static final String BOOLEAN_FALSE = "false";
   public static final String BOOLEAN_TRUE_NUM = "1";
   public static final String BOOLEAN_FALSE_NUM = "0";
 
@@ -151,6 +151,10 @@ public class SQLConstant {
   public static final int TOK_LOAD_CONFIGURATION_LOCAL = 86;
 
   public static final int TOK_SHOW_MERGE_STATUS = 87;
+  public static final int TOK_DELETE_PARTITION = 88;
+
+  public static final int TOK_CREATE_SCHEMA_SNAPSHOT = 89;
+  public static final int TOK_TRACING = 91;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -221,6 +225,9 @@ public class SQLConstant {
     tokenNames.put(TOK_MOVE_FILE, "TOK_MOVE_FILE");
 
     tokenNames.put(TOK_SHOW_MERGE_STATUS, "TOK_SHOW_MERGE_STATUS");
+    tokenNames.put(TOK_DELETE_PARTITION, "TOK_DELETE_PARTITION");
+
+    tokenNames.put(TOK_TRACING, "TOK_TRACING");
   }
 
   static {

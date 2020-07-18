@@ -40,7 +40,7 @@ public class SessionExample {
   private static Session session;
 
   public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException, BatchExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
@@ -342,7 +342,7 @@ public class SessionExample {
     SessionDataSet dataSet;
     dataSet = session.executeQueryStatement("select * from root.sg1.d1");
     System.out.println(dataSet.getColumnNames());
-    dataSet.setFetchSize(1024); // default is 512
+    dataSet.setFetchSize(1024); // default is 10000
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
@@ -356,7 +356,7 @@ public class SessionExample {
     dataSet = session.executeQueryStatement("select * from root.sg1.d1");
     DataIterator iterator = dataSet.iterator();
     System.out.println(dataSet.getColumnNames());
-    dataSet.setFetchSize(1024); // default is 512
+    dataSet.setFetchSize(1024); // default is 10000
     while (iterator.next()) {
       StringBuilder builder = new StringBuilder();
       // get time

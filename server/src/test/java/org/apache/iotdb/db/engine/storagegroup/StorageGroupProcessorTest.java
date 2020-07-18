@@ -21,22 +21,26 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -64,6 +68,7 @@ public class StorageGroupProcessorTest {
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
   private AtomicLong mergeLock;
+  private MNode deviceMNode = null;
 
   @Before
   public void setUp() throws Exception {
@@ -72,6 +77,8 @@ public class StorageGroupProcessorTest {
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     processor = new DummySGP(systemDir, storageGroup);
     MergeManager.getINSTANCE().start();
+    deviceMNode = new MNode(null, deviceId);
+    deviceMNode.addChild(measurementId, new MeasurementMNode(null, null, null, null));
   }
 
   @After
@@ -83,18 +90,23 @@ public class StorageGroupProcessorTest {
     EnvironmentUtils.cleanEnv();
   }
 
+  private void insertToStorageGroupProcessor(TSRecord record) throws WriteProcessException {
+    InsertRowPlan insertRowPlan = new InsertRowPlan(record);
+    insertRowPlan.setDeviceMNode(deviceMNode);
+    processor.insert(insertRowPlan);
+  }
 
   @Test
   public void testUnseqUnsealedDelete() throws WriteProcessException, IOException {
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
-    processor.insert(new InsertPlan(record));
+    insertToStorageGroupProcessor(record);
     processor.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 1; j <= 10; j++) {
       record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      processor.insert(new InsertPlan(record));
+      insertToStorageGroupProcessor(record);
     }
 
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
@@ -104,10 +116,10 @@ public class StorageGroupProcessorTest {
     for (int j = 11; j <= 20; j++) {
       record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      processor.insert(new InsertPlan(record));
+      insertToStorageGroupProcessor(record);
     }
 
-    processor.delete(deviceId, measurementId, 15L);
+    processor.delete(deviceId, measurementId, 0, 15L);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = null;
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
@@ -136,7 +148,7 @@ public class StorageGroupProcessorTest {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      processor.insert(new InsertPlan(record));
+      insertToStorageGroupProcessor(record);
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
 
@@ -165,6 +177,10 @@ public class StorageGroupProcessorTest {
     schemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
     schemas[1] = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
 
+    MNode deviceMNode = new MNode(null, deviceId);
+    deviceMNode.addChild("s0", new MeasurementMNode(null, null, null, null));
+    deviceMNode.addChild("s1", new MeasurementMNode(null, null, null, null));
+
     InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan("root.vehicle.d0", measurements,
         dataTypes);
     insertTabletPlan1.setSchemas(schemas);
@@ -182,6 +198,7 @@ public class StorageGroupProcessorTest {
     insertTabletPlan1.setTimes(times);
     insertTabletPlan1.setColumns(columns);
     insertTabletPlan1.setRowCount(times.length);
+    insertTabletPlan1.setDeviceMNode(deviceMNode);
 
     processor.insertTablet(insertTabletPlan1);
     processor.asyncCloseAllWorkingTsFileProcessors();
@@ -198,6 +215,7 @@ public class StorageGroupProcessorTest {
     insertTabletPlan2.setTimes(times);
     insertTabletPlan2.setColumns(columns);
     insertTabletPlan2.setRowCount(times.length);
+    insertTabletPlan2.setDeviceMNode(deviceMNode);
 
     processor.insertTablet(insertTabletPlan2);
     processor.asyncCloseAllWorkingTsFileProcessors();
@@ -220,7 +238,7 @@ public class StorageGroupProcessorTest {
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      processor.insert(new InsertPlan(record));
+      insertToStorageGroupProcessor(record);
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
     processor.syncCloseAllWorkingTsFileProcessors();
@@ -228,7 +246,7 @@ public class StorageGroupProcessorTest {
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      processor.insert(new InsertPlan(record));
+      insertToStorageGroupProcessor(record);
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
 
@@ -253,7 +271,7 @@ public class StorageGroupProcessorTest {
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      processor.insert(new InsertPlan(record));
+      insertToStorageGroupProcessor(record);
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
     processor.syncCloseAllWorkingTsFileProcessors();
@@ -261,7 +279,7 @@ public class StorageGroupProcessorTest {
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      processor.insert(new InsertPlan(record));
+      insertToStorageGroupProcessor(record);
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
 

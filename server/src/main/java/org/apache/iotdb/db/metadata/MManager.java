@@ -18,65 +18,55 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static java.util.stream.Collectors.toList;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.common.cache.LRUCache;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static java.util.stream.Collectors.toList;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -105,8 +95,6 @@ public class MManager {
   private boolean isRecovering;
   // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
-  // currently, if a key is not existed in the mRemoteSchemaCache, an IOException will be thrown
-  private LRUCache<String, MeasurementSchema> mRemoteSchemaCache;
 
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new HashMap<>();
@@ -115,12 +103,11 @@ public class MManager {
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
-  private IoTDBConfig config;
+  protected IoTDBConfig config;
 
   private File logFile;
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
-  private int lastSnapshotLogLineNumber;
   private ScheduledExecutorService timedCreateMTreeSnapshotThread;
 
   private static class MManagerHolder {
@@ -132,7 +119,7 @@ public class MManager {
     private static final MManager INSTANCE = new MManager();
   }
 
-  private MManager() {
+  protected MManager() {
     config = IoTDBDescriptor.getInstance().getConfig();
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
     mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
@@ -169,19 +156,7 @@ public class MManager {
     };
 
     int remoteCacheSize = config.getmRemoteSchemaCacheSize();
-    mRemoteSchemaCache = new LRUCache<String, MeasurementSchema>(remoteCacheSize) {
-      @Override
-      protected MeasurementSchema loadObjectByKey(String key) {
-        return null;
-      }
 
-      @Override
-      public synchronized void removeItem(String key) {
-        cache.keySet().removeIf(s -> s.startsWith(key));
-      }
-    };
-
-    lastSnapshotLogLineNumber = 0;
     timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
         "timedCreateMTreeSnapshotThread"));
     timedCreateMTreeSnapshotThread
@@ -189,6 +164,10 @@ public class MManager {
             MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
   }
 
+  /**
+   * we should not use this function in other place, but only in IoTDB class
+   * @return
+   */
   public static MManager getInstance() {
     return MManagerHolder.INSTANCE;
   }
@@ -205,7 +184,7 @@ public class MManager {
       tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
 
       isRecovering = true;
-      initFromLog(logFile);
+      int lineNumber = initFromLog(logFile);
 
       if (config.isEnableParameterAdapter()) {
         List<String> storageGroups = mtree.getAllStorageGroupNames();
@@ -218,6 +197,7 @@ public class MManager {
       }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
+      logWriter.setLineNumber(lineNumber);
       isRecovering = false;
     } catch (IOException | MetadataException e) {
       mtree = new MTree();
@@ -226,7 +206,11 @@ public class MManager {
     initialized = true;
   }
 
-  private void initFromLog(File logFile) throws IOException {
+  /**
+   * @return line number of the logFile
+   */
+  @SuppressWarnings("squid:S3776")
+  private int initFromLog(File logFile) throws IOException {
     File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
     if (tmpFile.exists()) {
       logger.warn("Creating MTree snapshot not successful before crashing...");
@@ -234,29 +218,38 @@ public class MManager {
     }
 
     File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+    long time = System.currentTimeMillis();
     if (!mtreeSnapshot.exists()) {
       mtree = new MTree();
     } else {
       mtree = MTree.deserializeFrom(mtreeSnapshot);
+      logger.debug("spend {} ms to deserialize mtree from snapshot",
+          System.currentTimeMillis() - time);
     }
+
+    time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {
+      int idx = 0;
       try (FileReader fr = new FileReader(logFile);
           BufferedReader br = new BufferedReader(fr)) {
         String cmd;
-        int idx = 0;
-        while (idx < mtree.getSnapshotLineNumber()) {
-          cmd = br.readLine();
-          idx++;
-        }
         while ((cmd = br.readLine()) != null) {
           try {
             operation(cmd);
+            idx++;
           } catch (Exception e) {
             logger.error("Can not operate cmd {}", cmd, e);
           }
         }
       }
+      logger.debug("spend {} ms to deserialize mtree from mlog.txt",
+          System.currentTimeMillis() - time);
+      return idx;
+    } else if (mtreeSnapshot.exists()) {
+      throw new IOException("mtree snapshot file exists but mlog.txt does not exist.");
+    } else {
+      return 0;
     }
   }
 
@@ -444,9 +437,6 @@ public class MManager {
   public String deleteTimeseries(String prefixPath) throws MetadataException {
     lock.writeLock().lock();
 
-    // clear cached schema
-    mRemoteSchemaCache.removeItem(prefixPath);
-
     if (isStorageGroup(prefixPath)) {
 
       if (config.isEnableParameterAdapter()) {
@@ -599,8 +589,6 @@ public class MManager {
     lock.writeLock().lock();
     try {
       for (String storageGroup : storageGroups) {
-        // clear cached schema
-        mRemoteSchemaCache.removeItem(storageGroup);
 
         // clear cached MNode
         mNodeCache.clear();
@@ -663,15 +651,6 @@ public class MManager {
         return TSDataType.INT64;
       }
 
-      try {
-        MeasurementSchema schema = mRemoteSchemaCache.get(path);
-        if (schema != null) {
-          return schema.getType();
-        }
-      } catch (IOException e) {
-        // unreachable
-      }
-
       return mtree.getSchema(path).getType();
     } finally {
       lock.readLock().unlock();
@@ -723,9 +702,13 @@ public class MManager {
    * @return A List instance which stores all node at given level
    */
   public List<String> getNodesList(String prefixPath, int nodeLevel) throws MetadataException {
+    return getNodesList(prefixPath, nodeLevel, null);
+  }
+
+  public List<String> getNodesList(String prefixPath, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getNodesList(prefixPath, nodeLevel);
+      return mtree.getNodesList(prefixPath, nodeLevel, filter);
     } finally {
       lock.readLock().unlock();
     }
@@ -827,7 +810,7 @@ public class MManager {
     }
   }
 
-  public List<ShowTimeSeriesResult> getAllTimeseriesSchema(ShowTimeSeriesPlan plan)
+  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
       throws MetadataException {
     lock.readLock().lock();
     try {
@@ -921,12 +904,22 @@ public class MManager {
     return true;
   }
 
+  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+      throws MetadataException {
+    // show timeseries with index
+    if (plan.getKey() != null && plan.getValue() != null) {
+      return showTimeseriesWithIndex(plan);
+    } else {
+      return showTimeseriesWithoutIndex(plan);
+    }
+  }
+
   /**
    * Get the result of ShowTimeseriesPlan
    *
    * @param plan show time series query plan
    */
-  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(ShowTimeSeriesPlan plan)
       throws MetadataException {
     lock.readLock().lock();
     List<String[]> ans;
@@ -971,28 +964,11 @@ public class MManager {
       MNode leaf = node.getChild(measurement);
       if (leaf != null) {
         return ((MeasurementMNode) leaf).getSchema();
-      } else {
-        return mRemoteSchemaCache
-            .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
       }
-    } catch (PathNotExistException e) {
-      try {
-        MeasurementSchema measurementSchema = mRemoteSchemaCache
-            .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
-        if (measurementSchema != null) {
-          return measurementSchema;
-        } else {
-          throw e;
-        }
-      } catch (IOException ex) {
-        throw e;
-      }
-    } catch (IllegalPathException e) {
+      return null;
+    } catch (PathNotExistException | IllegalPathException e) {
       //do nothing and throw it directly.
       throw e;
-    } catch (IOException e) {
-      // cache miss
-      throw new PathNotExistException(device + IoTDBConstant.PATH_SEPARATOR + measurement);
     } finally {
       lock.readLock().unlock();
     }
@@ -1692,7 +1668,23 @@ public class MManager {
     }
   }
 
-  public void collectSeries(MNode startingNode, Collection<MeasurementSchema> timeseriesSchemas) {
+  public void collectTimeseriesSchema(MNode startingNode, Collection<TimeseriesSchema> timeseriesSchemas) {
+    Deque<MNode> nodeDeque = new ArrayDeque<>();
+    nodeDeque.addLast(startingNode);
+    while (!nodeDeque.isEmpty()) {
+      MNode node = nodeDeque.removeFirst();
+      if (node instanceof MeasurementMNode) {
+        MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
+        timeseriesSchemas.add(new TimeseriesSchema(node.getFullPath(), nodeSchema.getType(),
+            nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
+      } else if (!node.getChildren().isEmpty()) {
+        nodeDeque.addAll(node.getChildren().values());
+      }
+    }
+  }
+
+  public void collectMeasurementSchema(MNode startingNode,
+      Collection<MeasurementSchema> timeseriesSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();
     nodeDeque.addLast(startingNode);
     while (!nodeDeque.isEmpty()) {
@@ -1708,17 +1700,19 @@ public class MManager {
   }
 
   /**
-   * Collect the timeseries schemas under "startingPath". Notice the measurements in the collected
-   * MeasurementSchemas are the full path here.
+   * Collect the timeseries schemas under "startingPath".
+   *
+   * @param startingPath
+   * @param measurementSchemas
    */
-  public void collectSeries(String startingPath, List<MeasurementSchema> timeseriesSchemas) {
+  public void collectSeries(String startingPath, List<MeasurementSchema> measurementSchemas) {
     MNode mNode;
     try {
       mNode = getNodeByPath(startingPath);
     } catch (MetadataException e) {
       return;
     }
-    collectSeries(mNode, timeseriesSchemas);
+    collectMeasurementSchema(mNode, measurementSchemas);
   }
 
   /**
@@ -1755,49 +1749,240 @@ public class MManager {
   }
 
   /**
+   * StorageGroupFilter filters unsatisfied storage groups in metadata queries to speed up and
+   * deduplicate.
+   */
+  @FunctionalInterface
+  public interface StorageGroupFilter {
+
+    boolean satisfy(String storageGroup);
+  }
+
+  /**
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
    * cache the path to mRemoteSchemaCache
    */
-  public void cacheSchema(String path, MeasurementSchema schema) {
-    // check schema is in local
-    try {
-      ShowTimeSeriesPlan tempPlan = new ShowTimeSeriesPlan(new Path(path), false, null, null, 0, 0,
-          false);
-      List<String[]> schemas = mtree.getAllMeasurementSchema(tempPlan);
-      if (schemas.isEmpty()) {
-        mRemoteSchemaCache.put(path, schema);
+  public void cacheMeta(String path, MeasurementMeta meta) {
+    // do nothing
+  }
+
+  public void updateLastCache(String seriesPath, TimeValuePair timeValuePair,
+                              boolean highPriorityUpdate, Long latestFlushedTime,
+                              MeasurementMNode node) {
+    if (node != null) {
+      node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+    } else {
+      try {
+        MeasurementMNode node1 = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
+        node1.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+      } catch (MetadataException e) {
+        logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
       }
-    } catch (MetadataException e) {
-      mRemoteSchemaCache.put(path, schema);
     }
   }
 
+  public TimeValuePair getLastCache(String seriesPath) {
+   try {
+     MeasurementMNode node = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
+     return node.getCachedLast();
+  } catch (MetadataException e) {
+     logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
+  }
+  return null;
+}
+
   private void checkMTreeModified() {
+    if (logWriter == null || logFile == null) {
+      // the logWriter is not initialized now, we skip the check once.
+      return;
+    }
     if (System.currentTimeMillis() - logFile.lastModified() < mtreeSnapshotThresholdTime) {
-      logger.info("MTree snapshot is not created because of active modification");
-    } else if (logWriter.getLineNumber() - lastSnapshotLogLineNumber < mtreeSnapshotInterval) {
-      logger.info(
-          "MTree snapshot need not be created. Current mlog line number: {}, last snapshot line number: {}",
-          logWriter.getLineNumber(), lastSnapshotLogLineNumber);
-    } else {
-      lock.readLock().lock();
-      logger.info("Start creating MTree snapshot. This may take a while...");
-      try {
-        mtree.serializeTo(mtreeSnapshotTmpPath, logWriter.getLineNumber());
-        lastSnapshotLogLineNumber = logWriter.getLineNumber();
-        File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-        File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
-        if (snapshotFile.exists()) {
-          Files.delete(snapshotFile.toPath());
-        }
-        if (tmpFile.renameTo(snapshotFile)) {
-          logger.info("Finish creating MTree snapshot to {}.", mtreeSnapshotPath);
-        }
-      } catch (IOException e) {
-        logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
-      } finally {
-        lock.readLock().unlock();
+      if (logger.isDebugEnabled()) {
+        logger.debug("MTree snapshot need not be created. Time from last modification: {} ms.",
+            System.currentTimeMillis() - logFile.lastModified());
       }
+    } else if (logWriter.getLineNumber() < mtreeSnapshotInterval) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("MTree snapshot need not be created. New mlog line number: {}.",
+            logWriter.getLineNumber());
+      }
+    } else {
+      logger.info("New mlog line number: {}, time from last modification: {} ms",
+          logWriter.getLineNumber(), System.currentTimeMillis() - logFile.lastModified());
+      createMTreeSnapshot();
+    }
+  }
+
+  public void createMTreeSnapshot() {
+    lock.readLock().lock();
+    long time = System.currentTimeMillis();
+    logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
+    try {
+      mtree.serializeTo(mtreeSnapshotTmpPath);
+      File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
+      File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+      if (snapshotFile.exists()) {
+        Files.delete(snapshotFile.toPath());
+      }
+      if (tmpFile.renameTo(snapshotFile)) {
+        logger.info("Finish creating MTree snapshot to {}, spend {} ms.", mtreeSnapshotPath,
+            System.currentTimeMillis() - time);
+      }
+      logWriter.clear();
+    } catch (IOException e) {
+      logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
+      if (SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).exists()) {
+        try {
+          Files.delete(SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).toPath());
+        } catch (IOException e1) {
+          logger.warn("delete file {} failed: {}", mtreeSnapshotTmpPath, e1.getMessage());
+        }
+      }
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * get schema for device.
+   * Attention!!!  Only support insertPlan
+   * @throws MetadataException
+   */
+  public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(String deviceId,
+      String[] measurementList, InsertPlan plan) throws MetadataException {
+    MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
+
+    MNode deviceNode;
+    // 1. get device node
+    deviceNode = getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+
+    // 2. get schema of each measurement
+    for (int i = 0; i < measurementList.length; i++) {
+      try {
+        // if do not has measurement
+        if (!deviceNode.hasChild(measurementList[i])) {
+          // could not create it
+          if (!config.isAutoCreateSchemaEnabled()) {
+            throw new MetadataException(String.format(
+              "Current deviceId[%s] does not contain measurement:%s", deviceId, measurementList[i]));
+          }
+
+          // create it
+          Path path = new Path(deviceId, measurementList[i]);
+          TSDataType dataType = getTypeInLoc(plan, i);
+
+          createTimeseries(
+            path.getFullPath(),
+            dataType,
+            getDefaultEncoding(dataType),
+            TSFileDescriptor.getInstance().getConfig().getCompressor(),
+            Collections.emptyMap());
+        }
+
+        MeasurementMNode measurementNode = (MeasurementMNode) getChild(deviceNode, measurementList[i]);
+
+        // check type is match
+        TSDataType insertDataType = null;
+        if (plan instanceof InsertRowPlan) {
+          if (!((InsertRowPlan)plan).isNeedInferType()) {
+            // only when InsertRowPlan's values is object[], we should check type
+            insertDataType = getTypeInLoc(plan, i);
+          } else {
+            insertDataType = measurementNode.getSchema().getType();
+          }
+        } else if (plan instanceof InsertTabletPlan) {
+          insertDataType = getTypeInLoc(plan, i);
+        }
+
+        if (measurementNode.getSchema().getType() != insertDataType) {
+          logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
+            measurementList[i], insertDataType, measurementNode.getSchema().getType());
+          if (!config.isEnablePartialInsert()) {
+            throw new MetadataException(String.format(
+              "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
+              measurementList[i], insertDataType, measurementNode.getSchema().getType()));
+          } else {
+            // mark failed measurement
+            plan.markFailedMeasurementInsertion(i);
+            continue;
+          }
+        }
+
+        schemas[i] = measurementNode.getSchema();
+        if (schemas[i] != null) {
+          measurementList[i] = schemas[i].getMeasurementId();
+        }
+      } catch (MetadataException e) {
+        logger.warn("meet error when check {}.{}, message: {}", deviceId, measurementList[i],
+          e.getMessage());
+        if (config.isEnablePartialInsert()) {
+          // mark failed measurement
+          plan.markFailedMeasurementInsertion(i);
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    plan.setDeviceMNode(deviceNode);
+
+    return schemas;
+  }
+
+  /**
+   * Get default encoding by dataType
+   */
+  private TSEncoding getDefaultEncoding(TSDataType dataType) {
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    switch (dataType) {
+      case BOOLEAN:
+        return conf.getDefaultBooleanEncoding();
+      case INT32:
+        return conf.getDefaultInt32Encoding();
+      case INT64:
+        return conf.getDefaultInt64Encoding();
+      case FLOAT:
+        return conf.getDefaultFloatEncoding();
+      case DOUBLE:
+        return conf.getDefaultDoubleEncoding();
+      case TEXT:
+        return conf.getDefaultTextEncoding();
+      default:
+        throw new UnSupportedDataTypeException(
+          String.format("Data type %s is not supported.", dataType.toString()));
+    }
+  }
+
+  /**
+   * get dataType of plan, in loc measurements
+   * only support InsertRowPlan and InsertTabletPlan
+   * @throws MetadataException
+   */
+  private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
+    TSDataType dataType;
+    if (plan instanceof InsertRowPlan) {
+      InsertRowPlan tPlan = (InsertRowPlan) plan;
+      dataType = TypeInferenceUtils.getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
+    } else if (plan instanceof InsertTabletPlan) {
+      dataType = (plan).getDataTypes()[loc];
+    }  else {
+      throw new MetadataException(String.format(
+        "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
+    }
+    return dataType;
+  }
+
+  /**
+   * when insert, we lock device node for not create deleted time series
+   * after insert, we should call this function to unlock the device node
+   * @param deviceId
+   */
+  public void unlockDeviceReadLock(String deviceId) {
+    try {
+      MNode mNode = getDeviceNode(deviceId);
+      mNode.readUnlock();
+    } catch (MetadataException e) {
+      // ignore the exception
     }
   }
 }

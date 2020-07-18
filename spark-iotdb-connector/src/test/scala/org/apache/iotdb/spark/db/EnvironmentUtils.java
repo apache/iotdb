@@ -31,12 +31,17 @@ import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.metadata.MManager;
+
+
 import org.apache.iotdb.db.service.MetricsService;
+
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+
+import org.apache.iotdb.db.service.IoTDB;
+
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.Assert;
@@ -124,7 +129,7 @@ public class EnvironmentUtils {
       ChunkMetadataCache.getInstance().clear();
     }
     // close metadata
-    MManager.getInstance().clear();
+    IoTDB.metaManager.clear();
     MetricsService.getInstance().stop();
     // delete all directory
     cleanAllDir();
@@ -147,8 +152,7 @@ public class EnvironmentUtils {
     // delete system info
     cleanDir(config.getSystemDir());
     // delete wal
-    cleanDir(config.getWalFolder());
-    cleanDir(config.getBaseDir());
+    cleanDir(config.getWalDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -173,7 +177,7 @@ public class EnvironmentUtils {
    */
   public static void envSetUp() throws StartupException, IOException {
     IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
-    MManager.getInstance().init();
+    IoTDB.metaManager.init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
 
     createAllDir();
@@ -209,7 +213,7 @@ public class EnvironmentUtils {
     // create storage group
     createDir(config.getSystemDir());
     // create wal
-    createDir(config.getWalFolder());
+    createDir(config.getWalDir());
     // create data
     for (String dataDir: config.getDataDirs()) {
       createDir(dataDir);

@@ -18,26 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -45,7 +25,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -59,6 +39,17 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class TsFileResource {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileResource.class);
@@ -69,23 +60,23 @@ public class TsFileResource {
   public static final String RESOURCE_SUFFIX = ".resource";
   static final String TEMP_SUFFIX = ".temp";
   private static final String CLOSING_SUFFIX = ".closing";
-  private static final int INIT_ARRAY_SIZE = 64;
+  protected static final int INIT_ARRAY_SIZE = 64;
 
   /**
    * start times array. 
    */
-  private long[] startTimes;
+  protected long[] startTimes;
 
   /**
    * end times array. 
    * The values in this array are Long.MIN_VALUE if it's an unsealed sequence tsfile
    */
-  private long[] endTimes;
+  protected long[] endTimes;
 
   /**
    * device -> index of start times array and end times array
    */
-  private Map<String, Integer> deviceToIndex;
+  protected Map<String, Integer> deviceToIndex;
 
   public TsFileProcessor getProcessor() {
     return processor;
@@ -243,7 +234,7 @@ public class TsFileResource {
     }
   }
 
-  private void initTimes(long[] times, long defaultTime) {
+  protected void initTimes(long[] times, long defaultTime) {
     Arrays.fill(times, defaultTime);
   }
 
@@ -291,7 +282,7 @@ public class TsFileResource {
         long time = ReadWriteIOUtils.readLong(inputStream);
         // To reduce the String number in memory, 
         // use the deviceId from MManager instead of the deviceId read from disk
-        path = MManager.getInstance().getDeviceId(path);
+        path = IoTDB.metaManager.getDeviceId(path);
         deviceMap.put(path, i);
         startTimesArray[i] = time;
       }
@@ -313,7 +304,7 @@ public class TsFileResource {
         }
       } else {
         // use the version in file name as the historical version for files of old versions
-        long version = Long.parseLong(file.getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
+        long version = Long.parseLong(file.getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
         historicalVersions = Collections.singleton(version);
       }
 
@@ -539,6 +530,9 @@ public class TsFileResource {
     modFile = null;
   }
 
+  /**
+   * Remove the data file, its resource file, and its modification file physically.
+   */
   public void remove() {
     file.delete();
     fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();

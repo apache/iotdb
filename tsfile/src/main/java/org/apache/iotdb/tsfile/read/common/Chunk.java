@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.nio.ByteBuffer;
 
+import java.util.List;
 import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 
@@ -31,16 +32,16 @@ public class Chunk implements Accountable {
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkData;
   /**
-   * All data with timestamp <= deletedAt are considered deleted.
+   * A list of deleted intervals.
    */
-  private long deletedAt;
+  private List<TimeRange> deleteIntervalList;
 
   private long ramSize;
 
-  public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt) {
+  public Chunk(ChunkHeader header, ByteBuffer buffer, List<TimeRange> deleteIntervalList) {
     this.chunkHeader = header;
     this.chunkData = buffer;
-    this.deletedAt = deletedAt;
+    this.deleteIntervalList = deleteIntervalList;
   }
 
   public ChunkHeader getHeader() {
@@ -51,12 +52,12 @@ public class Chunk implements Accountable {
     return chunkData;
   }
 
-  public long getDeletedAt() {
-    return deletedAt;
+  public List<TimeRange> getDeleteIntervalList() {
+    return deleteIntervalList;
   }
 
-  public void setDeletedAt(long deletedAt) {
-    this.deletedAt = deletedAt;
+  public void setDeleteIntervalList(List<TimeRange> list) {
+    this.deleteIntervalList = list;
   }
 
   @Override

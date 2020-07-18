@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.10.0-SNAPSHOT</version>
+        <version>0.11.0-SNAPSHOT</version>
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <packaging>pom</packaging>

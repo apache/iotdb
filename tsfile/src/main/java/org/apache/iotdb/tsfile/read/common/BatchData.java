@@ -580,4 +580,17 @@ public class BatchData implements Serializable {
     this.readCurArrayIndex = 0;
     this.readCurListIndex = 0;
   }
+
+  public void resetBatchData(int readCurArrayIndex, int readCurListIndex) {
+    this.readCurArrayIndex = readCurArrayIndex;
+    this.readCurListIndex = readCurListIndex;
+  }
+
+  public int getReadCurListIndex() {
+    return readCurListIndex;
+  }
+
+  public int getReadCurArrayIndex() {
+    return readCurArrayIndex;
+  }
 }

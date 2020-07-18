@@ -172,15 +172,42 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
 
 * 删除存储组和删除时间序列的操作相似，即将存储组或时间序列节点在其父节点中删除，时间序列节点还需要将其别名在父节点中删除；若在删除过程中，发现某一节点没有任何子节点了，还需要递归删除此节点。
 
-## MTree检查点
+## MTree 检查点
 
-为了加快 IoTDB 重启速度，我们为 MTree 设置了检查点，即每隔10分钟，后台线程检查 MTree 的最后修改时间，如果用户超过1小时没修改 MTree （`mlog.txt` 文件超过1小时没有修改），并且 `mlog.txt` 中积累了用户配置的日志条数，就创建一次 MTree snapshot。这样避免了在重启时按行读取并复现 `mlog.txt` 中的信息。
+### 创建条件
 
-MTree 的序列化采用“先子节点、后父节点”的深度优先序列化方式，将节点的信息按照类型转化成对应格式的字符串，便于反序列化时读取和组装MTree。
+为了加快 IoTDB 重启速度，我们为 MTree 设置了检查点，这样避免了在重启时按行读取并复现 `mlog.txt` 中的信息。创建 MTree 的快照有两种方式：
+1. 后台线程检查自动创建：每隔10分钟，后台线程检查 MTree 的最后修改时间，需要同时满足
+  * 用户超过1小时（可配置）没修改 MTree，即`mlog.txt` 文件超过1小时没有修改
+  * `mlog.txt` 中积累了100000行日志（可配置）
+  
+2. 手动创建：使用`create snapshot for schema`命令手动触发创建 MTree 快照
 
-* 普通节点：0,名字,子节点个数
-* 存储组节点：1,名字,TTL,子节点个数
-* 传感器节点：2,名字,别名,数据类型,编码,压缩方式,属性,偏移量,子节点个数
+### 创建过程
+
+方法见`MManager.createMTreeSnapshot()`：
+
+1. 首先给 MTree 加读锁，防止创建快照过程中对其进行修改
+2. 将 MTree 序列化进临时 snapshot 文件（`mtree.snapshot.tmp`）。MTree 的序列化采用“先子节点、后父节点”的深度优先序列化方式，将节点的信息按照类型转化成对应格式的字符串，便于反序列化时读取和组装MTree。
+  * 普通节点：0,名字,子节点个数
+  * 存储组节点：1,名字,TTL,子节点个数
+  * 传感器节点：2,名字,别名,数据类型,编码,压缩方式,属性,偏移量,子节点个数
+  
+3. 序列化结束后，将临时文件重命名为正式文件（`mtree.snapshot`），防止在序列化过程中出现服务器人为或意外关闭，导致序列化失败的情况。
+4. 调用`MLogWriter.clear()`方法，清空 `mlog.txt`：
+  * 关闭 BufferedWriter，删除`mlog.txt`文件；
+  * 新建一个 BufferedWriter；
+  * 将 `lineNumber` 置为0，`lineNumber` 记录`mlog.txt`的行数，用于在后台检查时判断其是否超过用户配置的阈值而触发自动创建快照。
+
+5. 释放 MTree 读锁
+
+### 恢复过程
+
+方法见`MManager.initFromLog()`：
+
+1. 检查临时文件`mtree.snapshot.tmp`是否存在，如果存在证明在创建快照的序列化过程中出现服务器人为或意外关闭，导致序列化失败，删除临时文件；
+2. 检查快照文件`mtree.snapshot`是否存在。如果不存在，则使用新的 MTree；否则启动反序列化过程，得到 MTree
+3. 对于`mlog.txt`中的内容，逐行读取并操作，完成 MTree 的恢复。读取过程中更新 `lineNumber`，并返回，用于后面`mlog.txt`行数的记录。
 
 ## 元数据日志管理
 
@@ -253,3 +280,44 @@ MTree 的序列化采用“先子节点、后父节点”的深度优先序列�
 
 > tagsSize (tag1=v1, tag2=v2) attributesSize (attr1=v1, attr2=v2)
 
+## 元数据查询
+
+### 不带过滤条件的元数据查询
+
+主要查询逻辑封装在`MManager`的`showTimeseries(ShowTimeSeriesPlan plan)`方法中
+
+首先判断需不需要根据热度排序，如果需要，则调用`MTree`的`getAllMeasurementSchemaByHeatOrder`方法，否则调用`getAllMeasurementSchema`方法
+
+#### getAllMeasurementSchemaByHeatOrder
+
+这里的热度是用每个时间序列的`lastTimeStamp`来表征的，所以需要先取出所有满足条件的序列，然后根据`lastTimeStamp`进行排序，然后再做`offset`和`limit`的截断
+
+#### getAllMeasurementSchema
+
+这里需要在findPath的时候就将limit（如果没有limit，则将请求的fetchSize当成limit）和offset参数传递下去，减少内存占用。
+
+#### findPath
+
+这个方法封装了在MTree中遍历得到满足条件的时间序列的逻辑，是个递归方法，由根节点往下递归寻找，直到当前时间序列数量达到limit或者已经遍历完整个MTree。
+
+### 带过滤条件的元数据查询
+
+这里的过滤条件只能是tag属性，否则抛异常。
+
+通过在MManager中维护的tag的倒排索引，获得所有满足索引条件的`MeasurementMNode`。
+
+若需要根据热度排序，则根据`lastTimeStamp`进行排序，否则根据序列名的字母序排序，然后再做`offset`和`limit`的截断。
+
+### ShowTimeseries结果集
+
+如果元数据量过多，一次show timeseries的结果可能导致OOM，所以增加fetch size参数，客户端跟服务器端交互时，服务器端一次最多只会取fetch size个时间序列。
+
+多次交互的状态信息就存在`ShowTimeseriesDataSet`中。`ShowTimeseriesDataSet`中保存了此次的`ShowTimeSeriesPlan`，当前的游标`index`以及缓存的结果行列表`List<RowRecord> result`。
+
+* 判断游标`index`是否等于缓存的结果行`List<RowRecord> result`的size
+    * 若相等，则调用MManager中的`showTimeseries`方法取结果，放入缓存
+        * 需要相应的修改plan中的offset，将offset向前推fetch size大小
+        * 若`hasLimit`为`false`，则将index重新置为0
+    * 若不相等
+        * `index < result.size()`，返回true
+        * `index > result.size()`，返回false        
