@@ -24,29 +24,30 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class SetTTLPlan extends PhysicalPlan {
 
-  private String storageGroup;
+  private List<String> storageGroupNodes;
   private long dataTTL;
 
   public SetTTLPlan() {
     super(false, OperatorType.TTL);
   }
 
-  public SetTTLPlan(String storageGroup, long dataTTL) {
+  public SetTTLPlan(List<String> storageGroupNodes, long dataTTL) {
     // set TTL
     super(false, OperatorType.TTL);
-    this.storageGroup = storageGroup;
+    this.storageGroupNodes = storageGroupNodes;
     this.dataTTL = dataTTL;
   }
 
-  public SetTTLPlan(String storageGroup) {
+  public SetTTLPlan(List<String> storageGroupNodes) {
     // unset TTL
-    this(storageGroup, Long.MAX_VALUE);
+    this(storageGroupNodes, Long.MAX_VALUE);
   }
 
   @Override
@@ -59,7 +60,7 @@ public class SetTTLPlan extends PhysicalPlan {
     int type = PhysicalPlanType.TTL.ordinal();
     stream.writeByte((byte) type);
     stream.writeLong(dataTTL);
-    putString(stream, storageGroup);
+    putString(stream, MetaUtils.getPathByNodes(storageGroupNodes));
   }
 
   @Override
@@ -67,21 +68,24 @@ public class SetTTLPlan extends PhysicalPlan {
     int type = PhysicalPlanType.TTL.ordinal();
     buffer.put((byte) type);
     buffer.putLong(dataTTL);
-    putString(buffer, storageGroup);
+    for(String storageGroupNode : storageGroupNodes)
+      putString(buffer, storageGroupNode);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) {
     this.dataTTL = buffer.getLong();
-    this.storageGroup = readString(buffer);
+    while (readString(buffer) != null) {
+      storageGroupNodes.add(readString(buffer));
+    }
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public List<String> getStorageGroupNodes() {
+    return storageGroupNodes;
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
+  public void setStorageGroupNodes(List<String> storageGroupNodes) {
+    this.storageGroupNodes = storageGroupNodes;
   }
 
   public long getDataTTL() {

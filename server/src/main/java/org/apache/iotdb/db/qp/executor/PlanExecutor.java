@@ -261,9 +261,9 @@ public class PlanExecutor implements IPlanExecutor {
         DeletePartitionPlan p = (DeletePartitionPlan) plan;
         TimePartitionFilter filter =
             (storageGroupName, partitionId) ->
-                storageGroupName.equals(((DeletePartitionPlan) plan).getStorageGroupName())
+                storageGroupName.equals(((DeletePartitionPlan) plan).getStorageGroupNameNodes())
                     && p.getPartitionId().contains(partitionId);
-        StorageEngine.getInstance().removePartitions(((DeletePartitionPlan) plan).getStorageGroupName(), filter);
+        StorageEngine.getInstance().removePartitions(((DeletePartitionPlan) plan).getStorageGroupNameNodes(), filter);
         return true;
       case CREATE_SCHEMA_SNAPSHOT:
         operateCreateSnapshot();
@@ -821,8 +821,8 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateTTL(SetTTLPlan plan) throws QueryProcessException {
     try {
-      IoTDB.metaManager.setTTL(plan.getStorageGroup(), plan.getDataTTL());
-      StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
+      IoTDB.metaManager.setTTL(plan.getStorageGroupNodes(), plan.getDataTTL());
+      StorageEngine.getInstance().setTTL(plan.getStorageGroupNodes(), plan.getDataTTL());
     } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     } catch (IOException e) {
@@ -845,7 +845,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
       mManager.getStorageGroupName(path);
       path.remove(path.size()-1);
-      StorageEngine.getInstance().delete(MetaUtils.getPathByNodes(path), measurementId, startTime, endTime);
+      StorageEngine.getInstance().delete(path, measurementId, startTime, endTime);
     } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     }

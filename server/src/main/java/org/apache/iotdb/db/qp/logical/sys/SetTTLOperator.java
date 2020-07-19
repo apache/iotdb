@@ -20,11 +20,12 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
+import java.util.List;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 
 public class SetTTLOperator extends RootOperator {
 
-  private String storageGroup;
+  private List<String> storageGroupNodes;
   private long dataTTL;
 
   public SetTTLOperator(int tokenIntType) {
@@ -32,12 +33,12 @@ public class SetTTLOperator extends RootOperator {
     this.operatorType = OperatorType.TTL;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public List<String> getStorageGroupNodes() {
+    return storageGroupNodes;
   }
 
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
+  public void setStorageGroupNodes(List<String> storageGroupNodes) {
+    this.storageGroupNodes = storageGroupNodes;
   }
 
   public long getDataTTL() {

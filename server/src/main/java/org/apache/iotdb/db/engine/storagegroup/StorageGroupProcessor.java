@@ -45,6 +45,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -1217,15 +1218,16 @@ public class StorageGroupProcessor {
   }
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
-  public QueryDataSource query(String deviceId, String measurementId, QueryContext context,
+  public QueryDataSource query(List<String> deviceNodes, String measurementId, QueryContext context,
       QueryFileManager filePathsManager, Filter timeFilter) throws QueryProcessException {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileTreeSet,
-          upgradeSeqFileList, deviceId, measurementId, context, timeFilter, true);
+          upgradeSeqFileList, deviceNodes, measurementId, context, timeFilter, true);
       List<TsFileResource> unseqResources = getFileResourceListForQuery(unSequenceFileList,
-          upgradeUnseqFileList, deviceId, measurementId, context, timeFilter, false);
+          upgradeUnseqFileList, deviceNodes, measurementId, context, timeFilter, false);
+      String deviceId = MetaUtils.getPathByNodes(deviceNodes);
       QueryDataSource dataSource = new QueryDataSource(new Path(deviceId, measurementId),
           seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
@@ -1259,15 +1261,16 @@ public class StorageGroupProcessor {
    */
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources, List<TsFileResource> upgradeTsFileResources,
-      String deviceId, String measurementId, QueryContext context, Filter timeFilter, boolean isSeq)
+      List<String> deviceNodes, String measurementId, QueryContext context, Filter timeFilter, boolean isSeq)
       throws MetadataException {
 
-    MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(deviceId, measurementId);
+    MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(deviceNodes, measurementId);
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     long timeLowerBound = dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long
         .MIN_VALUE;
     context.setQueryTimeLowerBound(timeLowerBound);
+    String deviceId = MetaUtils.getPathByNodes(deviceNodes);
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter, isSeq)) {
@@ -1339,12 +1342,12 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param deviceNodes the device nodes of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
    * @param startTime the startTime of delete range.
    * @param endTime the endTime of delete range.
    */
-  public void delete(String deviceId, String measurementId, long startTime, long endTime)
+  public void delete(List<String> deviceNodes, String measurementId, long startTime, long endTime)
       throws IOException {
     // TODO: how to avoid partial deletion?
     //FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
@@ -1354,6 +1357,7 @@ public class StorageGroupProcessor {
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
+    String deviceId = MetaUtils.getPathByNodes(deviceNodes);
 
     try {
       Long lastUpdateTime = null;
@@ -1373,7 +1377,7 @@ public class StorageGroupProcessor {
       // write log to impacted working TsFileProcessors
       logDeletion(startTime, endTime, deviceId, measurementId);
       // delete Last cache record if necessary
-      tryToDeleteLastCache(deviceId, measurementId, startTime, endTime);
+      tryToDeleteLastCache(deviceNodes, deviceId, measurementId, startTime, endTime);
 
       Path fullPath = new Path(deviceId, measurementId);
       Deletion deletion = new Deletion(fullPath, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
@@ -1448,12 +1452,12 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void tryToDeleteLastCache(String deviceId, String measurementId, long startTime,
+  private void tryToDeleteLastCache(List<String> deviceNodes, String deviceId, String measurementId, long startTime,
       long endTime) throws WriteProcessException {
     MNode node = null;
     try {
       MManager manager = MManager.getInstance();
-      node = manager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      node = manager.getDeviceNodeWithAutoCreateAndReadLock(deviceId, deviceNodes);
 
       MNode measurementNode = manager.getChild(node, measurementId);
       if (measurementNode != null) {
