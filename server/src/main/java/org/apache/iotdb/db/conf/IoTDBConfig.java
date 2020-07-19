@@ -246,7 +246,27 @@ public class IoTDBConfig {
   /**
    * When average series point number reaches this, flush the memtable to disk
    */
-  private int avgSeriesPointNumberThreshold = 10000;
+  private int avgSeriesPointNumberThreshold = 500000;
+
+  /**
+   * When merge point number reaches this, merge the vmfile to the tsfile.
+   */
+  private int mergeChunkPointNumberThreshold = 100000;
+
+  /**
+   * Is vm merge enable
+   */
+  private boolean enableVm = true;
+
+  /**
+   * The max vm num of each memtable. When vm num exceeds this, the vm files will merge to one.
+   */
+  private int maxVmNum = 5;
+
+  /**
+   * When vmfiles merge times exceeds this, merge the vmfile to the tsfile.
+   */
+  private int maxMergeChunkNumInTsFile = 25;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -569,8 +589,8 @@ public class IoTDBConfig {
 
   /**
    * default TTL for storage groups that are not set TTL by statements, in ms
-   * Notice: if this property is changed, previous created storage group which are not set TTL will also be
-   * affected.
+   * Notice: if this property is changed, previous created storage group which are not set TTL
+   * will also be affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -1212,6 +1232,21 @@ public class IoTDBConfig {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
   }
 
+  public int getMergeChunkPointNumberThreshold() {
+    return mergeChunkPointNumberThreshold;
+  }
+
+  public void setMergeChunkPointNumberThreshold(int mergeChunkPointNumberThreshold) {
+    this.mergeChunkPointNumberThreshold = mergeChunkPointNumberThreshold;
+  }
+
+  public int getMaxMergeChunkNumInTsFile() {
+    return maxMergeChunkNumInTsFile;
+  }
+
+  public void setMaxMergeChunkNumInTsFile(int maxMergeChunkNumInTsFile) {
+    this.maxMergeChunkNumInTsFile = maxMergeChunkNumInTsFile;
+  }
   public MergeFileStrategy getMergeFileStrategy() {
     return mergeFileStrategy;
   }
@@ -1219,6 +1254,22 @@ public class IoTDBConfig {
   public void setMergeFileStrategy(
       MergeFileStrategy mergeFileStrategy) {
     this.mergeFileStrategy = mergeFileStrategy;
+  }
+
+  public boolean isEnableVm() {
+    return enableVm;
+  }
+
+  public void setEnableVm(boolean enableVm) {
+    this.enableVm = enableVm;
+  }
+
+  public int getMaxVmNum() {
+    return maxVmNum;
+  }
+
+  public void setMaxVmNum(int maxVmNum) {
+    this.maxVmNum = maxVmNum;
   }
 
   public int getMergeChunkSubThreadNum() {

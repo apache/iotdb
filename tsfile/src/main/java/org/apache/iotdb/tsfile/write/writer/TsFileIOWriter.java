@@ -374,6 +374,10 @@ public class TsFileIOWriter {
     return file;
   }
 
+  public void setFile(File file) {
+    this.file = file;
+  }
+
   /**
    * Remove such ChunkMetadata that its startTime is not in chunkStartTimes
    */

@@ -126,7 +126,7 @@ public class LogAnalyzer {
       Iterator<TsFileResource> iterator = resource.getSeqFiles().iterator();
       while (iterator.hasNext()) {
         TsFileResource seqFile = iterator.next();
-        if (seqFile.getFile().getAbsolutePath().equals(currLine)) {
+        if (seqFile.getTsFile().getAbsolutePath().equals(currLine)) {
           mergeSeqFiles.add(seqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -154,7 +154,7 @@ public class LogAnalyzer {
       Iterator<TsFileResource> iterator = resource.getUnseqFiles().iterator();
       while (iterator.hasNext()) {
         TsFileResource unseqFile = iterator.next();
-        if (unseqFile.getFile().getAbsolutePath().equals(currLine)) {
+        if (unseqFile.getTsFile().getAbsolutePath().equals(currLine)) {
           mergeUnseqFiles.add(unseqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -176,7 +176,7 @@ public class LogAnalyzer {
 
     status = Status.MERGE_START;
     for (TsFileResource seqFile : resource.getSeqFiles()) {
-      File mergeFile = SystemFileFactory.INSTANCE.getFile(seqFile.getPath() + MergeTask.MERGE_SUFFIX);
+      File mergeFile = SystemFileFactory.INSTANCE.getFile(seqFile.getTsFilePath() + MergeTask.MERGE_SUFFIX);
       fileLastPositions.put(mergeFile, 0L);
     }
 
@@ -242,7 +242,7 @@ public class LogAnalyzer {
         Iterator<TsFileResource> unmergedFileIter = unmergedFiles.iterator();
         while (unmergedFileIter.hasNext()) {
           TsFileResource seqFile = unmergedFileIter.next();
-          if (seqFile.getFile().getAbsolutePath().equals(seqFilePath)) {
+          if (seqFile.getTsFile().getAbsolutePath().equals(seqFilePath)) {
             mergedCnt ++;
             unmergedFileIter.remove();
             break;
