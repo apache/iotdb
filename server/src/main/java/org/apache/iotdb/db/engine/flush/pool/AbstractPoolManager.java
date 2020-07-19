@@ -81,7 +81,12 @@ public abstract class AbstractPoolManager {
 
   public abstract void start();
 
-  public abstract void stop();
+  public void stop() {
+    if (pool != null) {
+      close();
+      pool = null;
+    }
+  }
 
   public abstract String getName();
 
