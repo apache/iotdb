@@ -157,6 +157,11 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
       }
 
       @Override
+      public AsyncClient getAsyncHeartbeatClient(Node node) {
+        return getClient(node);
+      }
+
+      @Override
       public Set<Node> getIdConflictNodes() {
         return MetaHeartbeatThreadTest.this.idConflictNodes;
       }
