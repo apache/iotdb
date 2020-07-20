@@ -222,9 +222,9 @@ public class SyncClientAdaptor {
       PullSchemaRequest pullSchemaRequest) throws TException, InterruptedException {
     AtomicReference<List<MeasurementSchema>> timeseriesSchemas = new AtomicReference<>();
     synchronized (timeseriesSchemas) {
-      client
-          .pullTimeSeriesSchema(pullSchemaRequest, new PullTimeseriesSchemaHandler(client.getNode(),
-              pullSchemaRequest.getPrefixPaths(), timeseriesSchemas));
+      client.pullTimeSeriesSchema(pullSchemaRequest,
+          new PullTimeseriesSchemaHandler(client.getNode(), pullSchemaRequest.getPrefixPaths(),
+              timeseriesSchemas));
       timeseriesSchemas.wait(RaftServer.getReadOperationTimeoutMS());
     }
     return timeseriesSchemas.get();
