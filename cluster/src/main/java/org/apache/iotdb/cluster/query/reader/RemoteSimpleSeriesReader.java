@@ -118,7 +118,7 @@ public class RemoteSimpleSeriesReader implements IPointReader  {
       try {
         sourceInfo.getCurAsyncClient().fetchSingleSeries(sourceInfo.getHeader(),
             sourceInfo.getReaderId(), handler);
-        fetchResult.wait(RaftServer.getConnectionTimeoutInMS());
+        fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
       } catch (TException e) {
         //try other node
         if (!sourceInfo.switchNode(false, lastTimestamp)) {

@@ -1070,7 +1070,7 @@ public class MetaGroupMember extends RaftMember {
       }
 
       try {
-        groupRemainings.wait(RaftServer.getConnectionTimeoutInMS());
+        groupRemainings.wait(RaftServer.getWriteOperationTimeoutMS());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for the group votes", e);

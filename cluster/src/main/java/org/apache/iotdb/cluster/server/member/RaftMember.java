@@ -604,7 +604,7 @@ public abstract class RaftMember {
       }
 
       try {
-        voteCounter.wait(RaftServer.getConnectionTimeoutInMS());
+        voteCounter.wait(RaftServer.getWriteOperationTimeoutMS());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when sending a log", e);
@@ -638,10 +638,10 @@ public abstract class RaftMember {
     long alreadyWait = 0;
     while (peer.getMatchIndex() < log.getCurrLogIndex() - 1
         && character == NodeCharacter.LEADER
-        && alreadyWait <= RaftServer.getConnectionTimeoutInMS()) {
+        && alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
       synchronized (peer) {
         try {
-          peer.wait(RaftServer.getConnectionTimeoutInMS());
+          peer.wait(RaftServer.getWriteOperationTimeoutMS());
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Waiting for peer to catch up interrupted");
@@ -650,7 +650,7 @@ public abstract class RaftMember {
       }
       alreadyWait = System.currentTimeMillis() - waitStart;
     }
-    if (alreadyWait > RaftServer.getConnectionTimeoutInMS()) {
+    if (alreadyWait > RaftServer.getWriteOperationTimeoutMS()) {
       logger.warn("{}: node {} timed out when appending {}", name, node, log);
       return;
     }
@@ -980,7 +980,7 @@ public abstract class RaftMember {
       // check if the last catch-up is still ongoing
       Long lastCatchupResp = lastCatchUpResponseTime.get(follower);
       if (lastCatchupResp != null
-          && System.currentTimeMillis() - lastCatchupResp < RaftServer.getConnectionTimeoutInMS()) {
+          && System.currentTimeMillis() - lastCatchupResp < RaftServer.getWriteOperationTimeoutMS()) {
         logger.debug("{}: last catch up of {} is ongoing", name, follower);
         return;
       } else {
