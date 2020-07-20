@@ -206,12 +206,13 @@ public class TsFileRecoverPerformer {
                     + RESOURCE_SUFFIX + e);
           }
         }
-      }
-      else {
+      } else {
         // tsfile has crashed
         // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
         // map must be updated first to avoid duplicated insertion
         recoverResourceFromWriter(lastRestorableTsFileIOWriter, lastTsFileResource);
+      }
+      if(flushLog.exists()) {
         // after recover, delete the .flush file
         try {
           Files.delete(flushLog.toPath());
