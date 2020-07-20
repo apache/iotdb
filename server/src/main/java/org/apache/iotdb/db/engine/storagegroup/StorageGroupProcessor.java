@@ -585,7 +585,7 @@ public class StorageGroupProcessor {
   public static int getVmLevel(File file) {
     String vmLevelStr = file.getPath()
         .substring(file.getPath().lastIndexOf(TSFILE_SUFFIX)).replaceAll(TSFILE_SUFFIX, "")
-        .split(IoTDBConstant.FILE_NAME_SEPARATOR)[0];
+        .split(IoTDBConstant.FILE_NAME_SEPARATOR)[1];
     return Integer.parseInt(vmLevelStr);
   }
 
