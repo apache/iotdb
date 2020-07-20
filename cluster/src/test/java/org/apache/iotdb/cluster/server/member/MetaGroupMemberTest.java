@@ -231,12 +231,10 @@ public class MetaGroupMemberTest extends MemberTest {
         };
       }
 
-
       @Override
       public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request) {
         return mockedPullTimeSeriesSchema(request);
       }
-
 
     };
     dataGroupMember.setLogManager(new TestPartitionedLogManager(null,
@@ -272,7 +270,6 @@ public class MetaGroupMemberTest extends MemberTest {
     return resp;
   }
 
-
   protected MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
     MetaGroupMember metaGroupMember = new MetaGroupMember(new Factory(), node) {
 
@@ -292,7 +289,6 @@ public class MetaGroupMemberTest extends MemberTest {
         };
         return dataHeartbeatServer;
       }
-
 
       @Override
       public AsyncDataClient getAsyncDataClient(Node node) throws IOException {
@@ -330,7 +326,6 @@ public class MetaGroupMemberTest extends MemberTest {
 
       @Override
       public AsyncClient getAsyncHeartbeatClient(Node node) {
-        System.out.println("11111");
         return getClient(node);
       }
 
