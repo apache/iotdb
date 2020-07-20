@@ -40,21 +40,20 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TsFileProcessorTest {
+public class TsFileProcessorEnableVmTest {
 
   private TsFileProcessor processor;
   private String storageGroup = "storage_group1";
@@ -74,14 +73,13 @@ public class TsFileProcessorTest {
     MetadataManagerHelper.initMetadata();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
-    IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(true);
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
-    IoTDBDescriptor.getInstance().getConfig().setEnableVm(true);
   }
 
   @Test
@@ -93,11 +91,12 @@ public class TsFileProcessorTest {
         (tsFileProcessor) -> true, true);
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
-    for (int i = 1; i <= 100; i++) {
+    for (int i = 1; i <= 1000000; i++) {
       TSRecord record = new TSRecord(i, deviceId);
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
       processor.insert(new InsertRowPlan(record));
@@ -107,7 +106,10 @@ public class TsFileProcessorTest {
     tsfileResourcesForQuery.clear();
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
-    assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
+    assertFalse(tsfileResourcesForQuery.isEmpty());
+    Assert.assertEquals(0, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
+
+    //assertEquals(1, right.get(1).size());
     int num = 1;
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
     for (; num <= 100; num++) {
@@ -122,130 +124,12 @@ public class TsFileProcessorTest {
 
     // flush synchronously
     processor.syncFlush();
-
     tsfileResourcesForQuery.clear();
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
-    assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
+
+    assertEquals(1, tsfileResourcesForQuery.size());
     assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
-    assertEquals(measurementId,
-        tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getMeasurementUid());
-    assertEquals(dataType,
-        tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getDataType());
-    processor.syncClose();
-  }
-
-  @Test
-  public void testWriteAndRestoreMetadata() throws IOException, WriteProcessException {
-    logger.info("testWriteAndRestoreMetadata begin..");
-    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        new ArrayList<>(),
-        SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
-        (tsFileProcessor) -> true, true);
-
-    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
-    assertTrue(tsfileResourcesForQuery.isEmpty());
-
-    for (int i = 1; i <= 100; i++) {
-      TSRecord record = new TSRecord(i, deviceId);
-      record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-      processor.insert(new InsertRowPlan(record));
-    }
-
-    // query data in memory
-    tsfileResourcesForQuery.clear();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
-    assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    int num = 1;
-    List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
-    for (ReadOnlyMemChunk chunk : memChunks) {
-      IPointReader iterator = chunk.getPointReader();
-      for (; num <= 100; num++) {
-        iterator.hasNextTimeValuePair();
-        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
-        assertEquals(num, timeValuePair.getTimestamp());
-        assertEquals(num, timeValuePair.getValue().getInt());
-      }
-    }
-    logger.info("syncFlush..");
-    // flush synchronously
-    processor.syncFlush();
-
-    tsfileResourcesForQuery.clear();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
-    assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
-    assertEquals(measurementId,
-        tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getMeasurementUid());
-    assertEquals(dataType,
-        tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getDataType());
-
-    RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
-    Map<String, List<ChunkMetadata>> chunkMetaDataListInChunkGroups =
-        tsFileIOWriter.getDeviceChunkMetadataMap();
-    RestorableTsFileIOWriter restorableTsFileIOWriter = new RestorableTsFileIOWriter(
-        SystemFileFactory.INSTANCE.getFile(filePath));
-    Map<String, List<ChunkMetadata>> restoredChunkMetaDataListInChunkGroups = restorableTsFileIOWriter
-        .getDeviceChunkMetadataMap();
-    assertEquals(chunkMetaDataListInChunkGroups.size(),
-        restoredChunkMetaDataListInChunkGroups.size());
-    for (Map.Entry<String, List<ChunkMetadata>> entry1 : chunkMetaDataListInChunkGroups
-        .entrySet()) {
-      for (Map.Entry<String, List<ChunkMetadata>> entry2
-          : restoredChunkMetaDataListInChunkGroups.entrySet()) {
-        assertEquals(entry1.getKey(), entry2.getKey());
-        assertEquals(entry1.getValue().size(), entry2.getValue().size());
-        for (int i = 0; i < entry1.getValue().size(); i++) {
-          ChunkMetadata chunkMetaData = entry1.getValue().get(i);
-          ChunkMetadata chunkMetadataRestore = entry2.getValue().get(i);
-          assertEquals(chunkMetaData, chunkMetadataRestore);
-        }
-      }
-    }
-    restorableTsFileIOWriter.close();
-    logger.info("syncClose..");
-    processor.syncClose();
-    //we need to close the tsfile writer first and then reopen it.
-  }
-
-
-  @Test
-  public void testMultiFlush() throws IOException, WriteProcessException {
-    logger.info("testWriteAndRestoreMetadata begin..");
-    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        new ArrayList<>(),
-        SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
-        (tsFileProcessor) -> true, true);
-
-    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
-    assertTrue(tsfileResourcesForQuery.isEmpty());
-
-    for (int flushId = 0; flushId < 10; flushId++) {
-      for (int i = 1; i <= 10; i++) {
-        TSRecord record = new TSRecord(i, deviceId);
-        record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
-        processor.insert(new InsertRowPlan(record));
-      }
-      processor.asyncFlush();
-    }
-    processor.syncFlush();
-
-    tsfileResourcesForQuery.clear();
-    processor.query(deviceId, measurementId, dataType, encoding, props, context,
-        tsfileResourcesForQuery);
-    assertFalse(tsfileResourcesForQuery.isEmpty());
-    assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    assertEquals(10, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
-    assertEquals(measurementId,
-        tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getMeasurementUid());
-    assertEquals(dataType,
-        tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getDataType());
     processor.syncClose();
   }
 
@@ -274,7 +158,6 @@ public class TsFileProcessorTest {
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
-    assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     int num = 1;
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
     for (; num <= 100; num++) {

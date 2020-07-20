@@ -90,36 +90,32 @@ public class ChunkCache {
 
     cacheRequestNum.incrementAndGet();
 
+    Chunk chunk;
+    lock.readLock().lock();
     try {
-      lock.readLock().lock();
-      Chunk chunk = lruCache.get(chunkMetaData);
-      if (chunk != null) {
-        cacheHitNum.incrementAndGet();
-        printCacheLog(true);
-        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
-      }
+      chunk = lruCache.get(chunkMetaData);
     } finally {
       lock.readLock().unlock();
     }
-
-    lock.writeLock().lock();
-    try {
-      Chunk chunk = lruCache.get(chunkMetaData);
-      if (chunk != null) {
-        cacheHitNum.incrementAndGet();
-        printCacheLog(true);
-        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
-      }
+    if (chunk != null) {
+      cacheHitNum.incrementAndGet();
+      printCacheLog(true);
+    } else {
       printCacheLog(false);
-      chunk = reader.readMemChunk(chunkMetaData);
-      lruCache.put(chunkMetaData, chunk);
-      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
-    } catch (IOException e) {
-      logger.error("something wrong happened while reading {}", reader.getFileName());
-      throw e;
-    } finally {
-      lock.writeLock().unlock();
+      try {
+        chunk = reader.readMemChunk(chunkMetaData);
+      } catch (IOException e) {
+        logger.error("something wrong happened while reading {}", reader.getFileName());
+        throw e;
+      }
+      lock.writeLock().lock();
+      try {
+        lruCache.put(chunkMetaData, chunk);
+      } finally {
+        lock.writeLock().unlock();
+      }
     }
+    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
 
   }
 

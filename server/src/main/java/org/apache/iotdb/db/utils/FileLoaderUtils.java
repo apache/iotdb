@@ -50,10 +50,10 @@ public class FileLoaderUtils {
   }
 
   public static void checkTsFileResource(TsFileResource tsFileResource) throws IOException {
-    if (!tsFileResource.fileExists()) {
+    if (!tsFileResource.resourceFileExists()) {
       // .resource file does not exist, read file metadata and recover tsfile resource
       try (TsFileSequenceReader reader = new TsFileSequenceReader(
-          tsFileResource.getFile().getAbsolutePath())) {
+          tsFileResource.getTsFile().getAbsolutePath())) {
         updateTsFileResource(reader, tsFileResource);
       }
       // write .resource file
@@ -88,7 +88,7 @@ public class FileLoaderUtils {
     TimeseriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {
       timeSeriesMetadata = TimeSeriesMetadataCache.getInstance()
-          .get(new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(resource.getPath(),
+          .get(new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(resource.getTsFilePath(),
               seriesPath.getDevice(), seriesPath.getMeasurement()), allSensors);
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(

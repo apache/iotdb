@@ -155,9 +155,6 @@ public class PlanExecutor implements IPlanExecutor {
   // for administration
   private IAuthorizer authorizer;
 
-  private boolean enablePartialInsert = IoTDBDescriptor.getInstance().getConfig()
-      .isEnablePartialInsert();
-
   public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
     mManager = IoTDB.metaManager;
@@ -327,10 +324,10 @@ public class PlanExecutor implements IPlanExecutor {
         return new EmptyDataSet();
       } else if (queryPlan instanceof GroupByTimeFillPlan) {
         GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) queryPlan;
-        return queryRouter.groupByFill(groupByFillPlan, context);
+        queryDataSet = queryRouter.groupByFill(groupByFillPlan, context);
       } else if (queryPlan instanceof GroupByTimePlan) {
         GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
-        return queryRouter.groupBy(groupByTimePlan, context);
+        queryDataSet = queryRouter.groupBy(groupByTimePlan, context);
       } else if (queryPlan instanceof AggregationPlan) {
         AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
         queryDataSet = queryRouter.aggregate(aggregationPlan, context);

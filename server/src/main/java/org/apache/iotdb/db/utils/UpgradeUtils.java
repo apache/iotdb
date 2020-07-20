@@ -59,17 +59,17 @@ public class UpgradeUtils {
   public static boolean isNeedUpgrade(TsFileResource tsFileResource) {
     tsFileResource.readLock();
     //case the TsFile's length is equal to 0, the TsFile does not need to be upgraded
-    if (tsFileResource.getFile().length() == 0) {
+    if (tsFileResource.getTsFile().length() == 0) {
       return false;
     }
     try (TsFileSequenceReader tsFileSequenceReader = new TsFileSequenceReader(
-        tsFileResource.getFile().getAbsolutePath())) {
+        tsFileResource.getTsFile().getAbsolutePath())) {
       if (tsFileSequenceReader.readVersionNumber().equals(TSFileConfig.VERSION_NUMBER_V1)) {
         return true;
       }
     } catch (Exception e) {
       logger.error("meet error when judge whether file needs to be upgraded, the file's path:{}",
-          tsFileResource.getFile().getAbsolutePath(), e);
+          tsFileResource.getTsFile().getAbsolutePath(), e);
     } finally {
       tsFileResource.readUnlock();
     }
@@ -88,7 +88,7 @@ public class UpgradeUtils {
       throws IOException {
     upgradeResource.deserialize();
     long firstPartitionId = upgradeResource.getTimePartition();
-    File oldTsFile = upgradeResource.getFile();
+    File oldTsFile = upgradeResource.getTsFile();
     return oldTsFile.getParent()
         + File.separator + firstPartitionId + File.separator+ oldTsFile.getName();
   }

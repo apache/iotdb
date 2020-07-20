@@ -16,25 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.flush.pool;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class FlushTaskPoolManager extends AbstractPoolManager {
+public class VmMergeTaskPoolManager extends AbstractPoolManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FlushTaskPoolManager.class);
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(VmMergeTaskPoolManager.class);
 
-  private FlushTaskPoolManager() {
-    int threadCnt = IoTDBDescriptor.getInstance().getConfig().getConcurrentFlushThread();
-    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
+  private VmMergeTaskPoolManager() {
+    this.pool = IoTDBThreadPoolFactory
+        .newCachedThreadPool(ThreadName.FLUSH_VM_SERVICE.getName());
   }
 
-  public static FlushTaskPoolManager getInstance() {
-    return InstanceHolder.instance;
+  public static VmMergeTaskPoolManager getInstance() {
+    return VmMergeTaskPoolManager.InstanceHolder.instance;
   }
 
   @Override
@@ -44,24 +45,22 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
 
   @Override
   public String getName() {
-    return "flush task";
+    return "vm merge task";
   }
 
   @Override
   public void start() {
     if (pool == null) {
-      int threadCnt = IoTDBDescriptor.getInstance().getConfig().getConcurrentFlushThread();
-      pool = IoTDBThreadPoolFactory
-          .newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
+      this.pool = IoTDBThreadPoolFactory
+          .newCachedThreadPool(ThreadName.FLUSH_VM_SERVICE.getName());
     }
-
-    LOGGER.info("Flush task manager started.");
+    LOGGER.info("Vm merge task manager started.");
   }
 
   @Override
   public void stop() {
     super.stop();
-    LOGGER.info("Flush task manager stopped");
+    LOGGER.info("Vm merge task manager stopped");
   }
 
   private static class InstanceHolder {
@@ -70,6 +69,7 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
       //allowed to do nothing
     }
 
-    private static FlushTaskPoolManager instance = new FlushTaskPoolManager();
+    private static VmMergeTaskPoolManager instance = new VmMergeTaskPoolManager();
   }
+
 }

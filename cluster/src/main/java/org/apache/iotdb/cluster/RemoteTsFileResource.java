@@ -93,7 +93,7 @@ public class RemoteTsFileResource extends TsFileResource {
       dataOutputStream.write(md5);
       // the path here is only for the remote node to get a download link, so it does not matter
       // if it is absolute
-      SerializeUtils.serialize(getFile().getPath(), dataOutputStream);
+      SerializeUtils.serialize(getTsFile().getPath(), dataOutputStream);
 
       int deviceNum = startTimes.length;
       dataOutputStream.writeInt(startTimes.length);

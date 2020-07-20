@@ -641,7 +641,7 @@ public class DataGroupMember extends RaftMember {
     int segSize = pathSegments.length;
     String storageGroupName = pathSegments[segSize - 3];
     File remoteModFile =
-        new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
+        new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
     try {
       StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
       StorageEngine.getInstance().getProcessor(storageGroupName)
@@ -654,7 +654,7 @@ public class DataGroupMember extends RaftMember {
       // when successfully loaded, the filepath of the resource will be changed to the IoTDB data
       // dir, so we can add a suffix to find the old modification file.
       File localModFile =
-          new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
+          new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
       try {
         Files.delete(localModFile.toPath());
       } catch (IOException e) {
@@ -693,7 +693,7 @@ public class DataGroupMember extends RaftMember {
     tempFile.getParentFile().mkdirs();
     File tempModFile = new File(REMOTE_FILE_TEMP_DIR,
         tempFilePath + ModificationFile.FILE_SUFFIX);
-    if (pullRemoteFile(resource.getFile().getAbsolutePath(), node, tempFile)) {
+    if (pullRemoteFile(resource.getTsFile().getAbsolutePath(), node, tempFile)) {
       if (!checkMd5(tempFile, resource.getMd5())) {
         logger.error("The downloaded file of {} does not have the right MD5", resource);
         Files.delete(tempFile.toPath());
