@@ -163,6 +163,7 @@ public class TsFileIOWriter {
         .add(new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
     currentChunkGroupDeviceId = null;
     chunkMetadataList = null;
+    out.flush();
   }
 
   /**
@@ -374,6 +375,10 @@ public class TsFileIOWriter {
 
   public File getFile() {
     return file;
+  }
+
+  public void setFile(File file) {
+    this.file = file;
   }
 
   /**

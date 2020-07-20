@@ -115,11 +115,11 @@ public class MergeUpgradeTest {
   private void prepareOldFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
       long valueOffset)
       throws IOException, WriteProcessException {
-    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
+    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     prepareData(tsFileResource, fileWriter, timeOffset, ptNum, valueOffset);
     fileWriter.close();
     if (changeVersion) {
-      try (RandomAccessFile oldTsfile = new RandomAccessFile(tsFileResource.getFile(), "rw")) {
+      try (RandomAccessFile oldTsfile = new RandomAccessFile(tsFileResource.getTsFile(), "rw")) {
         oldTsfile.seek(TSFileConfig.MAGIC_STRING.length());
         oldTsfile.write(TSFileConfig.VERSION_NUMBER_V1.getBytes());
       }
@@ -129,7 +129,7 @@ public class MergeUpgradeTest {
 
   private void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
       long valueOffset) throws IOException, WriteProcessException {
-    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
+    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     prepareData(tsFileResource, fileWriter, timeOffset, ptNum, valueOffset);
     fileWriter.close();
   }

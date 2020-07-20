@@ -250,6 +250,22 @@ public class IoTDBDescriptor {
           .getProperty("avg_series_point_number_threshold",
               Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
 
+      conf.setMergeChunkPointNumberThreshold(Integer.parseInt(properties
+          .getProperty("merge_chunk_point_number",
+              Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
+
+      conf.setMaxMergeChunkNumInTsFile(Integer.parseInt(properties
+          .getProperty("max_merge_chunk_num_in_tsfile",
+              Integer.toString(conf.getMaxMergeChunkNumInTsFile()))));
+
+      conf.setEnableVm(Boolean.parseBoolean(properties
+          .getProperty("enable_vm",
+              Boolean.toString(conf.isEnableVm()))));
+
+      conf.setMaxVmNum(Integer.parseInt(properties
+          .getProperty("max_vm_num",
+              Integer.toString(conf.getMaxVmNum()))));
+
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
               Boolean.toString(conf.isSyncEnable()))));
