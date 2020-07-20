@@ -27,12 +27,12 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class DeletePartitionPlan extends PhysicalPlan {
 
-  private String storageGroupName;
+  private List<String> storageGroupNameNodes;
   private Set<Long> partitionId;
 
-  public DeletePartitionPlan(String storageGroupName, Set<Long> partitionId) {
+  public DeletePartitionPlan(List<String> storageGroupNameNodes, Set<Long> partitionId) {
     super(false, OperatorType.DELETE_PARTITION);
-    this.storageGroupName = storageGroupName;
+    this.storageGroupNameNodes = storageGroupNameNodes;
     this.partitionId = partitionId;
   }
 
@@ -41,8 +41,8 @@ public class DeletePartitionPlan extends PhysicalPlan {
     return null;
   }
 
-  public String getStorageGroupName() {
-    return storageGroupName;
+  public List<String> getStorageGroupNameNodes() {
+    return storageGroupNameNodes;
   }
 
   public Set<Long> getPartitionId() {

@@ -50,7 +50,7 @@ import static org.junit.Assert.fail;
 public class SeriesAggregateReaderTest {
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
-  private List<String> deviceIds = new ArrayList<>();
+  private List<List<String>> deviceIds = new ArrayList<>();
   private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private List<TsFileResource> seqResources = new ArrayList<>();

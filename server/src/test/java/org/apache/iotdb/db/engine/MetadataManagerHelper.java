@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -39,49 +40,49 @@ public class MetadataManagerHelper {
 
       CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
 
-      mmanager.createTimeseries("root.vehicle.d0.s0", TSDataType.valueOf("INT32"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s0"), TSDataType.valueOf("INT32"),
           TSEncoding.PLAIN, compressionType,
           Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d0.s1", TSDataType.valueOf("INT64"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s1"), TSDataType.valueOf("INT64"),
           TSEncoding.PLAIN, compressionType,
           Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d0.s2", TSDataType.valueOf("FLOAT"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s2"), TSDataType.valueOf("FLOAT"),
           TSEncoding.PLAIN, compressionType,
           Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d0.s3", TSDataType.valueOf("DOUBLE"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s3"), TSDataType.valueOf("DOUBLE"),
           TSEncoding.PLAIN, compressionType,
           Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d0.s4", TSDataType.valueOf("BOOLEAN"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s4"), TSDataType.valueOf("BOOLEAN"),
           TSEncoding.PLAIN, compressionType,
           Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d0.s5", TSDataType.valueOf("TEXT"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s5"), TSDataType.valueOf("TEXT"),
           TSEncoding.PLAIN, compressionType,
           Collections.emptyMap());
 
-      mmanager.createTimeseries("root.vehicle.d1.s0", TSDataType.valueOf("INT32"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s0"), TSDataType.valueOf("INT32"),
           TSEncoding.PLAIN, compressionType, Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d1.s1", TSDataType.valueOf("INT64"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s1"), TSDataType.valueOf("INT64"),
           TSEncoding.PLAIN, compressionType, Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d1.s2", TSDataType.valueOf("FLOAT"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s2"), TSDataType.valueOf("FLOAT"),
           TSEncoding.PLAIN, compressionType, Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d1.s3", TSDataType.valueOf("DOUBLE"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s3"), TSDataType.valueOf("DOUBLE"),
           TSEncoding.PLAIN, compressionType, Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d1.s4", TSDataType.valueOf("BOOLEAN"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s4"), TSDataType.valueOf("BOOLEAN"),
           TSEncoding.PLAIN, compressionType, Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d1.s5", TSDataType.valueOf("TEXT"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s5"), TSDataType.valueOf("TEXT"),
           TSEncoding.PLAIN, compressionType, Collections.emptyMap());
 
-      mmanager.createTimeseries("root.vehicle.d2.s0", TSDataType.valueOf("INT32"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s0"), TSDataType.valueOf("INT32"),
           TSEncoding.PLAIN, compressionType, Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d2.s1", TSDataType.valueOf("INT64"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s1"), TSDataType.valueOf("INT64"),
           TSEncoding.PLAIN, compressionType, Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d2.s2", TSDataType.valueOf("FLOAT"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s2"), TSDataType.valueOf("FLOAT"),
           TSEncoding.PLAIN, compressionType, Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d2.s3", TSDataType.valueOf("DOUBLE"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s3"), TSDataType.valueOf("DOUBLE"),
           TSEncoding.PLAIN, compressionType, Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d2.s4", TSDataType.valueOf("BOOLEAN"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s4"), TSDataType.valueOf("BOOLEAN"),
           TSEncoding.PLAIN, compressionType, Collections.emptyMap());
-      mmanager.createTimeseries("root.vehicle.d2.s5", TSDataType.valueOf("TEXT"),
+      mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s5"), TSDataType.valueOf("TEXT"),
           TSEncoding.PLAIN, compressionType, Collections.emptyMap());
 
     } catch (Exception e) {

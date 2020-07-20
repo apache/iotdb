@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -269,10 +270,12 @@ public class StorageEngine implements IService {
     return ServiceType.STORAGE_ENGINE_SERVICE;
   }
 
-  public StorageGroupProcessor getProcessor(String path) throws StorageEngineException {
+  public StorageGroupProcessor getProcessor(List<String> nodes) throws StorageEngineException {
+    List<String> storageGroupNodes;
     String storageGroupName;
     try {
-      storageGroupName = IoTDB.metaManager.getStorageGroupName(path);
+      storageGroupNodes = IoTDB.metaManager.getStorageGroupNameNodes(nodes);
+      storageGroupName = MetaUtils.getPathByNodes(nodes);
       StorageGroupProcessor processor;
       processor = processorMap.get(storageGroupName);
       if (processor == null) {
@@ -286,7 +289,7 @@ public class StorageEngine implements IService {
                 storageGroupName, Thread.currentThread().getId());
               processor = new StorageGroupProcessor(systemDir, storageGroupName, fileFlushPolicy);
               StorageGroupMNode storageGroup = IoTDB.metaManager
-                .getStorageGroupNode(storageGroupName);
+                .getStorageGroupNode(storageGroupNodes);
               processor.setDataTTL(storageGroup.getDataTTL());
               processorMap.put(storageGroupName, processor);
             }
@@ -318,7 +321,7 @@ public class StorageEngine implements IService {
    */
   public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException {
 
-    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceNodes());
 
     // TODO monitor: update statistics
     try {
@@ -335,7 +338,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException, BatchInsertionException {
     StorageGroupProcessor storageGroupProcessor;
     try {
-      storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
+      storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceNodes());
     } catch (StorageEngineException e) {
       throw new StorageEngineException(String.format("Get StorageGroupProcessor of device %s "
           + "failed", insertTabletPlan.getDeviceId()), e);
@@ -428,11 +431,11 @@ public class StorageEngine implements IService {
   /**
    * delete data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
    */
-  public void delete(String deviceId, String measurementId, long startTime, long endTime)
+  public void delete(List<String> nodes, String measurementId, long startTime, long endTime)
       throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
+    StorageGroupProcessor storageGroupProcessor = getProcessor(nodes);
     try {
-      storageGroupProcessor.delete(deviceId, measurementId, startTime, endTime);
+      storageGroupProcessor.delete(nodes, measurementId, startTime, endTime);
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }
@@ -444,11 +447,12 @@ public class StorageEngine implements IService {
   public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,
       QueryFileManager filePathsManager)
       throws StorageEngineException, QueryProcessException {
-    String deviceId = seriesExpression.getSeriesPath().getDevice();
-    String measurementId = seriesExpression.getSeriesPath().getMeasurement();
-    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
+    List<String> pathNodes = seriesExpression.getSeriesPath().getNodes();
+    String measurementId = pathNodes.get(pathNodes.size() - 1);
+    pathNodes.remove(pathNodes.size() - 1);
+    StorageGroupProcessor storageGroupProcessor = getProcessor(pathNodes);
     return storageGroupProcessor
-        .query(deviceId, measurementId, context, filePathsManager, seriesExpression.getFilter());
+        .query(pathNodes, measurementId, context, filePathsManager, seriesExpression.getFilter());
   }
 
   /**
@@ -521,7 +525,7 @@ public class StorageEngine implements IService {
     return true;
   }
 
-  public void setTTL(String storageGroup, long dataTTL) throws StorageEngineException {
+  public void setTTL(List<String> storageGroup, long dataTTL) throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroup);
     storageGroupProcessor.setDataTTL(dataTTL);
   }
@@ -536,7 +540,7 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws StorageEngineException, LoadFileException {
-    getProcessor(newTsFileResource.getFile().getParentFile().getName())
+    getProcessor(MetaUtils.getDeviceNodeNames(newTsFileResource.getFile().getParentFile().getName()))
         .loadNewTsFileForSync(newTsFileResource);
   }
 
@@ -547,22 +551,22 @@ public class StorageEngine implements IService {
       throw new StorageEngineException("Can not get the corresponding storage group.");
     }
     String device = deviceMap.keySet().iterator().next();
-    String storageGroupName = IoTDB.metaManager.getStorageGroupName(device);
-    getProcessor(storageGroupName).loadNewTsFile(newTsFileResource);
+    List<String> storageGroupNameNodes = IoTDB.metaManager.getStorageGroupNameNodes(MetaUtils.getDeviceNodeNames(device));
+    getProcessor(storageGroupNameNodes).loadNewTsFile(newTsFileResource);
   }
 
   public boolean deleteTsfileForSync(File deletedTsfile)
       throws StorageEngineException {
-    return getProcessor(deletedTsfile.getParentFile().getName()).deleteTsfile(deletedTsfile);
+    return getProcessor(MetaUtils.getDeviceNodeNames(deletedTsfile.getParentFile().getName())).deleteTsfile(deletedTsfile);
   }
 
   public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
-    return getProcessor(getSgByEngineFile(deletedTsfile)).deleteTsfile(deletedTsfile);
+    return getProcessor(MetaUtils.getDeviceNodeNames(getSgByEngineFile(deletedTsfile))).deleteTsfile(deletedTsfile);
   }
 
   public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
       throws StorageEngineException, IOException {
-    return getProcessor(getSgByEngineFile(tsfileToBeMoved)).moveTsfile(tsfileToBeMoved, targetDir);
+    return getProcessor(MetaUtils.getDeviceNodeNames(getSgByEngineFile(tsfileToBeMoved))).moveTsfile(tsfileToBeMoved, targetDir);
   }
 
   /**
@@ -629,13 +633,13 @@ public class StorageEngine implements IService {
    * @param partitionId
    * @param newMaxVersion
    */
-  public void setPartitionVersionToMax(String storageGroup, long partitionId, long newMaxVersion)
+  public void setPartitionVersionToMax(List<String> storageGroup, long partitionId, long newMaxVersion)
       throws StorageEngineException {
     getProcessor(storageGroup).setPartitionFileVersionToMax(partitionId, newMaxVersion);
   }
 
 
-  public void removePartitions(String storageGroupName, TimePartitionFilter filter)
+  public void removePartitions(List<String> storageGroupName, TimePartitionFilter filter)
       throws StorageEngineException {
     getProcessor(storageGroupName).removePartitions(filter);
   }

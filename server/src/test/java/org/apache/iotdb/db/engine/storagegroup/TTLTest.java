@@ -37,7 +37,6 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
@@ -55,7 +54,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -76,6 +74,7 @@ public class TTLTest {
   private StorageGroupProcessor storageGroupProcessor;
   private String s1 = "s1";
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
+  private List<String> g1s1List = Arrays.asList("root", "TTL_SG1", s1);
   private long prevPartitionInterval;
 
   private MNode deviceMNode = null;
@@ -109,7 +108,7 @@ public class TTLTest {
     IoTDB.metaManager.setStorageGroup(sg2);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
         .getSystemDir(), sg1, new DirectFlushPolicy());
-    IoTDB.metaManager.createTimeseries(g1s1, TSDataType.INT64, TSEncoding.PLAIN,
+    IoTDB.metaManager.createTimeseries(g1s1List, TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
   }
 
@@ -314,11 +313,11 @@ public class TTLTest {
     Planner planner = new Planner();
     SetTTLPlan plan = (SetTTLPlan) planner
         .parseSQLToPhysicalPlan("SET TTL TO " + sg1 + " 10000");
-    assertEquals(sg1, plan.getStorageGroup());
+    assertEquals(sg1, plan.getStorageGroupNodes());
     assertEquals(10000, plan.getDataTTL());
 
     plan = (SetTTLPlan) planner.parseSQLToPhysicalPlan("UNSET TTL TO " + sg2);
-    assertEquals(sg2, plan.getStorageGroup());
+    assertEquals(sg2, plan.getStorageGroupNodes());
     assertEquals(Long.MAX_VALUE, plan.getDataTTL());
   }
 

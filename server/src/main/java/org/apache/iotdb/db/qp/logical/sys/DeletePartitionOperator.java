@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
+import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 
 public class DeletePartitionOperator extends RootOperator {
 
-  private String storageGroupName;
+  private List<String> storageGroupNameNodes;
   private Set<Long> partitionIds;
 
   public DeletePartitionOperator(int tokenIntType) {
@@ -32,16 +33,16 @@ public class DeletePartitionOperator extends RootOperator {
     operatorType = OperatorType.DELETE_PARTITION;
   }
 
-  public void setStorageGroupName(String storageGroupName) {
-    this.storageGroupName = storageGroupName;
+  public void setStorageGroupNameNodes(List<String> storageGroupNameNodes) {
+    this.storageGroupNameNodes = storageGroupNameNodes;
   }
 
   public void setPartitionIds(Set<Long> partitionIds) {
     this.partitionIds = partitionIds;
   }
 
-  public String getStorageGroupName() {
-    return storageGroupName;
+  public List<String> getStorageGroupNameNodes() {
+    return storageGroupNameNodes;
   }
 
   public Set<Long> getPartitionId() {

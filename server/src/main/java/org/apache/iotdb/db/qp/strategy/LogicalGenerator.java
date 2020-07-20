@@ -704,7 +704,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterSetTTLStatement(SetTTLStatementContext ctx) {
     super.enterSetTTLStatement(ctx);
     SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_SET);
-    operator.setStorageGroup(parsePrefixPath(ctx.prefixPath()).getFullPath());
+    operator.setStorageGroupNodes(parsePrefixPathNodes(ctx.prefixPath()));
     operator.setDataTTL(Long.parseLong(ctx.INT().getText()));
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_SET;
@@ -714,7 +714,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterUnsetTTLStatement(UnsetTTLStatementContext ctx) {
     super.enterUnsetTTLStatement(ctx);
     SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_UNSET);
-    operator.setStorageGroup(parsePrefixPath(ctx.prefixPath()).getFullPath());
+    operator.setStorageGroupNodes(parsePrefixPathNodes(ctx.prefixPath()));
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_UNSET;
   }
@@ -1303,6 +1303,16 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     return new Path(path);
   }
 
+  private List<String> parsePrefixPathNodes(PrefixPathContext ctx) {
+    List<String> prefixNodes = new ArrayList<>();
+    prefixNodes.add(ctx.ROOT().getText());
+    List<NodeNameContext> nodeNameContexts = ctx.nodeName();
+    for(NodeNameContext nodeNameContext : nodeNameContexts) {
+      prefixNodes.add(nodeNameContext.getText());
+    }
+    return prefixNodes;
+  }
+
   /**
    * parse duration to time value.
    *
@@ -1615,7 +1625,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterDeletePartition(ctx);
     DeletePartitionOperator deletePartitionOperator = new DeletePartitionOperator(
         SQLConstant.TOK_DELETE_PARTITION);
-    deletePartitionOperator.setStorageGroupName(ctx.prefixPath().getText());
+    deletePartitionOperator.setStorageGroupNameNodes(parsePrefixPathNodes(ctx.prefixPath()));
     Set<Long> idSet = new HashSet<>();
     for (TerminalNode terminalNode : ctx.INT()) {
       idSet.add(Long.parseLong(terminalNode.getText()));

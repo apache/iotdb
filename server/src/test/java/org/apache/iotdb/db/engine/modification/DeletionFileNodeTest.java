@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
@@ -61,6 +62,7 @@ import static org.junit.Assert.assertTrue;
 public class DeletionFileNodeTest {
 
   private String processorName = "root.test";
+  private List<String> processorNameList = Arrays.asList("root", "test");
 
   private static String[] measurements = new String[10];
   private TSDataType dataType = TSDataType.DOUBLE;
@@ -78,11 +80,13 @@ public class DeletionFileNodeTest {
     EnvironmentUtils.envSetUp();
 
     deviceMNode = new MNode(null, processorName);
-    IoTDB.metaManager.setStorageGroup(processorName);
+    IoTDB.metaManager.setStorageGroup(processorNameList);
     for (int i = 0; i < 10; i++) {
       deviceMNode.addChild(measurements[i], new MeasurementMNode(null, null, null, null));
-      IoTDB.metaManager.createTimeseries(processorName + "." + measurements[i], dataType,
+      processorNameList.add(measurements[i]);
+      IoTDB.metaManager.createTimeseries(processorNameList, dataType,
           encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
+
     }
   }
 

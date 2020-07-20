@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.writelog;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -134,16 +135,16 @@ public class PerformanceTest {
     } catch (MetadataException ignored) {
     }
     IoTDB.metaManager
-        .createTimeseries("root.logTestDevice.s1", TSDataType.DOUBLE, TSEncoding.PLAIN,
+        .createTimeseries(Arrays.asList("root", "logTestDevice", "s1"), TSDataType.DOUBLE, TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     IoTDB.metaManager
-        .createTimeseries("root.logTestDevice.s2", TSDataType.INT32, TSEncoding.PLAIN,
+        .createTimeseries(Arrays.asList("root", "logTestDevice", "s2"), TSDataType.INT32, TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     IoTDB.metaManager
-        .createTimeseries("root.logTestDevice.s3", TSDataType.TEXT, TSEncoding.PLAIN,
+        .createTimeseries(Arrays.asList("root", "logTestDevice", "s3"), TSDataType.TEXT, TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     IoTDB.metaManager
-        .createTimeseries("root.logTestDevice.s4", TSDataType.BOOLEAN, TSEncoding.PLAIN,
+        .createTimeseries(Arrays.asList("root", "logTestDevice", "s4"), TSDataType.BOOLEAN, TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 

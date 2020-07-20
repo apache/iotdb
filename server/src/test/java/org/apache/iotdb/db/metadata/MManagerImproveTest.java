@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -55,7 +56,7 @@ public class MManagerImproveTest {
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
         String p = "root.t1.v2.d" + j + ".s" + i;
-        mManager.createTimeseries(p, TSDataType.TEXT, TSEncoding.RLE,
+        mManager.createTimeseries(Arrays.asList("root", "t1", "v2", "d" + j, "s" + i), TSDataType.TEXT, TSEncoding.RLE,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
       }
     }

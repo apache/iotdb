@@ -80,7 +80,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.createTimeseries("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
+      manager.createTimeseries(Arrays.asList("root", "laptop", "d1", "s0"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -91,13 +91,13 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist("root.laptop.d1.s0"));
     assertFalse(manager.isPathExist("root.laptop.d1.s1"));
     try {
-      manager.createTimeseries("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
+      manager.createTimeseries(Arrays.asList("root", "laptop", "d1", "s1"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-      manager.createTimeseries("root.laptop.d1.1_2", TSDataType.INT32, TSEncoding.RLE,
+      manager.createTimeseries(Arrays.asList("root", "laptop", "d1", "1_2"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
-      manager.createTimeseries("root.laptop.d1.\"1.2.3\"", TSDataType.INT32, TSEncoding.RLE,
+      manager.createTimeseries(Arrays.asList("root", "laptop", "d1", "\"1.2.3\""), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
-      manager.createTimeseries("root.1.2.3", TSDataType.INT32, TSEncoding.RLE,
+      manager.createTimeseries(Arrays.asList("root", "1", "2", "3"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
 
       assertTrue(manager.isPathExist("root.laptop.d1.s1"));
@@ -130,7 +130,7 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist("root"));
 
     try {
-      manager.createTimeseries("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
+      manager.createTimeseries(Arrays.asList("root", "laptop", "d1", "s1"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -138,7 +138,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.createTimeseries("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
+      manager.createTimeseries(Arrays.asList("root", "laptop", "d1", "s0"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -226,9 +226,9 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup("root.laptop.d1");
       manager.setStorageGroup("root.laptop.d2");
-      manager.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "laptop", "d1", "s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.createTimeseries("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "laptop", "d2", "s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
 
       List<String> list = new ArrayList<>();
@@ -279,13 +279,13 @@ public class MManagerBasicTest {
     assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
     manager.setStorageGroup("root.laptop");
     assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+    manager.createTimeseries(Arrays.asList("root", "laptop", "d1", "s1"), TSDataType.INT32, TSEncoding.PLAIN,
         CompressionType.GZIP, null);
-    manager.createTimeseries("root.laptop.d1.s2", TSDataType.INT32, TSEncoding.PLAIN,
+    manager.createTimeseries(Arrays.asList("root", "laptop", "d1", "s2"), TSDataType.INT32, TSEncoding.PLAIN,
         CompressionType.GZIP, null);
     assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
     manager.setStorageGroup("root.vehicle");
-    manager.createTimeseries("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+    manager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s1"), TSDataType.INT32, TSEncoding.PLAIN,
         CompressionType.GZIP, null);
     assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
 
@@ -333,9 +333,9 @@ public class MManagerBasicTest {
 
     try {
       manager.setStorageGroup("root.laptop");
-      manager.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "laptop", "d1", "s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.createTimeseries("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "laptop", "d2", "s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
       Set<String> devices = new TreeSet<>();
       devices.add("root.laptop.d1");
@@ -343,7 +343,7 @@ public class MManagerBasicTest {
       // usual condition
       assertEquals(devices, manager.getDevices("root.laptop"));
       manager.setStorageGroup("root.vehicle");
-      manager.createTimeseries("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "vehicle", "d1", "s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
       devices.add("root.vehicle.d1");
       // prefix with *
@@ -372,25 +372,25 @@ public class MManagerBasicTest {
       manager.setStorageGroup("root.laptop");
       manager.setStorageGroup("root.vehicle");
 
-      manager.createTimeseries("root.laptop.b1.d1.s0", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "laptop", "b1", "d1", "s0"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.createTimeseries("root.laptop.b1.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "laptop", "b1", "d1", "s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.createTimeseries("root.laptop.b1.d2.s0", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "laptop", "b1", "d2", "s0"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.createTimeseries("root.laptop.b2.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "laptop", "b2", "d1", "s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.createTimeseries("root.laptop.b2.d1.s3", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "laptop", "b2", "d1", "s3"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.createTimeseries("root.laptop.b2.d2.s2", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "laptop", "b2", "d2", "s2"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.createTimeseries("root.vehicle.b1.d0.s0", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "vehicle", "b1", "d0", "s0"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.createTimeseries("root.vehicle.b1.d2.s2", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "vehicle", "b1", "d2", "s2"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.createTimeseries("root.vehicle.b1.d3.s3", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "vehicle", "b1", "d3", "s3"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      manager.createTimeseries("root.vehicle.b2.d0.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      manager.createTimeseries(Arrays.asList("root", "vehicle", "b2", "d0", "s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
 
       assertEquals(res[0], manager.getChildNodePathInNextLevel("root").toString());

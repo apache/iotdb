@@ -541,6 +541,14 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
+   */
+  MeasurementSchema getSchema(List<String> nodes) throws MetadataException {
+    MeasurementMNode node = (MeasurementMNode) getNodeByNodes(nodes);
+    return node.getSchema();
+  }
+
+  /**
    * Get node by path with storage group check If storage group is not set,
    * StorageGroupNotSetException will be thrown
    */
@@ -788,6 +796,32 @@ public class MTree implements Serializable {
       }
     }
     throw new StorageGroupNotSetException(MetaUtils.getPathByNodes(nodes));
+  }
+
+  /**
+   * Get storage group name by nodes
+   *
+   * <p>e.g., root.sg1 is storage group, nodes is [root, sg1, d1], return [root, sg1]
+   *
+   * @return storage group in the given nodes
+   */
+  List<String> getStorageGroupNodes(List<String> nodes) throws StorageGroupNotSetException { ;
+    MNode cur = root;
+    for (int i = 1; i < nodes.size(); i++) {
+      cur = cur.getChild(nodes.get(i));
+      if (cur instanceof StorageGroupMNode) {
+        break;
+      } else if (cur == null) {
+        throw new StorageGroupNotSetException(MetaUtils.getPathByNodes(nodes));
+      }
+    }
+    List<String> storageGroupNodes = new ArrayList<>();
+    storageGroupNodes.add(0, cur.getName());
+    while(cur.getParent() != null) {
+      cur = cur.getParent();
+      storageGroupNodes.add(0, cur.getName());
+    }
+    return storageGroupNodes;
   }
 
   /**

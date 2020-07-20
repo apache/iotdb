@@ -308,14 +308,14 @@ public class MManager {
         }
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
-        setStorageGroup(args[1]);
+        setStorageGroup(MetaUtils.getDeviceNodeNames(args[1]));
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP:
         List<String> storageGroups = new ArrayList<>(Arrays.asList(args).subList(1, args.length));
         deleteStorageGroups(storageGroups);
         break;
       case MetadataOperationType.SET_TTL:
-        setTTL(args[1], Long.parseLong(args[2]));
+        setTTL(MetaUtils.getDeviceNodeNames(args[1]), Long.parseLong(args[2]));
         break;
       case MetadataOperationType.CHANGE_OFFSET:
         changeOffset(args[1], Long.parseLong(args[2]));
@@ -398,17 +398,17 @@ public class MManager {
   /**
    * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
    *
-   * @param path the timeseries path
+   * @param nodes nodes of the timeseries path
    * @param dataType the dateType {@code DataType} of the timeseries
    * @param encoding the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    * @return whether the measurement occurs for the first time in this storage group (if true, the
    * measurement should be registered to the StorageEngine too)
    */
-  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
+  public void createTimeseries(List<String> nodes, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) throws MetadataException {
     createTimeseries(
-        new CreateTimeSeriesPlan(new Path(path), dataType, encoding, compressor, props, null, null,
+        new CreateTimeSeriesPlan(new Path(nodes), dataType, encoding, compressor, props, null, null,
             null));
   }
 
@@ -735,6 +735,24 @@ public class MManager {
     }
   }
 
+  /**
+   * Get series type for given seriesPath.
+   *
+   * @param nodes nodes of full path
+   */
+  public TSDataType getSeriesType(List<String> nodes) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      if (MetaUtils.getPathByNodes(nodes).equals(SQLConstant.RESERVED_TIME)) {
+        return TSDataType.INT64;
+      }
+
+      return mtree.getSchema(nodes).getType();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   public MeasurementSchema[] getSchemas(String deviceId, String[] measurements)
       throws MetadataException {
     lock.readLock().lock();
@@ -819,6 +837,22 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getStorageGroupName(nodes);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get storage group nodes by nodes
+   *
+   * <p>e.g., root.sg1 is a storage group and nodes = [root, sg1, d1], return [root, sg1]
+   *
+   * @return storage group in the given nodes
+   */
+  public List<String> getStorageGroupNameNodes(List<String> nodes) throws StorageGroupNotSetException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupNodes(nodes);
     } finally {
       lock.readLock().unlock();
     }
@@ -1080,11 +1114,11 @@ public class MManager {
     }
   }
 
-  public MeasurementSchema getSeriesSchema(String device, String measurement)
+  public MeasurementSchema getSeriesSchema(List<String> deviceNodes, String measurement)
       throws MetadataException {
     lock.readLock().lock();
     try {
-      MNode node = mtree.getNodeByPath(device);
+      MNode node = mtree.getNodeByNodes(deviceNodes);
       MNode leaf = node.getChild(measurement);
       if (leaf != null) {
         return ((MeasurementMNode) leaf).getSchema();
@@ -1163,6 +1197,19 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getStorageGroupNode(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get storage group node by path. If storage group is not set, StorageGroupNotSetException will
+   * be thrown
+   */
+  public StorageGroupMNode getStorageGroupNode(List<String> nodes) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupNode(nodes);
     } finally {
       lock.readLock().unlock();
     }
@@ -1330,12 +1377,12 @@ public class MManager {
     return maxSeriesNumberAmongStorageGroup;
   }
 
-  public void setTTL(String storageGroup, long dataTTL) throws MetadataException, IOException {
+  public void setTTL(List<String> storageGroupNodes, long dataTTL) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      getStorageGroupNode(storageGroup).setDataTTL(dataTTL);
+      getStorageGroupNode(storageGroupNodes).setDataTTL(dataTTL);
       if (!isRecovering) {
-        logWriter.setTTL(storageGroup, dataTTL);
+        logWriter.setTTL(MetaUtils.getPathByNodes(storageGroupNodes), dataTTL);
       }
     } finally {
       lock.writeLock().unlock();
@@ -2045,9 +2092,8 @@ public class MManager {
           }
 
           TSDataType dataType = getTypeInLoc(plan, i);
-
-          createTimeseries(
-            deviceNode.getFullPath() + measurementList[i],
+          nodes.add(measurementList[i]);
+          createTimeseries(nodes,
             dataType,
             getDefaultEncoding(dataType),
             TSFileDescriptor.getInstance().getConfig().getCompressor(),

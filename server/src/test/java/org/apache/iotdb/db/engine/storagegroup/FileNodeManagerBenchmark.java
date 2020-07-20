@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -51,11 +54,15 @@ public class FileNodeManagerBenchmark {
 
   private static String[] devices = new String[numOfDevice];
   private static String prefix = "root.bench";
+  private static List<String> prefixList = Arrays.asList("root", "bench");
+  private static List<List<String>> devicesList = new ArrayList<>(numOfDevice);
   private static String[] measurements = new String[numOfMeasurement];
 
   static {
     for (int i = 0; i < numOfDevice; i++) {
-      devices[i] = prefix + "." + "device_" + i;
+      List<String> device = new ArrayList<>(prefixList);
+      device.add("device_" + i);
+      devicesList.add(device);
     }
   }
 
@@ -69,9 +76,10 @@ public class FileNodeManagerBenchmark {
       throws MetadataException {
     MManager manager = IoTDB.metaManager;
     manager.setStorageGroup(prefix);
-    for (String device : devices) {
+    for (List<String> device : devicesList) {
       for (String measurement : measurements) {
-        manager.createTimeseries(device + "." + measurement, TSDataType.INT64,
+        device.add(measurement);
+        manager.createTimeseries(device, TSDataType.INT64,
             TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections
                 .emptyMap());
       }

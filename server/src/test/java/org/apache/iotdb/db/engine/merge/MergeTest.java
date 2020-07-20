@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -53,6 +54,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 abstract class MergeTest {
 
   static final String MERGE_TEST_SG = "root.mergeTest";
+  private static final List<String> MERGE_TEST_SG_LIST = Arrays.asList("root", "mergeTest");
 
   int seqFileNum = 5;
   int unseqFileNum = 5;
@@ -63,6 +65,7 @@ abstract class MergeTest {
   TSEncoding encoding = TSEncoding.PLAIN;
 
   String[] deviceIds;
+  private List<List<String>> deviceIdsList;
   MeasurementSchema[] measurementSchemas;
 
   List<TsFileResource> seqResources = new ArrayList<>();
@@ -99,15 +102,18 @@ abstract class MergeTest {
       measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
           encoding, CompressionType.UNCOMPRESSED);
     }
-    deviceIds = new String[deviceNum];
+    deviceIdsList = new ArrayList<>();
     for (int i = 0; i < deviceNum; i++) {
-      deviceIds[i] = MERGE_TEST_SG + PATH_SEPARATOR + "device" + i;
+      List<String> device = new ArrayList<>(MERGE_TEST_SG_LIST);
+      device.add("device" + i);
+      deviceIdsList.add(device);
     }
-    IoTDB.metaManager.setStorageGroup(MERGE_TEST_SG);
-    for (String device : deviceIds) {
+    IoTDB.metaManager.setStorageGroup(MERGE_TEST_SG_LIST);
+    for (List<String> device : deviceIdsList) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
+        device.add(measurementSchema.getMeasurementId());
         IoTDB.metaManager.createTimeseries(
-            device + PATH_SEPARATOR + measurementSchema.getMeasurementId(), measurementSchema
+            device, measurementSchema
                 .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());
       }

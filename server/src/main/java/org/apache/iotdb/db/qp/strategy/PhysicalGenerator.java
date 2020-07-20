@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -198,10 +197,10 @@ public class PhysicalGenerator {
         switch (operator.getTokenIntType()) {
           case SQLConstant.TOK_SET:
             SetTTLOperator setTTLOperator = (SetTTLOperator) operator;
-            return new SetTTLPlan(setTTLOperator.getStorageGroup(), setTTLOperator.getDataTTL());
+            return new SetTTLPlan(setTTLOperator.getStorageGroupNodes(), setTTLOperator.getDataTTL());
           case SQLConstant.TOK_UNSET:
             SetTTLOperator unsetTTLOperator = (SetTTLOperator) operator;
-            return new SetTTLPlan(unsetTTLOperator.getStorageGroup());
+            return new SetTTLPlan(unsetTTLOperator.getStorageGroupNodes());
           case SQLConstant.TOK_SHOW:
             ShowTTLOperator showTTLOperator = (ShowTTLOperator) operator;
             return new ShowTTLPlan(showTTLOperator.getStorageGroups());
@@ -270,7 +269,7 @@ public class PhysicalGenerator {
         return new ShowMergeStatusPlan();
       case DELETE_PARTITION:
         DeletePartitionOperator op = (DeletePartitionOperator) operator;
-        return new DeletePartitionPlan(op.getStorageGroupName(), op.getPartitionId());
+        return new DeletePartitionPlan(op.getStorageGroupNameNodes(), op.getPartitionId());
       case CREATE_SCHEMA_SNAPSHOT:
         return new CreateSnapshotPlan();
       default:

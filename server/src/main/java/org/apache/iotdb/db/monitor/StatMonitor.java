@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.monitor;
 
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
@@ -29,6 +31,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeManagerStatConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstants;
 import org.apache.iotdb.db.monitor.collector.FileSize;
@@ -85,7 +88,7 @@ public class StatMonitor implements IService {
     backLoopPeriod = config.getBackLoopPeriodSec();
     if (config.isEnableStatMonitor()) {
       try {
-        String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
+        List<String> prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX_LIST;
         if (!mmanager.isPathExist(prefix)) {
           mmanager.setStorageGroup(prefix);
         }
@@ -141,7 +144,7 @@ public class StatMonitor implements IService {
 
   void registerStatStorageGroup() {
     MManager mManager = IoTDB.metaManager;
-    String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
+    List<String> prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX_LIST;
     try {
       if (!mManager.isPathExist(prefix)) {
         mManager.setStorageGroup(prefix);
@@ -165,7 +168,7 @@ public class StatMonitor implements IService {
         }
 
         if (!mManager.isPathExist(entry.getKey())) {
-          mManager.createTimeseries(entry.getKey(), TSDataType.valueOf(entry.getValue()),
+          mManager.createTimeseries(Arrays.asList(MetaUtils.getNodeNames(entry.getKey())), TSDataType.valueOf(entry.getValue()),
               TSEncoding.valueOf("RLE"),
               TSFileDescriptor.getInstance().getConfig().getCompressor(),
               Collections.emptyMap());

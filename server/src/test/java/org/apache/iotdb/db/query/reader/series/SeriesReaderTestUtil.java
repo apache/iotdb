@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -56,8 +59,9 @@ public class SeriesReaderTestUtil {
   private static long flushInterval = 20;
   private static TSEncoding encoding = TSEncoding.PLAIN;
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
+  private static final List<String> SERIES_READER_TEST_SG_LIST = Arrays.asList("root", "seriesReaderTest");
 
-  public static void setUp(List<MeasurementSchema> measurementSchemas, List<String> deviceIds,
+  public static void setUp(List<MeasurementSchema> measurementSchemas, List<List<String>> deviceIds,
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources)
       throws MetadataException, IOException, WriteProcessException {
     IoTDB.metaManager.init();
@@ -78,7 +82,7 @@ public class SeriesReaderTestUtil {
 
   private static void prepareFiles(List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources, List<MeasurementSchema> measurementSchemas,
-      List<String> deviceIds) throws IOException, WriteProcessException {
+      List<List<String>> deviceIds) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
           i + "seq" + IoTDBConstant.FILE_NAME_SEPARATOR + i + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -117,7 +121,7 @@ public class SeriesReaderTestUtil {
   }
 
   private static void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
-      long valueOffset, List<MeasurementSchema> measurementSchemas, List<String> deviceIds)
+      long valueOffset, List<MeasurementSchema> measurementSchemas, List<List<String>> deviceIds)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
     Map<String, MeasurementSchema> template = new HashMap<>();
@@ -125,19 +129,20 @@ public class SeriesReaderTestUtil {
       template.put(measurementSchema.getMeasurementId(), measurementSchema);
     }
     fileWriter.registerDeviceTemplate("template0", template);
-    for (String deviceId : deviceIds) {
-      fileWriter.registerDevice(deviceId, "template0");
+    for (List<String> deviceId : deviceIds) {
+      fileWriter.registerDevice(MetaUtils.getPathByNodes(deviceId), "template0");
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
-      for (String deviceId : deviceIds) {
-        TSRecord record = new TSRecord(i, deviceId);
+      for (List<String> deviceId : deviceIds) {
+        String device = MetaUtils.getPathByNodes(deviceId);
+        TSRecord record = new TSRecord(i, device);
         for (MeasurementSchema measurementSchema : measurementSchemas) {
           record.addTuple(DataPoint.getDataPoint(measurementSchema.getType(),
               measurementSchema.getMeasurementId(), String.valueOf(i + valueOffset)));
         }
         fileWriter.write(record);
-        tsFileResource.updateStartTime(deviceId, i);
-        tsFileResource.updateEndTime(deviceId, i);
+        tsFileResource.updateStartTime(device, i);
+        tsFileResource.updateEndTime(device, i);
       }
       if ((i + 1) % flushInterval == 0) {
         fileWriter.flushAllChunkGroups();
@@ -149,19 +154,22 @@ public class SeriesReaderTestUtil {
 
 
   private static void prepareSeries(List<MeasurementSchema> measurementSchemas,
-      List<String> deviceIds) throws MetadataException {
+      List<List<String>> deviceIds) throws MetadataException {
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas.add(new MeasurementSchema("sensor" + i, TSDataType.INT32,
           encoding, CompressionType.UNCOMPRESSED));
     }
     for (int i = 0; i < deviceNum; i++) {
-      deviceIds.add(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device" + i);
+      List<String> deviceId = new ArrayList<>(SERIES_READER_TEST_SG_LIST);
+      deviceId.add("device" + i);
+      deviceIds.add(deviceId);
     }
     IoTDB.metaManager.setStorageGroup(SERIES_READER_TEST_SG);
-    for (String device : deviceIds) {
+    for (List<String> device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
+        device.add(measurementSchema.getMeasurementId());
         IoTDB.metaManager.createTimeseries(
-            device + PATH_SEPARATOR + measurementSchema.getMeasurementId(), measurementSchema
+            device, measurementSchema
                 .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());
       }
