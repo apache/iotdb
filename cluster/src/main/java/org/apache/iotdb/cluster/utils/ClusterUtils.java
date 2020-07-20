@@ -21,73 +21,56 @@ package org.apache.iotdb.cluster.utils;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
-import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ClusterUtils {
+
   private static final Logger logger = LoggerFactory.getLogger(ClusterUtils.class);
 
-  public static final int STARTUP_CHECK_THREAD_POOL_SIZE = 6;
+  public static final int WAIT_START_UP_CHECK_TIME_SEC = 5;
 
-  public static final int WAIT_START_UP_CHECK_TIME = 5;
+  public static final long START_UP_TIME_THRESHOLD_MS = 60 * 1000;
 
-  public static final TimeUnit WAIT_START_UP_CHECK_TIME_UNIT = TimeUnit.MINUTES;
-
-  public static final long START_UP_TIME_THRESHOLD = 1; // minute
-
-  public static final long START_UP_CHECK_TIME_INTERVAL = 5; // second
+  public static final long START_UP_CHECK_TIME_INTERVAL_MS = 3 * 1000;
 
   private ClusterUtils() {
     // util class
   }
 
-  public static CheckStatusResponse checkStatus(StartUpStatus startUpStatus, MetaGroupMember metaGroupMember) {
-    long remotePartitionInterval = startUpStatus.getPartitionInterval();
-    int remoteHashSalt = startUpStatus.getHashSalt();
-    int remoteReplicationNum = startUpStatus.getReplicationNumber();
-    List<Node> remoteSeedNodeList = startUpStatus.getSeedNodeList();
-    long localPartitionInterval = IoTDBDescriptor.getInstance().getConfig()
-        .getPartitionInterval();
-    int localHashSalt = ClusterConstant.HASH_SALT;
-    int localReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+  public static CheckStatusResponse checkStatus(StartUpStatus remoteStartUpStatus,
+      StartUpStatus localStartUpStatus) {
     boolean partitionIntervalEquals = true;
     boolean hashSaltEquals = true;
     boolean replicationNumEquals = true;
     boolean seedNodeListEquals = true;
 
-    if (localPartitionInterval != remotePartitionInterval) {
+    if (localStartUpStatus.getPartitionInterval() != remoteStartUpStatus.getPartitionInterval()) {
       partitionIntervalEquals = false;
-      logger.info("Remote partition interval conflicts with the leader's. Leader: {}, remote: {}",
-          localPartitionInterval, remotePartitionInterval);
+      logger.info("Remote partition interval conflicts with local. local: {}, remote: {}",
+          localStartUpStatus.getPartitionInterval(), remoteStartUpStatus.getPartitionInterval());
     }
-    if (localHashSalt != remoteHashSalt) {
+    if (localStartUpStatus.getHashSalt() != remoteStartUpStatus.getHashSalt()) {
       hashSaltEquals = false;
-      logger.info("Remote hash salt conflicts with the leader's. Leader: {}, remote: {}",
-          localHashSalt, remoteHashSalt);
+      logger.info("Remote hash salt conflicts with local. local: {}, remote: {}",
+          localStartUpStatus.getHashSalt(), remoteStartUpStatus.getHashSalt());
     }
-    if (localReplicationNum != remoteReplicationNum) {
+    if (localStartUpStatus.getReplicationNumber() != remoteStartUpStatus.getReplicationNumber()) {
       replicationNumEquals = false;
-      logger.info("Remote replication number conflicts with the leader's. Leader: {}, remote: {}",
-          localReplicationNum, remoteReplicationNum);
+      logger.info("Remote replication number conflicts with local. local: {}, remote: {}",
+          localStartUpStatus.getReplicationNumber(), remoteStartUpStatus.getReplicationNumber());
     }
     if (!ClusterUtils
-        .checkSeedNodes(false, (List<Node>) metaGroupMember.getAllNodes(), remoteSeedNodeList)) {
+        .checkSeedNodes(false, localStartUpStatus.getSeedNodeList(), remoteStartUpStatus.getSeedNodeList())) {
       seedNodeListEquals = false;
       if (logger.isInfoEnabled()) {
-        logger.info("Remote seed node list conflicts with the leader's. Leader: {}, remote: {}",
-            Arrays.toString(metaGroupMember.getAllNodes().toArray(new Node[0])),
-            Arrays.toString(remoteSeedNodeList.toArray(new Node[0])));
+        logger.info("Remote seed node list conflicts with local. local: {}, remote: {}",
+            localStartUpStatus.getSeedNodeList(), remoteStartUpStatus.getSeedNodeList());
       }
     }
 
@@ -158,25 +141,25 @@ public class ClusterUtils {
   }
 
   public static void examineCheckStatusResponse(CheckStatusResponse response,
-      AtomicInteger consistentNum, AtomicInteger inconsistentNum) {
+      AtomicInteger consistentNum, AtomicInteger inconsistentNum, Node seedNode) {
     boolean partitionIntervalEquals = response.partitionalIntervalEquals;
     boolean hashSaltEquals = response.hashSaltEquals;
     boolean replicationNumEquals = response.replicationNumEquals;
     boolean seedNodeListEquals = response.seedNodeEquals;
     if (!partitionIntervalEquals) {
       logger.info(
-          "Local partition interval conflicts with the majority of seed nodes.");
+          "Local partition interval conflicts with seed node[{}].", seedNode);
     }
     if (!hashSaltEquals) {
       logger
-          .info("Local hash salt conflicts with the majority of seed nodes.");
+          .info("Local hash salt conflicts with seed node[{}]", seedNode);
     }
     if (!replicationNumEquals) {
       logger.info(
-          "Local replication number conflicts with the majority of seed nodes.");
+          "Local replication number conflicts with seed node[{}]", seedNode);
     }
     if (!seedNodeListEquals) {
-      logger.info("Local seed node list conflicts with the majority of seed nodes.");
+      logger.info("Local seed node list conflicts with seed node[{}]", seedNode);
     }
     if (partitionIntervalEquals
         && hashSaltEquals
@@ -189,27 +172,16 @@ public class ClusterUtils {
   }
 
   public static boolean analyseStartUpCheckResult(int consistentNum, int inconsistentNum,
-      int totalSeedNum, long timeElapsed) {
-    if (consistentNum >= (totalSeedNum + 1) / 2) {
+      int totalSeedNum) throws ConfigInconsistentException {
+    if (consistentNum == totalSeedNum) {
       // break the loop and establish the cluster
       return true;
-    } else if (inconsistentNum >= (totalSeedNum + 1) / 2) {
-      // this node is not consistent with the cluster, shut down
-      throw new ConfigInconsistentException();
+    } else if (inconsistentNum == 0) {
+      // can't connect other nodes, try in next turn
+      return false;
     } else {
-      // If reach the start up time threshold, shut down.
-      // Otherwise, wait for a while, start the loop again.
-      if (timeElapsed > START_UP_TIME_THRESHOLD * 60 * 1000) {
-        throw new StartUpCheckFailureException();
-      } else {
-        try {
-          Thread.sleep(START_UP_CHECK_TIME_INTERVAL * 1000);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.error("Unexpected interruption when waiting for next start up check", e);
-        }
-      }
+      // find config InConsistence, stop building cluster
+      throw new ConfigInconsistentException();
     }
-    return false;
   }
 }

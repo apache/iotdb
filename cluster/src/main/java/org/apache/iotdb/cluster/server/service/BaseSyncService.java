@@ -89,7 +89,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   @Override
   public long requestCommitIndex(Node header)
       throws TException {
-    long commitIndex = member.requestCommitIndex(header);
+    long commitIndex = member.requestCommitIndex();
     if (commitIndex != Long.MIN_VALUE) {
       return commitIndex;
     }

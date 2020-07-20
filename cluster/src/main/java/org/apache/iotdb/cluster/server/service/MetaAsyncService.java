@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.cluster.server.service;
 
-import java.util.Arrays;
-import java.util.List;
-import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
@@ -39,7 +35,6 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -105,7 +100,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   @Override
   public void checkStatus(StartUpStatus startUpStatus,
       AsyncMethodCallback<CheckStatusResponse> resultHandler) {
-    CheckStatusResponse response = ClusterUtils.checkStatus(startUpStatus, metaGroupMember);
+    CheckStatusResponse response = ClusterUtils.checkStatus(startUpStatus, metaGroupMember.getNewStartUpStatus());
     resultHandler.onComplete(response);
   }
 

@@ -80,7 +80,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
 
   @Override
   public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
-    long commitIndex = member.requestCommitIndex(header);
+    long commitIndex = member.requestCommitIndex();
     if (commitIndex != Long.MIN_VALUE) {
       resultHandler.onComplete(commitIndex);
       return;

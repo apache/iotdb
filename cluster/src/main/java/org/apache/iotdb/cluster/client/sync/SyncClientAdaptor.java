@@ -46,7 +46,6 @@ import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.RaftServer;
-import org.apache.iotdb.cluster.server.handlers.caller.CheckStartUpStatusHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
@@ -70,9 +69,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 
 /**
- * SyncClientAdaptor convert the async of AsyncClient method call to a sync one by synchronizing
- * on an AtomicReference of the return value of an RPC, and wait for at most
- * connectionTimeoutInMS until the reference is set by the handler or the request timeouts.
+ * SyncClientAdaptor convert the async of AsyncClient method call to a sync one by synchronizing on
+ * an AtomicReference of the return value of an RPC, and wait for at most connectionTimeoutInMS
+ * until the reference is set by the handler or the request timeouts.
  */
 @SuppressWarnings("java:S2274") // enable timeout
 public class SyncClientAdaptor {
@@ -194,15 +193,13 @@ public class SyncClientAdaptor {
 
   public static CheckStatusResponse checkStatus(AsyncMetaClient client, StartUpStatus startUpStatus)
       throws TException, InterruptedException {
-    AtomicReference<CheckStatusResponse> response
-        = new AtomicReference<>(null);
-    CheckStartUpStatusHandler handler = new CheckStartUpStatusHandler();
-    handler.setResponse(response);
-    synchronized (response) {
+    AtomicReference<CheckStatusResponse> resultRef = new AtomicReference<>();
+    GenericHandler<CheckStatusResponse> handler = new GenericHandler<>(client.getNode(), resultRef);
+    synchronized (resultRef) {
       client.checkStatus(startUpStatus, handler);
-      response.wait(10 * 1000L);
+      resultRef.wait(RaftServer.getConnectionTimeoutInMS());
     }
-    return response.get();
+    return resultRef.get();
   }
 
   public static AddNodeResponse addNode(AsyncMetaClient client, Node thisNode, StartUpStatus startUpStatus)

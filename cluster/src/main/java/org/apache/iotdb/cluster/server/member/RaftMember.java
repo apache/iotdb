@@ -740,6 +740,7 @@ public abstract class RaftMember {
 
   /**
    * NOTICE: client.putBack() must be called after use.
+   *
    * @param node
    * @return
    */
@@ -1359,7 +1360,7 @@ public abstract class RaftMember {
    * @param header        to determine the DataGroupMember in data groups
    * @return Long.MIN_VALUE if the node is not a leader, or the commitIndex
    */
-  public long requestCommitIndex(Node header) {
+  public long requestCommitIndex() {
     if (character == NodeCharacter.LEADER) {
       return logManager.getCommitLogIndex();
     } else {
@@ -1378,7 +1379,7 @@ public abstract class RaftMember {
   public ByteBuffer readFile(String filePath, long offset, int length) throws IOException {
     File file = new File(filePath);
     if (!file.exists()) {
-      return  ByteBuffer.allocate(0);
+      return ByteBuffer.allocate(0);
     }
 
     ByteBuffer result;
