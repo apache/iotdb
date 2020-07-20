@@ -2688,7 +2688,7 @@ public class MetaGroupMember extends RaftMember {
     }
     getAllPathsService.shutdown();
     try {
-      getAllPathsService.awaitTermination(RaftServer.getQueryTimeoutInSec(), TimeUnit.SECONDS);
+      getAllPathsService.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
@@ -3391,7 +3391,7 @@ public class MetaGroupMember extends RaftMember {
     }
     fillService.shutdown();
     try {
-      fillService.awaitTermination(RaftServer.getQueryTimeoutInSec(), TimeUnit.SECONDS);
+      fillService.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for fill pool to stop", e);

@@ -56,8 +56,8 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
   private static final Logger logger = LoggerFactory.getLogger(RaftServer.class);
   private static int connectionTimeoutInMS =
       ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
-  private static int queryTimeoutInSec =
-      ClusterDescriptor.getInstance().getConfig().getQueryTimeoutInSec();
+  private static int readOperationTimeoutMS =
+      ClusterDescriptor.getInstance().getConfig().getReadOperationTimeoutMS();
   private static int syncLeaderMaxWaitMs = 20 * 1000;
   private static long heartBeatIntervalMs = 1000L;
 
@@ -93,8 +93,8 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
     RaftServer.connectionTimeoutInMS = connectionTimeoutInMS;
   }
 
-  public static int getQueryTimeoutInSec() {
-    return queryTimeoutInSec;
+  public static int getReadOperationTimeoutMS() {
+    return readOperationTimeoutMS;
   }
 
   public static int getSyncLeaderMaxWaitMs() {

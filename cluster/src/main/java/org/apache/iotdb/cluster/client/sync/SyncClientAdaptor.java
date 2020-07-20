@@ -302,7 +302,7 @@ public class SyncClientAdaptor {
     GenericHandler<ByteBuffer> nodeHandler = new GenericHandler<>(client.getNode(), resultRef);
     synchronized (resultRef) {
       client.previousFill(request, nodeHandler);
-      resultRef.wait(RaftServer.getQueryTimeoutInSec() * 1000L);
+      resultRef.wait(RaftServer.getReadOperationTimeoutMS());
     }
     return resultRef.get();
   }

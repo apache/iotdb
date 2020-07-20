@@ -56,7 +56,9 @@ public class ClusterConfig {
    */
   private long maxUnsnapshotedLogSize = 1024 * 1024 * 128L;
 
-  private int queryTimeoutInSec = 30;
+  private int readOperationTimeoutMS = 30 * 1000;
+
+  private int writeOperationTimeoutMS = 30 * 1000;
 
   private boolean useBatchInLogCatchUp = true;
 
@@ -203,12 +205,20 @@ public class ClusterConfig {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
   }
 
-  public int getQueryTimeoutInSec() {
-    return queryTimeoutInSec;
+  public int getReadOperationTimeoutMS() {
+    return readOperationTimeoutMS;
   }
 
-  public void setQueryTimeoutInSec(int queryTimeoutInSec) {
-    this.queryTimeoutInSec = queryTimeoutInSec;
+  public void setReadOperationTimeoutMS(int readOperationTimeoutMS) {
+    this.readOperationTimeoutMS = readOperationTimeoutMS;
+  }
+
+  public int getWriteOperationTimeoutMS() {
+    return writeOperationTimeoutMS;
+  }
+
+  public void setWriteOperationTimeoutMS(int writeOperationTimeoutMS) {
+    this.writeOperationTimeoutMS = writeOperationTimeoutMS;
   }
 
   public int getMaxNumberOfLogs() {
