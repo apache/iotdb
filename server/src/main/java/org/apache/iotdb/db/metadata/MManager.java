@@ -789,6 +789,22 @@ public class MManager {
   }
 
   /**
+   * Get all devices under given prefixPath.
+   *
+   * @param prefixPathNodes nodes of a prefix of a full path. if the wildcard is not at the tail, then each
+   * wildcard can only match one level, otherwise it can match to the tail.
+   * @return A HashSet instance which stores devices names with given prefixPath.
+   */
+  public Set<Path> getDevices(List<String> prefixPathNodes) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getDevicesPath(prefixPathNodes);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * Get all nodes from the given level
    *
    * @param prefixPath can be a prefix of a full path. Can not be a full path. can not have
@@ -905,7 +921,7 @@ public class MManager {
    * @param prefixPathNodes can be a prefix or a full path. if the wildcard is not at the tail, then each
    * wildcard can only match one level, otherwise it can match to the tail.
    */
-  public List<List<String>> getAllTimeseriesName(List<String> prefixPathNodes) throws MetadataException {
+  public List<List<String>> getAllTimeseriesNodes(List<String> prefixPathNodes) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesNameNodes(prefixPathNodes);
@@ -914,8 +930,9 @@ public class MManager {
     }
   }
 
+
   /**
-   * Similar to method getAllTimeseriesName(), but return Path instead of String in order to include
+   * Similar to method getAllTimeseriesNodes(), but return Path instead of String in order to include
    * alias.
    */
   public List<Path> getAllTimeseriesPath(String prefixPath) throws MetadataException {

@@ -1304,6 +1304,20 @@ public class MTree implements Serializable {
    *
    * @return a list contains all distinct devices names
    */
+  Set<String> getDevices(List<String> nodes) throws MetadataException {
+    if (nodes.isEmpty() || !nodes.get(0).equals(root.getName())) {
+      throw new IllegalPathException(MetaUtils.getPathByNodes(nodes));
+    }
+    Set<String> devices = new TreeSet<>();
+    findDevices(root, nodes.toArray(new String[0]), 1, devices);
+    return devices;
+  }
+
+  /**
+   * Get all devices under give path
+   *
+   * @return a list contains all distinct devices names
+   */
   Set<String> getDevices(String prefixPath) throws MetadataException {
     String[] nodes = MetaUtils.getNodeNames(prefixPath);
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
@@ -1340,6 +1354,70 @@ public class MTree implements Serializable {
           deviceAdded = true;
         }
         findDevices(child, nodes, idx + 1, res);
+      }
+    }
+  }
+
+
+  /**
+   * Get all devices under nodes of give path
+   *
+   * @return a list contains all distinct devices names
+   */
+  Set<Path> getDevicesPath(List<String> nodes) throws MetadataException {
+    if (nodes.isEmpty() || !nodes.get(0).equals(root.getName())) {
+      throw new IllegalPathException(MetaUtils.getPathByNodes(nodes));
+    }
+    Set<Path> devices = new TreeSet<>();
+    findDevicesPath(root, nodes.toArray(new String[0]), 1, devices);
+    return devices;
+  }
+
+
+
+
+  /**
+   * Traverse the MTree to match all devices with prefix path.
+   *
+   * @param node  the current traversing node
+   * @param nodes split the prefix path with '.'
+   * @param idx   the current index of array nodes
+   * @param res   store all matched device names
+   */
+  private void findDevicesPath(MNode node, String[] nodes, int idx, Set<Path> res) {
+    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
+    if (!(PATH_WILDCARD).equals(nodeReg)) {
+      if (node.hasChild(nodeReg)) {
+        if (node.getChild(nodeReg) instanceof MeasurementMNode) {
+          List<String> nodeNames = new ArrayList<>();
+          nodeNames.add(0, node.getName());
+          while(!node.getParent().getName().equals(IoTDBConstant.PATH_ROOT)) {
+            node = node.getParent();
+            nodeNames.add(0, node.getName());
+          }
+          Path path = new Path(nodeNames);
+          path.setDevice(node.getFullPath());
+          res.add(path);
+        } else {
+          findDevicesPath(node.getChild(nodeReg), nodes, idx + 1, res);
+        }
+      }
+    } else {
+      boolean deviceAdded = false;
+      for (MNode child : node.getChildren().values()) {
+        if (child instanceof MeasurementMNode && !deviceAdded) {
+          List<String> nodeNames = new ArrayList<>();
+          nodeNames.add(0, node.getName());
+          while(!node.getParent().getName().equals(IoTDBConstant.PATH_ROOT)) {
+            node = node.getParent();
+            nodeNames.add(0, node.getName());
+          }
+          Path path = new Path(nodeNames);
+          path.setDevice(node.getFullPath());
+          res.add(path);
+          deviceAdded = true;
+        }
+        findDevicesPath(child, nodes, idx + 1, res);
       }
     }
   }

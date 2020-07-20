@@ -428,7 +428,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<List<String>> getPathsName(List<String> nodes) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesName(nodes);
+    return IoTDB.metaManager.getAllTimeseriesNodes(nodes);
   }
 
   protected List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
