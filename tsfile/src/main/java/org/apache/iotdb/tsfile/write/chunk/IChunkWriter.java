@@ -20,6 +20,9 @@ package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -116,4 +119,7 @@ public interface IChunkWriter {
   int getNumOfPages();
 
   TSDataType getDataType();
+
+  void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
+      throws PageException;
 }

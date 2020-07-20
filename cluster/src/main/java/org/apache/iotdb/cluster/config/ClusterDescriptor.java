@@ -113,18 +113,18 @@ public class ClusterDescriptor {
       logger.error("replaces properties failed, use default conf params");
     } else {
       if (commandLine.hasOption(OPTION_META_PORT)) {
-        config.setLocalMetaPort(Integer.parseInt(commandLine.getOptionValue(OPTION_META_PORT)));
-        logger.debug("replace local meta port with={}", config.getLocalMetaPort());
+        config.setInternalMetaPort(Integer.parseInt(commandLine.getOptionValue(OPTION_META_PORT)));
+        logger.debug("replace local meta port with={}", config.getInternalMetaPort());
       }
 
       if (commandLine.hasOption(OPTION_DATA_PORT)) {
-        config.setLocalDataPort(Integer.parseInt(commandLine.getOptionValue(OPTION_DATA_PORT)));
-        logger.debug("replace local data port with={}", config.getLocalDataPort());
+        config.setInternalDataPort(Integer.parseInt(commandLine.getOptionValue(OPTION_DATA_PORT)));
+        logger.debug("replace local data port with={}", config.getInternalDataPort());
       }
 
       if (commandLine.hasOption(OPTION_CLIENT_PORT)) {
-        config.setLocalClientPort(Integer.parseInt(commandLine.getOptionValue(OPTION_CLIENT_PORT)));
-        logger.debug("replace local client port with={}", config.getLocalClientPort());
+        config.setClusterRpcPort(Integer.parseInt(commandLine.getOptionValue(OPTION_CLIENT_PORT)));
+        logger.debug("replace local client port with={}", config.getClusterRpcPort());
       }
 
       if (commandLine.hasOption(OPTION_SEED_NODES)) {
@@ -136,10 +136,10 @@ public class ClusterDescriptor {
   }
 
   public void replaceHostnameWithIp() throws UnknownHostException, BadSeedUrlFormatException {
-    boolean isInvalidLocalIp = InetAddresses.isInetAddress(config.getLocalIP());
-    if (!isInvalidLocalIp) {
-      String localIP = hostnameToIP(config.getLocalIP());
-      config.setLocalIP(localIP);
+    boolean isInvalidClusterRpcIp = InetAddresses.isInetAddress(config.getClusterRpcIp());
+    if (!isInvalidClusterRpcIp) {
+      String clusterRpcIp = hostnameToIP(config.getClusterRpcIp());
+      config.setClusterRpcIp(clusterRpcIp);
     }
 
     List<String> newSeedUrls = new ArrayList<>();
@@ -158,7 +158,7 @@ public class ClusterDescriptor {
       }
     }
     config.setSeedNodeUrls(newSeedUrls);
-    logger.debug("after replace, the localIP={}, seedUrls={}", config.getLocalIP(),
+    logger.debug("after replace, the clusterRpcIP={}, seedUrls={}", config.getClusterRpcIp(),
         config.getSeedNodeUrls());
   }
 
@@ -188,28 +188,28 @@ public class ClusterDescriptor {
         logger.warn("Fail to find config file {}", url, e);
       }
     }
-    config.setLocalIP(properties.getProperty("LOCAL_IP", config.getLocalIP()));
+    config.setClusterRpcIp(properties.getProperty("cluster_rpc_ip", config.getClusterRpcIp()));
 
-    config.setLocalMetaPort(Integer.parseInt(properties.getProperty("LOCAL_META_PORT",
-        String.valueOf(config.getLocalMetaPort()))));
+    config.setInternalMetaPort(Integer.parseInt(properties.getProperty("internal_meta_port",
+        String.valueOf(config.getInternalMetaPort()))));
 
-    config.setLocalDataPort(Integer.parseInt(properties.getProperty("LOCAL_DATA_PORT",
-        Integer.toString(config.getLocalDataPort()))));
+    config.setInternalDataPort(Integer.parseInt(properties.getProperty("internal_data_port",
+        Integer.toString(config.getInternalDataPort()))));
 
-    config.setLocalClientPort(Integer.parseInt(properties.getProperty("LOCAL_CLIENT_PORT",
-        Integer.toString(config.getLocalClientPort()))));
+    config.setClusterRpcPort(Integer.parseInt(properties.getProperty("cluster_rpc_port",
+        Integer.toString(config.getClusterRpcPort()))));
 
     config.setMaxConcurrentClientNum(Integer.parseInt(properties.getProperty(
-        "MAX_CONCURRENT_CLIENT_NUM", String.valueOf(config.getMaxConcurrentClientNum()))));
+        "max_concurrent_client_num", String.valueOf(config.getMaxConcurrentClientNum()))));
 
     config.setReplicationNum(Integer.parseInt(properties.getProperty(
-        "REPLICA_NUM", String.valueOf(config.getReplicationNum()))));
+        "default_replica_num", String.valueOf(config.getReplicationNum()))));
 
     config.setRpcThriftCompressionEnabled(Boolean.parseBoolean(properties.getProperty(
-        "ENABLE_THRIFT_COMPRESSION", String.valueOf(config.isRpcThriftCompressionEnabled()))));
+        "rpc_thrift_compression_enable", String.valueOf(config.isRpcThriftCompressionEnabled()))));
 
     config
-        .setConnectionTimeoutInMS(Integer.parseInt(properties.getProperty("CONNECTION_TIME_OUT_MS",
+        .setConnectionTimeoutInMS(Integer.parseInt(properties.getProperty("connection_time_out_ms",
             String.valueOf(config.getConnectionTimeoutInMS()))));
 
     config
@@ -217,29 +217,29 @@ public class ClusterDescriptor {
             String.valueOf(config.getQueryTimeoutInSec()))));
 
     config
-        .setMaxRemovedLogSize(Long.parseLong(properties.getProperty("MAX_REMOVED_LOG_SIZE",
-            String.valueOf(config.getMaxRemovedLogSize()))));
+        .setMaxUnsnapshotedLogSize(Long.parseLong(properties.getProperty("max_unsnapshoted_log_size",
+            String.valueOf(config.getMaxUnsnapshotedLogSize()))));
 
     config.setUseBatchInLogCatchUp(Boolean.parseBoolean(properties.getProperty(
-        "USE_BATCH_IN_CATCH_UP", String.valueOf(config.isUseBatchInLogCatchUp()))));
+        "use_batch_in_catch_up", String.valueOf(config.isUseBatchInLogCatchUp()))));
 
     config.setMaxNumberOfLogs(Integer.parseInt(
-        properties.getProperty("MAX_NUMBER_OF_LOGS", String.valueOf(config.getMaxNumberOfLogs()))));
+        properties.getProperty("max_number_of_logs", String.valueOf(config.getMaxNumberOfLogs()))));
 
     config.setLogDeleteCheckIntervalSecond(Integer.parseInt(properties
-        .getProperty("LOG_DELETION_CHECK_INTERVAL_SECOND",
+        .getProperty("log_deletion_check_interval_second",
             String.valueOf(config.getLogDeleteCheckIntervalSecond()))));
 
     config.setEnableAutoCreateSchema(Boolean.parseBoolean(properties
-        .getProperty("ENABLE_AUTO_CREATE_SCHEMA",
+        .getProperty("enable_auto_create_schema",
             String.valueOf(config.isEnableAutoCreateSchema()))));
 
-    String consistencyLevel = properties.getProperty("CONSISTENCY_LEVEL");
+    String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));
     }
 
-    String seedUrls = properties.getProperty("SEED_NODES");
+    String seedUrls = properties.getProperty("seed_nodes");
     if (seedUrls != null) {
       List<String> urlList = getSeedUrlList(seedUrls);
       config.setSeedNodeUrls(urlList);
@@ -296,14 +296,14 @@ public class ClusterDescriptor {
   public void loadHotModifiedProps(Properties properties) {
 
     config.setMaxConcurrentClientNum(Integer.parseInt(properties
-        .getProperty("MAX_CONCURRENT_CLIENT_NUM",
+        .getProperty("max_concurrent_client_num",
             String.valueOf(config.getMaxConcurrentClientNum()))));
 
     config.setConnectionTimeoutInMS(Integer.parseInt(properties
-        .getProperty("CONNECTION_TIME_OUT_MS", String.valueOf(config.getConnectionTimeoutInMS()))));
+        .getProperty("connection_time_out_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
 
-    config.setMaxRemovedLogSize(Long.parseLong(properties
-        .getProperty("MAX_REMOVED_LOG_SIZE", String.valueOf(config.getMaxRemovedLogSize()))));
+    config.setMaxUnsnapshotedLogSize(Long.parseLong(properties
+        .getProperty("max_unsnapshoted_log_size", String.valueOf(config.getMaxUnsnapshotedLogSize()))));
 
     logger.info("Set cluster configuration {}", properties);
   }

@@ -50,7 +50,7 @@ public class SlotTsFileFilter implements TsFileFilter {
     int slot = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName, partitionNum,
         ClusterConstant.SLOT_NUM);
     boolean contained = nodeSlots.contains(slot);
-    logger.debug("The slot of {} is {}, contained: {}", res.getFile().getPath(), slot, contained);
+    logger.debug("The slot of {} is {}, contained: {}", res.getTsFile().getPath(), slot, contained);
     return !contained;
   }
 }

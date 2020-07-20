@@ -36,7 +36,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -59,8 +58,8 @@ public class TestUtils {
   public static Node getNode(int nodeNum) {
     Node node = new Node();
     node.setIp("192.168.0." + nodeNum);
-    node.setMetaPort(ClusterDescriptor.getInstance().getConfig().getLocalMetaPort());
-    node.setDataPort(ClusterDescriptor.getInstance().getConfig().getLocalDataPort());
+    node.setMetaPort(ClusterDescriptor.getInstance().getConfig().getInternalMetaPort());
+    node.setDataPort(ClusterDescriptor.getInstance().getConfig().getInternalDataPort());
     node.setNodeIdentifier(nodeNum);
     return node;
   }

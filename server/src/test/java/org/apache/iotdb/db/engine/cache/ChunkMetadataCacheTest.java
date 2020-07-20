@@ -102,7 +102,7 @@ public class ChunkMetadataCacheTest {
     for (int j = 11; j <= 20; j++) {
       insertOneRecord(j, j);
     }
-    storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
+    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 21; j <= 30; j += 2) {
       insertOneRecord(j, 0); // will be covered when read
@@ -127,15 +127,14 @@ public class ChunkMetadataCacheTest {
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
 
     Assert.assertEquals(1, seqResources.size());
-    Assert.assertEquals(4, unseqResources.size());
+    Assert.assertEquals(3, unseqResources.size());
     Assert.assertTrue(seqResources.get(0).isClosed());
     Assert.assertTrue(unseqResources.get(0).isClosed());
     Assert.assertTrue(unseqResources.get(1).isClosed());
     Assert.assertTrue(unseqResources.get(2).isClosed());
-    Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
 
@@ -149,15 +148,14 @@ public class ChunkMetadataCacheTest {
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
 
     Assert.assertEquals(1, seqResources.size());
-    Assert.assertEquals(4, unseqResources.size());
+    Assert.assertEquals(3, unseqResources.size());
     Assert.assertTrue(seqResources.get(0).isClosed());
     Assert.assertTrue(unseqResources.get(0).isClosed());
     Assert.assertTrue(unseqResources.get(1).isClosed());
     Assert.assertTrue(unseqResources.get(2).isClosed());
-    Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
 

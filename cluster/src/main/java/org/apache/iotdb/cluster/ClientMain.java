@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.cluster;
 
-import static org.apache.iotdb.db.tools.logvisual.VisualUtils.parseIntArray;
-
-import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -58,9 +55,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -234,6 +229,18 @@ public class ClientMain {
       System.out.println("Test batch create sgs");
       testBatch(ip, port);
     }
+  }
+
+  private static int[] parseIntArray(String str) {
+    if (str == null) {
+      return new int[0];
+    }
+    String[] split = str.split(",");
+    int[] ret = new int[split.length];
+    for (int i = 0; i < split.length; i++) {
+      ret[i] = Integer.parseInt(split[i]);
+    }
+    return ret;
   }
 
   protected static long connectClient(Client client) throws TException {

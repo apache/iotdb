@@ -137,8 +137,8 @@ public class ClientServer extends TSServiceImpl {
     } else {
       protocolFactory = new TBinaryProtocol.Factory();
     }
-    serverTransport = new TServerSocket(new InetSocketAddress(config.getLocalIP(),
-        config.getLocalClientPort()));
+    serverTransport = new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
+        config.getClusterRpcPort()));
     // async service also requires nonblocking server, and HsHaServer is basically more efficient a
     // nonblocking server
     TThreadPoolServer.Args poolArgs =

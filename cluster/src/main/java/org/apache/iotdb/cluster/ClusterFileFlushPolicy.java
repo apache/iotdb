@@ -51,9 +51,8 @@ public class ClusterFileFlushPolicy implements TsFileFlushPolicy {
   @Override
   public void apply(StorageGroupProcessor storageGroupProcessor, TsFileProcessor processor,
       boolean isSeq) {
-    logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
-        processor.getWorkMemTableMemory(),
-        processor.getTsFileResource().getFile().getAbsolutePath());
+    logger.info("The memtable size reaches the threshold, async flush it to tsfile: {}",
+        processor.getTsFileResource().getTsFile().getAbsolutePath());
 
     if (processor.shouldClose()) {
       // find the related DataGroupMember and close the processor through it

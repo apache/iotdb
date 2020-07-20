@@ -345,11 +345,7 @@ public class StorageEngine implements IService {
     }
 
     // TODO monitor: update statistics
-    try {
-      storageGroupProcessor.insertTablet(insertTabletPlan);
-    } catch (WriteProcessException e) {
-      throw new StorageEngineException(e);
-    }
+    storageGroupProcessor.insertTablet(insertTabletPlan);
   }
 
   /**
@@ -543,7 +539,7 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws StorageEngineException, LoadFileException {
-    getProcessor(newTsFileResource.getFile().getParentFile().getName())
+    getProcessor(newTsFileResource.getTsFile().getParentFile().getName())
         .loadNewTsFileForSync(newTsFileResource);
   }
 
