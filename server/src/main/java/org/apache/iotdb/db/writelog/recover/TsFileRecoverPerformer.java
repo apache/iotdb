@@ -168,7 +168,8 @@ public class TsFileRecoverPerformer {
           }
         }
         recoverResourceFromWriter(restorableTsFileIOWriter, resource);
-        boolean vmFileNotCrashed = !getFlushLogFile(restorableTsFileIOWriter).exists();
+        File flushLog = getFlushLogFile(restorableTsFileIOWriter);
+        boolean vmFileNotCrashed = !flushLog.exists();
         // if the last file in vmTsFileResources is not crashed
         if (vmFileNotCrashed) {
           try {
@@ -204,12 +205,18 @@ public class TsFileRecoverPerformer {
                 "recover the resource file failed: " + filePath
                     + RESOURCE_SUFFIX + e);
           }
+        } else {
+          // tsfile has crashed
+          // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
+          // map must be updated first to avoid duplicated insertion
+          recoverResourceFromWriter(lastRestorableTsFileIOWriter, lastTsFileResource);
+          // after recover, delete the .flush file
+          try {
+            Files.delete(flushLog.toPath());
+          } catch (IOException e) {
+            logger.error("delete vm flush log file error ", e);
+          }
         }
-      } else {
-        // tsfile has crashed
-        // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
-        // map must be updated first to avoid duplicated insertion
-        recoverResourceFromWriter(lastRestorableTsFileIOWriter, lastTsFileResource);
       }
     }
 
