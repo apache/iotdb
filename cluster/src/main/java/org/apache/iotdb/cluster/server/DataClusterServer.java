@@ -517,6 +517,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       value.stop();
     }
     headerGroupMap.clear();
+    asyncServiceMap.clear();
+    syncServiceMap.clear();
 
     List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
     for (PartitionGroup partitionGroup : partitionGroups) {

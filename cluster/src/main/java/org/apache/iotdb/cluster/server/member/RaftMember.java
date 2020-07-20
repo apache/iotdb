@@ -1432,7 +1432,6 @@ public abstract class RaftMember {
    * Tell the requester the current commit index if the local node is the leader of the group headed
    * by header. Or forward it to the leader. Otherwise report an error.
    *
-   * @param header to determine the DataGroupMember in data groups
    * @return Long.MIN_VALUE if the node is not a leader, or the commitIndex
    */
   public long requestCommitIndex() {
