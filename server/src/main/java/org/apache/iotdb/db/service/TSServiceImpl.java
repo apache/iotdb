@@ -95,9 +95,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesWithNodesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesWithNodesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -1299,7 +1297,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     plan.setDeleteEndTime(req.getEndTime());
     List<Path> paths = new ArrayList<>();
     for (String path : req.getPaths()) {
-      paths.add(new Path(path));
+      paths.add(new Path(splitPathToNodes(path)));
     }
     plan.addPaths(paths);
 
@@ -1389,12 +1387,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
-    TSStatus status = checkPathValidity(storageGroup);
+    List<String> storageGroupNodes = splitPathToNodes(storageGroup);
+    TSStatus status = checkPathValidityWithNodes(storageGroupNodes);
     if (status != null) {
       return status;
     }
 
-    SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(splitPathWithoutQuote(storageGroup)));
+    SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(storageGroupNodes));
     status = checkAuthority(plan, sessionId);
     if (status != null) {
       return new TSStatus(status);
@@ -1410,7 +1409,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     List<Path> storageGroupList = new ArrayList<>();
     for (String storageGroup : storageGroups) {
-      storageGroupList.add(new Path(storageGroup));
+      storageGroupList.add(new Path(splitPathToNodes(storageGroup)));
     }
     DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(storageGroupList);
     TSStatus status = checkAuthority(plan, sessionId);
@@ -1430,12 +1429,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (auditLogger.isDebugEnabled()) {
       auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
     }
-    TSStatus status = checkPathValidity(req.path);
+    List<String> seriesNodes = splitPathToNodes(req.path);
+    TSStatus status = checkPathValidityWithNodes(seriesNodes);
     if (status != null) {
       return status;
     }
 
-    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(splitPathWithoutQuote(req.path)),
+    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(seriesNodes),
         TSDataType.values()[req.dataType], TSEncoding.values()[req.encoding],
         CompressionType.values()[req.compressor], req.props, req.tags, req.attributes,
         req.measurementAlias);
@@ -1458,7 +1458,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     List<TSStatus> statusList = new ArrayList<>(req.paths.size());
     for (int i = 0; i < req.paths.size(); i++) {
-      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(splitPathWithoutQuote(req.getPaths().get(i))),
+      List<String> seriesNodes = splitPathToNodes(req.paths.get(i));
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(seriesNodes),
           TSDataType.values()[req.dataTypes.get(i)], TSEncoding.values()[req.encodings.get(i)],
           CompressionType.values()[req.compressors.get(i)],
           req.propsList == null ? null : req.propsList.get(i),
@@ -1466,7 +1467,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.attributesList == null ? null : req.attributesList.get(i),
           req.measurementAliasList == null ? null : req.measurementAliasList.get(i));
 
-      TSStatus status = checkPathValidity(req.paths.get(i));
+      TSStatus status = checkPathValidityWithNodes(seriesNodes);
       if (status != null) {
         // path naming is not valid
         statusList.add(status);
@@ -1503,88 +1504,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSStatus createTimeseriesWithNodes(TSCreateTimeseriesWithNodesReq req) {
-    if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
-    }
-
-    if (auditLogger.isDebugEnabled()) {
-      auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getNodes().toString());
-    }
-    TSStatus status = checkPathValidityWithNodes(req.nodes);
-    if (status != null) {
-      return status;
-    }
-
-    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.nodes),
-        TSDataType.values()[req.dataType], TSEncoding.values()[req.encoding],
-        CompressionType.values()[req.compressor], req.props, req.tags, req.attributes,
-        req.measurementAlias);
-    status = checkAuthority(plan, req.getSessionId());
-    if (status != null) {
-      return status;
-    }
-    return executeNonQueryPlan(plan);
-  }
-
-  @Override
-  public TSStatus createMultiTimeseriesWithNodes(TSCreateMultiTimeseriesWithNodesReq req) {
-    if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
-    }
-    if (auditLogger.isDebugEnabled()) {
-      auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
-          req.nodesList.size(), req.nodesList.get(0));
-    }
-    List<TSStatus> statusList = new ArrayList<>(req.nodesList.size());
-    for (int i = 0; i < req.nodesList.size(); i++) {
-      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.nodesList.get(i)),
-          TSDataType.values()[req.dataTypes.get(i)], TSEncoding.values()[req.encodings.get(i)],
-          CompressionType.values()[req.compressors.get(i)],
-          req.propsList == null ? null : req.propsList.get(i),
-          req.tagsList == null ? null : req.tagsList.get(i),
-          req.attributesList == null ? null : req.attributesList.get(i),
-          req.measurementAliasList == null ? null : req.measurementAliasList.get(i));
-
-      TSStatus status = checkPathValidityWithNodes(req.nodesList.get(i));
-      if (status != null) {
-        // path naming is not valid
-        statusList.add(status);
-        continue;
-      }
-
-      status = checkAuthority(plan, req.getSessionId());
-      if (status != null) {
-        // not authorized
-        statusList.add(status);
-        continue;
-      }
-
-      statusList.add(executeNonQueryPlan(plan));
-    }
-
-    boolean isAllSuccessful = true;
-    for (TSStatus tsStatus : statusList) {
-      if (tsStatus.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        isAllSuccessful = false;
-        break;
-      }
-    }
-
-    if (isAllSuccessful) {
-      if (logger.isDebugEnabled()) {
-        logger.debug("Create multiple timeseries with nodes successfully");
-      }
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } else {
-      logger.debug("Create multiple timeseries with nodes failed!");
-      return RpcUtils.getStatus(statusList);
-    }
-  }
-
-  @Override
   public TSStatus deleteTimeseries(long sessionId, List<String> paths) {
     if (!checkLogin(sessionId)) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -1592,7 +1511,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     List<Path> pathList = new ArrayList<>();
     for (String path : paths) {
-      pathList.add(new Path(path));
+      pathList.add(new Path(splitPathToNodes(path)));
     }
     DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(pathList);
     TSStatus status = checkAuthority(plan, sessionId);
@@ -1646,23 +1565,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
-  private TSStatus checkPathValidity(String path) {
-    if (!PATH_PATTERN.matcher(path).matches()) {
-      logger.warn("Illegal path: {}", path);
-      return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, path + " path is illegal");
-    } else if (path.contains("\"")){
-      logger.warn("Illegal path with double quotes: {}", path);
-      return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, "illegal path with double quotes: " + path);
-    } else {
-      return null;
-    }
-  }
-
   private TSStatus checkPathValidityWithNodes(List<String> nodes) {
     int index = 0;
     if (nodes.get(index).equals(IoTDBConstant.PATH_ROOT)) {
       for (index = 1; index < nodes.size(); index++) {
         if (!NODE_PATTERN1.matcher(nodes.get(index)).matches()) {
+            // support double quote on measurement only now
             if (index == nodes.size() - 1 && NODE_PATTERN2.matcher(nodes.get(index)).matches()) {
               continue;
             }
@@ -1692,16 +1600,29 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return SchemaUtils.getSeriesTypesByString(paths, aggregation);
   }
 
-  private List<String> splitPathWithoutQuote(String path) {
-    List<String> results = new ArrayList<>();
+  private List<String> splitPathToNodes(String path) {
+    List<String> nodes = new ArrayList<>();
     int startIndex = 0;
-    int endIndex = path.indexOf('.', 0);
-    while(endIndex != -1) {
-      results.add(path.substring(startIndex, endIndex));
-      startIndex = endIndex + 1;
-      endIndex = path.indexOf('.', startIndex);
+    for (int i = 0; i < path.length(); i++) {
+      if (path.charAt(i) == '.') {
+        nodes.add(path.substring(startIndex, i));
+        startIndex = i + 1;
+      } else if (path.charAt(i) == '"') {
+        int endIndex = path.indexOf('"', i + 1);
+        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
+          nodes.add(path.substring(startIndex, endIndex + 1));
+          i = endIndex + 1;
+          startIndex = endIndex + 2;
+        } else {
+          return null;
+        }
+      } else if (path.charAt(i) == '\'') {
+        return null;
+      }
     }
-    results.add(path.substring(startIndex));
-    return results;
+    if (startIndex < path.length() - 1) {
+      nodes.add(path.substring(startIndex));
+    }
+    return nodes;
   }
 }

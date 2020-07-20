@@ -29,8 +29,6 @@ import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesWithNodesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesWithNodesReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
@@ -846,75 +844,6 @@ public class Session {
 
     try {
       RpcUtils.verifySuccess(client.createMultiTimeseries(request));
-    } catch (TException e) {
-      throw new IoTDBConnectionException(e);
-    }
-  }
-
-  // Use for paths with double quotes
-  public void createTimeseriesWithNodes(List<String> nodes, TSDataType dataType,
-      TSEncoding encoding, CompressionType compressor)
-      throws IoTDBConnectionException, StatementExecutionException {
-    createTimeseriesWithNodes(nodes, dataType, encoding, compressor, null, null, null, null);
-  }
-
-  public void createTimeseriesWithNodes(List<String> nodes, TSDataType dataType,
-      TSEncoding encoding, CompressionType compressor, Map<String, String> props,
-      Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
-      throws IoTDBConnectionException, StatementExecutionException {
-    TSCreateTimeseriesWithNodesReq request = new TSCreateTimeseriesWithNodesReq();
-    request.setSessionId(sessionId);
-    request.setNodes(nodes);
-    request.setDataType(dataType.ordinal());
-    request.setEncoding(encoding.ordinal());
-    request.setCompressor(compressor.ordinal());
-    request.setProps(props);
-    request.setTags(tags);
-    request.setAttributes(attributes);
-    request.setMeasurementAlias(measurementAlias);
-
-    try {
-      RpcUtils.verifySuccess(client.createTimeseriesWithNodes(request));
-    } catch (TException e) {
-      throw new IoTDBConnectionException(e);
-    }
-  }
-
-  public void createMultiTimeseriesWithNodes(List<List<String>> nodesList, List<TSDataType> dataTypes,
-      List<TSEncoding> encodings, List<CompressionType> compressors,
-      List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList, List<String> measurementAliasList)
-      throws IoTDBConnectionException, StatementExecutionException {
-
-    TSCreateMultiTimeseriesWithNodesReq request = new TSCreateMultiTimeseriesWithNodesReq();
-    request.setSessionId(sessionId);
-    request.setNodesList(nodesList);
-
-    List<Integer> dataTypeOrdinals = new ArrayList<>(nodesList.size());
-    for (TSDataType dataType : dataTypes) {
-      dataTypeOrdinals.add(dataType.ordinal());
-    }
-    request.setDataTypes(dataTypeOrdinals);
-
-    List<Integer> encodingOrdinals = new ArrayList<>(nodesList.size());
-    for (TSEncoding encoding : encodings) {
-      encodingOrdinals.add(encoding.ordinal());
-    }
-    request.setEncodings(encodingOrdinals);
-
-    List<Integer> compressionOrdinals = new ArrayList<>(nodesList.size());
-    for (CompressionType compression : compressors) {
-      compressionOrdinals.add(compression.ordinal());
-    }
-    request.setCompressors(compressionOrdinals);
-
-    request.setPropsList(propsList);
-    request.setTagsList(tagsList);
-    request.setAttributesList(attributesList);
-    request.setMeasurementAliasList(measurementAliasList);
-
-    try {
-      RpcUtils.verifySuccess(client.createMultiTimeseriesWithNodes(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }

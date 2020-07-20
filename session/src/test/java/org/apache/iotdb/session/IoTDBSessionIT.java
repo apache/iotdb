@@ -456,6 +456,10 @@ public class IoTDBSessionIT {
     // special characters
     session.createTimeseries("root.sg1.d1.1_2", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.\"1.2.3\"", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.\"1.2.4\"", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
 
     session.setStorageGroup("root.1");
     session.createTimeseries("root.1.2.3", TSDataType.INT64, TSEncoding.RLE,
@@ -523,6 +527,10 @@ public class IoTDBSessionIT {
 
     // special characters
     session.createTimeseries("root.sg1.d1.1_2", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.\"1.2.3\"", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.\"1.2.4\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
 
     session.setStorageGroup("root.1");

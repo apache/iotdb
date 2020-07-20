@@ -59,7 +59,7 @@ public class IoTDBConfig {
   public static final Pattern PATH_PATTERN = Pattern
       .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
   public static final Pattern NODE_PATTERN1 = Pattern.compile(ID_MATCHER);
-  public static final Pattern NODE_PATTERN2 = Pattern.compile("[" + ID_MATCHER + "]");
+  public static final Pattern NODE_PATTERN2 = Pattern.compile("[\"]" + ID_MATCHER + "[\"]");
 
   /**
    * Port which the metrics service listens to.

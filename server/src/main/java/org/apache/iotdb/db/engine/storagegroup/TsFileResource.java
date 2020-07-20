@@ -282,7 +282,11 @@ public class TsFileResource {
         long time = ReadWriteIOUtils.readLong(inputStream);
         // To reduce the String number in memory, 
         // use the deviceId from memory instead of the deviceId read from disk
-        path = path.intern();
+        Map<String, String> devicePool = new HashMap<>();
+        if (!devicePool.containsKey(path)) {
+          devicePool.put(path, path);
+        }
+        path = devicePool.get(path);
         deviceMap.put(path, i);
         startTimesArray[i] = time;
       }
