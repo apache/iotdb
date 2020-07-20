@@ -46,11 +46,11 @@ import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
+import org.apache.iotdb.cluster.client.async.AsyncDataHeartbeatClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.client.sync.SyncDataClient.FactorySync;
+import org.apache.iotdb.cluster.client.sync.SyncDataHeartbeatClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -198,7 +198,10 @@ public class DataGroupMember extends RaftMember {
   DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
       MetaGroupMember metaGroupMember) {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
-        new AsyncClientPool(new FactoryAsync(factory)), new SyncClientPool(new FactorySync(factory)));
+        new AsyncClientPool(new AsyncDataClient.FactoryAsync(factory)),
+        new SyncClientPool(new SyncDataClient.FactorySync(factory)),
+        new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory)),
+        new SyncClientPool(new SyncDataHeartbeatClient.FactorySync(factory)));
     this.thisNode = thisNode;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
@@ -882,7 +885,6 @@ public class DataGroupMember extends RaftMember {
   }
 
 
-
   /**
    * Pull snapshots from the previous holders after newNode joins the cluster.
    *
@@ -1327,7 +1329,8 @@ public class DataGroupMember extends RaftMember {
    * @param readerId
    * @param time
    */
-  public ByteBuffer fetchSingleSeriesByTimestamp(long readerId, long time) throws ReaderNotFoundException, IOException {
+  public ByteBuffer fetchSingleSeriesByTimestamp(long readerId, long time)
+      throws ReaderNotFoundException, IOException {
     IReaderByTimestamp reader = getQueryManager().getReaderByTimestamp(readerId);
     if (reader == null) {
       throw new ReaderNotFoundException(readerId);
@@ -1374,7 +1377,7 @@ public class DataGroupMember extends RaftMember {
   /**
    * Get the local paths that match any path in "paths". The result is not deduplicated.
    *
-   * @param paths         paths potentially contain wildcards
+   * @param paths paths potentially contain wildcards
    */
 
   public List<String> getAllPaths(List<String> paths) throws MetadataException {
@@ -1388,7 +1391,7 @@ public class DataGroupMember extends RaftMember {
   /**
    * Get the local devices that match any path in "paths". The result is deduplicated.
    *
-   * @param paths         paths potentially contain wildcards
+   * @param paths paths potentially contain wildcards
    */
   public Set<String> getAllDevices(List<String> paths) throws MetadataException {
     Set<String> results = new HashSet<>();
@@ -1410,8 +1413,9 @@ public class DataGroupMember extends RaftMember {
     Set<Integer> slotSet = new HashSet<>(slots);
     List<String> allStorageGroupNames = IoTDB.metaManager.getAllStorageGroupNames();
     TimePartitionFilter filter = (storageGroupName, timePartitionId) -> {
-      int slot = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName, timePartitionId,
-          ClusterConstant.SLOT_NUM);
+      int slot = PartitionUtils
+          .calculateStorageGroupSlotByPartition(storageGroupName, timePartitionId,
+              ClusterConstant.SLOT_NUM);
       return slotSet.contains(slot);
     };
     for (String sg : allStorageGroupNames) {

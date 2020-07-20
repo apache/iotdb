@@ -168,7 +168,7 @@ public class HeartbeatThread implements Runnable {
    * @param node
    */
   void sendHeartbeatAsync(Node node) {
-    AsyncClient client = localMember.getAsyncClient(node);
+    AsyncClient client = localMember.getAsyncHeartbeatClient(node);
     if (client != null) {
       // connecting to the local node results in a null
       try {
@@ -181,7 +181,7 @@ public class HeartbeatThread implements Runnable {
   }
 
   void sendHeartbeatSync(Node node) {
-    Client client = localMember.getSyncClient(node);
+    Client client = localMember.getSyncHeartbeatClient(node);
     HeartbeatHandler heartbeatHandler = new HeartbeatHandler(localMember, node);
     HeartBeatRequest req = new HeartBeatRequest();
     req.setCommitLogTerm(request.commitLogTerm);
@@ -210,7 +210,7 @@ public class HeartbeatThread implements Runnable {
         } catch (Exception e) {
           logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
         } finally {
-          localMember.putBackSyncClient(client);
+          localMember.putBackSyncHeartbeatClient(client);
         }
       });
     }
@@ -336,7 +336,7 @@ public class HeartbeatThread implements Runnable {
   }
 
   private void requestVoteAsync(Node node, ElectionHandler handler, ElectionRequest request) {
-    AsyncClient client = localMember.getAsyncClient(node);
+    AsyncClient client = localMember.getAsyncHeartbeatClient(node);
     if (client != null) {
       logger.info("{}: Requesting a vote from {}", memberName, node);
       try {
@@ -348,7 +348,7 @@ public class HeartbeatThread implements Runnable {
   }
 
   private void requestVoteSync(Node node, ElectionHandler handler, ElectionRequest request) {
-    Client client = localMember.getSyncClient(node);
+    Client client = localMember.getSyncHeartbeatClient(node);
     if (client != null) {
       logger.info("{}: Requesting a vote from {}", memberName, node);
       localMember.getAsyncThreadPool().submit(() -> {
@@ -358,7 +358,7 @@ public class HeartbeatThread implements Runnable {
         } catch (Exception e) {
           handler.onError(e);
         } finally {
-          localMember.putBackSyncClient(client);
+          localMember.putBackSyncHeartbeatClient(client);
         }
       });
     }

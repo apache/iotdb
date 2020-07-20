@@ -50,11 +50,15 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataHeartbeatClient;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
+import org.apache.iotdb.cluster.client.async.AsyncMetaHeartbeatClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.client.sync.SyncDataHeartbeatClient;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
+import org.apache.iotdb.cluster.client.sync.SyncMetaHeartbeatClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -105,6 +109,7 @@ import org.slf4j.LoggerFactory;
 public abstract class RaftMember {
 
   private static long waitLeaderTimeMs = 60 * 1000L;
+  private static long syncClientTimeoutMills = 1000;
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
   static final String MSG_FORWARD_TIMEOUT = "{}: Forward {} to {} time out";
   static final String MSG_FORWARD_ERROR = "{}: encountered an error when forwarding {} to"
@@ -150,6 +155,8 @@ public abstract class RaftMember {
   // according to the implementation of the subclasses
   private AsyncClientPool asyncClientPool;
   private SyncClientPool syncClientPool;
+  private AsyncClientPool asyncHeartbeatClientPool;
+  private SyncClientPool syncHeartbeatClientPool;
   // when the commit progress is updated by a heart beat, this object is notified so that we may
   // know if this node is synchronized with the leader
   private Object syncLock = new Object();
@@ -161,10 +168,13 @@ public abstract class RaftMember {
   public RaftMember() {
   }
 
-  RaftMember(String name, AsyncClientPool asyncPool, SyncClientPool syncPool) {
+  RaftMember(String name, AsyncClientPool asyncPool, SyncClientPool syncPool,
+      AsyncClientPool asyncHeartbeatPool, SyncClientPool syncHeartbeatPool) {
     this.name = name;
     this.asyncClientPool = asyncPool;
     this.syncClientPool = syncPool;
+    this.asyncHeartbeatClientPool = asyncHeartbeatPool;
+    this.syncHeartbeatClientPool = syncHeartbeatPool;
   }
 
   /**
@@ -738,6 +748,29 @@ public abstract class RaftMember {
     return client;
   }
 
+
+  /**
+   * Get an asynchronous heartbeat thrift client to the given node.
+   *
+   * @param node
+   * @return an asynchronous thrift client or null if the caller tries to connect the local node.
+   */
+  public AsyncClient getAsyncHeartbeatClient(Node node) {
+    if (node == null) {
+      return null;
+    }
+
+    AsyncClient client = null;
+    try {
+      do {
+        client = asyncHeartbeatClientPool.getClient(node);
+      } while (!isHeartbeatClientReady(client));
+    } catch (IOException e) {
+      logger.warn("{} cannot connect to node {} for heartbeat", name, node, e);
+    }
+    return client;
+  }
+
   /**
    * NOTICE: client.putBack() must be called after use.
    *
@@ -754,7 +787,33 @@ public abstract class RaftMember {
       client = syncClientPool.getClient(node);
       if (client == null) {
         try {
-          Thread.sleep(1000);
+          Thread.sleep(syncClientTimeoutMills);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return null;
+        }
+      }
+    } while (client == null);
+    return client;
+  }
+
+  /**
+   * NOTICE: client.putBack() must be called after use.
+   *
+   * @param node
+   * @return the heartbeat client for the node
+   */
+  public Client getSyncHeartbeatClient(Node node) {
+    if (node == null) {
+      return null;
+    }
+
+    Client client;
+    do {
+      client = syncHeartbeatClientPool.getClient(node);
+      if (client == null) {
+        try {
+          Thread.sleep(syncClientTimeoutMills);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           return null;
@@ -769,6 +828,14 @@ public abstract class RaftMember {
       return ((AsyncDataClient) client).isReady();
     } else {
       return ((AsyncMetaClient) client).isReady();
+    }
+  }
+
+  private boolean isHeartbeatClientReady(AsyncClient client) {
+    if (client instanceof AsyncDataHeartbeatClient) {
+      return ((AsyncDataHeartbeatClient) client).isReady();
+    } else {
+      return ((AsyncMetaHeartbeatClient) client).isReady();
     }
   }
 
@@ -852,6 +919,14 @@ public abstract class RaftMember {
       ((SyncDataClient) client).putBack();
     } else {
       ((SyncMetaClient) client).putBack();
+    }
+  }
+
+  public void putBackSyncHeartbeatClient(Client client) {
+    if (client instanceof SyncMetaHeartbeatClient) {
+      ((SyncMetaHeartbeatClient) client).putBack();
+    } else {
+      ((SyncDataHeartbeatClient) client).putBack();
     }
   }
 
