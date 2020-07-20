@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
@@ -64,6 +65,7 @@ public class StorageGroupProcessorTest {
   private String storageGroup = "root.vehicle.d0";
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private String deviceId = "root.vehicle.d0";
+  private List<String> deviceList = Arrays.asList("root", "vehicle", "d0");
   private String measurementId = "s0";
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
@@ -119,7 +121,7 @@ public class StorageGroupProcessorTest {
       insertToStorageGroupProcessor(record);
     }
 
-    processor.delete(deviceId, measurementId, 0, 15L);
+    processor.delete(deviceList, measurementId, 0, 15L);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = null;
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
@@ -153,7 +155,7 @@ public class StorageGroupProcessorTest {
     }
 
     processor.syncCloseAllWorkingTsFileProcessors();
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
+    QueryDataSource queryDataSource = processor.query(deviceList, measurementId, context,
         null, null);
 
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
@@ -221,7 +223,7 @@ public class StorageGroupProcessorTest {
     processor.asyncCloseAllWorkingTsFileProcessors();
     processor.syncCloseAllWorkingTsFileProcessors();
 
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
+    QueryDataSource queryDataSource = processor.query(deviceList, measurementId, context,
         null, null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
@@ -252,7 +254,7 @@ public class StorageGroupProcessorTest {
 
     processor.syncCloseAllWorkingTsFileProcessors();
 
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
+    QueryDataSource queryDataSource = processor.query(deviceList, measurementId, context,
         null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
@@ -289,7 +291,7 @@ public class StorageGroupProcessorTest {
       // wait
     }
 
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
+    QueryDataSource queryDataSource = processor.query(deviceList, measurementId, context,
         null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());

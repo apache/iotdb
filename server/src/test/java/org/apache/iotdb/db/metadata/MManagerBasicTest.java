@@ -58,9 +58,9 @@ public class MManagerBasicTest {
   public void testAddPathAndExist() {
 
     MManager manager = IoTDB.metaManager;
-    assertTrue(manager.isPathExist("root"));
+    assertTrue(manager.isPathExist(Collections.singletonList("root")));
 
-    assertFalse(manager.isPathExist("root.laptop"));
+    assertFalse(manager.isPathExist(Arrays.asList("root", "laptop")));
 
     try {
       manager.setStorageGroup("root.laptop.d1");

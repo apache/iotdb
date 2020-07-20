@@ -69,6 +69,7 @@ import static org.junit.Assert.*;
 public class TTLTest {
 
   private String sg1 = "root.TTL_SG1";
+  private List<String> sg1List = Arrays.asList("root", "TTL_SG1");
   private String sg2 = "root.TTL_SG2";
   private long ttl = 12345;
   private StorageGroupProcessor storageGroupProcessor;
@@ -118,14 +119,14 @@ public class TTLTest {
     boolean caught = false;
 
     try {
-      IoTDB.metaManager.setTTL(sg1 + ".notExist", ttl);
+      IoTDB.metaManager.setTTL(Arrays.asList("sg1", "notExist"), ttl);
     } catch (MetadataException e) {
       caught = true;
     }
     assertTrue(caught);
 
     // normally set ttl
-    IoTDB.metaManager.setTTL(sg1, ttl);
+    IoTDB.metaManager.setTTL(sg1List, ttl);
     StorageGroupMNode mNode = IoTDB.metaManager.getStorageGroupNode(sg1);
     assertEquals(ttl, mNode.getDataTTL());
 
@@ -198,7 +199,7 @@ public class TTLTest {
 
     // files before ttl
     QueryDataSource dataSource = storageGroupProcessor
-        .query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
+        .query(sg1List, s1, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     List<TsFileResource> seqResource = dataSource.getSeqResources();
     List<TsFileResource> unseqResource = dataSource.getUnseqResources();
     assertEquals(4, seqResource.size());
@@ -208,7 +209,7 @@ public class TTLTest {
 
     // files after ttl
     dataSource = storageGroupProcessor
-        .query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
+        .query(sg1List, s1, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
@@ -232,7 +233,7 @@ public class TTLTest {
     assertTrue(cnt <= 1000);
 
     storageGroupProcessor.setDataTTL(0);
-    dataSource = storageGroupProcessor.query(sg1, s1, EnvironmentUtils.TEST_QUERY_CONTEXT
+    dataSource = storageGroupProcessor.query(sg1List, s1, EnvironmentUtils.TEST_QUERY_CONTEXT
         , null, null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
@@ -340,7 +341,7 @@ public class TTLTest {
   public void testShowTTL()
       throws IOException, QueryProcessException, QueryFilterOptimizationException,
       StorageEngineException, MetadataException, TException, InterruptedException {
-    IoTDB.metaManager.setTTL(sg1, ttl);
+    IoTDB.metaManager.setTTL(sg1List, ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
     PlanExecutor executor = new PlanExecutor();

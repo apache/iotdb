@@ -51,11 +51,10 @@ public class MManagerImproveTest {
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     mManager = IoTDB.metaManager;
-    mManager.setStorageGroup("root.t1.v2");
+    mManager.setStorageGroup(Arrays.asList("root", "t1", "v2"));
 
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
-        String p = "root.t1.v2.d" + j + ".s" + i;
         mManager.createTimeseries(Arrays.asList("root", "t1", "v2", "d" + j, "s" + i), TSDataType.TEXT, TSEncoding.RLE,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
       }
@@ -67,10 +66,9 @@ public class MManagerImproveTest {
   @Test
   public void checkSetUp() {
     mManager = IoTDB.metaManager;
-
-    assertTrue(mManager.isPathExist("root.t1.v2.d3.s5"));
-    assertFalse(mManager.isPathExist("root.t1.v2.d9.s" + TIMESERIES_NUM));
-    assertFalse(mManager.isPathExist("root.t10"));
+    assertTrue(mManager.isPathExist(Arrays.asList("root", "t1", "v2", "d3", "s5")));
+    assertFalse(mManager.isPathExist(Arrays.asList("root", "t1", "v2", "d9", "s" + TIMESERIES_NUM)));
+    assertFalse(mManager.isPathExist(Arrays.asList("root", "t10")));
   }
 
   @Test
@@ -81,13 +79,11 @@ public class MManagerImproveTest {
     long string_combine, path_exist, list_init, check_filelevel, get_seriestype;
     string_combine = path_exist = list_init = check_filelevel = get_seriestype = 0;
 
-    String deviceId = "root.t1.v2.d3";
-    String measurement = "s5";
-    String path = deviceId + "." + measurement;
+    List<String> pathNodes = Arrays.asList("root", "t1", "v2", "d3", "s5");
 
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
-      assertTrue(mManager.isPathExist(path));
+      assertTrue(mManager.isPathExist(pathNodes));
     }
     endTime = System.currentTimeMillis();
     path_exist += endTime - startTime;
@@ -98,7 +94,7 @@ public class MManagerImproveTest {
 
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
-      TSDataType dataType = mManager.getSeriesType(path);
+      TSDataType dataType = mManager.getSeriesType(pathNodes);
       assertEquals(TSDataType.TEXT, dataType);
     }
     endTime = System.currentTimeMillis();
@@ -111,29 +107,29 @@ public class MManagerImproveTest {
     logger.debug("get series type:\t" + get_seriestype);
   }
 
-  private void doOriginTest(String deviceId, List<String> measurementList)
+  private void doOriginTest(List<String> deviceId, List<String> measurementList)
       throws MetadataException {
     for (String measurement : measurementList) {
-      String path = deviceId + "." + measurement;
-      assertTrue(mManager.isPathExist(path));
-      TSDataType dataType = mManager.getSeriesType(path);
+      deviceId.add(measurement);
+      assertTrue(mManager.isPathExist(deviceId));
+      TSDataType dataType = mManager.getSeriesType(deviceId);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
-  private void doPathLoopOnceTest(String deviceId, List<String> measurementList)
+  private void doPathLoopOnceTest(List<String> deviceId, List<String> measurementList)
       throws MetadataException {
     for (String measurement : measurementList) {
-      String path = deviceId + "." + measurement;
-      TSDataType dataType = mManager.getSeriesType(path);
+      deviceId.add(measurement);
+      TSDataType dataType = mManager.getSeriesType(deviceId);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
-  private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
+  private void doCacheTest(List<String> deviceId, List<String> measurementList) throws MetadataException {
     MNode node = null;
     try {
-      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(MetaUtils.getPathByNodes(deviceId), deviceId);
       for (String s : measurementList) {
         assertTrue(node.hasChild(s));
         MeasurementMNode measurementNode = (MeasurementMNode) node.getChild(s);
@@ -151,9 +147,9 @@ public class MManagerImproveTest {
   public void improveTest() throws MetadataException {
     mManager = IoTDB.metaManager;
 
-    String[] deviceIdList = new String[DEVICE_NUM];
+    List<List<String>> deviceIdList = new ArrayList<>();
     for (int i = 0; i < DEVICE_NUM; i++) {
-      deviceIdList[i] = "root.t1.v2.d" + i;
+      deviceIdList.add(Arrays.asList("root", "t1", "v2", "d" + i));
     }
     List<String> measurementList = new ArrayList<>();
     for (int i = 0; i < TIMESERIES_NUM; i++) {
@@ -161,21 +157,21 @@ public class MManagerImproveTest {
     }
 
     long startTime = System.currentTimeMillis();
-    for (String deviceId : deviceIdList) {
+    for (List<String> deviceId : deviceIdList) {
       doOriginTest(deviceId, measurementList);
     }
     long endTime = System.currentTimeMillis();
     logger.debug("origin:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();
-    for (String deviceId : deviceIdList) {
+    for (List<String> deviceId : deviceIdList) {
       doPathLoopOnceTest(deviceId, measurementList);
     }
     endTime = System.currentTimeMillis();
     logger.debug("seriesPath loop once:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();
-    for (String deviceId : deviceIdList) {
+    for (List<String> deviceId : deviceIdList) {
       doCacheTest(deviceId, measurementList);
     }
     endTime = System.currentTimeMillis();
