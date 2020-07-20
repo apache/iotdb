@@ -26,10 +26,10 @@ public class ClusterConfig {
 
   static final String CONFIG_NAME = "iotdb-cluster.properties";
 
-  private String localIP = "127.0.0.1";
-  private int localMetaPort = 9003;
-  private int localDataPort = 40010;
-  private int localClientPort = 55560;
+  private String clusterRpcIp = "127.0.0.1";
+  private int internalMetaPort = 9003;
+  private int internalDataPort = 40010;
+  private int clusterRpcPort = 55560;
 
   /**
    * each one is a "<IP | domain name>:<meta port>:<data port>" string tuple
@@ -54,7 +54,7 @@ public class ClusterConfig {
    * This parameter controls when to actually delete snapshoted logs because we can't remove
    * snapshoted logs directly from disk now
    */
-  private long maxRemovedLogSize = 1024 * 1024 * 128L;
+  private long maxUnsnapshotedLogSize = 1024 * 1024 * 128L;
 
   private int queryTimeoutInSec = 30;
 
@@ -123,28 +123,28 @@ public class ClusterConfig {
     this.useBatchInLogCatchUp = useBatchInLogCatchUp;
   }
 
-  public long getMaxRemovedLogSize() {
-    return maxRemovedLogSize;
+  public long getMaxUnsnapshotedLogSize() {
+    return maxUnsnapshotedLogSize;
   }
 
-  public void setMaxRemovedLogSize(long maxRemovedLogSize) {
-    this.maxRemovedLogSize = maxRemovedLogSize;
+  public void setMaxUnsnapshotedLogSize(long maxUnsnapshotedLogSize) {
+    this.maxUnsnapshotedLogSize = maxUnsnapshotedLogSize;
   }
 
-  public String getLocalIP() {
-    return localIP;
+  public String getClusterRpcIp() {
+    return clusterRpcIp;
   }
 
-  void setLocalIP(String localIP) {
-    this.localIP = localIP;
+  void setClusterRpcIp(String clusterRpcIp) {
+    this.clusterRpcIp = clusterRpcIp;
   }
 
-  public int getLocalMetaPort() {
-    return localMetaPort;
+  public int getInternalMetaPort() {
+    return internalMetaPort;
   }
 
-  void setLocalMetaPort(int localMetaPort) {
-    this.localMetaPort = localMetaPort;
+  void setInternalMetaPort(int internalMetaPort) {
+    this.internalMetaPort = internalMetaPort;
   }
 
   public boolean isRpcThriftCompressionEnabled() {
@@ -179,20 +179,20 @@ public class ClusterConfig {
     this.replicationNum = replicationNum;
   }
 
-  public int getLocalDataPort() {
-    return localDataPort;
+  public int getInternalDataPort() {
+    return internalDataPort;
   }
 
-  public void setLocalDataPort(int localDataPort) {
-    this.localDataPort = localDataPort;
+  public void setInternalDataPort(int internalDataPort) {
+    this.internalDataPort = internalDataPort;
   }
 
-  public int getLocalClientPort() {
-    return localClientPort;
+  public int getClusterRpcPort() {
+    return clusterRpcPort;
   }
 
-  public void setLocalClientPort(int localClientPort) {
-    this.localClientPort = localClientPort;
+  public void setClusterRpcPort(int clusterRpcPort) {
+    this.clusterRpcPort = clusterRpcPort;
   }
 
   public int getConnectionTimeoutInMS() {

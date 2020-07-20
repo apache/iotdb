@@ -143,18 +143,18 @@ public class ClusterMain {
       return false;
     }
 
-    // 1. check the LOCAL_IP and SEED_NODES consistent or not
+    // 1. check the cluster_rpc_ip and seed_nodes consistent or not
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    String localIP = "127.0.0.1";
-    String configLocalIP = config.getLocalIP();
+    String clusterRpcIp = "127.0.0.1";
+    String configClusterRpcIp = config.getClusterRpcIp();
     List<String> seedNodes = config.getSeedNodeUrls();
-    boolean isLocalIP = localIP.equals(configLocalIP);
+    boolean isClusterRpcIp = clusterRpcIp.equals(configClusterRpcIp);
     for (String seedNodeIP : seedNodes) {
-      if ((isLocalIP && !seedNodeIP.contains(localIP)) ||
-          (!isLocalIP && seedNodeIP.contains(localIP))) {
+      if ((isClusterRpcIp && !seedNodeIP.contains(clusterRpcIp)) ||
+          (!isClusterRpcIp && seedNodeIP.contains(clusterRpcIp))) {
         logger.error(
-            "LOCAL_IP={} and SEED_NODES={} should be consistent, both use local ip or real ip please",
-            configLocalIP, seedNodes);
+            "cluster_rpc_ip={} and seed_nodes={} should be consistent, both use local ip or real ip please",
+            configClusterRpcIp, seedNodes);
         return false;
       }
     }
