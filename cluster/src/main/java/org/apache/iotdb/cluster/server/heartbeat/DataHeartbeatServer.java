@@ -61,10 +61,11 @@ public class DataHeartbeatServer extends HeartbeatServer {
   @Override
   TServerTransport getHeartbeatServerSocket() throws TTransportException {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
-          thisNode.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET), getConnectionTimeoutInMS());
+      return new TNonblockingServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
+          thisNode.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET),
+          getConnectionTimeoutInMS());
     } else {
-      return new TServerSocket(new InetSocketAddress(config.getLocalIP(),
+      return new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
           thisNode.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET));
     }
   }

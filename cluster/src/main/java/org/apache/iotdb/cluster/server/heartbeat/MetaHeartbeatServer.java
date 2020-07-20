@@ -62,12 +62,12 @@ public class MetaHeartbeatServer extends HeartbeatServer {
   @Override
   TServerTransport getHeartbeatServerSocket() throws TTransportException {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
-          config.getLocalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET),
+      return new TNonblockingServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
+          config.getInternalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET),
           getConnectionTimeoutInMS());
     } else {
-      return new TServerSocket(new InetSocketAddress(config.getLocalIP(),
-          config.getLocalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET));
+      return new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
+          config.getInternalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET));
     }
   }
 

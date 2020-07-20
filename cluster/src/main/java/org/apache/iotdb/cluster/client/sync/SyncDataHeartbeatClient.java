@@ -20,41 +20,25 @@
 package org.apache.iotdb.cluster.client.sync;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Client;
-import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TFastFramedTransport;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
 /**
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
  * should not cache it anywhere else or there may be conflicts.
  */
-public class SyncDataHeartbeatClient extends Client {
-
-  private Node node;
-  private SyncClientPool pool;
+public class SyncDataHeartbeatClient extends SyncDataClient {
 
   public SyncDataHeartbeatClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
     // the difference of the two clients lies in the port
-    super(protocolFactory.getProtocol(new TFastFramedTransport(new TSocket(node.getIp(),
-        node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
-        RaftServer.getConnectionTimeoutInMS()))));
-    this.node = node;
-    this.pool = pool;
-    getInputProtocol().getTransport().open();
+    super(protocolFactory,
+        new ClusterNode(node.getIp(), node.getMetaPort(), node.getNodeIdentifier(),
+            node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET), pool);
   }
 
-  public void putBack() {
-    if (pool != null) {
-      pool.putClient(node, this);
-    } else {
-      getInputProtocol().getTransport().close();
-    }
-  }
 
   public static class FactorySync implements SyncClientFactory {
 
@@ -74,12 +58,9 @@ public class SyncDataHeartbeatClient extends Client {
   @Override
   public String toString() {
     return "SyncHeartbeatDataClient{" +
-        "node=" + node +
-        "dataHeartbeatPort=" + (node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET) +
+        "node=" + super.getNode() + "," +
+        "dataHeartbeatPort=" + (super.getNode().getDataPort()
+        + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET) +
         '}';
-  }
-
-  public Node getNode() {
-    return node;
   }
 }

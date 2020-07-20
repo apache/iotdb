@@ -20,40 +20,26 @@
 package org.apache.iotdb.cluster.client.sync;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Client;
-import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TFastFramedTransport;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
 /**
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
  * should not cache it anywhere else or there may be conflicts.
  */
-public class SyncMetaHeartbeatClient extends Client {
-
-  private Node node;
-  private SyncClientPool pool;
+public class SyncMetaHeartbeatClient extends SyncMetaClient {
 
   public SyncMetaHeartbeatClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
-    super(protocolFactory.getProtocol(new TFastFramedTransport(new TSocket(node.getIp(),
-        node.getMetaPort() + ClusterUtils.META_HEARTBEAT_OFFSET,
-        RaftServer.getConnectionTimeoutInMS()))));
-    this.node = node;
-    this.pool = pool;
-    getInputProtocol().getTransport().open();
+
+    super(protocolFactory,
+        new ClusterNode(node.getIp(), node.getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET,
+            node.getNodeIdentifier(),
+            node.getDataPort()), pool);
   }
 
-  public void putBack() {
-    if (pool != null) {
-      pool.putClient(node, this);
-    } else {
-      getInputProtocol().getTransport().close();
-    }
-  }
 
   public static class FactorySync implements SyncClientFactory {
 
@@ -70,15 +56,12 @@ public class SyncMetaHeartbeatClient extends Client {
     }
   }
 
-  public Node getNode() {
-    return node;
-  }
-
   @Override
   public String toString() {
     return "SyncMetaHeartbeatClient{" +
-        "node=" + node +
-        "metaHeartbeatPort=" + (node.getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET) +
+        "node=" + super.getNode() + "," +
+        "metaHeartbeatPort=" + (super.getNode().getMetaPort()
+        + ClusterUtils.META_HEARTBEAT_PORT_OFFSET) +
         '}';
   }
 }

@@ -24,12 +24,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
-import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncClient;
-import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,36 +35,16 @@ import org.slf4j.LoggerFactory;
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
  * should not cache it anywhere else or there may be conflicts.
  */
-public class AsyncDataHeartbeatClient extends AsyncClient {
+public class AsyncDataHeartbeatClient extends AsyncDataClient {
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncDataHeartbeatClient.class);
-
-  private Node node;
-  private AsyncClientPool pool;
 
   public AsyncDataHeartbeatClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager, Node node, AsyncClientPool pool) throws IOException {
     // the difference of the two clients lies in the port
     super(protocolFactory, clientManager,
-        new TNonblockingSocket(node.getIp(), node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET
-            , RaftServer.getConnectionTimeoutInMS()));
-    this.node = node;
-    this.pool = pool;
-  }
-
-  @Override
-  public void onComplete() {
-    super.onComplete();
-    // return itself to the pool if the job is done
-    if (pool != null) {
-      pool.putClient(node, this);
-    }
-  }
-
-  @Override
-  public void onError(Exception e) {
-    super.onError(e);
-    pool.recreateClient(node);
+        new ClusterNode(node.getIp(), node.getMetaPort(), node.getNodeIdentifier(),
+            node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET), pool);
   }
 
   public static class FactoryAsync implements AsyncClientFactory {
@@ -107,16 +85,9 @@ public class AsyncDataHeartbeatClient extends AsyncClient {
   @Override
   public String toString() {
     return "AsyncDataHeartbeatClient{" +
-        "node=" + node +
-        "dataHeartbeatPort=" + (node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET) +
+        "node=" + super.getNode() + "," +
+        "dataHeartbeatPort=" + (super.getNode().getDataPort()
+        + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET) +
         '}';
-  }
-
-  public Node getNode() {
-    return node;
-  }
-
-  public boolean isReady() {
-    return ___currentMethod == null;
   }
 }
