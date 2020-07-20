@@ -76,24 +76,6 @@ shared_ptr<TSExecuteStatementResp> RpcUtils::getTSExecuteStatementResp(TSStatus&
     resp->status = status;
     return resp;
 }
-shared_ptr<TSExecuteBatchStatementResp> RpcUtils::getTSBatchExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode) {
-    TSStatus status = getStatus(tsStatusCode);
-    return getTSBatchExecuteStatementResp(status);
-}
-shared_ptr<TSExecuteBatchStatementResp> RpcUtils::getTSBatchExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, string message) {
-    TSStatus status = getStatus(tsStatusCode, message);
-    return getTSBatchExecuteStatementResp(status);
-}
-shared_ptr<TSExecuteBatchStatementResp> RpcUtils::getTSBatchExecuteStatementResp(TSStatus& status) {
-    shared_ptr<TSExecuteBatchStatementResp> resp(new TSExecuteBatchStatementResp());
-    resp->statusList.push_back(status);
-    return resp;
-}
-shared_ptr<TSExecuteBatchStatementResp> RpcUtils::getTSBatchExecuteStatementResp(vector<TSStatus>& statusList) {
-    shared_ptr<TSExecuteBatchStatementResp> resp(new TSExecuteBatchStatementResp());
-    resp->__set_statusList(statusList);
-    return resp;
-}
 shared_ptr<TSFetchResultsResp> RpcUtils::getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode) {
     TSStatus status = getStatus(tsStatusCode);
     return getTSFetchResultsResp(status);
@@ -560,7 +542,7 @@ void Session::close()
 void Session::insertRecord(string deviceId,  int64_t time, vector<string>& measurements, vector<string>& values)
 {
     lock_guard<std::mutex> mtx_locker(sessionMutex);
-    shared_ptr<TSInsertRecordReq> req(new TSInsertRecordReq());
+    shared_ptr<TSInsertStringRecordReq> req(new TSInsertStringRecordReq());
     req->__set_sessionId(sessionId);
     req->__set_deviceId(deviceId);
     req->__set_timestamp(time);
@@ -569,7 +551,7 @@ void Session::insertRecord(string deviceId,  int64_t time, vector<string>& measu
     shared_ptr<TSStatus> resp(new TSStatus());
     try 
     {
-        client->insertRecord(*resp,*req);
+        client->insertStringRecord(*resp,*req);
         RpcUtils::verifySuccess(*resp);
     } 
     catch (IoTDBConnectionException& e)
@@ -585,7 +567,7 @@ void Session::insertRecords(vector<string>& deviceIds, vector<int64_t>& times, v
         logic_error e("deviceIds, times, measurementsList and valuesList's size should be equal");
         throw exception(e);
     }
-    shared_ptr<TSInsertRecordsReq> request(new TSInsertRecordsReq());
+    shared_ptr<TSInsertStringRecordsReq> request(new TSInsertStringRecordsReq());
     request->__set_sessionId(sessionId);
     request->__set_deviceIds(deviceIds);
     request->__set_timestamps(times);
@@ -594,9 +576,9 @@ void Session::insertRecords(vector<string>& deviceIds, vector<int64_t>& times, v
 
     try
     {
-        shared_ptr< TSExecuteBatchStatementResp> resp(new TSExecuteBatchStatementResp());
-        client->insertRecords(*resp, *request);
-        RpcUtils::verifySuccess(resp->statusList);
+        shared_ptr<TSStatus> resp(new TSStatus());
+        client->insertStringRecords(*resp, *request);
+        RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException& e)
     {
@@ -641,9 +623,9 @@ void Session::insertTablet(Tablet& tablet, bool sorted) {
 
     try
     {
-        shared_ptr<TSExecuteBatchStatementResp> resp(new TSExecuteBatchStatementResp());
+        shared_ptr<TSStatus> resp(new TSStatus());
         client->insertTablet(*resp, *request);
-        RpcUtils::verifySuccess(resp->statusList);
+        RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException& e)
     {
@@ -693,9 +675,9 @@ void Session::insertTablets(map<string, Tablet*>& tablets, bool sorted) {
 
         try
         {
-            shared_ptr<TSExecuteBatchStatementResp> resp(new TSExecuteBatchStatementResp());
+            shared_ptr<TSStatus> resp(new TSStatus());
             client->insertTablets(*resp, *request);
-            RpcUtils::verifySuccess(resp->statusList);
+            RpcUtils::verifySuccess(*resp);
         }
         catch (const std::exception& e)
         {
@@ -706,7 +688,7 @@ void Session::insertTablets(map<string, Tablet*>& tablets, bool sorted) {
 
 void Session::testInsertRecord(string deviceId, int64_t time, vector<string>& measurements, vector<string>& values) {
     lock_guard<std::mutex> mtx_locker(sessionMutex);
-    shared_ptr<TSInsertRecordReq> req(new TSInsertRecordReq());
+    shared_ptr<TSInsertStringRecordReq> req(new TSInsertStringRecordReq());
     req->__set_sessionId(sessionId);
     req->__set_deviceId(deviceId);
     req->__set_timestamp(time);
@@ -715,7 +697,7 @@ void Session::testInsertRecord(string deviceId, int64_t time, vector<string>& me
     shared_ptr<TSStatus> resp(new TSStatus());
     try
     {
-        client->testInsertRecord(*resp, *req);
+        client->insertStringRecord(*resp, *req);
         RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException e)
@@ -739,9 +721,9 @@ void Session::testInsertTablet(Tablet& tablet) {
 
     try
     {
-        shared_ptr<TSExecuteBatchStatementResp> resp(new TSExecuteBatchStatementResp());
+        shared_ptr<TSStatus> resp(new TSStatus());
         client->testInsertTablet(*resp, *request);
-        RpcUtils::verifySuccess(resp->statusList);
+        RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException& e)
     {
@@ -756,7 +738,7 @@ void Session::testInsertRecords(vector<string>& deviceIds, vector<int64_t>& time
         logic_error error("deviceIds, times, measurementsList and valuesList's size should be equal");
         throw exception(error);
     }
-    shared_ptr<TSInsertRecordsReq> request(new TSInsertRecordsReq());
+    shared_ptr<TSInsertStringRecordsReq> request(new TSInsertStringRecordsReq());
     request->__set_sessionId(sessionId);
     request->__set_deviceIds(deviceIds);
     request->__set_timestamps(times);
@@ -765,9 +747,9 @@ void Session::testInsertRecords(vector<string>& deviceIds, vector<int64_t>& time
 
     try
     {
-        shared_ptr< TSExecuteBatchStatementResp> resp(new TSExecuteBatchStatementResp());
-        client->testInsertRecords(*resp, *request);
-        RpcUtils::verifySuccess(resp->statusList);
+        shared_ptr<TSStatus> resp(new TSStatus());
+        client->insertStringRecords(*resp, *request);
+        RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException& e)
     {
@@ -810,7 +792,7 @@ void Session::deleteData(vector<string>& deviceId, int64_t time)
     shared_ptr<TSDeleteDataReq> req(new TSDeleteDataReq());
     req->__set_sessionId(sessionId);
     req->__set_paths(deviceId);
-    req->__set_timestamp(time);
+    req->__set_endTime(time);
     shared_ptr<TSStatus> resp(new TSStatus());
     try 
     {
@@ -948,9 +930,9 @@ void Session::createMultiTimeseries(vector<string> paths, vector<TSDataType::TSD
 
     try
     {
-        shared_ptr< TSExecuteBatchStatementResp> resp(new TSExecuteBatchStatementResp());
+        shared_ptr<TSStatus> resp(new TSStatus());
         client->createMultiTimeseries(*resp, *request);
-        RpcUtils::verifySuccess(resp->statusList);
+        RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException& e)
     {

@@ -16,7 +16,7 @@
 # under the License.
 #
 
-project(client-cpp)
+project(iotdb_session_cpp)
 cmake_minimum_required(VERSION 3.16)
 set (CMAKE_REQUIRED_INCLUDES "/usr/local/include")
 add_subdirectory(src)
@@ -29,8 +29,10 @@ aux_source_directory(./target/generated-sources-cpp GEN_SRCS)
 
 list(APPEND SESSION_SRCS ${GEN_SRCS})
 
-add_library(client-cpp SHARED ${SESSION_SRCS})
+link_directories(lib)
+
+add_library(iotdb_session_cpp SHARED ${SESSION_SRCS})
 #target_link_libraries(client-cpp Session)
 #target_link_libraries(client-cpp GenCPP)
 
-target_link_libraries(client-cpp libthrift.a)
+target_link_libraries(iotdb_session_cpp libthrift.a)

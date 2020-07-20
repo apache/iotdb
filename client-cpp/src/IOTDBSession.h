@@ -183,10 +183,6 @@ public:
     static shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode);
     static shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, string message);
     static shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(TSStatus& status);
-    static shared_ptr<TSExecuteBatchStatementResp> getTSBatchExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode);
-    static shared_ptr<TSExecuteBatchStatementResp> getTSBatchExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, string message);
-    static shared_ptr<TSExecuteBatchStatementResp> getTSBatchExecuteStatementResp(TSStatus& status);
-    static shared_ptr<TSExecuteBatchStatementResp> getTSBatchExecuteStatementResp(vector<TSStatus>& statusList);
     static shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode);
     static shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode, string appendMessage);
     static shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(TSStatus& status);
