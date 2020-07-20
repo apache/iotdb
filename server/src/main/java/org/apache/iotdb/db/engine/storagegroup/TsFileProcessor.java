@@ -1127,9 +1127,11 @@ public class TsFileProcessor {
       List<List<TsFileResource>> currMergeVmFiles, VmLogger vmLogger) throws IOException {
     VmMergeUtils.merge(writer, packVmWritersToSequenceList(currMergeVmWriters),
         storageGroupName, vmLogger, new HashSet<>(), sequence);
+    vmMergeLock.writeLock().lock();
     for (int i = 0; i < currMergeVmFiles.size(); i++) {
       deleteVmFiles(currMergeVmFiles.get(i), currMergeVmWriters.get(i));
     }
+    vmMergeLock.writeLock().unlock();
   }
 
   private List<RestorableTsFileIOWriter> packVmWritersToSequenceList(
