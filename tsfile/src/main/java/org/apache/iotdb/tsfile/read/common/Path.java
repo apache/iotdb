@@ -186,12 +186,28 @@ public class Path implements Serializable, Comparable<Path> {
 
   @Override
   public int hashCode() {
-    return fullPath.hashCode();
+    if(fullPath != null) {
+      return fullPath.hashCode();
+    } else {
+      return nodes.hashCode();
+    }
   }
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof Path && this.fullPath.equals(((Path) obj).fullPath);
+    if(obj instanceof Path) {
+      if(fullPath != null) {
+        return fullPath.equals(((Path) obj).fullPath);
+      } else {
+        for(int i = 0; i < nodes.size(); i++) {
+          if(!nodes.get(0).equals(((Path) obj).nodes.get(0))) {
+            return false;
+          }
+        }
+        return true;
+      }
+    }
+    return false;
   }
 
   public boolean equals(String obj) {

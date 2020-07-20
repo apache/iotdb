@@ -91,7 +91,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       } else {
         isAlignByDevice = true;
         for (Path path : initialSuffixPaths) {
-          String device = path.getDevice();
+          List<String> device = path.getNodes();
           if (!device.isEmpty()) {
             throw new LogicalOptimizeException(
                     "The paths of the SELECT clause can only be single level. In other words, "
