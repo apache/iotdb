@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import static junit.framework.TestCase.assertTrue;
+import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.getVmLevel;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
@@ -127,6 +128,12 @@ public class TsFileProcessorEnableVmTest {
     tsfileResourcesForQuery.clear();
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
+    List<List<TsFileResource>> tsfileResources = processor.getVmTsFileResources();
+    for (List<TsFileResource> levelResources : tsfileResources) {
+      for (TsFileResource resource : levelResources) {
+        assertEquals(0, getVmLevel(resource.getTsFile()));
+      }
+    }
 
     assertEquals(1, tsfileResourcesForQuery.size());
     assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
