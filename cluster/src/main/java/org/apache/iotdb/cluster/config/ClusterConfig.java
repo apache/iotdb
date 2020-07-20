@@ -35,7 +35,7 @@ public class ClusterConfig {
    * each one is a "<IP | domain name>:<meta port>:<data port>" string tuple
    */
   private List<String> seedNodeUrls = Arrays.asList("127.0.0.1:9003:40010", "127.0.0.1"
-      + ":9004:40011", "127.0.0.1:9005:40012");
+      + ":9005:40012", "127.0.0.1:9007:40014");
 
   @ClusterConsistent
   private boolean isRpcThriftCompressionEnabled = true;
