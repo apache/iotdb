@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.cache;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
@@ -54,6 +55,7 @@ public class ChunkMetadataCacheTest {
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
   private String storageGroup = "root.vehicle.d0";
+  private List<String> storageGroupList = Arrays.asList("root", "vehicle", "d0");
   private String measurementId0 = "s0";
   private String measurementId1 = "s1";
   private String measurementId2 = "s2";
@@ -132,7 +134,7 @@ public class ChunkMetadataCacheTest {
   public void test1() throws IOException, QueryProcessException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(false);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(storageGroup, measurementId5, context, null, null);
+        .query(storageGroupList, measurementId5, context, null, null);
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
@@ -154,7 +156,7 @@ public class ChunkMetadataCacheTest {
   public void test2() throws IOException, QueryProcessException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(true);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(storageGroup, measurementId5, context, null, null);
+        .query(storageGroupList, measurementId5, context, null, null);
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();

@@ -59,7 +59,7 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testRemoveNoPartition() throws StorageEngineException {
-    StorageEngine.getInstance().removePartitions("root.test1",
+    StorageEngine.getInstance().removePartitions(Arrays.asList("root", "test1"),
         (storageGroupName, timePartitionId) -> false);
 
     try (Connection connection = DriverManager
@@ -81,9 +81,9 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testRemovePartialPartition() throws StorageEngineException {
-    StorageEngine.getInstance().removePartitions("root.test1",
+    StorageEngine.getInstance().removePartitions(Arrays.asList("root", "test1"),
         (storageGroupName, timePartitionId) -> timePartitionId >= 5);
-    StorageEngine.getInstance().removePartitions("root.test2",
+    StorageEngine.getInstance().removePartitions(Arrays.asList("root", "test2"),
         (storageGroupName, timePartitionId) -> timePartitionId < 5);
 
     try (Connection connection = DriverManager
@@ -115,7 +115,7 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testRemoveAllPartition() throws StorageEngineException {
-    StorageEngine.getInstance().removePartitions("root.test1",
+    StorageEngine.getInstance().removePartitions(Arrays.asList("root", "test1"),
         (storageGroupName, timePartitionId) -> true);
 
     try (Connection connection = DriverManager

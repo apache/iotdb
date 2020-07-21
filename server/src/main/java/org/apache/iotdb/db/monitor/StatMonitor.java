@@ -167,7 +167,7 @@ public class StatMonitor implements IService {
           logger.error("Registering metadata but data type of {} is null", entry.getKey());
         }
 
-        if (!mManager.isPathExist(entry.getKey())) {
+        if (!mManager.isPathExist(MetaUtils.getDeviceNodeNames(entry.getKey()))) {
           mManager.createTimeseries(Arrays.asList(MetaUtils.getNodeNames(entry.getKey())), TSDataType.valueOf(entry.getValue()),
               TSEncoding.valueOf("RLE"),
               TSFileDescriptor.getInstance().getConfig().getCompressor(),

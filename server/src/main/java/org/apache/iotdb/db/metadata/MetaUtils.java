@@ -114,7 +114,7 @@ public class MetaUtils {
     path.append(nodes.get(0));
     for(int i = 1; i < nodes.size(); i++) {
       path.append(TsFileConstant.PATH_SEPARATOR);
-      path.append(nodes.get(0));
+      path.append(nodes.get(i));
     }
     return path.toString();
   }

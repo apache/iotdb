@@ -103,10 +103,10 @@ public class DeletionQueryTest {
       insertToStorageEngine(record);
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[3], 0, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[4], 0, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[5], 0, 30);
+    StorageEngine.getInstance().delete(processorNameList, measurements[5], 30, 50);
 
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path(processorName, measurements[3]));
@@ -142,9 +142,9 @@ public class DeletionQueryTest {
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 40);
-    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 30);
+    StorageEngine.getInstance().delete(processorNameList, measurements[5], 0, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[4], 0, 40);
+    StorageEngine.getInstance().delete(processorNameList, measurements[3], 0, 30);
 
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path(processorName, measurements[3]));
@@ -191,10 +191,10 @@ public class DeletionQueryTest {
       insertToStorageEngine(record);
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[3], 0, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[4], 0, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[5], 0, 30);
+    StorageEngine.getInstance().delete(processorNameList, measurements[5], 30, 50);
 
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path(processorName, measurements[3]));
@@ -241,9 +241,9 @@ public class DeletionQueryTest {
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 40);
-    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 30);
+    StorageEngine.getInstance().delete(processorNameList, measurements[5], 0, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[4], 0, 40);
+    StorageEngine.getInstance().delete(processorNameList, measurements[3], 0, 30);
 
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path(processorName, measurements[3]));
@@ -279,10 +279,10 @@ public class DeletionQueryTest {
       insertToStorageEngine(record);
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[3], 0, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[4], 0, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[5], 0, 30);
+    StorageEngine.getInstance().delete(processorNameList, measurements[5], 30, 50);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -294,10 +294,10 @@ public class DeletionQueryTest {
       insertToStorageEngine(record);
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 250);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 250);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 230);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 230, 250);
+    StorageEngine.getInstance().delete(processorNameList, measurements[3], 0, 250);
+    StorageEngine.getInstance().delete(processorNameList, measurements[4], 0, 250);
+    StorageEngine.getInstance().delete(processorNameList, measurements[5], 0, 230);
+    StorageEngine.getInstance().delete(processorNameList, measurements[5], 230, 250);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -309,10 +309,10 @@ public class DeletionQueryTest {
       insertToStorageEngine(record);
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[3], 0, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[4], 0, 50);
+    StorageEngine.getInstance().delete(processorNameList, measurements[5], 0, 30);
+    StorageEngine.getInstance().delete(processorNameList, measurements[5], 30, 50);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
