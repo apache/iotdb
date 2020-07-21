@@ -691,7 +691,9 @@ public class TsFileProcessor {
         }
         if (targetFile.getName().endsWith(TSFILE_SUFFIX)) {
           if (!isMergeFinished) {
-            writer.getIOWriterOut().truncate(offset - 1);
+            if (offset > 0) {
+              writer.getIOWriterOut().truncate(offset - 1);
+            }
             VmMergeUtils.merge(writer, packVmWritersToSequenceList(vmWriters),
                 storageGroupName,
                 new VmLogger(tsFileResource.getTsFile().getParent(),
@@ -855,6 +857,7 @@ public class TsFileProcessor {
           long startTimeMillis = System.currentTimeMillis();
           VmLogger vmLogger = new VmLogger(tsFileResource.getTsFile().getParent(),
               tsFileResource.getTsFile().getName());
+          vmLogger.logFile(TARGET_NAME, writer.getFile());
           flushAllVmToTsFile(vmWriters, vmTsFileResources, vmLogger);
           vmLogger.logMergeFinish();
           vmLogger.close();
