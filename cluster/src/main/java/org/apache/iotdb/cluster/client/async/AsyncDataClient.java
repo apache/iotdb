@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.client.async;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -27,8 +28,10 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncClient;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.thrift.async.TAsyncMethodCall;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
+import org.apache.thrift.transport.TNonblockingTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,8 +43,14 @@ public class AsyncDataClient extends AsyncClient {
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncDataClient.class);
 
-  private Node node;
-  private AsyncClientPool pool;
+  Node node;
+  AsyncClientPool pool;
+
+  public AsyncDataClient(TProtocolFactory protocolFactory,
+      TAsyncClientManager clientManager,
+      TNonblockingTransport transport) {
+    super(protocolFactory, clientManager, transport);
+  }
 
   public AsyncDataClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager, Node node, AsyncClientPool pool) throws IOException {
@@ -109,6 +118,14 @@ public class AsyncDataClient extends AsyncClient {
   }
 
   public boolean isReady() {
+    if (___currentMethod != null) {
+      logger.warn("Client {} is running {} and will timeout at {}", hashCode(), ___currentMethod,
+          new Date(___currentMethod.getTimeoutTimestamp()));
+    }
     return ___currentMethod == null;
+  }
+
+  public TAsyncMethodCall getCurrMethod() {
+    return ___currentMethod;
   }
 }

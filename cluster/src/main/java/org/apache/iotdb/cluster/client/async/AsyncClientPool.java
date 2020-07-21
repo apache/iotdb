@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.utils.ClusterNode;
+import org.apache.thrift.async.TAsyncMethodCall;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,22 +56,24 @@ public class AsyncClientPool {
    */
   public AsyncClient getClient(Node node) throws IOException {
     ClusterNode clusterNode = new ClusterNode(node);
-    //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-    Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(clusterNode,
-        n -> new ArrayDeque<>());
+    AsyncClient client;
     synchronized (this) {
+      //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+      Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(clusterNode,
+          n -> new ArrayDeque<>());
       if (clientStack.isEmpty()) {
         int nodeClientNum = nodeClientNumMap.getOrDefault(clusterNode, 0);
         if (nodeClientNum >= maxConnectionForEachNode) {
-          return waitForClient(clientStack, clusterNode, nodeClientNum);
+          client = waitForClient(clientStack, clusterNode, nodeClientNum);
         } else {
           nodeClientNumMap.put(clusterNode, nodeClientNum + 1);
-          return asyncClientFactory.getAsyncClient(clusterNode, this);
+          client = asyncClientFactory.getAsyncClient(clusterNode, this);
         }
       } else {
-        return clientStack.pop();
+        client = clientStack.pop();
       }
     }
+    return client;
   }
 
   @SuppressWarnings("java:S2273") // synchronized outside
@@ -105,9 +108,18 @@ public class AsyncClientPool {
    */
   public void putClient(Node node, AsyncClient client) {
     ClusterNode clusterNode = new ClusterNode(node);
-    //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-    Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+    TAsyncMethodCall call;
+    if (client instanceof AsyncDataClient) {
+      call = ((AsyncDataClient) client).getCurrMethod();
+    } else {
+      call = ((AsyncMetaClient) client).getCurrMethod();
+    }
+    if (call != null) {
+      logger.warn("A using client {} is put back while running {}", client.hashCode(), call);
+    }
     synchronized (this) {
+      //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+      Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
       clientStack.push(client);
       this.notifyAll();
     }
@@ -118,7 +130,8 @@ public class AsyncClientPool {
     synchronized (this) {
       Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
       try {
-        clientStack.push(asyncClientFactory.getAsyncClient(node, this));
+        AsyncClient asyncClient = asyncClientFactory.getAsyncClient(node, this);
+        clientStack.push(asyncClient);
       } catch (IOException e) {
         logger.error("Cannot create a new client for {}", node, e);
         nodeClientNumMap.computeIfPresent(clusterNode, (n, cnt) -> cnt - 1);

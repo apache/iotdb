@@ -24,10 +24,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.transport.TNonblockingSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,10 +43,11 @@ public class AsyncDataHeartbeatClient extends AsyncDataClient {
 
   public AsyncDataHeartbeatClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager, Node node, AsyncClientPool pool) throws IOException {
-    // the difference of the two clients lies in the port
-    super(protocolFactory, clientManager,
-        new ClusterNode(node.getIp(), node.getMetaPort(), node.getNodeIdentifier(),
-            node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET), pool);
+    super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(),
+        node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET
+        , RaftServer.getConnectionTimeoutInMS()));
+    this.node = node;
+    this.pool = pool;
   }
 
   public static class FactoryAsync implements AsyncClientFactory {

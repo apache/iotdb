@@ -768,16 +768,15 @@ public class DataGroupMember extends RaftMember {
 
   private void downloadFileAsync(Node node, String remotePath, OutputStream dest)
       throws IOException, TException, InterruptedException {
-    AsyncDataClient client = (AsyncDataClient) getAsyncClient(node);
-    if (client == null) {
-      throw new IOException("No available client for " + node.toString());
-    }
-
     int offset = 0;
     // TODO-Cluster: use elaborate downloading techniques
     int fetchSize = 64 * 1024;
 
     while (true) {
+      AsyncDataClient client = (AsyncDataClient) getAsyncClient(node);
+      if (client == null) {
+        throw new IOException("No available client for " + node.toString());
+      }
       ByteBuffer buffer = SyncClientAdaptor.readFile(client, remotePath, offset, fetchSize);
       if (buffer == null || buffer.limit() - buffer.position() == 0) {
         break;

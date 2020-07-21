@@ -585,7 +585,9 @@ public class RaftLogManager {
             name,
             getFirstIndex(), getLastLogIndex(), compactIndex, removeSize, committedEntryManager.getTotalSize());
         getCommittedEntryManager().compactEntries(compactIndex);
-        getStableEntryManager().removeCompactedEntries(compactIndex);
+        if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+          getStableEntryManager().removeCompactedEntries(compactIndex);
+        }
         logger.info("{}: After compaction index {}-{}, committedLogSize {}", name,
             getFirstIndex(), getLastLogIndex(), committedEntryManager.getTotalSize());
       } catch (EntryUnavailableException e) {
