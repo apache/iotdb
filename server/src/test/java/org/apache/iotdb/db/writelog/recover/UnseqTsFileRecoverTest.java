@@ -19,7 +19,13 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -58,12 +64,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
-
-import static org.junit.Assert.assertEquals;
-
 public class UnseqTsFileRecoverTest {
 
   private File tsF;
@@ -89,6 +89,7 @@ public class UnseqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);
     tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
@@ -173,6 +174,7 @@ public class UnseqTsFileRecoverTest {
     FileUtils.deleteDirectory(tsF.getParentFile());
     resource.close();
     node.delete();
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(true);
     EnvironmentUtils.cleanEnv();
   }
 

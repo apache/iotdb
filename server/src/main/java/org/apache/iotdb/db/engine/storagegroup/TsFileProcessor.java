@@ -828,37 +828,39 @@ public class TsFileProcessor {
 
     if (shouldClose && flushingMemTables.isEmpty()) {
       try {
-        // merge vm to tsfile
-        while (true) {
-          if (!mergeWorking) {
-            break;
+        if (config.isEnableVm()) {
+          // merge vm to tsfile
+          while (true) {
+            if (!mergeWorking) {
+              break;
+            }
+            try {
+              TimeUnit.MILLISECONDS.sleep(10);
+            } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
+              logger.error("{}: {}, closing task is interrupted.",
+                  storageGroupName, tsFileResource.getTsFile().getName(), e);
+              // generally it is because the thread pool is shutdown so the task should be aborted
+              break;
+            }
           }
-          try {
-            TimeUnit.MILLISECONDS.sleep(10);
-          } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
-            logger.error("{}: {}, closing task is interrupted.",
-                storageGroupName, tsFileResource.getTsFile().getName(), e);
-            // generally it is because the thread pool is shutdown so the task should be aborted
-            break;
+          logger.info("{}: [Hot Compaction] Start to merge total {} levels' vm to TsFile {}",
+              storageGroupName, vmTsFileResources.size() + 1, tsFileResource.getTsFile().getName());
+          long startTimeMillis = System.currentTimeMillis();
+          VmLogger vmLogger = new VmLogger(tsFileResource.getTsFile().getParent(),
+              tsFileResource.getTsFile().getName());
+          flushAllVmToTsFile(vmWriters, vmTsFileResources, vmLogger);
+          vmLogger.logMergeFinish();
+          vmLogger.close();
+          File logFile = FSFactoryProducer.getFSFactory()
+              .getFile(tsFileResource.getTsFile().getParent(),
+                  tsFileResource.getTsFile().getName() + VM_LOG_NAME);
+          if (logFile.exists()) {
+            Files.delete(logFile.toPath());
           }
+          logger.info("{}: [Hot Compaction] All vms are merged to TsFile {}, time consumption: {} ms",
+              storageGroupName, tsFileResource.getTsFile().getName(),
+              System.currentTimeMillis() - startTimeMillis);
         }
-        logger.info("{}: [Hot Compaction] Start to merge total {} levels' vm to TsFile {}",
-            storageGroupName, vmTsFileResources.size() + 1, tsFileResource.getTsFile().getName());
-        long startTimeMillis = System.currentTimeMillis();
-        VmLogger vmLogger = new VmLogger(tsFileResource.getTsFile().getParent(),
-            tsFileResource.getTsFile().getName());
-        flushAllVmToTsFile(vmWriters, vmTsFileResources, vmLogger);
-        vmLogger.logMergeFinish();
-        vmLogger.close();
-        File logFile = FSFactoryProducer.getFSFactory()
-            .getFile(tsFileResource.getTsFile().getParent(),
-                tsFileResource.getTsFile().getName() + VM_LOG_NAME);
-        if (logFile.exists()) {
-          Files.delete(logFile.toPath());
-        }
-        logger.info("{}: [Hot Compaction] All vms are merged to TsFile {}, time consumption: {} ms",
-            storageGroupName, tsFileResource.getTsFile().getName(),
-            System.currentTimeMillis() - startTimeMillis);
         writer.mark();
         try {
           double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
@@ -912,7 +914,7 @@ public class TsFileProcessor {
       }
     } else {
       // on other merge task working now, it's safe to submit one.
-      if (!mergeWorking) {
+      if (config.isEnableVm() && !mergeWorking) {
         mergeWorking = true;
         logger.info("{}: {} submit a vm merge task", storageGroupName,
             tsFileResource.getTsFile().getName());
