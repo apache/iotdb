@@ -199,15 +199,15 @@ public class TsFileRecoverPerformer {
             MultiFileLogNodeManager.getInstance().deleteNode(
                 logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
             updateTsFileResource();
-              // after recover, delete the .flush file
-              try {
-                  Files.delete(flushLog.toPath());
-                  deleteVmFile(lastTsFileResource);
-                  vmTsFileResources.get(0).add(lastTsFileResource);
-                  vmRestorableTsFileIOWriterList.get(0).add(lastRestorableTsFileIOWriter);
-              } catch (IOException e) {
-                  logger.error("delete crashed vm flush log and file error ", e);
-              }
+            // after recover, delete the .flush file
+            try {
+              Files.delete(flushLog.toPath());
+              deleteVmFile(lastTsFileResource);
+              vmTsFileResources.get(0).add(lastTsFileResource);
+              vmRestorableTsFileIOWriterList.get(0).add(lastRestorableTsFileIOWriter);
+            } catch (IOException e) {
+              logger.error("delete crashed vm flush log and file error ", e);
+            }
             return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
           } catch (IOException e) {
             throw new StorageGroupProcessorException(
