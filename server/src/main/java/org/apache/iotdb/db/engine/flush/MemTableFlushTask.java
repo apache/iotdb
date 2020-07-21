@@ -52,6 +52,7 @@ public class MemTableFlushTask {
   private final Future<?> encodingTaskFuture;
   private final Future<?> ioTaskFuture;
   private RestorableTsFileIOWriter writer;
+  private RestorableTsFileIOWriter tsFileIOWriter;
 
   private final ConcurrentLinkedQueue<Object> ioTaskQueue = new ConcurrentLinkedQueue<>();
   private final ConcurrentLinkedQueue<Object> encodingTaskQueue = new ConcurrentLinkedQueue<>();
@@ -62,9 +63,11 @@ public class MemTableFlushTask {
   private volatile boolean noMoreEncodingTask = false;
   private volatile boolean noMoreIOTask = false;
 
-  public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup) {
+  public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup,
+      RestorableTsFileIOWriter tsFileIOWriter) {
     this.memTable = memTable;
     this.writer = writer;
+    this.tsFileIOWriter = tsFileIOWriter;
     this.storageGroup = storageGroup;
     this.encodingTaskFuture = subTaskPoolManager.submit(encodingTask);
     this.ioTaskFuture = subTaskPoolManager.submit(ioTask);
@@ -80,7 +83,7 @@ public class MemTableFlushTask {
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
-    File flushLogFile = getFlushLogFile(writer);
+    File flushLogFile = getFlushLogFile(tsFileIOWriter);
     if (!flushLogFile.createNewFile()) {
       logger.error("Failed to create file {}", flushLogFile);
     }

@@ -790,7 +790,7 @@ public class TsFileProcessor {
           curWriter = writer;
         }
         curWriter.mark();
-        flushTask = new MemTableFlushTask(memTableToFlush, curWriter, storageGroupName);
+        flushTask = new MemTableFlushTask(memTableToFlush, curWriter, storageGroupName, writer);
         flushTask.syncFlushMemTable();
       } catch (Exception e) {
         logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",

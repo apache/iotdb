@@ -170,6 +170,8 @@ public class TsFileRecoverPerformer {
       walTargetWriter = vmRestorableTsFileIOWriterList.get(0)
           .get(vmRestorableTsFileIOWriterList.get(0).size() - 1);
       walTargetResource = vmTsFileResources.get(0).get(vmTsFileResources.get(0).size() - 1);
+      // prevent generating resource file
+      isLastFile = true;
     }
 
 
@@ -179,7 +181,9 @@ public class TsFileRecoverPerformer {
         File newVmFile = createNewVMFile(tsFileResource, 0);
         TsFileResource newVmTsFileResource = new TsFileResource(newVmFile);
         RestorableTsFileIOWriter newVMWriter = new RestorableTsFileIOWriter(newVmFile);
-        if (redoLogs(newVMWriter, newVmTsFileResource)) {
+        isLastFile = true;
+        // prevent generating resource file
+        if (redoLogs(newVMWriter, newVmTsFileResource, restorableTsFileIOWriter)) {
           // recover metadata for new vmfile
           recoverResourceFromWriter(newVMWriter, newVmTsFileResource);
           vmTsFileResources.get(0).add(newVmTsFileResource);
@@ -187,10 +191,10 @@ public class TsFileRecoverPerformer {
           // clean logs
           MultiFileLogNodeManager.getInstance().deleteNode(
               logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
-          updateTsFileResource();
         } else {
           Files.delete(newVmFile.toPath());
         }
+        updateTsFileResource();
         return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
       } catch (IOException e) {
         throw new StorageGroupProcessorException(
@@ -200,7 +204,7 @@ public class TsFileRecoverPerformer {
     }
 
     // redo logs
-    redoLogs(walTargetWriter, walTargetResource);
+    redoLogs(walTargetWriter, walTargetResource, restorableTsFileIOWriter);
 
     // clean logs
     try {
@@ -292,7 +296,7 @@ public class TsFileRecoverPerformer {
   }
 
   private boolean redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter,
-      TsFileResource tsFileResource) throws StorageGroupProcessorException {
+      TsFileResource tsFileResource, RestorableTsFileIOWriter tsFileIOWriter) throws StorageGroupProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     recoverMemTable.setVersion(versionController.nextVersion());
     LogReplayer logReplayer = new LogReplayer(logNodePrefix, filePath, tsFileResource.getModFile(),
@@ -304,7 +308,7 @@ public class TsFileRecoverPerformer {
         // flush logs
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable,
             restorableTsFileIOWriter,
-            tsFileResource.getTsFile().getParentFile().getParentFile().getName());
+            tsFileResource.getTsFile().getParentFile().getParentFile().getName(), tsFileIOWriter);
         tableFlushTask.syncFlushMemTable();
         res = true;
       }
