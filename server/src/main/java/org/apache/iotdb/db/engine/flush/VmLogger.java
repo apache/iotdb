@@ -56,6 +56,7 @@ public class VmLogger {
 
   public void logFile(String prefix, File file) throws IOException {
     logStream.write(prefix);
+    logStream.newLine();
     logStream.write(file.getAbsolutePath());
     logStream.newLine();
     logStream.flush();
