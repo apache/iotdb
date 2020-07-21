@@ -49,6 +49,7 @@ import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
 import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -90,8 +91,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private MetaGroupMember metaGroupMember;
 
   private static final int THREAD_POOL_SIZE = 6;
-  private static final int WAIT_REMOTE_QUERY_TIME = 5;
-  private static final TimeUnit WAIT_REMOTE_QUERY_TIME_UNIT = TimeUnit.MINUTES;
   private static final String LOG_FAIL_CONNECT = "Failed to connect to node: {}";
 
   public ClusterPlanExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
@@ -247,7 +246,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
     remoteQueryThreadPool.shutdown();
     try {
-      remoteQueryThreadPool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
+      remoteQueryThreadPool.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.info("Query path count of {} level {} interrupted", sgPathMap, level);
@@ -338,7 +337,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     pool.shutdown();
     try {
-      pool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
+      pool.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for getNodeList()", e);
@@ -435,7 +434,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     pool.shutdown();
     try {
-      pool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
+      pool.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for getNextChildren()", e);
@@ -539,7 +538,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     pool.shutdown();
     try {
-      pool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
+      pool.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("Unexpected interruption when waiting for getTimeseriesSchemas to finish", e);
