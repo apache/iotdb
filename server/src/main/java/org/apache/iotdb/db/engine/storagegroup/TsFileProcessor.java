@@ -691,7 +691,11 @@ public class TsFileProcessor {
         }
         if (targetFile.getName().endsWith(TSFILE_SUFFIX)) {
           if (!isMergeFinished) {
-            writer.getIOWriterOut().truncate(offset - 1);
+            logger.info("{}: {} merge recover {} level vms to TsFile", storageGroupName,
+                tsFileResource.getTsFile().getName(), vmWriters.size());
+            if (offset > 0) {
+              writer.getIOWriterOut().truncate(offset - 1);
+            }
             VmMergeUtils.merge(writer, packVmWritersToSequenceList(vmWriters),
                 storageGroupName,
                 new VmLogger(tsFileResource.getTsFile().getParent(),
@@ -718,9 +722,16 @@ public class TsFileProcessor {
             if (deviceSet.isEmpty()) {
               Files.delete(targetFile.toPath());
             } else {
+              logger
+                  .info("{}: {} [Hot Compaction Recover] merge level-{}'s {} vms to next level vm",
+                      storageGroupName, tsFileResource.getTsFile().getName(), 0,
+                      vmWriters.get(0).size());
+              if (offset > 0) {
+                writer.getIOWriterOut().truncate(offset - 1);
+              }
               newVmWriter.getIOWriterOut().truncate(offset - 1);
               // vm files must be sequence, so we just have to find the first file
-              int startIndex = 0;
+              int startIndex;
               for (startIndex = 0; startIndex < vmWriters.get(level).size(); startIndex++) {
                 RestorableTsFileIOWriter levelVmWriter = vmWriters.get(level).get(startIndex);
                 if (levelVmWriter.getFile().getAbsolutePath()
@@ -844,17 +855,10 @@ public class TsFileProcessor {
           }
           logger.info("{}: [Hot Compaction] Start to merge total {} levels' vm to TsFile {}",
               storageGroupName, vmTsFileResources.size() + 1, tsFileResource.getTsFile().getName());
-          new Thread(() -> {
-            try {
-              TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException e) {
-              e.printStackTrace();
-            }
-            System.exit(1);
-          }).start();
           long startTimeMillis = System.currentTimeMillis();
           VmLogger vmLogger = new VmLogger(tsFileResource.getTsFile().getParent(),
               tsFileResource.getTsFile().getName());
+          vmLogger.logFile(TARGET_NAME, writer.getFile());
           flushAllVmToTsFile(vmWriters, vmTsFileResources, vmLogger);
           vmLogger.logMergeFinish();
           vmLogger.close();
@@ -864,9 +868,10 @@ public class TsFileProcessor {
           if (logFile.exists()) {
             Files.delete(logFile.toPath());
           }
-          logger.info("{}: [Hot Compaction] All vms are merged to TsFile {}, time consumption: {} ms",
-              storageGroupName, tsFileResource.getTsFile().getName(),
-              System.currentTimeMillis() - startTimeMillis);
+          logger
+              .info("{}: [Hot Compaction] All vms are merged to TsFile {}, time consumption: {} ms",
+                  storageGroupName, tsFileResource.getTsFile().getName(),
+                  System.currentTimeMillis() - startTimeMillis);
         }
         writer.mark();
         try {
@@ -1173,8 +1178,8 @@ public class TsFileProcessor {
         long vmPointNum = 0;
         // all flush to target file
         Map<Path, MeasurementSchema> pathMeasurementSchemaMap = new HashMap<>();
-        for (List<RestorableTsFileIOWriter> subVmWriters : vmMergeWriters) {
-          for (RestorableTsFileIOWriter vmWriter : subVmWriters) {
+        for (List<RestorableTsFileIOWriter> levelVmWriters : vmMergeWriters) {
+          for (RestorableTsFileIOWriter vmWriter : levelVmWriters) {
             Map<String, Map<String, List<ChunkMetadata>>> schemaMap = vmWriter
                 .getMetadatasForQuery();
             for (Entry<String, Map<String, List<ChunkMetadata>>> schemaMapEntry : schemaMap
@@ -1216,6 +1221,14 @@ public class TsFileProcessor {
               }
               File newVmFile = createNewVMFileWithLock(tsFileResource, i + 1);
               vmLogger.logFile(TARGET_NAME, newVmFile);
+              new Thread(() -> {
+                try {
+                  TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException e) {
+                  e.printStackTrace();
+                }
+                System.exit(1);
+              }).start();
               logger.info("{}: {} [Hot Compaction] merge level-{}'s {} vms to next level vm",
                   storageGroupName, tsFileResource.getTsFile().getName(), i,
                   vmMergeTsFiles.get(i).size());
