@@ -96,7 +96,7 @@ public class DataSourceInfo {
             this.readerId = newReaderId;
             this.curSource = node;
             this.curPos = nextNodePos;
-            return client;
+            return this.metaGroupMember.getAsyncDataClient(node);
           } else {
             // the id being -1 means there is no satisfying data on the remote node, create an
             // empty reader to reduce further communication

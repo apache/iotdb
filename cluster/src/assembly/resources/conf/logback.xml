@@ -236,4 +236,5 @@
     </logger>
     <logger level="info" name="org.apache.iotdb.cluster.server.heartbeat"/>
     <logger level="error" name="org.apache.thrift.server.AbstractNonblockingServer"/>
+    <logger level="off" name="org.apache.thrift.server.TThreadPoolServer"/>
 </configuration>
