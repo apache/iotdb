@@ -47,5 +47,4 @@ to generate the python library.
 
 ## Session Client & Example
 We packed up the Thrift interface in `client-py/src/session.py` (similar with its Java counterpart), also provided 
-an example file `client-py/src/sessionExample.py` of how to use the session module. please read it carefully.
-
+an example file `client-py/src/SessionExample.py` of how to use the session module. please read it carefully.
