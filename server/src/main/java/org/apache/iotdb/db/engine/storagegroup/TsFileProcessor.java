@@ -23,7 +23,6 @@ import static org.apache.iotdb.db.engine.flush.VmLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.flush.VmLogger.TARGET_NAME;
 import static org.apache.iotdb.db.engine.flush.VmLogger.VM_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.getVmLevel;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
@@ -845,6 +844,14 @@ public class TsFileProcessor {
           }
           logger.info("{}: [Hot Compaction] Start to merge total {} levels' vm to TsFile {}",
               storageGroupName, vmTsFileResources.size() + 1, tsFileResource.getTsFile().getName());
+          new Thread(() -> {
+            try {
+              TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
+            System.exit(1);
+          }).start();
           long startTimeMillis = System.currentTimeMillis();
           VmLogger vmLogger = new VmLogger(tsFileResource.getTsFile().getParent(),
               tsFileResource.getTsFile().getName());
