@@ -19,17 +19,17 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
+import org.apache.iotdb.cluster.client.rpcutils.TimeoutChangeableTFastFramedTransport;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Client;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
 /**
- * Notice: Because a client will be returned to a pool immediately after a successful request,
- * you should not cache it anywhere else or there may be conflicts.
+ * Notice: Because a client will be returned to a pool immediately after a successful request, you
+ * should not cache it anywhere else or there may be conflicts.
  */
 public class SyncDataClient extends Client {
 
@@ -39,11 +39,16 @@ public class SyncDataClient extends Client {
   public SyncDataClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
     // the difference of the two clients lies in the port
-    super(protocolFactory.getProtocol(new TFastFramedTransport(new TSocket(node.getIp(),
-        node.getDataPort(), RaftServer.getConnectionTimeoutInMS()))));
+    super(protocolFactory.getProtocol(new TimeoutChangeableTFastFramedTransport(
+        new TSocket(node.getIp(), node.getDataPort(), RaftServer.getConnectionTimeoutInMS()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();
+  }
+
+  public void setTimeout(int timeout) {
+    ((TimeoutChangeableTFastFramedTransport)getInputProtocol().getTransport()).setTimeout(timeout);
+    ((TimeoutChangeableTFastFramedTransport)getOutputProtocol().getTransport()).setTimeout(timeout);
   }
 
   public void putBack() {

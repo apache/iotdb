@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -45,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 
 public class MetaPuller {
+
   private static final Logger logger = LoggerFactory.getLogger(MetaPuller.class);
   private MetaGroupMember metaGroupMember;
 
@@ -62,6 +64,7 @@ public class MetaPuller {
 
   /**
    * we should not use this function in other place, but only in IoTDB class
+   *
    * @return
    */
   public static MetaPuller getInstance() {
@@ -71,11 +74,11 @@ public class MetaPuller {
   /**
    * Pull the all timeseries schemas of given prefixPaths from remote nodes. All prefixPaths must
    * contain the storage group.
-   *
-   *             Attention!!!  Just copy from metaGroupMember now, will refactor later.
+   * <p>
+   * Attention!!!  Just copy from metaGroupMember now, will refactor later.
    */
   public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths)
-    throws MetadataException {
+      throws MetadataException {
     logger.debug("{}: Pulling timeseries schemas of {}", metaGroupMember.getName(), prefixPaths);
     // split the paths by the data groups that will hold them
     Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
@@ -101,19 +104,21 @@ public class MetaPuller {
     List<MeasurementSchema> schemas = new ArrayList<>();
     // pull timeseries schema from every group involved
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: pulling schemas of {} and other {} paths from {} groups", metaGroupMember.getName(),
-        prefixPaths.get(0), prefixPaths.size() - 1,
-        partitionGroupPathMap.size());
+      logger.debug("{}: pulling schemas of {} and other {} paths from {} groups",
+          metaGroupMember.getName(),
+          prefixPaths.get(0), prefixPaths.size() - 1,
+          partitionGroupPathMap.size());
     }
     for (Map.Entry<PartitionGroup, List<String>> partitionGroupListEntry : partitionGroupPathMap
-      .entrySet()) {
+        .entrySet()) {
       PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
       List<String> paths = partitionGroupListEntry.getValue();
       pullTimeSeriesSchemas(partitionGroup, paths, schemas);
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: pulled {} schemas for {} and other {} paths", metaGroupMember.getName(), schemas.size(),
-        prefixPaths.get(0), prefixPaths.size() - 1);
+      logger.debug("{}: pulled {} schemas for {} and other {} paths", metaGroupMember.getName(),
+          schemas.size(),
+          prefixPaths.get(0), prefixPaths.size() - 1);
     }
     return schemas;
   }
@@ -128,18 +133,19 @@ public class MetaPuller {
    * @param results
    */
   public void pullTimeSeriesSchemas(PartitionGroup partitionGroup,
-                                    List<String> prefixPaths, List<MeasurementSchema> results) {
+      List<String> prefixPaths, List<MeasurementSchema> results) {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the node is in the target group, synchronize with leader should be enough
       metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), null,
-        "Pull timeseries of " + prefixPaths).syncLeader();
+          "Pull timeseries of " + prefixPaths).syncLeader();
       int preSize = results.size();
       for (String prefixPath : prefixPaths) {
         IoTDB.metaManager.collectSeries(prefixPath, results);
       }
       if (logger.isDebugEnabled()) {
-        logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from local", metaGroupMember.getName(),
-          results.size() - preSize, prefixPaths.get(0), prefixPaths.size() - 1);
+        logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from local",
+            metaGroupMember.getName(),
+            results.size() - preSize, prefixPaths.get(0), prefixPaths.size() - 1);
       }
       return;
     }
@@ -157,10 +163,11 @@ public class MetaPuller {
   }
 
   private boolean pullTimeSeriesSchemas(Node node,
-                                        PullSchemaRequest request, List<MeasurementSchema> results) {
+      PullSchemaRequest request, List<MeasurementSchema> results) {
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Pulling timeseries schemas of {} and other {} paths from {}", metaGroupMember.getName(),
-        request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node);
+      logger.debug("{}: Pulling timeseries schemas of {} and other {} paths from {}",
+          metaGroupMember.getName(),
+          request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node);
     }
 
     List<MeasurementSchema> schemas = null;
@@ -168,21 +175,24 @@ public class MetaPuller {
       schemas = pullTimeSeriesSchemas(node, request);
     } catch (IOException | TException e) {
       logger
-        .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}", metaGroupMember.getName(),
-          request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node, e);
+          .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
+              metaGroupMember.getName(),
+              request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger
-        .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}", metaGroupMember.getName(),
-          request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node, e);
+          .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
+              metaGroupMember.getName(),
+              request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node, e);
     }
 
     if (schemas != null) {
       if (logger.isDebugEnabled()) {
         logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
-          metaGroupMember.getName(),
-          schemas.size(), request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node,
-          request.getHeader());
+            metaGroupMember.getName(),
+            schemas.size(), request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1,
+            node,
+            request.getHeader());
       }
       results.addAll(schemas);
       return true;
@@ -191,13 +201,15 @@ public class MetaPuller {
   }
 
   private List<MeasurementSchema> pullTimeSeriesSchemas(Node node,
-                                                        PullSchemaRequest request) throws TException, InterruptedException, IOException {
+      PullSchemaRequest request) throws TException, InterruptedException, IOException {
     List<MeasurementSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+      AsyncDataClient client = metaGroupMember
+          .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullTimeSeriesSchema(client, request);
     } else {
-      SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+      SyncDataClient syncDataClient = metaGroupMember
+          .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
       ByteBuffer buffer = pullSchemaResp.schemaBytes;
       int size = buffer.getInt();

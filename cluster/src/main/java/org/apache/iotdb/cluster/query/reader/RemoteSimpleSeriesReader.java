@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 /**
  * RemoteSimpleSeriesReader is a reader without value filter that reads points from a remote side.
  */
-public class RemoteSimpleSeriesReader implements IPointReader  {
+public class RemoteSimpleSeriesReader implements IPointReader {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSeriesReader.class);
   private DataSourceInfo sourceInfo;
@@ -116,8 +116,9 @@ public class RemoteSimpleSeriesReader implements IPointReader  {
     synchronized (fetchResult) {
       fetchResult.set(null);
       try {
-        sourceInfo.getCurAsyncClient().fetchSingleSeries(sourceInfo.getHeader(),
-            sourceInfo.getReaderId(), handler);
+        sourceInfo.getCurAsyncClient(RaftServer.getReadOperationTimeoutMS())
+            .fetchSingleSeries(sourceInfo.getHeader(),
+                sourceInfo.getReaderId(), handler);
         fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
       } catch (TException e) {
         //try other node
@@ -136,7 +137,8 @@ public class RemoteSimpleSeriesReader implements IPointReader  {
 
   private ByteBuffer fetchResultSync() throws IOException {
     try {
-      SyncDataClient curSyncClient = sourceInfo.getCurSyncClient();
+      SyncDataClient curSyncClient = sourceInfo
+          .getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
       ByteBuffer buffer = curSyncClient
           .fetchSingleSeries(sourceInfo.getHeader(),
               sourceInfo.getReaderId());

@@ -77,6 +77,7 @@ import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sync.sender.transfer.SyncClient;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -246,7 +247,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
     remoteQueryThreadPool.shutdown();
     try {
-      remoteQueryThreadPool.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
+      remoteQueryThreadPool
+          .awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.info("Query path count of {} level {} interrupted", sgPathMap, level);
@@ -275,11 +277,15 @@ public class ClusterPlanExecutor extends PlanExecutor {
       try {
         Integer count;
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+          AsyncDataClient client = metaGroupMember
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          client.setTimeout(RaftServer.getReadOperationTimeoutMS());
           count = SyncClientAdaptor.getPathCount(client, partitionGroup.getHeader(),
               pathsToQuery, level);
         } else {
-          SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+          SyncDataClient syncDataClient = metaGroupMember
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
           count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
           metaGroupMember.putBackSyncClient(syncDataClient);
         }
@@ -375,10 +381,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (Node node : group) {
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+          AsyncDataClient client = metaGroupMember
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           paths = SyncClientAdaptor.getNodeList(client, group.getHeader(), schemaPattern, level);
         } else {
-          SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+          SyncDataClient syncDataClient = metaGroupMember
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           paths = syncDataClient.getNodeList(group.getHeader(), schemaPattern, level);
           metaGroupMember.putBackSyncClient(syncDataClient);
         }
@@ -470,10 +478,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (Node node : group) {
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+          AsyncDataClient client = metaGroupMember
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           nextChildren = SyncClientAdaptor.getNextChildren(client, group.getHeader(), path);
         } else {
-          SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+          SyncDataClient syncDataClient = metaGroupMember
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           nextChildren = syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path);
           metaGroupMember.putBackSyncClient(syncDataClient);
         }
@@ -549,7 +559,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return showTimeSeriesResults;
   }
 
-  private  List<ShowTimeSeriesResult> applyShowTimeseriesLimitOffset(ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet,
+  private List<ShowTimeSeriesResult> applyShowTimeseriesLimitOffset(
+      ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet,
       int limit, int offset) {
     List<ShowTimeSeriesResult> showTimeSeriesResults = new ArrayList<>();
     Iterator<ShowTimeSeriesResult> iterator = resultSet.iterator();
@@ -626,11 +637,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
     ByteBuffer resultBinary;
 
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+      AsyncDataClient client = metaGroupMember
+          .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(),
           plan);
     } else {
-      SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+      SyncDataClient syncDataClient = metaGroupMember
+          .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
       plan.serialize(dataOutputStream);

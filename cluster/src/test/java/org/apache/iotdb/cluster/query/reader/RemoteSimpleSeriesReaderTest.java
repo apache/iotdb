@@ -68,11 +68,11 @@ public class RemoteSimpleSeriesReaderTest {
     metaGroupMember = new TestMetaGroupMember() {
 
       @Override
-      public AsyncDataClient getAsyncDataClient(Node node) throws IOException {
-        return new AsyncDataClient(null, null, node, null){
+      public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+        return new AsyncDataClient(null, null, node, null) {
           @Override
           public void fetchSingleSeries(Node header, long readerId,
-                                        AsyncMethodCallback<ByteBuffer> resultHandler)
+              AsyncMethodCallback<ByteBuffer> resultHandler)
               throws TException {
             if (failedNodes.contains(node)) {
               throw new TException("Node down.");
@@ -92,7 +92,8 @@ public class RemoteSimpleSeriesReaderTest {
           }
 
           @Override
-          public void querySingleSeries(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
+          public void querySingleSeries(SingleSeriesQueryRequest request,
+              AsyncMethodCallback<Long> resultHandler)
               throws TException {
             if (failedNodes.contains(node)) {
               throw new TException("Node down.");
@@ -121,7 +122,7 @@ public class RemoteSimpleSeriesReaderTest {
     RemoteQueryContext context = new RemoteQueryContext(1);
 
     DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
-      request, context, metaGroupMember, group);
+        request, context, metaGroupMember, group);
     sourceInfo.nextDataClient(false, Long.MIN_VALUE);
 
     reader = new RemoteSimpleSeriesReader(sourceInfo);
@@ -151,7 +152,7 @@ public class RemoteSimpleSeriesReaderTest {
     RemoteQueryContext context = new RemoteQueryContext(1);
 
     DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
-      request, context, metaGroupMember, group);
+        request, context, metaGroupMember, group);
     sourceInfo.nextDataClient(false, Long.MIN_VALUE);
     reader = new RemoteSimpleSeriesReader(sourceInfo);
 

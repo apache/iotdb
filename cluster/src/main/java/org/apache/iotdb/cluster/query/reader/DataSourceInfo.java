@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.thrift.TException;
@@ -36,10 +37,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * provide client which could connect to all nodes of the partitionGroup.
- * Notice: methods like getter should be called only after nextDataClient() has been called
+ * provide client which could connect to all nodes of the partitionGroup. Notice: methods like
+ * getter should be called only after nextDataClient() has been called
  */
 public class DataSourceInfo {
+
   private static final Logger logger = LoggerFactory.getLogger(DataSourceInfo.class);
 
   private long readerId;
@@ -55,8 +57,8 @@ public class DataSourceInfo {
   private boolean noClient = false;
 
   public DataSourceInfo(PartitionGroup group, TSDataType dataType,
-                        SingleSeriesQueryRequest request, RemoteQueryContext context,
-                        MetaGroupMember metaGroupMember, List<Node> nodes) {
+      SingleSeriesQueryRequest request, RemoteQueryContext context,
+      MetaGroupMember metaGroupMember, List<Node> nodes) {
     this.readerId = -1;
     this.partitionGroup = group;
     this.dataType = dataType;
@@ -82,7 +84,8 @@ public class DataSourceInfo {
       logger.debug("querying {} from {} of {}", request.path, node, partitionGroup.getHeader());
       try {
 
-        AsyncDataClient client = this.metaGroupMember.getAsyncDataClient(node);
+        AsyncDataClient client = this.metaGroupMember
+            .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
         Long newReaderId = applyForReaderId(client, byTimestamp, timestamp);
 
         if (newReaderId != null) {
@@ -147,12 +150,12 @@ public class DataSourceInfo {
     return this.curSource;
   }
 
-  public AsyncDataClient getCurAsyncClient() throws IOException {
-    return noClient ? null : metaGroupMember.getAsyncDataClient(this.curSource);
+  public AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
+    return noClient ? null : metaGroupMember.getAsyncDataClient(this.curSource, timeout);
   }
 
-  public SyncDataClient getCurSyncClient() throws IOException {
-    return noClient ? null : metaGroupMember.getSyncDataClient(this.curSource);
+  public SyncDataClient getCurSyncClient(int timeout) throws IOException {
+    return noClient ? null : metaGroupMember.getSyncDataClient(this.curSource, timeout);
   }
 
   public boolean isNoData() {
@@ -171,12 +174,15 @@ public class DataSourceInfo {
 
   /**
    * Check if there is still any available client and there is still any left data.
+   *
    * @return true if there is an available client and data to read, false all data has been read.
    * @throws IOException if all clients are unavailable.
    */
   boolean checkCurClient() throws IOException {
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer() && getCurAsyncClient() == null ||
-     !ClusterDescriptor.getInstance().getConfig().isUseAsyncServer() && getCurSyncClient() == null) {
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()
+        && getCurAsyncClient(RaftServer.getConnectionTimeoutInMS()) == null ||
+        !ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()
+            && getCurSyncClient(RaftServer.getConnectionTimeoutInMS()) == null) {
       if (!isNoData()) {
         throw new IOException("no available client.");
       } else {

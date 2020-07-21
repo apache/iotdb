@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
@@ -144,7 +145,8 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       } catch (CheckConsistencyException e) {
         throw new QueryProcessException(e.getMessage());
       }
-      return calculateLastPairForOneSeriesLocally(seriesPath, dataType, context, deviceMeasurements);
+      return calculateLastPairForOneSeriesLocally(seriesPath, dataType, context,
+          deviceMeasurements);
     }
 
     private TimeValuePair calculateSeriesLastRemotely(PartitionGroup group, Path seriesPath,
@@ -181,7 +183,8 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       ByteBuffer buffer;
       AsyncDataClient asyncDataClient;
       try {
-        asyncDataClient = metaGroupMember.getAsyncDataClient(node);
+        asyncDataClient = metaGroupMember
+            .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       } catch (IOException e) {
         return null;
       }
@@ -192,10 +195,12 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     }
 
     private ByteBuffer lastSync(Node node, QueryContext context) throws TException {
-      SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+      SyncDataClient syncDataClient = metaGroupMember
+          .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       ByteBuffer result = syncDataClient
           .last(new LastQueryRequest(seriesPath.getFullPath(), dataType.ordinal(),
-              context.getQueryId(), deviceMeasurements, group.getHeader(), syncDataClient.getNode()));
+              context.getQueryId(), deviceMeasurements, group.getHeader(),
+              syncDataClient.getNode()));
       metaGroupMember.putBackSyncClient(syncDataClient);
       return result;
     }
