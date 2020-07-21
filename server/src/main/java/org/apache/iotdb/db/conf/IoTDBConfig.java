@@ -241,7 +241,7 @@ public class IoTDBConfig {
   /**
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
    */
-  private long memtableSizeThreshold = 64 * 1024 * 1024L;
+  private long memtableSizeThreshold = 128 * 1024 * 1024L;
 
   /**
    * When average series point number reaches this, flush the memtable to disk
@@ -261,12 +261,12 @@ public class IoTDBConfig {
   /**
    * The max vm num of each memtable. When vm num exceeds this, the vm files will merge to one.
    */
-  private int maxVmNum = 3;
+  private int maxVmNum = 5;
 
   /**
    * When vmfiles merge times exceeds this, merge the vmfile to the tsfile.
    */
-  private int maxMergeChunkNumInTsFile = 9;
+  private int maxMergeChunkNumInTsFile = 25;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
