@@ -146,7 +146,6 @@ public class TsFileRecoverPerformer {
 
     TsFileResource lastTsFileResource = vmTsFileResources.isEmpty() ? resource
         : vmTsFileResources.get(0).get(vmTsFileResources.get(0).size() - 1);
-    File flushLog = getFlushLogFile(restorableTsFileIOWriter);
 
     boolean isComplete =
         !lastRestorableTsFileIOWriter.hasCrashed() && !lastRestorableTsFileIOWriter.canWrite();
@@ -170,8 +169,9 @@ public class TsFileRecoverPerformer {
           }
         }
         recoverResourceFromWriter(restorableTsFileIOWriter, resource);
-        // if the last file in vmTsFileResources is crashed
-        if (flushLog.exists()) {
+        boolean vmFileNotCrashed = !getFlushLogFile(restorableTsFileIOWriter).exists();
+        // if the last file in vmTsFileResources is not crashed
+        if (vmFileNotCrashed) {
           try {
             boolean tsFileNotCrashed = !isVMLoggerFileExist(restorableTsFileIOWriter);
             // tsfile is not crash
@@ -199,15 +199,6 @@ public class TsFileRecoverPerformer {
             MultiFileLogNodeManager.getInstance().deleteNode(
                 logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
             updateTsFileResource();
-            // after recover, delete the .flush file
-            try {
-              Files.delete(flushLog.toPath());
-              deleteVmFile(lastTsFileResource);
-              vmTsFileResources.get(0).add(lastTsFileResource);
-              vmRestorableTsFileIOWriterList.get(0).add(lastRestorableTsFileIOWriter);
-            } catch (IOException e) {
-              logger.error("delete crashed vm flush log and file error ", e);
-            }
             return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
           } catch (IOException e) {
             throw new StorageGroupProcessorException(
