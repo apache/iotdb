@@ -47,8 +47,10 @@ public class SyncDataClient extends Client {
   }
 
   public void setTimeout(int timeout) {
-    ((TimeoutChangeableTFastFramedTransport)getInputProtocol().getTransport()).setTimeout(timeout);
-    ((TimeoutChangeableTFastFramedTransport)getOutputProtocol().getTransport()).setTimeout(timeout);
+    ((TimeoutChangeableTFastFramedTransport) (getInputProtocol().getTransport()))
+        .setTimeout(timeout);
+    ((TimeoutChangeableTFastFramedTransport) (getOutputProtocol().getTransport()))
+        .setTimeout(timeout);
   }
 
   public void putBack() {
