@@ -110,9 +110,10 @@ public class MManagerImproveTest {
   private void doOriginTest(List<String> deviceId, List<String> measurementList)
       throws MetadataException {
     for (String measurement : measurementList) {
-      deviceId.add(measurement);
-      assertTrue(mManager.isPathExist(deviceId));
-      TSDataType dataType = mManager.getSeriesType(deviceId);
+      List<String> path = new ArrayList<>(deviceId);
+      path.add(measurement);
+      assertTrue(mManager.isPathExist(path));
+      TSDataType dataType = mManager.getSeriesType(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
@@ -120,8 +121,9 @@ public class MManagerImproveTest {
   private void doPathLoopOnceTest(List<String> deviceId, List<String> measurementList)
       throws MetadataException {
     for (String measurement : measurementList) {
-      deviceId.add(measurement);
-      TSDataType dataType = mManager.getSeriesType(deviceId);
+      List<String> path = new ArrayList<>(deviceId);
+      path.add(measurement);
+      TSDataType dataType = mManager.getSeriesType(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }

@@ -291,7 +291,7 @@ public class MTree implements Serializable {
       return false;
     }
     for (int i = 1; i < nodeNames.size(); i++) {
-      String childName = nodeNames.get(0);
+      String childName = nodeNames.get(i);
       if (cur.hasChild(childName)) {
         cur = cur.getChild(childName);
       } else {
