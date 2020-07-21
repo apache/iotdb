@@ -345,7 +345,7 @@ public class MTree implements Serializable {
     MNode cur = root;
     StorageGroupMNode storageGroupMNode = null;
     if (nodeNames.size() <= 1 || !nodeNames.get(0).equals(root.getName())) {
-      throw new IllegalPathException(nodeNames.toString());
+      throw new IllegalPathException(MetaUtils.getPathByNodes(nodeNames));
     }
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
@@ -362,7 +362,7 @@ public class MTree implements Serializable {
     }
     if (cur.hasChild(nodeNames.get(i))) {
       // node b has child sg
-      throw new StorageGroupAlreadySetException(nodeNames.toString());
+      throw new StorageGroupAlreadySetException(MetaUtils.getPathByNodes(nodeNames));
     } else {
       storageGroupMNode =
           new StorageGroupMNode(
@@ -511,6 +511,41 @@ public class MTree implements Serializable {
     String[] nodes = MetaUtils.getNodeNames(path);
     if (nodes.length == 0 || !IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
       throw new IllegalPathException(path);
+    }
+    // delete the last node of path
+    curNode.getParent().deleteChild(curNode.getName());
+    MeasurementMNode deletedNode = (MeasurementMNode) curNode;
+    if (deletedNode.getAlias() != null) {
+      curNode.getParent().deleteAliasChild(((MeasurementMNode) curNode).getAlias());
+    }
+    curNode = curNode.getParent();
+    // delete all empty ancestors except storage group
+    while (!IoTDBConstant.PATH_ROOT.equals(curNode.getName())
+        && curNode.getChildren().size() == 0) {
+      // if current storage group has no time series, return the storage group name
+      if (curNode instanceof StorageGroupMNode) {
+        return new Pair<>(curNode.getFullPath(), deletedNode);
+      }
+      curNode.getParent().deleteChild(curNode.getName());
+      curNode = curNode.getParent();
+    }
+    return new Pair<>(null, deletedNode);
+  }
+
+  /**
+   * Delete path. The path should be a full path from root to leaf node
+   *
+   * @param nodes Format: [root, node, node]
+   */
+  Pair<String, MeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(List<String> nodes)
+      throws MetadataException {
+    MNode curNode = getNodeByNodes(nodes);
+    if (!(curNode instanceof MeasurementMNode)) {
+      throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
+    }
+
+    if (nodes.isEmpty() || !IoTDBConstant.PATH_ROOT.equals(nodes.get(0))) {
+      throw new IllegalPathException(MetaUtils.getPathByNodes(nodes));
     }
     // delete the last node of path
     curNode.getParent().deleteChild(curNode.getName());
@@ -691,6 +726,21 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Get all storage groups under the given path
+   *
+   * @return storage group list
+   * @apiNote :for cluster
+   */
+  List<String> getStorageGroupByPath(List<String> nodes) throws MetadataException {
+    List<String> storageGroups = new ArrayList<>();
+    if (nodes.isEmpty() || !nodes.get(0).equals(root.getName())) {
+      throw new IllegalPathException(MetaUtils.getPathByNodes(nodes));
+    }
+    findStorageGroup(root, nodes.toArray(new String[0]), 1, "", storageGroups);
+    return storageGroups;
+  }
+
+  /**
    * Recursively find all storage group according to a specific path
    *
    * @apiNote :for cluster
@@ -832,6 +882,22 @@ public class MTree implements Serializable {
     MNode cur = root;
     for (int i = 1; i <= nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
+      if (cur == null) {
+        return false;
+      } else if (cur instanceof StorageGroupMNode) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Check whether the given path contains a storage group
+   */
+  boolean checkStorageGroupByPath(List<String> nodes) {
+    MNode cur = root;
+    for (int i = 1; i <= nodes.size(); i++) {
+      cur = cur.getChild(nodes.get(i));
       if (cur == null) {
         return false;
       } else if (cur instanceof StorageGroupMNode) {
@@ -1192,9 +1258,10 @@ public class MTree implements Serializable {
       }
       List<String> nodeNames = new ArrayList<>();
       nodeNames.add(0, node.getName());
-      while(!node.getParent().getName().equals(IoTDBConstant.PATH_ROOT)) {
-        node = node.getParent();
-        nodeNames.add(0, node.getName());
+      MNode tempNode = node;
+      while(!tempNode.getName().equals(IoTDBConstant.PATH_ROOT)) {
+        tempNode = tempNode.getParent();
+        nodeNames.add(0, tempNode.getName());
       }
       timeseriesSchemaList.add(nodeNames);
       if (hasLimit) {
@@ -1251,6 +1318,23 @@ public class MTree implements Serializable {
     }
     Set<String> childNodePaths = new TreeSet<>();
     findChildNodePathInNextLevel(root, nodes, 1, "", childNodePaths, nodes.length + 1);
+    return childNodePaths;
+  }
+
+  /**
+   * Get child node path in the next level of the given path.
+   *
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
+   * return [root.sg1.d1, root.sg1.d2]
+   *
+   * @return All child nodes' seriesPath(s) of given seriesPath.
+   */
+  Set<String> getChildNodePathInNextLevel(List<String> nodes) throws MetadataException {
+    if (nodes.isEmpty() || !nodes.get(0).equals(root.getName())) {
+      throw new IllegalPathException(MetaUtils.getPathByNodes(nodes));
+    }
+    Set<String> childNodePaths = new TreeSet<>();
+    findChildNodePathInNextLevel(root, nodes.toArray(new String[0]), 1, "", childNodePaths, nodes.size() + 1);
     return childNodePaths;
   }
 
@@ -1391,9 +1475,10 @@ public class MTree implements Serializable {
         if (node.getChild(nodeReg) instanceof MeasurementMNode) {
           List<String> nodeNames = new ArrayList<>();
           nodeNames.add(0, node.getName());
-          while(!node.getParent().getName().equals(IoTDBConstant.PATH_ROOT)) {
-            node = node.getParent();
-            nodeNames.add(0, node.getName());
+          MNode tempNode = node;
+          while(!tempNode.getName().equals(IoTDBConstant.PATH_ROOT)) {
+            tempNode = tempNode.getParent();
+            nodeNames.add(0, tempNode.getName());
           }
           Path path = new Path(nodeNames);
           path.setDevice(node.getFullPath());
@@ -1408,9 +1493,10 @@ public class MTree implements Serializable {
         if (child instanceof MeasurementMNode && !deviceAdded) {
           List<String> nodeNames = new ArrayList<>();
           nodeNames.add(0, node.getName());
-          while(!node.getParent().getName().equals(IoTDBConstant.PATH_ROOT)) {
-            node = node.getParent();
-            nodeNames.add(0, node.getName());
+          MNode tempNode = node;
+          while(!tempNode.getName().equals(IoTDBConstant.PATH_ROOT)) {
+            tempNode = tempNode.getParent();
+            nodeNames.add(0, tempNode.getName());
           }
           Path path = new Path(nodeNames);
           path.setDevice(node.getFullPath());

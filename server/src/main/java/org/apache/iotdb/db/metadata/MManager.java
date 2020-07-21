@@ -312,7 +312,11 @@ public class MManager {
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP:
         List<String> storageGroups = new ArrayList<>(Arrays.asList(args).subList(1, args.length));
-        deleteStorageGroups(storageGroups);
+        List<List<String>> storageGroupNodesList = new ArrayList<>();
+        for(String storageGroup : storageGroups) {
+          storageGroupNodesList.add(MetaUtils.getDeviceNodeNames(storageGroup));
+        }
+        deleteStorageGroups(storageGroupNodesList);
         break;
       case MetadataOperationType.SET_TTL:
         setTTL(MetaUtils.getDeviceNodeNames(args[1]), Long.parseLong(args[2]));
@@ -486,19 +490,19 @@ public class MManager {
       mNodeCache.clear();
     }
     try {
-      List<String> allTimeseries = mtree.getAllTimeseriesName(prefixPathNodes);
+      List<List<String>> allTimeseries = mtree.getAllTimeseriesNameNodes(prefixPathNodes);
       // Monitor storage group seriesPath is not allowed to be deleted
-      allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_PREFIX));
+      allTimeseries.removeIf(p -> p.get(1).equals(MonitorConstants.STATS));
 
       Set<String> failedNames = new HashSet<>();
-      for (String p : allTimeseries) {
+      for (List<String> p : allTimeseries) {
         try {
           String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
           if (!isRecovering) {
             if (emptyStorageGroup != null) {
               StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
             }
-            logWriter.deleteTimeseries(p);
+            logWriter.deleteTimeseries(MetaUtils.getPathByNodes(prefixPathNodes));
           }
         } catch (DeleteFailedException e) {
           failedNames.add(e.getName());
@@ -587,6 +591,41 @@ public class MManager {
   }
 
   /**
+   * @param nodes nodes of full path from root to leaf node
+   * @return after delete if the storage group is empty, return its name, otherwise return null
+   */
+  private String deleteOneTimeseriesAndUpdateStatistics(List<String> nodes)
+      throws MetadataException, IOException {
+    lock.writeLock().lock();
+    try {
+      Pair<String, MeasurementMNode> pair = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(nodes);
+      removeFromTagInvertedIndex(pair.right);
+      String storageGroupName = pair.left;
+
+      // TODO: delete the path node and all its ancestors
+      mNodeCache.clear();
+      try {
+        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(-1);
+      } catch (ConfigAdjusterException e) {
+        throw new MetadataException(e);
+      }
+
+      if (config.isEnableParameterAdapter()) {
+        String storageGroup = getStorageGroupName(nodes);
+        int size = seriesNumberInStorageGroups.get(storageGroup);
+        seriesNumberInStorageGroups.put(storageGroup, size - 1);
+        if (size == maxSeriesNumberAmongStorageGroup) {
+          seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
+              .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
+        }
+      }
+      return storageGroupName;
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  /**
    * Set storage group of the given path to MTree. Check
    *
    * @param storageGroup root.node.(node)*
@@ -647,10 +686,10 @@ public class MManager {
    *
    * @param storageGroups list of paths to be deleted. Format: root.node
    */
-  public void deleteStorageGroups(List<String> storageGroups) throws MetadataException {
+  public void deleteStorageGroups(List<List<String>> storageGroups) throws MetadataException {
     lock.writeLock().lock();
     try {
-      for (String storageGroup : storageGroups) {
+      for (List<String> storageGroup : storageGroups) {
 
         // clear cached MNode
         mNodeCache.clear();
@@ -663,10 +702,10 @@ public class MManager {
 
         if (config.isEnableParameterAdapter()) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
-          int size = seriesNumberInStorageGroups.get(storageGroup);
+          int size = seriesNumberInStorageGroups.get(MetaUtils.getPathByNodes(storageGroup));
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(size * -1);
-          ActiveTimeSeriesCounter.getInstance().delete(storageGroup);
-          seriesNumberInStorageGroups.remove(storageGroup);
+          ActiveTimeSeriesCounter.getInstance().delete(MetaUtils.getPathByNodes(storageGroup));
+          seriesNumberInStorageGroups.remove(MetaUtils.getPathByNodes(storageGroup));
           if (size == maxSeriesNumberAmongStorageGroup) {
             maxSeriesNumberAmongStorageGroup =
                 seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
@@ -674,7 +713,7 @@ public class MManager {
         }
         // if success
         if (!isRecovering) {
-          logWriter.deleteStorageGroup(storageGroup);
+          logWriter.deleteStorageGroup(MetaUtils.getPathByNodes(storageGroup));
         }
       }
     } catch (ConfigAdjusterException e) {
@@ -795,10 +834,26 @@ public class MManager {
    * wildcard can only match one level, otherwise it can match to the tail.
    * @return A HashSet instance which stores devices names with given prefixPath.
    */
-  public Set<Path> getDevices(List<String> prefixPathNodes) throws MetadataException {
+  public Set<Path> getDevicePaths(List<String> prefixPathNodes) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getDevicesPath(prefixPathNodes);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get all devices under given prefixPath.
+   *
+   * @param prefixPathNodes nodes of a prefix of a full path. if the wildcard is not at the tail, then each
+   * wildcard can only match one level, otherwise it can match to the tail.
+   * @return A HashSet instance which stores devices names with given prefixPath.
+   */
+  public Set<String> getDevices(List<String> prefixPathNodes) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getDevices(prefixPathNodes);
     } finally {
       lock.readLock().unlock();
     }
@@ -909,6 +964,22 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesName(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Return all paths for given path if the path is abstract. Or return the path itself. Regular
+   * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
+   *
+   * @param nodes can be nodes of prefix or a full path. if the wildcard is not at the tail, then each
+   * wildcard can only match one level, otherwise it can match to the tail.
+   */
+  public List<String> getAllTimeseriesName(List<String> nodes) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getAllTimeseriesName(nodes);
     } finally {
       lock.readLock().unlock();
     }
@@ -1167,6 +1238,23 @@ public class MManager {
   }
 
   /**
+   * Get child node path in the next level of the given path.
+   *
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
+   * return [root.sg1.d1, root.sg1.d2]
+   *
+   * @return All child nodes' seriesPath(s) of given seriesPath.
+   */
+  public Set<String> getChildNodePathInNextLevel(List<String> nodes) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getChildNodePathInNextLevel(nodes);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * Check whether the path exists.
    *
    * @param path a full path or a prefix path
@@ -1201,6 +1289,18 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getNodeByPath(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get node by nodes of path
+   */
+  public MNode getNodeByNodes(List<String> nodes) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getNodeByNodes(nodes);
     } finally {
       lock.readLock().unlock();
     }
@@ -1893,6 +1993,18 @@ public class MManager {
   }
 
   /**
+   * Check whether the given path contains a storage group
+   */
+  boolean checkStorageGroupByPath(List<String> nodes) {
+    lock.readLock().lock();
+    try {
+      return mtree.checkStorageGroupByPath(nodes);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * Get all storage groups under the given path
    *
    * @return List of String represented all storage group names
@@ -1902,6 +2014,23 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getStorageGroupByPath(path);
+    } catch (MetadataException e) {
+      throw new MetadataException(e);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get all storage groups under the given path
+   *
+   * @return List of String represented all storage group names
+   * @apiNote :for cluster
+   */
+  List<String> getStorageGroupByPath(List<String> nodes) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupByPath(nodes);
     } catch (MetadataException e) {
       throw new MetadataException(e);
     } finally {
