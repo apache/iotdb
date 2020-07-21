@@ -96,7 +96,8 @@ public class DataSourceInfo {
             this.readerId = newReaderId;
             this.curSource = node;
             this.curPos = nextNodePos;
-            return this.metaGroupMember.getAsyncDataClient(node);
+            return this.metaGroupMember
+                .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           } else {
             // the id being -1 means there is no satisfying data on the remote node, create an
             // empty reader to reduce further communication

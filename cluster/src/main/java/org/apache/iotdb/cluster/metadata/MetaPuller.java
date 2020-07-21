@@ -105,8 +105,7 @@ public class MetaPuller {
     // pull timeseries schema from every group involved
     if (logger.isDebugEnabled()) {
       logger.debug("{}: pulling schemas of {} and other {} paths from {} groups",
-          metaGroupMember.getName(),
-          prefixPaths.get(0), prefixPaths.size() - 1,
+          metaGroupMember.getName(), prefixPaths.get(0), prefixPaths.size() - 1,
           partitionGroupPathMap.size());
     }
     for (Map.Entry<PartitionGroup, List<String>> partitionGroupListEntry : partitionGroupPathMap
@@ -117,8 +116,7 @@ public class MetaPuller {
     }
     if (logger.isDebugEnabled()) {
       logger.debug("{}: pulled {} schemas for {} and other {} paths", metaGroupMember.getName(),
-          schemas.size(),
-          prefixPaths.get(0), prefixPaths.size() - 1);
+          schemas.size(), prefixPaths.get(0), prefixPaths.size() - 1);
     }
     return schemas;
   }
@@ -144,8 +142,8 @@ public class MetaPuller {
       }
       if (logger.isDebugEnabled()) {
         logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from local",
-            metaGroupMember.getName(),
-            results.size() - preSize, prefixPaths.get(0), prefixPaths.size() - 1);
+            metaGroupMember.getName(), results.size() - preSize, prefixPaths.get(0),
+            prefixPaths.size() - 1);
       }
       return;
     }
@@ -166,8 +164,8 @@ public class MetaPuller {
       PullSchemaRequest request, List<MeasurementSchema> results) {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Pulling timeseries schemas of {} and other {} paths from {}",
-          metaGroupMember.getName(),
-          request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node);
+          metaGroupMember.getName(), request.getPrefixPaths().get(0),
+          request.getPrefixPaths().size() - 1, node);
     }
 
     List<MeasurementSchema> schemas = null;
@@ -176,23 +174,21 @@ public class MetaPuller {
     } catch (IOException | TException e) {
       logger
           .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
-              metaGroupMember.getName(),
-              request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node, e);
+              metaGroupMember.getName(), request.getPrefixPaths().get(0),
+              request.getPrefixPaths().size() - 1, node, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger
           .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
-              metaGroupMember.getName(),
-              request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node, e);
+              metaGroupMember.getName(), request.getPrefixPaths().get(0),
+              request.getPrefixPaths().size() - 1, node, e);
     }
 
     if (schemas != null) {
       if (logger.isDebugEnabled()) {
         logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
-            metaGroupMember.getName(),
-            schemas.size(), request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1,
-            node,
-            request.getHeader());
+            metaGroupMember.getName(), schemas.size(), request.getPrefixPaths().get(0),
+            request.getPrefixPaths().size() - 1, node, request.getHeader());
       }
       results.addAll(schemas);
       return true;
