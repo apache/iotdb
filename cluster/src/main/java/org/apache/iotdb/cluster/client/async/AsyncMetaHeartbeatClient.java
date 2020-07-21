@@ -43,7 +43,7 @@ public class AsyncMetaHeartbeatClient extends AsyncMetaClient {
   public AsyncMetaHeartbeatClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager, Node node, AsyncClientPool pool) throws IOException {
     super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(),
-        node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET
+        node.getMetaPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET
         , RaftServer.getConnectionTimeoutInMS()));
     this.node = node;
     this.pool = pool;
