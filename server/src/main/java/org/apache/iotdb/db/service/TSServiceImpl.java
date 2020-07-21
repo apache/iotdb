@@ -1129,6 +1129,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
         plan.setDeviceId(req.getDeviceIds().get(i));
+        plan.setDeviceNodes(splitPathToNodes(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1167,6 +1168,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
         plan.setDeviceId(req.getDeviceIds().get(i));
+        plan.setDeviceNodes(splitPathToNodes(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1237,6 +1239,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDeviceId(req.getDeviceId());
+      plan.setDeviceNodes(splitPathToNodes(req.getDeviceId()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1268,6 +1271,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDeviceId(req.getDeviceId());
+      plan.setDeviceNodes(splitPathToNodes(req.getDeviceId()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1318,6 +1322,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceId, req.measurements);
+      insertTabletPlan.setDeviceNodes(splitPathToNodes(req.deviceId));
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
           QueryDataSetUtils.readValuesFromBuffer(
@@ -1353,6 +1358,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       for (int i = 0; i < req.deviceIds.size(); i++) {
         InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceIds.get(i),
             req.measurementsList.get(i));
+        insertTabletPlan.setDeviceNodes(splitPathToNodes(req.deviceIds.get(i)));
         insertTabletPlan.setTimes(
             QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
         insertTabletPlan.setColumns(

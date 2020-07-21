@@ -94,6 +94,10 @@ abstract public class InsertPlan extends PhysicalPlan {
     return deviceNodes;
   }
 
+  public void setDeviceNodes(List<String> deviceNodes) {
+    this.deviceNodes = deviceNodes;
+  }
+
   public void setDeviceMNode(MNode deviceMNode) {
     this.deviceMNode = deviceMNode;
   }

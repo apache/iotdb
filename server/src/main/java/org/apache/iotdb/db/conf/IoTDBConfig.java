@@ -53,7 +53,7 @@ public class IoTDBConfig {
   // e.g.,  .s1
   private static final String NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
 
-  // for path like: root.sg1.d1."1.2.3" or root.sg1.d1.'1.2.3', only occurs in the end of the path and only occurs once
+  // for path like: root.sg1.d1."1.2.3", only occurs in the end of the path and only occurs once
   private static final String NODE_WITH_QUOTATION_MARK_MATCHER =
       "[" + PATH_SEPARATOR + "][\"]" + ID_MATCHER + "(" + NODE_MATCHER + ")*[\"]";
   public static final Pattern PATH_PATTERN = Pattern
