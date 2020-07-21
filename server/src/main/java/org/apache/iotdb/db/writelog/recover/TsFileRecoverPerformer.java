@@ -22,6 +22,7 @@ package org.apache.iotdb.db.writelog.recover;
 import static org.apache.iotdb.db.engine.flush.MemTableFlushTask.getFlushLogFile;
 import static org.apache.iotdb.db.engine.flush.VmLogger.isVMLoggerFileExist;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.createNewVMFile;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.deleteVmFile;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 
 import java.io.File;
@@ -169,9 +170,8 @@ public class TsFileRecoverPerformer {
           }
         }
         recoverResourceFromWriter(restorableTsFileIOWriter, resource);
-        boolean vmFileNotCrashed = !flushLog.exists();
-        // if the last file in vmTsFileResources is not crashed
-        if (vmFileNotCrashed) {
+        // if the last file in vmTsFileResources is crashed
+        if (flushLog.exists()) {
           try {
             boolean tsFileNotCrashed = !isVMLoggerFileExist(restorableTsFileIOWriter);
             // tsfile is not crash
@@ -199,6 +199,15 @@ public class TsFileRecoverPerformer {
             MultiFileLogNodeManager.getInstance().deleteNode(
                 logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
             updateTsFileResource();
+              // after recover, delete the .flush file
+              try {
+                  Files.delete(flushLog.toPath());
+                  deleteVmFile(lastTsFileResource);
+                  vmTsFileResources.get(0).add(lastTsFileResource);
+                  vmRestorableTsFileIOWriterList.get(0).add(lastRestorableTsFileIOWriter);
+              } catch (IOException e) {
+                  logger.error("delete crashed vm flush log and file error ", e);
+              }
             return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
           } catch (IOException e) {
             throw new StorageGroupProcessorException(
@@ -211,14 +220,6 @@ public class TsFileRecoverPerformer {
         // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
         // map must be updated first to avoid duplicated insertion
         recoverResourceFromWriter(lastRestorableTsFileIOWriter, lastTsFileResource);
-      }
-      if(flushLog.exists()) {
-        // after recover, delete the .flush file
-        try {
-          Files.delete(flushLog.toPath());
-        } catch (IOException e) {
-          logger.error("delete vm flush log file error ", e);
-        }
       }
     }
 
