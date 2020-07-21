@@ -22,6 +22,9 @@ package org.apache.iotdb.cluster.utils;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -30,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ClusterUtils {
-
   private static final Logger logger = LoggerFactory.getLogger(ClusterUtils.class);
 
   public static final int WAIT_START_UP_CHECK_TIME_SEC = 5;
@@ -38,6 +40,18 @@ public class ClusterUtils {
   public static final long START_UP_TIME_THRESHOLD_MS = 60 * 1000;
 
   public static final long START_UP_CHECK_TIME_INTERVAL_MS = 3 * 1000;
+
+  /**
+   * the data group member's heartbeat offset relative to the {@link ClusterConfig#getInternalDataPort()},
+   * which means the dataHeartbeatPort = getInternalDataPort() + DATA_HEARTBEAT_OFFSET.
+   */
+  public static final int DATA_HEARTBEAT_PORT_OFFSET = 1;
+
+  /**
+   * the meta group member's heartbeat offset relative to the {@link ClusterConfig#getInternalMetaPort()} ()},
+   * which means the metaHeartbeatPort = getInternalMetaPort() + META_HEARTBEAT_OFFSET.
+   */
+  public static final int META_HEARTBEAT_PORT_OFFSET = 1;
 
   private ClusterUtils() {
     // util class

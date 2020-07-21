@@ -118,6 +118,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     DataGroupMember removedMember = headerGroupMap.remove(dataGroupMember.getHeader());
     if (removedMember != null) {
       removedMember.stop();
+      asyncServiceMap.remove(dataGroupMember.getHeader());
+      syncServiceMap.remove(dataGroupMember.getHeader());
     }
     stoppedMemberManager.remove(dataGroupMember.getHeader());
 
@@ -517,6 +519,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       value.stop();
     }
     headerGroupMap.clear();
+    asyncServiceMap.clear();
+    syncServiceMap.clear();
 
     List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
     for (PartitionGroup partitionGroup : partitionGroups) {

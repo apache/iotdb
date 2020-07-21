@@ -21,6 +21,7 @@ package org.apache.iotdb.db.writelog.recover;
 
 import static org.apache.iotdb.db.engine.flush.MemTableFlushTask.getFlushLogFile;
 import static org.apache.iotdb.db.engine.flush.VmLogger.isVMLoggerFileExist;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.createNewVMFile;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 
 import java.io.File;
@@ -176,7 +177,7 @@ public class TsFileRecoverPerformer {
             if (tsFileNotCrashed) {
 
               // if wal exists, we should open a new vmfile to replay it
-              File newVmFile = resource.getProcessor().createNewVMFile(resource, 0);
+              File newVmFile = createNewVMFile(resource, 0);
               TsFileResource newVmTsFileResource = new TsFileResource(newVmFile);
               RestorableTsFileIOWriter newVMWriter = new RestorableTsFileIOWriter(newVmFile);
               if (redoLogs(newVMWriter, newVmTsFileResource)) {

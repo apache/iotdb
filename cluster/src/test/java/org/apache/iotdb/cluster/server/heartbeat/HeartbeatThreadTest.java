@@ -76,6 +76,11 @@ public class HeartbeatThreadTest {
       public AsyncClient getAsyncClient(Node node) {
         return getClient(node);
       }
+
+      @Override
+      public AsyncClient getAsyncHeartbeatClient(Node node) {
+        return getClient(node);
+      }
     };
   }
 
