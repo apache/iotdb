@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.writelog.recover;
 
 import static org.apache.iotdb.db.engine.flush.MemTableFlushTask.getFlushLogFile;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.createNewVMFile;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.createNewVMFileWithLock;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 
 import java.io.File;
@@ -32,6 +32,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -69,6 +71,8 @@ public class TsFileRecoverPerformer {
   private boolean isLastFile;
 
   private List<List<TsFileResource>> vmTsFileResources;
+
+  private final ReadWriteLock vmFileCreateLock = new ReentrantReadWriteLock();
 
   /**
    * @param isLastFile whether this TsFile is the last file of its partition
@@ -174,11 +178,10 @@ public class TsFileRecoverPerformer {
       isLastFile = true;
     }
 
-
     if (walTargetWriter == null) {
       try {
         // if wal exists, we should open a new vmfile to replay it
-        File newVmFile = createNewVMFile(tsFileResource, 0);
+        File newVmFile = createNewVMFileWithLock(tsFileResource, 0, this.vmFileCreateLock);
         TsFileResource newVmTsFileResource = new TsFileResource(newVmFile);
         RestorableTsFileIOWriter newVMWriter = new RestorableTsFileIOWriter(newVmFile);
         isLastFile = true;
@@ -298,7 +301,8 @@ public class TsFileRecoverPerformer {
   }
 
   private boolean redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter,
-      TsFileResource tsFileResource, RestorableTsFileIOWriter tsFileIOWriter) throws StorageGroupProcessorException {
+      TsFileResource tsFileResource, RestorableTsFileIOWriter tsFileIOWriter)
+      throws StorageGroupProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     recoverMemTable.setVersion(versionController.nextVersion());
     LogReplayer logReplayer = new LogReplayer(logNodePrefix, filePath, tsFileResource.getModFile(),
