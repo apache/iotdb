@@ -360,6 +360,9 @@ public class MetaGroupMember extends RaftMember {
     if (getDataClusterServer() != null) {
       getDataClusterServer().stop();
     }
+    if (getDataHeartbeatServer() != null) {
+      getDataHeartbeatServer().stop();
+    }
     if (clientServer != null) {
       clientServer.stop();
     }
@@ -577,7 +580,8 @@ public class MetaGroupMember extends RaftMember {
     } else if (resp.getRespNum() == Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT) {
       CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
       StringBuilder parameters = new StringBuilder();
-      parameters.append(checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval");
+      parameters
+          .append(checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval");
       parameters.append(checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt");
       parameters.append(checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number");
       parameters.append(checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes");

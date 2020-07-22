@@ -110,6 +110,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     if (ioTDB == null) {
       return;
     }
+    metaHeartbeatServer.stop();
     super.stop();
     ioTDB.stop();
     ioTDB = null;

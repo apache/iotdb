@@ -64,6 +64,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.log.CommitLogTask;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
@@ -93,6 +94,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -165,6 +167,11 @@ public abstract class RaftMember {
   // a thread pool that is used to convert serial operations into paralleled ones
   private ExecutorService asyncThreadPool;
 
+  /**
+   * a thread pool that is used to do commit log tasks asynchronous in heartbeat thread
+   */
+  private ExecutorService commitLogPool;
+
   public RaftMember() {
   }
 
@@ -208,6 +215,12 @@ public abstract class RaftMember {
     asyncThreadPool = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), 100,
         0L, TimeUnit.MILLISECONDS,
         new LinkedBlockingQueue<>());
+
+    commitLogPool = new ThreadPoolExecutor(CommonUtils.getCpuCores(),
+        CommonUtils.getMaxExecutorPoolSize(),
+        0L, TimeUnit.MILLISECONDS,
+        new LinkedBlockingQueue<>());
+
     logger.info("{} started", name);
   }
 
@@ -246,6 +259,16 @@ public abstract class RaftMember {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for asyncThreadPool to end", e);
+      }
+    }
+
+    if (commitLogPool != null) {
+      commitLogPool.shutdownNow();
+      try {
+        commitLogPool.awaitTermination(10, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("Unexpected interruption when waiting for commitLogPool to end", e);
       }
     }
     catchUpService = null;
@@ -295,18 +318,13 @@ public abstract class RaftMember {
           response.setLastLogIndex(logManager.getLastLogIndex());
           response.setLastLogTerm(logManager.getLastLogTerm());
 
-          // The term of the last log needs to be the same with leader's term in order to preserve
-          // safety, otherwise it may come from an invalid leader and is not committed
-          if (logManager.maybeCommit(request.getCommitLogIndex(), request.getCommitLogTerm())) {
-            logger.debug("{}: Committing to {}-{}, localCommit: {}-{}, localLast: {}-{}", name,
-                request.getCommitLogIndex(),
-                request.getCommitLogTerm(), logManager.getCommitLogIndex(),
-                logManager.getCommitLogTerm(), logManager.getLastLogIndex(),
-                logManager.getLastLogTerm());
-            synchronized (syncLock) {
-              syncLock.notifyAll();
-            }
-          } else if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
+          CommitLogTask commitLogTask = new CommitLogTask(logManager, request.getCommitLogIndex(),
+              request.getCommitLogTerm());
+          OnCommitLogEventListener mListener = new AsyncCommitLogEvent();
+          commitLogTask.registerOnGeekEventListener(mListener);
+          commitLogPool.submit(commitLogTask);
+
+          if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
             logger
                 .info("{}: Inconsistent log found, leader: {}-{}, local: {}-{}, last: {}-{}", name,
                     request.getCommitLogIndex(), request.getCommitLogTerm(),
@@ -1564,4 +1582,33 @@ public abstract class RaftMember {
   public ExecutorService getAsyncThreadPool() {
     return asyncThreadPool;
   }
+
+  public interface OnCommitLogEventListener {
+
+    /**
+     * the callback method when committed log async success
+     */
+    void onSuccess();
+
+    /**
+     * @param e the exception raised when committed log async failed
+     */
+    void onError(Exception e);
+  }
+
+  public class AsyncCommitLogEvent implements OnCommitLogEventListener {
+
+    @Override
+    public void onSuccess() {
+      synchronized (syncLock) {
+        syncLock.notifyAll();
+      }
+    }
+
+    @Override
+    public void onError(Exception e) {
+      logger.error("async commit log failed, {}", e.toString());
+    }
+  }
+
 }
