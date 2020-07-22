@@ -161,14 +161,6 @@ public class MLogWriter {
         
       }
     }
-
-    // upgrade finished, delete old mlog file
-    if (!logFile.delete()) {
-      throw new IOException("Deleting " + logFile + "failed.");
-    }
-    
-    // rename tmpLogFile to mlog
-    FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
   }
-  
+
 }
