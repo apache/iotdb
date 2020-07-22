@@ -782,8 +782,8 @@ public class TsFileProcessor {
               tsFileResource.getTsFile().getName());
           File newVmFile = createNewVMFileWithLock(tsFileResource, 0);
           if (vmWriters.isEmpty()) {
-            vmWriters.add(new ArrayList<>());
-            vmTsFileResources.add(new ArrayList<>());
+            vmWriters.add(new CopyOnWriteArrayList<>());
+            vmTsFileResources.add(new CopyOnWriteArrayList<>());
           }
           vmTsFileResources.get(0).add(new TsFileResource(newVmFile));
           curWriter = new RestorableTsFileIOWriter(newVmFile);
