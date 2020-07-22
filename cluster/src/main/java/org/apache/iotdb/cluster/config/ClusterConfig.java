@@ -66,6 +66,11 @@ public class ClusterConfig {
   private int maxNumberOfLogs = 100;
 
   /**
+   * max number of committed logs in memory
+   */
+  private int maxNumOfLogsInMem = 100;
+
+  /**
    * deletion check period of the submitted log
    */
   private int logDeleteCheckIntervalSecond = 60;
@@ -265,5 +270,13 @@ public class ClusterConfig {
 
   public void setUseAsyncApplier(boolean useAsyncApplier) {
     this.useAsyncApplier = useAsyncApplier;
+  }
+
+  public int getMaxNumOfLogsInMem() {
+    return maxNumOfLogsInMem;
+  }
+
+  public void setMaxNumOfLogsInMem(int maxNumOfLogsInMem) {
+    this.maxNumOfLogsInMem = maxNumOfLogsInMem;
   }
 }

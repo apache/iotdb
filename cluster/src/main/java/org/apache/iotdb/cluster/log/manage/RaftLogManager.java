@@ -157,8 +157,8 @@ public class RaftLogManager {
    * Returns the term for given index.
    *
    * @param index request entry index
-   * @return throw EntryCompactedException if index < dummyIndex, -1 if
-   * index > lastIndex, otherwise return the entry's term for given index
+   * @return throw EntryCompactedException if index < dummyIndex, -1 if index > lastIndex, otherwise
+   * return the entry's term for given index
    * @throws EntryCompactedException
    */
   public long getTerm(long index) throws EntryCompactedException {
@@ -580,10 +580,10 @@ public class RaftLogManager {
       long removeSize = committedEntryManager.getTotalSize() - maxNumberOfLogs;
       long compactIndex = committedEntryManager.getDummyIndex() + removeSize;
       try {
-        logger.info("{}: Before compaction index {}-{}, compactIndex {}, removeSize {}, "
-                + "committedLogSize {}",
-            name,
-            getFirstIndex(), getLastLogIndex(), compactIndex, removeSize, committedEntryManager.getTotalSize());
+        logger.info(
+            "{}: Before compaction index {}-{}, compactIndex {}, removeSize {}, committedLogSize {}",
+            name, getFirstIndex(), getLastLogIndex(), compactIndex, removeSize,
+            committedEntryManager.getTotalSize());
         getCommittedEntryManager().compactEntries(compactIndex);
         if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
           getStableEntryManager().removeCompactedEntries(compactIndex);
