@@ -1067,18 +1067,9 @@ public class TsFileProcessor {
         for (int j = 0; j < vmWriters.get(i).size(); j++) {
           RestorableTsFileIOWriter vmWriter = vmWriters.get(i).get(j);
           TsFileResource vmTsFileResource = vmTsFileResources.get(i).get(j);
-          for (Entry<String, Map<String, List<ChunkMetadata>>> entry : vmWriter
-              .getMetadatasForQuery()
-              .entrySet()) {
-            String device = entry.getKey();
-            for (List<ChunkMetadata> tmpChunkMetadataList : entry.getValue().values()) {
-              for (ChunkMetadata chunkMetadata : tmpChunkMetadataList) {
-                vmTsFileResource.updateStartTime(device, chunkMetadata.getStartTime());
-                if (!sequence) {
-                  vmTsFileResource.updateEndTime(device, chunkMetadata.getEndTime());
-                }
-              }
-            }
+          vmTsFileResource.updateStartTime(deviceId, tsFileResource.getStartTime(deviceId));
+          if (!sequence) {
+            vmTsFileResource.updateEndTime(deviceId, tsFileResource.getEndTime(deviceId));
           }
           chunkMetadataList = vmWriter.getVisibleMetadataList(deviceId, measurementId, dataType);
           QueryUtils.modifyChunkMetaData(chunkMetadataList,
