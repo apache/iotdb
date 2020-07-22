@@ -194,6 +194,7 @@ public class TsFileRecoverPerformer {
           MultiFileLogNodeManager.getInstance().deleteNode(
               logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
         } else {
+          newVMWriter.close();
           Files.delete(newVmFile.toPath());
         }
         updateTsFileResource();
