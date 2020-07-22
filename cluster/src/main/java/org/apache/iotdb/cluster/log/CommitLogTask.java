@@ -54,8 +54,8 @@ public class CommitLogTask implements Runnable {
       logger.error("event listener is not registered");
       return;
     }
-    boolean success = logManager.maybeCommit(leaderCommit, term);
 
+    boolean success = logManager.maybeCommit(leaderCommit, term);
     if (success) {
       mListener.onSuccess();
     }

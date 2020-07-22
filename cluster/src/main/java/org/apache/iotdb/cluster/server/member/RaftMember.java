@@ -314,24 +314,24 @@ public abstract class RaftMember {
         response.setTerm(Response.RESPONSE_AGREE);
         // tell the leader who I am in case of catch-up
         response.setFollower(thisNode);
+
         synchronized (logManager) {
           response.setLastLogIndex(logManager.getLastLogIndex());
           response.setLastLogTerm(logManager.getLastLogTerm());
+        }
 
+        if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
           CommitLogTask commitLogTask = new CommitLogTask(logManager, request.getCommitLogIndex(),
               request.getCommitLogTerm());
           OnCommitLogEventListener mListener = new AsyncCommitLogEvent();
           commitLogTask.registerOnGeekEventListener(mListener);
           commitLogPool.submit(commitLogTask);
 
-          if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
-            logger
-                .info("{}: Inconsistent log found, leader: {}-{}, local: {}-{}, last: {}-{}", name,
-                    request.getCommitLogIndex(), request.getCommitLogTerm(),
-                    logManager.getCommitLogIndex(), logManager.getCommitLogTerm(),
-                    logManager.getLastLogIndex(), logManager.getLastLogTerm());
-          }
-
+          logger
+              .debug("{}: Inconsistent log found, leader: {}-{}, local: {}-{}, last: {}-{}", name,
+                  request.getCommitLogIndex(), request.getCommitLogTerm(),
+                  logManager.getCommitLogIndex(), logManager.getCommitLogTerm(),
+                  logManager.getLastLogIndex(), logManager.getLastLogTerm());
         }
         // if the log is not consistent, the commitment will be blocked until the leader makes the
         // node catch up

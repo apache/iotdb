@@ -324,7 +324,7 @@ public class RaftLogManager {
    * @param term         the entry's term which index is leaderCommit in leader's log module
    * @return true or false
    */
-  public boolean maybeCommit(long leaderCommit, long term) {
+  public synchronized boolean maybeCommit(long leaderCommit, long term) {
     if (leaderCommit > commitIndex && matchTerm(term, leaderCommit)) {
       try {
         commitTo(leaderCommit, true);
