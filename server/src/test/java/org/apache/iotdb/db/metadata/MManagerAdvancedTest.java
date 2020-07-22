@@ -49,9 +49,9 @@ public class MManagerAdvancedTest {
     EnvironmentUtils.envSetUp();
     mmanager = IoTDB.metaManager;
 
-    mmanager.setStorageGroup("root.vehicle.d0");
-    mmanager.setStorageGroup("root.vehicle.d1");
-    mmanager.setStorageGroup("root.vehicle.d2");
+    mmanager.setStorageGroup(Arrays.asList("root", "vehicle", "d0"));
+    mmanager.setStorageGroup(Arrays.asList("root", "vehicle", "d1"));
+    mmanager.setStorageGroup(Arrays.asList("root", "vehicle", "d2"));
 
     mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d0", "s0"), TSDataType.INT32, TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
@@ -99,18 +99,18 @@ public class MManagerAdvancedTest {
         assertEquals("root.vehicle.d0", fileNames.get(1));
       }
       // test filename by seriesPath
-      assertEquals("root.vehicle.d0", mmanager.getStorageGroupName("root.vehicle.d0.s1"));
-      List<String> pathList = mmanager.getAllTimeseriesName("root.vehicle.d1.*");
+      assertEquals("root.vehicle.d0", mmanager.getStorageGroupName(Arrays.asList("root", "vehicle", "d0", "s1")));
+      List<String> pathList = mmanager.getAllTimeseriesName(Arrays.asList("root", "vehicle", "d1", "*"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getAllTimeseriesName("root.vehicle.d0");
+      pathList = mmanager.getAllTimeseriesName(Arrays.asList("root", "vehicle", "d0"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getAllTimeseriesName("root.vehicle.d*");
+      pathList = mmanager.getAllTimeseriesName(Arrays.asList("root", "vehicle", "d*"));
       assertEquals(12, pathList.size());
-      pathList = mmanager.getAllTimeseriesName("root.ve*.*");
+      pathList = mmanager.getAllTimeseriesName(Arrays.asList("root", "ve*", "*"));
       assertEquals(12, pathList.size());
-      pathList = mmanager.getAllTimeseriesName("root.vehicle*.d*.s1");
+      pathList = mmanager.getAllTimeseriesName(Arrays.asList("root", "vehicle*", "d*", "s1"));
       assertEquals(2, pathList.size());
-      pathList = mmanager.getAllTimeseriesName("root.vehicle.d2");
+      pathList = mmanager.getAllTimeseriesName(Arrays.asList("root", "vehicle", "d2"));
       assertEquals(0, pathList.size());
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -129,11 +129,11 @@ public class MManagerAdvancedTest {
     mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s3"), TSDataType.TEXT, TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
 
-    MNode node = mmanager.getNodeByPath("root.vehicle.d0");
+    MNode node = mmanager.getNodeByNodes(Arrays.asList("root", "vehicle", "d0"));
     Assert.assertEquals(TSDataType.INT32, ((MeasurementMNode) node.getChild("s0")).getSchema().getType());
 
     try {
-      mmanager.getNodeByPath("root.vehicle.d100");
+      mmanager.getNodeByNodes(Arrays.asList("root", "vehicle", "d100"));
       fail();
     } catch (MetadataException e) {
       // ignore
@@ -148,7 +148,7 @@ public class MManagerAdvancedTest {
     TimeValuePair tv1 = new TimeValuePair(1000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0));
     TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 3.0));
     TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 2.5));
-    MNode node = mmanager.getNodeByPath("root.vehicle.d2.s0");
+    MNode node = mmanager.getNodeByNodes(Arrays.asList("root", "vehicle", "d2", "s0"));
     ((MeasurementMNode)node).updateCachedLast(tv1, true, Long.MIN_VALUE);
     ((MeasurementMNode)node).updateCachedLast(tv2, true, Long.MIN_VALUE);
     Assert.assertEquals(tv2.getTimestamp(), ((MeasurementMNode)node).getCachedLast().getTimestamp());

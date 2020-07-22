@@ -98,7 +98,7 @@ public class MetaUtils {
     if (nodeNames.size() <= level || !nodeNames.get(0).equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(getPathByNodes(nodeNames));
     }
-    for(int i = level + 1; nodeNames.size() > level; i--) {
+    for(int i = nodeNames.size() - 1; nodeNames.size() - 1 > level; i--) {
       nodeNames.remove(i);
     }
     return nodeNames;

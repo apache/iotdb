@@ -739,6 +739,6 @@ public class PhysicalGenerator {
   }
 
   protected Set<Path> getMatchedDevices(List<String> nodes) throws MetadataException {
-    return IoTDB.metaManager.getDevices(nodes);
+    return IoTDB.metaManager.getDevicePaths(nodes);
   }
 }
