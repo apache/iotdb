@@ -334,7 +334,6 @@ public abstract class RaftMember {
                   logManager.getLastLogIndex(), logManager.getLastLogTerm());
         }
 
-//        }
         // if the log is not consistent, the commitment will be blocked until the leader makes the
         // node catch up
 
