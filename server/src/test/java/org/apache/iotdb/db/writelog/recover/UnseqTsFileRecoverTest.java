@@ -184,7 +184,7 @@ public class UnseqTsFileRecoverTest {
         versionController, resource, false, false, Collections.emptyList());
     ActiveTimeSeriesCounter.getInstance()
         .init(resource.getTsFile().getParentFile().getParentFile().getName());
-    performer.recover();
+    performer.recover().left.close();
 
     assertEquals(1, (long) resource.getStartTime("root.sg.device99"));
     assertEquals(300, (long) resource.getEndTime("root.sg.device99"));
