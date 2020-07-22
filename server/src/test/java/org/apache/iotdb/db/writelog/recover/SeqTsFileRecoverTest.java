@@ -222,7 +222,7 @@ public class SeqTsFileRecoverTest {
   @Test
   public void testLastRecovery() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
-        resource, false, true, com.sun.tools.javac.util.List.of(new ArrayList<>()));
+        resource, false, true, new ArrayList<>());
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     RestorableTsFileIOWriter writer = performer.recover().left;
 
