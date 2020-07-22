@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
@@ -976,12 +977,12 @@ public class MTree implements Serializable {
   List<Path> getAllTimeseriesPath(List<String> nodes) throws MetadataException {
     Path prePath = new Path(nodes);
     ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(prePath);
-    List<String[]> res = getAllMeasurementSchemaByNodes(plan);
+    List<List<String>> res = getAllMeasurementSchemaAndPathNameNodesByNodes(plan);
     List<Path> paths = new ArrayList<>();
-    for (String[] p : res) {
-      Path path = new Path(p[0]);
-      if (prePath.getMeasurement().equals(p[1])) {
-        path.setAlias(p[1]);
+    for (int i = 0; i < res.size(); i+=2) {
+      Path path = new Path(res.get(i));
+      if (nodes.get(nodes.size() -1).equals(res.get(i + 1).get(0))) {
+        path.setAlias(res.get(i + 1).get(0));
       }
       paths.add(path);
     }
@@ -1001,6 +1002,13 @@ public class MTree implements Serializable {
     return getCount(root, nodes, 1);
   }
 
+  int getAllTimeseriesCount(List<String> nodes) throws MetadataException {
+    if (nodes.isEmpty() || !nodes.get(0).equals(root.getName())) {
+      throw new IllegalPathException(MetaUtils.getPathByNodes(nodes));
+    }
+    return getCount(root, nodes.toArray(new String[0]), 1);
+  }
+
   /**
    * Get the count of nodes in the given level under the given prefix path.
    */
@@ -1018,6 +1026,24 @@ public class MTree implements Serializable {
       }
     }
     return getCountInGivenLevel(node, level - (nodes.length - 1));
+  }
+
+  /**
+   * Get the count of nodes in the given level under the given prefix path.
+   */
+  int getNodesCountInGivenLevel(List<String> nodes, int level) throws MetadataException {
+    if (nodes.isEmpty()|| !nodes.get(0).equals(root.getName())) {
+      throw new IllegalPathException(MetaUtils.getPathByNodes(nodes));
+    }
+    MNode node = root;
+    for (int i = 1; i < nodes.size(); i++) {
+      if (node.getChild(nodes.get(i)) != null) {
+        node = node.getChild(nodes.get(i));
+      } else {
+        throw new MetadataException(nodes.get(i -  1) + " does not have the child node " + nodes.get(i));
+      }
+    }
+    return getCountInGivenLevel(node, level - (nodes.size() - 1));
   }
 
   /**
@@ -1152,6 +1178,36 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Get all time series schema and path name nodes under the given nodes
+   *
+   * <p>result: [[root, node], [alias, storage group, dataType, encoding, compression, offset]]
+   */
+  private List<List<String>> getAllMeasurementSchemaAndPathNameNodesByNodes(ShowTimeSeriesPlan plan) throws MetadataException {
+    List<List<String>> res;
+    List<String> nodes = plan.getPath().getNodes();
+    if (nodes.isEmpty() || !nodes.get(0).equals(root.getName())) {
+      throw new IllegalPathException(plan.getPath().getFullPath());
+    }
+    limit.set(plan.getLimit());
+    offset.set(plan.getOffset());
+    curOffset.set(-1);
+    count.set(0);
+    if (offset.get() != 0 || limit.get() != 0) {
+      res = new LinkedList<>();
+      findPathNameNodesAndSchema(root, nodes.toArray(new String[0]), 1, res, true, false);
+    } else {
+      res = new LinkedList<>();
+      findPathNameNodesAndSchema(root, nodes.toArray(new String[0]), 1, res, false, false);
+    }
+    // avoid memory leaks
+    limit.remove();
+    offset.remove();
+    curOffset.remove();
+    count.remove();
+    return res;
+  }
+
+  /**
    * Get all time series under the given nodes
    *
    * <p>result: [[root, node], [root, node]]
@@ -1168,10 +1224,10 @@ public class MTree implements Serializable {
     count.set(0);
     if (offset.get() != 0 || limit.get() != 0) {
       res = new ArrayList<>(2);
-      findNodes(root, nodes.toArray(new String[0]), 1, res, true);
+      findPathNameNodes(root, nodes.toArray(new String[0]), 1, res, true);
     } else {
       res = new ArrayList<>(2);
-      findNodes(root, nodes.toArray(new String[0]), 1, res, false);
+      findPathNameNodes(root, nodes.toArray(new String[0]), 1, res, false);
     }
     // avoid memory leaks
     limit.remove();
@@ -1246,7 +1302,7 @@ public class MTree implements Serializable {
    * @param timeseriesSchemaList List<timeseriesSchema> result: [[root,node,node], [alias, storage group,
    *                             dataType, encoding, compression, offset, lastTimeStamp]]
    */
-  private void findNodes(MNode node, String[] nodes, int idx,
+  private void findPathNameNodes(MNode node, String[] nodes, int idx,
       List<List<String>> timeseriesSchemaList,
       boolean hasLimit) {
     if (node instanceof MeasurementMNode && nodes.length <= idx) {
@@ -1271,14 +1327,73 @@ public class MTree implements Serializable {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!nodeReg.contains(PATH_WILDCARD)) {
       if (node.hasChild(nodeReg)) {
-        findNodes(node.getChild(nodeReg), nodes, idx + 1, timeseriesSchemaList, hasLimit);
+        findPathNameNodes(node.getChild(nodeReg), nodes, idx + 1, timeseriesSchemaList, hasLimit);
       }
     } else {
       for (MNode child : node.getChildren().values()) {
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
           continue;
         }
-        findNodes(child, nodes, idx + 1, timeseriesSchemaList, hasLimit);
+        findPathNameNodes(child, nodes, idx + 1, timeseriesSchemaList, hasLimit);
+        if (hasLimit) {
+          if (count.get().intValue() == limit.get().intValue()) {
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Iterate through MTree to fetch metadata info of all leaf nodes under the given seriesPath
+   *
+   * @param timeseriesSchemaList List<timeseriesSchema> result: [[root,node,node], [alias, storage group,
+   *                             dataType, encoding, compression, offset, lastTimeStamp]]
+   */
+  private void findPathNameNodesAndSchema(MNode node, String[] nodes, int idx,
+      List<List<String>> timeseriesSchemaList,
+      boolean hasLimit, boolean needLast) throws StorageGroupNotSetException {
+    if (node instanceof MeasurementMNode && nodes.length <= idx) {
+      if (hasLimit) {
+        curOffset.set(curOffset.get() + 1);
+        if (curOffset.get() < offset.get() || count.get().intValue() == limit.get().intValue()) {
+          return;
+        }
+      }
+      List<String> nodeNames = new ArrayList<>();
+      nodeNames.add(0, node.getName());
+      MNode tempNode = node;
+      while(!tempNode.getName().equals(IoTDBConstant.PATH_ROOT)) {
+        tempNode = tempNode.getParent();
+        nodeNames.add(0, tempNode.getName());
+      }
+      timeseriesSchemaList.add(nodeNames);
+      List<String> others = new ArrayList<>(7);
+      others.add(((MeasurementMNode) node).getAlias());
+      MeasurementSchema measurementSchema = ((MeasurementMNode) node).getSchema();
+      others.add(getStorageGroupName(nodeNames));
+      others.add(measurementSchema.getType().toString());
+      others.add(measurementSchema.getEncodingType().toString());
+      others.add(measurementSchema.getCompressor().toString());
+      others.add(String.valueOf(((MeasurementMNode) node).getOffset()));
+      String last =  needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node)) : null;
+      others.add(last);
+      timeseriesSchemaList.add(others);
+      if (hasLimit) {
+        count.set(count.get() + 1);
+      }
+    }
+    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
+    if (!nodeReg.contains(PATH_WILDCARD)) {
+      if (node.hasChild(nodeReg)) {
+        findPathNameNodesAndSchema(node.getChild(nodeReg), nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast);
+      }
+    } else {
+      for (MNode child : node.getChildren().values()) {
+        if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
+          continue;
+        }
+        findPathNameNodesAndSchema(child, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast);
         if (hasLimit) {
           if (count.get().intValue() == limit.get().intValue()) {
             return;

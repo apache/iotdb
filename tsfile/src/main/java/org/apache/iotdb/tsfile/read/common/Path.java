@@ -163,11 +163,31 @@ public class Path implements Serializable, Comparable<Path> {
   }
 
   public String getFullPath() {
-    return fullPath;
+    if(fullPath != null) {
+      return fullPath;
+    } else {
+      StringBuilder s = new StringBuilder(nodes.get(0));
+      for(int i = 1; i < nodes.size(); i++) {
+        s.append(TsFileConstant.PATH_SEPARATOR);
+        s.append(nodes.get(i));
+      }
+      fullPath = s.toString();
+      return fullPath;
+    }
   }
 
   public String getDevice() {
-    return device;
+    if(device != null) {
+      return fullPath;
+    } else {
+      StringBuilder s = new StringBuilder(nodes.get(0));
+      for(int i = 1; i < nodes.size() - 1; i++) {
+        s.append(TsFileConstant.PATH_SEPARATOR);
+        s.append(nodes.get(i));
+      }
+      device = s.toString();
+      return device;
+    }
   }
 
   public String getMeasurement() {
@@ -182,7 +202,20 @@ public class Path implements Serializable, Comparable<Path> {
 
   public void setAlias(String alias) { this.alias = alias; }
 
-  public String getFullPathWithAlias() { return device + TsFileConstant.PATH_SEPARATOR + alias; }
+  public String getFullPathWithAlias() {
+    if(device != null) {
+      return device + TsFileConstant.PATH_SEPARATOR + alias;
+    } else {
+      StringBuilder s = new StringBuilder();
+      for(int i = 0; i < nodes.size() - 1; i++) {
+        s.append(nodes.get(i));
+        s.append(TsFileConstant.PATH_SEPARATOR);
+      }
+      device = s.toString();
+      s.append(alias);
+      return s.toString();
+    }
+  }
 
   @Override
   public int hashCode() {
