@@ -624,19 +624,11 @@ public class TsFileProcessor {
   }
 
   public static File createNewVMFile(TsFileResource tsFileResource, int level) {
-    try {
-      TimeUnit.MILLISECONDS.sleep(1);
-      File parent = tsFileResource.getTsFile().getParentFile();
-      return FSFactoryProducer.getFSFactory().getFile(parent,
-          tsFileResource.getTsFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + level
-              + IoTDBConstant.FILE_NAME_SEPARATOR + System
-              .currentTimeMillis() + VM_SUFFIX);
-    } catch (InterruptedException e) {
-      logger.error("{}: {}, closing task is interrupted.",
-          tsFileResource.getTsFile().getParent(), tsFileResource.getTsFile().getName(), e);
-      Thread.currentThread().interrupt();
-      return null;
-    }
+    File parent = tsFileResource.getTsFile().getParentFile();
+    return FSFactoryProducer.getFSFactory().getFile(parent,
+        tsFileResource.getTsFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + level
+            + IoTDBConstant.FILE_NAME_SEPARATOR + System
+            .currentTimeMillis() + VM_SUFFIX);
   }
 
   private void deleteVmFiles(List<TsFileResource> vmMergeTsFiles,
