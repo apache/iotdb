@@ -58,8 +58,8 @@ public class CatchUpTask implements Runnable {
   }
 
   /**
-   * @return true if a matched index is found so that we can use logs only to catch up, or
-   * false if the catch up must be done with a snapshot.
+   * @return true if a matched index is found so that we can use logs only to catch up, or false if
+   * the catch up must be done with a snapshot.
    * @throws TException
    * @throws InterruptedException
    */
@@ -103,7 +103,6 @@ public class CatchUpTask implements Runnable {
   }
 
   /**
-   *
    * @param index the index of a log in logs
    * @return true if the log at logs[index] matches a log in the remote node, false if the
    * corresponding log cannot be found
@@ -170,7 +169,9 @@ public class CatchUpTask implements Runnable {
 
   private void doSnapshot() {
     try {
-      raftMember.getLogManager().takeSnapshot();
+      synchronized (raftMember.getLogManager()) {
+        raftMember.getLogManager().takeSnapshot();
+      }
     } catch (IOException e) {
       logger.error("Unexpected error when taking snapshot.", e);
     }
