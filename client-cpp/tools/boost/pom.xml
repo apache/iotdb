@@ -33,101 +33,111 @@
     <!--properties>
     <sonar.language>c++</sonar.language>
   </properties-->
-    <build>
-        <plugins>
-            <!-- First download the cmake binaries and sources for building the boost library -->
-            <plugin>
-                <groupId>com.googlecode.maven-download-plugin</groupId>
-                <artifactId>download-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>get-boost</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>wget</goal>
-                        </goals>
-                        <configuration>
-                            <url>${boost.url}</url>
-                            <unpack>true</unpack>
-                            <outputDirectory>${project.build.directory}</outputDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!--
-        Then execute two boost build phases:
+    <profiles>
+        <profile>
+            <id>build-boost</id>
+            <activation>
+                <file>
+                    <missing>${project.build.directory}/lib/boost/lib/</missing>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <!-- First download the cmake binaries and sources for building the boost library -->
+                    <plugin>
+                        <groupId>com.googlecode.maven-download-plugin</groupId>
+                        <artifactId>download-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>get-boost</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>wget</goal>
+                                </goals>
+                                <configuration>
+                                    <url>${boost.url}</url>
+                                    <unpack>true</unpack>
+                                    <outputDirectory>${project.build.directory}</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!--
+                Then execute two boost build phases:
 
-        1) bootstrap the boost build
-        2) Perform the actual boost build and install
-      -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>bootstrap-boost</id>
-                        <phase>process-sources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${boost.bootstrap.executable}</executable>
-                            <arguments>
-                                <!-- Use clang instead of gcc as this requires far less memory -->
-                                <argument>--with-toolset=clang</argument>
-                            </arguments>
-                            <workingDirectory>${project.build.directory}/boost_${boost.version.underline}</workingDirectory>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>compile-boost</id>
-                        <phase>process-sources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${boost.build.executable}</executable>
-                            <arguments>
-                                <!-- Have the build install the built libraries -->
-                                <argument>install</argument>
-                                <!-- Tell it where to install the libraries and header files -->
-                                <argument>--prefix=${project.build.directory}/lib/boost</argument>
-                                <!-- List of modules to build -->
-                                <argument>--with-system</argument>
-                                <argument>--with-thread</argument>
-                                <argument>--with-date_time</argument>
-                                <argument>--with-regex</argument>
-                                <argument>--with-log</argument>
-                                <!-- On Windows machines the build failed, if this was not explicitly set -->
-                                <argument>address-model=64</argument>
-                                <!-- On Linux machines the build failed, if this is not set -->
-                                <argument>cxxflags=-fPIC</argument>
-                            </arguments>
-                            <workingDirectory>${project.build.directory}/boost_${boost.version.underline}</workingDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- Build a zip artifact containing the boost library -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>package-boost-library</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <finalName>${project.artifactId}-${project.version}</finalName>
-                            <descriptors>
-                                <descriptor>src/assembly/bundle.xml</descriptor>
-                            </descriptors>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
+                1) bootstrap the boost build
+                2) Perform the actual boost build and install
+              -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>bootstrap-boost</id>
+                                <phase>process-sources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>${boost.bootstrap.executable}</executable>
+                                    <arguments>
+                                        <!-- Use clang instead of gcc as this requires far less memory -->
+                                        <argument>--with-toolset=clang</argument>
+                                    </arguments>
+                                    <workingDirectory>${project.build.directory}/boost_${boost.version.underline}</workingDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>compile-boost</id>
+                                <phase>process-sources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>${boost.build.executable}</executable>
+                                    <arguments>
+                                        <!-- Have the build install the built libraries -->
+                                        <argument>install</argument>
+                                        <!-- Tell it where to install the libraries and header files -->
+                                        <argument>--prefix=${project.build.directory}/lib/boost</argument>
+                                        <!-- List of modules to build -->
+                                        <argument>--with-system</argument>
+                                        <argument>--with-thread</argument>
+                                        <argument>--with-date_time</argument>
+                                        <argument>--with-regex</argument>
+                                        <argument>--with-log</argument>
+                                        <!-- On Windows machines the build failed, if this was not explicitly set -->
+                                        <argument>address-model=64</argument>
+                                        <!-- On Linux machines the build failed, if this is not set -->
+                                        <argument>cxxflags=-fPIC</argument>
+                                    </arguments>
+                                    <workingDirectory>${project.build.directory}/boost_${boost.version.underline}</workingDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Build a zip artifact containing the boost library -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>package-boost-library</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <descriptors>
+                                        <descriptor>src/assembly/bundle.xml</descriptor>
+                                    </descriptors>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

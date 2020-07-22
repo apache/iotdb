@@ -19,39 +19,92 @@
   -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.apache.iotdb</groupId>
-        <artifactId>client-cpp</artifactId>
-        <version>0.11.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
-    </parent>
     <artifactId>client-cpp-tools</artifactId>
     <groupId>org.apache.iotdb</groupId>
     <version>0.11.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Tools</name>
+    <properties>
+        <boost.version>1.73.0</boost.version>
+        <boost.version.underline-short>1_73</boost.version.underline-short>
+        <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
+        <thrift.version>0.13.0</thrift.version>
+        <cmake-version>3.17.3</cmake-version>
+    </properties>
+    <modules>
+        <module>boost</module>
+        <module>thrift</module>
+    </modules>
     <profiles>
         <profile>
-            <id>with-boost</id>
+            <id>os-unix</id>
             <activation>
-                <file>
-                    <missing>${basedir}/boost/target/</missing>
-                </file>
+                <os>
+                    <family>unix</family>
+                </os>
             </activation>
-            <modules>
-                <module>boost</module>
-            </modules>
+            <properties>
+                <os.suffix>linux</os.suffix>
+                <os.classifier>linux-x86_64</os.classifier>
+                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-Linux-x86_64.tar.gz</cmake.url>
+                <cmake.root>${project.build.directory}/cmake-${cmake-version}-Linux-x86_64/bin/</cmake.root>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <boost.url>https://dl.bintray.com/boostorg/release/${boost.version}/source/boost_${boost.version.underline}.tar.gz</boost.url>
+                <boost.bootstrap.executable>./bootstrap.sh</boost.bootstrap.executable>
+                <boost.build.executable>./b2</boost.build.executable>
+                <thrift.bootstrap.executable>./bootstrap.sh</thrift.bootstrap.executable>
+                <thrift.configure.executable>./configure</thrift.configure.executable>
+                <thrift.make.executable>make</thrift.make.executable>
+                <thrift.compiler.executable>thrift</thrift.compiler.executable>
+                <gradlew.executable>./gradlew</gradlew.executable>
+            </properties>
         </profile>
         <profile>
-            <id>with-proxies</id>
+            <id>os-mac</id>
             <activation>
-                <file>
-                    <missing>${basedir}/thrift/target/</missing>
-                </file>
+                <os>
+                    <family>mac</family>
+                </os>
             </activation>
-            <modules>
-                <module>thrift</module>
-            </modules>
+            <properties>
+                <os.suffix>mac</os.suffix>
+                <os.classifier>mac-x86_64</os.classifier>
+                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-Darwin-x86_64.tar.gz</cmake.url>
+                <cmake.root>${project.build.directory}/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents/bin</cmake.root>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <boost.url>https://dl.bintray.com/boostorg/release/${boost.version}/source/boost_${boost.version.underline}.tar.gz</boost.url>
+                <boost.bootstrap.executable>./bootstrap.sh</boost.bootstrap.executable>
+                <boost.build.executable>./b2</boost.build.executable>
+                <thrift.bootstrap.executable>./bootstrap.sh</thrift.bootstrap.executable>
+                <thrift.configure.executable>./configure</thrift.configure.executable>
+                <thrift.make.executable>make</thrift.make.executable>
+                <thrift.compiler.executable>thrift</thrift.compiler.executable>
+                <gradlew.executable>./gradlew</gradlew.executable>
+            </properties>
+        </profile>
+        <profile>
+            <id>os-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <os.suffix>win</os.suffix>
+                <os.classifier>windows-x86_64</os.classifier>
+                <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-win64-x64.zip</cmake.url>
+                <cmake.root>${project.build.directory}/cmake-${cmake-version}-win64-x64/bin</cmake.root>
+                <cmake.generator>MinGW Makefiles</cmake.generator>
+                <boost.url>https://dl.bintray.com/boostorg/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
+                <boost.bootstrap.executable>bootstrap.bat</boost.bootstrap.executable>
+                <boost.build.executable>b2</boost.build.executable>
+                <boost.include-directory>libs/libs/boost/include/boost-${boost.version.underline-short}</boost.include-directory>
+                <thrift.bootstrap.executable>bootstrap.sh</thrift.bootstrap.executable>
+                <thrift.configure.executable>configure</thrift.configure.executable>
+                <thrift.make.executable>make</thrift.make.executable>
+                <thrift.compiler.executable>thrift.exe</thrift.compiler.executable>
+                <gradlew.executable>gradlew.bat</gradlew.executable>
+            </properties>
         </profile>
     </profiles>
 </project>
