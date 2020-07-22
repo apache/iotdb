@@ -118,6 +118,8 @@ public abstract class RaftMember {
       + " {}";
   private static final String MSG_NO_LEADER_IN_SYNC = "{}: No leader is found when synchronizing";
 
+  OnCommitLogEventListener mListener = new AsyncCommitLogEvent();
+
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   // the name of the member, to distinguish several members from the logs
   String name;
@@ -317,22 +319,22 @@ public abstract class RaftMember {
         synchronized (logManager) {
           response.setLastLogIndex(logManager.getLastLogIndex());
           response.setLastLogTerm(logManager.getLastLogTerm());
-
-          CommitLogTask commitLogTask = new CommitLogTask(logManager, request.getCommitLogIndex(),
-              request.getCommitLogTerm());
-          OnCommitLogEventListener mListener = new AsyncCommitLogEvent();
-          commitLogTask.registerOnGeekEventListener(mListener);
-          commitLogPool.submit(commitLogTask);
-
-          if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
-            logger
-                .info("{}: Inconsistent log found, leader: {}-{}, local: {}-{}, last: {}-{}", name,
-                    request.getCommitLogIndex(), request.getCommitLogTerm(),
-                    logManager.getCommitLogIndex(), logManager.getCommitLogTerm(),
-                    logManager.getLastLogIndex(), logManager.getLastLogTerm());
-          }
-
         }
+
+        CommitLogTask commitLogTask = new CommitLogTask(logManager, request.getCommitLogIndex(),
+            request.getCommitLogTerm());
+        commitLogTask.registerOnGeekEventListener(mListener);
+        commitLogPool.submit(commitLogTask);
+
+        if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
+          logger
+              .info("{}: Inconsistent log found, leader: {}-{}, local: {}-{}, last: {}-{}", name,
+                  request.getCommitLogIndex(), request.getCommitLogTerm(),
+                  logManager.getCommitLogIndex(), logManager.getCommitLogTerm(),
+                  logManager.getLastLogIndex(), logManager.getLastLogTerm());
+        }
+
+//        }
         // if the log is not consistent, the commitment will be blocked until the leader makes the
         // node catch up
 
@@ -1607,7 +1609,7 @@ public abstract class RaftMember {
 
     @Override
     public void onError(Exception e) {
-      logger.error("async commit log failed, {}", e.toString());
+      logger.error("async commit log failed", e);
     }
   }
 
