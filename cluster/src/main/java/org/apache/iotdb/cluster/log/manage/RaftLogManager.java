@@ -61,9 +61,9 @@ public class RaftLogManager {
 
 
   /**
-   * max number of committed logs to be saved
+   * minimum number of committed logs in memory
    */
-  private int maxNumberOfLogs = ClusterDescriptor.getInstance().getConfig().getMaxNumberOfLogs();
+  private int minNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig().getMinNumOfLogsInMem();
 
 
   public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
@@ -530,8 +530,8 @@ public class RaftLogManager {
   }
 
   @TestOnly
-  public void setMaxNumberOfLogs(int maxNumberOfLogs) {
-    this.maxNumberOfLogs = maxNumberOfLogs;
+  public void setMinNumOfLogsInMem(int minNumOfLogsInMem) {
+    this.minNumOfLogsInMem = minNumOfLogsInMem;
   }
 
   public void close() {
@@ -574,10 +574,10 @@ public class RaftLogManager {
    */
   public void checkDeleteLog() {
     synchronized (this) {
-      if (committedEntryManager.getTotalSize() <= maxNumberOfLogs) {
+      if (committedEntryManager.getTotalSize() <= minNumOfLogsInMem) {
         return;
       }
-      long removeSize = committedEntryManager.getTotalSize() - maxNumberOfLogs;
+      long removeSize = committedEntryManager.getTotalSize() - minNumOfLogsInMem;
       long compactIndex = committedEntryManager.getDummyIndex() + removeSize;
       try {
         logger.info(

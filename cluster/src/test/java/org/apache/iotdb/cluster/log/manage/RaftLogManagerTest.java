@@ -32,7 +32,6 @@ import java.util.Set;
 import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
-import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.log.Log;
@@ -1026,7 +1025,7 @@ public class RaftLogManagerTest {
     int maxNumberOfLogs = 100;
     List<Log> testLogs1;
 
-    raftLogManager.setMaxNumberOfLogs(maxNumberOfLogs);
+    raftLogManager.setMinNumOfLogsInMem(maxNumberOfLogs);
     testLogs1 = TestUtils.prepareNodeLogs(130);
     raftLogManager.append(testLogs1);
     try {

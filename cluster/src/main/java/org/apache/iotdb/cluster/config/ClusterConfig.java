@@ -63,7 +63,7 @@ public class ClusterConfig {
   /**
    * max number of committed logs to be saved
    */
-  private int maxNumberOfLogs = 100;
+  private int minNumOfLogsInMem = 100;
 
   /**
    * max number of committed logs in memory
@@ -216,12 +216,12 @@ public class ClusterConfig {
     this.queryTimeoutInSec = queryTimeoutInSec;
   }
 
-  public int getMaxNumberOfLogs() {
-    return maxNumberOfLogs;
+  public int getMinNumOfLogsInMem() {
+    return minNumOfLogsInMem;
   }
 
-  public void setMaxNumberOfLogs(int maxNumberOfLogs) {
-    this.maxNumberOfLogs = maxNumberOfLogs;
+  public void setMinNumOfLogsInMem(int minNumOfLogsInMem) {
+    this.minNumOfLogsInMem = minNumOfLogsInMem;
   }
 
   public int getLogDeleteCheckIntervalSecond() {
