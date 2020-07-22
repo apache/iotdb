@@ -75,10 +75,10 @@ After downloading the code of iotdb from <https://github.com/apache/incubator-io
 Then in hive, use the command of `add jar XXX` to add the dependency. For example:
 
 ```
-hive> add jar /Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar;
+hive> add jar /Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.10.1-jar-with-dependencies.jar;
 
-Added [/Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar] to class path
-Added resources: [/Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar]
+Added [/Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.10.1-jar-with-dependencies.jar] to class path
+Added resources: [/Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.10.1-jar-with-dependencies.jar]
 ```
 
 

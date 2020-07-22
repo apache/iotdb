@@ -36,7 +36,7 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
 		cd tsfile/
 		mvn clean package -Dmaven.test.skip=true
 		```
-		命令执行完成之后，所有的 jar 包都可以从 `target/` 目录下找到。之后您可以在自己的工程中倒入 `target/tsfile-0.10.0-jar-with-dependencies.jar`.
+		命令执行完成之后，所有的 jar 包都可以从 `target/` 目录下找到。之后您可以在自己的工程中倒入 `target/tsfile-0.10.1-jar-with-dependencies.jar`.
 	
 * 使用 Maven 依赖: 
 
@@ -59,7 +59,7 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
   	 <dependency>
   	   <groupId>org.apache.iotdb</groupId>
   	   <artifactId>tsfile</artifactId>
-  	   <version>0.10.0</version>
+  	   <version>0.10.1</version>
   	 </dependency>
     ```
     
@@ -93,7 +93,7 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
   	 <dependency>
   	   <groupId>org.apache.iotdb</groupId>
   	   <artifactId>tsfile</artifactId>
-  	   <version>0.10.0</version>
+  	   <version>0.10.1</version>
   	 </dependency>
     ```
 

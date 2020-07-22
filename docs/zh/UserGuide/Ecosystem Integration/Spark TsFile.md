@@ -46,7 +46,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 在本地模式下使用TsFile-Spark-Connector启动Spark：
 
 ```
-./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.10.0-jar-with-dependencies.jar
+./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.10.1-jar-with-dependencies.jar
 ```
 
 - \<spark-shell-path\>是您的spark-shell的真实路径。

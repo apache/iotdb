@@ -31,7 +31,7 @@ print(long_description)
 
 setuptools.setup(
     name="apache-iotdb", # Replace with your own username
-    version="0.10.0",
+    version="0.10.1",
     author=" Apache Software Foundation",
     author_email="dev@iotdb.apache.org",
     description="Apache IoTDB (incubating) client API",

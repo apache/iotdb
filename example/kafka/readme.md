@@ -39,7 +39,7 @@ Kafka: 0.8.2.0
     <dependency>
 	    <groupId>org.apache.iotdb</groupId>
 	    <artifactId>iotdb-jdbc</artifactId>
-	    <version>0.10.0</version>
+	    <version>0.10.1</version>
     </dependency>
 </dependencies>
 ```
