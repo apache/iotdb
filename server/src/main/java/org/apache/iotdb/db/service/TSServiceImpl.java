@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
-import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
+import static org.apache.iotdb.db.conf.IoTDBConfig.NODE_PATTERN1;
+import static org.apache.iotdb.db.conf.IoTDBConfig.NODE_PATTERN2;
 import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
 
 import java.io.IOException;
@@ -1127,6 +1128,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
         plan.setDeviceId(req.getDeviceIds().get(i));
+        plan.setDeviceNodes(splitPathToNodes(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1165,6 +1167,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
         plan.setDeviceId(req.getDeviceIds().get(i));
+        plan.setDeviceNodes(splitPathToNodes(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1235,6 +1238,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDeviceId(req.getDeviceId());
+      plan.setDeviceNodes(splitPathToNodes(req.getDeviceId()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1266,6 +1270,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDeviceId(req.getDeviceId());
+      plan.setDeviceNodes(splitPathToNodes(req.getDeviceId()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1295,7 +1300,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     plan.setDeleteEndTime(req.getEndTime());
     List<Path> paths = new ArrayList<>();
     for (String path : req.getPaths()) {
-      paths.add(new Path(path));
+      paths.add(new Path(splitPathToNodes(path)));
     }
     plan.addPaths(paths);
 
@@ -1316,6 +1321,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceId, req.measurements);
+      insertTabletPlan.setDeviceNodes(splitPathToNodes(req.deviceId));
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
           QueryDataSetUtils.readValuesFromBuffer(
@@ -1351,6 +1357,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       for (int i = 0; i < req.deviceIds.size(); i++) {
         InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceIds.get(i),
             req.measurementsList.get(i));
+        insertTabletPlan.setDeviceNodes(splitPathToNodes(req.deviceIds.get(i)));
         insertTabletPlan.setTimes(
             QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
         insertTabletPlan.setColumns(
@@ -1385,12 +1392,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
-    TSStatus status = checkPathValidity(storageGroup);
+    List<String> storageGroupNodes = splitPathToNodes(storageGroup);
+    TSStatus status = checkPathValidityWithNodes(storageGroupNodes);
     if (status != null) {
       return status;
     }
 
-    SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(storageGroup));
+    SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(storageGroupNodes));
     status = checkAuthority(plan, sessionId);
     if (status != null) {
       return new TSStatus(status);
@@ -1406,7 +1414,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     List<Path> storageGroupList = new ArrayList<>();
     for (String storageGroup : storageGroups) {
-      storageGroupList.add(new Path(storageGroup));
+      storageGroupList.add(new Path(splitPathToNodes(storageGroup)));
     }
     DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(storageGroupList);
     TSStatus status = checkAuthority(plan, sessionId);
@@ -1423,13 +1431,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
-    auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
-    TSStatus status = checkPathValidity(req.path);
+    if (auditLogger.isDebugEnabled()) {
+      auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
+    }
+    List<String> seriesNodes = splitPathToNodes(req.path);
+    TSStatus status = checkPathValidityWithNodes(seriesNodes);
     if (status != null) {
       return status;
     }
 
-    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.path),
+    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(seriesNodes),
         TSDataType.values()[req.dataType], TSEncoding.values()[req.encoding],
         CompressionType.values()[req.compressor], req.props, req.tags, req.attributes,
         req.measurementAlias);
@@ -1446,11 +1457,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
-    auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
-        req.getPaths().size(), req.getPaths().get(0));
+    if (auditLogger.isDebugEnabled()) {
+      auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
+          req.getPaths().size(), req.getPaths().get(0));
+    }
     List<TSStatus> statusList = new ArrayList<>(req.paths.size());
     for (int i = 0; i < req.paths.size(); i++) {
-      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.getPaths().get(i)),
+      List<String> seriesNodes = splitPathToNodes(req.paths.get(i));
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(seriesNodes),
           TSDataType.values()[req.dataTypes.get(i)], TSEncoding.values()[req.encodings.get(i)],
           CompressionType.values()[req.compressors.get(i)],
           req.propsList == null ? null : req.propsList.get(i),
@@ -1458,7 +1472,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.attributesList == null ? null : req.attributesList.get(i),
           req.measurementAliasList == null ? null : req.measurementAliasList.get(i));
 
-      TSStatus status = checkPathValidity(req.paths.get(i));
+      TSStatus status = checkPathValidityWithNodes(seriesNodes);
       if (status != null) {
         // path naming is not valid
         statusList.add(status);
@@ -1502,7 +1516,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     List<Path> pathList = new ArrayList<>();
     for (String path : paths) {
-      pathList.add(new Path(path));
+      pathList.add(new Path(splitPathToNodes(path)));
     }
     DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(pathList);
     TSStatus status = checkAuthority(plan, sessionId);
@@ -1556,10 +1570,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
-  private TSStatus checkPathValidity(String path) {
-    if (!PATH_PATTERN.matcher(path).matches()) {
-      logger.warn("Illegal path: {}", path);
-      return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, path + " path is illegal");
+  private TSStatus checkPathValidityWithNodes(List<String> nodes) {
+    if (nodes == null) {
+      return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, "path is illegal");
+    }
+    int index = 0;
+    if (nodes.get(index).equals(IoTDBConstant.PATH_ROOT)) {
+      for (index = 1; index < nodes.size(); index++) {
+        if (!NODE_PATTERN1.matcher(nodes.get(index)).matches()) {
+          // support double quote on measurement only now
+          if (index == nodes.size() - 1 && NODE_PATTERN2.matcher(nodes.get(index)).matches()) {
+            continue;
+          }
+          break;
+        }
+      }
+    }
+    if (index < nodes.size()) {
+      logger.warn("Illegal path: {}", nodes.toString());
+      return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, nodes.toString() + " path is illegal");
     } else {
       return null;
     }
@@ -1577,5 +1606,31 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
       throws MetadataException {
     return SchemaUtils.getSeriesTypesByString(paths, aggregation);
+  }
+
+  private List<String> splitPathToNodes(String path) {
+    List<String> nodes = new ArrayList<>();
+    int startIndex = 0;
+    for (int i = 0; i < path.length(); i++) {
+      if (path.charAt(i) == '.') {
+        nodes.add(path.substring(startIndex, i));
+        startIndex = i + 1;
+      } else if (path.charAt(i) == '"') {
+        int endIndex = path.indexOf('"', i + 1);
+        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
+          nodes.add(path.substring(startIndex, endIndex + 1));
+          i = endIndex + 1;
+          startIndex = endIndex + 2;
+        } else {
+          return null;
+        }
+      } else if (path.charAt(i) == '\'') {
+        return null;
+      }
+    }
+    if (startIndex < path.length() - 1) {
+      nodes.add(path.substring(startIndex));
+    }
+    return nodes;
   }
 }

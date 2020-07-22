@@ -48,5 +48,11 @@ public class CheckPathValidityTest {
     assertTrue(IoTDBConfig.PATH_PATTERN.matcher("root.a[12345]").matches());
     assertTrue(IoTDBConfig.PATH_PATTERN.matcher("root.2e3.2-2.-1.%$#/&@.a[12345]{}").matches());
     assertTrue(IoTDBConfig.PATH_PATTERN.matcher("root.a.b.\"c.a\"").matches());
+
+    assertTrue(IoTDBConfig.NODE_PATTERN1.matcher("root").matches());
+    assertTrue(IoTDBConfig.NODE_PATTERN1.matcher("vehicle").matches());
+    assertTrue(IoTDBConfig.NODE_PATTERN2.matcher("\"d.1\"").matches());
+    assertTrue(IoTDBConfig.NODE_PATTERN2.matcher("\"s_.1\"").matches());
+    assertFalse(IoTDBConfig.NODE_PATTERN2.matcher("\'s_.1\'").matches());
   }
 }

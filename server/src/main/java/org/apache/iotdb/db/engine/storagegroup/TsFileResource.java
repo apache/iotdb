@@ -281,8 +281,9 @@ public class TsFileResource {
         String path = ReadWriteIOUtils.readString(inputStream);
         long time = ReadWriteIOUtils.readLong(inputStream);
         // To reduce the String number in memory, 
-        // use the deviceId from MManager instead of the deviceId read from disk
-        path = IoTDB.metaManager.getDeviceId(path);
+        // use the deviceId from memory instead of the deviceId read from disk
+        Map<String, String> devicePool = new HashMap<>();
+        path = devicePool.putIfAbsent(path, path);
         deviceMap.put(path, i);
         startTimesArray[i] = time;
       }

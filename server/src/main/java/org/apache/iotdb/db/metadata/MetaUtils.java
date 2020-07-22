@@ -109,7 +109,7 @@ public class MetaUtils {
    * e.g., nodes = [root, a, b, c], return root.a.b.c
    */
 
-  public static String getPathByNodes(List <String> nodes) {
+  public static String getPathByNodes(List<String> nodes) {
     StringBuilder path = new StringBuilder();
     path.append(nodes.get(0));
     for(int i = 1; i < nodes.size(); i++) {
