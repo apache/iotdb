@@ -168,6 +168,15 @@ public abstract class AbstractMemTable implements IMemTable {
     return true;
   }
 
+  @Override
+  public boolean checkIfNeedStartNewChunk(String deviceId, String measurement) {
+    if (!memTableMap.containsKey(deviceId)) {
+      return true;
+    }
+    Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
+    return !memSeries.containsKey(measurement);
+  }
+
   public int getSeriesNumber() {
     return seriesNumber;
   }

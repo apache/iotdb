@@ -121,4 +121,6 @@ public interface IMemTable {
   void release();
 
   boolean checkIfArrayIsEnough(InsertPlan insertPlan);
+
+  boolean checkIfNeedStartNewChunk(String deviceId, String measurement);
 }

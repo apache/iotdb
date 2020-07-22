@@ -86,6 +86,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -304,7 +305,9 @@ public class TsFileProcessor {
     }
     else {
       // if there are available buffered arrays in array pool
-      if (true) {
+      boolean isbufferedArrayEnough = true;
+      // TODO: isbufferedArrayEnough = checkBufferedArray();
+      if (isbufferedArrayEnough) {
         long bytesCost = 0;
         long unsealedResourceCost = 0;
         long chunkMetadataCost = 0;
@@ -331,13 +334,13 @@ public class TsFileProcessor {
   private void checkMemCost(InsertPlan insertPlan, long bytesCost, long unsealedResourceCost,
       long chunkMetadataCost) {
     if (!tsFileResource.getDeviceToIndexMap().containsKey(insertPlan.getDeviceId())) {
-      unsealedResourceCost += insertPlan.getDeviceId().getBytes().length + Integer.BYTES;
+      unsealedResourceCost += RamUsageEstimator.sizeOf(insertPlan.getDeviceId()) + Integer.BYTES;
       if (tsFileResource.getDeviceToIndexMap().size() >= tsFileResource.getStartTimes().length) {
         unsealedResourceCost += tsFileResource.getDeviceToIndexMap().size() * Long.BYTES;
       }
     }
-    // ChunkMetadataCost += calculateRamSize();
     for (int i = 0; i < insertPlan.getDataTypes().length; i++) {
+      // String array cost
       if (insertPlan.getDataTypes()[i] == TSDataType.TEXT) {
         if (insertPlan instanceof InsertRowPlan) {
           bytesCost += ((Binary) ((InsertRowPlan) insertPlan).getValues()[i]).getLength();
@@ -347,6 +350,12 @@ public class TsFileProcessor {
             bytesCost += bytes.getLength();
           }
         }
+      }
+      // ChunkMetadataCost
+      if (workMemTable.checkIfNeedStartNewChunk(insertPlan.getDeviceId(),
+          insertPlan.getMeasurements()[i])) {
+        chunkMetadataCost += ChunkMetadata.calculateRamSize(insertPlan.getMeasurements()[i],
+            insertPlan.getDataTypes()[i]);
       }
     }
   }
