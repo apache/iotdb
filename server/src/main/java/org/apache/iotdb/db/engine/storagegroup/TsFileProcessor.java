@@ -693,7 +693,7 @@ public class TsFileProcessor {
     }
   }
 
-  public File createNewVMFile(TsFileResource tsFileResource, int level) {
+  public File createNewVMFileWithLock(TsFileResource tsFileResource, int level) {
     vmFileCreateLock.writeLock().lock();
     try {
       TimeUnit.MILLISECONDS.sleep(1);
@@ -709,6 +709,22 @@ public class TsFileProcessor {
       return null;
     } finally {
       vmFileCreateLock.writeLock().unlock();
+    }
+  }
+
+  public static File createNewVMFile(TsFileResource tsFileResource, int level) {
+    try {
+      TimeUnit.MILLISECONDS.sleep(1);
+      File parent = tsFileResource.getTsFile().getParentFile();
+      return FSFactoryProducer.getFSFactory().getFile(parent,
+          tsFileResource.getTsFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + level
+              + IoTDBConstant.FILE_NAME_SEPARATOR + System
+              .currentTimeMillis() + VM_SUFFIX);
+    } catch (InterruptedException e) {
+      logger.error("{}: {}, closing task is interrupted.",
+          tsFileResource.getTsFile().getParent(), tsFileResource.getTsFile().getName(), e);
+      Thread.currentThread().interrupt();
+      return null;
     }
   }
 
@@ -781,7 +797,7 @@ public class TsFileProcessor {
           }
           int level = getVmLevel(sourceFileList.get(0));
           if (isMergeFinished) {
-            File newVmFile = createNewVMFile(tsFileResource, level + 1);
+            File newVmFile = createNewVMFileWithLock(tsFileResource, level + 1);
             if (!targetFile.renameTo(newVmFile)) {
               logger.error("Failed to rename {} to {}", targetFile, newVmFile);
             } else {
@@ -848,7 +864,7 @@ public class TsFileProcessor {
         if (config.isEnableVm()) {
           logger.info("{}: {} [Flush] start to flush a memtable to a vm", storageGroupName,
               tsFileResource.getTsFile().getName());
-          File newVmFile = createNewVMFile(tsFileResource, 0);
+          File newVmFile = createNewVMFileWithLock(tsFileResource, 0);
           if (vmWriters.isEmpty()) {
             vmWriters.add(new ArrayList<>());
             vmTsFileResources.add(new ArrayList<>());
@@ -1199,9 +1215,11 @@ public class TsFileProcessor {
       List<List<TsFileResource>> currMergeVmFiles, VmLogger vmLogger) throws IOException {
     VmMergeUtils.merge(writer, packVmWritersToSequenceList(currMergeVmWriters),
         storageGroupName, vmLogger, new HashSet<>(), sequence);
+    vmMergeLock.writeLock().lock();
     for (int i = 0; i < currMergeVmFiles.size(); i++) {
       deleteVmFiles(currMergeVmFiles.get(i), currMergeVmWriters.get(i));
     }
+    vmMergeLock.writeLock().unlock();
   }
 
   private List<RestorableTsFileIOWriter> packVmWritersToSequenceList(
@@ -1275,25 +1293,20 @@ public class TsFileProcessor {
               for (RestorableTsFileIOWriter vmWriter : vmMergeWriters.get(i)) {
                 vmLogger.logFile(SOURCE_NAME, vmWriter.getFile());
               }
-              File newVmFile = createNewVMFile(tsFileResource, i + 1);
+              File newVmFile = createNewVMFileWithLock(tsFileResource, i + 1);
               vmLogger.logFile(TARGET_NAME, newVmFile);
               logger.info("{}: {} [Hot Compaction] merge level-{}'s {} vms to next level vm",
                   storageGroupName, tsFileResource.getTsFile().getName(), i,
                   vmMergeTsFiles.get(i).size());
 
-              // merge all vm files into a new vm file
-              File tmpFile = createNewTmpFile();
-              RestorableTsFileIOWriter tmpWriter = new RestorableTsFileIOWriter(tmpFile);
-              VmMergeUtils.merge(tmpWriter, vmMergeWriters.get(i),
+              RestorableTsFileIOWriter newWriter = new RestorableTsFileIOWriter(newVmFile);
+              VmMergeUtils.merge(newWriter, vmMergeWriters.get(i),
                   storageGroupName, vmLogger, new HashSet<>(), sequence);
-              tmpWriter.close();
+              newWriter.close();
               vmMergeLock.writeLock().lock();
               try {
                 deleteVmFiles(vmMergeTsFiles.get(i), vmMergeWriters.get(i));
                 vmLogger.logMergeFinish();
-                if (tmpFile != null && !tmpFile.renameTo(newVmFile)) {
-                  logger.error("Failed to rename {} to {}", tmpFile, newVmFile);
-                }
                 TsFileResource newMergedVmFile = new TsFileResource(newVmFile);
                 if (vmWriters.size() <= i + 1) {
                   vmTsFileResources.add(new CopyOnWriteArrayList<>());
@@ -1303,10 +1316,9 @@ public class TsFileProcessor {
                 }
                 vmTsFileResources.get(i + 1).add(newMergedVmFile);
                 vmMergeTsFiles.get(i + 1).add(newMergedVmFile);
-                tmpWriter.setFile(newVmFile);
-                tmpWriter.makeMetadataVisible();
-                vmWriters.get(i + 1).add(tmpWriter);
-                vmMergeWriters.get(i + 1).add(tmpWriter);
+                newWriter.makeMetadataVisible();
+                vmWriters.get(i + 1).add(newWriter);
+                vmMergeWriters.get(i + 1).add(newWriter);
                 logger.debug("{} vm file open a writer", newVmFile.getName());
               } finally {
                 vmMergeLock.writeLock().unlock();
@@ -1328,26 +1340,6 @@ public class TsFileProcessor {
         mergeWorking = false;
         logger.info("{}: {} vm merge end time consumption: {} ms", storageGroupName,
             tsFileResource.getTsFile().getName(), System.currentTimeMillis() - startTimeMillis);
-      }
-    }
-
-    private File createNewTmpFile() {
-      vmFileCreateLock.writeLock().lock();
-      try {
-        TimeUnit.MILLISECONDS.sleep(1);
-        File parent = writer.getFile().getParentFile();
-        return FSFactoryProducer.getFSFactory().getFile(parent,
-            writer.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
-                .currentTimeMillis()
-                + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR
-                + TMP_SUFFIX);
-      } catch (InterruptedException e) {
-        logger.error("{}: {}, closing task is interrupted.",
-            storageGroupName, tsFileResource.getTsFile().getName(), e);
-        Thread.currentThread().interrupt();
-        return null;
-      } finally {
-        vmFileCreateLock.writeLock().unlock();
       }
     }
   }
