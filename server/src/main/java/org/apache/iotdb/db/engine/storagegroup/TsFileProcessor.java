@@ -229,9 +229,9 @@ public class TsFileProcessor {
    * the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param start start index of rows to be inserted in insertTabletPlan
-   * @param end end index of rows to be inserted in insertTabletPlan
-   * @param results result array
+   * @param start            start index of rows to be inserted in insertTabletPlan
+   * @param end              end index of rows to be inserted in insertTabletPlan
+   * @param results          result array
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
@@ -719,39 +719,33 @@ public class TsFileProcessor {
               newVmWriter.setFile(newVmFile);
             }
           } else {
-            if (deviceSet.isEmpty()) {
-              Files.delete(targetFile.toPath());
-            } else {
-              logger
-                  .info("{}: {} [Hot Compaction Recover] merge level-{}'s {} vms to next level vm",
-                      storageGroupName, tsFileResource.getTsFile().getName(), 0,
-                      vmWriters.get(0).size());
-              if (offset > 0) {
-                writer.getIOWriterOut().truncate(offset - 1);
-              }
+            logger.info("{}: {} [Hot Compaction Recover] merge level-{}'s {} vms to next level vm",
+                storageGroupName, tsFileResource.getTsFile().getName(), level,
+                sourceFileList.size());
+            if (offset > 0) {
               newVmWriter.getIOWriterOut().truncate(offset - 1);
-              // vm files must be sequence, so we just have to find the first file
-              int startIndex;
-              for (startIndex = 0; startIndex < vmWriters.get(level).size(); startIndex++) {
-                RestorableTsFileIOWriter levelVmWriter = vmWriters.get(level).get(startIndex);
-                if (levelVmWriter.getFile().getAbsolutePath()
-                    .equals(sourceFileList.get(0).getAbsolutePath())) {
-                  break;
-                }
+            }
+            // vm files must be sequence, so we just have to find the first file
+            int startIndex;
+            for (startIndex = 0; startIndex < vmWriters.get(level).size(); startIndex++) {
+              RestorableTsFileIOWriter levelVmWriter = vmWriters.get(level).get(startIndex);
+              if (levelVmWriter.getFile().getAbsolutePath()
+                  .equals(sourceFileList.get(0).getAbsolutePath())) {
+                break;
               }
-              List<RestorableTsFileIOWriter> levelVmWriters = new ArrayList<>(
-                  vmWriters.get(level).subList(startIndex, startIndex + sourceFileList.size()));
-              List<TsFileResource> levelVmFiles = new ArrayList<>(
-                  vmTsFileResources.get(level)
-                      .subList(startIndex, startIndex + sourceFileList.size()));
-              VmMergeUtils.merge(newVmWriter, levelVmWriters,
-                  storageGroupName,
-                  new VmLogger(tsFileResource.getTsFile().getParent(),
-                      tsFileResource.getTsFile().getName()),
-                  deviceSet, sequence);
-              for (int i = 0; i < vmWriters.size(); i++) {
-                deleteVmFiles(levelVmFiles, levelVmWriters);
-              }
+            }
+            List<RestorableTsFileIOWriter> levelVmWriters = new ArrayList<>(
+                vmWriters.get(level).subList(startIndex, startIndex + sourceFileList.size()));
+            List<TsFileResource> levelVmFiles = new ArrayList<>(
+                vmTsFileResources.get(level)
+                    .subList(startIndex, startIndex + sourceFileList.size()));
+            VmMergeUtils.merge(newVmWriter, levelVmWriters,
+                storageGroupName,
+                new VmLogger(tsFileResource.getTsFile().getParent(),
+                    tsFileResource.getTsFile().getName()),
+                deviceSet, sequence);
+            for (int i = 0; i < vmWriters.size(); i++) {
+              deleteVmFiles(levelVmFiles, levelVmWriters);
             }
           }
         }
@@ -1016,10 +1010,10 @@ public class TsFileProcessor {
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
    * ChunkMetadata of data on disk.
    *
-   * @param deviceId device id
+   * @param deviceId      device id
    * @param measurementId measurements id
-   * @param dataType data type
-   * @param encoding encoding
+   * @param dataType      data type
+   * @param encoding      encoding
    */
   public void query(String deviceId, String measurementId, TSDataType dataType, TSEncoding encoding,
       Map<String, String> props, QueryContext context,
