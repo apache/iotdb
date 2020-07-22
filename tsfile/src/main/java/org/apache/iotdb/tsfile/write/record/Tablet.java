@@ -74,7 +74,8 @@ public class Tablet {
    * constructor (all Tablet should be the same size).
    *
    * @param deviceId   the name of the device specified to be written in
-   * @param timeseries the list of measurement schemas for creating the tablet
+   * @param timeseries the list of measurement schemas for creating the tablet,
+   *                   only measurementId and type take effects
    */
   public Tablet(String deviceId, List<MeasurementSchema> timeseries) {
     this(deviceId, timeseries, DEFAULT_SIZE);
@@ -87,7 +88,7 @@ public class Tablet {
    *
    * @param deviceId     the name of the device specified to be written in
    * @param schemas   the list of measurement schemas for creating the row
-   *                     batch
+   *                  batch, only measurementId and type take effects
    * @param maxRowNumber the maximum number of rows for this tablet
    */
   public Tablet(String deviceId, List<MeasurementSchema> schemas, int maxRowNumber) {
