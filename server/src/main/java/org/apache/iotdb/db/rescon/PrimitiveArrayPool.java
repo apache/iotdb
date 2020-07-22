@@ -34,7 +34,8 @@ public class PrimitiveArrayPool {
   /**
    * data type -> Array<PrimitiveArray>
    */
-  private static final EnumMap<TSDataType, ArrayDeque<Object>> primitiveArraysMap = new EnumMap<>(TSDataType.class);
+  private static final EnumMap<TSDataType, ArrayDeque<Object>> primitiveArraysMap = new EnumMap<>(
+      TSDataType.class);
 
   public static final int ARRAY_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
@@ -55,10 +56,12 @@ public class PrimitiveArrayPool {
   private static final PrimitiveArrayPool INSTANCE = new PrimitiveArrayPool();
 
 
-  private PrimitiveArrayPool() {}
+  private PrimitiveArrayPool() {
+  }
 
   public synchronized Object getPrimitiveDataListByType(TSDataType dataType) {
-    ArrayDeque<Object> dataListQueue = primitiveArraysMap.computeIfAbsent(dataType, k ->new ArrayDeque<>());
+    ArrayDeque<Object> dataListQueue = primitiveArraysMap
+        .computeIfAbsent(dataType, k -> new ArrayDeque<>());
     Object dataArray = dataListQueue.poll();
     switch (dataType) {
       case BOOLEAN:
@@ -103,7 +106,7 @@ public class PrimitiveArrayPool {
       primitiveArraysMap.get(TSDataType.BOOLEAN).add(dataArray);
     } else if (dataArray instanceof int[]) {
       primitiveArraysMap.get(TSDataType.INT32).add(dataArray);
-    } else if (dataArray instanceof long[]){
+    } else if (dataArray instanceof long[]) {
       primitiveArraysMap.get(TSDataType.INT64).add(dataArray);
     } else if (dataArray instanceof float[]) {
       primitiveArraysMap.get(TSDataType.FLOAT).add(dataArray);
@@ -120,7 +123,7 @@ public class PrimitiveArrayPool {
    * @return an array of primitive data arrays
    */
   public synchronized Object getDataListsByType(TSDataType dataType, int size) {
-    int arrayNumber = (int) Math.ceil((float) size / (float)ARRAY_SIZE);
+    int arrayNumber = (int) Math.ceil((float) size / (float) ARRAY_SIZE);
     switch (dataType) {
       case BOOLEAN:
         boolean[][] booleans = new boolean[arrayNumber][];
@@ -162,5 +165,4 @@ public class PrimitiveArrayPool {
         return null;
     }
   }
-
 }
