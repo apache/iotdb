@@ -268,6 +268,8 @@ public class IoTDBConfig {
    */
   private int maxMergeChunkNumInTsFile = 25;
 
+  private long reserveMemSize = 1024 * 1024 * 1024L;
+
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
    */
@@ -1222,6 +1224,14 @@ public class IoTDBConfig {
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
+  }
+
+  public long getReserveMemSize() {
+    return reserveMemSize;
+  }
+
+  public void setReserveMemSize(long reserveMemSize) {
+    this.reserveMemSize = reserveMemSize;
   }
 
   public int getAvgSeriesPointNumberThreshold() {

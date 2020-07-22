@@ -2445,7 +2445,7 @@ public class StorageGroupProcessor {
   }
 
 
-  public Collection<TsFileProcessor> getWorkUnsequenceTsFileProcessor() {
+  public Collection<TsFileProcessor> getWorkUnsequenceTsFileProcessors() {
     return workUnsequenceTsFileProcessors.values();
   }
 
@@ -2489,7 +2489,7 @@ public class StorageGroupProcessor {
         return false;
       }
     }
-    for (TsFileProcessor workUnsequenceTsFileProcessor : getWorkUnsequenceTsFileProcessor()) {
+    for (TsFileProcessor workUnsequenceTsFileProcessor : getWorkUnsequenceTsFileProcessors()) {
       long workingFileVersion = workUnsequenceTsFileProcessor.getTsFileResource().getMaxVersion();
       if (tsFileResource.getHistoricalVersions().contains(workingFileVersion)) {
         return false;

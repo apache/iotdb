@@ -379,7 +379,7 @@ public class StorageEngine implements IService {
         } else {
           // to avoid concurrent modification problem, we need a new array list
           for (TsFileProcessor tsfileProcessor : new ArrayList<>(
-              processor.getWorkUnsequenceTsFileProcessor())) {
+              processor.getWorkUnsequenceTsFileProcessors())) {
             processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
           }
         }
@@ -401,7 +401,7 @@ public class StorageEngine implements IService {
       // to avoid concurrent modification problem, we need a new array list
       List<TsFileProcessor> processors = isSeq ?
           new ArrayList<>(processor.getWorkSequenceTsFileProcessors()) :
-          new ArrayList<>(processor.getWorkUnsequenceTsFileProcessor());
+          new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
       try {
         for (TsFileProcessor tsfileProcessor : processors) {
           if (tsfileProcessor.getTimeRangeId() == partitionId) {
@@ -605,6 +605,15 @@ public class StorageEngine implements IService {
       long partitionNum) {
     StorageGroupProcessor processor = processorMap.get(storageGroup);
     return processor != null && processor.isFileAlreadyExist(tsFileResource, partitionNum);
+  }
+
+  public int countTsFileProcessors() {
+    int count = 0;
+    for (StorageGroupProcessor sgProcessor : processorMap.values()) {
+      count += sgProcessor.getWorkSequenceTsFileProcessors().size();
+      count += sgProcessor.getWorkUnsequenceTsFileProcessors().size();
+    }
+    return count;
   }
 
   public static long getTimePartitionInterval() {

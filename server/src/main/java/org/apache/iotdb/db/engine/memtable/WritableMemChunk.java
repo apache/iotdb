@@ -92,6 +92,10 @@ public class WritableMemChunk implements IWritableMemChunk {
     }
   }
 
+  @Override
+  public boolean checkIfArrayIsEnough() {
+    return list.checkIfArrayIsEnough();
+  }
 
   @Override
   public void putLong(long t, long v) {

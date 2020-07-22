@@ -149,6 +149,10 @@ public abstract class AbstractMemTable implements IMemTable {
     }
   }
 
+  public boolean checkIfArrayIsEnough(String deviceId, String measurement, MeasurementSchema schema) {
+    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, schema);
+    return memSeries.checkIfArrayIsEnough();
+  }
 
   public int getSeriesNumber() {
     return seriesNumber;

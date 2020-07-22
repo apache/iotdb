@@ -29,12 +29,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -106,7 +104,7 @@ public class StorageGroupProcessorTest {
       insertToStorageGroupProcessor(record);
     }
 
-    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor.syncFlush();
     }
 
@@ -120,7 +118,7 @@ public class StorageGroupProcessorTest {
 
     List<TsFileResource> unLockList = new ArrayList<>();
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor
           .query(deviceId, measurementId, TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
               new QueryContext(), tsfileResourcesForQuery);

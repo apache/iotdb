@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;

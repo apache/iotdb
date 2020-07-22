@@ -68,6 +68,7 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -84,6 +85,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -95,6 +97,7 @@ public class TsFileProcessor {
   private final String storageGroupName;
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private TsFileProcessorInfo tsFileProcessorInfo;
 
   /**
    * sync this object in query() and asyncTryToFlush()
@@ -147,6 +150,7 @@ public class TsFileProcessor {
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = new TsFileResource(tsfile, this);
+    this.tsFileProcessorInfo.addUnsealedResourceMemCost(64 * Long.BYTES);
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.vmTsFileResources = new CopyOnWriteArrayList<>();
@@ -177,6 +181,8 @@ public class TsFileProcessor {
       RestorableTsFileIOWriter writer, List<List<RestorableTsFileIOWriter>> vmWriters) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
+    // TODO: calculate the bytes of TsFileResource
+    //this.tsFileProcessorInfo.addUnsealedResourceMemCost(64 * Long.BYTES);
     this.vmTsFileResources = new CopyOnWriteArrayList<>();
     for (List<TsFileResource> subTsFileResourceList : vmTsFileResources) {
       this.vmTsFileResources.add(new CopyOnWriteArrayList<>(subTsFileResourceList));
@@ -204,6 +210,19 @@ public class TsFileProcessor {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
 
+    long bytesCost = 0;
+    long unsealedResourceCost = 0;
+    long chunkMetadataCost = 0;
+    checkMemCost(insertRowPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
+    if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(bytesCost
+        + unsealedResourceCost + chunkMetadataCost)) {
+      // reportToSystemInfo
+    }
+    else {
+      tsFileProcessorInfo.addBytesMemCost(bytesCost);
+      tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
+      tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+    }
     // insert insertRowPlan to the work memtable
     workMemTable.insert(insertRowPlan);
 
@@ -241,6 +260,19 @@ public class TsFileProcessor {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
 
+    long bytesCost = 0;
+    long unsealedResourceCost = 0;
+    long chunkMetadataCost = 0;
+    checkMemCost(insertTabletPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
+    if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(bytesCost
+        + unsealedResourceCost + chunkMetadataCost)) {
+      // reportToSystemInfo
+    }
+    else {
+      tsFileProcessorInfo.addBytesMemCost(bytesCost);
+      tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
+      tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+    }
     // insert insertRowPlan to the work memtable
     try {
       workMemTable.insertTablet(insertTabletPlan, start, end);
@@ -269,6 +301,29 @@ public class TsFileProcessor {
       tsFileResource
           .updateEndTime(
               insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
+    }
+  }
+
+  private void checkMemCost(InsertPlan insertPlan, long bytesCost, long unsealedResourceCost,
+      long chunkMetadataCost) {
+    if (!tsFileResource.getDeviceToIndexMap().containsKey(insertPlan.getDeviceId())) {
+      unsealedResourceCost += insertPlan.getDeviceId().getBytes().length + Integer.BYTES;
+      if (tsFileResource.getDeviceToIndexMap().size() >= tsFileResource.getStartTimes().length) {
+        unsealedResourceCost += tsFileResource.getDeviceToIndexMap().size() * Long.BYTES;
+      }
+    }
+    // ChunkMetadataCost += calculateRamSize();
+    for (int i = 0; i < insertPlan.getDataTypes().length; i++) {
+      if (insertPlan.getDataTypes()[i] == TSDataType.TEXT) {
+        if (insertPlan instanceof InsertRowPlan) {
+          bytesCost += ((Binary) ((InsertRowPlan) insertPlan).getValues()[i]).getLength();
+        }
+        else {
+          for (Binary bytes : (Binary[]) ((InsertTabletPlan) insertPlan).getColumns()[i]) {
+            bytesCost += bytes.getLength();
+          }
+        }
+      }
     }
   }
 

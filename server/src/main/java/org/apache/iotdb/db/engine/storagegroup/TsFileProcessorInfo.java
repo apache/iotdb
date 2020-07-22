@@ -18,13 +18,56 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 
 public class TsFileProcessorInfo {
 
-  long unsealed_resource_mem_cost;
-  long bytes_mem_cost;
-  long chunkMetadata_mem_cost;
-  long wal_mem_cost = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  private long unsealedResourceMemCost;
+  private long bytesMemCost;
+  private long chunkMetadataMemCost;
+  private long walMemCost;
+
+  public TsFileProcessorInfo() {
+    unsealedResourceMemCost = 0;
+    bytesMemCost = 0;
+    chunkMetadataMemCost = 0;
+    walMemCost = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
+  }
+
+  public void addUnsealedResourceMemCost(long cost) {
+    unsealedResourceMemCost += cost;
+  }
+  
+  public void addChunkMetadataMemCost(long cost) {
+    chunkMetadataMemCost += cost;
+  }
+
+  public void addBytesMemCost(long cost) {
+    bytesMemCost += cost;
+  }
+
+  public void removeUnsealedResourceMemCost(long cost) {
+    unsealedResourceMemCost -= cost;
+  }
+  
+  public void removeChunkMetadataMemCost(long cost) {
+    chunkMetadataMemCost -= cost;
+  }
+
+  public void removeBytesMemCost(long cost) {
+    bytesMemCost -= cost;
+  }
+ 
+  public long getTsFileProcessorMemCost() {
+    return unsealedResourceMemCost + bytesMemCost + chunkMetadataMemCost + walMemCost;
+  }
+
+  public boolean checkIfNeedReportTsFileProcessorStatus(long cost) {
+    return cost > (config.getReserveMemSize() / StorageEngine.getInstance().countTsFileProcessors());
+  }
+  
 }

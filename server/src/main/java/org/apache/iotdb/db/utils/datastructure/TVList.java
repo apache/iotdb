@@ -280,6 +280,10 @@ public abstract class TVList {
     }
   }
 
+  public boolean checkIfArrayIsEnough() {
+    return size % ARRAY_SIZE != 0;
+  }
+
   protected long[] cloneTime(long[] array) {
     long[] cloneArray = new long[array.length];
     System.arraycopy(array, 0, cloneArray, 0, array.length);
