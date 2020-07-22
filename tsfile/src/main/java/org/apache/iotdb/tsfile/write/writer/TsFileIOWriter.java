@@ -350,6 +350,7 @@ public class TsFileIOWriter {
    * Testing.
    */
   public void close() throws IOException {
+    System.out.println("close a writer:"+file.getAbsolutePath());
     canWrite = false;
     out.close();
   }
