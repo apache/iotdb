@@ -184,6 +184,8 @@ public class TsFileRecoverPerformer {
         isLastFile = true;
         // prevent generating resource file
         if (redoLogs(newVMWriter, newVmTsFileResource, restorableTsFileIOWriter)) {
+          // close output stream of newVMWriter
+          newVMWriter.close();
           // recover metadata for new vmfile
           recoverResourceFromWriter(newVMWriter, newVmTsFileResource);
           vmTsFileResources.get(0).add(newVmTsFileResource);

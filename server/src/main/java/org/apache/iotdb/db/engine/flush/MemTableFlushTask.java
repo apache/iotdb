@@ -63,6 +63,13 @@ public class MemTableFlushTask {
   private volatile boolean noMoreEncodingTask = false;
   private volatile boolean noMoreIOTask = false;
 
+  /**
+   * @param memTable the memTable to flush
+   * @param writer the writer where memTable will be flushed to (current tsfile writer or vm writer)
+   * @param storageGroup current storage group
+   * @param tsFileIOWriter current tsfile writer (use it to create flushLog)
+   */
+
   public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup,
       RestorableTsFileIOWriter tsFileIOWriter) {
     this.memTable = memTable;

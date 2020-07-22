@@ -184,7 +184,7 @@ public class RecoverResourceFromReaderTest {
         resource, false, false, Collections.singletonList(new ArrayList<>()));
     ActiveTimeSeriesCounter.getInstance()
         .init(resource.getTsFile().getParentFile().getParentFile().getName());
-    performer.recover();
+    performer.recover().left.close();
     assertEquals(1, resource.getStartTime("root.sg.device99"));
     assertEquals(300, resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {

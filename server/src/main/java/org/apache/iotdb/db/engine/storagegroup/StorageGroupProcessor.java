@@ -604,7 +604,8 @@ public class StorageGroupProcessor {
   }
 
   private void recoverTsFiles(List<TsFileResource> tsFiles,
-      Map<String, List<List<TsFileResource>>> vmFiles, boolean isSeq) {
+      Map<String, List<List<TsFileResource>>> vmFiles, boolean isSeq)
+      throws StorageGroupProcessorException {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
@@ -642,6 +643,15 @@ public class StorageGroupProcessor {
               this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback,
               isSeq, writer, vmWriters);
           tsFileProcessor.recover();
+          // end the file if it is not the last file
+          try {
+            writer.endFile();
+            tsFileResource.cleanCloseFlag();
+            tsFileResource.serialize();
+          } catch (IOException e) {
+            throw new StorageGroupProcessorException(e);
+          }
+
         }
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
