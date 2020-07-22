@@ -199,6 +199,7 @@ public class TsFileRecoverPerformer {
         updateTsFileResource();
         return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
       } catch (IOException e) {
+        e.printStackTrace();
         throw new StorageGroupProcessorException(
             "recover the resource file failed: " + filePath
                 + RESOURCE_SUFFIX + e);

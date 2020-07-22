@@ -66,6 +66,7 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -762,9 +763,13 @@ public class MTree implements Serializable {
     } else {
       try {
         last = calculateLastPairForOneSeriesLocally(new Path(node.getFullPath()),
-            node.getSchema().getType(), new QueryContext(-1), Collections.emptySet());
+            node.getSchema().getType(),
+            new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)),
+            Collections.emptySet());
         return last.getTimestamp();
       } catch (Exception e) {
+        logger.error("Something wrong happened while trying to get last time value pair of {}",
+            node.getFullPath(), e);
         return Long.MIN_VALUE;
       }
     }
@@ -885,8 +890,11 @@ public class MTree implements Serializable {
     return getNodesList(path, nodeLevel, null);
   }
 
-  /** Get all paths from root to the given level */
-  List<String> getNodesList(String path, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
+  /**
+   * Get all paths from root to the given level
+   */
+  List<String> getNodesList(String path, int nodeLevel, StorageGroupFilter filter)
+      throws MetadataException {
     String[] nodes = MetaUtils.getNodeNames(path);
     if (!nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path);
@@ -896,7 +904,8 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (node.getChild(nodes[i]) != null) {
         node = node.getChild(nodes[i]);
-        if (node instanceof StorageGroupMNode && filter != null && !filter.satisfy(node.getFullPath())) {
+        if (node instanceof StorageGroupMNode && filter != null && !filter
+            .satisfy(node.getFullPath())) {
           return res;
         }
       } else {
@@ -914,7 +923,8 @@ public class MTree implements Serializable {
    */
   private void findNodes(MNode node, String path, List<String> res, int targetLevel,
       StorageGroupFilter filter) {
-    if (node == null || node instanceof StorageGroupMNode && filter != null && !filter.satisfy(node.getFullPath())) {
+    if (node == null || node instanceof StorageGroupMNode && filter != null && !filter
+        .satisfy(node.getFullPath())) {
       return;
     }
     if (targetLevel == 0) {
