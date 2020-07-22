@@ -210,37 +210,48 @@ public class TsFileProcessor {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
 
-    long bytesCost = 0;
-    long unsealedResourceCost = 0;
-    long chunkMetadataCost = 0;
-    checkMemCost(insertRowPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
-    if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(bytesCost
-        + unsealedResourceCost + chunkMetadataCost)) {
-      // reportToSystemInfo
-    }
-    else {
-      tsFileProcessorInfo.addBytesMemCost(bytesCost);
-      tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
-      tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
-    }
-    // insert insertRowPlan to the work memtable
-    workMemTable.insert(insertRowPlan);
-
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      try {
-        getLogNode().write(insertRowPlan);
-      } catch (Exception e) {
-        throw new WriteProcessException(String.format("%s: %s write WAL failed",
-            storageGroupName, tsFileResource.getTsFile().getAbsolutePath()), e);
+    if (workMemTable.checkIfArrayIsEnough(insertRowPlan)) {
+      // insert insertRowPlan to the work memtable
+      workMemTable.insert(insertRowPlan);
+  
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+        try {
+          getLogNode().write(insertRowPlan);
+        } catch (Exception e) {
+          throw new WriteProcessException(String.format("%s: %s write WAL failed",
+              storageGroupName, tsFileResource.getTsFile().getAbsolutePath()), e);
+        }
+      }
+  
+      // update start time of this memtable
+      tsFileResource.updateStartTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
+      //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+      //for unsequence tsfile, we have to update the endTime for each insertion.
+      if (!sequence) {
+        tsFileResource.updateEndTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
       }
     }
-
-    // update start time of this memtable
-    tsFileResource.updateStartTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
-    //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
-    //for unsequence tsfile, we have to update the endTime for each insertion.
-    if (!sequence) {
-      tsFileResource.updateEndTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
+    else {
+      // if there are available buffered arrays in array pool
+      if (true) {
+        long bytesCost = 0;
+        long unsealedResourceCost = 0;
+        long chunkMetadataCost = 0;
+        checkMemCost(insertRowPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
+        if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(bytesCost
+            + unsealedResourceCost + chunkMetadataCost)) {
+          // TODO: reportToSystemInfo
+        }
+        else {
+          tsFileProcessorInfo.addBytesMemCost(bytesCost);
+          tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
+          tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+          // TODO: applyBufforedArrayToWrite
+        }
+      }
+      else {
+        // TODO: applyOOBArray()
+      }
     }
   }
 
@@ -260,48 +271,61 @@ public class TsFileProcessor {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
 
-    long bytesCost = 0;
-    long unsealedResourceCost = 0;
-    long chunkMetadataCost = 0;
-    checkMemCost(insertTabletPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
-    if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(bytesCost
-        + unsealedResourceCost + chunkMetadataCost)) {
-      // reportToSystemInfo
+    if (workMemTable.checkIfArrayIsEnough(insertTabletPlan)) {
+      // insert insertRowPlan to the work memtable
+      try {
+        workMemTable.insertTablet(insertTabletPlan, start, end);
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+          insertTabletPlan.setStart(start);
+          insertTabletPlan.setEnd(end);
+          getLogNode().write(insertTabletPlan);
+        }
+      } catch (Exception e) {
+        for (int i = start; i < end; i++) {
+          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+        throw new WriteProcessException(e);
+      }
+  
+      for (int i = start; i < end; i++) {
+        results[i] = RpcUtils.SUCCESS_STATUS;
+      }
+  
+      tsFileResource
+          .updateStartTime(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[start]);
+  
+      //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+      //for unsequence tsfile, we have to update the endTime for each insertion.
+      if (!sequence) {
+        tsFileResource
+            .updateEndTime(
+                insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
+      }
     }
     else {
-      tsFileProcessorInfo.addBytesMemCost(bytesCost);
-      tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
-      tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
-    }
-    // insert insertRowPlan to the work memtable
-    try {
-      workMemTable.insertTablet(insertTabletPlan, start, end);
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        insertTabletPlan.setStart(start);
-        insertTabletPlan.setEnd(end);
-        getLogNode().write(insertTabletPlan);
+      // if there are available buffered arrays in array pool
+      if (true) {
+        long bytesCost = 0;
+        long unsealedResourceCost = 0;
+        long chunkMetadataCost = 0;
+        checkMemCost(insertTabletPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
+        if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(bytesCost
+            + unsealedResourceCost + chunkMetadataCost)) {
+          // TODO: reportToSystemInfo
+        }
+        else {
+          tsFileProcessorInfo.addBytesMemCost(bytesCost);
+          tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
+          tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+          // TODO: applyBufforedArrayToWrite
+        }
       }
-    } catch (Exception e) {
-      for (int i = start; i < end; i++) {
-        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      else {
+        // TODO: applyOOBArray()
       }
-      throw new WriteProcessException(e);
     }
 
-    for (int i = start; i < end; i++) {
-      results[i] = RpcUtils.SUCCESS_STATUS;
-    }
 
-    tsFileResource
-        .updateStartTime(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[start]);
-
-    //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
-    //for unsequence tsfile, we have to update the endTime for each insertion.
-    if (!sequence) {
-      tsFileResource
-          .updateEndTime(
-              insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
-    }
   }
 
   private void checkMemCost(InsertPlan insertPlan, long bytesCost, long unsealedResourceCost,

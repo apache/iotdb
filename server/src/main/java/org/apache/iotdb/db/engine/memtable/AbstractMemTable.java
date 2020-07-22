@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
@@ -149,9 +150,22 @@ public abstract class AbstractMemTable implements IMemTable {
     }
   }
 
-  public boolean checkIfArrayIsEnough(String deviceId, String measurement, MeasurementSchema schema) {
-    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, schema);
-    return memSeries.checkIfArrayIsEnough();
+  @Override
+  public boolean checkIfArrayIsEnough(InsertPlan insertPlan) {
+    if (!memTableMap.containsKey(insertPlan.getDeviceId())) {
+      return false;
+    }
+    Map<String, IWritableMemChunk> memSeries = memTableMap.get(insertPlan.getDeviceId());
+    for (String measurement : insertPlan.getMeasurements()) {
+      if (!memSeries.containsKey(measurement)) {
+        return false;
+      }
+      IWritableMemChunk memChunk = memSeries.get(measurement);
+      if (!memChunk.checkIfArrayIsEnough()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public int getSeriesNumber() {
