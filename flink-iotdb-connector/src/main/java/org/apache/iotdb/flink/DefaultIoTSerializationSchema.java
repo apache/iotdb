@@ -25,7 +25,7 @@ import java.util.Map;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
- * @inheritDoc The default implementation of IoTSerializationSchema. Gets info from a map struct.
+ *  The default implementation of IoTSerializationSchema. Gets info from a map struct.
  */
 public class DefaultIoTSerializationSchema implements IoTSerializationSchema<Map<String, String>> {
 
