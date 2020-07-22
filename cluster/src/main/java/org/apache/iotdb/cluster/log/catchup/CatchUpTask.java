@@ -169,9 +169,7 @@ public class CatchUpTask implements Runnable {
 
   private void doSnapshot() {
     try {
-      synchronized (raftMember.getLogManager()) {
-        raftMember.getLogManager().takeSnapshot();
-      }
+      raftMember.getLogManager().takeSnapshot();
     } catch (IOException e) {
       logger.error("Unexpected error when taking snapshot.", e);
     }
