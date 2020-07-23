@@ -91,7 +91,7 @@ public class TsFileRecoverPerformer {
    * data 2. redo the WALs to recover unpersisted data 3. flush and close the file 4. clean WALs
    *
    * @return a RestorableTsFileIOWriter and a list of RestorableTsFileIOWriter of vmfiles, if the
-   * file and the vmfiles are not closed before crush, so these writers can be used to continue
+   * file and the vmfiles are not closed before crash, so these writers can be used to continue
    * writing
    */
   public Pair<RestorableTsFileIOWriter, List<List<RestorableTsFileIOWriter>>> recover()
@@ -147,12 +147,12 @@ public class TsFileRecoverPerformer {
             "recover the resource file failed: " + filePath
                 + RESOURCE_SUFFIX + e);
       }
-    } else {
-      // tsfile has crashed
-      // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
-      // map must be updated first to avoid duplicated insertion
-      recoverResourceFromWriter(restorableTsFileIOWriter, tsFileResource);
     }
+
+    // tsfile has crashed
+    // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
+    // map must be updated first to avoid duplicated insertion
+    recoverResourceFromWriter(restorableTsFileIOWriter, tsFileResource);
 
     // If the vm is not enable, the walTargetWriter points to  the tsfile.
     // If the vm is enable and flush log exists, the walTargetWriter points to the vm of the flush log
