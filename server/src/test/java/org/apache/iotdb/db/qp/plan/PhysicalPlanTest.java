@@ -826,7 +826,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testDelete1() throws QueryProcessException {
-    Path path = new Path("root.vehicle.d1", "s1");
+    Path path = new Path(Arrays.asList("root", "vehicle", "d1", "s1"));
     List<Path> pathList = new ArrayList<>(Collections.singletonList(path));
     String sqlStr = "delete FROM root.vehicle.d1.s1 WHERE time < 5000";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
@@ -836,8 +836,8 @@ public class PhysicalPlanTest {
 
   @Test
   public void testDelete2() throws QueryProcessException {
-    Path path1 = new Path("root.vehicle.d1", "s1");
-    Path path2 = new Path("root.vehicle.d1", "s2");
+    Path path1 = new Path(Arrays.asList("root", "vehicle", "d1", "s1"));
+    Path path2 = new Path(Arrays.asList("root", "vehicle", "d1", "s2"));
     List<Path> pathList = new ArrayList<>(Arrays.asList(path1, path2));
     String sqlStr = "delete FROM root.vehicle.d1.s1,root.vehicle.d1.s2 WHERE time < 5000";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
@@ -847,8 +847,8 @@ public class PhysicalPlanTest {
 
   @Test
   public void testDelete3() throws QueryProcessException {
-    Path path1 = new Path("root.vehicle.d1", "s1");
-    Path path2 = new Path("root.vehicle.d2", "s3");
+    Path path1 = new Path(Arrays.asList("root", "vehicle", "d1", "s1"));
+    Path path2 = new Path(Arrays.asList("root", "vehicle", "d2", "s3"));
     List<Path> pathList = new ArrayList<>(Arrays.asList(path1, path2));
     String sqlStr = "delete FROM root.vehicle.d1.s1,root.vehicle.d2.s3 WHERE time < 5000";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
@@ -871,8 +871,9 @@ public class PhysicalPlanTest {
 
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr1);
     Assert.assertFalse(plan.isQuery());
-    Assert.assertEquals(plan.getPaths(), Arrays.asList(new Path("root.vehicle.d1")));
-    Assert.assertEquals(((DeletePlan) plan).getDeleteStartTime(), 1);
-    Assert.assertEquals(((DeletePlan) plan).getDeleteEndTime(), 2);
+    Assert.assertEquals(plan.getPaths(),
+        Collections.singletonList(new Path(Arrays.asList("root", "vehicle", "d1"))));
+    Assert.assertEquals(1, ((DeletePlan) plan).getDeleteStartTime());
+    Assert.assertEquals(2, ((DeletePlan) plan).getDeleteEndTime());
   }
 }

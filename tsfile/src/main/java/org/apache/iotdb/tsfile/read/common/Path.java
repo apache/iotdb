@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.StringContainer;
@@ -139,8 +140,9 @@ public class Path implements Serializable, Comparable<Path> {
     if (tail.nodes.isEmpty()) {
       return src;
     }
-    src.nodes.addAll(tail.nodes);
-    return src;
+    List<String> srcNodes = new ArrayList<>(src.nodes);
+    srcNodes.addAll(tail.nodes);
+    return new Path(srcNodes);
   }
 
   /**
@@ -271,7 +273,7 @@ public class Path implements Serializable, Comparable<Path> {
 
   @Override
   public String toString() {
-    return fullPath;
+    return getFullPath();
   }
 
   @Override

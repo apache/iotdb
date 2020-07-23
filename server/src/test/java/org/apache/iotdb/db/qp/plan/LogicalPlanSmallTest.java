@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
+import java.util.Arrays;
+import java.util.Collections;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
@@ -193,7 +195,7 @@ public class LogicalPlanSmallTest {
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(DeleteStorageGroupOperator.class, operator.getClass());
-    Path path = new Path("root.vehicle.d1");
+    Path path = new Path(Arrays.asList("root", "vehicle", "d1"));
     Assert.assertEquals(path, ((DeleteStorageGroupOperator) operator).getDeletePathList().get(0));
   }
 
@@ -228,14 +230,14 @@ public class LogicalPlanSmallTest {
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr1, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(SetStorageGroupOperator.class, operator.getClass());
-    Assert.assertEquals(new Path("root.一级"), ((SetStorageGroupOperator) operator).getPath());
+    Assert.assertEquals(new Path(Arrays.asList("root", "一级")), ((SetStorageGroupOperator) operator).getPath());
 
     String sqlStr2 = "select * from root.一级.设备1 limit 10 offset 20";
     operator = (RootOperator) parseDriver
         .parse(sqlStr2, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("*"));
+    paths.add(new Path(Collections.singletonList("*")));
     Assert.assertEquals(paths, ((QueryOperator) operator).getSelectedPaths());
   }
 
@@ -245,7 +247,7 @@ public class LogicalPlanSmallTest {
     Operator op = parseDriver.parse(sql1, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(DeleteDataOperator.class, op.getClass());
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("root.d1.s1"));
+    paths.add(new Path(Arrays.asList("root", "d1", "s1")));
     Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
     Assert.assertEquals(1, ((DeleteDataOperator) op).getStartTime());
     Assert.assertEquals(2, ((DeleteDataOperator) op).getEndTime());
