@@ -23,25 +23,33 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.AsyncClientFactory;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
-import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestAsyncClientFactory;
+import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.utils.ClusterNode;
+import org.apache.thrift.async.TAsyncMethodCall;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.junit.Test;
 import org.mockito.Mock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AsyncClientPoolTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(AsyncClientPoolTest.class);
   @Mock
   private AsyncClientFactory testAsyncClientFactory;
 
@@ -78,7 +86,31 @@ public class AsyncClientPoolTest {
   }
 
   private void putClient() throws IOException {
-    AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
+    AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory) {
+      @Override
+      public void putClient(Node node, AsyncClient client) {
+        ClusterNode clusterNode = new ClusterNode(node);
+        TAsyncMethodCall call;
+        if (client instanceof AsyncDataClient) {
+          call = ((AsyncDataClient) client).getCurrMethod();
+        } else if (client instanceof AsyncMetaClient) {
+          call = ((AsyncMetaClient) client).getCurrMethod();
+        } else {
+          call = ((TestClient) client).getCurrMethod();
+        }
+        if (call != null) {
+          logger.warn("A using client {} is put back while running {}", client.hashCode(), call);
+        }
+        synchronized (this) {
+          //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+          Deque<AsyncClient> clientStack = super.getClientCaches()
+              .computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+          clientStack.push(client);
+          this.notifyAll();
+        }
+      }
+    };
+
     List<AsyncClient> testClients = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       AsyncClient client = asyncClientPool.getClient(TestUtils.getNode(i));
@@ -88,11 +120,11 @@ public class AsyncClientPoolTest {
       for (int i = 0; i < 10; i++) {
         asyncClientPool.putClient(TestUtils.getNode(i), testClients.get(i));
       }
-    } else if (testAsyncClientFactory instanceof AsyncMetaClient.FactoryAsync){
+    } else if (testAsyncClientFactory instanceof AsyncMetaClient.FactoryAsync) {
       for (AsyncClient testClient : testClients) {
         ((AsyncMetaClient) testClient).onComplete();
       }
-    } else if (testAsyncClientFactory instanceof FactoryAsync){
+    } else if (testAsyncClientFactory instanceof FactoryAsync) {
       for (AsyncClient testClient : testClients) {
         ((AsyncDataClient) testClient).onComplete();
       }

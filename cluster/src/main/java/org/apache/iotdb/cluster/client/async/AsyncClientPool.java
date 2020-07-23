@@ -77,7 +77,8 @@ public class AsyncClientPool {
   }
 
   @SuppressWarnings("java:S2273") // synchronized outside
-  private AsyncClient waitForClient(Deque<AsyncClient> clientStack, ClusterNode node, int nodeClientNum)
+  private AsyncClient waitForClient(Deque<AsyncClient> clientStack, ClusterNode node,
+      int nodeClientNum)
       throws IOException {
     // wait for an available client
     long waitStart = System.currentTimeMillis();
@@ -119,7 +120,8 @@ public class AsyncClientPool {
     }
     synchronized (this) {
       //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-      Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+      Deque<AsyncClient> clientStack = clientCaches
+          .computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
       clientStack.push(client);
       this.notifyAll();
     }
@@ -128,7 +130,8 @@ public class AsyncClientPool {
   public void recreateClient(Node node) {
     ClusterNode clusterNode = new ClusterNode(node);
     synchronized (this) {
-      Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+      Deque<AsyncClient> clientStack = clientCaches
+          .computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
       try {
         AsyncClient asyncClient = asyncClientFactory.getAsyncClient(node, this);
         clientStack.push(asyncClient);
@@ -138,5 +141,9 @@ public class AsyncClientPool {
       }
       this.notifyAll();
     }
+  }
+
+  public Map<ClusterNode, Deque<AsyncClient>> getClientCaches() {
+    return clientCaches;
   }
 }
