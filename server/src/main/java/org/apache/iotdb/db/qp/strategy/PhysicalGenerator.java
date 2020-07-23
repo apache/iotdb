@@ -642,7 +642,7 @@ public class PhysicalGenerator {
     Path filterPath = basicOperator.getSinglePath();
 
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
-    if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT)) {
+    if (SQLConstant.isReservedPath(filterPath) || filterPath.getNodes().get(0).equals(SQLConstant.ROOT)) {
       filterPaths.add(filterPath);
       return;
     }

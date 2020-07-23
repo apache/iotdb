@@ -191,7 +191,12 @@ public class Path implements Serializable, Comparable<Path> {
   }
 
   public String getMeasurement() {
-    return measurement;
+    if(measurement != null) {
+      return measurement;
+    } else {
+      measurement = nodes.get(nodes.size() - 1);
+      return measurement;
+    }
   }
 
   public String getAlias() { return alias; }
@@ -244,11 +249,23 @@ public class Path implements Serializable, Comparable<Path> {
   }
 
   public boolean equals(String obj) {
-    return this.fullPath.equals(obj);
+    if(fullPath != null) {
+      return fullPath.equals(obj);
+    } else {
+      return nodes.get(0).equals(obj);
+    }
   }
 
   @Override
   public int compareTo(Path path) {
+    if(fullPath == null) {
+      StringBuilder s = new StringBuilder(nodes.get(0));
+      for(int i = 1; i < nodes.size(); i++) {
+        s.append(TsFileConstant.PATH_SEPARATOR);
+        s.append(nodes.get(i));
+      }
+      fullPath = s.toString();
+    }
     return fullPath.compareTo(path.getFullPath());
   }
 

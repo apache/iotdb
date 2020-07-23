@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.strategy;
 import java.io.File;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1447,7 +1448,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     } else {
       Path path = null;
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
-        path = new Path(SQLConstant.RESERVED_TIME);
+        path = new Path(Collections.singletonList(SQLConstant.RESERVED_TIME));
       }
       if (ctx.fullPath() != null) {
         path = parseFullPath(ctx.fullPath());

@@ -782,7 +782,7 @@ public class MManager {
   public TSDataType getSeriesType(List<String> nodes) throws MetadataException {
     lock.readLock().lock();
     try {
-      if (MetaUtils.getPathByNodes(nodes).equals(SQLConstant.RESERVED_TIME)) {
+      if (nodes.get(0).equals(SQLConstant.RESERVED_TIME)) {
         return TSDataType.INT64;
       }
 
