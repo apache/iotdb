@@ -538,10 +538,19 @@ public class StorageGroupProcessor {
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to it
-        TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
-            getVersionControllerByTimePartitionId(timePartitionId),
-            this::closeUnsealedTsFileProcessorCallBack,
-            this::updateLatestFlushTimeCallback, isSeq, writer);
+        TsFileProcessor tsFileProcessor;
+        if (isSeq) {
+          tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+              getVersionControllerByTimePartitionId(timePartitionId),
+              this::closeUnsealedTsFileProcessorCallBack,
+              this::updateLatestFlushTimeCallback, true, writer);
+        } else {
+          tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+              getVersionControllerByTimePartitionId(timePartitionId),
+              this::closeUnsealedTsFileProcessorCallBack,
+              this::unsequenceFlushCallback, false, writer);
+        }
+
         treeMap.put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
         tsFileResource.removeResourceFile();
