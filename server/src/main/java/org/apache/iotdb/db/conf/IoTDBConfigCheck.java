@@ -191,6 +191,18 @@ public class IoTDBConfigCheck {
       checkUnClosedTsFileV1();
       MLogWriter.upgradeMLog(SCHEMA_DIR, MetadataConstant.METADATA_LOG);
       upgradePropertiesFile();
+
+      // upgrade mlog finished, delete old mlog file
+      File mlogFile = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR + File.separator
+          + MetadataConstant.METADATA_LOG);
+      File tmpMLogFile = SystemFileFactory.INSTANCE.getFile(mlogFile.getAbsolutePath()
+          + ".tmp");
+
+      if (!mlogFile.delete()) {
+        throw new IOException("Deleting " + mlogFile + "failed.");
+      }
+      // rename tmpLogFile to mlog
+      FSFactoryProducer.getFSFactory().moveFile(tmpMLogFile, mlogFile);
     }
     checkProperties();
   }
