@@ -151,7 +151,7 @@ public class TsFileProcessor {
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = new TsFileResource(tsfile, this);
-    this.tsFileProcessorInfo.addUnsealedResourceMemCost(64 * Long.BYTES);
+    this.tsFileProcessorInfo.addUnsealedResourceMemCost(RamUsageEstimator.sizeOf(tsFileResource));
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.vmTsFileResources = new CopyOnWriteArrayList<>();
@@ -182,14 +182,14 @@ public class TsFileProcessor {
       RestorableTsFileIOWriter writer, List<List<RestorableTsFileIOWriter>> vmWriters) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
-    // TODO: calculate the bytes of TsFileResource
-    //this.tsFileProcessorInfo.addUnsealedResourceMemCost(64 * Long.BYTES);
+    this.tsFileProcessorInfo.addUnsealedResourceMemCost(RamUsageEstimator.sizeOf(tsFileResource));
     this.vmTsFileResources = new CopyOnWriteArrayList<>();
     for (List<TsFileResource> subTsFileResourceList : vmTsFileResources) {
       this.vmTsFileResources.add(new CopyOnWriteArrayList<>(subTsFileResourceList));
     }
     this.versionController = versionController;
     this.writer = writer;
+    // TODO: this.tsFileProcessorInfo.addChunkMetadataCost(ChunkMetadataCost); 
     this.vmWriters = new CopyOnWriteArrayList<>();
     for (List<RestorableTsFileIOWriter> subWriterList : vmWriters) {
       this.vmWriters.add(new CopyOnWriteArrayList<>(subWriterList));
