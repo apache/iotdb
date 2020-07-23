@@ -76,7 +76,7 @@ public class TsFileRecoverPerformer {
    * 1. recover the TsFile by RestorableTsFileIOWriter and truncate the file to remaining corrected
    * data 2. redo the WALs to recover unpersisted data 3. flush and close the file 4. clean WALs
    *
-   * @return a RestorableTsFileIOWriter if the file is not closed before crush, so this writer can
+   * @return a RestorableTsFileIOWriter if the file is not closed before crash, so this writer can
    * be used to continue writing
    */
   public RestorableTsFileIOWriter recover() throws StorageGroupProcessorException {
@@ -127,20 +127,20 @@ public class TsFileRecoverPerformer {
       // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
       // map must be updated first to avoid duplicated insertion
       recoverResourceFromWriter(restorableTsFileIOWriter);
+
+      // redo logs
+      redoLogs(restorableTsFileIOWriter);
+
+      // clean logs
+      try {
+        MultiFileLogNodeManager.getInstance()
+            .deleteNode(logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
+      } catch (IOException e) {
+        throw new StorageGroupProcessorException(e);
+      }
+
+      return restorableTsFileIOWriter;
     }
-
-    // redo logs
-    redoLogs(restorableTsFileIOWriter);
-
-    // clean logs
-    try {
-      MultiFileLogNodeManager.getInstance()
-          .deleteNode(logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
-    } catch (IOException e) {
-      throw new StorageGroupProcessorException(e);
-    }
-
-    return restorableTsFileIOWriter;
   }
 
   private void recoverResourceFromFile() throws IOException {
@@ -206,10 +206,10 @@ public class TsFileRecoverPerformer {
         // end the file if it is not the last file or it is closed before crush
         restorableTsFileIOWriter.endFile();
         resource.cleanCloseFlag();
+        resource.serialize();
       }
       // otherwise this file is not closed before crush, do nothing so we can continue writing
       // into it
-      resource.serialize();
     } catch (IOException | InterruptedException | ExecutionException e) {
       throw new StorageGroupProcessorException(e);
     }
