@@ -380,6 +380,28 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>com.coderplus.maven.plugins</groupId>
+                <artifactId>copy-rename-maven-plugin</artifactId>
+                <version>1.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-thrift-config</id>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <phase>compile</phase>
+                        <configuration>
+                            <fileSets>
+                                <fileSet>
+                                    <sourceFile>${project.build.directory}/build/thrift/config.h</sourceFile>
+                                    <destinationFile>${project.build.directory}/thrift-${thrift.version}/lib/cpp/src/thrift/config.h</destinationFile>
+                                </fileSet>
+                            </fileSets>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
     <dependencies>

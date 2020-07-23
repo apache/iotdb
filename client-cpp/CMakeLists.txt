@@ -21,6 +21,7 @@ cmake_minimum_required(VERSION 3.16)
 set (CMAKE_REQUIRED_INCLUDES "/usr/local/include")
 add_subdirectory(src)
 add_subdirectory(target/generated-sources-cpp)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${CMAKE_SOURCE_DIR}/tools/thrift/target/thrift-0.13.0/lib/cpp/src")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
 
 aux_source_directory(./src SESSION_SRCS)
