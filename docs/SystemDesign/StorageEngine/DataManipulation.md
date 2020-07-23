@@ -74,14 +74,20 @@ Each StorageGroupProcessor maintains a ascending version for each partition, whi
 Each memtable will apply a version when submitted to flush. After flushing to TsFile, a current position-version will added to TsFileMetadata. 
 This information will be used to set version to ChunkMetadata when query.
 
-* main entrance: public void delete(String deviceId, String measurementId, long timestamp) StorageEngine.java
+Main entrance in StorageEngine.java: 
+ 
+```public void delete(String deviceId, String measurementId, long startTime, long endTime)```
+
   * Find the corresponding StorageGroupProcessor
   * Find all impacted working TsFileProcessors to write WAL
-  * Find all impacted TsFileResources to record a Modification in its mods file, the Modification format is: path，deleteTime，version
+  * Find all impacted TsFileResources to record a Modification in its mods file, the Modification format is: path，version, startTime, endTime
   * If the TsFile is not closed，get its TsFileProcessor
     * If there exists the working memtable, delete data in it
-    * If there exists flushing memtable，record the deleted time in it for query.（Notice that the Modification is recorded in mods for these memtables）
+    * If there exists flushing memtable，record the deleted start time and end time in it for query.（Notice that the Modification is recorded in mods for these memtables）
 
+The Mods file stores records of delete information.
+For the following mods file, data of d1.s1 falls in range [100, 200], [180, 300], and data of d1.s2 falls in range [500, 1000] are deleted.
+![](https://user-images.githubusercontent.com/59866276/88248546-20952600-ccd4-11ea-88e9-84af8dde4304.jpg)
 ## Data TTL setting
 
 * Corresponding interface
