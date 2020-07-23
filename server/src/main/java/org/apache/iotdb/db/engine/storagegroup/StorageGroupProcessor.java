@@ -568,7 +568,10 @@ public class StorageGroupProcessor {
         continue;
       }
 
-      if (writer.canWrite()) {
+      if (i != tsFiles.size() - 1 || !writer.canWrite()) {
+        // not the last file or cannot write, just close it
+        tsFileResource.setClosed(true);
+      } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
         TsFileProcessor tsFileProcessor;
         if (isSeq) {
