@@ -94,7 +94,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -216,10 +215,7 @@ public abstract class RaftMember {
         0L, TimeUnit.MILLISECONDS,
         new LinkedBlockingQueue<>());
 
-    commitLogPool = new ThreadPoolExecutor(CommonUtils.getCpuCores(),
-        CommonUtils.getMaxExecutorPoolSize(),
-        0L, TimeUnit.MILLISECONDS,
-        new LinkedBlockingQueue<>());
+    commitLogPool = Executors.newSingleThreadExecutor();
 
     logger.info("{} started", name);
   }
