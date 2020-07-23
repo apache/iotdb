@@ -39,7 +39,7 @@
 * [IOTDB-808] fix bug in selfCheck() truncate 
 * fix doc of MeasurementSchema in Tablet 
 * [IOTDB-811] fix upgrading mlog many times when upgrading system.properties crashed
-
+* Improve IoTDB restart process
 
 # Apache IoTDB (incubating) 0.8.0
 
