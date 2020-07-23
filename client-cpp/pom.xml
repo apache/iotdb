@@ -166,7 +166,7 @@
                                       We need to use a newer version of cmake, so disable downloading
                                       and tell the plugin where to find that version.
                                     -->
-                                    <downloadBinaries>false</downloadBinaries>
+                                    <downloadBinaries>true</downloadBinaries>
                                     <!--
                                       Actually the path to the CMakeList.txt file which then again
                                       tells to tool where to find the sources.
