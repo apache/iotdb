@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf;
+package org.apache.iotdb.db.query.udf.customizer;
 
 import org.apache.iotdb.tsfile.read.common.Path;
 
