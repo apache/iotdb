@@ -1046,6 +1046,7 @@ var config = {
 					{
 						title: '存储引擎',
 						children: [
+							['StorageEngine/FileLists','磁盘文件汇总'],
 							['StorageEngine/StorageEngine','存储引擎'],
 							['StorageEngine/WAL','写前日志'],
 							['StorageEngine/FlushManager','FlushManager'],
