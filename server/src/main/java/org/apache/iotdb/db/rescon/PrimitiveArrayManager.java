@@ -223,7 +223,7 @@ public class PrimitiveArrayManager {
    * @return true if successfully applied and false if rejected
    */
   private boolean applyOOBArray(TSDataType dataType, int size) {
-    return System.getInstance().applyNewOOBArray(dataType, size);
+    return SystemInfo.getInstance().applyNewOOBArray(dataType, size);
   }
 
   /**
@@ -233,6 +233,6 @@ public class PrimitiveArrayManager {
    * @param size needed capacity
    */
   private void bringBackOOBArray(TSDataType dataType, int size) {
-    System.getInstance().releaseOOBArray(dataType, size);
+    SystemInfo.getInstance().releaseOOBArray(dataType, size);
   }
 }

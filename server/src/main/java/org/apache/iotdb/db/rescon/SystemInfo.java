@@ -22,7 +22,7 @@ package org.apache.iotdb.db.rescon;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class System {
+public class SystemInfo {
 
   long totalTspInfoMemCost;
 
@@ -84,7 +84,7 @@ public class System {
 
   }
 
-  public static System getInstance() {
+  public static SystemInfo getInstance() {
     return InstanceHolder.instance;
   }
 
@@ -93,6 +93,6 @@ public class System {
     private InstanceHolder() {
     }
 
-    private static System instance = new System();
+    private static SystemInfo instance = new SystemInfo();
   }
 }

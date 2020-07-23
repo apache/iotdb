@@ -23,7 +23,6 @@ import static org.apache.iotdb.db.engine.flush.VmLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.flush.VmLogger.TARGET_NAME;
 import static org.apache.iotdb.db.engine.flush.VmLogger.VM_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.getVmLevel;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
@@ -74,6 +73,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.MemTablePool;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -233,25 +233,35 @@ public class TsFileProcessor {
       }
     }
     else {
-      // if there are available buffered arrays in array pool
-      if (true) {
-        long bytesCost = 0;
-        long unsealedResourceCost = 0;
-        long chunkMetadataCost = 0;
+      try {
+        workMemTable.insert(insertRowPlan);
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+          getLogNode().write(insertRowPlan);
+        }
+        long bytesCost = 0L;
+        long unsealedResourceCost = 0L;
+        long chunkMetadataCost = 0L;
         checkMemCost(insertRowPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
-        if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(bytesCost
-            + unsealedResourceCost + chunkMetadataCost)) {
-          // TODO: reportToSystemInfo
+        long delta = bytesCost + unsealedResourceCost + chunkMetadataCost;
+        if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(delta)) {
+          boolean reject = SystemInfo.getInstance().reportTsFileProcessorStatus(this, delta);
+          if (reject) {
+            SystemInfo.getInstance().flush();
+            throw new WriteProcessException("This insertion is rejected by system.");
+          }
         }
-        else {
-          tsFileProcessorInfo.addBytesMemCost(bytesCost);
-          tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
-          tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
-          // TODO: applyBufforedArrayToWrite
+        tsFileProcessorInfo.addBytesMemCost(bytesCost);
+        tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
+        tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+        // update start time of this memtable
+        tsFileResource.updateStartTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
+        //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+        //for unsequence tsfile, we have to update the endTime for each insertion.
+        if (!sequence) {
+          tsFileResource.updateEndTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
         }
-      }
-      else {
-        // TODO: applyOOBArray()
+      } catch (Exception e) {
+        throw new WriteProcessException(e);
       }
     }
   }
@@ -304,30 +314,49 @@ public class TsFileProcessor {
       }
     }
     else {
-      // if there are available buffered arrays in array pool
-      boolean isbufferedArrayEnough = true;
-      // TODO: isbufferedArrayEnough = checkBufferedArray();
-      if (isbufferedArrayEnough) {
-        long bytesCost = 0;
-        long unsealedResourceCost = 0;
-        long chunkMetadataCost = 0;
+      try {
+        workMemTable.insertTablet(insertTabletPlan, start, end);
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+          insertTabletPlan.setStart(start);
+          insertTabletPlan.setEnd(end);
+          getLogNode().write(insertTabletPlan);
+        }
+        long bytesCost = 0L;
+        long unsealedResourceCost = 0L;
+        long chunkMetadataCost = 0L;
         checkMemCost(insertTabletPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
-        if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(bytesCost
-            + unsealedResourceCost + chunkMetadataCost)) {
-          // TODO: reportToSystemInfo
+        long delta = bytesCost + unsealedResourceCost + chunkMetadataCost;
+        if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(delta)) {
+          boolean reject = SystemInfo.getInstance().reportTsFileProcessorStatus(this, delta);
+          if (reject) {
+            SystemInfo.getInstance().flush();
+            throw new WriteProcessException("This insertion is rejected by system.");
+          }
         }
-        else {
-          tsFileProcessorInfo.addBytesMemCost(bytesCost);
-          tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
-          tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
-          // TODO: applyBufforedArrayToWrite
+        tsFileProcessorInfo.addBytesMemCost(bytesCost);
+        tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
+        tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+        for (int i = start; i < end; i++) {
+          results[i] = RpcUtils.SUCCESS_STATUS;
         }
-      }
-      else {
-        // TODO: applyOOBArray()
+    
+        tsFileResource
+            .updateStartTime(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[start]);
+    
+        //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+        //for unsequence tsfile, we have to update the endTime for each insertion.
+        if (!sequence) {
+          tsFileResource
+              .updateEndTime(
+                  insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
+        }
+      } catch (Exception e) {
+        for (int i = start; i < end; i++) {
+          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+        throw new WriteProcessException(e);
       }
     }
-
 
   }
 
