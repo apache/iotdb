@@ -24,19 +24,27 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class System {
 
-  long total_tsp_info_mem_cost;
-  long array_pool_mem_cost;
+  long totalTspInfoMemCost;
+
+  long arrayPoolMemCost;
+
   boolean reject = false;
 
   /**
-   * 通知system申请新数组。(调用者应在实际申请前调用该方法) 当内存够用时，返回同意，否则不同意。 若不同意，则设置自身reject为true，触发flush。
+   * 通知system申请新数组。(调用者应在实际申请前调用该方法)
    *
-   * @param type type
+   * @param type data type
    * @param size size
    * @return 如果同意，则返回true；否则返回false。
    */
   public boolean applyNewOOBArray(TSDataType type, int size) {
-    return false;
+    if (true) { // 内存够用时
+      return true;
+    } else { // 否则
+      this.reject = true;
+      flush();
+      return false;
+    }
   }
 
   /**
@@ -50,13 +58,13 @@ public class System {
   }
 
   /**
-   * 通知system将释放OOP数组（在释放后调用）。 设置自身reject为false
+   * 通知system将释放OOP数组（在释放后调用）
    *
    * @param type type
    * @param size size
    */
   public void releaseOOBArray(TSDataType type, int size) {
-
+    this.reject = false;
   }
 
   /**
@@ -74,5 +82,17 @@ public class System {
    */
   public void flush() {
 
+  }
+
+  public static System getInstance() {
+    return InstanceHolder.instance;
+  }
+
+  private static class InstanceHolder {
+
+    private InstanceHolder() {
+    }
+
+    private static System instance = new System();
   }
 }

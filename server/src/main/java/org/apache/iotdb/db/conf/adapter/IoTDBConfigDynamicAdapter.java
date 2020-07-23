@@ -21,7 +21,7 @@ package org.apache.iotdb.db.conf.adapter;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
+import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -223,7 +223,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    */
   private long getMemTableSizeFloorThreshold() {
     return IoTDB.metaManager.getMaximalSeriesNumberAmongStorageGroups()
-        * PrimitiveArrayPool.ARRAY_SIZE * Long.BYTES * 2;
+        * PrimitiveArrayManager.ARRAY_SIZE * Long.BYTES * 2;
   }
 
   @Override

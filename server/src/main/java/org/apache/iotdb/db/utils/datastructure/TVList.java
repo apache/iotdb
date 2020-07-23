@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
+import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -95,30 +95,6 @@ public abstract class TVList {
   }
 
   public void putBoolean(long time, boolean value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public void putLongs(long[] time, long[] value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public void putInts(long[] time, int[] value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public void putFloats(long[] time, float[] value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public void putDoubles(long[] time, double[] value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public void putBinaries(long[] time, Binary[] value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public void putBooleans(long[] time, boolean[] value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -200,7 +176,7 @@ public abstract class TVList {
   protected abstract void releaseLastValueArray();
 
   protected void releaseLastTimeArray() {
-    PrimitiveArrayPool.getInstance().release(timestamps.remove(timestamps.size() - 1));
+    PrimitiveArrayManager.getInstance().release(timestamps.remove(timestamps.size() - 1));
   }
 
   public int delete(long lowerBound, long upperBound) {
@@ -253,7 +229,7 @@ public abstract class TVList {
   protected void clearTime() {
     if (timestamps != null) {
       for (long[] dataArray : timestamps) {
-        PrimitiveArrayPool.getInstance().release(dataArray);
+        PrimitiveArrayManager.getInstance().release(dataArray);
       }
       timestamps.clear();
     }
@@ -262,7 +238,7 @@ public abstract class TVList {
   protected void clearSortedTime() {
     if (sortedTimestamps != null) {
       for (long[] dataArray : sortedTimestamps) {
-        PrimitiveArrayPool.getInstance().release(dataArray);
+        PrimitiveArrayManager.getInstance().release(dataArray);
       }
       sortedTimestamps = null;
     }
@@ -276,7 +252,7 @@ public abstract class TVList {
     if ((size % ARRAY_SIZE) == 0) {
       expandValues();
       timestamps.add(
-          (long[]) PrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64));
+          (long[]) PrimitiveArrayManager.getInstance().getDataListByType(TSDataType.INT64));
     }
   }
 
