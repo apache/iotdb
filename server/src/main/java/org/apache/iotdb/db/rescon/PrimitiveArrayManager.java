@@ -22,7 +22,6 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.EnumMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -35,12 +34,20 @@ import org.slf4j.LoggerFactory;
 public class PrimitiveArrayManager {
 
   /**
-   * data type -> <current number of buffered arrays, ArrayDeque<Array>>
+   * data type -> ArrayDeque<Array>
    */
   private static final EnumMap<TSDataType, ArrayDeque<Object>> bufferedArraysMap = new EnumMap<>(
       TSDataType.class);
+
+  /**
+   * data type -> current number of buffered arrays
+   */
   private static final EnumMap<TSDataType, Integer> bufferedArraysNumMap = new EnumMap<>(
       TSDataType.class);
+
+  /**
+   * data type -> current number of OOB arrays
+   */
   private static final EnumMap<TSDataType, Integer> outOfBufferArraysNumMap = new EnumMap<>(
       TSDataType.class);
 
@@ -84,21 +91,25 @@ public class PrimitiveArrayManager {
     if (bufferedArraysNumMap.containsKey(dataType)
         && bufferedArraysNumMap.get(dataType) >= ARRAY_NUM_THRESHOLD) {
 
-      if(logger.isDebugEnabled()) {
+      if (logger.isDebugEnabled()) {
         logger.debug("Apply out of buffer array from system module...");
       }
       boolean applyResult = applyOOBArray(dataType, ARRAY_SIZE);
       if (!applyResult) {
-        if(logger.isDebugEnabled()) {
-          logger.debug("System module refuse to offer an out of buffer array, return null");
+        if (logger.isDebugEnabled()) {
+          logger.debug("System module REFUSE to offer an out of buffer array");
         }
         return null;
       } else {
+        // return an out of buffer array
         outOfBufferArraysNumMap
             .put(dataType, outOfBufferArraysNumMap.getOrDefault(dataType, 0) + 1);
         return getDataList(dataType);
       }
     }
+
+    // return a buffered array
+    bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
     ArrayDeque<Object> dataListQueue = bufferedArraysMap
         .computeIfAbsent(dataType, k -> new ArrayDeque<>());
     Object dataArray = dataListQueue.poll();
@@ -130,7 +141,7 @@ public class PrimitiveArrayManager {
         dataArray = new Binary[ARRAY_SIZE];
         break;
       default:
-        throw new UnSupportedDataTypeException("DataType: " + dataType);
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
     return dataArray;
   }
@@ -209,10 +220,23 @@ public class PrimitiveArrayManager {
     } else {
       throw new UnSupportedDataTypeException("Unknown data array type");
     }
-    bufferedArraysMap.get(dataType).add(dataArray);
-    bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.get(dataType) + 1);
 
-    bringBackOOBArray(dataType, ARRAY_SIZE);
+    // check out of buffer array num
+    if (outOfBufferArraysNumMap.containsKey(dataType)
+        && outOfBufferArraysNumMap.get(dataType) > 0) {
+
+      if (logger.isDebugEnabled()) {
+        logger.debug("Bring back out of buffer array to system module...");
+      }
+      // bring back an out of buffer array
+      bringBackOOBArray(dataType, ARRAY_SIZE);
+      dataArray = null;
+      outOfBufferArraysNumMap.put(dataType, outOfBufferArraysNumMap.get(dataType) - 1);
+    } else {
+      // bring back a buffered array
+      bufferedArraysMap.get(dataType).add(dataArray);
+      bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.get(dataType) + 1);
+    }
   }
 
   /**

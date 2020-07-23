@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -446,5 +447,32 @@ public class MTreeTest {
     assertEquals(2, root.getAllTimeseriesCount("root"));
     assertEquals(2, root.getAllTimeseriesName("root").size());
     assertEquals(2, root.getAllTimeseriesPath("root").size());
+  }
+
+  @Test
+  public void testCollectSchemaDataTypeNum() throws MetadataException {
+    MTree root = new MTree();
+    root.setStorageGroup("root.vehicle");
+    root.setStorageGroup("root.laptop");
+
+    root.createTimeseries("root.vehicle.d0.s0", TSDataType.INT32, TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+    root.createTimeseries("root.vehicle.d0.s1", TSDataType.INT64, TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+    root.createTimeseries("root.vehicle.d1.s0", TSDataType.DOUBLE, TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+    root.createTimeseries("root.vehicle.d1.s1", TSDataType.DOUBLE, TSEncoding.RLE,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+    root.createTimeseries("root.laptop.d0.s0", TSDataType.BOOLEAN, TSEncoding.PLAIN,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+    root.createTimeseries("root.laptop.d1.s0", TSDataType.TEXT, TSEncoding.PLAIN,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+
+    EnumMap<TSDataType, Integer> res = root.collectSchemaDataTypeNum("root.*");
+    assertEquals(1, (int) res.get(TSDataType.INT32));
+    assertEquals(7, (int) res.get(TSDataType.INT64));
+    assertEquals(2, (int) res.get(TSDataType.DOUBLE));
+    assertEquals(1, (int) res.get(TSDataType.BOOLEAN));
+    assertEquals(1, (int) res.get(TSDataType.TEXT));
   }
 }

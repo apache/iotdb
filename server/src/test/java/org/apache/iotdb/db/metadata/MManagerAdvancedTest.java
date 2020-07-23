@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import java.util.EnumMap;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -153,5 +154,16 @@ public class MManagerAdvancedTest {
     Assert.assertEquals(tv2.getTimestamp(), ((MeasurementMNode)node).getCachedLast().getTimestamp());
     ((MeasurementMNode)node).updateCachedLast(tv3, true, Long.MIN_VALUE);
     Assert.assertEquals(tv2.getTimestamp(), ((MeasurementMNode)node).getCachedLast().getTimestamp());
+  }
+
+  @Test
+  public void testCollectSchemaDataTypeNum() throws MetadataException {
+    EnumMap<TSDataType, Integer> res = mmanager.collectSchemaDataTypeNum("root.*");
+    assertEquals(2, (int) res.get(TSDataType.INT32));
+    assertEquals(14, (int) res.get(TSDataType.INT64));
+    assertEquals(2, (int) res.get(TSDataType.FLOAT));
+    assertEquals(2, (int) res.get(TSDataType.DOUBLE));
+    assertEquals(2, (int) res.get(TSDataType.BOOLEAN));
+    assertEquals(2, (int) res.get(TSDataType.TEXT));
   }
 }
