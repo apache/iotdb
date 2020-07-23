@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,26 +18,35 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
-import java.io.IOException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
+import org.apache.iotdb.tsfile.read.query.timegenerator.node.NodeType;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.FakedBatchReader;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+
 public class NodeTest {
+
+  @Test
+  public void testType() {
+    Assert.assertEquals(NodeType.LEAF, new LeafNode(null).getType());
+    Assert.assertEquals(NodeType.AND, new AndNode(null, null).getType());
+    Assert.assertEquals(NodeType.OR, new OrNode(null, null).getType());
+  }
 
   @Test
   public void testLeafNode() throws IOException {
     int index = 0;
     long[] timestamps = new long[]{1, 2, 3, 4, 5, 6, 7};
-    FileSeriesReader seriesReader = new FakedFileSeriesReader(timestamps);
-    Node leafNode = new LeafNode(seriesReader);
+    IBatchReader batchReader = new FakedBatchReader(timestamps);
+    Node leafNode = new LeafNode(batchReader);
     while (leafNode.hasNext()) {
       Assert.assertEquals(timestamps[index++], leafNode.next());
     }
@@ -59,8 +68,8 @@ public class NodeTest {
 
   private void testOr(long[] ret, long[] left, long[] right) throws IOException {
     int index = 0;
-    Node orNode = new OrNode(new LeafNode(new FakedFileSeriesReader(left)),
-        new LeafNode(new FakedFileSeriesReader(right)));
+    Node orNode = new OrNode(new LeafNode(new FakedBatchReader(left)),
+        new LeafNode(new FakedBatchReader(right)));
     while (orNode.hasNext()) {
       long value = orNode.next();
       Assert.assertEquals(ret[index++], value);
@@ -79,8 +88,8 @@ public class NodeTest {
 
   private void testAnd(long[] ret, long[] left, long[] right) throws IOException {
     int index = 0;
-    Node andNode = new AndNode(new LeafNode(new FakedFileSeriesReader(left)),
-        new LeafNode(new FakedFileSeriesReader(right)));
+    Node andNode = new AndNode(new LeafNode(new FakedBatchReader(left)),
+        new LeafNode(new FakedBatchReader(right)));
     while (andNode.hasNext()) {
       long value = andNode.next();
       Assert.assertEquals(ret[index++], value);
@@ -88,49 +97,5 @@ public class NodeTest {
     Assert.assertEquals(ret.length, index);
   }
 
-  private static class FakedFileSeriesReader extends FileSeriesReader {
 
-    BatchData data;
-    boolean hasCachedData;
-
-    public FakedFileSeriesReader(long[] timestamps) {
-      super(null, null);
-      data = new BatchData(TSDataType.INT32, true);
-      for (long time : timestamps) {
-        data.putTime(time);
-      }
-      hasCachedData = true;
-    }
-
-    @Override
-    public boolean hasNextBatch() {
-      return hasCachedData;
-    }
-
-    @Override
-    public BatchData nextBatch() {
-      hasCachedData = false;
-      return data;
-    }
-
-    @Override
-    public BatchData currentBatch() {
-      return data;
-    }
-
-    @Override
-    protected void initChunkReader(ChunkMetaData chunkMetaData) throws IOException {
-
-    }
-
-    @Override
-    protected boolean chunkSatisfied(ChunkMetaData chunkMetaData) {
-      return false;
-    }
-
-    @Override
-    public void close() {
-
-    }
-  }
 }

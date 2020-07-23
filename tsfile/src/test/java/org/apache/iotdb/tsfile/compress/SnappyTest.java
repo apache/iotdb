@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,15 +22,15 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ThreadLocalRandom;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.xerial.snappy.Snappy;
 
-/**
- * @author kangrong
- */
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 public class SnappyTest {
 
   private String randomString(int length) {
@@ -51,14 +51,18 @@ public class SnappyTest {
 
   @Test
   public void testBytes() throws IOException {
-    String input = randomString(50000);
+    int n = 500000;
+    String input = randomString(n);
     byte[] uncom = input.getBytes(StandardCharsets.UTF_8);
-    long time = System.currentTimeMillis();
+    long time = System.nanoTime();
     byte[] compressed = Snappy.compress(uncom);
-    System.out.println("compression time cost:" + (System.currentTimeMillis() - time));
-    time = System.currentTimeMillis();
+    System.out.println("compression time cost:" + ((System.nanoTime() - time)) / 1000 / 1000);
+    System.out.println("ratio: " + (double) compressed.length / uncom.length);
+    time = System.nanoTime();
     byte[] uncompressed = Snappy.uncompress(compressed);
-    System.out.println("decompression time cost:" + (System.currentTimeMillis() - time));
+    System.out.println("decompression time cost:" + ((System.nanoTime() - time)) / 1000 / 1000);
+
+    Assert.assertArrayEquals(uncom, uncompressed);
   }
 
   @Test

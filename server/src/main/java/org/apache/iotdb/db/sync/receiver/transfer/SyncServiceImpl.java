@@ -1,0 +1,325 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iotdb.db.sync.receiver.transfer;
+
+import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
+import org.apache.iotdb.db.sync.receiver.load.FileLoader;
+import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
+import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
+import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
+import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogger;
+import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.SyncUtils;
+import org.apache.iotdb.service.sync.thrift.ConfirmInfo;
+import org.apache.iotdb.service.sync.thrift.SyncService;
+import org.apache.iotdb.service.sync.thrift.SyncStatus;
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+public class SyncServiceImpl implements SyncService.Iface {
+
+  private static final Logger logger = LoggerFactory.getLogger(SyncServiceImpl.class);
+
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private ThreadLocal<String> syncFolderPath = new ThreadLocal<>();
+
+  private ThreadLocal<String> currentSG = new ThreadLocal<>();
+
+  private ThreadLocal<SyncReceiverLogger> syncLog = new ThreadLocal<>();
+
+  private ThreadLocal<String> senderName = new ThreadLocal<>();
+
+  private ThreadLocal<File> currentFile = new ThreadLocal<>();
+
+  private ThreadLocal<FileChannel> currentFileWriter = new ThreadLocal<>();
+
+  private ThreadLocal<MessageDigest> messageDigest = new ThreadLocal<>();
+
+  /**
+   * Verify IP address of sender
+   */
+  @Override
+  public SyncStatus check(ConfirmInfo info) {
+    String ipAddress = info.address, uuid = info.uuid;
+    Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
+    if (!info.version.equals(IoTDBConstant.VERSION)) {
+      return getErrorResult(String.format("Version mismatch: the sender <%s>, the receiver <%s>",
+          info.version, IoTDBConstant.VERSION));
+    }
+    if (info.partitionInterval != IoTDBDescriptor.getInstance().getConfig()
+        .getPartitionInterval()) {
+      return getErrorResult(String
+          .format("Partition interval mismatch: the sender <%d>, the receiver <%d>",
+              info.partitionInterval,
+              IoTDBDescriptor.getInstance().getConfig().getPartitionInterval()));
+    }
+    if (SyncUtils.verifyIPSegment(config.getIpWhiteList(), ipAddress)) {
+      senderName.set(ipAddress + SyncConstant.SYNC_DIR_NAME_SEPARATOR + uuid);
+      if (checkRecovery()) {
+        logger.info("Start to sync with sender {}", senderName.get());
+        return getSuccessResult();
+      } else {
+        return getErrorResult("Receiver is processing data from previous sync tasks");
+      }
+    } else {
+      return getErrorResult(
+          "Sender IP is not in the white list of receiver IP and synchronization tasks are not allowed.");
+    }
+  }
+
+  private boolean checkRecovery() {
+    try {
+      if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
+        currentFileWriter.get().close();
+      }
+      if (syncLog.get() != null) {
+        syncLog.get().close();
+      }
+      return SyncReceiverLogAnalyzer.getInstance().recover(senderName.get());
+    } catch (IOException e) {
+      logger.error("Check recovery state fail", e);
+      return false;
+    }
+  }
+
+  @Override
+  public SyncStatus startSync() {
+    try {
+      initPath();
+      currentSG.remove();
+      FileLoader.createFileLoader(senderName.get(), syncFolderPath.get());
+      syncLog
+          .set(new SyncReceiverLogger(new File(syncFolderPath.get(), SyncConstant.SYNC_LOG_NAME)));
+      return getSuccessResult();
+    } catch (DiskSpaceInsufficientException | IOException e) {
+      logger.error("Can not receiver data from sender", e);
+      return getErrorResult(e.getMessage());
+    }
+  }
+
+  /**
+   * Init file path.
+   */
+  private void initPath() throws DiskSpaceInsufficientException {
+    String dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
+        .getParentFile().getAbsolutePath();
+    syncFolderPath
+        .set(FilePathUtils.regularizePath(dataDir) + SyncConstant.SYNC_RECEIVER + File.separatorChar
+            + senderName.get());
+  }
+
+  /**
+   * Init threadLocal variable.
+   */
+  @Override
+  public SyncStatus init(String storageGroup) {
+    logger.info("Sync process started to receive data of storage group {}", storageGroup);
+    currentSG.set(storageGroup);
+    try {
+      syncLog.get().startSyncDeletedFilesName();
+    } catch (IOException e) {
+      logger.error("Can not init sync process", e);
+      return getErrorResult(e.getMessage());
+    }
+    return getSuccessResult();
+  }
+
+  @Override
+  public SyncStatus syncDeletedFileName(String fileName) throws TException {
+    try {
+      syncLog.get().finishSyncDeletedFileName(
+          new File(getSyncDataPath(), currentSG.get() + File.separatorChar + fileName));
+      FileLoaderManager.getInstance().getFileLoader(senderName.get()).addDeletedFileName(
+          new File(getSyncDataPath(), currentSG.get() + File.separatorChar + fileName));
+    } catch (IOException e) {
+      logger.error("Can not sync deleted file", e);
+      return getErrorResult(
+          String.format("Can not sync deleted file %s because %s", fileName, e.getMessage()));
+    }
+    return getSuccessResult();
+  }
+
+  @Override
+  public SyncStatus initSyncData(String filename) throws TException {
+    try {
+      File file;
+      if (currentSG.get() == null) { // schema mlog.txt file
+        file = new File(getSyncDataPath(), filename);
+      } else {
+        file = new File(getSyncDataPath(), currentSG.get() + File.separatorChar + filename);
+      }
+      file.delete();
+      currentFile.set(file);
+      if (!file.getParentFile().exists()) {
+        file.getParentFile().mkdirs();
+      }
+      if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
+        currentFileWriter.get().close();
+      }
+      currentFileWriter.set(new FileOutputStream(file).getChannel());
+      syncLog.get().startSyncTsFiles();
+      messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
+    } catch (IOException | NoSuchAlgorithmException e) {
+      logger.error("Can not init sync resource for file {}", filename, e);
+      return getErrorResult(
+          String.format("Can not init sync resource for file %s because %s", filename,
+              e.getMessage()));
+    }
+    return getSuccessResult();
+  }
+
+  @Override
+  public SyncStatus syncData(ByteBuffer buff) {
+    try {
+      currentFileWriter.get().write(buff);
+      buff.flip();
+      messageDigest.get().update(buff);
+    } catch (IOException e) {
+      logger.error("Can not sync data for file {}", currentFile.get().getAbsoluteFile(), e);
+      return getErrorResult(String
+          .format("Can not sync data for file %s because %s", currentFile.get().getName(),
+              e.getMessage()));
+    }
+    return getSuccessResult();
+  }
+
+  @Override
+  public SyncStatus checkDataMD5(String md5OfSender) throws TException {
+    String md5OfReceiver = (new BigInteger(1, messageDigest.get().digest())).toString(16);
+    try {
+      if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
+        currentFileWriter.get().close();
+      }
+      if (!md5OfSender.equals(md5OfReceiver)) {
+        currentFile.get().delete();
+        currentFileWriter.set(new FileOutputStream(currentFile.get()).getChannel());
+        return getErrorResult(String
+            .format("MD5 of the sender is differ from MD5 of the receiver of the file %s.",
+                currentFile.get().getAbsolutePath()));
+      } else {
+        if (currentFile.get().getName().endsWith(MetadataConstant.METADATA_LOG)) {
+          loadMetadata();
+        } else {
+          if (!currentFile.get().getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
+            logger.info("Receiver has received {} successfully.", currentFile.get());
+            FileLoaderManager.getInstance().checkAndUpdateDeviceOwner(
+                new TsFileResource(new File(currentFile.get() + TsFileResource.RESOURCE_SUFFIX)));
+            syncLog.get().finishSyncTsfile(currentFile.get());
+            FileLoaderManager.getInstance().getFileLoader(senderName.get())
+                .addTsfile(currentFile.get());
+          }
+        }
+      }
+    } catch (IOException e) {
+      logger.error("Can not check data MD5 for file {}", currentFile.get().getAbsoluteFile(), e);
+      return getErrorResult(String
+          .format("Can not check data MD5 for file %s because %s", currentFile.get().getName(),
+              e.getMessage()));
+    } catch (SyncDeviceOwnerConflictException e) {
+      logger.error("Device owner has conflicts, skip all other tsfiles in the sg {}.",
+          currentSG.get());
+      return new SyncStatus(SyncConstant.CONFLICT_CODE, String
+          .format("Device owner has conflicts, skip all other tsfiles in the same sg %s because %s",
+              currentSG.get(), e.getMessage()));
+    }
+    return new SyncStatus(SyncConstant.SUCCESS_CODE, md5OfReceiver);
+  }
+
+  private void loadMetadata() {
+    logger.info("Start to load metadata in sync process.");
+    if (currentFile.get().exists()) {
+      try (BufferedReader br = new BufferedReader(
+          new java.io.FileReader(currentFile.get()))) {
+        String metadataOperation;
+        while ((metadataOperation = br.readLine()) != null) {
+          try {
+            IoTDB.metaManager.operation(metadataOperation);
+          } catch (IOException | MetadataException e) {
+            logger.error("Can not operate metadata operation {} ", metadataOperation, e);
+          }
+        }
+      } catch (IOException e) {
+        logger.error("Cannot read the file {}.", currentFile.get().getAbsoluteFile(), e);
+      }
+    }
+  }
+
+  @Override
+  public SyncStatus endSync() throws TException {
+    try {
+      if (syncLog.get() != null) {
+        syncLog.get().close();
+      }
+      IFileLoader loader = FileLoaderManager.getInstance().getFileLoader(senderName.get());
+      if (loader != null) {
+        loader.endSync();
+      } else {
+        return getErrorResult(
+            String.format("File Loader of the storage group %s is null", currentSG.get()));
+      }
+      logger.info("Sync process with sender {} finished.", senderName.get());
+    } catch (IOException e) {
+      logger.error("Can not end sync", e);
+      return getErrorResult(String.format("Can not end sync because %s", e.getMessage()));
+    }
+    return getSuccessResult();
+  }
+
+  private String getSyncDataPath() {
+    return syncFolderPath.get() + File.separatorChar + SyncConstant.RECEIVER_DATA_FOLDER_NAME;
+  }
+
+  private SyncStatus getSuccessResult() {
+    return new SyncStatus(SyncConstant.SUCCESS_CODE, "");
+  }
+
+  private SyncStatus getErrorResult(String errorMsg) {
+    return new SyncStatus(SyncConstant.ERROR_CODE, errorMsg);
+  }
+
+  /**
+   * release resources or cleanup when a client (a sender) is disconnected (normally or abnormally).
+   */
+  public void handleClientExit() {
+    //do nothing now
+  }
+}

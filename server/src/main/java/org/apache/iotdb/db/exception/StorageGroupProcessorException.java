@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,27 +18,17 @@
  */
 package org.apache.iotdb.db.exception;
 
-public class StorageGroupProcessorException extends ProcessorException {
+import org.apache.iotdb.rpc.TSStatusCode;
+
+public class StorageGroupProcessorException extends IoTDBException {
 
   private static final long serialVersionUID = 7373978140952977661L;
 
-  public StorageGroupProcessorException() {
-    super();
+  public StorageGroupProcessorException(Exception exception) {
+    super(exception, TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
   }
 
-  public StorageGroupProcessorException(PathErrorException pathExcp) {
-    super(pathExcp.getMessage());
-  }
-
-  public StorageGroupProcessorException(String msg) {
-    super(msg);
-  }
-
-  public StorageGroupProcessorException(Throwable throwable) {
-    super(throwable);
-  }
-
-  public StorageGroupProcessorException(String msg, Throwable e) {
-    super(msg, e);
+  public StorageGroupProcessorException(String message) {
+    super(message, TSStatusCode.STORAGE_GROUP_PROCESSOR_ERROR.getStatusCode());
   }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,12 +18,18 @@
  */
 package org.apache.iotdb.tsfile.common.conf;
 
+import java.io.Serializable;
+import java.nio.charset.Charset;
+
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
+
 /**
- * TSFileConfig is a configure class. Every variables is public and has default value.
- *
- * @author kangrong
+ * TSFileConfig is a configure class. Every variables is public and has default
+ * value.
  */
-public class TSFileConfig {
+public class TSFileConfig implements Serializable {
+
   // Memory configuration
   public static final int RLE_MIN_REPEATED_NUM = 8;
   public static final int RLE_MAX_REPEATED_NUM = 0x7FFF;
@@ -47,102 +53,422 @@ public class TSFileConfig {
    */
   public static final int BYTE_SIZE_PER_CHAR = 4;
   public static final String STRING_ENCODING = "UTF-8";
-  public static final String CONFIG_FILE_NAME = "tsfile-format.properties";
-  public static final String MAGIC_STRING = "TsFilev0.8.0";
+  public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
+  public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
+  public static final String MAGIC_STRING = "TsFile";
+  public static final String VERSION_NUMBER = "000002";
+  public static final String VERSION_NUMBER_V1 = "000001";
+
   /**
-   * Current version is 3.
+   * Bloom filter constrain
    */
-  public static final int CURRENT_VERSION = 3;
+  public static final double MIN_BLOOM_FILTER_ERROR_RATE = 0.01;
+  public static final double MAX_BLOOM_FILTER_ERROR_RATE = 0.1;
+
   /**
-   * The default grow size of class BatchData.
+   * The primitive array capacity threshold.
    */
-  public static final int DYNAMIC_DATA_SIZE = 1000;
+  public static final int ARRAY_CAPACITY_THRESHOLD = 1000;
   /**
    * Memory size threshold for flushing to disk, default value is 128MB.
    */
-  public static int groupSizeInByte = 128 * 1024 * 1024;
+  private int groupSizeInByte = 128 * 1024 * 1024;
   /**
    * The memory size for each series writer to pack page, default value is 64KB.
    */
-  public static int pageSizeInByte = 64 * 1024;
-
-  // TS_2DIFF configuration
+  private int pageSizeInByte = 64 * 1024;
   /**
    * The maximum number of data points in a page, default value is 1024 * 1024.
    */
-  public static int maxNumberOfPointsInPage = 1024 * 1024;
+  private int maxNumberOfPointsInPage = 1024 * 1024;
+  /**
+   * The maximum degree of a metadataIndex node, default value is 1024
+   */
+  private int maxDegreeOfIndexNode = 1024;
   /**
    * Data type for input timestamp, TsFile supports INT32 or INT64.
    */
-  public static String timeSeriesDataType = "INT64";
-
-  // Freq encoder configuration
+  private String timeSeriesDataType = "INT64";
   /**
    * Max length limitation of input string.
    */
-  public static int maxStringLength = 128;
+  private int maxStringLength = 128;
   /**
    * Floating-point precision.
    */
-  public static int floatPrecision = 2;
+  private int floatPrecision = 2;
   /**
-   * Encoder of time column, TsFile supports TS_2DIFF, PLAIN and RLE(run-length encoding) Default
-   * value is TS_2DIFF.
+   * Encoder of time column, TsFile supports TS_2DIFF, PLAIN and RLE(run-length
+   * encoding) Default value is TS_2DIFF.
    */
-  public static String timeEncoder = "TS_2DIFF";
+  private String timeEncoding = "TS_2DIFF";
   /**
-   * Encoder of value series. default value is PLAIN. For int, long data type, TsFile also supports
-   * TS_2DIFF and RLE(run-length encoding). For float, double data type, TsFile also supports
-   * TS_2DIFF, RLE(run-length encoding) and GORILLA. For text data type, TsFile only supports
-   * PLAIN.
+   * Encoder of value series. default value is PLAIN. For int, long data type,
+   * TsFile also supports TS_2DIFF and RLE(run-length encoding). For float, double
+   * data type, TsFile also supports TS_2DIFF, RLE(run-length encoding) and
+   * GORILLA. For text data type, TsFile only supports PLAIN.
    */
-  public static String valueEncoder = "PLAIN";
-
-  // Compression configuration
+  private String valueEncoder = "PLAIN";
   /**
    * Default bit width of RLE encoding is 8.
    */
-  public static int rleBitWidth = 8;
-
-  // Don't change the following configuration
+  private int rleBitWidth = 8;
   /**
    * Default block size of two-diff. delta encoding is 128
    */
-  public static int deltaBlockSize = 128;
+  private int deltaBlockSize = 128;
   /**
    * Default frequency type is SINGLE_FREQ.
    */
-  public static String freqType = "SINGLE_FREQ";
+  private String freqType = "SINGLE_FREQ";
   /**
    * Default PLA max error is 100.
    */
-  public static double plaMaxError = 100;
+  private double plaMaxError = 100;
   /**
    * Default SDT max error is 100.
    */
-  public static double sdtMaxError = 100;
+  private double sdtMaxError = 100;
   /**
    * Default DFT satisfy rate is 0.1
    */
-  public static double dftSatisfyRate = 0.1;
+  private double dftSatisfyRate = 0.1;
   /**
-   * Data compression method, TsFile supports UNCOMPRESSED or SNAPPY. Default value is UNCOMPRESSED
-   * which means no compression
+   * Data compression method, TsFile supports UNCOMPRESSED or SNAPPY. Default
+   * value is UNCOMPRESSED which means no compression
    */
-  public static String compressor = "UNCOMPRESSED";
+  private CompressionType compressor = CompressionType.SNAPPY;
   /**
    * Line count threshold for checking page memory occupied size.
    */
-  public static int pageCheckSizeThreshold = 100;
+  private int pageCheckSizeThreshold = 100;
   /**
-   * Default endian value is LITTLE_ENDIAN.
+   * Default endian value is BIG_ENDIAN.
    */
-  public static String endian = "LITTLE_ENDIAN";
-
+  private String endian = "BIG_ENDIAN";
   /**
-   * only can be used by TsFileDescriptor.
+   * Default storage is in local file system
    */
-  protected TSFileConfig() {
+  private FSType TSFileStorageFs = FSType.LOCAL;
+  /**
+   * Default core-site.xml file path is /etc/hadoop/conf/core-site.xml
+   */
+  private String coreSitePath = "/etc/hadoop/conf/core-site.xml";
+  /**
+   * Default hdfs-site.xml file path is /etc/hadoop/conf/hdfs-site.xml
+   */
+  private String hdfsSitePath = "/etc/hadoop/conf/hdfs-site.xml";
+  /**
+   * Default hdfs ip is localhost
+   */
+  private String hdfsIp = "localhost";
+  /**
+   * Default hdfs port is 9000
+   */
+  private String hdfsPort = "9000";
+  /**
+   * Default DFS NameServices is hdfsnamespace
+   */
+  private String dfsNameServices = "hdfsnamespace";
+  /**
+   * Default DFS HA name nodes are nn1 and nn2
+   */
+  private String dfsHaNamenodes = "nn1,nn2";
+  /**
+   * Default DFS HA automatic failover is enabled
+   */
+  private boolean dfsHaAutomaticFailoverEnabled = true;
+  /**
+   * Default DFS client failover proxy provider is
+   * "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider"
+   */
+  private String dfsClientFailoverProxyProvider = "org.apache.hadoop.hdfs.server.namenode.ha.ConfiguredFailoverProxyProvider";
+  /**
+   * whether use kerberos to authenticate hdfs
+   */
+  private boolean useKerberos = false;
+  /**
+   * full path of kerberos keytab file
+   */
+  private String kerberosKeytabFilePath = "/path";
+  /**
+   * kerberos pricipal
+   */
+  private String kerberosPrincipal = "principal";
+  /**
+   * The acceptable error rate of bloom filter
+   */
+  private double bloomFilterErrorRate = 0.05;
+  /**
+   * The amount of data iterate each time
+   */
+  private int batchSize = 1000;
 
+  public TSFileConfig() {
+
+  }
+
+  public int getGroupSizeInByte() {
+    return groupSizeInByte;
+  }
+
+  public void setGroupSizeInByte(int groupSizeInByte) {
+    this.groupSizeInByte = groupSizeInByte;
+  }
+
+  public int getPageSizeInByte() {
+    return pageSizeInByte;
+  }
+
+  public void setPageSizeInByte(int pageSizeInByte) {
+    this.pageSizeInByte = pageSizeInByte;
+  }
+
+  public int getMaxNumberOfPointsInPage() {
+    return maxNumberOfPointsInPage;
+  }
+
+  public void setMaxNumberOfPointsInPage(int maxNumberOfPointsInPage) {
+    this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
+  }
+
+  public int getMaxDegreeOfIndexNode() {
+    return maxDegreeOfIndexNode;
+  }
+
+  public void setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
+    this.maxDegreeOfIndexNode = maxDegreeOfIndexNode;
+  }
+
+  public String getTimeSeriesDataType() {
+    return timeSeriesDataType;
+  }
+
+  // TS_2DIFF configuration
+
+  public void setTimeSeriesDataType(String timeSeriesDataType) {
+    this.timeSeriesDataType = timeSeriesDataType;
+  }
+
+  public int getMaxStringLength() {
+    return maxStringLength;
+  }
+
+  // Freq encoder configuration
+
+  public void setMaxStringLength(int maxStringLength) {
+    this.maxStringLength = maxStringLength;
+  }
+
+  public int getFloatPrecision() {
+    return floatPrecision;
+  }
+
+  public void setFloatPrecision(int floatPrecision) {
+    this.floatPrecision = floatPrecision;
+  }
+
+  public String getTimeEncoder() {
+    return timeEncoding;
+  }
+
+  // Compression configuration
+
+  public void setTimeEncoder(String timeEncoder) {
+    this.timeEncoding = timeEncoder;
+  }
+
+  // Don't change the following configuration
+
+  public String getValueEncoder() {
+    return valueEncoder;
+  }
+
+  public void setValueEncoder(String valueEncoder) {
+    this.valueEncoder = valueEncoder;
+  }
+
+  public int getRleBitWidth() {
+    return rleBitWidth;
+  }
+
+  public void setRleBitWidth(int rleBitWidth) {
+    this.rleBitWidth = rleBitWidth;
+  }
+
+  public int getDeltaBlockSize() {
+    return deltaBlockSize;
+  }
+
+  public void setDeltaBlockSize(int deltaBlockSize) {
+    this.deltaBlockSize = deltaBlockSize;
+  }
+
+  public String getFreqType() {
+    return freqType;
+  }
+
+  public void setFreqType(String freqType) {
+    this.freqType = freqType;
+  }
+
+  public double getPlaMaxError() {
+    return plaMaxError;
+  }
+
+  public void setPlaMaxError(double plaMaxError) {
+    this.plaMaxError = plaMaxError;
+  }
+
+  public double getSdtMaxError() {
+    return sdtMaxError;
+  }
+
+  public void setSdtMaxError(double sdtMaxError) {
+    this.sdtMaxError = sdtMaxError;
+  }
+
+  public double getDftSatisfyRate() {
+    return dftSatisfyRate;
+  }
+
+  public void setDftSatisfyRate(double dftSatisfyRate) {
+    this.dftSatisfyRate = dftSatisfyRate;
+  }
+
+  public CompressionType getCompressor() {
+    return compressor;
+  }
+
+  public void setCompressor(String compressor) {
+    this.compressor = CompressionType.valueOf(compressor);
+  }
+
+  public int getPageCheckSizeThreshold() {
+    return pageCheckSizeThreshold;
+  }
+
+  public void setPageCheckSizeThreshold(int pageCheckSizeThreshold) {
+    this.pageCheckSizeThreshold = pageCheckSizeThreshold;
+  }
+
+  public String getEndian() {
+    return endian;
+  }
+
+  public void setEndian(String endian) {
+    this.endian = endian;
+  }
+
+  public boolean isUseKerberos() {
+    return useKerberos;
+  }
+
+  public void setUseKerberos(boolean useKerberos) {
+    this.useKerberos = useKerberos;
+  }
+
+  public String getKerberosKeytabFilePath() {
+    return kerberosKeytabFilePath;
+  }
+
+  public void setKerberosKeytabFilePath(String kerberosKeytabFilePath) {
+    this.kerberosKeytabFilePath = kerberosKeytabFilePath;
+  }
+
+  public String getKerberosPrincipal() {
+    return kerberosPrincipal;
+  }
+
+  public void setKerberosPrincipal(String kerberosPrincipal) {
+    this.kerberosPrincipal = kerberosPrincipal;
+  }
+
+  public double getBloomFilterErrorRate() {
+    return bloomFilterErrorRate;
+  }
+
+  public void setBloomFilterErrorRate(double bloomFilterErrorRate) {
+    this.bloomFilterErrorRate = bloomFilterErrorRate;
+  }
+
+  public FSType getTSFileStorageFs() {
+    return this.TSFileStorageFs;
+  }
+
+  public void setTSFileStorageFs(FSType fileStorageFs) {
+    this.TSFileStorageFs = fileStorageFs;
+  }
+
+  public String getCoreSitePath() {
+    return coreSitePath;
+  }
+
+  public void setCoreSitePath(String coreSitePath) {
+    this.coreSitePath = coreSitePath;
+  }
+
+  public String getHdfsSitePath() {
+    return hdfsSitePath;
+  }
+
+  public void setHdfsSitePath(String hdfsSitePath) {
+    this.hdfsSitePath = hdfsSitePath;
+  }
+
+  public String[] getHdfsIp() {
+    return hdfsIp.split(",");
+  }
+
+  public void setHdfsIp(String[] hdfsIp) {
+    this.hdfsIp = String.join(",", hdfsIp);
+  }
+
+  public String getHdfsPort() {
+    return this.hdfsPort;
+  }
+
+  public void setHdfsPort(String hdfsPort) {
+    this.hdfsPort = hdfsPort;
+  }
+
+  public String getDfsNameServices() {
+    return dfsNameServices;
+  }
+
+  public void setDfsNameServices(String dfsNameServices) {
+    this.dfsNameServices = dfsNameServices;
+  }
+
+  public String[] getDfsHaNamenodes() {
+    return dfsHaNamenodes.split(",");
+  }
+
+  public void setDfsHaNamenodes(String[] dfsHaNamenodes) {
+    this.dfsHaNamenodes = String.join(",", dfsHaNamenodes);
+  }
+
+  public boolean isDfsHaAutomaticFailoverEnabled() {
+    return dfsHaAutomaticFailoverEnabled;
+  }
+
+  public void setDfsHaAutomaticFailoverEnabled(boolean dfsHaAutomaticFailoverEnabled) {
+    this.dfsHaAutomaticFailoverEnabled = dfsHaAutomaticFailoverEnabled;
+  }
+
+  public String getDfsClientFailoverProxyProvider() {
+    return dfsClientFailoverProxyProvider;
+  }
+
+  public void setDfsClientFailoverProxyProvider(String dfsClientFailoverProxyProvider) {
+    this.dfsClientFailoverProxyProvider = dfsClientFailoverProxyProvider;
+  }
+
+  public int getBatchSize() {
+    return batchSize;
+  }
+
+  public void setBatchSize(int batchSize) {
+    this.batchSize = batchSize;
   }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -253,7 +254,7 @@ public class Measurement implements MeasurementMBean, IService {
       service = IoTDBThreadPoolFactory.newScheduledThreadPool(
           2, ThreadName.TIME_COST_STATSTIC.getName());
     }
-    //we have to check again because someone may channge the value.
+    //we have to check again because someone may change the value.
     isEnableStat = IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceStat();
     if (isEnableStat) {
       consumeFuture = service.schedule(new QueueConsumerThread(), 0, TimeUnit.MILLISECONDS);
@@ -261,10 +262,7 @@ public class Measurement implements MeasurementMBean, IService {
     try {
       JMXService.registerMBean(INSTANCE, mbeanName);
     } catch (Exception e) {
-      String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
-      throw new StartupException(errorMessage, e);
+      throw new StartupException(this.getID().getName(), e.getMessage());
     }
   }
 
@@ -383,18 +381,18 @@ public class Measurement implements MeasurementMBean, IService {
         "=================================================================================================================");
   }
 
-  class DisplayRunnable implements Runnable {
+  class DisplayRunnable extends WrappedRunnable {
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       showMeasurements();
     }
   }
 
-  class QueueConsumerThread implements Runnable {
+  class QueueConsumerThread extends WrappedRunnable {
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       consumer();
     }
 

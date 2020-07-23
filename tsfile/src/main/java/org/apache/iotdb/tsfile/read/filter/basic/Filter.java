@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.filter.basic;
 
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 /**
  * Filter is a top level filter abstraction.
@@ -27,12 +30,12 @@ import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 public interface Filter {
 
   /**
-   * To examine whether the digest is satisfied with the filter.
+   * To examine whether the statistics is satisfied with the filter.
    *
-   * @param digest
-   *            digest with min time, max time, min value, max value.
+   * @param statistics
+   *            statistics with min time, max time, min value, max value.
    */
-  boolean satisfy(DigestForFilter digest);
+  boolean satisfy(Statistics statistics);
 
   /**
    * To examine whether the single point(with time and value) is satisfied with the filter.
@@ -62,5 +65,11 @@ public interface Filter {
    */
   boolean containStartEndTime(long startTime, long endTime);
 
-  Filter clone();
+  Filter copy();
+
+  void serialize(DataOutputStream outputStream);
+
+  void deserialize(ByteBuffer buffer);
+
+  FilterSerializeId getSerializeId();
 }

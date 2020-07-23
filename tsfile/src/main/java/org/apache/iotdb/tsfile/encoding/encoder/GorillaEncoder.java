@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,10 +19,12 @@
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.io.ByteArrayOutputStream;
+
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 /**
- * Gorilla encoding. For more information about how it works, please see http://www.vldb.org/pvldb/vol8/p1816-teller.pdf
+ * Gorilla encoding. For more information about how it works, please see
+ * http://www.vldb.org/pvldb/vol8/p1816-teller.pdf
  */
 public abstract class GorillaEncoder extends Encoder {
 

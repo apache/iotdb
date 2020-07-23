@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,31 +18,32 @@
  */
 package org.apache.iotdb.tsfile.read.query.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithTimeGenerator;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGeneratorImpl;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TsFileTimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 
 public class ExecutorWithTimeGenerator implements QueryExecutor {
 
-  private MetadataQuerier metadataQuerier;
-  private ChunkLoader chunkLoader;
+  private IMetadataQuerier metadataQuerier;
+  private IChunkLoader chunkLoader;
 
-  public ExecutorWithTimeGenerator(MetadataQuerier metadataQuerier, ChunkLoader chunkLoader) {
+  public ExecutorWithTimeGenerator(IMetadataQuerier metadataQuerier, IChunkLoader chunkLoader) {
     this.metadataQuerier = metadataQuerier;
     this.chunkLoader = chunkLoader;
   }
@@ -60,11 +61,11 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
     List<Path> selectedPathList = queryExpression.getSelectedSeries();
 
     // get TimeGenerator by IExpression
-    TimeGenerator timeGenerator = new TimeGeneratorImpl(expression, chunkLoader, metadataQuerier);
+    TimeGenerator timeGenerator = new TsFileTimeGenerator(expression, chunkLoader, metadataQuerier);
 
     // the size of hasFilter is equal to selectedPathList, if a series has a filter, it is true,
     // otherwise false
-    List<Boolean> cached = removeFilteredPaths(expression, selectedPathList);
+    List<Boolean> cached = markFilterdPaths(expression, selectedPathList, timeGenerator.hasOrNode());
     List<FileSeriesReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
@@ -74,15 +75,15 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
       boolean cachedValue = cachedIterator.next();
       Path selectedPath = selectedPathIterator.next();
 
-      List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(selectedPath);
-      if (chunkMetaDataList.size() != 0) {
-        dataTypes.add(chunkMetaDataList.get(0).getTsDataType());
+      List<ChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(selectedPath);
+      if (chunkMetadataList.size() != 0) {
+        dataTypes.add(chunkMetadataList.get(0).getDataType());
         if (cachedValue) {
           readersOfSelectedSeries.add(null);
           continue;
         }
         FileSeriesReaderByTimestamp seriesReader = new FileSeriesReaderByTimestamp(chunkLoader,
-            chunkMetaDataList);
+            chunkMetadataList);
         readersOfSelectedSeries.add(seriesReader);
       } else {
         selectedPathIterator.remove();
@@ -94,9 +95,15 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
         readersOfSelectedSeries);
   }
 
-  private List<Boolean> removeFilteredPaths(IExpression expression, List<Path> selectedPaths) {
-
+  public static List<Boolean> markFilterdPaths(IExpression expression, List<Path> selectedPaths, boolean hasOrNode) {
     List<Boolean> cached = new ArrayList<>();
+    if (hasOrNode) {
+      for (Path ignored : selectedPaths) {
+        cached.add(false);
+      }
+      return cached;
+    }
+
     HashSet<Path> filteredPaths = new HashSet<>();
     getAllFilteredPaths(expression, filteredPaths);
 
@@ -108,7 +115,7 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
 
   }
 
-  private void getAllFilteredPaths(IExpression expression, HashSet<Path> paths) {
+  private static void getAllFilteredPaths(IExpression expression, HashSet<Path> paths) {
     if (expression instanceof BinaryExpression) {
       getAllFilteredPaths(((BinaryExpression) expression).getLeft(), paths);
       getAllFilteredPaths(((BinaryExpression) expression).getRight(), paths);

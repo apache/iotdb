@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,17 +22,15 @@ package org.apache.iotdb.tsfile.exception.encoding;
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 
 /**
- * This Exception is used while encoding failed. <br> This Exception extends super class {@link
- * TsFileRuntimeException}
- *
- * @author kangrong
+ * This Exception is used while encoding failed. <br>
+ * This Exception extends super class {@link TsFileRuntimeException}
  */
 public class TsFileEncodingException extends TsFileRuntimeException {
 
   private static final long serialVersionUID = -7225811149696714845L;
 
   public TsFileEncodingException() {
-    //do nothing
+    // do nothing
   }
 
   public TsFileEncodingException(String message, Throwable cause) {

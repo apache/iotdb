@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -46,12 +46,12 @@ public class MultiFileLogReaderTest {
     for (int i = 0; i < fileNum; i++) {
       logFiles[i] = new File(i + ".log");
       for (int j = 0; j < logsPerFile; j++) {
-        fileLogs[i][j] = new DeletePlan(i * logsPerFile + j, new Path("path" + j));
+        fileLogs[i][j] = new DeletePlan(Long.MIN_VALUE, i * logsPerFile + j, new Path("path" + j));
       }
 
       ByteBuffer buffer = ByteBuffer.allocate(64*1024);
       for (PhysicalPlan plan : fileLogs[i]) {
-        plan.serializeTo(buffer);
+        plan.serialize(buffer);
       }
       ILogWriter writer = new LogWriter(logFiles[i]);
       writer.write(buffer);

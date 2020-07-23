@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,8 +21,6 @@ package org.apache.iotdb.tsfile.encoding.common;
 
 /**
  * This class defines several constants using in encoding algorithm.
- *
- * @author xuyi
  */
 public class EncodingConfig {
 
@@ -31,8 +29,8 @@ public class EncodingConfig {
   }
 
   /**
-   * if number n repeats more than(>=) RLE_MAX_REPEATED_NUM times, use rle encoding, otherwise use
-   * bit-packing.
+   * if number n repeats more than(>=) RLE_MAX_REPEATED_NUM times, use rle
+   * encoding, otherwise use bit-packing.
    */
   public static final int RLE_MAX_REPEATED_NUM = 8;
 

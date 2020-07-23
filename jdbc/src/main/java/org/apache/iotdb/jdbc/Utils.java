@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,56 +18,41 @@
  */
 package org.apache.iotdb.jdbc;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.iotdb.service.rpc.thrift.TSDataValue;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 /**
  * Utils to convert between thrift format and TsFile format.
  */
 public class Utils {
 
-  /**
-   * Private constructor of Utils Class.
-   */
-  private  Utils(){
-    throw new IllegalAccessError("Utility class");
-  }
+  static final Pattern URL_PATTERN = Pattern.compile("([^:]+):([0-9]{1,5})/?");
 
   /**
    * Parse JDBC connection URL The only supported format of the URL is:
    * jdbc:iotdb://localhost:6667/.
    */
-  public static IoTDBConnectionParams parseUrl(String url, Properties info)
+  static IoTDBConnectionParams parseUrl(String url, Properties info)
       throws IoTDBURLException {
     IoTDBConnectionParams params = new IoTDBConnectionParams(url);
     if (url.trim().equalsIgnoreCase(Config.IOTDB_URL_PREFIX)) {
       return params;
     }
-
-    Pattern pattern = Pattern.compile("([^;]*):([^;]*)/");
-    Matcher matcher = pattern.matcher(url.substring(Config.IOTDB_URL_PREFIX.length()));
     boolean isUrlLegal = false;
-    while (matcher.find()) {
-      params.setHost(matcher.group(1));
-      params.setPort(Integer.parseInt(matcher.group(2)));
-      isUrlLegal = true;
+    Matcher matcher = null;
+    if (url.startsWith(Config.IOTDB_URL_PREFIX)) {
+      String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
+      matcher = URL_PATTERN.matcher(subURL);
+      if (matcher.matches()) {
+        isUrlLegal = true;
+      }
     }
     if (!isUrlLegal) {
-      throw new IoTDBURLException("Error url format, url should be jdbc:iotdb://ip:port/");
+      throw new IoTDBURLException("Error url format, url should be jdbc:iotdb://anything:port/ or jdbc:iotdb://anything:port");
     }
+    params.setHost(matcher.group(1));
+    params.setPort(Integer.parseInt(matcher.group(2)));
 
     if (info.containsKey(Config.AUTH_USER)) {
       params.setUsername(info.getProperty(Config.AUTH_USER));
@@ -78,77 +63,5 @@ public class Utils {
 
     return params;
   }
-
-  /**
-   * verify success.
-   *
-   * @param status -status
-   */
-  public static void verifySuccess(TS_Status status) throws IoTDBSQLException {
-    if (status.getStatusCode() != TS_StatusCode.SUCCESS_STATUS) {
-      throw new IoTDBSQLException(status.errorMessage);
-    }
-  }
-
-  /**
-   * convert row records.
-   *
-   * @param tsQueryDataSet -query data set
-   * @return -list of row record
-   */
-  public static List<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet) {
-    List<RowRecord> records = new ArrayList<>();
-    for (TSRowRecord ts : tsQueryDataSet.getRecords()) {
-      RowRecord r = new RowRecord(ts.getTimestamp());
-      int l = ts.getValuesSize();
-      for (int i = 0; i < l; i++) {
-        TSDataValue value = ts.getValues().get(i);
-        if (value.is_empty) {
-          Field field = new Field(null);
-          field.setNull();
-          r.getFields().add(field);
-        } else {
-          TSDataType dataType = TSDataType.valueOf(value.getType());
-          Field field = new Field(dataType);
-          addFieldAccordingToDataType(field, dataType, value);
-          r.getFields().add(field);
-        }
-      }
-      records.add(r);
-    }
-    return records;
-  }
-
-  /**
-   *
-   * @param field -the field need to add new data
-   * @param dataType, -the data type of the new data
-   * @param value, -the value of the new data
-   */
-  private static void addFieldAccordingToDataType(Field field, TSDataType dataType, TSDataValue value){
-    switch (dataType) {
-      case BOOLEAN:
-        field.setBoolV(value.isBool_val());
-        break;
-      case INT32:
-        field.setIntV(value.getInt_val());
-        break;
-      case INT64:
-        field.setLongV(value.getLong_val());
-        break;
-      case FLOAT:
-        field.setFloatV((float) value.getFloat_val());
-        break;
-      case DOUBLE:
-        field.setDoubleV(value.getDouble_val());
-        break;
-      case TEXT:
-        field.setBinaryV(new Binary(value.getBinary_val()));
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-                String.format("data type %s is not supported when convert data at client",
-                        dataType));
-    }
-  }
+  
 }

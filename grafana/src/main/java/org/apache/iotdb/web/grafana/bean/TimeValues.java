@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -24,7 +24,7 @@ package org.apache.iotdb.web.grafana.bean;
 public class TimeValues {
 
   private long time;
-  private float value;
+  private Object value;
 
   @Override
   public String toString() {
@@ -39,11 +39,11 @@ public class TimeValues {
     this.time = time;
   }
 
-  public float getValue() {
+  public Object getValue() {
     return value;
   }
 
-  public void setValue(float value) {
+  public void setValue(Object value) {
     this.value = value;
   }
 }

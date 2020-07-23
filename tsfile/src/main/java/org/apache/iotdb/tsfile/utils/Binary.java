@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,22 +19,18 @@
 package org.apache.iotdb.tsfile.utils;
 
 import java.io.Serializable;
-import java.nio.charset.Charset;
 import java.util.Arrays;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 /**
  * Override compareTo() and equals() function to Binary class. This class is used to accept Java
  * String type
- *
- * @author xuyi
  */
 public class Binary implements Comparable<Binary>, Serializable {
 
   private static final long serialVersionUID = 6394197743397020735L;
-
   private byte[] values;
-  private String textEncodingType = TSFileConfig.STRING_ENCODING;
 
   /**
    * if the bytes v is modified, the modification is visible to this binary.
@@ -44,7 +40,7 @@ public class Binary implements Comparable<Binary>, Serializable {
   }
 
   public Binary(String s) {
-    this.values = (s == null) ? null : s.getBytes(Charset.forName(this.textEncodingType));
+    this.values = (s == null) ? null : s.getBytes(TSFileConfig.STRING_CHARSET);
   }
 
   public static Binary valueOf(String value) {
@@ -105,15 +101,11 @@ public class Binary implements Comparable<Binary>, Serializable {
   }
 
   public String getStringValue() {
-    return new String(this.values, Charset.forName(this.textEncodingType));
+    return new String(this.values, TSFileConfig.STRING_CHARSET);
   }
 
   public String getTextEncodingType() {
-    return textEncodingType;
-  }
-
-  public void setTextEncodingType(String textEncodingType) {
-    this.textEncodingType = textEncodingType;
+    return TSFileConfig.STRING_ENCODING;
   }
 
   @Override
@@ -123,5 +115,9 @@ public class Binary implements Comparable<Binary>, Serializable {
 
   public byte[] getValues() {
     return values;
+  }
+
+  public void setValues(byte[] values) {
+    this.values = values;
   }
 }

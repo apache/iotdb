@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -28,9 +28,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.exception.SysCheckException;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.exception.SystemCheckException;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.writelog.io.LogWriter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Test;
 
 public class WalCheckerTest {
@@ -41,15 +43,15 @@ public class WalCheckerTest {
     boolean caught = false;
     try {
       checker.doCheck();
-    } catch (SysCheckException e) {
+    } catch (SystemCheckException e) {
       caught = true;
     }
     assertTrue(caught);
   }
 
   @Test
-  public void testEmpty() throws IOException, SysCheckException {
-    File tempRoot = new File("root");
+  public void testEmpty() throws IOException, SystemCheckException {
+    File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
     tempRoot.mkdir();
 
     try {
@@ -61,8 +63,8 @@ public class WalCheckerTest {
   }
 
   @Test
-  public void testNormalCheck() throws IOException, SysCheckException {
-    File tempRoot = new File("root");
+  public void testNormalCheck() throws IOException, SystemCheckException {
+    File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
     tempRoot.mkdir();
 
     try {
@@ -72,12 +74,13 @@ public class WalCheckerTest {
         LogWriter logWriter = new LogWriter(subDir.getPath() + File.separator
             + WAL_FILE_NAME);
 
-        ByteBuffer binaryPlans = ByteBuffer.allocate(64*1024);
+        ByteBuffer binaryPlans = ByteBuffer.allocate(64 * 1024);
         String deviceId = "device1";
         String[] measurements = new String[]{"s1", "s2", "s3"};
+        TSDataType[] types = new TSDataType[]{TSDataType.INT64, TSDataType.INT64, TSDataType.INT64};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
-          new InsertPlan(deviceId, j, measurements, values).serializeTo(binaryPlans);
+          new InsertRowPlan(deviceId, j, measurements, types, values).serialize(binaryPlans);
         }
         binaryPlans.flip();
         logWriter.write(binaryPlans);
@@ -94,8 +97,8 @@ public class WalCheckerTest {
   }
 
   @Test
-  public void testAbnormalCheck() throws IOException, SysCheckException {
-    File tempRoot = new File("root");
+  public void testAbnormalCheck() throws IOException, SystemCheckException {
+    File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
     tempRoot.mkdir();
 
     try {
@@ -105,12 +108,13 @@ public class WalCheckerTest {
         LogWriter logWriter = new LogWriter(subDir.getPath() + File.separator
             + WAL_FILE_NAME);
 
-        ByteBuffer binaryPlans = ByteBuffer.allocate(64*1024);
+        ByteBuffer binaryPlans = ByteBuffer.allocate(64 * 1024);
         String deviceId = "device1";
         String[] measurements = new String[]{"s1", "s2", "s3"};
+        TSDataType[] types = new TSDataType[]{TSDataType.INT64, TSDataType.INT64, TSDataType.INT64};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
-          new InsertPlan(deviceId, j, measurements, values).serializeTo(binaryPlans);
+          new InsertRowPlan(deviceId, j, measurements, types, values).serialize(binaryPlans);
         }
         if (i > 2) {
           binaryPlans.put("not a wal".getBytes());
@@ -130,8 +134,8 @@ public class WalCheckerTest {
   }
 
   @Test
-  public void testOneDamagedCheck() throws IOException, SysCheckException {
-    File tempRoot = new File("root");
+  public void testOneDamagedCheck() throws IOException, SystemCheckException {
+    File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
     tempRoot.mkdir();
 
     try {

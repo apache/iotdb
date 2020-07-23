@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -37,6 +37,8 @@ public class DatetimeQueryDataSetUtilsTest {
   // 1546413207689
   // 2019-01-02T15:13:27.689+08:00
   private final long timestamp = 1546413207689L;
+  // 2019-01-02T00:00:00.000+08:00
+  private final long timestamp1 = 1546358400000L;
   private long delta;
 
   @Before
@@ -69,6 +71,14 @@ public class DatetimeQueryDataSetUtilsTest {
     testConvertDatetimeStrToLongWithMS(zoneOffset, zoneId, timestamp + delta);
   }
 
+  @Test
+  public void test3() throws LogicalOperatorException{
+    zoneOffset = ZoneOffset.UTC;
+    zoneId = ZoneId.of("Etc/UTC");
+    delta = 8 * 3600000;
+    testConvertDateStrToLong(zoneOffset, zoneId, timestamp1 + delta);
+  }
+
   public void testConvertDatetimeStrToLongWithoutMS(ZoneOffset zoneOffset, ZoneId zoneId, long res) throws LogicalOperatorException {
     String[] timeFormatWithoutMs = new String[]{"2019-01-02 15:13:27", "2019/01/02 15:13:27",
         "2019.01.02 15:13:27", "2019-01-02T15:13:27", "2019/01/02T15:13:27", "2019.01.02T15:13:27",
@@ -93,6 +103,19 @@ public class DatetimeQueryDataSetUtilsTest {
         "2019/01/02 15:13:27.689" + zoneOffset, "2019.01.02 15:13:27.689" + zoneOffset,
         "2019-01-02T15:13:27.689" + zoneOffset, "2019/01/02T15:13:27.689" + zoneOffset,
         "2019.01.02T15:13:27.689" + zoneOffset,};
+    for (String str : timeFormatWithoutMs) {
+      assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0));
+    }
+
+    for (String str : timeFormatWithoutMs) {
+      assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneId));
+    }
+  }
+
+  public void testConvertDateStrToLong(ZoneOffset zoneOffset, ZoneId zoneId, long res) throws LogicalOperatorException {
+    String[] timeFormatWithoutMs = new String[]{"2019-01-02",
+        "2019/01/02",
+        "2019.01.02",};
     for (String str : timeFormatWithoutMs) {
       assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset, 0));
     }

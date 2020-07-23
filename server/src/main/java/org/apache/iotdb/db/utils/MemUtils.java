@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -42,26 +44,60 @@ public class MemUtils {
   }
 
   /**
-   * function for getting the record size.
+   * function for getting the value size.
    */
-  public static long getRecordSize(InsertPlan insertPlan) {
+  public static long getRecordSize(TSDataType dataType, Object value) {
+    switch (dataType) {
+      case INT32:
+        return 8L + 4L;
+      case INT64:
+        return 8L + 8L;
+      case FLOAT:
+        return 8L + 4L;
+      case DOUBLE:
+        return 8L + 8L;
+      case BOOLEAN:
+        return 8L + 1L;
+      case TEXT:
+        return 8L + getBinarySize((Binary) value);
+      default:
+        return 8L + 8L;
+    }
+  }
+
+  public static long getBinarySize(Binary value) {
+    return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + RamUsageEstimator
+        .sizeOf(value.getValues());
+  }
+
+  public static long getRecordSize(InsertTabletPlan insertTabletPlan, int start, int end) {
+    if (start >= end) {
+      return 0L;
+    }
     long memSize = 0;
-    for (int i = 0; i < insertPlan.getValues().length; i++) {
-      switch (insertPlan.getDataTypes()[i]) {
+    for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      if (insertTabletPlan.getDataTypes()[i] == null) {
+        continue;
+      }
+      switch (insertTabletPlan.getDataTypes()[i]) {
         case INT32:
-          memSize += 8L + 4L; break;
+          memSize += (end - start) * (8L + 4L); break;
         case INT64:
-          memSize += 8L + 8L; break;
+          memSize += (end - start) * (8L + 8L); break;
         case FLOAT:
-          memSize += 8L + 4L; break;
+          memSize += (end - start) * (8L + 4L); break;
         case DOUBLE:
-          memSize += 8L + 8L; break;
+          memSize += (end - start) * (8L + 8L); break;
         case BOOLEAN:
-          memSize += 8L + 1L; break;
+          memSize += (end - start) * (8L + 1L); break;
         case TEXT:
-          memSize += 8L + insertPlan.getValues()[i].length() * 2; break;
+          memSize += (end - start) * 8L;
+          for (int j = start; j < end; j++) {
+            memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[i])[j]);
+          }
+          break;
         default:
-          memSize += 8L + 8L;
+          memSize += (end - start) * (8L + 8L);
       }
     }
     return memSize;

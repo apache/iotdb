@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,10 +21,8 @@ package org.apache.iotdb.tsfile.exception.write;
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 
 /**
- * This Exception is used while getting an unknown column type. <br> This Exception extends super
- * class {@link TsFileRuntimeException}
- *
- * @author kangrong
+ * This Exception is used while getting an unknown column type. <br>
+ * This Exception extends super class {@link TsFileRuntimeException}
  */
 public class UnknownColumnTypeException extends TsFileRuntimeException {
 

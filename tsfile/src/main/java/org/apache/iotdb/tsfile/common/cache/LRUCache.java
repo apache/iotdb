@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -27,59 +27,42 @@ import java.util.Map;
  */
 public abstract class LRUCache<K, T> implements Cache<K, T> {
 
-  private int cacheSize;
-  private Map<K, T> cache;
+  protected Map<K, T> cache;
 
   public LRUCache(int cacheSize) {
-    this.cacheSize = cacheSize;
-    this.cache = new LinkedHashMap<>();
+    this.cache = new LinkedHashMap<K, T>(cacheSize, 0.75f, true) {
+      @Override
+      protected boolean removeEldestEntry(Map.Entry eldest) {
+        return size() > cacheSize;
+      }
+    };
   }
 
   @Override
-  public T get(K key) throws IOException {
+  public synchronized T get(K key) throws IOException {
     if (cache.containsKey(key)) {
-      moveObjectToTail(key);
+      return cache.get(key);
     } else {
-      removeFirstObjectIfCacheIsFull();
-      cache.put(key, loadObjectByKey(key));
+      T value = loadObjectByKey(key);
+      if (value != null) {
+        cache.put(key, value);
+      }
+      return value;
     }
-    return cache.get(key);
   }
 
   @Override
-  public void clear() {
-    this.cache.clear();
+  public synchronized void clear() {
+    cache.clear();
   }
 
-  private void moveObjectToTail(K key) {
-    T value = cache.get(key);
-    cache.remove(key);
+  public synchronized void put(K key, T value) {
     cache.put(key, value);
   }
 
-  private void removeFirstObjectIfCacheIsFull() {
-    if (cache.size() == this.cacheSize) {
-      removeFirstObject();
-    }
-  }
+  protected abstract T loadObjectByKey(K key) throws IOException;
 
-  private void removeFirstObject() {
-    if (cache.size() == 0) {
-      return;
-    }
-    K key = cache.keySet().iterator().next();
+  public synchronized void removeItem(K key) {
     cache.remove(key);
   }
-
-  /**
-   * function for putting a key-value pair.
-   */
-  public void put(K key, T value) {
-    cache.remove(key);
-    removeFirstObjectIfCacheIsFull();
-    cache.put(key, value);
-  }
-
-  public abstract T loadObjectByKey(K key) throws IOException;
-
 }

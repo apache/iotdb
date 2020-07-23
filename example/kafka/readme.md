@@ -25,7 +25,7 @@ The example is to show how to send data from localhost to IoTDB through Kafka.
 ```
 ## Usage
 ### Version usage
-IoTDB: 0.8.0-SNAPSHOT  
+IoTDB: 0.10.0  
 Kafka: 0.8.2.0
 ### Dependencies with Maven
 
@@ -39,7 +39,7 @@ Kafka: 0.8.2.0
     <dependency>
 	    <groupId>org.apache.iotdb</groupId>
 	    <artifactId>iotdb-jdbc</artifactId>
-	    <version>0.8.0-SNAPSHOT</version>
+	    <version>0.10.0</version>
     </dependency>
 </dependencies>
 ```
@@ -57,7 +57,7 @@ Kafka: 0.8.2.0
   The class is to send data from localhost to Kafka clusters.
   Firstly, you have to change the parameter of TOPIC in Constant.java to what you create：(for example : "Kafka-Test")
   > public final static String TOPIC = "Kafka-Test";
-  The default format of data is "device,timestamp,value ". (for example : "sensor1,2017/10/24 19:30:00,60")
+  The default format of data is "device,timestamp,value ". (for example : "measurement1,2017/10/24 19:30:00,60")
   Then you need to create data in Constat.ALL_DATA
   Finally, run KafkaProducer.java
 ```

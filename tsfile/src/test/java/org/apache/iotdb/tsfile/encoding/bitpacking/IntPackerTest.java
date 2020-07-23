@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,7 +23,10 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.Random;
+
 import org.junit.Test;
+
+import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
 
 public class IntPackerTest {
 

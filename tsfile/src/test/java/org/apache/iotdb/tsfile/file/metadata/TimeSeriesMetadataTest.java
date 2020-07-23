@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,8 +22,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,7 +35,7 @@ public class TimeSeriesMetadataTest {
 
   public static final String measurementUID = "sensor01";
   public static final int typeLength = 1024;
-  final String PATH = "target/outputTimeSeries.tsfile";
+  final String PATH = TestConstant.BASE_OUTPUT_PATH.concat("outputTimeSeries.tsfile");
 
   @Before
   public void setUp() {
@@ -48,19 +51,23 @@ public class TimeSeriesMetadataTest {
 
   @Test
   public void testWriteIntoFile() throws IOException {
-    MeasurementSchema measurementSchema = TestHelper.createSimpleMeasurementSchema();
-    serialized(measurementSchema);
-    MeasurementSchema readMetadata = deSerialized();
-    measurementSchema.equals(readMetadata);
+    TimeseriesMetadata timeseriesMetadata = TestHelper.createSimpleTimseriesMetaData(measurementUID);
+    serialized(timeseriesMetadata);
+    TimeseriesMetadata readMetadata = deSerialized();
+    timeseriesMetadata.equals(readMetadata);
     serialized(readMetadata);
   }
 
-  private MeasurementSchema deSerialized() {
+  private TimeseriesMetadata deSerialized() {
     FileInputStream fis = null;
-    MeasurementSchema metaData = null;
+    TimeseriesMetadata metaData = null;
     try {
       fis = new FileInputStream(new File(PATH));
-      metaData = MeasurementSchema.deserializeFrom(fis);
+      FileChannel fch = fis.getChannel();
+      ByteBuffer buffer = ByteBuffer.allocate((int) fch.size());
+      fch.read(buffer);
+      buffer.flip();
+      metaData = TimeseriesMetadata.deserializeFrom(buffer);
       return metaData;
     } catch (IOException e) {
       e.printStackTrace();
@@ -76,7 +83,7 @@ public class TimeSeriesMetadataTest {
     return metaData;
   }
 
-  private void serialized(MeasurementSchema metaData) {
+  private void serialized(TimeseriesMetadata metaData) {
     File file = new File(PATH);
     if (file.exists()) {
       file.delete();

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,14 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -33,25 +26,22 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.sql.*;
+
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
  * defined as integration test.
  */
 public class IoTDBCompleteIT {
 
-  private IoTDB daemon;
-
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -370,13 +360,13 @@ public class IoTDBCompleteIT {
 
   private void executeSQL(String[] sqls) throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       String result = "";
       Long now_start = 0L;
       boolean cmp = false;
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+
       for (String sql : sqls) {
         if (cmp) {
           Assert.assertEquals(sql, result);
@@ -389,7 +379,7 @@ public class IoTDBCompleteIT {
           if (sql.contains("NOW()") && now_start == 0L) {
             now_start = System.currentTimeMillis();
           }
-          Statement statement = connection.createStatement();
+
           statement.execute(sql);
           if (sql.split(" ")[0].equals("SELECT")) {
             ResultSet resultSet = statement.getResultSet();
@@ -402,7 +392,7 @@ public class IoTDBCompleteIT {
             result = "";
             while (resultSet.next()) {
               for (int i = 1; i <= count; i++) {
-                if (now_start > 0L && column[i - 1] == Constant.TIMESTAMP_STR) {
+                if (now_start > 0L && column[i - 1] == TestConstant.TIMESTAMP_STR) {
                   String timestr = resultSet.getString(i);
                   Long tn = Long.valueOf(timestr);
                   Long now = System.currentTimeMillis();
@@ -418,15 +408,10 @@ public class IoTDBCompleteIT {
             }
             cmp = true;
           }
-          statement.close();
         }
       }
     } catch (Exception e) {
       e.printStackTrace();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 }

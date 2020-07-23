@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -27,10 +27,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -38,21 +37,16 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
- * This class describes a measurement's information registered in {@linkplain FileSchema FilSchema},
+ * This class describes a measurement's information registered in {@linkplain Schema FileSchema},
  * including measurement id, data type, encoding and compressor type. For each TSEncoding,
  * MeasurementSchema maintains respective TSEncodingBuilder; For TSDataType, only ENUM has
  * TSDataTypeConverter up to now.
- *
- * @author kangrong
- * @since version 0.1.0
  */
 public class MeasurementSchema implements Comparable<MeasurementSchema>, Serializable {
 
+  private String measurementId;
   private TSDataType type;
   private TSEncoding encoding;
-  private String measurementId;
-  //TODO serializable interface may serialize this field. So it is time to
-  // improve how to serialize MGraph in MManager.
   private TSEncodingBuilder encodingConverter;
   private CompressionType compressor;
   private Map<String, String> props = new HashMap<>();
@@ -60,12 +54,19 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   public MeasurementSchema() {
   }
 
+  public MeasurementSchema(String measurementId, TSDataType tsDataType) {
+    this(measurementId, tsDataType,
+        TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
+  }
+
   /**
    * set properties as an empty Map.
    */
   public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding) {
     this(measurementId, type, encoding,
-        CompressionType.valueOf(TSFileConfig.compressor),
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
   }
 
@@ -172,51 +173,23 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   }
 
   /**
-   * return the max possible length of given type.
-   *
-   * @return length in unit of byte
-   */
-  public int getTypeLength() {
-    switch (type) {
-      case BOOLEAN:
-        return 1;
-      case INT32:
-        return 4;
-      case INT64:
-        return 8;
-      case FLOAT:
-        return 4;
-      case DOUBLE:
-        return 8;
-      case TEXT:
-        // 4 is the length of string in type of Integer.
-        // Note that one char corresponding to 3 byte is valid only in 16-bit BMP
-        return TSFileConfig.maxStringLength * TSFileConfig.BYTE_SIZE_PER_CHAR + 4;
-      default:
-        throw new UnSupportedDataTypeException(type.toString());
-    }
-  }
-
-  /**
    * function for getting time encoder.
-   * TODO can I be optimized?
    */
   public Encoder getTimeEncoder() {
-    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(TSFileConfig.timeEncoder);
-    TSDataType timeType = TSDataType.valueOf(TSFileConfig.timeSeriesDataType);
-    return TSEncodingBuilder.getConverter(timeSeriesEncoder).getEncoder(timeType);
+    TSEncoding timeEncoding = TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+    TSDataType timeType = TSDataType.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
+    return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
   }
 
   /**
    * get Encoder of value from encodingConverter by measurementID and data type.
-   * TODO can I be optimized?
    * @return Encoder for value
    */
   public Encoder getValueEncoder() {
-    //it is ok even if encodingConverter is constructed two instances for concurrent scenario..
+    //it is ok even if encodingConverter is constructed two instances for concurrent scenario
     if (encodingConverter == null) {
       // initialize TSEncoding. e.g. set max error for PLA and SDT
-      encodingConverter = TSEncodingBuilder.getConverter(encoding);
+      encodingConverter = TSEncodingBuilder.getEncodingBuilder(encoding);
       encodingConverter.initFromProps(props);
     }
     return encodingConverter.getEncoder(type);
@@ -291,13 +264,12 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     MeasurementSchema that = (MeasurementSchema) o;
     return type == that.type && encoding == that.encoding && Objects
         .equals(measurementId, that.measurementId)
-        && Objects.equals(encodingConverter, that.encodingConverter)
-        && Objects.equals(compressor, that.compressor) && Objects.equals(props, that.props);
+        && Objects.equals(compressor, that.compressor);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, encoding, measurementId, encodingConverter, compressor, props);
+    return Objects.hash(type, encoding, measurementId, compressor);
   }
 
   /**
@@ -320,5 +292,9 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
         compressor.toString());
     sc.addTail("]");
     return sc.toString();
+  }
+
+  public void setType(TSDataType type) {
+    this.type = type;
   }
 }

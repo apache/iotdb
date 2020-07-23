@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -25,26 +25,27 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class SimpleFileVersionControllerTest {
   @Test
   public void test() throws IOException {
-    String tempFilePath = "version.tmp";
+    String tempFilePath = TestConstant.BASE_OUTPUT_PATH.concat("version.tmp");
 
     try {
       if (!new File(tempFilePath).mkdir()) {
         Assert.fail("can not create version.tmp folder");
       }
-      VersionController versionController = new SimpleFileVersionController(tempFilePath);
+      VersionController versionController = new SimpleFileVersionController(tempFilePath, 1);
       assertEquals(SimpleFileVersionController.getSaveInterval(), versionController.currVersion());
       for (int i = 0; i < 150; i++) {
         versionController.nextVersion();
       }
       assertEquals(SimpleFileVersionController.getSaveInterval() + 150,
           versionController.currVersion());
-      versionController = new SimpleFileVersionController(tempFilePath);
+      versionController = new SimpleFileVersionController(tempFilePath, 1);
       assertEquals(SimpleFileVersionController.getSaveInterval() + 200,
           versionController.currVersion());
     } finally {

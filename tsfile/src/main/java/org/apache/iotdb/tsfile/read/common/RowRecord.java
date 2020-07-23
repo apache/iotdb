@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class RowRecord {
 
@@ -31,8 +32,17 @@ public class RowRecord {
     this.fields = new ArrayList<>();
   }
 
+  public RowRecord(long timestamp, List<Field> fields){
+    this.timestamp = timestamp;
+    this.fields = fields;
+  }
+
   public void addField(Field f) {
     this.fields.add(f);
+  }
+
+  public void addField(Object value, TSDataType dataType) {
+    this.fields.add(Field.getField(value, dataType));
   }
 
   @Override
@@ -56,5 +66,13 @@ public class RowRecord {
 
   public List<Field> getFields() {
     return fields;
+  }
+
+  public void setFields(List<Field> fields) {
+    this.fields = fields;
+  }
+
+  public void setField(int index, Field field) {
+    this.fields.set(index, field);
   }
 }

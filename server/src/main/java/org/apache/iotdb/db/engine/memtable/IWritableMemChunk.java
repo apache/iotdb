@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,8 +21,9 @@ package org.apache.iotdb.db.engine.memtable;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public interface IWritableMemChunk extends TimeValuePairSorter {
+public interface IWritableMemChunk {
 
   void putLong(long t, long v);
 
@@ -36,32 +37,61 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
 
   void putBoolean(long t, boolean v);
 
-  void write(long insertTime, String insertValue);
+  void putLongs(long[] t, long[] v);
 
-  void write(long insertTime, Object insertValue);
+  void putInts(long[] t, int[] v);
+
+  void putFloats(long[] t, float[] v);
+
+  void putDoubles(long[] t, double[] v);
+
+  void putBinaries(long[] t, Binary[] v);
+
+  void putBooleans(long[] t, boolean[] v);
+
+  void putLongs(long[] t, long[] v, int start, int end);
+
+  void putInts(long[] t, int[] v, int start, int end);
+
+  void putFloats(long[] t, float[] v, int start, int end);
+
+  void putDoubles(long[] t, double[] v, int start, int end);
+
+  void putBinaries(long[] t, Binary[] v, int start, int end);
+
+  void putBooleans(long[] t, boolean[] v, int start, int end);
+
+
+  void write(long insertTime, Object objectValue);
+
+  /**
+   * [start, end)
+   */
+  void write(long[] times, Object valueList, TSDataType dataType, int start, int end);
 
   long count();
 
-  TSDataType getType();
-
-  /**
-   * using offset to mark which data is deleted:
-   * the data whose timestamp is less than offset are deleted.
-   * @param offset
-   */
-  void setTimeOffset(long offset);
+  MeasurementSchema getSchema();
 
   /**
    * served for query requests.
+   *
    * @return
    */
-  default TVList getSortedTVList(){return null;}
+  default TVList getSortedTVList() {
+    return null;
+  }
 
-  default TVList getTVList(){return null;}
+  default TVList getTVList() {
+    return null;
+  }
 
   default long getMinTime() {
     return Long.MIN_VALUE;
   }
 
-  void delete(long upperBound);
+  /**
+   * @return how many points are deleted
+   */
+  int delete(long lowerBound, long upperBound);
 }

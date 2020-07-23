@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.LoggerContext;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
@@ -27,30 +25,33 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.Scanner;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.FileUtils;
-import org.apache.iotdb.tsfile.utils.FileUtils.Unit;
-import org.apache.iotdb.tsfile.utils.RecordUtils;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.alibaba.fastjson.JSONObject;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.utils.RecordUtils;
+
 /**
- * This is used for performance test, no asserting. User could change {@code ROW_COUNT} for larger data test.
- *
- * @author kangrong
+ * This is used for performance test, no asserting. User could change
+ * {@code ROW_COUNT} for larger data test.
  */
 public class PerfTest {
 
@@ -60,7 +61,7 @@ public class PerfTest {
   static public String inputDataFile;
   static public String outputDataFile;
   static public String errorOutputDataFile;
-  static public FileSchema schema;
+  static public Schema schema;
   static public Random r = new Random();
 
   static private void generateSampleInputDataFile() throws IOException {
@@ -98,9 +99,7 @@ public class PerfTest {
       fw.write(d2 + "\r\n");
     }
     // write error
-    String d =
-        "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10
-            + 3);
+    String d = "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10 + 3);
     fw.write(d + "\r\n");
     d = "d2," + (startTime + ROW_COUNT + 1) + ",2,s-1," + (ROW_COUNT * 10 + 2);
     fw.write(d + "\r\n");
@@ -141,8 +140,7 @@ public class PerfTest {
     }
   }
 
-  static private void writeToFile(FileSchema schema)
-      throws InterruptedException, IOException, WriteProcessException {
+  static private void writeToFile(Schema schema) throws InterruptedException, IOException, WriteProcessException {
     Scanner in = getDataFile(inputDataFile);
     assert in != null;
     while (in.hasNextLine()) {
@@ -153,18 +151,28 @@ public class PerfTest {
     innerWriter.close();
   }
 
-  private static FileSchema generateTestData() {
-    FileSchema fileSchema = new FileSchema();
+  private static Schema generateTestData() {
+    Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    fileSchema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    fileSchema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    fileSchema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    fileSchema.registerMeasurement(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1.s1"),
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1.s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1.s3"),
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1.s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d2.s1"),
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d2.s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d2.s3"),
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d2.s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     JSONObject s4 = new JSONObject();
     s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
     s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
     s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
-    return fileSchema;
+    return schema;
   }
 
   @Before
@@ -174,9 +182,9 @@ public class PerfTest {
     ch.qos.logback.classic.Logger logger = loggerContext.getLogger("root");
     logger.setLevel(Level.toLevel("info"));
 
-    inputDataFile = "target/perTestInputData";
-    outputDataFile = "target/perTestOutputData.tsfile";
-    errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
+    outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
     schema = generateTestData();
     generateSampleInputDataFile();
   }

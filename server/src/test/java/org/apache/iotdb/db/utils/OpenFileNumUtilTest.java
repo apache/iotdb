@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -29,6 +29,7 @@ import java.lang.management.RuntimeMXBean;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.OpenFileNumUtil.OpenFileNumStatistics;
 import org.junit.After;
 import org.junit.Before;
@@ -66,7 +67,7 @@ public class OpenFileNumUtilTest {
     openFileNumUtil.setPid(testProcessID);
     String dataFilePath = OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM.getPath().get(0);
     String userDir = System.getProperty("user.dir");
-    currDir = userDir + File.separator + testProcessID;
+    currDir = userDir + File.separator + TestConstant.BASE_OUTPUT_PATH + testProcessID;
     testDataDirRoot = new File(currDir);
     currDir = currDir + File.separator + dataFilePath;
     File testDataDir = new File(currDir);

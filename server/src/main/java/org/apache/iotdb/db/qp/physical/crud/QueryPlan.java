@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,18 +18,25 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.List;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
-import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 
-public class QueryPlan extends PhysicalPlan {
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-  private List<Path> paths = null;
-  private IExpression expression = null;
+public abstract class QueryPlan extends PhysicalPlan {
+
+  protected List<Path> paths = null;
+  private List<TSDataType> dataTypes = null;
+  private boolean alignByTime = true; // for disable align sql
+
+  private int rowLimit = 0;
+  private int rowOffset = 0;
+
+  private Map<String, Integer> pathToIndex = new HashMap<>();
 
   public QueryPlan() {
     super(true);
@@ -40,25 +47,6 @@ public class QueryPlan extends PhysicalPlan {
     super(isQuery, operatorType);
   }
 
-  /**
-   * Check if all paths exist.
-   */
-  public void checkPaths(IQueryProcessExecutor executor) throws QueryProcessorException {
-    for (Path path : paths) {
-      if (!executor.judgePathExists(path)) {
-        throw new QueryProcessorException("Path doesn't exist: " + path);
-      }
-    }
-  }
-
-  public IExpression getExpression() {
-    return expression;
-  }
-
-  public void setExpression(IExpression expression) {
-    this.expression = expression;
-  }
-
   @Override
   public List<Path> getPaths() {
     return paths;
@@ -66,5 +54,49 @@ public class QueryPlan extends PhysicalPlan {
 
   public void setPaths(List<Path> paths) {
     this.paths = paths;
+  }
+
+  public List<TSDataType> getDataTypes() {
+    return dataTypes;
+  }
+
+  public void setDataTypes(List<TSDataType> dataTypes) {
+    this.dataTypes = dataTypes;
+  }
+
+  public int getRowLimit() {
+    return rowLimit;
+  }
+
+  public void setRowLimit(int rowLimit) {
+    this.rowLimit = rowLimit;
+  }
+
+  public int getRowOffset() {
+    return rowOffset;
+  }
+
+  public void setRowOffset(int rowOffset) {
+    this.rowOffset = rowOffset;
+  }
+
+  public boolean hasLimit() {
+    return rowLimit > 0;
+  }
+
+  public boolean isAlignByTime() {
+    return alignByTime;
+  }
+
+  public void setAlignByTime(boolean align) {
+    alignByTime = align;
+  }
+
+  public void addPathToIndex(String columnName, Integer index) {
+    pathToIndex.put(columnName, index);
+  }
+
+  public Map<String, Integer> getPathToIndex() {
+    return pathToIndex;
   }
 }

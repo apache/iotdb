@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -44,7 +44,7 @@ public class PerformanceStatTest {
   @Test
   public void test() {
     Measurement measurement = Measurement.INSTANCE;
-    Operation operation = Operation.EXECUTE_BATCH;
+    Operation operation = Operation.EXECUTE_JDBC_BATCH;
     measurement.addOperationLatency(operation, System.currentTimeMillis());
     measurement.addOperationLatency(operation,
         System.currentTimeMillis() - 8000000);

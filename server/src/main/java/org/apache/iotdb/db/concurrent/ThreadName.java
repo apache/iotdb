@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,8 +19,9 @@
 package org.apache.iotdb.db.concurrent;
 
 public enum ThreadName {
-  JDBC_SERVICE("JDBC-ServerServiceImpl"),
-  JDBC_CLIENT("JDBC-Client"),
+  METRICS_SERVICE("Metrics-ServerServiceImpl"),
+  RPC_SERVICE("RPC-ServerServiceImpl"),
+  RPC_CLIENT("RPC-Client"),
   MERGE_SERVICE("Merge-ServerServiceImpl"),
   CLOSE_MERGE_SERVICE("Close-Merge-ServerServiceImpl"),
   CLOSE_MERGE_DAEMON("Close-Merge-Daemon-Thread"),
@@ -33,13 +34,16 @@ public enum ThreadName {
   STAT_MONITOR("StatMonitor-ServerServiceImpl"),
   FLUSH_SERVICE("Flush-ServerServiceImpl"),
   FLUSH_SUB_TASK_SERVICE("Flush-SubTask-ServerServiceImpl"),
+  FLUSH_VM_SERVICE("Flush-Vm-ServerServiceImpl"),
   WAL_DAEMON("IoTDB-MultiFileLogNodeManager-Sync-Thread"),
   WAL_FORCE_DAEMON("IoTDB-MultiFileLogNodeManager-Force-Thread"),
   INDEX_SERVICE("Index-ServerServiceImpl"),
   SYNC_CLIENT("Sync-Client"),
   SYNC_SERVER("Sync-Server"),
   SYNC_MONITOR("Sync-Monitor"),
-  TIME_COST_STATSTIC("TIME_COST_STATSTIC");
+  LOAD_TSFILE("Load TsFile"),
+  TIME_COST_STATSTIC("TIME_COST_STATSTIC"),
+  QUERY_SERVICE("Query-ServerServiceImpl");
 
   private String name;
 

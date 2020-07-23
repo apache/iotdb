@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,6 +23,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.utils.OpenFileNumUtil;
 import org.slf4j.Logger;
@@ -48,7 +49,7 @@ public class Monitor implements MonitorMBean, IService {
     try {
       long totalSize = 0;
       for (String dataDir : config.getDataDirs()) {
-        totalSize += FileUtils.sizeOfDirectory(new File(dataDir));
+        totalSize += FileUtils.sizeOfDirectory(SystemFileFactory.INSTANCE.getFile(dataDir));
       }
       return totalSize;
     } catch (Exception e) {
@@ -76,9 +77,9 @@ public class Monitor implements MonitorMBean, IService {
   }
 
   @Override
-  public String getBaseDirectory() {
+  public String getSystemDirectory() {
     try {
-      File file = new File(config.getBaseDir());
+      File file = SystemFileFactory.INSTANCE.getFile(config.getSystemDir());
       return file.getAbsolutePath();
     } catch (Exception e) {
       logger.error("meet error while trying to get base dir.", e);
@@ -132,10 +133,7 @@ public class Monitor implements MonitorMBean, IService {
     try {
       JMXService.registerMBean(INSTANCE, mbeanName);
     } catch (Exception e) {
-      String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
-      throw new StartupException(errorMessage, e);
+      throw new StartupException(this.getID().getName(), e.getMessage());
     }
   }
 

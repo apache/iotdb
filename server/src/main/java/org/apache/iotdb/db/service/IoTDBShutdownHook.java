@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,7 +22,7 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IoTDBShutdownHook extends Thread{
+public class IoTDBShutdownHook extends Thread {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBShutdownHook.class);
 

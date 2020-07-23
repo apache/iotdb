@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -25,8 +25,8 @@ import java.nio.ByteBuffer;
 public interface TsFileOutput {
 
   /**
-   * Writes <code>b.length</code> bytes from the specified byte array to this output at the current
-   * position.
+   * Writes <code>b.length</code> bytes from the specified byte array to this
+   * output at the current position.
    *
    * @param b the data.
    * @throws IOException if an I/O error occurs.
@@ -34,8 +34,8 @@ public interface TsFileOutput {
   void write(byte[] b) throws IOException;
 
   /**
-   * Writes <code>b.remaining()</code> bytes from the specified byte array to this output at the
-   * current position.
+   * Writes <code>b.remaining()</code> bytes from the specified byte array to this
+   * output at the current position.
    *
    * @param b the data.
    * @throws IOException if an I/O error occurs.
@@ -43,9 +43,10 @@ public interface TsFileOutput {
   void write(ByteBuffer b) throws IOException;
 
   /**
-   * gets the current position of the Output. This method is usually used for recording where the
-   * data is. <br/> For example, if the Output is a fileOutputStream, then getPosition returns its
-   * file position.
+   * gets the current position of the Output. This method is usually used for
+   * recording where the data is. <br/>
+   * For example, if the Output is a fileOutputStream, then getPosition returns
+   * its file position.
    *
    * @return current position
    * @throws java.io.IOException if an I/O error occurs.
@@ -77,8 +78,8 @@ public interface TsFileOutput {
   /**
    * The same with {@link java.nio.channels.FileChannel#truncate(long)}.
    *
-   * @param position -position
+   * @param size size The new size, a non-negative byte count
    */
-  void truncate(long position) throws IOException;
+  void truncate(long size) throws IOException;
 
 }

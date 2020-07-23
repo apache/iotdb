@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.expression.impl;
 
 import java.io.Serializable;
+
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
@@ -50,7 +51,7 @@ public class GlobalTimeExpression implements IUnaryExpression, Serializable {
 
   @Override
   public IExpression clone() {
-    return new GlobalTimeExpression(filter.clone());
+    return new GlobalTimeExpression(filter.copy());
   }
 
   @Override

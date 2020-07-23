@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,7 +19,8 @@
 package org.apache.iotdb.tsfile.exception.write;
 
 /**
- * This exception means it can not find the measurement while writing a TSRecord.
+ * This exception means it can not find the measurement while writing a
+ * TSRecord.
  */
 public class NoMeasurementException extends WriteProcessException {
 

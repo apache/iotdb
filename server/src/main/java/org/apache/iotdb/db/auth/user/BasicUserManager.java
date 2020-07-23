@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.User;
@@ -73,6 +74,7 @@ public abstract class BasicUserManager implements IUserManager {
 
     if (admin == null) {
       createUser(IoTDBConstant.ADMIN_NAME, IoTDBConstant.ADMIN_PW);
+      setUserUseWaterMark(IoTDBConstant.ADMIN_NAME, false);
     }
     logger.info("Admin initialized");
   }
@@ -280,6 +282,52 @@ public abstract class BasicUserManager implements IUserManager {
     List<String> rtlist = accessor.listAllUsers();
     rtlist.sort(null);
     return rtlist;
+  }
+
+  @Override
+  public boolean isUserUseWaterMark(String username) throws AuthException {
+    User user = getUser(username);
+    if (user == null) {
+      throw new AuthException(String.format("No such user %s", username));
+    }
+    return user.isUseWaterMark();
+  }
+
+  @Override
+  public void setUserUseWaterMark(String username, boolean useWaterMark) throws AuthException {
+    User user = getUser(username);
+    if (user == null) {
+      throw new AuthException(String.format("No such user %s", username));
+    }
+    boolean oldFlag = user.isUseWaterMark();
+    if (oldFlag == useWaterMark) {
+      return;
+    }
+    user.setUseWaterMark(useWaterMark);
+    try {
+      accessor.saveUser(user);
+    } catch (IOException e) {
+      user.setUseWaterMark(oldFlag);
+      throw new AuthException(e);
+    }
+  }
+
+
+  @Override
+  public void replaceAllUsers(Map<String, User> users) throws AuthException {
+    synchronized (this) {
+      reset();
+      userMap = users;
+
+      for (Entry<String, User> entry : userMap.entrySet()) {
+        User user = entry.getValue();
+        try {
+          accessor.saveUser(user);
+        } catch (IOException e) {
+          throw new AuthException(e);
+        }
+      }
+    }
   }
 
 }

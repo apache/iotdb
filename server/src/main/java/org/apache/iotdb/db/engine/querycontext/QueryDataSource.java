@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,11 +23,19 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.util.List;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
 public class QueryDataSource {
   private Path seriesPath;
   private List<TsFileResource> seqResources;
   private List<TsFileResource> unseqResources;
+
+  /**
+   * data older than currentTime - dataTTL should be ignored.
+   */
+  private long dataTTL = Long.MAX_VALUE;
 
   public QueryDataSource(Path seriesPath, List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seriesPath = seriesPath;
@@ -45,5 +53,28 @@ public class QueryDataSource {
 
   public List<TsFileResource> getUnseqResources() {
     return unseqResources;
+  }
+
+  public long getDataTTL() {
+    return dataTTL;
+  }
+
+  public void setDataTTL(long dataTTL) {
+    this.dataTTL = dataTTL;
+  }
+
+  /**
+   * @return an updated filter concerning TTL
+   */
+  public Filter updateFilterUsingTTL(Filter filter) {
+    if (dataTTL != Long.MAX_VALUE) {
+      if (filter != null) {
+        filter = new AndFilter(filter, TimeFilter.gtEq(System.currentTimeMillis() -
+            dataTTL));
+      } else {
+        filter = TimeFilter.gtEq(System.currentTimeMillis() - dataTTL);
+      }
+    }
+    return filter;
   }
 }

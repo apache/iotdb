@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,15 +19,14 @@
 package org.apache.iotdb.tsfile.write.record.datapoint;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
 /**
  * a subclass for Double data type extends DataPoint.
  *
- * @author kangrong
  * @see DataPoint DataPoint
  */
 public class DoubleDataPoint extends DataPoint {

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,26 +19,36 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.modification.io.ModificationReader;
 import org.apache.iotdb.db.engine.modification.io.ModificationWriter;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ModificationFile stores the Modifications of a TsFile or unseq file in another file in the same
  * directory. Methods in this class are highly synchronized for concurrency safety.
  */
-public class ModificationFile {
+public class ModificationFile implements AutoCloseable {
 
+  private static final Logger logger = LoggerFactory.getLogger(ModificationFile.class);
   public static final String FILE_SUFFIX = ".mods";
 
   private List<Modification> modifications;
   private ModificationWriter writer;
   private ModificationReader reader;
   private String filePath;
+  private Random random = new Random();
 
   /**
    * Construct a ModificationFile using a file as its storage.
@@ -116,5 +126,41 @@ public class ModificationFile {
 
   public void setFilePath(String filePath) {
     this.filePath = filePath;
+  }
+
+  public void remove() throws IOException {
+    close();
+    FSFactoryProducer.getFSFactory().getFile(filePath).delete();
+  }
+
+  public boolean exists() {
+    return new File(filePath).exists();
+  }
+
+  /**
+   * Create a hardlink for the modification file.
+   * The hardlink with have a suffix like ".{sysTime}_{randomLong}"
+   * @return a new ModificationFile with its path changed to the hardlink, or null if the origin
+   * file does not exist or the hardlink cannot be created.
+   */
+  public ModificationFile createHardlink() {
+    if (!exists()) {
+      return null;
+    }
+
+    while (true) {
+      String hardlinkSuffix = "." + System.currentTimeMillis() + "_" + random.nextLong();
+      File hardlink = new File(filePath + hardlinkSuffix);
+
+      try {
+        Files.createLink(Paths.get(hardlink.getAbsolutePath()), Paths.get(filePath));
+        return new ModificationFile(hardlink.getAbsolutePath());
+      } catch (FileAlreadyExistsException e) {
+        // retry a different name if the file is already created
+      } catch (IOException e) {
+        logger.error("Cannot create hardlink for {}", filePath, e);
+        return null;
+      }
+    }
   }
 }

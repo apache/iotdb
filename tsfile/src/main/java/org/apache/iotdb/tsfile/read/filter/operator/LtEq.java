@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 
 /**
@@ -36,12 +38,19 @@ public class LtEq<T extends Comparable<T>> extends UnaryFilter<T> {
     super(value, filterType);
   }
 
+  public LtEq() {
+
+  }
+
   @Override
-  public boolean satisfy(DigestForFilter digest) {
+  public boolean satisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return ((Long) value) >= digest.getMinTime();
+      return ((Long) value) >= statistics.getStartTime();
     } else {
-      return value.compareTo(digest.getMinValue()) >= 0;
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+        return true;
+      }
+      return value.compareTo((T) statistics.getMinValue()) >= 0;
     }
   }
 
@@ -55,10 +64,7 @@ public class LtEq<T extends Comparable<T>> extends UnaryFilter<T> {
   public boolean satisfyStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
       long time = (Long) value;
-      if (time < startTime) {
-        return false;
-      }
-      return true;
+      return time >= startTime;
     } else {
       return true;
     }
@@ -68,23 +74,24 @@ public class LtEq<T extends Comparable<T>> extends UnaryFilter<T> {
   public boolean containStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
       long time = (Long) value;
-      if (endTime <= time) {
-        return true;
-      } else {
-        return false;
-      }
+      return endTime <= time;
     } else {
       return true;
     }
   }
 
   @Override
-  public Filter clone() {
+  public Filter copy() {
     return new LtEq(value, filterType);
   }
 
   @Override
   public String toString() {
     return getFilterType() + " <= " + value;
+  }
+
+  @Override
+  public FilterSerializeId getSerializeId() {
+    return FilterSerializeId.LTEQ;
   }
 }

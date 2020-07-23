@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,91 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public class InsertPlan extends PhysicalPlan {
+abstract public class InsertPlan extends PhysicalPlan {
 
-  private String deviceId;
-  private String[] measurements;
-  private TSDataType[] dataTypes;
-  private String[] values;
-  private long time;
+  protected String deviceId;
+  protected String[] measurements;
+  protected TSDataType[] dataTypes;
+  protected MeasurementSchema[] schemas;
 
-  public InsertPlan() {
-    super(false, OperatorType.INSERT);
-  }
+  // for updating last cache
+  private MNode deviceMNode;
 
-  public InsertPlan(String deviceId, long insertTime, String measurement, String insertValue) {
-    super(false, OperatorType.INSERT);
-    this.time = insertTime;
-    this.deviceId = deviceId;
-    this.measurements = new String[] {measurement};
-    this.values = new String[] {insertValue};
-  }
+  // record the failed measurements
+  protected List<String> failedMeasurements;
 
-  public InsertPlan(TSRecord tsRecord) {
-    super(false, OperatorType.INSERT);
-    this.deviceId = tsRecord.deviceId;
-    this.time = tsRecord.time;
-    this.measurements = new String[tsRecord.dataPointList.size()];
-    this.dataTypes = new TSDataType[tsRecord.dataPointList.size()];
-    this.values = new String[tsRecord.dataPointList.size()];
-    for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
-      measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
-      dataTypes[i] = tsRecord.dataPointList.get(i).getType();
-      values[i] = tsRecord.dataPointList.get(i).getValue().toString();
-    }
-  }
-
-  public InsertPlan(String deviceId, long insertTime, String[] measurementList,
-      String[] insertValues) {
-    super(false, Operator.OperatorType.INSERT);
-    this.time = insertTime;
-    this.deviceId = deviceId;
-    this.measurements = measurementList;
-    this.values = insertValues;
-  }
-
-  public long getTime() {
-    return time;
-  }
-
-  public void setTime(long time) {
-    this.time = time;
-  }
-
-  public TSDataType[] getDataTypes() {
-    return dataTypes;
-  }
-
-  public void setDataTypes(TSDataType[] dataTypes) {
-    this.dataTypes = dataTypes;
-  }
-
-  @Override
-  public List<Path> getPaths() {
-    List<Path> ret = new ArrayList<>();
-
-    for (String m : measurements) {
-      ret.add(new Path(deviceId, m));
-    }
-    return ret;
+  public InsertPlan(Operator.OperatorType operatorType) {
+    super(false, operatorType);
+    super.canBeSplit = false;
   }
 
   public String getDeviceId() {
-    return this.deviceId;
+    return deviceId;
   }
 
   public void setDeviceId(String deviceId) {
@@ -115,72 +61,48 @@ public class InsertPlan extends PhysicalPlan {
     this.measurements = measurements;
   }
 
-  public String[] getValues() {
-    return this.values;
+  public TSDataType[] getDataTypes() {
+    return dataTypes;
   }
 
-  public void setValues(String[] values) {
-    this.values = values;
+  public void setDataTypes(TSDataType[] dataTypes) {
+    this.dataTypes = dataTypes;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
+  public MeasurementSchema[] getSchemas() {
+    return schemas;
+  }
+
+  public void setSchemas(MeasurementSchema[] schemas) {
+    this.schemas = schemas;
+  }
+
+  public List<String> getFailedMeasurements() {
+    return failedMeasurements;
+  }
+
+  public int getFailedMeasurementNumber() {
+    return failedMeasurements == null ? 0 : failedMeasurements.size();
+  }
+
+  public MNode getDeviceMNode() {
+    return deviceMNode;
+  }
+
+  public void setDeviceMNode(MNode deviceMNode) {
+    this.deviceMNode = deviceMNode;
+  }
+
+  /**
+   * @param index failed measurement index
+   */
+  public void markFailedMeasurementInsertion(int index) {
+    if (failedMeasurements == null) {
+      failedMeasurements = new ArrayList<>();
     }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    InsertPlan that = (InsertPlan) o;
-    return time == that.time && Objects.equals(deviceId, that.deviceId)
-        && Arrays.equals(measurements, that.measurements)
-        && Arrays.equals(values, that.values);
+    failedMeasurements.add(measurements[index]);
+    measurements[index] = null;
+    dataTypes[index] = null;
   }
 
-  @Override
-  public int hashCode() {
-    return Objects.hash(deviceId, time);
-  }
-
-  @Override
-  public void serializeTo(ByteBuffer buffer) {
-    int type = PhysicalPlanType.INSERT.ordinal();
-    buffer.put((byte) type);
-    buffer.putLong(time);
-
-    putString(buffer, deviceId);
-
-    buffer.putInt(measurements.length);
-    for (String m : measurements) {
-      putString(buffer, m);
-    }
-
-    buffer.putInt(values.length);
-    for (String m : values) {
-      putString(buffer, m);
-    }
-  }
-
-  @Override
-  public void deserializeFrom(ByteBuffer buffer) {
-    this.time = buffer.getLong();
-    this.deviceId = readString(buffer);
-
-    int measurementSize = buffer.getInt();
-    this.measurements = new String[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      measurements[i] = readString(buffer);
-    }
-
-    int valueSize = buffer.getInt();
-    this.values = new String[valueSize];
-    for (int i = 0; i < valueSize; i++) {
-      values[i] = readString(buffer);
-    }
-  }
-
-  @Override
-  public String toString() {
-    return "deviceId: " + deviceId + ", time: " + time;
-  }
 }

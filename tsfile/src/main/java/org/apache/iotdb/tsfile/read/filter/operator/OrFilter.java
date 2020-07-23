@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,9 +19,10 @@
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import java.io.Serializable;
-import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 
 /**
  * Either of the left and right operators of AndExpression must satisfy the condition.
@@ -29,6 +30,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 public class OrFilter extends BinaryFilter implements Serializable {
 
   private static final long serialVersionUID = -968055896528472694L;
+
+  public OrFilter() {
+  }
 
   public OrFilter(Filter left, Filter right) {
     super(left, right);
@@ -40,13 +44,13 @@ public class OrFilter extends BinaryFilter implements Serializable {
   }
 
   @Override
-  public Filter clone() {
-    return new OrFilter(left.clone(), right.clone());
+  public Filter copy() {
+    return new OrFilter(left.copy(), right.copy());
   }
 
   @Override
-  public boolean satisfy(DigestForFilter digest) {
-    return left.satisfy(digest) || right.satisfy(digest);
+  public boolean satisfy(Statistics statistics) {
+    return left.satisfy(statistics) || right.satisfy(statistics);
   }
 
   @Override
@@ -66,4 +70,8 @@ public class OrFilter extends BinaryFilter implements Serializable {
         .containStartEndTime(startTime, endTime);
   }
 
+  @Override
+  public FilterSerializeId getSerializeId() {
+    return FilterSerializeId.OR;
+  }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -173,7 +173,7 @@ public class DatabaseConnectController {
     JSONArray dataPoints = new JSONArray();
     for (TimeValues tv : timeValues) {
       long time = tv.getTime();
-      float value = tv.getValue();
+      Object value = tv.getValue();
       JSONArray jsonArray = new JSONArray();
       jsonArray.add(value);
       jsonArray.add(time);

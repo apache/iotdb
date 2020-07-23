@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 
 /**
@@ -27,5 +27,5 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 @FunctionalInterface
 public interface IFilterOptimizer {
 
-  FilterOperator optimize(FilterOperator filter) throws QueryProcessorException;
+  FilterOperator optimize(FilterOperator filter) throws QueryProcessException;
 }

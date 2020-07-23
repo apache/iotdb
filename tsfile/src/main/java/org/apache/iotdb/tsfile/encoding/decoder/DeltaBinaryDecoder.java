@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -28,9 +29,10 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * This class is a decoder for decoding the byte array that encoded by {@code
- * DeltaBinaryEncoder}.DeltaBinaryDecoder just supports integer and long values.<br>.
+ * DeltaBinaryEncoder}.DeltaBinaryDecoder just supports integer and long
+ * values.<br>
+ * .
  *
- * @author kangrong
  * @see DeltaBinaryEncoder
  */
 public abstract class DeltaBinaryDecoder extends Decoder {
@@ -228,6 +230,7 @@ public abstract class DeltaBinaryDecoder extends Decoder {
 
     @Override
     public long readLong(ByteBuffer buffer) {
+
       return readT(buffer);
     }
 

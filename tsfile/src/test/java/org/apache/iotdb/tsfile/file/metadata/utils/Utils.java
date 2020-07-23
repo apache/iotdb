@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,25 +19,22 @@
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.junit.Assert;
 
 public class Utils {
 
   private static final double maxError = 0.0001d;
-  
 
   public static void isListEqual(List<?> listA, List<?> listB, String name) {
     if ((listA == null) ^ (listB == null)) {
@@ -70,32 +67,22 @@ public class Utils {
     }
   }
 
-  public static void isMapBufferEqual(Map<String, ByteBuffer> mapA, Map<String, ByteBuffer> mapB,
+  public static void isTwoTsDigestEqual(Statistics statisticsA, Statistics statisticsB,
       String name) {
-    if ((mapA == null) ^ (mapB == null)) {
+    if ((statisticsA == null) ^ (statisticsB == null)) {
       System.out.println("error");
       fail(String.format("one of %s is null", name));
     }
-    if ((mapA != null) && (mapB != null)) {
-      if (mapA.size() != mapB.size()) {
-        fail(String.format("%s size is different", name));
-      }
-      for (String key : mapB.keySet()) {
-        ByteBuffer b = mapB.get(key);
-        ByteBuffer a = mapA.get(key);
-        assertTrue(b.equals(a));
-      }
+    if (statisticsA != null) {
+      Assert.assertEquals(statisticsA, statisticsB);
     }
   }
 
   /**
    * when one of A and B is Null, A != B, so test case fails.
    *
-   * @param objectA
-   * @param objectB
-   * @param name
-   * @return false - A and B both are NULL, so we do not need to check whether their members are equal true - A and B
-   *         both are not NULL, so we need to check their members
+   * @return false - A and B both are NULL, so we do not need to check whether their members are
+   * equal true - A and B both are not NULL, so we need to check their members
    */
   public static boolean isTwoObjectsNotNULL(Object objectA, Object objectB, String name) {
     if ((objectA == null) && (objectB == null)) {
@@ -117,99 +104,29 @@ public class Utils {
     assertTrue(str1.toString().equals(str2.toString()));
   }
 
-  public static void isTimeSeriesChunkMetadataEqual(ChunkMetaData metadata1,
-      ChunkMetaData metadata2) {
+  public static void isTimeSeriesChunkMetadataEqual(ChunkMetadata metadata1,
+      ChunkMetadata metadata2) {
     if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "ChunkMetaData")) {
-      if (Utils.isTwoObjectsNotNULL(metadata1.getMeasurementUid(), metadata2.getMeasurementUid(),
-          "sensorUID")) {
-        assertTrue(metadata1.getMeasurementUid().equals(metadata2.getMeasurementUid()));
-      }
       assertTrue(metadata1.getOffsetOfChunkHeader() == metadata2.getOffsetOfChunkHeader());
       assertTrue(metadata1.getNumOfPoints() == metadata2.getNumOfPoints());
       assertTrue(metadata1.getStartTime() == metadata2.getStartTime());
       assertTrue(metadata1.getEndTime() == metadata2.getEndTime());
-      if (Utils.isTwoObjectsNotNULL(metadata1.getDigest(), metadata2.getDigest(), "digest")) {
-        Utils.isMapBufferEqual(metadata1.getDigest().getStatistics(),
-            metadata2.getDigest().getStatistics(),
-            "statistics");
-      }
+      assertNotNull(metadata1.getStatistics());
+      assertNotNull(metadata2.getStatistics());
+      Utils.isTwoTsDigestEqual(metadata1.getStatistics(), metadata2.getStatistics(), "TsDigest");
     }
   }
 
-  public static void isTsDeviceMetadataEqual(TsDeviceMetadata metadata1,
-      TsDeviceMetadata metadata2) {
-    if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "DeviceMetaData")) {
-      assertEquals(metadata1.getStartTime(), metadata2.getStartTime());
-      assertEquals(metadata1.getEndTime(), metadata2.getEndTime());
-
-      if (Utils.isTwoObjectsNotNULL(metadata1.getChunkGroupMetaDataList(), metadata2.getChunkGroupMetaDataList(),
-          "Rowgroup metadata list")) {
-        assertEquals(metadata1.getChunkGroupMetaDataList().size(), metadata2.getChunkGroupMetaDataList().size());
-        for (int i = 0; i < metadata1.getChunkGroupMetaDataList().size(); i++) {
-          Utils.isChunkGroupMetaDataEqual(metadata1.getChunkGroupMetaDataList().get(i),
-              metadata1.getChunkGroupMetaDataList().get(i));
-        }
-      }
-    }
-  }
-
-  public static void isChunkGroupMetaDataEqual(ChunkGroupMetaData metadata1,
-      ChunkGroupMetaData metadata2) {
-    if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "ChunkGroupMetaData")) {
-      assertTrue(metadata1.getDeviceID().equals(metadata2.getDeviceID()));
-
-      if (Utils
-          .isTwoObjectsNotNULL(metadata1.getChunkMetaDataList(), metadata2.getChunkMetaDataList(),
-              "Timeseries chunk metadata list")) {
-        assertEquals(metadata1.getChunkMetaDataList().size(),
-            metadata2.getChunkMetaDataList().size());
-        for (int i = 0; i < metadata1.getChunkMetaDataList().size(); i++) {
-          Utils.isTimeSeriesChunkMetadataEqual(metadata1.getChunkMetaDataList().get(i),
-              metadata1.getChunkMetaDataList().get(i));
-        }
-      }
-    }
-  }
-
-  public static void isTsDeviceMetadataIndexEqual(TsDeviceMetadataIndex index1,
-      TsDeviceMetadataIndex index2) {
-    if (Utils.isTwoObjectsNotNULL(index1, index2, "TsDeviceMetadataIndex")) {
-      assertEquals(index1.getOffset(), index2.getOffset());
-      assertEquals(index1.getLen(), index2.getLen());
-      assertEquals(index1.getStartTime(), index2.getStartTime());
-      assertEquals(index1.getEndTime(), index2.getEndTime());
-    }
-  }
-
-  public static void isFileMetaDataEqual(TsFileMetaData metadata1, TsFileMetaData metadata2) {
+  public static boolean isFileMetaDataEqual(TsFileMetadata metadata1, TsFileMetadata metadata2) {
     if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "File MetaData")) {
-      if (Utils.isTwoObjectsNotNULL(metadata1.getDeviceMap(), metadata2.getDeviceMap(),
-          "Delta object metadata list")) {
-
-        Map<String, TsDeviceMetadataIndex> deviceMetadataMap1 = metadata1.getDeviceMap();
-        Map<String, TsDeviceMetadataIndex> deviceMetadataMap2 = metadata2.getDeviceMap();
-        assertEquals(deviceMetadataMap1.size(), deviceMetadataMap2.size());
-
-        for (String key : deviceMetadataMap1.keySet()) {
-          Utils.isTsDeviceMetadataIndexEqual(deviceMetadataMap1.get(key),
-              deviceMetadataMap2.get(key));
-        }
+      if (Utils.isTwoObjectsNotNULL(metadata1.getMetadataIndex(), metadata2.getMetadataIndex(),
+          "Metadata Index")) {
+        MetadataIndexNode metaDataIndex1 = metadata1.getMetadataIndex();
+        MetadataIndexNode metaDataIndex2 = metadata2.getMetadataIndex();
+        return metaDataIndex1.getChildren().size() == metaDataIndex2.getChildren().size();
       }
-
-      if (Utils
-          .isTwoObjectsNotNULL(metadata1.getMeasurementSchema(), metadata2.getMeasurementSchema(),
-              "Timeseries metadata list")) {
-        assertEquals(metadata1.getMeasurementSchema().size(),
-            metadata2.getMeasurementSchema().size());
-        for (Map.Entry<String, MeasurementSchema> entry : metadata1.getMeasurementSchema()
-            .entrySet()) {
-          entry.getValue().equals(metadata2.getMeasurementSchema().get(entry.getKey()));
-        }
-      }
-
-      assertEquals(metadata1.getCurrentVersion(), metadata2.getCurrentVersion());
-      assertEquals(metadata1.getCreatedBy(), metadata2.getCreatedBy());
     }
+    return false;
   }
 
   public static void isPageHeaderEqual(PageHeader header1, PageHeader header2) {
@@ -217,9 +134,10 @@ public class Utils {
       assertTrue(header1.getUncompressedSize() == header2.getUncompressedSize());
       assertTrue(header1.getCompressedSize() == header2.getCompressedSize());
       assertTrue(header1.getNumOfValues() == header2.getNumOfValues());
-      assertTrue(header1.getMaxTimestamp() == header2.getMaxTimestamp());
-      assertTrue(header1.getMinTimestamp() == header2.getMinTimestamp());
-      if (Utils.isTwoObjectsNotNULL(header1.getStatistics(), header2.getStatistics(), "statistics")) {
+      assertTrue(header1.getEndTime() == header2.getEndTime());
+      assertTrue(header1.getStartTime() == header2.getStartTime());
+      if (Utils
+          .isTwoObjectsNotNULL(header1.getStatistics(), header2.getStatistics(), "statistics")) {
         Utils.isStatisticsEqual(header1.getStatistics(), header2.getStatistics());
       }
     }
@@ -235,11 +153,11 @@ public class Utils {
         fail("one of statistics is empty while the other one is not");
       }
       if (!statistics1.isEmpty() && !statistics2.isEmpty()) {
-        assertTrue(statistics1.getMin().equals(statistics2.getMin()));
-        assertTrue(statistics1.getMax().equals(statistics2.getMax()));
-        assertTrue(statistics1.getFirst().equals(statistics2.getFirst()));
-        assertEquals(statistics1.getSum(), statistics2.getSum(), maxError);
-        assertTrue(statistics1.getLast().equals(statistics2.getLast()));
+        assertEquals(statistics1.getMinValue(), statistics2.getMinValue());
+        assertEquals(statistics1.getMaxValue(), statistics2.getMaxValue());
+        assertEquals(statistics1.getFirstValue(), statistics2.getFirstValue());
+        assertEquals(statistics1.getSumValue(), statistics2.getSumValue(), maxError);
+        assertEquals(statistics1.getLastValue(), statistics2.getLastValue());
       }
     }
   }

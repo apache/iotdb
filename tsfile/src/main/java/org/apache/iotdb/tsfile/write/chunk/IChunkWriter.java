@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,13 +20,15 @@ package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 /**
  * IChunkWriter provides a list of writing methods for different value types.
- *
- * @author kangrong
  */
 public interface IChunkWriter {
 
@@ -58,12 +60,37 @@ public interface IChunkWriter {
   /**
    * write a time value pair.
    */
-  void write(long time, BigDecimal value);
+  void write(long time, Binary value);
 
   /**
-   * write a time value pair.
+   * write time series
    */
-  void write(long time, Binary value);
+  void write(long[] timestamps, int[] values, int batchSize);
+
+  /**
+   * write time series
+   */
+  void write(long[] timestamps, long[] values, int batchSize);
+
+  /**
+   * write time series
+   */
+  void write(long[] timestamps, boolean[] values, int batchSize);
+
+  /**
+   * write time series
+   */
+  void write(long[] timestamps, float[] values, int batchSize);
+
+  /**
+   * write time series
+   */
+  void write(long[] timestamps, double[] values, int batchSize);
+
+  /**
+   * write time series
+   */
+  void write(long[] timestamps, Binary[] values, int batchSize);
 
   /**
    * flush data to TsFileIOWriter.
@@ -79,6 +106,8 @@ public interface IChunkWriter {
    * return the serialized size of the chunk header + all pages (not including the un-sealed page).
    * Notice, call this method before calling writeToFileWriter(), otherwise the page buffer in
    * memory will be cleared.
+   * <br> If there is no data points in the chunk, return 0 (i.e., in this case, the size of header
+   * is not calculated, because nothing will be serialized latter)</>
    */
   long getCurrentChunkSize();
 
@@ -88,4 +117,9 @@ public interface IChunkWriter {
   void sealCurrentPage();
 
   int getNumOfPages();
+
+  TSDataType getDataType();
+
+  void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
+      throws PageException;
 }

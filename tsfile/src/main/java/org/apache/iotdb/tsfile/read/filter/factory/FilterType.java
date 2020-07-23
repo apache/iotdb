@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,7 +19,7 @@
 package org.apache.iotdb.tsfile.read.filter.factory;
 
 public enum FilterType {
-  VALUE_FILTER("value"), TIME_FILTER("time");
+  VALUE_FILTER("value"), TIME_FILTER("time"), GROUP_BY_FILTER("group by");
 
   private String name;
 

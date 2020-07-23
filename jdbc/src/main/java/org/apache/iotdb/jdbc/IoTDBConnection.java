@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.jdbc;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.net.SocketException;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -40,39 +35,34 @@ import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
 import java.time.ZoneId;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
-import org.apache.iotdb.service.rpc.thrift.ServerProperties;
-import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 public class IoTDBConnection implements Connection {
-  Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
-  private final List<TSProtocolVersion> supportedProtocols = new LinkedList<>();
-  public TSIService.Iface client = null;
-  public TS_SessionHandle sessionHandle = null;
+
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
+  private static final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
+  private TSIService.Iface client = null;
+  private long sessionId = -1;
   private IoTDBConnectionParams params;
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
-  private TSocket transport;
-  private TSProtocolVersion protocol;
+  private TTransport transport;
   private ZoneId zoneId;
   private boolean autoCommit;
 
@@ -86,39 +76,37 @@ public class IoTDBConnection implements Connection {
     }
     params = Utils.parseUrl(url, info);
 
-    supportedProtocols.add(TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
-
     openTransport();
-    client = new TSIService.Client(new TBinaryProtocol(transport));
+    if(Config.rpcThriftCompressionEnable) {
+      setClient(new TSIService.Client(new TCompactProtocol(transport)));
+    }
+    else {
+      setClient(new TSIService.Client(new TBinaryProtocol(transport)));
+    }
     // open client session
     openSession();
     // Wrap the client with a thread-safe proxy to serialize the RPC calls
-    client = newSynchronizedClient(client);
+    setClient(RpcUtils.newSynchronizedClient(getClient()));
     autoCommit = false;
-  }
-
-  public static TSIService.Iface newSynchronizedClient(TSIService.Iface client) {
-    return (TSIService.Iface) Proxy.newProxyInstance(IoTDBConnection.class.getClassLoader(),
-        new Class[]{TSIService.Iface.class}, new SynchronizedHandler(client));
   }
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support isWrapperFor");
   }
 
   @Override
   public <T> T unwrap(Class<T> arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support unwrap");
   }
 
   @Override
   public void abort(Executor arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support abort");
   }
 
   @Override
-  public void clearWarnings() throws SQLException {
+  public void clearWarnings() {
     warningChain = null;
   }
 
@@ -127,9 +115,9 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       return;
     }
-    TSCloseSessionReq req = new TSCloseSessionReq(sessionHandle);
+    TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
     try {
-      client.closeSession(req);
+      getClient().closeSession(req);
     } catch (TException e) {
       throw new SQLException("Error occurs when closing session at server. Maybe server is down.", e);
     } finally {
@@ -142,32 +130,32 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void commit() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support commit");
   }
 
   @Override
   public Array createArrayOf(String arg0, Object[] arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support createArrayOf");
   }
 
   @Override
   public Blob createBlob() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support createBlob");
   }
 
   @Override
   public Clob createClob() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support createClob");
   }
 
   @Override
   public NClob createNClob() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not suppport createNClob");
   }
 
   @Override
   public SQLXML createSQLXML() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support createSQLXML");
   }
 
   @Override
@@ -175,7 +163,7 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       throw new SQLException("Cannot create statement because connection is closed");
     }
-    return new IoTDBStatement(this, client, sessionHandle, zoneId);
+    return new IoTDBStatement(this, getClient(), sessionId, zoneId);
   }
 
   @Override
@@ -187,66 +175,66 @@ public class IoTDBConnection implements Connection {
               resultSetConcurrency));
     }
     if (resultSetType == ResultSet.TYPE_SCROLL_SENSITIVE) {
-      throw new SQLException(String.format("Statements with resultset type %d are not supported",
+      throw new SQLException(String.format("Statements with ResultSet type %d are not supported",
           resultSetType));
     }
-    return new IoTDBStatement(this, client, sessionHandle, zoneId);
+    return new IoTDBStatement(this, getClient(), sessionId, zoneId);
   }
 
   @Override
   public Statement createStatement(int arg0, int arg1, int arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support createStatement");
   }
 
   @Override
   public Struct createStruct(String arg0, Object[] arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support createStruct");
   }
 
   @Override
-  public boolean getAutoCommit() throws SQLException {
+  public boolean getAutoCommit() {
     return autoCommit;
   }
 
   @Override
-  public void setAutoCommit(boolean arg0) throws SQLException {
+  public void setAutoCommit(boolean arg0) {
     autoCommit = arg0;
   }
 
   @Override
-  public String getCatalog() throws SQLException {
-    return "no cata log";
+  public String getCatalog() {
+    return "no catalog";
   }
 
   @Override
   public void setCatalog(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support setCatalog");
   }
 
   @Override
   public Properties getClientInfo() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support getClientInfo");
   }
 
   @Override
   public void setClientInfo(Properties arg0) throws SQLClientInfoException {
-    throw new SQLClientInfoException("Method not supported", null);
+    throw new SQLClientInfoException("Not support setClientInfo", null);
   }
 
   @Override
   public String getClientInfo(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support getClientInfo");
   }
 
   @Override
-  public int getHoldability() throws SQLException {
+  public int getHoldability() {
     // throw new SQLException("Method not supported");
     return 0;
   }
 
   @Override
   public void setHoldability(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support setHoldability");
   }
 
   @Override
@@ -254,194 +242,199 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       throw new SQLException("Cannot create statement because connection is closed");
     }
-    return new IoTDBDatabaseMetadata(this, client);
+    return new IoTDBDatabaseMetadata(this, getClient(), sessionId);
   }
 
   @Override
-  public int getNetworkTimeout() throws SQLException {
+  public int getNetworkTimeout() {
     return Config.connectionTimeoutInMs;
   }
 
   @Override
   public String getSchema() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support getSchema");
   }
 
   @Override
   public void setSchema(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support setSchema");
   }
 
   @Override
-  public int getTransactionIsolation() throws SQLException {
+  public int getTransactionIsolation() {
     return Connection.TRANSACTION_NONE;
   }
 
   @Override
   public void setTransactionIsolation(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support setTransactionIsolation");
   }
 
   @Override
   public Map<String, Class<?>> getTypeMap() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support getTypeMap");
   }
 
   @Override
   public void setTypeMap(Map<String, Class<?>> arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support setTypeMap");
   }
 
   @Override
-  public SQLWarning getWarnings() throws SQLException {
+  public SQLWarning getWarnings() {
     return warningChain;
   }
 
   @Override
-  public boolean isClosed() throws SQLException {
+  public boolean isClosed() {
     return isClosed;
   }
 
   @Override
-  public boolean isReadOnly() throws SQLException {
+  public boolean isReadOnly() {
     return false;
   }
 
   @Override
   public void setReadOnly(boolean arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support setReadOnly");
   }
 
   @Override
   public boolean isValid(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    return !isClosed;
   }
 
   @Override
   public String nativeSQL(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support nativeSQL");
   }
 
   @Override
   public CallableStatement prepareCall(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support prepareCall");
   }
 
   @Override
   public CallableStatement prepareCall(String arg0, int arg1, int arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support prepareCall");
   }
 
   @Override
   public CallableStatement prepareCall(String arg0, int arg1, int arg2, int arg3)
       throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support prepareCall");
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql) throws SQLException {
-    if (sql.equalsIgnoreCase("INSERT")) {
-      return new IoTDBPreparedInsertionStatement(this, client, sessionHandle, zoneId);
-    }
-    return new IoTDBPreparedStatement(this, client, sessionHandle, sql, zoneId);
+    return new IoTDBPreparedStatement(this, getClient(), sessionId, sql, zoneId);
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support prepareStatement");
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support prepareStatement");
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support prepareStatement");
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency)
       throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support prepareStatement");
   }
 
   @Override
   public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency,
       int resultSetHoldability) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support prepareStatement");
   }
 
   @Override
   public void releaseSavepoint(Savepoint arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support releaseSavepoint");
   }
 
   @Override
-  public void rollback() throws SQLException {
+  public void rollback() {
     // do nothing in rollback
   }
 
   @Override
-  public void rollback(Savepoint arg0) throws SQLException {
+  public void rollback(Savepoint arg0) {
     // do nothing in rollback
   }
 
   @Override
   public void setClientInfo(String arg0, String arg1) throws SQLClientInfoException {
-    throw new SQLClientInfoException("Method not supported", null);
+    throw new SQLClientInfoException("Not support setClientInfo", null);
   }
 
   @Override
   public void setNetworkTimeout(Executor arg0, int arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support setNetworkTimeout");
   }
 
   @Override
   public Savepoint setSavepoint() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support setSavepoint");
   }
 
   @Override
   public Savepoint setSavepoint(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException("Not support setSavepoint");
+  }
+
+  public TSIService.Iface getClient() {
+    return client;
+  }
+
+  public long getSessionId() {
+    return sessionId;
+  }
+
+  public void setClient(TSIService.Iface client) {
+    this.client = client;
   }
 
   private void openTransport() throws TTransportException {
-    transport = new TSocket(params.getHost(), params.getPort(), Config.connectionTimeoutInMs);
-    try {
-      transport.getSocket().setKeepAlive(true);
-    } catch (SocketException e) {
-      logger.error("Cannot set socket keep alive because: ", e);
-    }
+    transport = new TFastFramedTransport(new TSocket(params.getHost(), params.getPort(),
+        Config.connectionTimeoutInMs));
     if (!transport.isOpen()) {
       transport.open();
     }
   }
 
   private void openSession() throws SQLException {
-    TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
+    TSOpenSessionReq openReq = new TSOpenSessionReq();
 
     openReq.setUsername(params.getUsername());
     openReq.setPassword(params.getPassword());
 
+    TSOpenSessionResp openResp = null;
     try {
-      TSOpenSessionResp openResp = client.openSession(openReq);
-
+      openResp = client.openSession(openReq);
+      sessionId = openResp.getSessionId();
       // validate connection
-      try {
-        Utils.verifySuccess(openResp.getStatus());
-      } catch (IoTDBSQLException e) {
-        // failed to connect, disconnect from the server
-        transport.close();
-        throw e;
+      RpcUtils.verifySuccess(openResp.getStatus());
+
+      if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
+        logger.warn("Protocol differ, Client version is {}}, but Server version is {}",
+            protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue());
+        if (openResp.getServerProtocolVersion().getValue() == 0) {// less than 0.10
+          throw new TException(String
+              .format("Protocol not supported, Client version is %s, but Server version is %s",
+                  protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
+        }
       }
-      if (!supportedProtocols.contains(openResp.getServerProtocolVersion())) {
-        throw new TException("Unsupported TsFile protocol");
-      }
-      setProtocol(openResp.getServerProtocolVersion());
-      sessionHandle = openResp.getSessionHandle();
 
       if (zoneId != null) {
         setTimeZone(zoneId.toString());
@@ -450,22 +443,38 @@ public class IoTDBConnection implements Connection {
       }
 
     } catch (TException e) {
-      throw new SQLException(String.format("Can not establish connection with %s.",
-          params.getJdbcUriString()), e);
+      transport.close();
+      if (e.getMessage().contains("Required field 'client_protocol' was not present!")) {
+        // the server is an old version (less than 0.10)
+        throw new SQLException(String.format(
+            "Can not establish connection with %s : You may try to connect an old version IoTDB instance using a client with new version: %s. ",
+            params.getJdbcUriString(), e.getMessage()), e);
+      }
+      throw new SQLException(String.format("Can not establish connection with %s : %s. ",
+          params.getJdbcUriString(), e.getMessage()), e);
+    } catch (StatementExecutionException e) {
+      // failed to connect, disconnect from the server
+      transport.close();
+      throw new IoTDBSQLException(e.getMessage(), openResp.getStatus());
     }
     isClosed = false;
   }
 
-  public boolean reconnect() {
+  boolean reconnect() {
     boolean flag = false;
     for (int i = 1; i <= Config.RETRY_NUM; i++) {
       try {
         if (transport != null) {
           transport.close();
           openTransport();
-          client = new TSIService.Client(new TBinaryProtocol(transport));
+          if(Config.rpcThriftCompressionEnable) {
+            setClient(new TSIService.Client(new TCompactProtocol(transport)));
+          }
+          else {
+            setClient(new TSIService.Client(new TBinaryProtocol(transport)));
+          }
           openSession();
-          client = newSynchronizedClient(client);
+          setClient(RpcUtils.newSynchronizedClient(getClient()));
           flag = true;
           break;
         }
@@ -485,56 +494,29 @@ public class IoTDBConnection implements Connection {
       return zoneId.toString();
     }
 
-    TSGetTimeZoneResp resp = client.getTimeZone();
-    Utils.verifySuccess(resp.getStatus());
+    TSGetTimeZoneResp resp = getClient().getTimeZone(sessionId);
+    try {
+      RpcUtils.verifySuccess(resp.getStatus());
+    } catch (StatementExecutionException e) {
+      throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
+    }
     return resp.getTimeZone();
   }
 
   public void setTimeZone(String zoneId) throws TException, IoTDBSQLException {
-    TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
-    TSSetTimeZoneResp resp = client.setTimeZone(req);
-    Utils.verifySuccess(resp.getStatus());
+    TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, zoneId);
+    TSStatus resp = getClient().setTimeZone(req);
+    try {
+      RpcUtils.verifySuccess(resp);
+    } catch (StatementExecutionException e) {
+      throw new IoTDBSQLException(e.getMessage(), resp);
+    }
     this.zoneId = ZoneId.of(zoneId);
   }
 
   public ServerProperties getServerProperties() throws TException {
-    return client.getProperties();
+    return getClient().getProperties();
   }
 
-  public TSProtocolVersion getProtocol() {
-    return protocol;
-  }
 
-  public void setProtocol(TSProtocolVersion protocol) {
-    this.protocol = protocol;
-  }
-
-  private static class SynchronizedHandler implements InvocationHandler {
-
-    private final TSIService.Iface client;
-
-    SynchronizedHandler(TSIService.Iface client) {
-      this.client = client;
-    }
-
-    @Override
-    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-      try {
-        synchronized (client) {
-          return method.invoke(client, args);
-        }
-      } catch (InvocationTargetException e) {
-        // all IFace APIs throw TException
-        if (e.getTargetException() instanceof TException) {
-          throw e.getTargetException();
-        } else {
-          // should not happen
-          throw new TException("Error in calling method " + method.getName(),
-              e.getTargetException());
-        }
-      } catch (Exception e) {
-        throw new TException("Error in calling method " + method.getName(), e);
-      }
-    }
-  }
 }

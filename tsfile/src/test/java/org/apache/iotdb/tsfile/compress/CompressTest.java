@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -29,11 +29,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.xerial.snappy.Snappy;
 
-/**
- *
- * @author kangrong
- *
- */
 public class CompressTest {
 
   private final String inputString = "Hello snappy-java! Snappy-java is a JNI-based wrapper of "
@@ -82,4 +77,30 @@ public class CompressTest {
     assertEquals(inputString, result);
   }
 
+
+  @Test
+  public void lz4CompressorTest1() throws IOException {
+    PublicBAOS out = new PublicBAOS();
+    out.write(inputString.getBytes(StandardCharsets.UTF_8));
+    ICompressor compressor = new ICompressor.IOTDBLZ4Compressor();
+    IUnCompressor unCompressor = new IUnCompressor.LZ4UnCompressor();
+    byte[] compressed = compressor.compress(out.getBuf());
+    byte[] uncompressed = unCompressor.uncompress(compressed);
+    String result = new String(uncompressed, StandardCharsets.UTF_8);
+    assertEquals(inputString, result);
+  }
+
+  @Test
+  public void lz4CompressorTest2() throws IOException {
+    PublicBAOS out = new PublicBAOS();
+    out.write(inputString.getBytes(StandardCharsets.UTF_8));
+    ICompressor compressor = new ICompressor.IOTDBLZ4Compressor();
+    IUnCompressor unCompressor = new IUnCompressor.LZ4UnCompressor();
+    byte[] compressed = new byte[compressor.getMaxBytesForCompression(out.size())];
+    int size = compressor.compress(out.getBuf(), 0, out.size(), compressed);
+    byte[] bytes = Arrays.copyOfRange(compressed, 0, size);
+    byte[] uncompressed = unCompressor.uncompress(bytes);
+    String result = new String(uncompressed, StandardCharsets.UTF_8);
+    assertEquals(inputString, result);
+  }
 }

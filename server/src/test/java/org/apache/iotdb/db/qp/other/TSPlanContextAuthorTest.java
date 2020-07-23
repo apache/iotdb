@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,13 +23,9 @@ import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.Collection;
-import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
-import org.apache.iotdb.db.qp.QueryProcessor;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -55,7 +51,7 @@ public class TSPlanContextAuthorTest {
 
   @Parameters
   public static Collection<Object[]> data() {
-    return Arrays.asList(new Object[][]{{"CREATE USER username1 password1", emptyPaths},
+    return Arrays.asList(new Object[][]{{"CREATE USER username1 'password1'", emptyPaths},
         {"DROP USER username", emptyPaths}, {"CREATE ROLE rolename", emptyPaths},
         {"DROP ROLE rolename", emptyPaths},
         {"GRANT USER username PRIVILEGES 'SET_STORAGE_GROUP','INSERT_TIMESERIES' ON root.node1.a.b",
@@ -70,10 +66,8 @@ public class TSPlanContextAuthorTest {
   }
 
   @Test
-  public void testAnalyzeAuthor()
-      throws QueryProcessorException, ArgsErrorException, ProcessorException,
-      MetadataErrorException {
-    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+  public void testAnalyzeAuthor() throws QueryProcessException {
+    Planner processor = new Planner();
     AuthorPlan author = (AuthorPlan) processor.parseSQLToPhysicalPlan(inputSQL);
     if (author == null) {
       fail();

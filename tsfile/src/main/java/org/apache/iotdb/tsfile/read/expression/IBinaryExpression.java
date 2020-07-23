@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.expression;
 
-/**
- * @author Jinrui Zhang
- */
 public interface IBinaryExpression extends IExpression {
 
   IExpression getLeft();

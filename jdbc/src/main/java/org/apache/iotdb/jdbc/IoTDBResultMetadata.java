@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,55 +26,46 @@ import java.util.List;
 public class IoTDBResultMetadata implements ResultSetMetaData {
 
   private List<String> columnInfoList;
-  private String operationType;
   private List<String> columnTypeList;
+  private boolean ignoreTimestamp;
 
   /**
    * Constructor of IoTDBResultMetadata.
    */
-  public IoTDBResultMetadata(List<String> columnInfoList, String operationType,
-      List<String> columnTypeList) {
+  public IoTDBResultMetadata(List<String> columnInfoList, List<String> columnTypeList, boolean ignoreTimestamp) {
     this.columnInfoList = columnInfoList;
-    this.operationType = operationType;
     this.columnTypeList = columnTypeList;
+    this.ignoreTimestamp = ignoreTimestamp;
   }
 
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public <T> T unwrap(Class<T> arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public String getCatalogName(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public String getColumnClassName(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
-  public int getColumnCount() throws SQLException {
-    if (columnInfoList == null || columnInfoList.isEmpty()) {
-      throw new SQLException("No column exists");
-    }
-    return columnInfoList.size();
+  public int getColumnCount() {
+    return columnInfoList == null ? 0 : columnInfoList.size();
   }
 
   @Override
   public int getColumnDisplaySize(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
@@ -102,13 +93,17 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
 
   @Override
   public int getColumnType(int column) throws SQLException {
-    // TODO Auto-generated method stub
     checkColumnIndex(column);
-    if (column == 1) {
+    if (column == 1 && !ignoreTimestamp) {
       return Types.TIMESTAMP;
     }
     // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT,
-    String columnType = columnTypeList.get(column - 2);
+    String columnType;
+    if(!ignoreTimestamp) {
+      columnType = columnTypeList.get(column - 2);
+    } else {
+      columnType = columnTypeList.get(column - 1);
+    }
     switch (columnType.toUpperCase()) {
       case "BOOLEAN":
         return Types.BOOLEAN;
@@ -130,85 +125,72 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
 
   @Override
   public String getColumnTypeName(int arg0) throws SQLException {
-    return operationType;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public int getPrecision(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public int getScale(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public String getSchemaName(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public String getTableName(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return null;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public boolean isAutoIncrement(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public boolean isCaseSensitive(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public boolean isCurrency(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public boolean isDefinitelyWritable(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public int isNullable(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return 0;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public boolean isReadOnly(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public boolean isSearchable(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public boolean isSigned(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public boolean isWritable(int arg0) throws SQLException {
-    // TODO Auto-generated method stub
-    return false;
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
 }

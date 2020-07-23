@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,13 +26,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
-import org.apache.iotdb.tsfile.encoding.encoder.IntRleEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.RleEncoder;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import org.apache.iotdb.tsfile.encoding.common.EndianType;
+import org.apache.iotdb.tsfile.encoding.decoder.IntRleDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.RleDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.IntRleEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.RleEncoder;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 public class IntRleDecoderTest {
 
@@ -177,7 +181,7 @@ public class IntRleDecoderTest {
   public void testBooleanLength(List<Integer> list, int bitWidth, boolean isDebug, int repeatCount)
       throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.LITTLE_ENDIAN);
+    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         if (value % 2 == 0) {
@@ -191,7 +195,7 @@ public class IntRleDecoderTest {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    RleDecoder decoder = new IntRleDecoder(EndianType.LITTLE_ENDIAN);
+    RleDecoder decoder = new IntRleDecoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         boolean value_ = decoder.readBoolean(buffer);
@@ -211,7 +215,7 @@ public class IntRleDecoderTest {
   public void testLength(List<Integer> list, int bitWidth, boolean isDebug, int repeatCount)
       throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.LITTLE_ENDIAN);
+    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         encoder.encode(value, baos);
@@ -220,7 +224,7 @@ public class IntRleDecoderTest {
     }
 
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    RleDecoder decoder = new IntRleDecoder(EndianType.LITTLE_ENDIAN);
+    RleDecoder decoder = new IntRleDecoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         int value_ = decoder.readInt(buffer);
@@ -240,7 +244,7 @@ public class IntRleDecoderTest {
     }
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     int bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(list);
-    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.LITTLE_ENDIAN);
+    RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.BIG_ENDIAN);
     for (int value : list) {
       encoder.encode(value, baos);
     }

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,13 +26,15 @@ public class IoTDBConstant {
   public static final String ENV_FILE_NAME = "iotdb-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
-  public static final String VERSION = "0.7.0";
-  public static final String REMOTE_JMX_PORT_NAME = "com.sun.management.jmxremote.port";
-  public static final String IOTDB_LOCAL_JMX_PORT_NAME = "iotdb.jmx.local.port";
-  public static final String IOTDB_REMOTE_JMX_PORT_NAME = "iotdb.jmx.remote.port";
-  public static final String SERVER_RMI_ID = "java.rmi.server.randomIDs";
-  public static final String RMI_SERVER_HOST_NAME = "java.rmi.server.hostname";
-  public static final String JMX_REMOTE_RMI_PORT = "com.sun.management.jmxremote.rmi.port";
+  //when running the program in IDE, we can not get the version info using getImplementationVersion()
+  public static final String VERSION =
+      IoTDBConstant.class.getPackage().getImplementationVersion() != null ? IoTDBConstant.class
+          .getPackage().getImplementationVersion() : "UNKNOWN";
+
+  public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
+
+  public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
+
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
   public static final String JMX_TYPE = "type";
 
@@ -54,11 +56,55 @@ public class IoTDBConstant {
   public static final String MIN_TIME = "min_time";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 
-  // for cluster, set read consistency level
-  public static final String SET_READ_CONSISTENCY_LEVEL_PATTERN = "set\\s+read.*level.*";
+  // show info
+  public static final String COLUMN_ITEM = "                             item";
+  public static final String COLUMN_PARAMETER = "                                          parameter";
+  public static final String COLUMN_VALUE = "value";
+  public static final String COLUMN_VERSION = "        version";
+  public static final String COLUMN_TIMESERIES = "timeseries";
+  public static final String COLUMN_TIMESERIES_ALIAS = "alias";
+  public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
+  public static final String COLUMN_TIMESERIES_ENCODING = "encoding";
+  public static final String COLUMN_TIMESERIES_COMPRESSION = "compression";
+  public static final String COLUMN_CHILD_PATHS = "child paths";
+  public static final String COLUMN_DEVICES = "devices";
+  public static final String COLUMN_COLUMN = "column";
+  public static final String COLUMN_COUNT = "count";
 
-  public static final String ROLE = "Role";
-  public static final String USER = "User";
-  public static final String PRIVILEGE = "Privilege";
+  public static final String COLUMN_ROLE = "role";
+  public static final String COLUMN_USER = "user";
+  public static final String COLUMN_PRIVILEGE = "privilege";
 
+  public static final String COLUMN_STORAGE_GROUP = "storage group";
+  public static final String COLUMN_TTL = "ttl";
+
+  public static final String COLUMN_TASK_NAME = "task name";
+  public static final String COLUMN_CREATED_TIME = "created time";
+  public static final String COLUMN_PROGRESS = "progress";
+  public static final String COLUMN_CANCELLED = "cancelled";
+  public static final String COLUMN_DONE = "done";
+
+  public static final String PATH_WILDCARD = "*";
+
+  // data folder name
+  public static final String SEQUENCE_FLODER_NAME = "sequence";
+  public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
+  public static final String FILE_NAME_SEPARATOR = "-";
+  public static final String UPGRADE_FOLDER_NAME = "upgrade";
+
+  // system folder name
+  public static final String SYSTEM_FOLDER_NAME = "system";
+  public static final String SCHEMA_FOLDER_NAME = "schema";
+  public static final String SYNC_FOLDER_NAME = "sync";
+  public static final String QUERY_FOLDER_NAME = "query";
+  public static final String TRACING_FOLDER_NAME = "tracing";
+  public static final String TRACING_LOG = "tracing.txt";
+
+  // mqtt  
+  public static final String ENABLE_MQTT = "enable_mqtt_service";
+  public static final String MQTT_HOST_NAME = "mqtt_host";
+  public static final String MQTT_PORT_NAME = "mqtt_port";
+  public static final String MQTT_HANDLER_POOL_SIZE_NAME = "mqtt_handler_pool_size";
+  public static final String MQTT_PAYLOAD_FORMATTER_NAME = "mqtt_payload_formatter";
+  public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
 }

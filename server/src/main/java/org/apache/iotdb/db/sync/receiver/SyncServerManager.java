@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,70 +18,35 @@
  */
 package org.apache.iotdb.db.sync.receiver;
 
-import java.net.InetSocketAddress;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import java.io.IOException;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.service.thrift.ThriftService;
+import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
+import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
+import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
+import org.apache.iotdb.db.sync.receiver.transfer.SyncServiceImpl;
 import org.apache.iotdb.service.sync.thrift.SyncService;
-import org.apache.iotdb.service.sync.thrift.SyncService.Processor;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
-import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.transport.TServerSocket;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * sync receiver server.
  */
-public class SyncServerManager implements IService {
+public class SyncServerManager  extends ThriftService implements SyncServerManagerMBean {
+  private static Logger logger = LoggerFactory.getLogger(SyncServerManager.class);
+  private SyncServiceImpl serviceImpl;
 
-  private static final Logger logger = LoggerFactory.getLogger(SyncServerManager.class);
-  private Thread syncServerThread;
-  private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+  private static class ServerManagerHolder {
 
-  private SyncServerManager() {
+    private static final SyncServerManager INSTANCE = new SyncServerManager();
   }
 
-  public static final SyncServerManager getInstance() {
-    return ServerManagerHolder.INSTANCE;
-  }
-
-  /**
-   * Start sync receiver's server.
-   */
-  @Override
-  public void start() throws StartupException {
-    if (!conf.isSyncEnable()) {
-      return;
-    }
-    if (conf.getIpWhiteList() == null) {
-      logger.error(
-          "Sync server failed to start because IP white list is null, please set IP white list.");
-      return;
-    }
-    conf.setIpWhiteList(conf.getIpWhiteList().replaceAll(" ", ""));
-    syncServerThread = new SyncServiceThread();
-    syncServerThread.setName(ThreadName.SYNC_SERVER.getName());
-    syncServerThread.start();
-    logger.info("Sync server has started.");
-  }
-
-  /**
-   * Close sync receiver's server.
-   */
-  @Override
-  public void stop() {
-    if (conf.isSyncEnable()) {
-      ((SyncServiceThread) syncServerThread).close();
-    }
+  public static SyncServerManager getInstance() {
+    return SyncServerManager.ServerManagerHolder.INSTANCE;
   }
 
   @Override
@@ -89,58 +54,68 @@ public class SyncServerManager implements IService {
     return ServiceType.SYNC_SERVICE;
   }
 
-  private static class ServerManagerHolder {
-
-    private static final SyncServerManager INSTANCE = new SyncServerManager();
+  @Override
+  public ThriftService getImplementation() {
+    return getInstance();
   }
 
-  private class SyncServiceThread extends Thread {
+  @Override
+  public void initTProcessor() {
+    serviceImpl = new SyncServiceImpl();
+    processor = new SyncService.Processor<>(serviceImpl);
+  }
 
-    private TServerSocket serverTransport;
-    private TServer poolServer;
-    private Factory protocolFactory;
-    private Processor<SyncService.Iface> processor;
-    private TThreadPoolServer.Args poolArgs;
+  @Override
+  public void initThriftServiceThread()
+      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    thriftServiceThread = new ThriftServiceThread(processor,
+        getID().getName(), ThreadName.SYNC_CLIENT.getName(),
+        config.getRpcAddress(), config.getSyncServerPort(),
+        Integer.MAX_VALUE, config.getThriftServerAwaitTimeForStopService(),
+        new SyncServerThriftHandler(serviceImpl),
+        config.isRpcThriftCompressionEnable()
+        );
+    thriftServiceThread.setName(ThreadName.SYNC_SERVER.getName());
+  }
 
-    public SyncServiceThread() {
-      processor = new SyncService.Processor<>(new SyncServiceImpl());
+  @Override
+  public String getBindIP() {
+    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
+  }
+
+  @Override
+  public int getBindPort() {
+    return IoTDBDescriptor.getInstance().getConfig().getSyncServerPort();
+  }
+
+  @Override
+  public void startService() throws StartupException {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if (!config.isSyncEnable()) {
+      return;
+    }
+    FileLoaderManager.getInstance().start();
+    try {
+      SyncReceiverLogAnalyzer.getInstance().recoverAll();
+    } catch (IOException e) {
+      logger.error("Can not recover receiver sync state", e);
+    }
+    if (config.getIpWhiteList() == null) {
+      logger.error(
+          "Sync server failed to start because IP white list is null, please set IP white list.");
+      return;
+    }
+    config.setIpWhiteList(config.getIpWhiteList().replace(" ", ""));
+    super.startService();
+  }
+
+  @Override
+  public void stopService() {
+    if (IoTDBDescriptor.getInstance().getConfig().isSyncEnable()) {
+      FileLoaderManager.getInstance().stop();
+      super.stopService();
     }
 
-    @Override
-    public void run() {
-      try {
-        serverTransport = new TServerSocket(
-            new InetSocketAddress(conf.getRpcAddress(), conf.getSyncServerPort()));
-        protocolFactory = new TBinaryProtocol.Factory();
-        processor = new SyncService.Processor<>(new SyncServiceImpl());
-        poolArgs = new TThreadPoolServer.Args(serverTransport);
-        poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
-            ThreadName.SYNC_CLIENT.getName());
-        poolArgs.protocolFactory(protocolFactory);
-        poolArgs.processor(processor);
-        poolServer = new TThreadPoolServer(poolArgs);
-        poolServer.serve();
-      } catch (TTransportException e) {
-        logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME,
-            getID().getName(), e);
-      } catch (Exception e) {
-        logger.error("{}: {} exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
-      } finally {
-        close();
-        logger.info("{}: close TThreadPoolServer and TServerSocket for {}",
-            IoTDBConstant.GLOBAL_DB_NAME, getID().getName());
-      }
-    }
-
-    private synchronized void close() {
-      if (poolServer != null) {
-        poolServer.stop();
-        poolServer = null;
-      }
-      if (serverTransport != null) {
-        serverTransport.close();
-        serverTransport = null;
-      }
-    }
   }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,7 +19,10 @@
 package org.apache.iotdb.db.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+
+import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,12 +54,27 @@ public class RegisterManager {
    * stop all service and clear iService list.
    */
   public void deregisterAll() {
+    //we stop JMXServer at last
+    Collections.reverse(iServices);
     for (IService service : iServices) {
       try {
-        service.stop();
+        service.waitAndStop(10000);
       } catch (Exception e) {
         logger.error("Failed to stop {} because:", service.getID().getName(), e);
       }
+    }
+    iServices.clear();
+    logger.info("deregister all service.");
+  }
+  
+  /**
+   * stop all service and clear iService list.
+   */
+  public void shutdownAll() throws ShutdownException {
+    //we stop JMXServer at last
+    Collections.reverse(iServices);
+    for (IService service : iServices) {
+      service.shutdown(10000);
     }
     iServices.clear();
     logger.info("deregister all service.");

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,12 +19,171 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+
 public class TimeRangeTest {
+
+  @Test
+  /*
+   * [1,3] does not intersect with (4,5].
+   */
+  public void intersect1() {
+    TimeRange r1 = new TimeRange(1, 3);
+    TimeRange r2 = new TimeRange(4, 5);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 3 ]", r1.toString());
+    assertEquals("( 4 : 5 ]", r2.toString());
+    assertFalse(r1.intersects(r2));
+    assertFalse(r2.intersects(r1));
+  }
+
+  @Test
+  /*
+   * [1,3) does not intersect with (3,5]
+   */
+  public void intersect2() {
+    TimeRange r1 = new TimeRange(1, 3);
+    r1.setRightClose(false);
+    TimeRange r2 = new TimeRange(3, 5);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 3 )", r1.toString());
+    assertEquals("( 3 : 5 ]", r2.toString());
+    assertFalse(r1.intersects(r2));
+    assertFalse(r2.intersects(r1));
+  }
+
+  @Test
+  /*
+   * [1,3] does not intersect with [5,6].
+   */
+  public void intersect3() {
+    TimeRange r1 = new TimeRange(1, 3);
+    TimeRange r2 = new TimeRange(5, 6);
+    assertEquals("[ 1 : 3 ]", r1.toString());
+    assertEquals("[ 5 : 6 ]", r2.toString());
+    assertFalse(r1.intersects(r2));
+    assertFalse(r2.intersects(r1));
+  }
+
+  @Test
+  /*
+   * [1,3] intersects with [2,5].
+   */
+  public void intersect4() {
+    TimeRange r1 = new TimeRange(1, 3);
+    TimeRange r2 = new TimeRange(2, 5);
+    assertEquals("[ 1 : 3 ]", r1.toString());
+    assertEquals("[ 2 : 5 ]", r2.toString());
+    assertTrue(r1.intersects(r2));
+    assertTrue(r2.intersects(r1));
+  }
+
+  @Test
+  /*
+   * [1,3] intersects with (3,5].
+   */
+  public void intersect5() {
+    TimeRange r1 = new TimeRange(1, 3);
+    TimeRange r2 = new TimeRange(3, 5);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 3 ]", r1.toString());
+    assertEquals("( 3 : 5 ]", r2.toString());
+    assertTrue(r1.intersects(r2));
+    assertTrue(r2.intersects(r1));
+  }
+
+  @Test
+  /*
+   * [1,3) intersects with (2,5].
+   */
+  public void intersect6() {
+    TimeRange r1 = new TimeRange(1, 3);
+    r1.setRightClose(false);
+    TimeRange r2 = new TimeRange(2, 5);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 3 )", r1.toString());
+    assertEquals("( 2 : 5 ]", r2.toString());
+    assertTrue(r1.intersects(r2));
+    assertTrue(r2.intersects(r1));
+  }
+
+  @Test
+  public void overlap1() {
+    TimeRange r1 = new TimeRange(1, 4);
+    TimeRange r2 = new TimeRange(4, 5);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 4 ]", r1.toString());
+    assertEquals("( 4 : 5 ]", r2.toString());
+    assertFalse(r1.overlaps(r2));
+  }
+
+  @Test
+  public void overlap2() {
+    TimeRange r1 = new TimeRange(1, 4);
+    r1.setRightClose(false);
+    TimeRange r2 = new TimeRange(3, 6);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 4 )", r1.toString());
+    assertEquals("( 3 : 6 ]", r2.toString());
+    assertFalse(r1.overlaps(r2));
+  }
+
+  @Test
+  /*
+   * [1,3] does not intersect with [5,6].
+   */
+  public void overlap3() {
+    TimeRange r1 = new TimeRange(1, 4);
+    TimeRange r2 = new TimeRange(5, 8);
+    assertEquals("[ 1 : 4 ]", r1.toString());
+    assertEquals("[ 5 : 8 ]", r2.toString());
+    assertFalse(r1.overlaps(r2));
+  }
+
+  @Test
+  public void overlap4() {
+    TimeRange r1 = new TimeRange(1, 4);
+    TimeRange r2 = new TimeRange(2, 5);
+    assertEquals("[ 1 : 4 ]", r1.toString());
+    assertEquals("[ 2 : 5 ]", r2.toString());
+    assertTrue(r1.overlaps(r2));
+  }
+
+  @Test
+  public void overlap5() {
+    TimeRange r1 = new TimeRange(1, 4);
+    TimeRange r2 = new TimeRange(3, 5);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 4 ]", r1.toString());
+    assertEquals("( 3 : 5 ]", r2.toString());
+    assertTrue(r1.overlaps(r2));
+  }
+
+  @Test
+  public void overlap6() {
+    TimeRange r1 = new TimeRange(1, 5);
+    r1.setRightClose(false);
+    TimeRange r2 = new TimeRange(2, 6);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 5 )", r1.toString());
+    assertEquals("( 2 : 6 ]", r2.toString());
+    assertTrue(r1.overlaps(r2));
+  }
+
+  @Test
+  public void equalTest() {
+    TimeRange r1 = new TimeRange(5, 8);
+    TimeRange r2 = new TimeRange(5, 8);
+    assertTrue(r1.equals(r2));
+  }
 
   @Test
   public void mergeTest() {
@@ -45,7 +204,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     no overlap
+   * no overlap
    */
   public void getRemainsTest0() {
     TimeRange r = new TimeRange(1, 10);
@@ -55,15 +214,15 @@ public class TimeRangeTest {
 
     ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
-    assertEquals(remainRanges.get(0).getMin(), 1);
-    assertEquals(remainRanges.get(0).getMax(), 10);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), true);
+    assertEquals(1, remainRanges.get(0).getMin());
+    assertEquals(10, remainRanges.get(0).getMax());
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertTrue(remainRanges.get(0).getRightClose());
   }
 
   @Test
   /*
-     previous ranges contains current ranges
+   * previous ranges contains current ranges
    */
   public void getRemainsTest1() {
     TimeRange r = new TimeRange(1, 10);
@@ -77,8 +236,7 @@ public class TimeRangeTest {
 
   @Test
   /*
-     current ranges contains previous ranges.
-     subcase 1
+   * current ranges contains previous ranges. subcase 1
    */
   public void getRemainsTest2() {
     TimeRange r = new TimeRange(1, 10);
@@ -88,16 +246,15 @@ public class TimeRangeTest {
 
     ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
-    assertEquals(remainRanges.get(0).getMin(), 3);
-    assertEquals(remainRanges.get(0).getMax(), 10);
-    assertEquals(remainRanges.get(0).getLeftClose(), false);
-    assertEquals(remainRanges.get(0).getRightClose(), true);
+    assertEquals(3, remainRanges.get(0).getMin());
+    assertEquals(10, remainRanges.get(0).getMax());
+    assertFalse(remainRanges.get(0).getLeftClose());
+    assertTrue(remainRanges.get(0).getRightClose());
   }
 
   @Test
   /*
-     current ranges contains previous ranges.
-     subcase 2
+   * current ranges contains previous ranges. subcase 2
    */
   public void getRemainsTest3() {
     TimeRange r = new TimeRange(1, 10);
@@ -107,16 +264,15 @@ public class TimeRangeTest {
 
     ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
-    assertEquals(remainRanges.get(0).getMin(), 1);
-    assertEquals(remainRanges.get(0).getMax(), 5);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), false);
+    assertEquals(1, remainRanges.get(0).getMin());
+    assertEquals(5, remainRanges.get(0).getMax());
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertFalse(remainRanges.get(0).getRightClose());
   }
 
   @Test
   /*
-     current ranges contains previous ranges.
-     subcase 3
+   * current ranges contains previous ranges. subcase 3
    */
   public void getRemainsTest4() {
     TimeRange r = new TimeRange(1, 10);
@@ -126,21 +282,19 @@ public class TimeRangeTest {
 
     ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(2, remainRanges.size());
-    assertEquals(remainRanges.get(0).getMin(), 1);
-    assertEquals(remainRanges.get(0).getMax(), 3);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), false);
-    assertEquals(remainRanges.get(1).getMin(), 8);
-    assertEquals(remainRanges.get(1).getMax(), 10);
-    assertEquals(remainRanges.get(1).getLeftClose(), false);
-    assertEquals(remainRanges.get(1).getRightClose(), true);
+    assertEquals(1, remainRanges.get(0).getMin());
+    assertEquals(3, remainRanges.get(0).getMax());
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertFalse(remainRanges.get(0).getRightClose());
+    assertEquals(8, remainRanges.get(1).getMin());
+    assertEquals(10, remainRanges.get(1).getMax());
+    assertFalse(remainRanges.get(1).getLeftClose());
+    assertTrue(remainRanges.get(1).getRightClose());
   }
-
 
   @Test
   /*
-     current ranges overlap with previous ranges.
-     subcase 1
+   * current ranges overlap with previous ranges. subcase 1
    */
   public void getRemainsTest5() {
     TimeRange r = new TimeRange(1, 10);
@@ -150,16 +304,15 @@ public class TimeRangeTest {
 
     ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
-    assertEquals(remainRanges.get(0).getMin(), 5);
-    assertEquals(remainRanges.get(0).getMax(), 10);
-    assertEquals(remainRanges.get(0).getLeftClose(), false);
-    assertEquals(remainRanges.get(0).getRightClose(), true);
+    assertEquals(5, remainRanges.get(0).getMin());
+    assertEquals(10, remainRanges.get(0).getMax());
+    assertFalse(remainRanges.get(0).getLeftClose());
+    assertTrue(remainRanges.get(0).getRightClose());
   }
 
   @Test
   /*
-     current ranges overlap with previous ranges.
-     subcase 2
+   * current ranges overlap with previous ranges. subcase 2
    */
   public void getRemainsTest6() {
     TimeRange r = new TimeRange(3, 10);
@@ -169,16 +322,15 @@ public class TimeRangeTest {
 
     ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
-    assertEquals(remainRanges.get(0).getMin(), 2);
-    assertEquals(remainRanges.get(0).getMax(), 10);
-    assertEquals(remainRanges.get(0).getLeftClose(), false);
-    assertEquals(remainRanges.get(0).getRightClose(), true);
+    assertEquals(2, remainRanges.get(0).getMin());
+    assertEquals(10, remainRanges.get(0).getMax());
+    assertFalse(remainRanges.get(0).getLeftClose());
+    assertTrue(remainRanges.get(0).getRightClose());
   }
 
   @Test
   /*
-     current ranges overlap with previous ranges.
-     subcase 3
+   * current ranges overlap with previous ranges. subcase 3
    */
   public void getRemainsTest7() {
     TimeRange r = new TimeRange(1, 10);
@@ -188,16 +340,15 @@ public class TimeRangeTest {
 
     ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
-    assertEquals(remainRanges.get(0).getMin(), 1);
-    assertEquals(remainRanges.get(0).getMax(), 6);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), false);
+    assertEquals(1, remainRanges.get(0).getMin());
+    assertEquals(6, remainRanges.get(0).getMax());
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertFalse(remainRanges.get(0).getRightClose());
   }
 
   @Test
   /*
-     current ranges overlap with previous ranges.
-     subcase 4
+   * current ranges overlap with previous ranges. subcase 4
    */
   public void getRemainsTest8() {
     TimeRange r = new TimeRange(1, 10);
@@ -207,15 +358,15 @@ public class TimeRangeTest {
 
     ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(1, remainRanges.size());
-    assertEquals(remainRanges.get(0).getMin(), 1);
-    assertEquals(remainRanges.get(0).getMax(), 11);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), false);
+    assertEquals(1, remainRanges.get(0).getMin());
+    assertEquals(11, remainRanges.get(0).getMax());
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertFalse(remainRanges.get(0).getRightClose());
   }
 
   @Test
   /*
-     more than one time ranges in previous ranges
+   * more than one time ranges in previous ranges
    */
   public void getRemainsTest9() {
     TimeRange r = new TimeRange(1, 10);
@@ -226,23 +377,23 @@ public class TimeRangeTest {
 
     ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(3, remainRanges.size());
-    assertEquals(remainRanges.get(0).getMin(), 1);
-    assertEquals(remainRanges.get(0).getMax(), 3);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), false);
-    assertEquals(remainRanges.get(1).getMin(), 4);
-    assertEquals(remainRanges.get(1).getMax(), 6);
-    assertEquals(remainRanges.get(1).getLeftClose(), false);
-    assertEquals(remainRanges.get(1).getRightClose(), false);
-    assertEquals(remainRanges.get(2).getMin(), 8);
-    assertEquals(remainRanges.get(2).getMax(), 10);
-    assertEquals(remainRanges.get(2).getLeftClose(), false);
-    assertEquals(remainRanges.get(2).getRightClose(), true);
+    assertEquals(1, remainRanges.get(0).getMin());
+    assertEquals(3, remainRanges.get(0).getMax());
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertFalse(remainRanges.get(0).getRightClose());
+    assertEquals(4, remainRanges.get(1).getMin());
+    assertEquals(6, remainRanges.get(1).getMax());
+    assertFalse(remainRanges.get(1).getLeftClose());
+    assertFalse(remainRanges.get(1).getRightClose());
+    assertEquals(8, remainRanges.get(2).getMin());
+    assertEquals(10, remainRanges.get(2).getMax());
+    assertFalse(remainRanges.get(2).getLeftClose());
+    assertTrue(remainRanges.get(2).getRightClose());
   }
 
   @Test
   /*
-     more than one time ranges in previous ranges
+   * more than one time ranges in previous ranges
    */
   public void getRemainsTest10() {
     TimeRange r = new TimeRange(1, 10);
@@ -253,13 +404,32 @@ public class TimeRangeTest {
 
     ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
     assertEquals(2, remainRanges.size());
-    assertEquals(remainRanges.get(0).getMin(), 1);
-    assertEquals(remainRanges.get(0).getMax(), 3);
-    assertEquals(remainRanges.get(0).getLeftClose(), true);
-    assertEquals(remainRanges.get(0).getRightClose(), false);
-    assertEquals(remainRanges.get(1).getMin(), 4);
-    assertEquals(remainRanges.get(1).getMax(), 11); // NOTE here is the technical detail.
-    assertEquals(remainRanges.get(1).getLeftClose(), false);
-    assertEquals(remainRanges.get(1).getRightClose(), false);
+    assertEquals(1, remainRanges.get(0).getMin());
+    assertEquals(3, remainRanges.get(0).getMax());
+    assertTrue(remainRanges.get(0).getLeftClose());
+    assertFalse(remainRanges.get(0).getRightClose());
+    assertEquals(4, remainRanges.get(1).getMin());
+    assertEquals(11, remainRanges.get(1).getMax()); // NOTE here is the technical detail.
+    assertFalse(remainRanges.get(1).getLeftClose());
+    assertFalse(remainRanges.get(1).getRightClose());
   }
+
+  @Test
+  /*
+   * current ranges DO NOT overlap with previous ranges.
+   */
+  public void getRemainsTest11() {
+    TimeRange r = new TimeRange(4, 10);
+
+    ArrayList<TimeRange> prevRanges = new ArrayList<>();
+    prevRanges.add(new TimeRange(1, 2));
+
+    ArrayList<TimeRange> remainRanges = new ArrayList<>(r.getRemains(prevRanges));
+    assertEquals(1, remainRanges.size());
+    assertEquals(4, remainRanges.get(0).getMin());
+    assertEquals(10, remainRanges.get(0).getMax());
+    assertEquals(remainRanges.get(0).getLeftClose(), true);
+    assertEquals(remainRanges.get(0).getRightClose(), true);
+  }
+
 }

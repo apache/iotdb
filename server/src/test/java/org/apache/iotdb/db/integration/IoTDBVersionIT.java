@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,7 +23,6 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -32,18 +31,13 @@ import org.junit.Test;
 
 public class IoTDBVersionIT {
 
-  private IoTDB deamon;
-
   @Before
   public void setUp() throws Exception {
-    deamon = IoTDB.getInstance();
-    deamon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    deamon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -52,9 +46,8 @@ public class IoTDBVersionIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try(Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root")){
-      Statement statement = connection.createStatement();
-
+            "root", "root");
+        Statement statement = connection.createStatement()){
       statement.execute("SET STORAGE GROUP TO root.versionTest1");
       statement.execute("SET STORAGE GROUP TO root.versionTest2");
       statement.execute("CREATE TIMESERIES root.versionTest1.s0"
@@ -63,21 +56,12 @@ public class IoTDBVersionIT {
           + " WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       // insert and flush enough times to make the version file persist
-      for (int i = 0; i < 2 * SimpleFileVersionController.getSaveInterval(); i ++) {
-        for (int j = 1; j <= 100; j ++) {
-          statement.execute(String
-              .format("INSERT INTO root.versionTest1(timestamp, s0) VALUES (%d, %d)", i*100+j, j));
-        }
+      for (int i = 0; i < SimpleFileVersionController.getSaveInterval() + 1; i ++) {
+        statement.execute(String
+            .format("INSERT INTO root.versionTest1(timestamp, s0) VALUES (%d, %d)", i*100, i));
         statement.execute("FLUSH");
-        for (int j = 1; j <= 100; j ++) {
-          statement.execute(String
-              .format("INSERT INTO root.versionTest2(timestamp, s0) VALUES (%d, %d)", i*100+j, j));
-        }
-        statement.execute("FLUSH");
-//        statement.execute("MERGE");
+        statement.execute("MERGE");
       }
-
-      statement.close();
     }
   }
 }

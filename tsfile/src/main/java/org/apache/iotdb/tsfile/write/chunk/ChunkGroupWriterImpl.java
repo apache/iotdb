@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,9 +22,13 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -50,10 +54,9 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void addSeriesWriter(MeasurementSchema schema, int pageSizeThreshold) {
+  public void tryToAddSeriesWriter(MeasurementSchema schema, int pageSizeThreshold) {
     if (!chunkWriters.containsKey(schema.getMeasurementId())) {
-      ChunkBuffer chunkBuffer = new ChunkBuffer(schema);
-      IChunkWriter seriesWriter = new ChunkWriterImpl(schema, chunkBuffer, pageSizeThreshold);
+      IChunkWriter seriesWriter = new ChunkWriterImpl(schema);
       this.chunkWriters.put(schema.getMeasurementId(), seriesWriter);
     }
   }
@@ -72,17 +75,57 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public ChunkGroupFooter flushToFileWriter(TsFileIOWriter fileWriter) throws IOException {
+  public void write(Tablet tablet) throws WriteProcessException, IOException {
+    List<MeasurementSchema> timeseries = tablet.getSchemas();
+    for (int i = 0; i < timeseries.size(); i++) {
+      String measurementId = timeseries.get(i).getMeasurementId();
+      TSDataType dataType = timeseries.get(i).getType();
+      if (!chunkWriters.containsKey(measurementId)) {
+        throw new NoMeasurementException("measurement id" + measurementId + " not found!");
+      }
+      writeByDataType(tablet, measurementId, dataType, i);
+    }
+  }
+
+  private void writeByDataType(
+          Tablet tablet, String measurementId, TSDataType dataType, int index) throws IOException {
+    int batchSize = tablet.rowSize;
+    switch (dataType) {
+      case INT32:
+        chunkWriters.get(measurementId).write(tablet.timestamps, (int[]) tablet.values[index], batchSize);
+        break;
+      case INT64:
+        chunkWriters.get(measurementId).write(tablet.timestamps, (long[]) tablet.values[index], batchSize);
+        break;
+      case FLOAT:
+        chunkWriters.get(measurementId).write(tablet.timestamps, (float[]) tablet.values[index], batchSize);
+        break;
+      case DOUBLE:
+        chunkWriters.get(measurementId).write(tablet.timestamps, (double[]) tablet.values[index], batchSize);
+        break;
+      case BOOLEAN:
+        chunkWriters.get(measurementId).write(tablet.timestamps, (boolean[]) tablet.values[index], batchSize);
+        break;
+      case TEXT:
+        chunkWriters.get(measurementId).write(tablet.timestamps, (Binary[]) tablet.values[index], batchSize);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", dataType));
+    }
+  }
+
+  @Override
+  public long flushToFileWriter(TsFileIOWriter fileWriter) throws IOException {
     LOG.debug("start flush device id:{}", deviceId);
     // make sure all the pages have been compressed into buffers, so that we can get correct
     // groupWriter.getCurrentChunkGroupSize().
     sealAllChunks();
-    ChunkGroupFooter footer = new ChunkGroupFooter(deviceId, getCurrentChunkGroupSize(),
-        getSeriesNumber());
+    long currentChunkGroupSize = getCurrentChunkGroupSize();
     for (IChunkWriter seriesWriter : chunkWriters.values()) {
       seriesWriter.writeToFileWriter(fileWriter);
     }
-    return footer;
+    return currentChunkGroupSize;
   }
 
   @Override

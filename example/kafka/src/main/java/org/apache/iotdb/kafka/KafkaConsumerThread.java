@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -27,9 +27,6 @@ import kafka.message.MessageAndMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author lta
- */
 public class KafkaConsumerThread implements Runnable {
 
   private Connection connection = null;
@@ -39,7 +36,7 @@ public class KafkaConsumerThread implements Runnable {
   private static boolean createTimeSeries = true;
   private String createStorageGroupSqlTemplate = "SET STORAGE GROUP TO %s";
   private String createTimeseriesSqlTemplate = "CREATE TIMESERIES %s WITH DATATYPE=TEXT, ENCODING=PLAIN";
-  private String insertDataSqlTemplate = "INSERT INTO root.vehicle.device(timestamp,%s) VALUES (%s,'%s')";
+  private String insertDataSqlTemplate = "INSERT INTO root.vehicle.deviceid(timestamp,%s) VALUES (%s,'%s')";
   private static final Logger logger = LoggerFactory.getLogger(KafkaConsumerThread.class);
 
   public KafkaConsumerThread(KafkaStream<String, String> stream) {

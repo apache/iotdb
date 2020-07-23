@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.conf.adapter;
 
+import com.google.common.util.concurrent.AtomicDouble;
 import java.io.File;
 import java.io.IOException;
 import java.util.Locale;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +56,8 @@ public class CompressionRatio {
 
   private static final double DEFAULT_COMPRESSION_RATIO = 2.0;
 
+  private AtomicDouble compressionRatio = new AtomicDouble(DEFAULT_COMPRESSION_RATIO);
+
   /**
    * The total sum of all compression ratios.
    */
@@ -68,7 +71,7 @@ public class CompressionRatio {
   private File directory;
 
   private CompressionRatio() {
-    directory = new File(
+    directory = SystemFileFactory.INSTANCE.getFile(
         FilePathUtils.regularizePath(CONFIG.getSystemDir()) + COMPRESSION_RATIO_DIR);
     restore();
   }
@@ -80,23 +83,41 @@ public class CompressionRatio {
    * @param currentCompressionRatio the compression ratio of the closing file.
    */
   public synchronized void updateRatio(double currentCompressionRatio) throws IOException {
-    File oldFile = new File(directory,
+    File oldFile = SystemFileFactory.INSTANCE.getFile(directory,
         String.format(Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
     compressionRatioSum += currentCompressionRatio;
     calcTimes++;
-    File newFile = new File(directory,
+    File newFile = SystemFileFactory.INSTANCE.getFile(directory,
         String.format(Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, compressionRatioSum, calcTimes));
     persist(oldFile, newFile);
+    compressionRatio.set(compressionRatioSum / calcTimes);
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("Compression ratio is {}", compressionRatio.get());
+    }
     if (CONFIG.isEnableParameterAdapter()) {
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info(
+            "After updating compression ratio, trying to adjust parameters, the original parameters: "
+                + "MemTableSize threshold is {}B, TsfileSize threshold is {}B, MemTableNumber is {}",
+            CONFIG.getMemtableSizeThreshold(), CONFIG.getTsFileSizeThreshold(),
+            CONFIG.getMaxMemtableNumber());
+      }
       IoTDBConfigDynamicAdapter.getInstance().tryToAdaptParameters();
+      if(LOGGER.isInfoEnabled()) {
+        LOGGER.info(
+            "After updating compression ratio, trying to adjust parameters, the modified parameters: "
+                + "MemTableSize threshold is {}B, TsfileSize threshold is {}B, MemTableNumber is {}",
+            CONFIG.getMemtableSizeThreshold(), CONFIG.getTsFileSizeThreshold(),
+            CONFIG.getMaxMemtableNumber());
+      }
     }
   }
 
   /**
    * Get the average compression ratio for all closed files
    */
-  synchronized double getRatio() {
-    return calcTimes == 0 ? DEFAULT_COMPRESSION_RATIO : compressionRatioSum / calcTimes;
+  public double getRatio() {
+    return compressionRatio.get();
   }
 
   private void persist(File oldFile, File newFile) throws IOException {
@@ -141,6 +162,7 @@ public class CompressionRatio {
       }
       calcTimes = maxTimes;
       compressionRatioSum = maxCompressionRatioSum;
+      compressionRatio.set(compressionRatioSum / calcTimes);
       LOGGER.debug(
           "After restoring from compression ratio file, compressionRatioSum = {}, calcTimes = {}",
           compressionRatioSum, calcTimes);
@@ -182,3 +204,4 @@ public class CompressionRatio {
 
   }
 }
+

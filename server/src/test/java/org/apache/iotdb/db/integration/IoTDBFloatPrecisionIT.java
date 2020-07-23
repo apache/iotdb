@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.integration.Constant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -31,7 +31,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -46,8 +45,6 @@ import org.junit.Test;
  */
 public class IoTDBFloatPrecisionIT {
 
-  private static IoTDB daemon;
-
   private static final String CREATE_TEMPLATE_SQL = "CREATE TIMESERIES root.vehicle.%s.%s WITH DATATYPE=%s, ENCODING=%s, MAX_POINT_NUMBER=%d";
   private static final String INSERT_TEMPLATE_SQL = "insert into root.vehicle.%s(timestamp,%s) values(%d,%s)";
   private static List<String> sqls = new ArrayList<>();
@@ -61,15 +58,12 @@ public class IoTDBFloatPrecisionIT {
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     initCreateSQLStatement();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -93,89 +87,77 @@ public class IoTDBFloatPrecisionIT {
 
   private static void insertData() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement();) {
+
       for (String sql : sqls) {
         statement.execute(sql);
       }
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
   @Test
   public void selectAllSQLTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute("select * from root");
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        assertEquals(TIMESTAMP + "", resultSet.getString(TIMESTAMP_STR));
-        for (int i = 0; i < 10; i++) {
-          Assert.assertEquals(MathUtils.roundWithGivenPrecision(Float.parseFloat(VALUE), i),
-              resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "rle")),
-              DELTA_FLOAT);
-          Assert.assertEquals(MathUtils.roundWithGivenPrecision(Float.parseFloat(VALUE), i),
-              resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "2f")),
-              DELTA_FLOAT);
-          Assert.assertEquals(MathUtils.roundWithGivenPrecision(Double.parseDouble(VALUE), i),
-              resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "rle")),
-              DELTA_DOUBLE);
-          Assert.assertEquals(MathUtils.roundWithGivenPrecision(Double.parseDouble(VALUE), i),
-              resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "2f")),
-              DELTA_DOUBLE);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          assertEquals(TIMESTAMP + "", resultSet.getString(TIMESTAMP_STR));
+          for (int i = 0; i < 10; i++) {
+            Assert.assertEquals(MathUtils.roundWithGivenPrecision(Float.parseFloat(VALUE), i),
+                resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "rle")),
+                DELTA_FLOAT);
+            Assert.assertEquals(MathUtils.roundWithGivenPrecision(Float.parseFloat(VALUE), i),
+                resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "2f")),
+                DELTA_FLOAT);
+            Assert.assertEquals(MathUtils.roundWithGivenPrecision(Double.parseDouble(VALUE), i),
+                resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "rle")),
+                DELTA_DOUBLE);
+            Assert.assertEquals(MathUtils.roundWithGivenPrecision(Double.parseDouble(VALUE), i),
+                resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "2f")),
+                DELTA_DOUBLE);
+          }
+          cnt++;
         }
-        cnt++;
+        Assert.assertEquals(1, cnt);
       }
-      Assert.assertEquals(1, cnt);
-      statement.close();
 
-      statement = connection.createStatement();
       statement.execute("flush");
-      resultSet = statement.executeQuery("select * from root");
-      cnt = 0;
-      while (resultSet.next()) {
-        assertEquals(TIMESTAMP + "", resultSet.getString(TIMESTAMP_STR));
-        for (int i = 0; i < 10; i++) {
-          BigDecimal b = new BigDecimal(VALUE);
-          Assert.assertEquals(b.setScale(i, RoundingMode.HALF_UP).floatValue(),
-              resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "rle")),
-              DELTA_FLOAT);
-          Assert.assertEquals(b.setScale(i, RoundingMode.HALF_UP).floatValue(),
-              resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "2f")),
-              DELTA_FLOAT);
-          Assert.assertEquals(b.setScale(i, RoundingMode.HALF_UP).doubleValue(),
-              resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "rle")),
-              DELTA_DOUBLE);
-          Assert.assertEquals(b.setScale(i, RoundingMode.HALF_UP).doubleValue(),
-              resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "2f")),
-              DELTA_DOUBLE);
+      try (ResultSet resultSet =statement.executeQuery("select * from root")) {
+        cnt = 0;
+        while (resultSet.next()) {
+          assertEquals(TIMESTAMP + "", resultSet.getString(TIMESTAMP_STR));
+          for (int i = 0; i < 10; i++) {
+            BigDecimal b = new BigDecimal(VALUE);
+            Assert.assertEquals(b.setScale(i, RoundingMode.HALF_UP).floatValue(),
+                resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "rle")),
+                DELTA_FLOAT);
+            Assert.assertEquals(b.setScale(i, RoundingMode.HALF_UP).floatValue(),
+                resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s" + i + "2f")),
+                DELTA_FLOAT);
+            Assert.assertEquals(b.setScale(i, RoundingMode.HALF_UP).doubleValue(),
+                resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "rle")),
+                DELTA_DOUBLE);
+            Assert.assertEquals(b.setScale(i, RoundingMode.HALF_UP).doubleValue(),
+                resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "2f")),
+                DELTA_DOUBLE);
+          }
+          cnt++;
         }
-        cnt++;
+        Assert.assertEquals(1, cnt);
       }
-      Assert.assertEquals(1, cnt);
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 

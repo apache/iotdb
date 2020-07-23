@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,33 +18,33 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import static org.junit.Assert.assertEquals;
-
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.Test;
 
-public class StringStatisticsTest {
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
-  private static final double maxError = 0.0001d;
+public class StringStatisticsTest {
 
   @Test
   public void testUpdate() {
     Statistics<Binary> binaryStats = new BinaryStatistics();
     binaryStats.updateStats(new Binary("aaa"));
-    assertEquals(false, binaryStats.isEmpty());
+    assertFalse(binaryStats.isEmpty());
     binaryStats.updateStats(new Binary("bbb"));
-    assertEquals(false, binaryStats.isEmpty());
-    assertEquals("bbb", binaryStats.getMax().getStringValue());
-    assertEquals("aaa", binaryStats.getMin().getStringValue());
-    assertEquals(0, binaryStats.getSum(), maxError);
-    assertEquals("aaa", binaryStats.getFirst().getStringValue());
-    assertEquals("bbb", binaryStats.getLast().getStringValue());
+    assertFalse(binaryStats.isEmpty());
+    assertEquals("aaa", binaryStats.getFirstValue().getStringValue());
+    assertEquals("bbb", binaryStats.getLastValue().getStringValue());
   }
 
   @Test
   public void testMerge() {
     Statistics<Binary> stringStats1 = new BinaryStatistics();
+    stringStats1.setStartTime(0);
+    stringStats1.setEndTime(2);
     Statistics<Binary> stringStats2 = new BinaryStatistics();
+    stringStats2.setStartTime(3);
+    stringStats2.setEndTime(5);
 
     stringStats1.updateStats(new Binary("aaa"));
     stringStats1.updateStats(new Binary("ccc"));
@@ -53,18 +53,33 @@ public class StringStatisticsTest {
 
     Statistics<Binary> stringStats3 = new BinaryStatistics();
     stringStats3.mergeStatistics(stringStats1);
-    assertEquals(false, stringStats3.isEmpty());
-    assertEquals("ccc", (String) stringStats3.getMax().getStringValue());
-    assertEquals("aaa", (String) stringStats3.getMin().getStringValue());
-    assertEquals(0, stringStats3.getSum(), maxError);
-    assertEquals("aaa", (String) stringStats3.getFirst().getStringValue());
-    assertEquals("ccc", stringStats3.getLast().getStringValue());
+    assertFalse(stringStats3.isEmpty());
+    assertEquals("aaa", stringStats3.getFirstValue().getStringValue());
+    assertEquals("ccc", stringStats3.getLastValue().getStringValue());
 
     stringStats3.mergeStatistics(stringStats2);
-    assertEquals("ddd", (String) stringStats3.getMax().getStringValue());
-    assertEquals("aaa", (String) stringStats3.getMin().getStringValue());
-    assertEquals(0, stringStats3.getSum(), maxError);
-    assertEquals("aaa", (String) stringStats3.getFirst().getStringValue());
-    assertEquals("ddd", stringStats3.getLast().getStringValue());
+    assertEquals("aaa", stringStats3.getFirstValue().getStringValue());
+    assertEquals("ddd", stringStats3.getLastValue().getStringValue());
+
+    Statistics<Binary> stringStats4 = new BinaryStatistics();
+    stringStats4.setStartTime(0);
+    stringStats4.setEndTime(5);
+    Statistics<Binary> stringStats5 = new BinaryStatistics();
+    stringStats5.setStartTime(1);
+    stringStats5.setEndTime(4);
+
+    stringStats4.updateStats(new Binary("eee"));
+    stringStats4.updateStats(new Binary("fff"));
+
+    stringStats5.updateStats(new Binary("ggg"));
+
+    stringStats3.mergeStatistics(stringStats4);
+    assertEquals("eee", stringStats3.getFirstValue().getStringValue());
+    assertEquals("fff", stringStats3.getLastValue().getStringValue());
+
+    stringStats3.mergeStatistics(stringStats5);
+    assertEquals("eee", stringStats3.getFirstValue().getStringValue());
+    assertEquals("fff", stringStats3.getLastValue().getStringValue());
+
   }
 }

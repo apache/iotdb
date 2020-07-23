@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,15 +18,21 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.utils.Binary;
+
 public class CommonUtils {
 
-  private CommonUtils(){}
+  private CommonUtils() {
+  }
 
   /**
    * get JDK version.
@@ -42,8 +48,14 @@ public class CommonUtils {
     }
   }
 
+  /**
+   * NOTICE: This method is currently used only for data dir, thus using FSFactory to get file
+   *
+   * @param dir directory path
+   * @return
+   */
   public static long getUsableSpace(String dir) {
-    return new File(dir).getFreeSpace();
+    return FSFactoryProducer.getFSFactory().getFile(dir).getFreeSpace();
   }
 
   public static boolean hasSpace(String dir) {
@@ -54,5 +66,74 @@ public class CommonUtils {
     Path folder = Paths.get(folderPath);
     return Files.walk(folder).filter(p -> p.toFile().isFile())
         .mapToLong(p -> p.toFile().length()).sum();
+  }
+
+  public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
+    try {
+      switch (dataType) {
+        case BOOLEAN:
+          return parseBoolean(value);
+        case INT32:
+          return Integer.parseInt(value);
+        case INT64:
+          return Long.parseLong(value);
+        case FLOAT:
+          return Float.parseFloat(value);
+        case DOUBLE:
+          return Double.parseDouble(value);
+        case TEXT:
+          if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
+              || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
+            if (value.length() == 1) {
+              return new Binary(value);
+            } else {
+              return new Binary(value.substring(1, value.length() - 1));
+            }
+          }
+
+          return new Binary(value);
+        default:
+          throw new QueryProcessException("Unsupported data type:" + dataType);
+      }
+    } catch (NumberFormatException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
+  }
+
+  @TestOnly
+  public static Object parseValueForTest(TSDataType dataType, String value)
+      throws QueryProcessException {
+    try {
+      switch (dataType) {
+        case BOOLEAN:
+          return parseBoolean(value);
+        case INT32:
+          return Integer.parseInt(value);
+        case INT64:
+          return Long.parseLong(value);
+        case FLOAT:
+          return Float.parseFloat(value);
+        case DOUBLE:
+          return Double.parseDouble(value);
+        case TEXT:
+          return new Binary(value);
+        default:
+          throw new QueryProcessException("Unsupported data type:" + dataType);
+      }
+    } catch (NumberFormatException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
+  }
+
+  private static boolean parseBoolean(String value) throws QueryProcessException {
+    value = value.toLowerCase();
+    if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEAN_FALSE
+        .equals(value)) {
+      return false;
+    }
+    if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEAN_TRUE.equals(value)) {
+      return true;
+    }
+    throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
   }
 }

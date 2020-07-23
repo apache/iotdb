@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,24 +18,28 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.*;
+
 public class MManagerImproveTest {
+
   private static Logger logger = LoggerFactory.getLogger(MManagerImproveTest.class);
 
   private static final int TIMESERIES_NUM = 1000;
@@ -45,36 +49,32 @@ public class MManagerImproveTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    mManager = MManager.getInstance();
-    mManager.setStorageLevelToMTree("root.t1.v2");
+    mManager = IoTDB.metaManager;
+    mManager.setStorageGroup("root.t1.v2");
 
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
-        String p = new StringBuilder().append("root.t1.v2.d").append(j).append(".s").append(i)
-            .toString();
-        mManager.addPathToMTree(p, "TEXT", "RLE");
+        String p = "root.t1.v2.d" + j + ".s" + i;
+        mManager.createTimeseries(p, TSDataType.TEXT, TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
       }
     }
 
   }
 
-  @After
-  public void after() throws IOException, StorageEngineException {
-    EnvironmentUtils.cleanEnv();
-  }
 
   @Test
   public void checkSetUp() {
-    mManager = MManager.getInstance();
+    mManager = IoTDB.metaManager;
 
-    assertEquals(true, mManager.pathExist("root.t1.v2.d3.s5"));
-    assertEquals(false, mManager.pathExist("root.t1.v2.d9.s" + TIMESERIES_NUM));
-    assertEquals(false, mManager.pathExist("root.t10"));
+    assertTrue(mManager.isPathExist("root.t1.v2.d3.s5"));
+    assertFalse(mManager.isPathExist("root.t1.v2.d9.s" + TIMESERIES_NUM));
+    assertFalse(mManager.isPathExist("root.t10"));
   }
 
   @Test
-  public void analyseTimeCost() throws PathErrorException, ProcessorException {
-    mManager = MManager.getInstance();
+  public void analyseTimeCost() throws MetadataException {
+    mManager = IoTDB.metaManager;
 
     long startTime, endTime;
     long string_combine, path_exist, list_init, check_filelevel, get_seriestype;
@@ -82,38 +82,18 @@ public class MManagerImproveTest {
 
     String deviceId = "root.t1.v2.d3";
     String measurement = "s5";
-
-    startTime = System.currentTimeMillis();
-    for (int i = 0; i < 100000; i++) {
-      String path = deviceId + "." + measurement;
-    }
-    endTime = System.currentTimeMillis();
-    string_combine += endTime - startTime;
     String path = deviceId + "." + measurement;
 
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
-      assertEquals(true, mManager.pathExist(path));
+      assertTrue(mManager.isPathExist(path));
     }
     endTime = System.currentTimeMillis();
     path_exist += endTime - startTime;
 
     startTime = System.currentTimeMillis();
-    for (int i = 0; i < 100000; i++) {
-      List<Path> paths = new ArrayList<>();
-      paths.add(new Path(path));
-    }
     endTime = System.currentTimeMillis();
     list_init += endTime - startTime;
-    List<Path> paths = new ArrayList<>();
-    paths.add(new Path(path));
-
-    startTime = System.currentTimeMillis();
-    for (int i = 0; i < 100000; i++) {
-      assertEquals(true, mManager.checkFileLevel(paths));
-    }
-    endTime = System.currentTimeMillis();
-    check_filelevel += endTime - startTime;
 
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
@@ -130,104 +110,46 @@ public class MManagerImproveTest {
     logger.debug("get series type:\t" + get_seriestype);
   }
 
-  public void doOriginTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, ProcessorException {
+  private void doOriginTest(String deviceId, List<String> measurementList)
+      throws MetadataException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
-      assertEquals(true, mManager.pathExist(path));
-      List<Path> paths = new ArrayList<>();
-      paths.add(new Path(path));
-      assertEquals(true, mManager.checkFileLevel(paths));
+      assertTrue(mManager.isPathExist(path));
       TSDataType dataType = mManager.getSeriesType(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
-  public void doPathLoopOnceTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, ProcessorException {
+  private void doPathLoopOnceTest(String deviceId, List<String> measurementList)
+      throws MetadataException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
-      List<Path> paths = new ArrayList<>();
-      paths.add(new Path(path));
-      assertEquals(true, mManager.checkFileLevel(paths));
-      TSDataType dataType = mManager.getSeriesTypeWithCheck(path);
-      assertEquals(TSDataType.TEXT, dataType);
-    }
-  }
-
-  public void doDealdeviceIdOnceTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, ProcessorException {
-    boolean isFileLevelChecked;
-    List<Path> tempList = new ArrayList<>();
-    tempList.add(new Path(deviceId));
-    try {
-      isFileLevelChecked = mManager.checkFileLevel(tempList);
-    } catch (PathErrorException e) {
-      isFileLevelChecked = false;
-    }
-    MNode node = mManager.getNodeByPath(deviceId);
-
-    for (String measurement : measurementList) {
-      assertEquals(true, mManager.pathExist(node, measurement));
-      List<Path> paths = new ArrayList<>();
-      paths.add(new Path(measurement));
-      if (!isFileLevelChecked) {
-        isFileLevelChecked = mManager.checkFileLevel(node, paths);
-      }
-      assertEquals(true, isFileLevelChecked);
-      TSDataType dataType = mManager.getSeriesType(node, measurement);
-      assertEquals(TSDataType.TEXT, dataType);
-    }
-  }
-
-  public void doRemoveListTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, ProcessorException {
-    for (String measurement : measurementList) {
-      String path = deviceId + "." + measurement;
-      assertEquals(true, mManager.pathExist(path));
-      assertEquals(true, mManager.checkFileLevel(path));
       TSDataType dataType = mManager.getSeriesType(path);
       assertEquals(TSDataType.TEXT, dataType);
     }
   }
 
-  public void doAllImproveTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, ProcessorException {
-    boolean isFileLevelChecked;
+  private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
+    MNode node = null;
     try {
-      isFileLevelChecked = mManager.checkFileLevel(deviceId);
-    } catch (PathErrorException e) {
-      isFileLevelChecked = false;
-    }
-    MNode node = mManager.getNodeByPathWithCheck(deviceId);
-
-    for (String measurement : measurementList) {
-      if (!isFileLevelChecked) {
-        isFileLevelChecked = mManager.checkFileLevelWithCheck(node, measurement);
+      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      for (String s : measurementList) {
+        assertTrue(node.hasChild(s));
+        MeasurementMNode measurementNode = (MeasurementMNode) node.getChild(s);
+        TSDataType dataType = measurementNode.getSchema().getType();
+        assertEquals(TSDataType.TEXT, dataType);
       }
-      assertEquals(true, isFileLevelChecked);
-      TSDataType dataType = mManager.getSeriesTypeWithCheck(node, measurement);
-      assertEquals(TSDataType.TEXT, dataType);
-    }
-  }
-
-  public void doCacheTest(String deviceId, List<String> measurementList)
-      throws PathErrorException, ProcessorException {
-    MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
-    for (int i = 0; i < measurementList.size(); i++) {
-      assertEquals(true, node.hasChild(measurementList.get(i)));
-      MNode measurementNode = node.getChild(measurementList.get(i));
-      assertEquals(true, measurementNode.isLeaf());
-      TSDataType dataType = measurementNode.getSchema().getType();
-      assertEquals(TSDataType.TEXT, dataType);
+    } finally {
+      if (node != null) {
+        node.readUnlock();
+      }
     }
   }
 
   @Test
-  public void improveTest() throws PathErrorException, ProcessorException {
-    mManager = MManager.getInstance();
+  public void improveTest() throws MetadataException {
+    mManager = IoTDB.metaManager;
 
-    long startTime, endTime;
     String[] deviceIdList = new String[DEVICE_NUM];
     for (int i = 0; i < DEVICE_NUM; i++) {
       deviceIdList[i] = "root.t1.v2.d" + i;
@@ -237,11 +159,11 @@ public class MManagerImproveTest {
       measurementList.add("s" + i);
     }
 
-    startTime = System.currentTimeMillis();
+    long startTime = System.currentTimeMillis();
     for (String deviceId : deviceIdList) {
       doOriginTest(deviceId, measurementList);
     }
-    endTime = System.currentTimeMillis();
+    long endTime = System.currentTimeMillis();
     logger.debug("origin:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();
@@ -250,27 +172,6 @@ public class MManagerImproveTest {
     }
     endTime = System.currentTimeMillis();
     logger.debug("seriesPath loop once:\t" + (endTime - startTime));
-
-    startTime = System.currentTimeMillis();
-    for (String deviceId : deviceIdList) {
-      doDealdeviceIdOnceTest(deviceId, measurementList);
-    }
-    endTime = System.currentTimeMillis();
-    logger.debug("deal deviceId once:\t" + (endTime - startTime));
-
-    startTime = System.currentTimeMillis();
-    for (String deviceId : deviceIdList) {
-      doRemoveListTest(deviceId, measurementList);
-    }
-    endTime = System.currentTimeMillis();
-    logger.debug("remove list:\t" + (endTime - startTime));
-
-    startTime = System.currentTimeMillis();
-    for (String deviceId : deviceIdList) {
-      doAllImproveTest(deviceId, measurementList);
-    }
-    endTime = System.currentTimeMillis();
-    logger.debug("improve all:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();
     for (String deviceId : deviceIdList) {

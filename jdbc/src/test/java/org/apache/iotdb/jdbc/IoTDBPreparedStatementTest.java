@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,14 +26,10 @@ import static org.mockito.Mockito.when;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.ZoneId;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSGetOperationStatusResp;
+
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
-import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
-import org.apache.iotdb.service.rpc.thrift.TS_Status;
-import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -45,26 +41,24 @@ public class IoTDBPreparedStatementTest {
   @Mock
   TSExecuteStatementResp execStatementResp;
   @Mock
-  TSGetOperationStatusResp getOperationStatusResp;
+  TSStatus getOperationStatusResp;
   private ZoneId zoneId = ZoneId.systemDefault();
   @Mock
   private IoTDBConnection connection;
   @Mock
   private Iface client;
   @Mock
-  private TS_SessionHandle sessHandle;
-  private TS_Status Status_SUCCESS = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-
-  @Mock
-  private TSOperationHandle tOperationHandle;
+  private TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  private TSStatus Status_SUCCESS = new TSStatus(successStatus);
+  private long queryId;
+  private long sessionId;
 
   @Before
   public void before() throws Exception {
     MockitoAnnotations.initMocks(this);
     when(execStatementResp.getStatus()).thenReturn(Status_SUCCESS);
-    when(execStatementResp.getOperationHandle()).thenReturn(tOperationHandle);
+    when(execStatementResp.getQueryId()).thenReturn(queryId);
 
-    when(getOperationStatusResp.getStatus()).thenReturn(Status_SUCCESS);
     when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execStatementResp);
   }
 
@@ -72,7 +66,7 @@ public class IoTDBPreparedStatementTest {
   @Test
   public void testNonParameterized() throws Exception {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00";
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.execute();
 
@@ -88,7 +82,7 @@ public class IoTDBPreparedStatementTest {
   @Test
   public void unusedArgument() throws SQLException {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00";
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setString(1, "123");
     ps.execute();
@@ -98,7 +92,7 @@ public class IoTDBPreparedStatementTest {
   @Test(expected = SQLException.class)
   public void unsetArgument() throws SQLException {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > ?";
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.execute();
   }
@@ -107,7 +101,7 @@ public class IoTDBPreparedStatementTest {
   @Test
   public void oneIntArgument() throws Exception {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < ? and time > 2017-11-1 0:13:00";
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setInt(1, 123);
     ps.execute();
@@ -123,7 +117,7 @@ public class IoTDBPreparedStatementTest {
   @Test
   public void oneLongArgument() throws Exception {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < ? and time > 2017-11-1 0:13:00";
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setLong(1, 123);
     ps.execute();
@@ -139,7 +133,7 @@ public class IoTDBPreparedStatementTest {
   @Test
   public void oneFloatArgument() throws Exception {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < ? and time > 2017-11-1 0:13:00";
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setFloat(1, 123.133f);
     ps.execute();
@@ -155,7 +149,7 @@ public class IoTDBPreparedStatementTest {
   @Test
   public void oneDoubleArgument() throws Exception {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < ? and time > 2017-11-1 0:13:00";
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setDouble(1, 123.456);
     ps.execute();
@@ -171,7 +165,7 @@ public class IoTDBPreparedStatementTest {
   @Test
   public void oneBooleanArgument() throws Exception {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < ? and time > 2017-11-1 0:13:00";
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setBoolean(1, false);
     ps.execute();
@@ -187,7 +181,7 @@ public class IoTDBPreparedStatementTest {
   @Test
   public void oneStringArgument() throws Exception {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < ? and time > 2017-11-1 0:13:00";
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setString(1, "abcde");
     ps.execute();
@@ -203,7 +197,7 @@ public class IoTDBPreparedStatementTest {
   @Test
   public void oneTimeLongArgument() throws Exception {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE time > ?";
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setLong(1, 1233);
     ps.execute();
@@ -218,7 +212,7 @@ public class IoTDBPreparedStatementTest {
   @Test
   public void oneTimeTimestampArgument() throws Exception {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE time > ?";
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setTimestamp(1, Timestamp.valueOf("2017-11-01 00:13:00"));
     ps.execute();
@@ -234,7 +228,7 @@ public class IoTDBPreparedStatementTest {
   @Test
   public void escapingOfStringArgument() throws Exception {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE status = '134' and temperature = ?";
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setLong(1, 1333);
     ps.execute();
@@ -252,7 +246,7 @@ public class IoTDBPreparedStatementTest {
   public void pastingIntoEscapedQuery() throws Exception {
     String sql = "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE status = '\\044e' || temperature = ?";
 
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setDouble(1, -1323.0);
     ps.execute();
@@ -270,7 +264,7 @@ public class IoTDBPreparedStatementTest {
   public void testInsertStatement1() throws Exception {
     String sql = "INSERT INTO root.ln.wf01.wt01(timestamp,a,b,c,d,e,f) VALUES(?,?,?,?,?,?,?)";
 
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setLong(1, 12324);
     ps.setBoolean(2, false);
@@ -294,7 +288,7 @@ public class IoTDBPreparedStatementTest {
   public void testInsertStatement2() throws Exception {
     String sql = "INSERT INTO root.ln.wf01.wt01(timestamp,a,b,c,d,e,f) VALUES(?,?,?,?,?,?,?)";
 
-    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessHandle, sql,
+    IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
     ps.setTimestamp(1, Timestamp.valueOf("2017-11-01 00:13:00"));
     ps.setBoolean(2, false);

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.auth;
 
 import java.util.List;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -76,7 +76,7 @@ public class AuthorityChecker {
 
   private static boolean checkOnePath(String username, Path path, int permission)
       throws AuthException {
-    IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+    IAuthorizer authorizer = BasicAuthorizer.getInstance();
     try {
       String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
       if (authorizer.checkUserPrivileges(username, fullPath, permission)) {
@@ -121,7 +121,7 @@ public class AuthorityChecker {
       case QUERY:
       case SELECT:
       case FILTER:
-      case GROUPBY:
+      case GROUPBYTIME:
       case SEQTABLESCAN:
       case TABLESCAN:
       case INDEXQUERY:
@@ -156,7 +156,6 @@ public class AuthorityChecker {
       case MERGEJOIN:
       case NULL:
       case ORDERBY:
-      case PROPERTY:
       case SFW:
       case UNION:
         logger.error("Illegal operator type authorization : {}", type);

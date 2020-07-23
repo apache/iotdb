@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,6 +20,7 @@
 package org.apache.iotdb.jdbc;
 
 import java.sql.SQLException;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class IoTDBSQLException extends SQLException {
 
@@ -27,6 +28,14 @@ public class IoTDBSQLException extends SQLException {
 
   public IoTDBSQLException(String reason) {
     super(reason);
+  }
+
+  public IoTDBSQLException(String reason, TSStatus status) {
+    super(reason, status.message, status.code);
+  }
+
+  public IoTDBSQLException(Throwable cause) {
+    super(cause);
   }
 
 }

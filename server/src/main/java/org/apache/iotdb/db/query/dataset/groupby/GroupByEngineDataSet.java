@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,149 +16,81 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.db.exception.PathErrorException;
-import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.query.factory.AggreFuncFactory;
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.IOException;
+
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
-  protected long jobId;
-  protected List<Path> selectedSeries;
-  private long unit;
-  private long origin;
-  private List<Pair<Long, Long>> mergedIntervals;
-
+  protected long queryId;
+  protected long interval;
+  protected long slidingStep;
+  // total query [startTime, endTime)
   protected long startTime;
   protected long endTime;
-  private int usedIndex;
-  protected List<AggregateFunction> functions;
+
+  // current interval [curStartTime, curEndTime)
+  protected long curStartTime;
+  protected long curEndTime;
   protected boolean hasCachedTimeInterval;
+
+  protected boolean leftCRightO;
+
+  public GroupByEngineDataSet() {
+  }
 
   /**
    * groupBy query.
    */
-  public GroupByEngineDataSet(long jobId, List<Path> paths, long unit, long origin,
-      List<Pair<Long, Long>> mergedIntervals) {
-    super(paths);
-    this.jobId = jobId;
-    this.selectedSeries = paths;
-    this.unit = unit;
-    this.origin = origin;
-    this.mergedIntervals = mergedIntervals;
-    this.functions = new ArrayList<>();
-
+  public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
+    super(groupByTimePlan.getDeduplicatedPaths(), groupByTimePlan.getDeduplicatedDataTypes());
+    this.queryId = context.getQueryId();
+    this.interval = groupByTimePlan.getInterval();
+    this.slidingStep = groupByTimePlan.getSlidingStep();
+    this.startTime = groupByTimePlan.getStartTime();
+    this.endTime = groupByTimePlan.getEndTime();
+    this.leftCRightO = groupByTimePlan.isLeftCRightO();
     // init group by time partition
-    this.usedIndex = 0;
     this.hasCachedTimeInterval = false;
-    this.endTime = -1;
-  }
-
-  protected void initAggreFuction(List<String> aggres)
-      throws PathErrorException, ProcessorException {
-
-    List<TSDataType> types = new ArrayList<>();
-    // construct AggregateFunctions
-    for (int i = 0; i < paths.size(); i++) {
-      TSDataType tsDataType = MManager.getInstance()
-          .getSeriesType(selectedSeries.get(i).getFullPath());
-      AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
-      function.init();
-      functions.add(function);
-      types.add(function.getResultDataType());
-    }
-    super.setDataTypes(types);
+    this.curStartTime = this.startTime - slidingStep;
+    this.curEndTime = -1;
   }
 
   @Override
-  public boolean hasNext() {
+  protected boolean hasNextWithoutConstraint() {
     // has cached
     if (hasCachedTimeInterval) {
       return true;
     }
 
-    // skip the intervals in coverage of last time-partition
-    while (usedIndex < mergedIntervals.size() && mergedIntervals.get(usedIndex).right < endTime) {
-      usedIndex++;
-    }
-
-    // end
-    if (usedIndex >= mergedIntervals.size()) {
+    curStartTime += slidingStep;
+    //This is an open interval , [0-100)
+    if (curStartTime < endTime) {
+      hasCachedTimeInterval = true;
+      curEndTime = Math.min(curStartTime + interval, endTime);
+      return true;
+    } else {
       return false;
     }
-
-    // initialize the start-end time of next interval
-    if (endTime < mergedIntervals.get(usedIndex).left) {
-      // interval start time
-      startTime = mergedIntervals.get(usedIndex).left;
-      if (origin > startTime) {
-        endTime = origin - (origin - startTime) / unit * unit;
-      } else {
-        endTime = origin + (startTime - origin) / unit * unit + unit;
-      }
-      hasCachedTimeInterval = true;
-      return true;
-    }
-
-    // current interval is not covered yet
-    if (endTime <= mergedIntervals.get(usedIndex).right) {
-      startTime = endTime;
-      endTime += unit;
-      hasCachedTimeInterval = true;
-      return true;
-    }
-    return false;
   }
 
-  /**
-   * this method is only used in the test class to get the next time partition.
-   */
+  @Override
+  protected abstract RowRecord nextWithoutConstraint() throws IOException;
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  @TestOnly
   public Pair<Long, Long> nextTimePartition() {
     hasCachedTimeInterval = false;
-    return new Pair<>(startTime, endTime);
+    return new Pair<>(curStartTime, curEndTime);
   }
-
-  protected Field getField(AggreResultData aggreResultData) {
-    if (!aggreResultData.isSetValue()) {
-      return new Field(null);
-    }
-    Field field = new Field(aggreResultData.getDataType());
-    switch (aggreResultData.getDataType()) {
-      case INT32:
-        field.setIntV(aggreResultData.getIntRet());
-        break;
-      case INT64:
-        field.setLongV(aggreResultData.getLongRet());
-        break;
-      case FLOAT:
-        field.setFloatV(aggreResultData.getFloatRet());
-        break;
-      case DOUBLE:
-        field.setDoubleV(aggreResultData.getDoubleRet());
-        break;
-      case BOOLEAN:
-        field.setBoolV(aggreResultData.isBooleanRet());
-        break;
-      case TEXT:
-        field.setBinaryV(aggreResultData.getBinaryRet());
-        break;
-      default:
-        throw new UnSupportedDataTypeException("UnSupported: " + aggreResultData.getDataType());
-    }
-    return field;
-  }
-
 }

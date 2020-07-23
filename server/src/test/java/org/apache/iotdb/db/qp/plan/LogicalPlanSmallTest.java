@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,183 +18,317 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.ArgsErrorException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.qp.IllegalASTFormatException;
-import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
-import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.qp.QueryProcessorException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
+import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.strategy.ParseDriver;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
-import org.apache.iotdb.db.sql.ParseGenerator;
-import org.apache.iotdb.db.sql.parse.AstNode;
-import org.apache.iotdb.db.sql.parse.ParseException;
-import org.apache.iotdb.db.sql.parse.ParseUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
+
 public class LogicalPlanSmallTest {
 
-  private LogicalGenerator generator;
+  private ParseDriver parseDriver;
 
   @Before
   public void before() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    generator = new LogicalGenerator(config.getZoneID());
+    parseDriver = new ParseDriver();
   }
 
   @Test
-  public void testSlimit1()
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
-    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
-    Assert.assertEquals(operator.getClass(), QueryOperator.class);
-    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
+  public void testLimit() {
+    String sqlStr = "select * from root.vehicle.d1 limit 10";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertEquals(10, ((QueryOperator) operator).getRowLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
+    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesOffset());
   }
 
-  @Test(expected = LogicalOperatorException.class)
-  public void testSlimit2()
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+  @Test
+  public void testOffset() {
+    String sqlStr = "select * from root.vehicle.d1 limit 10 offset 20";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertEquals(10, ((QueryOperator) operator).getRowLimit());
+    Assert.assertEquals(20, ((QueryOperator) operator).getRowOffset());
+    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesOffset());
+  }
+
+  @Test
+  public void testSlimit() {
+    String sqlStr = "select * from root.vehicle.d1 limit 10 slimit 1";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertEquals(10, ((QueryOperator) operator).getRowLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
+    Assert.assertEquals(1, ((QueryOperator) operator).getSeriesLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesOffset());
+  }
+
+  @Test
+  public void testSOffset() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 50 slimit 10 soffset 100";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertEquals(50, ((QueryOperator) operator).getRowLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
+    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
+    Assert.assertEquals(100, ((QueryOperator) operator).getSeriesOffset());
+  }
+
+  @Test
+  public void testSOffsetTimestamp() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and timestamp <= now() limit 50 slimit 10 soffset 100";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertEquals(50, ((QueryOperator) operator).getRowLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
+    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
+    Assert.assertEquals(100, ((QueryOperator) operator).getSeriesOffset());
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testLimitOutOfRange() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 1111111111111111111111";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: Out of range. LIMIT <N>: N should be Int32.
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testLimitNotPositive() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 0";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: LIMIT <N>: N should be greater than 0.
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testOffsetOutOfRange() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() "
+        + "limit 1 offset 1111111111111111111111";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int32.
+  }
+
+  @Test(expected = ParseCancellationException.class)
+  public void testOffsetNotPositive() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 1 offset -1";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: OFFSET <OFFSETValue>: OFFSETValue should >= 0.
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testSlimitOutOfRange() {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1111111111111111111111";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
-    // expected to throw LogicalOperatorException: SLIMIT <SN>: SN should be Int32.
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: Out of range. SLIMIT <SN>: SN should be Int32.
   }
 
-  @Test(expected = LogicalOperatorException.class)
-  public void testSlimit3()
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
+  @Test(expected = SQLParserException.class)
+  public void testSlimitNotPositive() {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 0";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
-    // expected to throw LogicalOperatorException: SLIMIT <SN>: SN must be a positive integer and can not be zero.
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: SLIMIT <SN>: SN should be greater than 0.
+  }
+
+  @Test(expected = SQLParserException.class)
+  public void testSoffsetOutOfRange() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() "
+        + "slimit 1 soffset 1111111111111111111111";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    // expected to throw SQLParserException: Out of range. SOFFSET <SOFFSETValue>: SOFFSETValue should be Int32.
   }
 
   @Test
-  public void testSoffset()
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
-    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
-    Assert.assertEquals(operator.getClass(), QueryOperator.class);
-    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
+  public void testSoffsetNotPositive() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1 soffset 1";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(1, ((QueryOperator) operator).getSeriesOffset());
+    Assert.assertEquals(1, ((QueryOperator) operator).getSeriesLimit());
   }
 
   @Test(expected = LogicalOptimizeException.class)
-  public void testSlimitLogicalOptimize()
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
-    String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 10 soffset 1";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
-
-    MemIntQpExecutor executor = new MemIntQpExecutor();
-    Path path1 = new Path(
-        new StringContainer(new String[]{"root", "vehicle", "d1", "s1"},
-            TsFileConstant.PATH_SEPARATOR));
-    Path path2 = new Path(
-        new StringContainer(new String[]{"root", "vehicle", "d2", "s1"},
-            TsFileConstant.PATH_SEPARATOR));
-    Path path3 = new Path(
-        new StringContainer(new String[]{"root", "vehicle", "d3", "s1"},
-            TsFileConstant.PATH_SEPARATOR));
-    Path path4 = new Path(
-        new StringContainer(new String[]{"root", "vehicle", "d4", "s1"},
-            TsFileConstant.PATH_SEPARATOR));
-    executor.insert(new InsertPlan(path1.getDevice(), 10, path1.getMeasurement(), "10"));
-    executor.insert(new InsertPlan(path2.getDevice(), 10, path2.getMeasurement(), "10"));
-    executor.insert(new InsertPlan(path3.getDevice(), 10, path3.getMeasurement(), "10"));
-    executor.insert(new InsertPlan(path4.getDevice(), 10, path4.getMeasurement(), "10"));
-    ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
-    operator = (SFWOperator) concatPathOptimizer.transform(operator);
-    // expected to throw LogicalOptimizeException: Wrong use of SLIMIT: SLIMIT is not allowed to be used with
-    // complete paths.
+  public void testSoffsetExceedColumnNum() throws QueryProcessException {
+    String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 2 soffset 1";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    IoTDB.metaManager.init();
+    ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
+    concatPathOptimizer.transform(operator);
+    IoTDB.metaManager.clear();
+    // expected to throw LogicalOptimizeException: SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.
   }
 
-  @Test(expected = LogicalOperatorException.class)
-  public void testLimit1()
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
-    String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() limit 111111111111111111111111";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
-    // expected to throw LogicalOperatorException: LIMIT <N>: N should be Int32.
+  @Test
+  public void testDeleteStorageGroup() {
+    String sqlStr = "delete storage group root.vehicle.d1";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(DeleteStorageGroupOperator.class, operator.getClass());
+    Path path = new Path("root.vehicle.d1");
+    Assert.assertEquals(path, ((DeleteStorageGroupOperator) operator).getDeletePathList().get(0));
   }
 
-  @Test(expected = LogicalOperatorException.class)
-  public void testLimit2()
-      throws QueryProcessorException, ArgsErrorException, MetadataErrorException {
-    String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() limit 0";
-    AstNode astTree;
-    try {
-      astTree = ParseGenerator.generateAST(sqlStr); // parse string to ASTTree
-    } catch (ParseException e) {
-      // e.printStackTrace();
-      throw new IllegalASTFormatException(
-          "parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
-    }
-    AstNode astNode = ParseUtils.findRootNonNullToken(astTree);
-    RootOperator operator = generator.getLogicalPlan(astNode);
-    // expected to throw LogicalOperatorException: LIMIT <N>: N must be a positive integer and can not be zero.
+  @Test
+  public void testDisableAlign() {
+    String sqlStr = "select * from root.vehicle disable align";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertFalse(((QueryOperator) operator).isAlignByTime());
   }
 
+  @Test
+  public void testNotDisableAlign() {
+    String sqlStr = "select * from root.vehicle";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertTrue(((QueryOperator) operator).isAlignByTime());
+  }
+
+  @Test(expected = ParseCancellationException.class)
+  public void testDisableAlignConflictAlignByDevice() {
+    String sqlStr = "select * from root.vehicle disable align align by device";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+  }
+
+  @Test
+  public void testChineseCharacter() {
+    String sqlStr1 = "set storage group to root.一级";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr1, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(SetStorageGroupOperator.class, operator.getClass());
+    Assert.assertEquals(new Path("root.一级"), ((SetStorageGroupOperator) operator).getPath());
+
+    String sqlStr2 = "select * from root.一级.设备1 limit 10 offset 20";
+    operator = (RootOperator) parseDriver
+        .parse(sqlStr2, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("*"));
+    Assert.assertEquals(paths, ((QueryOperator) operator).getSelectedPaths());
+  }
+
+  @Test
+  public void testRangeDelete() {
+    String sql1 = "delete from root.d1.s1 where time>=1 and time < 3";
+    Operator op = parseDriver.parse(sql1, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(DeleteDataOperator.class, op.getClass());
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("root.d1.s1"));
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(1, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(2, ((DeleteDataOperator) op).getEndTime());
+
+    String sql2 = "delete from root.d1.s1 where time>=1";
+    op = parseDriver.parse(sql2, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(1, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(Long.MAX_VALUE, ((DeleteDataOperator) op).getEndTime());
+
+    String sql3 = "delete from root.d1.s1 where time>1";
+    op = parseDriver.parse(sql3, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(2, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(Long.MAX_VALUE, ((DeleteDataOperator) op).getEndTime());
+
+    String sql4 = "delete from root.d1.s1 where time <= 1";
+    op = parseDriver.parse(sql4, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(Long.MIN_VALUE, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(1, ((DeleteDataOperator) op).getEndTime());
+
+    String sql5 = "delete from root.d1.s1 where time<1";
+    op = parseDriver.parse(sql5, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(Long.MIN_VALUE, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(0, ((DeleteDataOperator) op).getEndTime());
+
+    String sql6 = "delete from root.d1.s1 where time = 3";
+    op = parseDriver.parse(sql6, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(3, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(3, ((DeleteDataOperator) op).getEndTime());
+
+    String sql7 = "delete from root.d1.s1 where time > 5 and time >= 2";
+    op = parseDriver.parse(sql7, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(6, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(Long.MAX_VALUE, ((DeleteDataOperator) op).getEndTime());
+  }
+
+  @Test
+  public void testErrorDeleteRange() {
+    String sql = "delete from root.d1.s1 where time>=1 and time < 3 or time >1";
+    String errorMsg = null;
+    try {
+      parseDriver.parse(sql, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals(
+        "For delete statement, where clause can only contain atomic expressions like : "
+            + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'",
+        errorMsg);
+
+    sql = "delete from root.d1.s1 where time>=1 or time < 3";
+    errorMsg = null;
+    try {
+      parseDriver.parse(sql, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals(
+        "For delete statement, where clause can only contain atomic expressions like : "
+            + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'",
+        errorMsg);
+
+    String sql7 = "delete from root.d1.s1 where time = 1 and time < -1";
+    errorMsg = null;
+    try {
+      parseDriver.parse(sql7, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (RuntimeException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals(errorMsg, "Invalid delete range: [1, -2]");
+
+    sql = "delete from root.d1.s1 where time > 5 and time <= 0";
+    errorMsg = null;
+    try {
+      parseDriver.parse(sql, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals("Invalid delete range: [6, 0]", errorMsg);
+  }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,201 +18,197 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for string type.
- *
- * @author CGF
  */
 public class BinaryStatistics extends Statistics<Binary> {
 
-  private Binary max = new Binary("");
-  private Binary min = new Binary("");
-  private Binary first = new Binary("");
-  private double sum;// FIXME sum is meaningless
-  private Binary last = new Binary("");
+  private Binary firstValue = new Binary("");
+  private Binary lastValue = new Binary("");
 
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    max = new Binary(maxBytes);
-    min = new Binary(minBytes);
+  public TSDataType getType() {
+    return TSDataType.TEXT;
   }
 
   @Override
-  public Binary getMin() {
-    return min;
-  }
-
-  @Override
-  public Binary getMax() {
-    return max;
-  }
-
-  @Override
-  public Binary getFirst() {
-    return first;
-  }
-
-  @Override
-  public double getSum() {
-    return sum;
-  }
-
-  @Override
-  public Binary getLast() {
-    return last;
+  public int getStatsSize() {
+    return 4 + firstValue.getValues().length + 4 + lastValue.getValues().length;
   }
 
   /**
    * initialize Statistics.
    *
-   * @param min minimum value
-   * @param max maximum value
    * @param first the first value
-   * @param sum sum
-   * @param last the last value
+   * @param last  the last value
    */
-  public void initializeStats(Binary min, Binary max, Binary first, double sum, Binary last) {
-    this.min = min;
-    this.max = max;
-    this.first = first;
-    this.sum = sum;
-    this.last = last;
+  public void initializeStats(Binary first, Binary last) {
+    this.firstValue = first;
+    this.lastValue = last;
+  }
+
+  private void updateStats(Binary firstValue, Binary lastValue) {
+    this.lastValue = lastValue;
+  }
+
+  private void updateStats(Binary firstValue, Binary lastValue, long startTime, long endTime) {
+    // only if endTime greater or equals to the current endTime need we update the last value
+    // only if startTime less or equals to the current startTime need we update the first value
+    // otherwise, just ignore
+    if (startTime <= this.getStartTime()) {
+      this.firstValue = firstValue;
+    }
+    if (endTime >= this.getEndTime()) {
+      this.lastValue = lastValue;
+    }
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics<?> stats) {
+  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
+  }
+
+  @Override
+  public Binary getMinValue() {
+    throw new StatisticsClassException("Binary statistics does not support: min");
+  }
+
+  @Override
+  public Binary getMaxValue() {
+    throw new StatisticsClassException("Binary statistics does not support: max");
+  }
+
+  @Override
+  public Binary getFirstValue() {
+    return firstValue;
+  }
+
+  @Override
+  public Binary getLastValue() {
+    return lastValue;
+  }
+
+  @Override
+  public double getSumValue() {
+    throw new StatisticsClassException("Binary statistics does not support: sum");
+  }
+
+  @Override
+  protected void mergeStatisticsValue(Statistics stats) {
     BinaryStatistics stringStats = (BinaryStatistics) stats;
     if (isEmpty) {
-      initializeStats(stringStats.getMin(), stringStats.getMax(), stringStats.getFirst(),
-          stringStats.getSum(),
-          stringStats.getLast());
+      initializeStats(stringStats.getFirstValue(), stringStats.getLastValue());
       isEmpty = false;
     } else {
-      updateStats(stringStats.getMin(), stringStats.getMax(), stringStats.getFirst(),
-          stringStats.getSum(),
-          stringStats.getLast());
+      updateStats(stringStats.getFirstValue(), stringStats.getLastValue(), stats.getStartTime(), stats.getEndTime());
     }
   }
 
   @Override
-  public void updateStats(Binary value) {
+  void updateStats(Binary value) {
     if (isEmpty) {
-      initializeStats(value, value, value, 0, value);
+      initializeStats(value, value);
       isEmpty = false;
     } else {
-      updateStats(value, value, value, 0, value);
-      isEmpty = false;
+      updateStats(value, value);
     }
   }
 
-  private void updateStats(Binary minValue, Binary maxValue, Binary firstValue, double sum,
-      Binary lastValue) {
-    if (minValue.compareTo(min) < 0) {
-      min = minValue;
+  @Override
+  void updateStats(Binary[] values, int batchSize) {
+    for (int i = 0; i < batchSize; i++) {
+      updateStats(values[i]);
     }
-    if (maxValue.compareTo(max) > 0) {
-      max = maxValue;
-    }
-    this.last = lastValue;
   }
 
   @Override
-  public byte[] getMaxBytes() {
-    return max.getValues();
+  public long calculateRamSize() {
+    return RamUsageEstimator.sizeOf(this);
   }
 
   @Override
-  public byte[] getMinBytes() {
-    return min.getValues();
+  public byte[] getMinValueBytes() {
+    throw new StatisticsClassException("Binary statistics does not support: min");
   }
 
   @Override
-  public byte[] getFirstBytes() {
-    return first.getValues();
+  public byte[] getMaxValueBytes() {
+    throw new StatisticsClassException("Binary statistics does not support: max");
   }
 
   @Override
-  public byte[] getSumBytes() {
-    return BytesUtils.doubleToBytes(sum);
+  public byte[] getFirstValueBytes() {
+    return firstValue.getValues();
   }
 
   @Override
-  public byte[] getLastBytes() {
-    return last.getValues();
+  public byte[] getLastValueBytes() {
+    return lastValue.getValues();
   }
 
   @Override
-  public ByteBuffer getMaxBytebuffer() {
-    return ByteBuffer.wrap(max.getValues());
+  public byte[] getSumValueBytes() {
+    throw new StatisticsClassException("Binary statistics does not support: sum");
   }
 
   @Override
-  public ByteBuffer getMinBytebuffer() {
-    return ByteBuffer.wrap(min.getValues());
+  public ByteBuffer getMinValueBuffer() {
+    throw new StatisticsClassException("Binary statistics does not support: min");
   }
 
   @Override
-  public ByteBuffer getFirstBytebuffer() {
-    return ByteBuffer.wrap(first.getValues());
+  public ByteBuffer getMaxValueBuffer() {
+    throw new StatisticsClassException("Binary statistics does not support: max");
   }
 
   @Override
-  public ByteBuffer getSumBytebuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sum);
+  public ByteBuffer getFirstValueBuffer() {
+    return ByteBuffer.wrap(firstValue.getValues());
   }
 
   @Override
-  public ByteBuffer getLastBytebuffer() {
-    return ByteBuffer.wrap(last.getValues());
+  public ByteBuffer getLastValueBuffer() {
+    return ByteBuffer.wrap(lastValue.getValues());
   }
 
   @Override
-  public int sizeOfDatum() {
-    return -1;
+  public ByteBuffer getSumValueBuffer() {
+    throw new StatisticsClassException("Binary statistics does not support: sum");
+  }
+
+  @Override
+  public int serializeStats(OutputStream outputStream) throws IOException {
+    int byteLen = 0;
+    byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
+    byteLen += ReadWriteIOUtils.write(lastValue, outputStream);
+    return byteLen;
+  }
+
+  @Override
+  void deserialize(InputStream inputStream) throws IOException {
+    this.firstValue = ReadWriteIOUtils.readBinary(inputStream);
+    this.lastValue = ReadWriteIOUtils.readBinary(inputStream);
+  }
+
+  @Override
+  void deserialize(ByteBuffer byteBuffer) {
+    this.firstValue = ReadWriteIOUtils.readBinary(byteBuffer);
+    this.lastValue = ReadWriteIOUtils.readBinary(byteBuffer);
   }
 
   @Override
   public String toString() {
-    return "[max:" + max + ",min:" + min + ",first:" + first + ",sum:" + sum + ",last:" + last
-        + "]";
+    return super.toString() + " [firstValue:" + firstValue + ",lastValue:" + lastValue + "]";
   }
 
-  @Override
-  void fill(InputStream inputStream) throws IOException {
-    this.min = new Binary(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream));
-    this.max = new Binary(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream));
-    this.first = new Binary(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream));
-    this.last = new Binary(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream));
-    this.sum = ReadWriteIOUtils.readDouble(inputStream);
-  }
-
-  @Override
-  void fill(ByteBuffer byteBuffer) throws IOException {
-    this.min = new Binary(
-        ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer).array());
-    this.max = new Binary(
-        ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer).array());
-    this.first = new Binary(
-        ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer).array());
-    this.last = new Binary(
-        ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer).array());
-    this.sum = ReadWriteIOUtils.readDouble(byteBuffer);
-  }
-
-  @Override
-  protected void fill(TsFileInput input, long offset) throws IOException {
-    int size = getSerializedSize();
-    ByteBuffer buffer = ByteBuffer.allocate(size);
-    ReadWriteIOUtils.readAsPossible(input, offset, buffer);
-    buffer.flip();
-    fill(buffer);
-  }
 }

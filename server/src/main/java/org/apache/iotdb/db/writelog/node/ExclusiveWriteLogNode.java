@@ -1,15 +1,19 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements.  See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with the License.  You may obtain
- * a copy of the License at
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied.  See the License for the specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.writelog.node;
@@ -26,7 +30,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.io.ILogWriter;
@@ -42,7 +46,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   public static final String WAL_FILE_NAME = "wal";
   private static final Logger logger = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
-  private static int logBufferSize = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
 
   private String identifier;
 
@@ -52,7 +55,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private ByteBuffer logBuffer = ByteBuffer.allocate(logBufferSize);
+  private ByteBuffer logBuffer = ByteBuffer
+      .allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
 
   private ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -70,7 +74,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     this.identifier = identifier;
     this.logDirectory =
         DirectoryManager.getInstance().getWALFolder() + File.separator + this.identifier;
-    if (new File(logDirectory).mkdirs()) {
+    if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
       logger.info("create the WAL folder {}." + logDirectory);
     }
   }
@@ -84,7 +88,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         sync();
       }
     } catch (BufferOverflowException e) {
-      throw new IOException("Log cannot fit into buffer, please increase wal_buffer_size", e);
+      throw new IOException(
+          "Log cannot fit into buffer, if you don't enable Dynamic Parameter Adapter, please increase wal_buffer_size;"
+              + "otherwise, please increase the JVM memory", e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -93,12 +99,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private void putLog(PhysicalPlan plan) {
     logBuffer.mark();
     try {
-      plan.serializeTo(logBuffer);
+      plan.serialize(logBuffer);
     } catch (BufferOverflowException e) {
       logger.info("WAL BufferOverflow !");
       logBuffer.reset();
       sync();
-      plan.serializeTo(logBuffer);
+      plan.serialize(logBuffer);
     }
     bufferedLogNum ++;
   }
@@ -143,7 +149,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public void notifyEndFlush() {
     lock.writeLock().lock();
     try {
-      File logFile = new File(logDirectory, WAL_FILE_NAME + ++lastFlushedId);
+      File logFile = SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + ++lastFlushedId);
       discard(logFile);
     } finally {
       lock.writeLock().unlock();
@@ -166,7 +172,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     try {
       logBuffer.clear();
       close();
-      FileUtils.deleteDirectory(new File(logDirectory));
+      FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(logDirectory));
     } finally {
       lock.writeLock().unlock();
     }
@@ -174,7 +180,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public ILogReader getLogReader() {
-    File[] logFiles = new File(logDirectory).listFiles();
+    File[] logFiles = SystemFileFactory.INSTANCE.getFile(logDirectory).listFiles();
     Arrays.sort(logFiles,
         Comparator.comparingInt(f -> Integer.parseInt(f.getName().replace(WAL_FILE_NAME, ""))));
     return new MultiFileLogReader(logFiles);
@@ -238,7 +244,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private void nextFileWriter() {
     fileId++;
-    File newFile = new File(logDirectory, WAL_FILE_NAME + fileId);
+    File newFile = SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + fileId);
     if (newFile.getParentFile().mkdirs()) {
       logger.info("create WAL parent folder {}.", newFile.getParent());
     }

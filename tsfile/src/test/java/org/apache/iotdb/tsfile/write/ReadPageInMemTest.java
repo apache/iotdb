@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,67 +23,80 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.io.IOException;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.RecordUtils;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.utils.RecordUtils;
+
 public class ReadPageInMemTest {
 
-  private String filePath = "TsFileReadPageInMem";
+  private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("TsFileReadPageInMem");
   private File file = new File(filePath);
   private TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
   private TsFileWriter innerWriter;
-  private FileSchema schema = null;
+  private Schema schema = null;
 
   private int pageSize;
   private int ChunkGroupSize;
   private int pageCheckSizeThreshold;
   private int defaultMaxStringLength;
 
-  private static FileSchema getFileSchema() {
-    FileSchema fileSchema = new FileSchema();
+  private static Schema getSchema() {
+    Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    fileSchema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.valueEncoder)));
-    fileSchema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    fileSchema.registerMeasurement(new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.valueEncoder)));
-    fileSchema.registerMeasurement(new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.valueEncoder)));
-    return fileSchema;
+    schema.registerTimeseries(new Path("root.car.d1.s1"),
+        new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("root.car.d1.s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("root.car.d1.s3"),
+        new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("root.car.d1.s4"),
+        new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("root.car.d2.s1"),
+        new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("root.car.d2.s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("root.car.d2.s3"),
+        new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("root.car.d2.s4"),
+        new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
+    return schema;
   }
 
   @Before
   public void setUp() throws Exception {
     file.delete();
-    pageSize = conf.pageSizeInByte;
-    conf.pageSizeInByte = 200;
-    ChunkGroupSize = conf.groupSizeInByte;
-    conf.groupSizeInByte = 100000;
-    pageCheckSizeThreshold = conf.pageCheckSizeThreshold;
-    conf.pageCheckSizeThreshold = 1;
-    defaultMaxStringLength = conf.maxStringLength;
-    conf.maxStringLength = 2;
-    schema = getFileSchema();
+    pageSize = conf.getPageSizeInByte();
+    conf.setPageSizeInByte(200);
+    ChunkGroupSize = conf.getGroupSizeInByte();
+    conf.setGroupSizeInByte(100000);
+    pageCheckSizeThreshold = conf.getPageCheckSizeThreshold();
+    conf.setPageCheckSizeThreshold(1);
+    defaultMaxStringLength = conf.getMaxStringLength();
+    conf.setMaxStringLength(2);
+    schema = getSchema();
     innerWriter = new TsFileWriter(new File(filePath), schema, conf);
   }
 
   @After
   public void tearDown() throws Exception {
     file.delete();
-    conf.pageSizeInByte = pageSize;
-    conf.groupSizeInByte = ChunkGroupSize;
-    conf.pageCheckSizeThreshold = pageCheckSizeThreshold;
-    conf.maxStringLength = defaultMaxStringLength;
+    conf.setPageSizeInByte(pageSize);
+    conf.setGroupSizeInByte(ChunkGroupSize);
+    conf.setPageCheckSizeThreshold(pageCheckSizeThreshold);
+    conf.setMaxStringLength(defaultMaxStringLength);
   }
 
   @Test

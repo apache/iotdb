@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.query.dataset;
 
 import java.io.IOException;
 import java.util.List;
-
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -56,12 +55,12 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
+  protected boolean hasNextWithoutConstraint() throws IOException {
     return timeGenerator.hasNext();
   }
 
   @Override
-  public RowRecord next() throws IOException {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     long timestamp = timeGenerator.next();
     RowRecord rowRecord = new RowRecord(timestamp);
 
@@ -70,14 +69,14 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
       // get value from readers in time generator
       if (cached.get(i)) {
         Object value = timeGenerator.getValue(paths.get(i), timestamp);
-        rowRecord.addField(getField(value, dataTypes.get(i)));
+        rowRecord.addField(value, dataTypes.get(i));
         continue;
       }
 
       // get value from series reader without filter
       FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp = readers.get(i);
       Object value = fileSeriesReaderByTimestamp.getValueInTimestamp(timestamp);
-      rowRecord.addField(getField(value, dataTypes.get(i)));
+      rowRecord.addField(value, dataTypes.get(i));
     }
 
     return rowRecord;

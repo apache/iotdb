@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,14 +22,16 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PlainEncoder extends Encoder {
 
@@ -68,10 +70,8 @@ public class PlainEncoder extends Encoder {
       out.write(value & 0xFF);
       out.write((value >> 8) & 0xFF);
     } else if (this.endianType == EndianType.BIG_ENDIAN) {
-      logger.error(
-          "tsfile-encoding PlainEncoder: current version does not support short value encoding");
-      throw new TsFileEncodingException(
-          "tsfile-encoding PlainEncoder: current version does not support short value encoding");
+      out.write((value >> 8) & 0xFF);
+      out.write(value & 0xFF);
     }
   }
 
@@ -83,34 +83,23 @@ public class PlainEncoder extends Encoder {
       out.write((value >> 16) & 0xFF);
       out.write((value >> 24) & 0xFF);
     } else if (this.endianType == EndianType.BIG_ENDIAN) {
-      logger.error(
-          "tsfile-encoding PlainEncoder: current version does not support int value encoding");
-      throw new TsFileEncodingException(
-          "tsfile-encoding PlainEncoder: current version does not support int value encoding");
+      out.write((value >> 24) & 0xFF);
+      out.write((value >> 16) & 0xFF);
+      out.write((value >> 8) & 0xFF);
+      out.write(value & 0xFF);
     }
   }
 
   @Override
   public void encode(long value, ByteArrayOutputStream out) {
-    byte[] bufferBig = new byte[8];
-    byte[] bufferLittle = new byte[8];
-
-    for (int i = 0; i < 8; i++) {
-      bufferLittle[i] = (byte) (((value) >> (i * 8)) & 0xFF);
-      bufferBig[8 - i - 1] = (byte) (((value) >> (i * 8)) & 0xFF);
-    }
-    try {
-      if (this.endianType == EndianType.LITTLE_ENDIAN) {
-        out.write(bufferLittle);
-      } else if (this.endianType == EndianType.BIG_ENDIAN) {
-        logger.error(
-            "tsfile-encoding PlainEncoder: current version does not support long value encoding");
-        throw new TsFileEncodingException(
-            "tsfile-encoding PlainEncoder: current version does not support long value encoding");
+    if (this.endianType == EndianType.LITTLE_ENDIAN) {
+      for (int i = 0; i < 8; i++) {
+        out.write((byte) (((value) >> (i * 8)) & 0xFF));
       }
-    } catch (IOException e) {
-      logger
-          .error("tsfile-encoding PlainEncoder: error occurs when encode long value {}", value, e);
+    } else if (this.endianType == EndianType.BIG_ENDIAN) {
+      for (int i = 7; i >= 0; i--) {
+        out.write((byte) (((value) >> (i * 8)) & 0xFF));
+      }
     }
   }
 
@@ -132,34 +121,33 @@ public class PlainEncoder extends Encoder {
       // write value
       out.write(value.getValues());
     } catch (IOException e) {
-      logger.error("tsfile-encoding PlainEncoder: error occurs when encode Binary value {}", value,
-          e);
+      logger.error("tsfile-encoding PlainEncoder: error occurs when encode Binary value {}", value, e);
     }
   }
 
   @Override
   public void flush(ByteArrayOutputStream out) {
-    //This is an empty function.
+    // This is an empty function.
   }
 
   @Override
   public int getOneItemMaxSize() {
     switch (dataType) {
-      case BOOLEAN:
-        return 1;
-      case INT32:
-        return 4;
-      case INT64:
-        return 8;
-      case FLOAT:
-        return 4;
-      case DOUBLE:
-        return 8;
-      case TEXT:
-        // refer to encode(Binary,ByteArrayOutputStream)
-        return 4 + TSFileConfig.BYTE_SIZE_PER_CHAR * maxStringLength;
-      default:
-        throw new UnsupportedOperationException(dataType.toString());
+    case BOOLEAN:
+      return 1;
+    case INT32:
+      return 4;
+    case INT64:
+      return 8;
+    case FLOAT:
+      return 4;
+    case DOUBLE:
+      return 8;
+    case TEXT:
+      // refer to encode(Binary,ByteArrayOutputStream)
+      return 4 + TSFileConfig.BYTE_SIZE_PER_CHAR * maxStringLength;
+    default:
+      throw new UnsupportedOperationException(dataType.toString());
     }
   }
 

@@ -1,20 +1,9 @@
-iotdb/data/*
-iotdb/derby.log
-iotdb/iotdb/data/*
-iotdb/iotdb/derby.log
-iotdb/*.pid
-iotdb/iotdb/data/*
-iotdb/iotdb/gc.log*
-iotdb/iotdb/logs/*
-iotdb/iotdb/lib/*
-iotdb/unsequence/
-iotdb/testunsequence
-conf/*
-lib/*
-sbin/*
-tools/*
+**/*.pid
+**/gc.log*
+**/logs/*
+**/lib/**
+**/data/**
 
-tsfile/src/test/resources/perTestInputData
 # Eclipse IDE files
 **/.classpath
 **/.project
@@ -29,19 +18,11 @@ tsfile/src/test/resources/perTestInputData
 # Apple OS X related
 **/.DS_Store
 derby-tsfile-db
-# intellj IDE files
-**/*.iml
-**/.idea/
-
-# Apple OS X related
-**/.DS_Store
 
 # build generated
 **/target/
-**/build/
 
 # intermediately generated locally
-**/logs/
 
 tsfile-timeseries/src/main/resources/logback.out.out.xml
 tsfile-timeseries/src/main/resources/logback.out.xml
@@ -50,14 +31,16 @@ tsfile-timeseries/src/test/resources/data
 src/main/resources/metadata/mlog.txt
 tsfile-jdbc/src/main/resources/output/queryRes.csv
 
+*.txt
+
 *.jar
 *.gz
 *.tar.gz
 *.tar
-/data/
 #src/test/resources/logback.xml
 
-
+### CSV ###
+*.csv
 ### Maven ###
 grafana/target/
 !grafana/.mvn/wrapper/maven-wrapper.jar
@@ -77,7 +60,6 @@ grafana/logs/
 
 ### NetBeans ###
 **/nbproject/private/
-**/build/
 **/nbbuild/
 **/dist/
 **/nbdist/
@@ -87,15 +69,21 @@ grafana/data/
 ### vscode project
 **/.vscode/
 
-**/.DS_Store
-
 
 grafana/data/test.csv
 **/lib/
-*.jar
 /target/
 *.tsfile
 tsfile/src/test/resources/*.ts
 
 ### Apache release ###
 local-snapshots-dir/
+venv/
+
+partitions.tmp
+partitions
+node_identifier
+
+# gitpod
+.theia/
+

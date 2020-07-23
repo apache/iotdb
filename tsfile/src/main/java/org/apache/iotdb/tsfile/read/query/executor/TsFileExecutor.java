@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -24,12 +24,12 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
-import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -38,22 +38,34 @@ import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithoutTimeGenerator;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.series.EmptyFileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
+import org.apache.iotdb.tsfile.utils.BloomFilter;
 
 public class TsFileExecutor implements QueryExecutor {
 
-  private MetadataQuerier metadataQuerier;
-  private ChunkLoader chunkLoader;
+  private IMetadataQuerier metadataQuerier;
+  private IChunkLoader chunkLoader;
 
-  public TsFileExecutor(MetadataQuerier metadataQuerier, ChunkLoader chunkLoader) {
+  public TsFileExecutor(IMetadataQuerier metadataQuerier, IChunkLoader chunkLoader) {
     this.metadataQuerier = metadataQuerier;
     this.chunkLoader = chunkLoader;
   }
 
   @Override
   public QueryDataSet execute(QueryExpression queryExpression) throws IOException {
+    // bloom filter
+    BloomFilter bloomFilter = metadataQuerier.getWholeFileMetadata().getBloomFilter();
+    List<Path> filteredSeriesPath = new ArrayList<>();
+    if (bloomFilter != null) {
+      for (Path path : queryExpression.getSelectedSeries()) {
+        if (bloomFilter.contains(path.getFullPath())) {
+          filteredSeriesPath.add(path);
+        }
+      }
+      queryExpression.setSelectSeries(filteredSeriesPath);
+    }
+
     metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
     if (queryExpression.hasQueryFilter()) {
       try {
@@ -147,29 +159,27 @@ public class TsFileExecutor implements QueryExecutor {
 
   /**
    * @param selectedPathList completed path
-   * @param timeFilter a GlobalTimeExpression or null
+   * @param timeExpression a GlobalTimeExpression or null
    * @return DataSetWithoutTimeGenerator
    */
   private QueryDataSet executeMayAttachTimeFiler(List<Path> selectedPathList,
-      GlobalTimeExpression timeFilter)
-      throws IOException, NoMeasurementException {
-    List<FileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
+      GlobalTimeExpression timeExpression) throws IOException, NoMeasurementException {
+    List<AbstractFileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
     for (Path path : selectedPathList) {
-      List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(path);
-      FileSeriesReader seriesReader;
-      if (chunkMetaDataList.isEmpty()) {
+      List<ChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(path);
+      AbstractFileSeriesReader seriesReader;
+      if (chunkMetadataList.isEmpty()) {
         seriesReader = new EmptyFileSeriesReader();
-        dataTypes.add(metadataQuerier.getDataType(path.getMeasurement()));
+        dataTypes.add(metadataQuerier.getDataType(path));
       } else {
-        if (timeFilter == null) {
-          seriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, chunkMetaDataList);
+        if (timeExpression == null) {
+          seriesReader = new FileSeriesReader(chunkLoader, chunkMetadataList, null);
         } else {
-          seriesReader = new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList,
-              timeFilter.getFilter());
+          seriesReader = new FileSeriesReader(chunkLoader, chunkMetadataList, timeExpression.getFilter());
         }
-        dataTypes.add(chunkMetaDataList.get(0).getTsDataType());
+        dataTypes.add(chunkMetadataList.get(0).getDataType());
       }
       readersOfSelectedSeries.add(seriesReader);
     }

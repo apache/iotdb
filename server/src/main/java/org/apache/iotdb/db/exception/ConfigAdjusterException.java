@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,20 +18,14 @@
  */
 package org.apache.iotdb.db.exception;
 
-public class ConfigAdjusterException extends Exception {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public ConfigAdjusterException() {
-  }
+public class ConfigAdjusterException extends IoTDBException {
 
-  public ConfigAdjusterException(String message) {
-    super(message);
-  }
+  private static final long serialVersionUID = 3502288856999147687L;
+  public static final String ERROR_MSG_FORMAT = "IoTDB system load is too large to %s, please increase memory or disable the enable_parameter_adapter in iotdb-engine.properties";
 
-  public ConfigAdjusterException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public ConfigAdjusterException(Throwable cause) {
-    super(cause);
+  public ConfigAdjusterException(String action) {
+    super(String.format(ERROR_MSG_FORMAT, action), TSStatusCode.CONFIG_ADJUSTER.getStatusCode());
   }
 }

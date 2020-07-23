@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -28,10 +28,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -53,7 +56,6 @@ import org.junit.Test;
  */
 public class IoTDBEngineTimeGeneratorIT {
 
-  private static IoTDB daemon;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -68,32 +70,28 @@ public class IoTDBEngineTimeGeneratorIT {
 
     // use small page setting
     // origin value
-    maxNumberOfPointsInPage = tsFileConfig.maxNumberOfPointsInPage;
-    pageSizeInByte = tsFileConfig.pageSizeInByte;
-    groupSizeInByte = tsFileConfig.groupSizeInByte;
+    maxNumberOfPointsInPage = tsFileConfig.getMaxNumberOfPointsInPage();
+    pageSizeInByte = tsFileConfig.getPageSizeInByte();
+    groupSizeInByte = tsFileConfig.getGroupSizeInByte();
 
     // new value
-    tsFileConfig.maxNumberOfPointsInPage = 100;
-    tsFileConfig.pageSizeInByte = 1024 * 1024 * 150;
-    tsFileConfig.groupSizeInByte = 1024 * 1024 * 100;
+    tsFileConfig.setMaxNumberOfPointsInPage(100);
+    tsFileConfig.setPageSizeInByte(1024 * 1024 * 150);
+    tsFileConfig.setGroupSizeInByte(1024 * 1024 * 100);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1024 * 100);
 
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
-    Thread.sleep(5000);
     insertData();
 
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     // recovery value
-    tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
-    tsFileConfig.pageSizeInByte = pageSizeInByte;
-    tsFileConfig.groupSizeInByte = groupSizeInByte;
+    tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
+    tsFileConfig.setPageSizeInByte(pageSizeInByte);
+    tsFileConfig.setGroupSizeInByte(groupSizeInByte);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
 
     EnvironmentUtils.cleanEnv();
@@ -101,14 +99,12 @@ public class IoTDBEngineTimeGeneratorIT {
 
   private static void insertData() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
       // create storage group and measurement
-      for (String sql : Constant.create_sql) {
+      for (String sql : TestConstant.create_sql) {
         statement.execute(sql);
       }
 
@@ -124,7 +120,7 @@ public class IoTDBEngineTimeGeneratorIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 31);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            Constant.stringValue[(int) time % 5]);
+            TestConstant.stringValue[(int) time % 5]);
         statement.execute(sql);
 
         if (satisfyTimeFilter1(time)) {
@@ -136,7 +132,7 @@ public class IoTDBEngineTimeGeneratorIT {
         }
       }
 
-      statement.execute("flush");
+      statement.execute("FLUSH");
 
       // insert data (time from 1200-1499)
       for (long time = 1200; time < 1500; time++) {
@@ -156,18 +152,13 @@ public class IoTDBEngineTimeGeneratorIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 31);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            Constant.stringValue[(int) time % 5]);
+            TestConstant.stringValue[(int) time % 5]);
         statement.execute(sql);
       }
 
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -192,14 +183,14 @@ public class IoTDBEngineTimeGeneratorIT {
   public void testOneSeriesWithValueAndTimeFilter() throws IOException, StorageEngineException {
     //System.out.println("Test >>> root.vehicle.d0.s0 >= 14 && time > 500");
 
-    Path pd0s0 = new Path(Constant.d0s0);
+    Path pd0s0 = new Path(TestConstant.d0s0);
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(14);
     TimeFilter.TimeGt timeGt = TimeFilter.gt(500);
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(pd0s0,
         FilterFactory.and(valueGtEq, timeGt));
-    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(singleSeriesExpression,
-        TEST_QUERY_CONTEXT);
+    ServerTimeGenerator timeGenerator = new ServerTimeGenerator(singleSeriesExpression,
+        TEST_QUERY_CONTEXT, new RawDataQueryPlan());
 
     int cnt = 0;
     while (timeGenerator.hasNext()) {
@@ -218,12 +209,17 @@ public class IoTDBEngineTimeGeneratorIT {
   public void testEmptySeriesWithValueFilter() throws IOException, StorageEngineException {
     //System.out.println("Test >>> root.vehicle.d1.s0 >= 5");
 
-    Path pd1s0 = new Path(Constant.d1s0);
+    Path pd1s0 = new Path(TestConstant.d1s0);
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(5);
 
     IExpression singleSeriesExpression = new SingleSeriesExpression(pd1s0, valueGtEq);
-    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(singleSeriesExpression,
-        TEST_QUERY_CONTEXT);
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
+    List<Path> paths = new ArrayList<>();
+    paths.add(pd1s0);
+    queryPlan.setDeduplicatedPaths(paths);
+
+    ServerTimeGenerator timeGenerator = new ServerTimeGenerator(singleSeriesExpression,
+        TEST_QUERY_CONTEXT, queryPlan);
 
     int cnt = 0;
     while (timeGenerator.hasNext()) {
@@ -241,8 +237,8 @@ public class IoTDBEngineTimeGeneratorIT {
     System.out
         .println("Test >>> root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11.5 || time > 900");
 
-    Path pd0s0 = new Path(Constant.d0s0);
-    Path pd0s2 = new Path(Constant.d0s2);
+    Path pd0s0 = new Path(TestConstant.d0s0);
+    Path pd0s2 = new Path(TestConstant.d0s2);
 
     ValueFilter.ValueGtEq valueGtEq5 = ValueFilter.gtEq(5);
     ValueFilter.ValueGtEq valueGtEq11 = ValueFilter.gtEq(11.5f);
@@ -255,14 +251,19 @@ public class IoTDBEngineTimeGeneratorIT {
     IExpression andExpression = BinaryExpression
         .and(singleSeriesExpression1, singleSeriesExpression2);
 
-    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(andExpression,
-        TEST_QUERY_CONTEXT);
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
+    List<Path> paths = new ArrayList<>();
+    paths.add(pd0s0);
+    paths.add(pd0s2);
+    queryPlan.setDeduplicatedPaths(paths);
+    ServerTimeGenerator timeGenerator = new ServerTimeGenerator(andExpression,
+        TEST_QUERY_CONTEXT, queryPlan);
     int cnt = 0;
     while (timeGenerator.hasNext()) {
       long time = timeGenerator.next();
       assertTrue(satisfyTimeFilter2(time));
       cnt++;
-      // System.out.println("cnt =" + cnt + "; time = " + time);
+//       System.out.println("cnt =" + cnt + "; time = " + time);
     }
     assertEquals(count2, cnt);
   }

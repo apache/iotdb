@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -54,14 +55,14 @@ public abstract class Decoder {
   public static Decoder getDecoderByType(TSEncoding type, TSDataType dataType) {
     // PLA and DFT encoding are not supported in current version
     if (type == TSEncoding.PLAIN) {
-      return new PlainDecoder(EndianType.LITTLE_ENDIAN);
+      return new PlainDecoder(EndianType.BIG_ENDIAN);
     } else if (type == TSEncoding.RLE) {
       switch (dataType) {
         case BOOLEAN:
         case INT32:
-          return new IntRleDecoder(EndianType.LITTLE_ENDIAN);
+          return new IntRleDecoder(EndianType.BIG_ENDIAN);
         case INT64:
-          return new LongRleDecoder(EndianType.LITTLE_ENDIAN);
+          return new LongRleDecoder(EndianType.BIG_ENDIAN);
         case FLOAT:
         case DOUBLE:
           return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);

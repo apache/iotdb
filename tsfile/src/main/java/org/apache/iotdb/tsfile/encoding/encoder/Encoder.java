@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,15 +21,15 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+
 import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 /**
- * This class is the parent class of all Encoders. Every encoder has a specific {@code
+ * This class is the parent class of all Encoders. Every encoder has a specific
+ * {@code
  * <encoderType>} which represents the type of this encoder
- *
- * @author Zhang Jinrui
  */
 public abstract class Encoder {
 
@@ -91,8 +91,8 @@ public abstract class Encoder {
   public abstract void flush(ByteArrayOutputStream out) throws IOException;
 
   /**
-   * When encoder accepts a new incoming data point, the maximal possible size in byte it takes to
-   * store in memory.
+   * When encoder accepts a new incoming data point, the maximal possible size in
+   * byte it takes to store in memory.
    *
    * @return the maximal possible size of one data item encoded by this encoder
    */
@@ -101,8 +101,8 @@ public abstract class Encoder {
   }
 
   /**
-   * The maximal possible memory size occupied by current Encoder. This statistic value doesn't
-   * involve OutputStream.
+   * The maximal possible memory size occupied by current Encoder. This statistic
+   * value doesn't involve OutputStream.
    *
    * @return the maximal size of possible memory occupied by current encoder
    */

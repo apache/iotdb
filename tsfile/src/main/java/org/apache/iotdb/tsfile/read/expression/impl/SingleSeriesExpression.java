@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.expression.impl;
 
 import java.io.Serializable;
+
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -43,7 +44,7 @@ public class SingleSeriesExpression implements IUnaryExpression, Serializable {
 
   @Override
   public IExpression clone() {
-    return new SingleSeriesExpression(seriesPath.clone(), filter.clone());
+    return new SingleSeriesExpression(seriesPath.clone(), filter.copy());
   }
 
   @Override

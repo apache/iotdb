@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,8 +20,8 @@ package org.apache.iotdb.tsfile.utils;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.util.List;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,12 +31,11 @@ import org.slf4j.LoggerFactory;
  * integer, long, float, boolean, double and string. <br> It also provide other usable function as
  * follow:<br> reading function which receives InputStream. <br> concat function to join a list of
  * byte array to one.<br> get and set one bit in a byte array.
- *
- * @author kangrong
  */
 public class BytesUtils {
 
-  private BytesUtils(){}
+  private BytesUtils() {
+  }
 
   private static final Logger LOG = LoggerFactory.getLogger(BytesUtils.class);
 
@@ -88,8 +87,7 @@ public class BytesUtils {
       try {
         result[temp] = setByteN(result[temp], pos + width - 1 - i, getIntN(srcNum, i));
       } catch (Exception e) {
-        LOG.error(
-            "tsfile-common BytesUtils: cannot convert an integer {} to a byte array, "
+        LOG.error("tsfile-common BytesUtils: cannot convert an integer {} to a byte array, "
                 + "pos {}, width {}",
             srcNum, pos, width, e);
       }
@@ -192,7 +190,7 @@ public class BytesUtils {
     byte[] b = new byte[4];
     int l = Float.floatToIntBits(x);
     for (int i = 3; i >= 0; i--) {
-      b[i] = (byte)l;
+      b[i] = (byte) l;
       l = l >> 8;
     }
     return b;
@@ -211,7 +209,7 @@ public class BytesUtils {
     }
     int l = Float.floatToIntBits(x);
     for (int i = 3 + offset; i >= offset; i--) {
-      desc[i] = (byte)l;
+      desc[i] = (byte) l;
       l = l >> 8;
     }
   }
@@ -271,7 +269,7 @@ public class BytesUtils {
     byte[] bytes = new byte[8];
     long value = Double.doubleToLongBits(data);
     for (int i = 7; i >= 0; i--) {
-      bytes[i] = (byte)value;
+      bytes[i] = (byte) value;
       value = value >> 8;
     }
     return bytes;
@@ -291,7 +289,7 @@ public class BytesUtils {
 
     long value = Double.doubleToLongBits(d);
     for (int i = 7; i >= 0; i--) {
-      bytes[offset + i] = (byte)value;
+      bytes[offset + i] = (byte) value;
       value = value >> 8;
     }
   }
@@ -364,6 +362,18 @@ public class BytesUtils {
       b[0] = 0;
     }
     return b;
+  }
+
+  public static byte boolToByte(boolean x) {
+    if (x) {
+      return 1;
+    } else {
+      return 0;
+    }
+  }
+
+  public static boolean byteToBool(byte b) {
+    return b == 1;
   }
 
   /**
@@ -475,7 +485,8 @@ public class BytesUtils {
       } catch (Exception e) {
         LOG.error(
             "tsfile-common BytesUtils: cannot convert a long {} to a byte array, pos {}, width {}",
-            srcNum, pos, width, e);
+            srcNum, pos,
+            width, e);
       }
 
     }
@@ -557,12 +568,7 @@ public class BytesUtils {
    * @return byte array
    */
   public static byte[] stringToBytes(String str) {
-    try {
-      return str.getBytes(TSFileConfig.STRING_ENCODING);
-    } catch (UnsupportedEncodingException e) {
-      LOG.error("catch UnsupportedEncodingException {}", str, e);
-      return null;
-    }
+    return str.getBytes(TSFileConfig.STRING_CHARSET);
   }
 
   /**
@@ -572,12 +578,7 @@ public class BytesUtils {
    * @return string
    */
   public static String bytesToString(byte[] byteStr) {
-    try {
-      return new String(byteStr, TSFileConfig.STRING_ENCODING);
-    } catch (UnsupportedEncodingException e) {
-      LOG.error("catch UnsupportedEncodingException {}", byteStr, e);
-      return null;
-    }
+    return new String(byteStr, TSFileConfig.STRING_CHARSET);
   }
 
   /**
@@ -833,7 +834,7 @@ public class BytesUtils {
     int temp = number;
     byte[] b = new byte[2];
     for (int i = b.length - 1; i >= 0; i--) {
-      b[i] = (byte)temp;
+      b[i] = (byte) temp;
       temp = temp >> 8;
     }
 

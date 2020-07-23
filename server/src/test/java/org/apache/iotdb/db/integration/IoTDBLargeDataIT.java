@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -28,7 +28,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -44,7 +44,6 @@ import org.junit.Test;
  */
 public class IoTDBLargeDataIT {
 
-  private static IoTDB daemon;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -57,32 +56,28 @@ public class IoTDBLargeDataIT {
 
     // use small page setting
     // origin value
-    maxNumberOfPointsInPage = tsFileConfig.maxNumberOfPointsInPage;
-    pageSizeInByte = tsFileConfig.pageSizeInByte;
-    groupSizeInByte = tsFileConfig.groupSizeInByte;
+    maxNumberOfPointsInPage = tsFileConfig.getMaxNumberOfPointsInPage();
+    pageSizeInByte = tsFileConfig.getPageSizeInByte();
+    groupSizeInByte = tsFileConfig.getGroupSizeInByte();
 
     // new value
-    tsFileConfig.maxNumberOfPointsInPage = 1000;
-    tsFileConfig.pageSizeInByte = 1024 * 150;
-    tsFileConfig.groupSizeInByte = 1024 * 1000;
+    tsFileConfig.setMaxNumberOfPointsInPage(1000);
+    tsFileConfig.setPageSizeInByte(1024 * 150);
+    tsFileConfig.setGroupSizeInByte(1024 * 1000);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
 
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
-    Thread.sleep(5000);
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
 
     // recovery value
-    tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
-    tsFileConfig.pageSizeInByte = pageSizeInByte;
-    tsFileConfig.groupSizeInByte = groupSizeInByte;
+    tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
+    tsFileConfig.setPageSizeInByte(pageSizeInByte);
+    tsFileConfig.setGroupSizeInByte(groupSizeInByte);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
 
     EnvironmentUtils.cleanEnv();
@@ -91,13 +86,11 @@ public class IoTDBLargeDataIT {
   private static void insertData()
       throws ClassNotFoundException, SQLException, InterruptedException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
-      for (String sql : Constant.create_sql) {
+      for (String sql : TestConstant.create_sql) {
         statement.execute(sql);
       }
 
@@ -128,19 +121,17 @@ public class IoTDBLargeDataIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 22);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            Constant.stringValue[time % 5]);
+            TestConstant.stringValue[time % 5]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
-            Constant.booleanValue[time % 2]);
+            TestConstant.booleanValue[time % 2]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, time);
         statement.execute(sql);
       }
 
       statement.execute("flush");
-      // statement.execute("merge");
-
-      Thread.sleep(5000);
+      statement.execute("merge");
 
       // buffwrite data, unsealed file
       for (int time = 100000; time < 101000; time++) {
@@ -185,7 +176,7 @@ public class IoTDBLargeDataIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time + 2);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            Constant.stringValue[time % 5]);
+            TestConstant.stringValue[time % 5]);
         statement.execute(sql);
       }
 
@@ -203,20 +194,15 @@ public class IoTDBLargeDataIT {
             .format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, "goodman");
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
-            Constant.booleanValue[time % 2]);
+            TestConstant.booleanValue[time % 2]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
         statement.execute(sql);
       }
 
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -226,36 +212,35 @@ public class IoTDBLargeDataIT {
     String selectSql = "select * from root.vehicle";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
       boolean hasResultSet = statement.execute(selectSql);
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans =
-            resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0)
-                + "," + resultSet.getString(Constant.d0s1) + "," + resultSet
-                .getString(Constant.d0s2) + ","
-                + resultSet.getString(Constant.d0s3) + "," + resultSet.getString(Constant.d0s4)
-                + ","
-                + resultSet.getString(Constant.d0s5);
-        cnt++;
-      }
 
-      assertEquals(23400, cnt);
-      statement.close();
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(
+                  TestConstant.d0s0)
+                  + "," + resultSet.getString(
+                  TestConstant.d0s1) + "," + resultSet
+                  .getString(TestConstant.d0s2) + ","
+                  + resultSet.getString(TestConstant.d0s3) + "," + resultSet.getString(
+                  TestConstant.d0s4)
+                  + ","
+                  + resultSet.getString(TestConstant.d0s5);
+          cnt++;
+        }
+
+        assertEquals(23400, cnt);
+      }
 
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -266,31 +251,27 @@ public class IoTDBLargeDataIT {
     String selectSql = "select s0 from root.vehicle.d0 where s0 >= 20";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(selectSql);
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans =
-            resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0);
-        // System.out.println("===" + ans);
-        cnt++;
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(
+                  TestConstant.d0s0);
+          // System.out.println("===" + ans);
+          cnt++;
+        }
+        assertEquals(16440, cnt);
       }
-      assertEquals(16440, cnt);
-      statement.close();
 
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -299,37 +280,30 @@ public class IoTDBLargeDataIT {
   public void seriesGlobalTimeFilterTest() throws ClassNotFoundException, SQLException {
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root");
-    boolean hasResultSet;
-    Statement statement;
 
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      statement = connection.createStatement();
+    boolean hasResultSet;
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement();) {
       hasResultSet = statement.execute("select s0 from root.vehicle.d0 where time > 22987");
       assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
+
       int cnt = 0;
-      while (resultSet.next()) {
-        String ans =
-            resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0);
-        // System.out.println(ans);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet();) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(
+                  TestConstant.d0s0);
+//           System.out.println(ans);
+          cnt++;
+        }
+
+        assertEquals(3012, cnt);
       }
-
-      assertEquals(3012, cnt);
-      statement.close();
-
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -337,39 +311,32 @@ public class IoTDBLargeDataIT {
   @Test
   public void crossSeriesReadUpdateTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root");
-    boolean hasResultSet;
-    Statement statement;
 
-    try {
-      connection = DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      statement = connection.createStatement();
+    boolean hasResultSet;
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       hasResultSet = statement.execute("select s1 from root.vehicle.d0 where s0 < 111");
       assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        long time = Long.valueOf(resultSet.getString(Constant.TIMESTAMP_STR));
-        String value = resultSet.getString(Constant.d0s1);
-        if (time > 200900) {
-          assertEquals("7777", value);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          long time = Long.valueOf(resultSet.getString(
+              TestConstant.TIMESTAMP_STR));
+          String value = resultSet.getString(TestConstant.d0s1);
+          if (time > 200900) {
+            assertEquals("7777", value);
+          }
+          // String ans = resultSet.getString(d0s1);
+          cnt++;
         }
-        // String ans = resultSet.getString(d0s1);
-        cnt++;
+        assertEquals(22800, cnt);
       }
-      assertEquals(22800, cnt);
-      statement.close();
 
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 }

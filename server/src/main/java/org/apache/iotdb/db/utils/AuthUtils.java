@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -55,7 +55,7 @@ public class AuthUtils {
   public static void validatePassword(String password) throws AuthException {
     if (password.length() < MIN_PASSWORD_LENGTH) {
       throw new AuthException(
-          "Password's size must be greater than or equal to " + MIN_USERNAME_LENGTH);
+          "Password's size must be greater than or equal to " + MIN_PASSWORD_LENGTH);
     }
   }
 
@@ -260,14 +260,14 @@ public class AuthUtils {
    * add privilege.
    *
    * @param path series path
-   * @param privilgeId privilege Id
+   * @param privilegeId privilege Id
    * @param privilegeList privileges in List structure
    */
-  public static void addPrivilege(String path, int privilgeId, List<PathPrivilege> privilegeList) {
+  public static void addPrivilege(String path, int privilegeId, List<PathPrivilege> privilegeList) {
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (pathPrivilege.getPath().equals(path)) {
-        if (privilgeId != PrivilegeType.ALL.ordinal()) {
-          pathPrivilege.getPrivileges().add(privilgeId);
+        if (privilegeId != PrivilegeType.ALL.ordinal()) {
+          pathPrivilege.getPrivileges().add(privilegeId);
         } else {
           for (PrivilegeType privilegeType : PrivilegeType.values()) {
             pathPrivilege.getPrivileges().add(privilegeType.ordinal());
@@ -277,8 +277,8 @@ public class AuthUtils {
       }
     }
     PathPrivilege pathPrivilege = new PathPrivilege(path);
-    if (privilgeId != PrivilegeType.ALL.ordinal()) {
-      pathPrivilege.getPrivileges().add(privilgeId);
+    if (privilegeId != PrivilegeType.ALL.ordinal()) {
+      pathPrivilege.getPrivileges().add(privilegeId);
     } else {
       for (PrivilegeType privilegeType : PrivilegeType.values()) {
         pathPrivilege.getPrivileges().add(privilegeType.ordinal());
@@ -291,16 +291,16 @@ public class AuthUtils {
    * remove privilege.
    *
    * @param path series path
-   * @param privilgeId privilege Id
+   * @param privilegeId privilege Id
    * @param privilegeList privileges in List structure
    */
-  public static void removePrivilege(String path, int privilgeId,
+  public static void removePrivilege(String path, int privilegeId,
       List<PathPrivilege> privilegeList) {
     PathPrivilege emptyPrivilege = null;
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (pathPrivilege.getPath().equals(path)) {
-        if (privilgeId != PrivilegeType.ALL.ordinal()) {
-          pathPrivilege.getPrivileges().remove(privilgeId);
+        if (privilegeId != PrivilegeType.ALL.ordinal()) {
+          pathPrivilege.getPrivileges().remove(privilegeId);
         } else {
           privilegeList.remove(pathPrivilege);
           return;

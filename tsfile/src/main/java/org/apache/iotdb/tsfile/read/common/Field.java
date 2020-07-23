@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
+import org.apache.iotdb.tsfile.exception.NullFieldException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 /**
- * Field is component of one {@code RowRecord} which stores a value in specific data type. The value
- * type of Field is primitive(int long, float, double, binary, boolean).
+ * Field is component of one {@code RowRecord} which stores a value in specific
+ * data type. The value type of Field is primitive(int long, float, double,
+ * binary, boolean).
  */
 public class Field {
 
@@ -35,17 +37,53 @@ public class Field {
   private float floatV;
   private double doubleV;
   private Binary binaryV;
-  private boolean isNull;
 
   public Field(TSDataType dataType) {
     this.dataType = dataType;
+  }
+
+  public static Field copy(Field field) {
+    Field out = new Field(field.dataType);
+    if (out.dataType != null) {
+      switch (out.dataType) {
+        case DOUBLE:
+          out.setDoubleV(field.getDoubleV());
+          break;
+        case FLOAT:
+          out.setFloatV(field.getFloatV());
+          break;
+        case INT64:
+          out.setLongV(field.getLongV());
+          break;
+        case INT32:
+          out.setIntV(field.getIntV());
+          break;
+        case BOOLEAN:
+          out.setBoolV(field.getBoolV());
+          break;
+        case TEXT:
+          out.setBinaryV(field.getBinaryV());
+          break;
+        default:
+          throw new UnSupportedDataTypeException(out.dataType.toString());
+      }
+    }
+
+    return out;
   }
 
   public TSDataType getDataType() {
     return dataType;
   }
 
+  public boolean isNull() {
+    return dataType == null;
+  }
+
   public boolean getBoolV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
     return boolV;
   }
 
@@ -54,6 +92,9 @@ public class Field {
   }
 
   public int getIntV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
     return intV;
   }
 
@@ -62,6 +103,9 @@ public class Field {
   }
 
   public long getLongV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
     return longV;
   }
 
@@ -70,6 +114,9 @@ public class Field {
   }
 
   public float getFloatV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
     return floatV;
   }
 
@@ -78,6 +125,9 @@ public class Field {
   }
 
   public double getDoubleV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
     return doubleV;
   }
 
@@ -86,6 +136,9 @@ public class Field {
   }
 
   public Binary getBinaryV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
     return binaryV;
   }
 
@@ -99,7 +152,7 @@ public class Field {
    * @return value string
    */
   public String getStringValue() {
-    if (isNull || dataType == null) {
+    if (dataType == null) {
       return "null";
     }
     switch (dataType) {
@@ -116,7 +169,7 @@ public class Field {
       case TEXT:
         return binaryV.toString();
       default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
   }
 
@@ -125,16 +178,8 @@ public class Field {
     return getStringValue();
   }
 
-  public void setNull() {
-    this.isNull = true;
-  }
-
-  public boolean isNull() {
-    return this.isNull;
-  }
-
   public Object getObjectValue(TSDataType dataType) {
-    if (isNull) {
+    if (this.dataType == null) {
       return null;
     }
     switch (dataType) {
@@ -151,7 +196,37 @@ public class Field {
       case TEXT:
         return getBinaryV();
       default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
+  }
+
+  public static Field getField(Object value, TSDataType dataType) {
+    if (value == null) {
+      return null;
+    }
+    Field field = new Field(dataType);
+    switch (dataType) {
+      case INT32:
+        field.setIntV((int) value);
+        break;
+      case INT64:
+        field.setLongV((long) value);
+        break;
+      case FLOAT:
+        field.setFloatV((float) value);
+        break;
+      case DOUBLE:
+        field.setDoubleV((double) value);
+        break;
+      case BOOLEAN:
+        field.setBoolV((boolean) value);
+        break;
+      case TEXT:
+        field.setBinaryV((Binary) value);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(dataType.toString());
+    }
+    return field;
   }
 }

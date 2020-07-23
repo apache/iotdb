@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -23,18 +23,16 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Scanner;
-
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,35 +40,33 @@ import org.slf4j.LoggerFactory;
 public class FileGenerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(FileGenerator.class);
-  public static int ROW_COUNT = 1000;
-  public static TsFileWriter innerWriter;
-  public static String inputDataFile;
-  public static String outputDataFile = "target/perTestOutputData.tsfile";
-  public static String errorOutputDataFile;
-  public static FileSchema schema;
-  public static int oldMaxNumberOfPointsInPage;
+  public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH
+      .concat("perTestOutputData.tsfile");
+  public static Schema schema;
+  private static int ROW_COUNT = 1000;
+  private static TsFileWriter innerWriter;
+  private static String inputDataFile;
+  private static String errorOutputDataFile;
 
-  public static void generateFile(int rowCount, int maxNumberOfPointsInPage)
-      throws IOException, InterruptedException, WriteProcessException {
+  public static void generateFile(int rowCount, int maxNumberOfPointsInPage) throws IOException {
     ROW_COUNT = rowCount;
     TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-    oldMaxNumberOfPointsInPage = config.maxNumberOfPointsInPage;
-    config.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
+    int oldMaxNumberOfPointsInPage = config.getMaxNumberOfPointsInPage();
+    config.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
 
     prepare();
     write();
-    config.maxNumberOfPointsInPage = oldMaxNumberOfPointsInPage;
+    config.setMaxNumberOfPointsInPage(oldMaxNumberOfPointsInPage);
   }
 
-  public static void generateFile()
-      throws IOException, InterruptedException, WriteProcessException {
+  public static void generateFile() throws IOException {
     generateFile(1000, 10);
   }
 
   public static void prepare() throws IOException {
-    inputDataFile = "target/perTestInputData";
-    errorOutputDataFile = "target/perTestErrorOutputData.tsfile";
-    generateTestData();
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestInputData");
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTestErrorOutputData.tsfile");
+    generateTestSchema();
     generateSampleInputDataFile();
   }
 
@@ -161,27 +157,41 @@ public class FileGenerator {
 
     // write
     try {
-      writeToFile(schema);
+      writeToTsFile(schema);
     } catch (WriteProcessException e) {
       e.printStackTrace();
     }
     LOG.info("write to file successfully!!");
   }
 
-  private static void generateTestData() {
-    schema = new FileSchema();
+  private static void generateTestSchema() {
+    schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.valueEncoder)));
-    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
-    schema.registerMeasurement(new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
-    schema.registerMeasurement(new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
-    schema.registerMeasurement(new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d1.s1"),
+        new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1.s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1.s3"),
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1.s4"),
+        new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1.s5"),
+        new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1.s6"),
+        new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d1.s7"),
+        new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d2.s1"),
+        new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d2.s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d2.s3"),
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d2.s4"),
+        new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
   }
 
-  static public void writeToFile(FileSchema schema)
-      throws IOException, WriteProcessException {
+  private static void writeToTsFile(Schema schema) throws IOException, WriteProcessException {
     Scanner in = getDataFile(inputDataFile);
     long lineCount = 0;
     long startTime = System.currentTimeMillis();

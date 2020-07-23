@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,6 +19,31 @@
 
 package org.apache.iotdb.db.monitor;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeManagerStatConstants;
+import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstants;
+import org.apache.iotdb.db.monitor.collector.FileSize;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,30 +51,6 @@ import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.MetadataErrorException;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeManagerStatConstants;
-import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstants;
-import org.apache.iotdb.db.monitor.collector.FileSize;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class StatMonitor implements IService {
 
@@ -76,7 +77,7 @@ public class StatMonitor implements IService {
 
   private StatMonitor() {
     initTemporaryStatList();
-    MManager mmanager = MManager.getInstance();
+    MManager mmanager = IoTDB.metaManager;
     statisticMap = new HashMap<>();
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     statMonitorDetectFreqSec = config.getStatMonitorDetectFreqSec();
@@ -85,11 +86,11 @@ public class StatMonitor implements IService {
     if (config.isEnableStatMonitor()) {
       try {
         String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
-        if (!mmanager.pathExist(prefix)) {
-          mmanager.setStorageLevelToMTree(prefix);
+        if (!mmanager.isPathExist(prefix)) {
+          mmanager.setStorageGroup(prefix);
         }
-      } catch (MetadataErrorException e) {
-        logger.error("MManager cannot set storage level to MTree.", e);
+      } catch (MetadataException e) {
+        logger.error("MManager cannot set storage group to MTree.", e);
       }
     }
   }
@@ -139,14 +140,14 @@ public class StatMonitor implements IService {
   }
 
   void registerStatStorageGroup() {
-    MManager mManager = MManager.getInstance();
+    MManager mManager = IoTDB.metaManager;
     String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
     try {
-      if (!mManager.pathExist(prefix)) {
-        mManager.setStorageLevelToMTree(prefix);
+      if (!mManager.isPathExist(prefix)) {
+        mManager.setStorageGroup(prefix);
       }
     } catch (Exception e) {
-      logger.error("MManager cannot set storage level to MTree.", e);
+      logger.error("MManager cannot set storage group to MTree.", e);
     }
   }
 
@@ -156,20 +157,21 @@ public class StatMonitor implements IService {
    * @param hashMap series path and data type pair, for example: [root.stat.file.size.DATA, INT64]
    */
   public synchronized void registerStatStorageGroup(Map<String, String> hashMap) {
-    MManager mManager = MManager.getInstance();
+    MManager mManager = IoTDB.metaManager;
     try {
       for (Map.Entry<String, String> entry : hashMap.entrySet()) {
         if (entry.getValue() == null) {
           logger.error("Registering metadata but data type of {} is null", entry.getKey());
         }
 
-        if (!mManager.pathExist(entry.getKey())) {
-          mManager.addPathToMTree(new Path(entry.getKey()), TSDataType.valueOf(entry.getValue()),
-              TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
+        if (!mManager.isPathExist(entry.getKey())) {
+          mManager.createTimeseries(entry.getKey(), TSDataType.valueOf(entry.getValue()),
+              TSEncoding.valueOf("RLE"),
+              TSFileDescriptor.getInstance().getConfig().getCompressor(),
               Collections.emptyMap());
         }
       }
-    } catch (MetadataErrorException e) {
+    } catch (MetadataException e) {
       logger.error("Initialize the metadata error.", e);
     }
   }
@@ -309,10 +311,7 @@ public class StatMonitor implements IService {
         activate();
       }
     } catch (Exception e) {
-      String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
-      throw new StartupException(errorMessage);
+      throw new StartupException(this.getID().getName(), e.getMessage());
     }
   }
 
@@ -337,12 +336,12 @@ public class StatMonitor implements IService {
     private static final StatMonitor INSTANCE = new StatMonitor();
   }
 
-  class StatBackLoop implements Runnable {
+  class StatBackLoop extends WrappedRunnable {
 
     FileSize fileSize = FileSize.getInstance();
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       try {
         long currentTimeMillis = System.currentTimeMillis();
         long seconds = (currentTimeMillis - runningTimeMillis) / 1000;
@@ -366,7 +365,7 @@ public class StatMonitor implements IService {
         for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
           for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
             if (temporaryStatList.contains(statParamName)) {
-              fManager.delete(entry.getKey(), statParamName,
+              fManager.delete(entry.getKey(), statParamName, Long.MIN_VALUE,
                   currentTimeMillis - statMonitorRetainIntervalSec * 1000);
             }
           }
@@ -383,7 +382,7 @@ public class StatMonitor implements IService {
       int pointNum;
       for (Map.Entry<String, TSRecord> entry : tsRecordHashMap.entrySet()) {
         try {
-          fManager.insert(new InsertPlan(entry.getValue()));
+          fManager.insert(new InsertRowPlan(entry.getValue()));
           numInsert.incrementAndGet();
           pointNum = entry.getValue().dataPointList.size();
           numPointsInsert.addAndGet(pointNum);
