@@ -18,6 +18,28 @@
     under the License.
 
 -->
+# Apache IoTDB (incubating) 0.10.1
+
+* [IOTDB-797] InsertTablet deserialization from WAL error
+* [IOTDB-788] Can not upgrade all storage groups
+* [IOTDB-792] deadlock when insert while show latest timeseries
+* [IOTDB-794] Rename file or delete file Error in start check in Windows
+* [IOTDB-795] BufferUnderflowException in Hive-connector
+* [IOTDB-766] Do not release unclosed file reader, a small memory leak
+* [IOTDB-796] Concurrent Query throughput is low
+* Query result is not correct when some unsequence data exists
+* Change the default fetch size to 10000 in session
+* [IOTDB-798] fix a set rowLimit and rowOffset bug
+* [IOTDB-800] Add a new config type for those parameters which could not be modified any more after the first start 
+* [IOTDB-802] Improve "group by" query performance
+* [IOTDB-799] remove log visualizer tool from v0.10 
+* fix license-binary  
+* [IOTDB-805] Fix BufferUnderflowException when querying TsFile stored in HDFS 
+* python session client ver-0.10.0
+* [IOTDB-808] fix bug in selfCheck() truncate 
+* fix doc of MeasurementSchema in Tablet 
+* [IOTDB-811] fix upgrading mlog many times when upgrading system.properties crashed
+
 
 # Apache IoTDB (incubating) 0.8.0
 
