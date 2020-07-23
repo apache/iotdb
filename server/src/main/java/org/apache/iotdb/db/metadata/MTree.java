@@ -652,7 +652,10 @@ public class MTree implements Serializable {
     }
     List<String[]> allMatchedNodes = new ArrayList<>();
 
-    findPath(root, nodes, 1, allMatchedNodes, false, true);
+    QueryContext queryContext = new QueryContext(
+        QueryResourceManager.getInstance().assignQueryId(true));
+
+    findPath(root, nodes, 1, allMatchedNodes, false, true, queryContext);
 
     Stream<String[]> sortedStream = allMatchedNodes.stream().sorted(
         Comparator.comparingLong((String[] s) -> Long.parseLong(s[7])).reversed()
@@ -684,10 +687,10 @@ public class MTree implements Serializable {
     count.set(0);
     if (offset.get() != 0 || limit.get() != 0) {
       res = new LinkedList<>();
-      findPath(root, nodes, 1, res, true, false);
+      findPath(root, nodes, 1, res, true, false, null);
     } else {
       res = new LinkedList<>();
-      findPath(root, nodes, 1, res, false, false);
+      findPath(root, nodes, 1, res, false, false, null);
     }
     // avoid memory leaks
     limit.remove();
@@ -705,7 +708,7 @@ public class MTree implements Serializable {
    *                             dataType, encoding, compression, offset, lastTimeStamp]
    */
   private void findPath(MNode node, String[] nodes, int idx, List<String[]> timeseriesSchemaList,
-      boolean hasLimit, boolean needLast) throws MetadataException {
+      boolean hasLimit, boolean needLast, QueryContext queryContext) throws MetadataException {
     if (node instanceof MeasurementMNode && nodes.length <= idx) {
       if (hasLimit) {
         curOffset.set(curOffset.get() + 1);
@@ -729,7 +732,8 @@ public class MTree implements Serializable {
       tsRow[4] = measurementSchema.getEncodingType().toString();
       tsRow[5] = measurementSchema.getCompressor().toString();
       tsRow[6] = String.valueOf(((MeasurementMNode) node).getOffset());
-      tsRow[7] = needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node)) : null;
+      tsRow[7] =
+          needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext)) : null;
       timeseriesSchemaList.add(tsRow);
 
       if (hasLimit) {
@@ -739,14 +743,15 @@ public class MTree implements Serializable {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!nodeReg.contains(PATH_WILDCARD)) {
       if (node.hasChild(nodeReg)) {
-        findPath(node.getChild(nodeReg), nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast);
+        findPath(node.getChild(nodeReg), nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast,
+            queryContext);
       }
     } else {
       for (MNode child : node.getChildren().values()) {
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
           continue;
         }
-        findPath(child, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast);
+        findPath(child, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast, queryContext);
         if (hasLimit) {
           if (count.get().intValue() == limit.get().intValue()) {
             return;
@@ -756,16 +761,14 @@ public class MTree implements Serializable {
     }
   }
 
-  static long getLastTimeStamp(MeasurementMNode node) {
+  static long getLastTimeStamp(MeasurementMNode node, QueryContext queryContext) {
     TimeValuePair last = node.getCachedLast();
     if (last != null) {
       return node.getCachedLast().getTimestamp();
     } else {
       try {
         last = calculateLastPairForOneSeriesLocally(new Path(node.getFullPath()),
-            node.getSchema().getType(),
-            new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)),
-            Collections.emptySet());
+            node.getSchema().getType(), queryContext, Collections.emptySet());
         return last.getTimestamp();
       } catch (Exception e) {
         logger.error("Something wrong happened while trying to get last time value pair of {}",
