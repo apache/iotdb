@@ -54,8 +54,7 @@ public class VmLogAnalyzer {
   public void analyze() throws IOException {
     String currLine;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
-      currLine = bufferedReader.readLine();
-      while (currLine != null) {
+      while ((currLine = bufferedReader.readLine()) != null) {
         switch (currLine) {
           case SOURCE_NAME:
             currLine = bufferedReader.readLine();

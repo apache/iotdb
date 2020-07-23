@@ -83,6 +83,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     // file doesn't exist
     if (file.length() == 0) {
       startFile();
+      crashed = true;
+      canWrite = true;
       return;
     }
 
@@ -106,11 +108,13 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
               String.format("%s is not in TsFile format.", file.getAbsolutePath()));
         } else if (truncatedPosition == TsFileCheckStatus.ONLY_MAGIC_HEAD) {
           crashed = true;
+          canWrite = true;
           out.truncate(
               (long) TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
                   .getBytes().length);
         } else {
           crashed = true;
+          canWrite = true;
           // remove broken data
           out.truncate(truncatedPosition);
         }
