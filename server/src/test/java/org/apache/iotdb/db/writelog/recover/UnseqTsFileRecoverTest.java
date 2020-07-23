@@ -181,16 +181,16 @@ public class UnseqTsFileRecoverTest {
   @Test
   public void test() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
-        versionController, resource, false, false, Collections.emptyList());
+        versionController, resource, false, false);
     ActiveTimeSeriesCounter.getInstance()
         .init(resource.getTsFile().getParentFile().getParentFile().getName());
-    performer.recover().left.close();
+    performer.recover().close();
 
-    assertEquals(1, (long) resource.getStartTime("root.sg.device99"));
-    assertEquals(300, (long) resource.getEndTime("root.sg.device99"));
+    assertEquals(1, resource.getStartTime("root.sg.device99"));
+    assertEquals(300, resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
-      assertEquals(0, (long) resource.getStartTime("root.sg.device" + i));
-      assertEquals(9, (long) resource.getEndTime("root.sg.device" + i));
+      assertEquals(0, resource.getStartTime("root.sg.device" + i));
+      assertEquals(9, resource.getEndTime("root.sg.device" + i));
     }
 
     TsFileSequenceReader fileReader = new TsFileSequenceReader(tsF.getPath(), true);

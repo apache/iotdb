@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import static org.apache.iotdb.db.engine.flush.MemTableFlushTask.getFlushLogFile;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.createNewVMFile;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 
 import java.io.File;
@@ -68,22 +66,17 @@ public class TsFileRecoverPerformer {
   private boolean sequence;
   private boolean isLastFile;
 
-  private List<List<TsFileResource>> vmTsFileResources;
-
   /**
    * @param isLastFile whether this TsFile is the last file of its partition
-   * @param vmTsFileResources only last file could have non-empty vmTsFileResources
    */
   public TsFileRecoverPerformer(String logNodePrefix, VersionController versionController,
-      TsFileResource currentTsFileResource, boolean sequence, boolean isLastFile,
-      List<List<TsFileResource>> vmTsFileResources) {
+      TsFileResource currentTsFileResource, boolean sequence, boolean isLastFile) {
     this.filePath = currentTsFileResource.getTsFilePath();
     this.logNodePrefix = logNodePrefix;
     this.versionController = versionController;
     this.tsFileResource = currentTsFileResource;
     this.sequence = sequence;
     this.isLastFile = isLastFile;
-    this.vmTsFileResources = vmTsFileResources;
   }
 
   /**
@@ -94,18 +87,10 @@ public class TsFileRecoverPerformer {
    * file and the vmfiles are not closed before crash, so these writers can be used to continue
    * writing
    */
-  public Pair<RestorableTsFileIOWriter, List<List<RestorableTsFileIOWriter>>> recover()
+  public RestorableTsFileIOWriter recover()
       throws StorageGroupProcessorException {
 
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
-    List<List<File>> vmFileList = new ArrayList<>();
-    for (List<TsFileResource> subTsFileResource : vmTsFileResources) {
-      List<File> subVmFileList = new ArrayList<>();
-      for (TsFileResource tsFileResource : subTsFileResource) {
-        subVmFileList.add(FSFactoryProducer.getFSFactory().getFile(tsFileResource.getTsFilePath()));
-      }
-      vmFileList.add(subVmFileList);
-    }
     if (!file.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", filePath);
       return null;
@@ -113,21 +98,8 @@ public class TsFileRecoverPerformer {
 
     // remove corrupted part of the TsFile
     RestorableTsFileIOWriter restorableTsFileIOWriter;
-
-    // create RestorableTsFileIOWriter for all vmfiles in each level
-    List<List<RestorableTsFileIOWriter>> vmRestorableTsFileIOWriterList = new ArrayList<>();
     try {
       restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
-      for (int i = 0; i < vmTsFileResources.size(); i++) {
-        vmRestorableTsFileIOWriterList.add(new ArrayList<>());
-        for (int j = 0; j < vmTsFileResources.get(i).size(); j++) {
-          file = vmFileList.get(i).get(j);
-          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(file);
-          // recover vmfiles' metadata
-          recoverResourceFromWriter(writer, vmTsFileResources.get(i).get(j));
-          vmRestorableTsFileIOWriterList.get(i).add(writer);
-        }
-      }
     } catch (NotCompatibleTsFileException e) {
       boolean result = file.delete();
       logger.warn("TsFile {} is incompatible. Delete it successfully {}", filePath, result);
@@ -141,7 +113,7 @@ public class TsFileRecoverPerformer {
       // if tsfile is complete, then there is no vmfiles.
       try {
         recoverResource(tsFileResource);
-        return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
+        return restorableTsFileIOWriter;
       } catch (IOException e) {
         throw new StorageGroupProcessorException(
             "recover the resource file failed: " + filePath
@@ -157,56 +129,8 @@ public class TsFileRecoverPerformer {
     // If the vm is not enable, the walTargetWriter points to  the tsfile.
     // If the vm is enable and flush log exists, the walTargetWriter points to the vm of the flush log
     // if the vm is enable and flush log does not exist, the walTargetWriter is null.
-    RestorableTsFileIOWriter walTargetWriter = null;
-    TsFileResource walTargetResource = null;
-
-    boolean enableVM = IoTDBDescriptor.getInstance().getConfig().isEnableVm();
-    boolean flushLogExist = getFlushLogFile(restorableTsFileIOWriter).exists();
-
-    if (!enableVM) {
-      walTargetWriter = restorableTsFileIOWriter;
-      walTargetResource = tsFileResource;
-    } else if (flushLogExist) {
-      walTargetWriter = vmRestorableTsFileIOWriterList.get(0)
-          .get(vmRestorableTsFileIOWriterList.get(0).size() - 1);
-      walTargetResource = vmTsFileResources.get(0).get(vmTsFileResources.get(0).size() - 1);
-      // prevent generating resource file
-      isLastFile = true;
-    }
-
-
-    if (walTargetWriter == null) {
-      try {
-        // if wal exists, we should open a new vmfile to replay it
-        File newVmFile = createNewVMFile(tsFileResource, 0);
-        TsFileResource newVmTsFileResource = new TsFileResource(newVmFile);
-        RestorableTsFileIOWriter newVMWriter = new RestorableTsFileIOWriter(newVmFile);
-        isLastFile = true;
-        // prevent generating resource file
-        if (redoLogs(newVMWriter, newVmTsFileResource, restorableTsFileIOWriter)) {
-          // close output stream of newVMWriter
-          newVMWriter.close();
-          // recover metadata for new vmfile
-          recoverResourceFromWriter(newVMWriter, newVmTsFileResource);
-          vmTsFileResources.get(0).add(newVmTsFileResource);
-          vmRestorableTsFileIOWriterList.get(0).add(newVMWriter);
-          // clean logs
-          MultiFileLogNodeManager.getInstance().deleteNode(
-              logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
-        } else {
-          newVMWriter.close();
-          Files.delete(newVmFile.toPath());
-        }
-        updateTsFileResource();
-        return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
-      } catch (IOException e) {
-        logger.error("recover the resource file failed: {}", filePath + RESOURCE_SUFFIX, e);
-        throw new StorageGroupProcessorException(
-            "recover the resource file failed: " + filePath
-                + RESOURCE_SUFFIX + e);
-      }
-    }
-
+    RestorableTsFileIOWriter walTargetWriter = restorableTsFileIOWriter;
+    TsFileResource walTargetResource = tsFileResource;
     // redo logs
     redoLogs(walTargetWriter, walTargetResource, restorableTsFileIOWriter);
 
@@ -217,21 +141,7 @@ public class TsFileRecoverPerformer {
     } catch (IOException e) {
       throw new StorageGroupProcessorException(e);
     }
-    updateTsFileResource();
-    return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
-  }
-
-  private void updateTsFileResource() {
-    for (List<TsFileResource> subTsFileResources : vmTsFileResources) {
-      for (TsFileResource resource : subTsFileResources) {
-        for (Entry<String, Integer> entry : resource.getDeviceToIndexMap().entrySet()) {
-          String device = entry.getKey();
-          int index = entry.getValue();
-          tsFileResource.updateStartTime(device, resource.getStartTime(index));
-          tsFileResource.updateEndTime(device, resource.getEndTime(index));
-        }
-      }
-    }
+    return restorableTsFileIOWriter;
   }
 
   private void recoverResource(TsFileResource tsFileResource) throws IOException {
@@ -300,7 +210,8 @@ public class TsFileRecoverPerformer {
   }
 
   private boolean redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter,
-      TsFileResource tsFileResource, RestorableTsFileIOWriter tsFileIOWriter) throws StorageGroupProcessorException {
+      TsFileResource tsFileResource, RestorableTsFileIOWriter tsFileIOWriter)
+      throws StorageGroupProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     recoverMemTable.setVersion(versionController.nextVersion());
     LogReplayer logReplayer = new LogReplayer(logNodePrefix, filePath, tsFileResource.getModFile(),
@@ -312,7 +223,7 @@ public class TsFileRecoverPerformer {
         // flush logs
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable,
             restorableTsFileIOWriter,
-            tsFileResource.getTsFile().getParentFile().getParentFile().getName(), tsFileIOWriter);
+            tsFileResource.getTsFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
         res = true;
       }

@@ -88,7 +88,6 @@ public class TsFileProcessorTest {
   public void testWriteAndFlush() throws IOException, WriteProcessException {
     logger.info("testWriteAndFlush begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
@@ -139,7 +138,6 @@ public class TsFileProcessorTest {
   public void testWriteAndRestoreMetadata() throws IOException, WriteProcessException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
@@ -217,7 +215,6 @@ public class TsFileProcessorTest {
   public void testMultiFlush() throws IOException, WriteProcessException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
@@ -253,7 +250,6 @@ public class TsFileProcessorTest {
   public void testWriteAndClose() throws IOException, WriteProcessException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
