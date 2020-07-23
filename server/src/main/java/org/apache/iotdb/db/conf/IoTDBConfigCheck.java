@@ -197,7 +197,7 @@ public class IoTDBConfigCheck {
         throw new IOException("Deleting " + mlogFile + "failed.");
       }
       // rename tmpLogFile to mlog
-      FSFactoryProducer.getFSFactory().moveFile(tmpMLogFile, mlogFile);
+      FileUtils.moveFile(tmpMLogFile, mlogFile);
     }
     checkProperties();
   }
