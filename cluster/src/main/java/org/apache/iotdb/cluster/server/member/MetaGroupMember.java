@@ -79,6 +79,7 @@ import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
+import org.apache.iotdb.cluster.exception.LogNumberOutOfBoundException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.QueryTimeOutException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
@@ -577,7 +578,8 @@ public class MetaGroupMember extends RaftMember {
     } else if (resp.getRespNum() == Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT) {
       CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
       StringBuilder parameters = new StringBuilder();
-      parameters.append(checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval");
+      parameters
+          .append(checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval");
       parameters.append(checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt");
       parameters.append(checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number");
       parameters.append(checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes");
@@ -771,7 +773,7 @@ public class MetaGroupMember extends RaftMember {
    * @param node cannot be the local node
    */
   public AddNodeResponse addNode(Node node, StartUpStatus startUpStatus)
-      throws AddSelfException, LogExecutionException {
+      throws AddSelfException, LogExecutionException, LogNumberOutOfBoundException {
     AddNodeResponse response = new AddNodeResponse();
     if (partitionTable == null) {
       logger.info("Cannot add node now because the partition table is not set");
@@ -803,7 +805,7 @@ public class MetaGroupMember extends RaftMember {
    * @return true if the process is over, false if the request should be forwarded
    */
   private boolean processAddNodeLocally(Node node, StartUpStatus startUpStatus,
-      AddNodeResponse response) throws LogExecutionException {
+      AddNodeResponse response) throws LogExecutionException, LogNumberOutOfBoundException {
     if (character != NodeCharacter.LEADER) {
       return false;
     }
@@ -2986,7 +2988,7 @@ public class MetaGroupMember extends RaftMember {
    * @param node the node to be removed.
    */
   public long removeNode(Node node)
-      throws PartitionTableUnavailableException, LogExecutionException {
+      throws PartitionTableUnavailableException, LogExecutionException, LogNumberOutOfBoundException {
     if (partitionTable == null) {
       logger.info("Cannot add node now because the partition table is not set");
       throw new PartitionTableUnavailableException(thisNode);
@@ -3007,7 +3009,7 @@ public class MetaGroupMember extends RaftMember {
    * @return Long.MIN_VALUE if further forwarding is required, or the execution result
    */
   private long processRemoveNodeLocally(Node node)
-      throws LogExecutionException {
+      throws LogExecutionException, LogNumberOutOfBoundException {
     if (character != NodeCharacter.LEADER) {
       return Response.RESPONSE_NULL;
     }

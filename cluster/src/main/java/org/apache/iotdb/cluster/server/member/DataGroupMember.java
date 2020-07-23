@@ -55,6 +55,7 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
+import org.apache.iotdb.cluster.exception.LogNumberOutOfBoundException;
 import org.apache.iotdb.cluster.exception.PullFileException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
@@ -1031,7 +1032,7 @@ public class DataGroupMember extends RaftMember {
     }
     try {
       return appendLogInGroup(log);
-    } catch (LogExecutionException e) {
+    } catch (LogExecutionException | LogNumberOutOfBoundException e) {
       logger.error("Cannot close partition {}#{} seq:{}", storageGroupName, partitionId, isSeq, e);
       return false;
     }

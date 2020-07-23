@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.server.service;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
+import org.apache.iotdb.cluster.exception.LogNumberOutOfBoundException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -69,7 +70,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
     AddNodeResponse addNodeResponse = null;
     try {
       addNodeResponse = metaGroupMember.addNode(node, startUpStatus);
-    } catch (AddSelfException | LogExecutionException e) {
+    } catch (AddSelfException | LogExecutionException | LogNumberOutOfBoundException e) {
       resultHandler.onError(e);
     }
     if (addNodeResponse != null) {
@@ -100,7 +101,8 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   @Override
   public void checkStatus(StartUpStatus startUpStatus,
       AsyncMethodCallback<CheckStatusResponse> resultHandler) {
-    CheckStatusResponse response = ClusterUtils.checkStatus(startUpStatus, metaGroupMember.getNewStartUpStatus());
+    CheckStatusResponse response = ClusterUtils
+        .checkStatus(startUpStatus, metaGroupMember.getNewStartUpStatus());
     resultHandler.onComplete(response);
   }
 
@@ -145,7 +147,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
     long result = Response.RESPONSE_NULL;
     try {
       result = metaGroupMember.removeNode(node);
-    } catch (PartitionTableUnavailableException | LogExecutionException e) {
+    } catch (PartitionTableUnavailableException | LogExecutionException | LogNumberOutOfBoundException e) {
       resultHandler.onError(e);
     }
 
@@ -154,8 +156,10 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
       return;
     }
 
-    if (metaGroupMember.getCharacter() == NodeCharacter.FOLLOWER && metaGroupMember.getLeader() != null) {
-      logger.info("Forward the node removal request of {} to leader {}", node, metaGroupMember.getLeader());
+    if (metaGroupMember.getCharacter() == NodeCharacter.FOLLOWER
+        && metaGroupMember.getLeader() != null) {
+      logger.info("Forward the node removal request of {} to leader {}", node,
+          metaGroupMember.getLeader());
       if (forwardRemoveNode(node, resultHandler)) {
         return;
       }

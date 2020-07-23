@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
+import org.apache.iotdb.cluster.exception.LogNumberOutOfBoundException;
 import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
@@ -63,13 +64,20 @@ public class RaftLogManager {
   /**
    * minimum number of committed logs in memory
    */
-  private int minNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig().getMinNumOfLogsInMem();
+  private int minNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig()
+      .getMinNumOfLogsInMem();
+
+  /**
+   * maximum number of committed logs in memory
+   */
+  private int maxNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig()
+      .getMaxNumOfLogsInMem();
 
 
   public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
     this.name = name;
-    this.setCommittedEntryManager(new CommittedEntryManager());
+    this.setCommittedEntryManager(new CommittedEntryManager(maxNumOfLogsInMem));
     this.setStableEntryManager(stableEntryManager);
     try {
       this.getCommittedEntryManager().append(stableEntryManager.getAllEntries());
@@ -241,7 +249,7 @@ public class RaftLogManager {
       }
       try {
         commitTo(Math.min(leaderCommit, newLastIndex), true);
-      } catch (LogExecutionException e) {
+      } catch (LogExecutionException | LogNumberOutOfBoundException e) {
         // exceptions are ignored on follower side
       }
       return newLastIndex;
@@ -272,7 +280,7 @@ public class RaftLogManager {
       }
       try {
         commitTo(Math.min(leaderCommit, newLastIndex), true);
-      } catch (LogExecutionException e) {
+      } catch (LogExecutionException | LogNumberOutOfBoundException e) {
         // exceptions are ignored on follower side
       }
       return newLastIndex;
@@ -328,7 +336,7 @@ public class RaftLogManager {
     if (leaderCommit > commitIndex && matchTerm(term, leaderCommit)) {
       try {
         commitTo(leaderCommit, true);
-      } catch (LogExecutionException e) {
+      } catch (LogExecutionException | LogNumberOutOfBoundException e) {
         // exceptions are ignored on follower side
       }
       return true;
@@ -401,7 +409,7 @@ public class RaftLogManager {
    * @param newCommitIndex request commitIndex
    */
   public void commitTo(long newCommitIndex, boolean ignoreExecutionExceptions)
-      throws LogExecutionException {
+      throws LogExecutionException, LogNumberOutOfBoundException {
     if (commitIndex < newCommitIndex) {
       long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
       long hi = newCommitIndex + 1;
@@ -415,6 +423,9 @@ public class RaftLogManager {
               .clear();
         }
         try {
+          if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
+            throw new LogNumberOutOfBoundException();
+          }
           getCommittedEntryManager().append(entries);
           if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
             getStableEntryManager().append(entries);

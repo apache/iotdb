@@ -63,6 +63,7 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
+import org.apache.iotdb.cluster.exception.LogNumberOutOfBoundException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
@@ -1218,6 +1219,9 @@ public abstract class RaftMember {
       }
       tsStatus.setMessage(cause.getClass().getName() + ":" + cause.getMessage());
       return tsStatus;
+    } catch (LogNumberOutOfBoundException e) {
+      logger.debug("{} cannot be executed because {}", plan, e);
+      return StatusUtils.LOG_NUMBER_OUT_OF_BOUND_ERROR;
     }
     return StatusUtils.TIME_OUT;
   }
@@ -1237,7 +1241,8 @@ public abstract class RaftMember {
    * @param log
    * @return true if the log is accepted by the quorum of the group, false otherwise
    */
-  protected boolean appendLogInGroup(Log log) throws LogExecutionException {
+  protected boolean appendLogInGroup(Log log)
+      throws LogExecutionException, LogNumberOutOfBoundException {
     int retryTime = 0;
     while (true) {
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
@@ -1263,7 +1268,7 @@ public abstract class RaftMember {
   }
 
   @SuppressWarnings("java:S2445")
-  private void commitLog(Log log) throws LogExecutionException {
+  private void commitLog(Log log) throws LogExecutionException, LogNumberOutOfBoundException {
     synchronized (logManager) {
       logManager.commitTo(log.getCurrLogIndex(), false);
     }
