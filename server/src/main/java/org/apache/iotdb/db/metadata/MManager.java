@@ -67,7 +67,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -830,8 +829,8 @@ public class MManager {
     }
   }
 
-  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
-      throws MetadataException {
+  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan,
+      QueryContext context) throws MetadataException {
     lock.readLock().lock();
     try {
       if (!tagIndex.containsKey(plan.getKey())) {
@@ -861,10 +860,8 @@ public class MManager {
 
       // if ordered by heat, we sort all the timeseries by the descending order of the last insert timestamp
       if (plan.isOrderByHeat()) {
-        QueryContext queryContext = new QueryContext(
-            QueryResourceManager.getInstance().assignQueryId(true));
         allMatchedNodes = allMatchedNodes.stream().sorted(Comparator
-            .comparingLong((MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, queryContext))
+            .comparingLong((MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
             .reversed().thenComparing(MNode::getFullPath)).collect(toList());
       } else {
         // otherwise, we just sort them by the alphabetical order
@@ -926,13 +923,13 @@ public class MManager {
     return true;
   }
 
-  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
     // show timeseries with index
     if (plan.getKey() != null && plan.getValue() != null) {
-      return showTimeseriesWithIndex(plan);
+      return showTimeseriesWithIndex(plan, context);
     } else {
-      return showTimeseriesWithoutIndex(plan);
+      return showTimeseriesWithoutIndex(plan, context);
     }
   }
 
@@ -941,13 +938,13 @@ public class MManager {
    *
    * @param plan show time series query plan
    */
-  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(ShowTimeSeriesPlan plan)
-      throws MetadataException {
+  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(ShowTimeSeriesPlan plan,
+      QueryContext context) throws MetadataException {
     lock.readLock().lock();
     List<String[]> ans;
     try {
       if (plan.isOrderByHeat()) {
-        ans = mtree.getAllMeasurementSchemaByHeatOrder(plan);
+        ans = mtree.getAllMeasurementSchemaByHeatOrder(plan, context);
       } else {
         ans = mtree.getAllMeasurementSchema(plan);
       }
