@@ -35,4 +35,4 @@ add_library(iotdb_session_cpp SHARED ${SESSION_SRCS})
 #target_link_libraries(client-cpp Session)
 #target_link_libraries(client-cpp GenCPP)
 
-target_link_libraries(iotdb_session_cpp libthrift.a)
+target_link_libraries(iotdb_session_cpp ${CMAKE_SOURCE_DIR}/tools/thrift/target/build/lib/libthrift.a)

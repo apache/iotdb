@@ -30,7 +30,7 @@
     <name>Tools: Thrift</name>
     <description>Local build of the Apache Thrift compiler.</description>
     <properties>
-        <thrift.with.cpp>OFF</thrift.with.cpp>
+        <thrift.with.cpp>ON</thrift.with.cpp>
         <thrift.with.csharp>OFF</thrift.with.csharp>
         <thrift.with.python>OFF</thrift.with.python>
     </properties>
@@ -330,6 +330,7 @@
                                 <!-- Tell CMake where our boost includes and libs are located -->
                                 <option>-DBOOST_INCLUDEDIR=${project.build.directory}/boost/include</option>
                                 <option>-DBOOST_LIBRARYDIR=${project.build.directory}/boost/lib</option>
+                                <option>-DWITH_STATIC_LIB=ON</option>
                             </options>
                         </configuration>
                     </execution>
