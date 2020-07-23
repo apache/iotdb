@@ -837,7 +837,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
     if (!TSFileConfig.MAGIC_STRING.equals(readHeadMagic()) || !TSFileConfig.VERSION_NUMBER
-        .equals(readTailMagic())) {
+        .equals(readVersionNumber())) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
 
