@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -43,13 +44,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.ADMIN_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class SeriesAggregateReaderTest {
 
-  private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<List<String>> deviceIds = new ArrayList<>();
   private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
@@ -70,7 +71,7 @@ public class SeriesAggregateReaderTest {
   @Test
   public void aggregateTest() {
     try {
-      Path path = new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0");
+      Path path = new Path(Arrays.asList("root", "seriesReaderTest", "device0", "sensor0"));
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
       QueryDataSource queryDataSource = new QueryDataSource(path, seqResources, unseqResources);

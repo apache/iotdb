@@ -58,7 +58,6 @@ public class SeriesReaderTestUtil {
   private static long ptNum = 100;
   private static long flushInterval = 20;
   private static TSEncoding encoding = TSEncoding.PLAIN;
-  private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private static final List<String> SERIES_READER_TEST_SG_LIST = Arrays.asList("root", "seriesReaderTest");
 
   public static void setUp(List<MeasurementSchema> measurementSchemas, List<List<String>> deviceIds,
@@ -164,7 +163,7 @@ public class SeriesReaderTestUtil {
       deviceId.add("device" + i);
       deviceIds.add(deviceId);
     }
-    IoTDB.metaManager.setStorageGroup(SERIES_READER_TEST_SG);
+    IoTDB.metaManager.setStorageGroup(SERIES_READER_TEST_SG_LIST);
     for (List<String> device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         device.add(measurementSchema.getMeasurementId());

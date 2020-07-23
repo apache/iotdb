@@ -180,7 +180,7 @@ public class Path implements Serializable, Comparable<Path> {
 
   public String getDevice() {
     if(device != null) {
-      return fullPath;
+      return device;
     } else {
       StringBuilder s = new StringBuilder(nodes.get(0));
       for(int i = 1; i < nodes.size() - 1; i++) {
