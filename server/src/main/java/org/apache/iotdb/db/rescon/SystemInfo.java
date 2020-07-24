@@ -88,12 +88,21 @@ public class SystemInfo {
   }
 
   /**
+   *
+   * @param type
+   * @param size
+   */
+  public void reportCreateArray(TSDataType type, int size) {
+
+  }
+
+  /**
    * 通知system将释放OOP数组（在释放后调用）
    *
    * @param type type
    * @param size size
    */
-  public void releaseOOBArray(TSDataType type, int size) {
+  public void reportReleaseOOBArray(TSDataType type, int size) {
     this.reject = false;
   }
 

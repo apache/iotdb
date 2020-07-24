@@ -167,6 +167,7 @@ public class PrimitiveArrayManager {
       default:
         throw new UnSupportedDataTypeException(dataType.toString());
     }
+    SystemInfo.getInstance().reportCreateArray(dataType, ARRAY_SIZE);
     return dataArray;
   }
 
@@ -281,7 +282,7 @@ public class PrimitiveArrayManager {
    * @param size capacity
    */
   private void bringBackOOBArray(TSDataType dataType, int size) {
-    SystemInfo.getInstance().releaseOOBArray(dataType, size);
+    SystemInfo.getInstance().reportReleaseOOBArray(dataType, size);
   }
 
   private void collectSchemaDataTypeNum() {
