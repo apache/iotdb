@@ -486,10 +486,10 @@ public class MetaGroupMember extends RaftMember {
    *
    * @return true if the node has successfully joined the cluster, false otherwise.
    */
-  public boolean joinCluster() {
+  public void joinCluster() throws ConfigInconsistentException, StartUpCheckFailureException {
     if (allNodes.size() == 1) {
       logger.error("Seed nodes not provided, cannot join cluster");
-      return false;
+      throw new ConfigInconsistentException();
     }
 
     int retry = DEFAULT_JOIN_RETRY;
@@ -506,7 +506,7 @@ public class MetaGroupMember extends RaftMember {
           setCharacter(NodeCharacter.FOLLOWER);
           setLastHeartbeatReceivedTime(System.currentTimeMillis());
           threadTaskInit();
-          return true;
+          return;
         }
         // wait 5s to start the next try
         Thread.sleep(5000);
@@ -521,7 +521,7 @@ public class MetaGroupMember extends RaftMember {
     }
     // all tries failed
     logger.error("Cannot join the cluster after {} retries", DEFAULT_JOIN_RETRY);
-    return false;
+    throw new StartUpCheckFailureException();
   }
 
 
@@ -532,6 +532,7 @@ public class MetaGroupMember extends RaftMember {
     newStartUpStatus.setHashSalt(ClusterConstant.HASH_SALT);
     newStartUpStatus
         .setReplicationNumber(ClusterDescriptor.getInstance().getConfig().getReplicationNum());
+    newStartUpStatus.setClusterName(ClusterDescriptor.getInstance().getConfig().getClusterName());
     List<String> seedUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
     List<Node> seedNodeList = new ArrayList<>();
     for (String seedUrl : seedUrls) {
@@ -550,7 +551,7 @@ public class MetaGroupMember extends RaftMember {
    * @throws InterruptedException
    */
   private boolean joinCluster(Node node, StartUpStatus startUpStatus)
-      throws TException, InterruptedException {
+      throws TException, InterruptedException, ConfigInconsistentException {
 
     AddNodeResponse resp;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -578,18 +579,22 @@ public class MetaGroupMember extends RaftMember {
           thisNode.getNodeIdentifier());
       setNodeIdentifier(genNodeIdentifier());
     } else if (resp.getRespNum() == Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT) {
-      CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
-      StringBuilder parameters = new StringBuilder();
-      parameters
-          .append(checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval");
-      parameters.append(checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt");
-      parameters.append(checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number");
-      parameters.append(checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes");
       if (logger.isInfoEnabled()) {
+        CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
+        StringBuilder parameters = new StringBuilder();
+        parameters
+            .append(
+                checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval");
+        parameters.append(checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt");
+        parameters
+            .append(checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number");
+        parameters.append(checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes");
+        parameters.append(checkStatusResponse.isClusterNameEquals() ? "" : ", clusterName");
         logger.info(
-            "The start up configuration {} conflicts the cluster. Please reset the configurations. ",
+            "The start up configuration{} conflicts the cluster. Please reset the configurations. ",
             parameters.toString().substring(1));
       }
+      throw new ConfigInconsistentException();
     } else {
       logger
           .warn("Joining the cluster is rejected by {} for response {}", node, resp.getRespNum());
@@ -874,15 +879,18 @@ public class MetaGroupMember extends RaftMember {
     long remotePartitionInterval = remoteStartUpStatus.getPartitionInterval();
     int remoteHashSalt = remoteStartUpStatus.getHashSalt();
     int remoteReplicationNum = remoteStartUpStatus.getReplicationNumber();
+    String remoteClusterName = remoteStartUpStatus.getClusterName();
     List<Node> remoteSeedNodeList = remoteStartUpStatus.getSeedNodeList();
     long localPartitionInterval = IoTDBDescriptor.getInstance().getConfig()
         .getPartitionInterval();
     int localHashSalt = ClusterConstant.HASH_SALT;
     int localReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    String localClusterName = ClusterDescriptor.getInstance().getConfig().getClusterName();
     boolean partitionIntervalEquals = true;
     boolean hashSaltEquals = true;
     boolean replicationNumEquals = true;
     boolean seedNodeEquals = true;
+    boolean clusterNameEquals = true;
 
     if (localPartitionInterval != remotePartitionInterval) {
       partitionIntervalEquals = false;
@@ -899,6 +907,11 @@ public class MetaGroupMember extends RaftMember {
       logger.info("Remote replication number conflicts with the leader's. Leader: {}, remote: {}",
           localReplicationNum, remoteReplicationNum);
     }
+    if (!Objects.equals(localClusterName, remoteClusterName)) {
+      clusterNameEquals = false;
+      logger.info("Remote cluster name conflicts with the leader's. Leader: {}, remote: {}",
+          localClusterName, remoteClusterName);
+    }
     if (!ClusterUtils.checkSeedNodes(true, allNodes, remoteSeedNodeList)) {
       seedNodeEquals = false;
       if (logger.isInfoEnabled()) {
@@ -906,11 +919,12 @@ public class MetaGroupMember extends RaftMember {
             Arrays.toString(allNodes.toArray(new Node[0])), remoteSeedNodeList);
       }
     }
-    if (!(partitionIntervalEquals && hashSaltEquals && replicationNumEquals && seedNodeEquals)) {
+    if (!(partitionIntervalEquals && hashSaltEquals && replicationNumEquals && seedNodeEquals
+        && clusterNameEquals)) {
       response.setRespNum((int) Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT);
       response.setCheckStatusResponse(
           new CheckStatusResponse(partitionIntervalEquals, hashSaltEquals,
-              replicationNumEquals, seedNodeEquals));
+              replicationNumEquals, seedNodeEquals, clusterNameEquals));
       return false;
     }
     return true;

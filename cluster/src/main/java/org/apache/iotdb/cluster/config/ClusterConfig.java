@@ -45,6 +45,9 @@ public class ClusterConfig {
   private int replicationNum = 2;
 
   @ClusterConsistent
+  private String clusterName = "default";
+
+  @ClusterConsistent
   private boolean useAsyncServer = true;
 
   private boolean useAsyncApplier = false;
@@ -177,6 +180,14 @@ public class ClusterConfig {
 
   public void setReplicationNum(int replicationNum) {
     this.replicationNum = replicationNum;
+  }
+
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
+  }
+
+  public String getClusterName() {
+    return clusterName;
   }
 
   public int getInternalDataPort() {

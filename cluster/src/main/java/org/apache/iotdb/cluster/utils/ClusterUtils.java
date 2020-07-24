@@ -21,10 +21,9 @@ package org.apache.iotdb.cluster.utils;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterConfig;
-import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -33,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ClusterUtils {
+
   private static final Logger logger = LoggerFactory.getLogger(ClusterUtils.class);
 
   public static final int WAIT_START_UP_CHECK_TIME_SEC = 5;
@@ -48,8 +48,8 @@ public class ClusterUtils {
   public static final int DATA_HEARTBEAT_PORT_OFFSET = 1;
 
   /**
-   * the meta group member's heartbeat offset relative to the {@link ClusterConfig#getInternalMetaPort()} ()},
-   * which means the metaHeartbeatPort = getInternalMetaPort() + META_HEARTBEAT_OFFSET.
+   * the meta group member's heartbeat offset relative to the {@link ClusterConfig#getInternalMetaPort()}
+   * ()}, which means the metaHeartbeatPort = getInternalMetaPort() + META_HEARTBEAT_OFFSET.
    */
   public static final int META_HEARTBEAT_PORT_OFFSET = 1;
 
@@ -63,6 +63,7 @@ public class ClusterUtils {
     boolean hashSaltEquals = true;
     boolean replicationNumEquals = true;
     boolean seedNodeListEquals = true;
+    boolean clusterNameEqual = true;
 
     if (localStartUpStatus.getPartitionInterval() != remoteStartUpStatus.getPartitionInterval()) {
       partitionIntervalEquals = false;
@@ -79,8 +80,15 @@ public class ClusterUtils {
       logger.info("Remote replication number conflicts with local. local: {}, remote: {}",
           localStartUpStatus.getReplicationNumber(), remoteStartUpStatus.getReplicationNumber());
     }
+    if (!Objects
+        .equals(localStartUpStatus.getClusterName(), remoteStartUpStatus.getClusterName())) {
+      clusterNameEqual = false;
+      logger.info("Remote cluster name conflicts with local. local: {}, remote: {}",
+          localStartUpStatus.getClusterName(), remoteStartUpStatus.getClusterName());
+    }
     if (!ClusterUtils
-        .checkSeedNodes(false, localStartUpStatus.getSeedNodeList(), remoteStartUpStatus.getSeedNodeList())) {
+        .checkSeedNodes(false, localStartUpStatus.getSeedNodeList(),
+            remoteStartUpStatus.getSeedNodeList())) {
       seedNodeListEquals = false;
       if (logger.isInfoEnabled()) {
         logger.info("Remote seed node list conflicts with local. local: {}, remote: {}",
@@ -89,7 +97,7 @@ public class ClusterUtils {
     }
 
     return new CheckStatusResponse(partitionIntervalEquals, hashSaltEquals,
-        replicationNumEquals, seedNodeListEquals);
+        replicationNumEquals, seedNodeListEquals, clusterNameEqual);
   }
 
   public static boolean checkSeedNodes(boolean isClusterEstablished, List<Node> localSeedNodes,
@@ -160,6 +168,7 @@ public class ClusterUtils {
     boolean hashSaltEquals = response.hashSaltEquals;
     boolean replicationNumEquals = response.replicationNumEquals;
     boolean seedNodeListEquals = response.seedNodeEquals;
+    boolean clusterNameEqual = response.clusterNameEquals;
     if (!partitionIntervalEquals) {
       logger.info(
           "Local partition interval conflicts with seed node[{}].", seedNode);
@@ -175,10 +184,14 @@ public class ClusterUtils {
     if (!seedNodeListEquals) {
       logger.info("Local seed node list conflicts with seed node[{}]", seedNode);
     }
+    if (!clusterNameEqual) {
+      logger.info("Local cluster name conflicts with seed node[{}]", seedNode);
+    }
     if (partitionIntervalEquals
         && hashSaltEquals
         && replicationNumEquals
-        && seedNodeListEquals) {
+        && seedNodeListEquals
+        && clusterNameEqual) {
       consistentNum.incrementAndGet();
     } else {
       inconsistentNum.incrementAndGet();
