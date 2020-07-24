@@ -91,6 +91,7 @@ import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -677,6 +678,14 @@ public class StorageGroupProcessor {
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
+        for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
+          for (List<ChunkMetadata> metadatas : metaMap.values()) {
+            for (ChunkMetadata chunkMetadata: metadatas) {
+              tsFileProcessor.getTsFileProcessorInfo().addChunkMetadataMemCost(
+                  chunkMetadata.calculateRamSize());
+            }
+          }
+        }
       }
       if (isSeq) {
         sequenceFileTreeSet.add(tsFileResource);

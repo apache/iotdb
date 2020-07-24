@@ -1251,6 +1251,10 @@ public class TsFileProcessor {
     return vmTsFileResources;
   }
 
+  public TsFileProcessorInfo getTsFileProcessorInfo() {
+    return tsFileProcessorInfo;
+  }
+
   private void flushAllVmToTsFile(List<List<RestorableTsFileIOWriter>> currMergeVmWriters,
       List<List<TsFileResource>> currMergeVmFiles, VmLogger vmLogger) throws IOException {
     VmMergeUtils.merge(writer, packVmWritersToSequenceList(currMergeVmWriters),
