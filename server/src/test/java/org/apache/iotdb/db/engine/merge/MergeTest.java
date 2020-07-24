@@ -106,7 +106,7 @@ abstract class MergeTest {
     deviceIds = new String[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
       List<String> device = new ArrayList<>(MERGE_TEST_SG_LIST);
-      deviceIds[i] = "device" + i;
+      deviceIds[i] = MERGE_TEST_SG + PATH_SEPARATOR + "device" + i;
       device.add(deviceIds[i]);
       deviceIdsList.add(device);
     }
