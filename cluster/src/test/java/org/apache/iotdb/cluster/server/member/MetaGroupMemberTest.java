@@ -1051,6 +1051,7 @@ public class MetaGroupMemberTest extends MemberTest {
       assertTrue(response.getCheckStatusResponse().isPartitionalIntervalEquals());
       assertTrue(response.getCheckStatusResponse().isHashSaltEquals());
       assertFalse(response.getCheckStatusResponse().isReplicationNumEquals());
+      assertTrue(response.getCheckStatusResponse().isClusterNameEquals());
 
       // cannot add a node due to network failure
       dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
