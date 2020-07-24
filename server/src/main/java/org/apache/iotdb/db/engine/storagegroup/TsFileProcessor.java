@@ -23,7 +23,6 @@ import static org.apache.iotdb.db.engine.flush.VmLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.flush.VmLogger.TARGET_NAME;
 import static org.apache.iotdb.db.engine.flush.VmLogger.VM_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.getVmLevel;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
@@ -230,9 +229,9 @@ public class TsFileProcessor {
    * the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param start start index of rows to be inserted in insertTabletPlan
-   * @param end end index of rows to be inserted in insertTabletPlan
-   * @param results result array
+   * @param start            start index of rows to be inserted in insertTabletPlan
+   * @param end              end index of rows to be inserted in insertTabletPlan
+   * @param results          result array
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
@@ -692,7 +691,11 @@ public class TsFileProcessor {
         }
         if (targetFile.getName().endsWith(TSFILE_SUFFIX)) {
           if (!isMergeFinished) {
-            writer.getIOWriterOut().truncate(offset - 1);
+            logger.info("{}: {} merge recover {} level vms to TsFile", storageGroupName,
+                tsFileResource.getTsFile().getName(), vmWriters.size());
+            if (offset > 0) {
+              writer.getIOWriterOut().truncate(offset - 1);
+            }
             VmMergeUtils.merge(writer, packVmWritersToSequenceList(vmWriters),
                 storageGroupName,
                 new VmLogger(tsFileResource.getTsFile().getParent(),
@@ -716,32 +719,33 @@ public class TsFileProcessor {
               newVmWriter.setFile(newVmFile);
             }
           } else {
-            if (deviceSet.isEmpty()) {
-              Files.delete(targetFile.toPath());
-            } else {
+            logger.info("{}: {} [Hot Compaction Recover] merge level-{}'s {} vms to next level vm",
+                storageGroupName, tsFileResource.getTsFile().getName(), level,
+                sourceFileList.size());
+            if (offset > 0) {
               newVmWriter.getIOWriterOut().truncate(offset - 1);
-              // vm files must be sequence, so we just have to find the first file
-              int startIndex = 0;
-              for (startIndex = 0; startIndex < vmWriters.get(level).size(); startIndex++) {
-                RestorableTsFileIOWriter levelVmWriter = vmWriters.get(level).get(startIndex);
-                if (levelVmWriter.getFile().getAbsolutePath()
-                    .equals(sourceFileList.get(0).getAbsolutePath())) {
-                  break;
-                }
+            }
+            // vm files must be sequence, so we just have to find the first file
+            int startIndex;
+            for (startIndex = 0; startIndex < vmWriters.get(level).size(); startIndex++) {
+              RestorableTsFileIOWriter levelVmWriter = vmWriters.get(level).get(startIndex);
+              if (levelVmWriter.getFile().getAbsolutePath()
+                  .equals(sourceFileList.get(0).getAbsolutePath())) {
+                break;
               }
-              List<RestorableTsFileIOWriter> levelVmWriters = new ArrayList<>(
-                  vmWriters.get(level).subList(startIndex, startIndex + sourceFileList.size()));
-              List<TsFileResource> levelVmFiles = new ArrayList<>(
-                  vmTsFileResources.get(level)
-                      .subList(startIndex, startIndex + sourceFileList.size()));
-              VmMergeUtils.merge(newVmWriter, levelVmWriters,
-                  storageGroupName,
-                  new VmLogger(tsFileResource.getTsFile().getParent(),
-                      tsFileResource.getTsFile().getName()),
-                  deviceSet, sequence);
-              for (int i = 0; i < vmWriters.size(); i++) {
-                deleteVmFiles(levelVmFiles, levelVmWriters);
-              }
+            }
+            List<RestorableTsFileIOWriter> levelVmWriters = new ArrayList<>(
+                vmWriters.get(level).subList(startIndex, startIndex + sourceFileList.size()));
+            List<TsFileResource> levelVmFiles = new ArrayList<>(
+                vmTsFileResources.get(level)
+                    .subList(startIndex, startIndex + sourceFileList.size()));
+            VmMergeUtils.merge(newVmWriter, levelVmWriters,
+                storageGroupName,
+                new VmLogger(tsFileResource.getTsFile().getParent(),
+                    tsFileResource.getTsFile().getName()),
+                deviceSet, sequence);
+            for (int i = 0; i < vmWriters.size(); i++) {
+              deleteVmFiles(levelVmFiles, levelVmWriters);
             }
           }
         }
@@ -778,8 +782,8 @@ public class TsFileProcessor {
               tsFileResource.getTsFile().getName());
           File newVmFile = createNewVMFileWithLock(tsFileResource, 0);
           if (vmWriters.isEmpty()) {
-            vmWriters.add(new ArrayList<>());
-            vmTsFileResources.add(new ArrayList<>());
+            vmWriters.add(new CopyOnWriteArrayList<>());
+            vmTsFileResources.add(new CopyOnWriteArrayList<>());
           }
           vmTsFileResources.get(0).add(new TsFileResource(newVmFile));
           curWriter = new RestorableTsFileIOWriter(newVmFile);
@@ -790,7 +794,7 @@ public class TsFileProcessor {
           curWriter = writer;
         }
         curWriter.mark();
-        flushTask = new MemTableFlushTask(memTableToFlush, curWriter, storageGroupName);
+        flushTask = new MemTableFlushTask(memTableToFlush, curWriter, storageGroupName, writer);
         flushTask.syncFlushMemTable();
       } catch (Exception e) {
         logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",
@@ -828,37 +832,41 @@ public class TsFileProcessor {
 
     if (shouldClose && flushingMemTables.isEmpty()) {
       try {
-        // merge vm to tsfile
-        while (true) {
-          if (!mergeWorking) {
-            break;
+        if (config.isEnableVm()) {
+          // merge vm to tsfile
+          while (true) {
+            if (!mergeWorking) {
+              break;
+            }
+            try {
+              TimeUnit.MILLISECONDS.sleep(10);
+            } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
+              logger.error("{}: {}, closing task is interrupted.",
+                  storageGroupName, tsFileResource.getTsFile().getName(), e);
+              // generally it is because the thread pool is shutdown so the task should be aborted
+              break;
+            }
           }
-          try {
-            TimeUnit.MILLISECONDS.sleep(10);
-          } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
-            logger.error("{}: {}, closing task is interrupted.",
-                storageGroupName, tsFileResource.getTsFile().getName(), e);
-            // generally it is because the thread pool is shutdown so the task should be aborted
-            break;
+          logger.info("{}: [Hot Compaction] Start to merge total {} levels' vm to TsFile {}",
+              storageGroupName, vmTsFileResources.size() + 1, tsFileResource.getTsFile().getName());
+          long startTimeMillis = System.currentTimeMillis();
+          VmLogger vmLogger = new VmLogger(tsFileResource.getTsFile().getParent(),
+              tsFileResource.getTsFile().getName());
+          vmLogger.logFile(TARGET_NAME, writer.getFile());
+          flushAllVmToTsFile(vmWriters, vmTsFileResources, vmLogger);
+          vmLogger.logMergeFinish();
+          vmLogger.close();
+          File logFile = FSFactoryProducer.getFSFactory()
+              .getFile(tsFileResource.getTsFile().getParent(),
+                  tsFileResource.getTsFile().getName() + VM_LOG_NAME);
+          if (logFile.exists()) {
+            Files.delete(logFile.toPath());
           }
+          logger
+              .info("{}: [Hot Compaction] All vms are merged to TsFile {}, time consumption: {} ms",
+                  storageGroupName, tsFileResource.getTsFile().getName(),
+                  System.currentTimeMillis() - startTimeMillis);
         }
-        logger.info("{}: [Hot Compaction] Start to merge total {} levels' vm to TsFile {}",
-            storageGroupName, vmTsFileResources.size() + 1, tsFileResource.getTsFile().getName());
-        long startTimeMillis = System.currentTimeMillis();
-        VmLogger vmLogger = new VmLogger(tsFileResource.getTsFile().getParent(),
-            tsFileResource.getTsFile().getName());
-        flushAllVmToTsFile(vmWriters, vmTsFileResources, vmLogger);
-        vmLogger.logMergeFinish();
-        vmLogger.close();
-        File logFile = FSFactoryProducer.getFSFactory()
-            .getFile(tsFileResource.getTsFile().getParent(),
-                tsFileResource.getTsFile().getName() + VM_LOG_NAME);
-        if (logFile.exists()) {
-          Files.delete(logFile.toPath());
-        }
-        logger.info("{}: [Hot Compaction] All vms are merged to TsFile {}, time consumption: {} ms",
-            storageGroupName, tsFileResource.getTsFile().getName(),
-            System.currentTimeMillis() - startTimeMillis);
         writer.mark();
         try {
           double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
@@ -912,7 +920,7 @@ public class TsFileProcessor {
       }
     } else {
       // on other merge task working now, it's safe to submit one.
-      if (!mergeWorking) {
+      if (config.isEnableVm() && !mergeWorking) {
         mergeWorking = true;
         logger.info("{}: {} submit a vm merge task", storageGroupName,
             tsFileResource.getTsFile().getName());
@@ -1002,10 +1010,10 @@ public class TsFileProcessor {
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
    * ChunkMetadata of data on disk.
    *
-   * @param deviceId device id
+   * @param deviceId      device id
    * @param measurementId measurements id
-   * @param dataType data type
-   * @param encoding encoding
+   * @param dataType      data type
+   * @param encoding      encoding
    */
   public void query(String deviceId, String measurementId, TSDataType dataType, TSEncoding encoding,
       Map<String, String> props, QueryContext context,
@@ -1059,18 +1067,9 @@ public class TsFileProcessor {
         for (int j = 0; j < vmWriters.get(i).size(); j++) {
           RestorableTsFileIOWriter vmWriter = vmWriters.get(i).get(j);
           TsFileResource vmTsFileResource = vmTsFileResources.get(i).get(j);
-          for (Entry<String, Map<String, List<ChunkMetadata>>> entry : vmWriter
-              .getMetadatasForQuery()
-              .entrySet()) {
-            String device = entry.getKey();
-            for (List<ChunkMetadata> tmpChunkMetadataList : entry.getValue().values()) {
-              for (ChunkMetadata chunkMetadata : tmpChunkMetadataList) {
-                vmTsFileResource.updateStartTime(device, chunkMetadata.getStartTime());
-                if (!sequence) {
-                  vmTsFileResource.updateEndTime(device, chunkMetadata.getEndTime());
-                }
-              }
-            }
+          vmTsFileResource.updateStartTime(deviceId, tsFileResource.getStartTime(deviceId));
+          if (!sequence) {
+            vmTsFileResource.updateEndTime(deviceId, tsFileResource.getEndTime(deviceId));
           }
           chunkMetadataList = vmWriter.getVisibleMetadataList(deviceId, measurementId, dataType);
           QueryUtils.modifyChunkMetaData(chunkMetadataList,
@@ -1164,8 +1163,8 @@ public class TsFileProcessor {
         long vmPointNum = 0;
         // all flush to target file
         Map<Path, MeasurementSchema> pathMeasurementSchemaMap = new HashMap<>();
-        for (List<RestorableTsFileIOWriter> subVmWriters : vmMergeWriters) {
-          for (RestorableTsFileIOWriter vmWriter : subVmWriters) {
+        for (List<RestorableTsFileIOWriter> levelVmWriters : vmMergeWriters) {
+          for (RestorableTsFileIOWriter vmWriter : levelVmWriters) {
             Map<String, Map<String, List<ChunkMetadata>>> schemaMap = vmWriter
                 .getMetadatasForQuery();
             for (Entry<String, Map<String, List<ChunkMetadata>>> schemaMapEntry : schemaMap
@@ -1211,19 +1210,14 @@ public class TsFileProcessor {
                   storageGroupName, tsFileResource.getTsFile().getName(), i,
                   vmMergeTsFiles.get(i).size());
 
-              // merge all vm files into a new vm file
-              File tmpFile = createNewTmpFile();
-              RestorableTsFileIOWriter tmpWriter = new RestorableTsFileIOWriter(tmpFile);
-              VmMergeUtils.merge(tmpWriter, vmMergeWriters.get(i),
+              RestorableTsFileIOWriter newWriter = new RestorableTsFileIOWriter(newVmFile);
+              VmMergeUtils.merge(newWriter, vmMergeWriters.get(i),
                   storageGroupName, vmLogger, new HashSet<>(), sequence);
-              tmpWriter.close();
+              newWriter.close();
               vmMergeLock.writeLock().lock();
               try {
                 deleteVmFiles(vmMergeTsFiles.get(i), vmMergeWriters.get(i));
                 vmLogger.logMergeFinish();
-                if (tmpFile != null && !tmpFile.renameTo(newVmFile)) {
-                  logger.error("Failed to rename {} to {}", tmpFile, newVmFile);
-                }
                 TsFileResource newMergedVmFile = new TsFileResource(newVmFile);
                 if (vmWriters.size() <= i + 1) {
                   vmTsFileResources.add(new CopyOnWriteArrayList<>());
@@ -1233,10 +1227,9 @@ public class TsFileProcessor {
                 }
                 vmTsFileResources.get(i + 1).add(newMergedVmFile);
                 vmMergeTsFiles.get(i + 1).add(newMergedVmFile);
-                tmpWriter.setFile(newVmFile);
-                tmpWriter.makeMetadataVisible();
-                vmWriters.get(i + 1).add(tmpWriter);
-                vmMergeWriters.get(i + 1).add(tmpWriter);
+                newWriter.makeMetadataVisible();
+                vmWriters.get(i + 1).add(newWriter);
+                vmMergeWriters.get(i + 1).add(newWriter);
                 logger.debug("{} vm file open a writer", newVmFile.getName());
               } finally {
                 vmMergeLock.writeLock().unlock();
@@ -1258,26 +1251,6 @@ public class TsFileProcessor {
         mergeWorking = false;
         logger.info("{}: {} vm merge end time consumption: {} ms", storageGroupName,
             tsFileResource.getTsFile().getName(), System.currentTimeMillis() - startTimeMillis);
-      }
-    }
-
-    private File createNewTmpFile() {
-      vmFileCreateLock.writeLock().lock();
-      try {
-        TimeUnit.MILLISECONDS.sleep(1);
-        File parent = writer.getFile().getParentFile();
-        return FSFactoryProducer.getFSFactory().getFile(parent,
-            writer.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
-                .currentTimeMillis()
-                + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR
-                + TMP_SUFFIX);
-      } catch (InterruptedException e) {
-        logger.error("{}: {}, closing task is interrupted.",
-            storageGroupName, tsFileResource.getTsFile().getName(), e);
-        Thread.currentThread().interrupt();
-        return null;
-      } finally {
-        vmFileCreateLock.writeLock().unlock();
       }
     }
   }

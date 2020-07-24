@@ -65,7 +65,7 @@ public class DataLogApplier extends BaseApplier {
       if (plan instanceof InsertPlan) {
         applyInsert(plan);
       } else {
-        applyPhysicalPlan(plan);
+        applyPhysicalPlan(plan, dataGroupMember);
       }
     } else if (log instanceof CloseFileLog) {
       CloseFileLog closeFileLog = ((CloseFileLog) log);
@@ -119,6 +119,6 @@ public class DataLogApplier extends BaseApplier {
     int slotId = PartitionUtils.calculateStorageGroupSlotByTime(sg, time, ClusterConstant.SLOT_NUM);
     // the slot may not be writable because it is pulling file versions, wait until it is done
     dataGroupMember.getSlotManager().waitSlotForWrite(slotId);
-    applyPhysicalPlan(plan);
+    applyPhysicalPlan(plan, dataGroupMember);
   }
 }

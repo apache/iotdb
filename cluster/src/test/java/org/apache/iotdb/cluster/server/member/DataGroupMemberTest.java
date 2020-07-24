@@ -541,7 +541,7 @@ public class DataGroupMemberTest extends MemberTest {
           request.getPrefixPaths(), result);
       new DataAsyncService(dataGroupMember).pullTimeSeriesSchema(request, handler);
       for (int i = 0; i < 10; i++) {
-        assertEquals(TestUtils.getTestMeasurementSchema(i), result.get().get(i));
+        assertTrue(result.get().contains(TestUtils.getTestMeasurementSchema(i)));
       }
 
       // the member is a leader itself
@@ -551,7 +551,7 @@ public class DataGroupMemberTest extends MemberTest {
           request.getPrefixPaths(), result);
       new DataAsyncService(dataGroupMember).pullTimeSeriesSchema(request, handler);
       for (int i = 0; i < 10; i++) {
-        assertEquals(TestUtils.getTestMeasurementSchema(i), result.get().get(i));
+        assertTrue(result.get().contains(TestUtils.getTestMeasurementSchema(i)));
       }
     } finally {
       RaftServer.setConnectionTimeoutInMS(prevTimeOut);
@@ -786,7 +786,7 @@ public class DataGroupMemberTest extends MemberTest {
     List<String> result = pathResult.get();
     assertEquals(20, result.size());
     for (int i = 0; i < 10; i++) {
-      assertEquals(TestUtils.getTestSeries(0, i), result.get(i));
+      assertTrue(result.contains(TestUtils.getTestSeries(0, i)));
     }
   }
 

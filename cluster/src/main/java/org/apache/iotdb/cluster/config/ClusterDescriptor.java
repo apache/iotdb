@@ -91,7 +91,8 @@ public class ClusterDescriptor {
   public void replaceProps(String[] params) {
     Options options = new Options();
 
-    Option metaPort = new Option(OPTION_META_PORT, OPTION_META_PORT, true, "port for metadata service");
+    Option metaPort = new Option(OPTION_META_PORT, OPTION_META_PORT, true,
+        "port for metadata service");
     metaPort.setRequired(false);
     options.addOption(metaPort);
 
@@ -99,7 +100,8 @@ public class ClusterDescriptor {
     metaPort.setRequired(false);
     options.addOption(dataPort);
 
-    Option clientPort = new Option(OPTION_CLIENT_PORT, OPTION_CLIENT_PORT, true, "port for client service");
+    Option clientPort = new Option(OPTION_CLIENT_PORT, OPTION_CLIENT_PORT, true,
+        "port for client service");
     metaPort.setRequired(false);
     options.addOption(clientPort);
 
@@ -208,16 +210,19 @@ public class ClusterDescriptor {
     config.setRpcThriftCompressionEnabled(Boolean.parseBoolean(properties.getProperty(
         "rpc_thrift_compression_enable", String.valueOf(config.isRpcThriftCompressionEnabled()))));
 
-    config
-        .setConnectionTimeoutInMS(Integer.parseInt(properties.getProperty("connection_time_out_ms",
-            String.valueOf(config.getConnectionTimeoutInMS()))));
+    config.setConnectionTimeoutInMS(Integer.parseInt(properties
+        .getProperty("connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
 
-    config
-        .setQueryTimeoutInSec(Integer.parseInt(properties.getProperty("QUERY_TIME_OUT_SEC",
-            String.valueOf(config.getQueryTimeoutInSec()))));
+    config.setReadOperationTimeoutMS(Integer.parseInt(properties
+        .getProperty("read_operation_timeout_ms",
+            String.valueOf(config.getReadOperationTimeoutMS()))));
 
-    config
-        .setMaxUnsnapshotedLogSize(Long.parseLong(properties.getProperty("max_unsnapshoted_log_size",
+    config.setWriteOperationTimeoutMS(Integer.parseInt(properties
+        .getProperty("write_operation_timeout_ms",
+            String.valueOf(config.getWriteOperationTimeoutMS()))));
+
+    config.setMaxUnsnapshotedLogSize(Long.parseLong(properties
+        .getProperty("max_unsnapshoted_log_size",
             String.valueOf(config.getMaxUnsnapshotedLogSize()))));
 
     config.setUseBatchInLogCatchUp(Boolean.parseBoolean(properties.getProperty(
@@ -291,7 +296,7 @@ public class ClusterDescriptor {
 
   /**
    * This method is for setting hot modified properties of the cluster. Currently, we support
-   * max_concurrent_client_num, connection_time_out_ms, max_resolved_log_size
+   * max_concurrent_client_num, connection_timeout_ms, max_resolved_log_size
    *
    * @param properties
    * @throws QueryProcessException
@@ -303,10 +308,11 @@ public class ClusterDescriptor {
             String.valueOf(config.getMaxConcurrentClientNum()))));
 
     config.setConnectionTimeoutInMS(Integer.parseInt(properties
-        .getProperty("connection_time_out_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
+        .getProperty("connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
 
     config.setMaxUnsnapshotedLogSize(Long.parseLong(properties
-        .getProperty("max_unsnapshoted_log_size", String.valueOf(config.getMaxUnsnapshotedLogSize()))));
+        .getProperty("max_unsnapshoted_log_size",
+            String.valueOf(config.getMaxUnsnapshotedLogSize()))));
 
     logger.info("Set cluster configuration {}", properties);
   }

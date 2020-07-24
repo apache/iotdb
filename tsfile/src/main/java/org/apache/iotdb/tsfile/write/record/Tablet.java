@@ -73,7 +73,8 @@ public class Tablet {
    * should be the same size).
    *
    * @param deviceId the name of the device specified to be written in
-   * @param schemas  the list of measurement schemas for creating the tablet
+   * @param schemas  the list of measurement schemas for creating the tablet,
+   *                 only measurementId and type take effects
    */
   public Tablet(String deviceId, List<MeasurementSchema> schemas) {
     this(deviceId, schemas, DEFAULT_SIZE);
@@ -84,7 +85,8 @@ public class Tablet {
    * directly for testing purposes. Tablet should normally always be default size.
    *
    * @param deviceId     the name of the device specified to be written in
-   * @param schemas      the list of measurement schemas for creating the row batch
+   * @param schemas   the list of measurement schemas for creating the row
+   *                  batch, only measurementId and type take effects
    * @param maxRowNumber the maximum number of rows for this tablet
    */
   public Tablet(String deviceId, List<MeasurementSchema> schemas, int maxRowNumber) {

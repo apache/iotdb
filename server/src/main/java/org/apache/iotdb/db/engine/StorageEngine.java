@@ -167,7 +167,7 @@ public class StorageEngine implements IService {
           logger.info("Storage Group Processor {} is recovered successfully",
             storageGroup.getFullPath());
         } catch (Exception e) {
-          logger.error("meet error when recovering storage group: {}", storageGroup, e);
+          logger.error("meet error when recovering storage group: {}", storageGroup.getFullPath(), e);
         }
         return null;
       }));

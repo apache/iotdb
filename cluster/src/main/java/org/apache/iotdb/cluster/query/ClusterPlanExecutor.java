@@ -49,6 +49,7 @@ import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
 import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -76,6 +77,7 @@ import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sync.sender.transfer.SyncClient;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -90,8 +92,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private MetaGroupMember metaGroupMember;
 
   private static final int THREAD_POOL_SIZE = 6;
-  private static final int WAIT_REMOTE_QUERY_TIME = 5;
-  private static final TimeUnit WAIT_REMOTE_QUERY_TIME_UNIT = TimeUnit.MINUTES;
   private static final String LOG_FAIL_CONNECT = "Failed to connect to node: {}";
 
   public ClusterPlanExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
@@ -113,7 +113,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       } catch (CheckConsistencyException e) {
         throw new QueryProcessException(e.getMessage());
       }
-      return processShowQuery((ShowPlan) queryPlan);
+      return processShowQuery((ShowPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
       try {
         metaGroupMember.syncLeaderWithConsistencyCheck();
@@ -247,7 +247,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
     remoteQueryThreadPool.shutdown();
     try {
-      remoteQueryThreadPool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
+      remoteQueryThreadPool
+          .awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.info("Query path count of {} level {} interrupted", sgPathMap, level);
@@ -276,11 +277,15 @@ public class ClusterPlanExecutor extends PlanExecutor {
       try {
         Integer count;
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+          AsyncDataClient client = metaGroupMember
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          client.setTimeout(RaftServer.getReadOperationTimeoutMS());
           count = SyncClientAdaptor.getPathCount(client, partitionGroup.getHeader(),
               pathsToQuery, level);
         } else {
-          SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+          SyncDataClient syncDataClient = metaGroupMember
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
           count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
           metaGroupMember.putBackSyncClient(syncDataClient);
         }
@@ -338,7 +343,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     pool.shutdown();
     try {
-      pool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
+      pool.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for getNodeList()", e);
@@ -376,10 +381,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (Node node : group) {
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+          AsyncDataClient client = metaGroupMember
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           paths = SyncClientAdaptor.getNodeList(client, group.getHeader(), schemaPattern, level);
         } else {
-          SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+          SyncDataClient syncDataClient = metaGroupMember
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           paths = syncDataClient.getNodeList(group.getHeader(), schemaPattern, level);
           metaGroupMember.putBackSyncClient(syncDataClient);
         }
@@ -435,7 +442,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     pool.shutdown();
     try {
-      pool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
+      pool.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for getNextChildren()", e);
@@ -471,10 +478,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (Node node : group) {
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+          AsyncDataClient client = metaGroupMember
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           nextChildren = SyncClientAdaptor.getNextChildren(client, group.getHeader(), path);
         } else {
-          SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+          SyncDataClient syncDataClient = metaGroupMember
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           nextChildren = syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path);
           metaGroupMember.putBackSyncClient(syncDataClient);
         }
@@ -495,7 +504,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
     ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
@@ -519,7 +528,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (PartitionGroup group : globalGroups) {
       futureList.add(pool.submit(() -> {
         try {
-          showTimeseries(group, plan, resultSet);
+          showTimeseries(group, plan, resultSet, context);
         } catch (CheckConsistencyException e) {
           logger.error("Cannot get show timeseries result of {} from {}", plan, group);
         }
@@ -539,7 +548,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     pool.shutdown();
     try {
-      pool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
+      pool.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("Unexpected interruption when waiting for getTimeseriesSchemas to finish", e);
@@ -550,7 +559,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return showTimeSeriesResults;
   }
 
-  private  List<ShowTimeSeriesResult> applyShowTimeseriesLimitOffset(ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet,
+  private List<ShowTimeSeriesResult> applyShowTimeseriesLimitOffset(
+      ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet,
       int limit, int offset) {
     List<ShowTimeSeriesResult> showTimeSeriesResults = new ArrayList<>();
     Iterator<ShowTimeSeriesResult> iterator = resultSet.iterator();
@@ -568,21 +578,21 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private void showTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet) throws CheckConsistencyException {
+      Set<ShowTimeSeriesResult> resultSet, QueryContext context) throws CheckConsistencyException {
     if (group.contains(metaGroupMember.getThisNode())) {
-      showLocalTimeseries(group, plan, resultSet);
+      showLocalTimeseries(group, plan, resultSet, context);
     } else {
       showRemoteTimeseries(group, plan, resultSet);
     }
   }
 
   private void showLocalTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet) throws CheckConsistencyException {
+      Set<ShowTimeSeriesResult> resultSet, QueryContext context) throws CheckConsistencyException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeaderWithConsistencyCheck();
     try {
-      List<ShowTimeSeriesResult> localResult = IoTDB.metaManager.showTimeseries(plan);
+      List<ShowTimeSeriesResult> localResult = IoTDB.metaManager.showTimeseries(plan, context);
       resultSet.addAll(localResult);
       logger.debug("Fetched {} schemas of {} from {}", localResult.size(), plan.getPath(), group);
     } catch (MetadataException e) {
@@ -627,11 +637,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
     ByteBuffer resultBinary;
 
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+      AsyncDataClient client = metaGroupMember
+          .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(),
           plan);
     } else {
-      SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+      SyncDataClient syncDataClient = metaGroupMember
+          .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
       plan.serialize(dataOutputStream);
@@ -692,7 +704,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (String s : measurementList) {
       schemasToPull.add(deviceId + IoTDBConstant.PATH_SEPARATOR + s);
     }
-    List<MeasurementSchema> schemas = metaGroupMember.pullTimeSeriesSchemas(schemasToPull);
+    List<MeasurementSchema> schemas = metaGroupMember.pullTimeSeriesSchemas(schemasToPull, null);
     for (MeasurementSchema schema : schemas) {
       IoTDB.metaManager
           .cacheMeta(deviceId + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(),

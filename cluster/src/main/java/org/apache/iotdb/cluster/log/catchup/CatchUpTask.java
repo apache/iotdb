@@ -58,15 +58,15 @@ public class CatchUpTask implements Runnable {
   }
 
   /**
-   * @return true if a matched index is found so that we can use logs only to catch up, or
-   * false if the catch up must be done with a snapshot.
+   * @return true if a matched index is found so that we can use logs only to catch up, or false if
+   * the catch up must be done with a snapshot.
    * @throws TException
    * @throws InterruptedException
    */
   boolean checkMatchIndex() throws TException, InterruptedException, LeaderUnknownException {
     boolean isLogDebug = logger.isDebugEnabled();
-    long lo;
-    long hi;
+    long lo = 0;
+    long hi = 0;
     logger.debug("Checking the match index of {}", node);
     try {
       long localFirstIndex = raftMember.getLogManager().getFirstIndex();
@@ -99,11 +99,11 @@ public class CatchUpTask implements Runnable {
       }
       index--;
     }
+    logger.info("Cannot find matched of {} within [{}, {}]", node, lo, hi);
     return false;
   }
 
   /**
-   *
    * @param index the index of a log in logs
    * @return true if the log at logs[index] matches a log in the remote node, false if the
    * corresponding log cannot be found

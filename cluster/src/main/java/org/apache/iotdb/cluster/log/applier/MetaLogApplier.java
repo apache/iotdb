@@ -54,7 +54,7 @@ public class MetaLogApplier extends BaseApplier {
         Node newNode = addNodeLog.getNewNode();
         member.applyAddNode(newNode);
       } else if (log instanceof PhysicalPlanLog) {
-        applyPhysicalPlan(((PhysicalPlanLog) log).getPlan());
+        applyPhysicalPlan(((PhysicalPlanLog) log).getPlan(), null);
       } else if (log instanceof RemoveNodeLog) {
         RemoveNodeLog removeNodeLog = ((RemoveNodeLog) log);
         member.applyRemoveNode(removeNodeLog.getRemovedNode());

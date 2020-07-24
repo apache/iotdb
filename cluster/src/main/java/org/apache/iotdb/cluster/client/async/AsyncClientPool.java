@@ -108,10 +108,10 @@ public class AsyncClientPool {
    */
   public void putClient(Node node, AsyncClient client) {
     ClusterNode clusterNode = new ClusterNode(node);
-    TAsyncMethodCall call;
+    TAsyncMethodCall call = null;
     if (client instanceof AsyncDataClient) {
       call = ((AsyncDataClient) client).getCurrMethod();
-    } else {
+    } else if (client instanceof AsyncMetaClient) {
       call = ((AsyncMetaClient) client).getCurrMethod();
     }
     if (call != null) {

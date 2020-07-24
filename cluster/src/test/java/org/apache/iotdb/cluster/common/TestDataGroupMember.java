@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.common;
 
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.partition.SlotManager;
@@ -32,6 +33,7 @@ public class TestDataGroupMember extends DataGroupMember {
     super();
     setQueryManager(new ClusterQueryManager());
     this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null);
+    this.allNodes = Collections.singletonList(TestUtils.getNode(0));
   }
 
   public TestDataGroupMember(Node thisNode, List<Node> allNodes) {

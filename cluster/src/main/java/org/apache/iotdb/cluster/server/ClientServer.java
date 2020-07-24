@@ -293,10 +293,12 @@ public class ClientServer extends TSServiceImpl {
           GenericHandler handler = new GenericHandler(queriedNode, new AtomicReference());
           try {
             if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-              AsyncDataClient client = metaGroupMember.getAsyncDataClient(queriedNode);
+              AsyncDataClient client = metaGroupMember
+                  .getAsyncDataClient(queriedNode, RaftServer.getReadOperationTimeoutMS());
               client.endQuery(header, metaGroupMember.getThisNode(), queryId, handler);
             } else {
-              SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(queriedNode);
+              SyncDataClient syncDataClient = metaGroupMember
+                  .getSyncDataClient(queriedNode, RaftServer.getReadOperationTimeoutMS());
               syncDataClient.endQuery(header, metaGroupMember.getThisNode(), queryId);
             }
           } catch (IOException | TException e) {

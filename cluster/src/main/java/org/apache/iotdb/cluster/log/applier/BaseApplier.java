@@ -22,6 +22,8 @@ package org.apache.iotdb.cluster.log.applier;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -56,10 +58,19 @@ abstract class BaseApplier implements LogApplier {
     this.metaGroupMember = metaGroupMember;
   }
 
-  void applyPhysicalPlan(PhysicalPlan plan)
+  /**
+   *
+   * @param plan
+   * @param dataGroupMember the data group member that is applying the log, null if the log is
+   *                        applied by a meta group member
+   * @throws QueryProcessException
+   * @throws StorageGroupNotSetException
+   * @throws StorageEngineException
+   */
+  void applyPhysicalPlan(PhysicalPlan plan, DataGroupMember dataGroupMember)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if (plan instanceof InsertPlan) {
-      processPlanWithTolerance((InsertPlan) plan);
+      processPlanWithTolerance((InsertPlan) plan, dataGroupMember);
     } else if (!plan.isQuery()) {
       try {
         getQueryExecutor().processNonQuery(plan);
@@ -80,8 +91,16 @@ abstract class BaseApplier implements LogApplier {
     }
   }
 
-
-  private void processPlanWithTolerance(InsertPlan plan)
+  /**
+   *
+   * @param plan
+   * @param dataGroupMember the data group member that is applying the log, null if the log is
+   *                        applied by a meta group member
+   * @throws QueryProcessException
+   * @throws StorageGroupNotSetException
+   * @throws StorageEngineException
+   */
+  private void processPlanWithTolerance(InsertPlan plan, DataGroupMember dataGroupMember)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     try {
       getQueryExecutor().processNonQuery(plan);
@@ -96,7 +115,7 @@ abstract class BaseApplier implements LogApplier {
           logger.debug("Timeseries is not found locally[{}], try pulling it from another group: {}",
               metaGroupMember.getName(), e.getCause().getMessage());
         }
-        pullTimeseriesSchema(plan);
+        pullTimeseriesSchema(plan, dataGroupMember.getHeader());
         getQueryExecutor().processNonQuery(plan);
       } else if (causedByStorageGroupNotSet) {
         try {
@@ -111,11 +130,17 @@ abstract class BaseApplier implements LogApplier {
     }
   }
 
-  private void pullTimeseriesSchema(InsertPlan plan) throws QueryProcessException {
+  /**
+   *
+   * @param plan
+   * @param ignoredGroup do not pull schema from the group to avoid backward dependency
+   * @throws QueryProcessException
+   */
+  private void pullTimeseriesSchema(InsertPlan plan, Node ignoredGroup) throws QueryProcessException {
     try {
       String path = plan.getDeviceId();
       List<MeasurementSchema> schemas = metaGroupMember
-          .pullTimeSeriesSchemas(Collections.singletonList(path));
+          .pullTimeSeriesSchemas(Collections.singletonList(path), ignoredGroup);
       for (MeasurementSchema schema : schemas) {
         registerMeasurement(
             path + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(),

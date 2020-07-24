@@ -54,20 +54,24 @@ public class VmLogAnalyzer {
   public void analyze() throws IOException {
     String currLine;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
-      currLine = bufferedReader.readLine();
-      if (currLine != null) {
-        if (currLine.equals(SOURCE_NAME)) {
-          currLine = bufferedReader.readLine();
-          sourceFiles.add(new File(currLine));
-        } else if (currLine.equals(TARGET_NAME)) {
-          currLine = bufferedReader.readLine();
-          targetFile = new File(currLine);
-        } else if (currLine.equals(MERGE_FINISHED)) {
-          isMergeFinished = true;
-        } else {
-          String[] resultList = currLine.split(STR_DEVICE_OFFSET_SEPERATOR);
-          deviceSet.add(resultList[0]);
-          offset = Long.parseLong(resultList[1]);
+      while ((currLine = bufferedReader.readLine()) != null) {
+        switch (currLine) {
+          case SOURCE_NAME:
+            currLine = bufferedReader.readLine();
+            sourceFiles.add(new File(currLine));
+            break;
+          case TARGET_NAME:
+            currLine = bufferedReader.readLine();
+            targetFile = new File(currLine);
+            break;
+          case MERGE_FINISHED:
+            isMergeFinished = true;
+            break;
+          default:
+            String[] resultList = currLine.split(STR_DEVICE_OFFSET_SEPERATOR);
+            deviceSet.add(resultList[0]);
+            offset = Long.parseLong(resultList[1]);
+            break;
         }
       }
     }

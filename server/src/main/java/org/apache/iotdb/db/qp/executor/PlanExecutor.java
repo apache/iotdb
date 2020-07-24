@@ -174,7 +174,7 @@ public class PlanExecutor implements IPlanExecutor {
     } else if (queryPlan instanceof AuthorPlan) {
       return processAuthorQuery((AuthorPlan) queryPlan);
     } else if (queryPlan instanceof ShowPlan) {
-      return processShowQuery((ShowPlan) queryPlan);
+      return processShowQuery((ShowPlan) queryPlan, context);
     } else {
       throw new QueryProcessException(String.format("Unrecognized query plan %s", queryPlan));
     }
@@ -350,7 +350,7 @@ public class PlanExecutor implements IPlanExecutor {
     return new AlignByDeviceDataSet(plan, context, router);
   }
 
-  protected QueryDataSet processShowQuery(ShowPlan showPlan)
+  protected QueryDataSet processShowQuery(ShowPlan showPlan, QueryContext context)
       throws QueryProcessException, MetadataException {
     switch (showPlan.getShowContentType()) {
       case TTL:
@@ -362,7 +362,7 @@ public class PlanExecutor implements IPlanExecutor {
       case VERSION:
         return processShowVersion();
       case TIMESERIES:
-        return processShowTimeseries((ShowTimeSeriesPlan) showPlan);
+        return processShowTimeseries((ShowTimeSeriesPlan) showPlan, context);
       case STORAGE_GROUP:
         return processShowStorageGroup();
       case DEVICES:
@@ -509,15 +509,15 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan showTimeSeriesPlan)
-      throws MetadataException {
-    List<ShowTimeSeriesResult> timeseriesList = showTimeseries(showTimeSeriesPlan);
-    return QueryUtils.getQueryDataSet(timeseriesList, showTimeSeriesPlan);
+  private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan showTimeSeriesPlan,
+      QueryContext context) throws MetadataException {
+    List<ShowTimeSeriesResult> timeseriesList = showTimeseries(showTimeSeriesPlan, context);
+    return QueryUtils.getQueryDataSet(timeseriesList, showTimeSeriesPlan, context);
   }
 
-  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
-    return IoTDB.metaManager.showTimeseries(plan);
+    return IoTDB.metaManager.showTimeseries(plan, context);
   }
 
   protected List<StorageGroupMNode> getAllStorageGroupNodes() {
