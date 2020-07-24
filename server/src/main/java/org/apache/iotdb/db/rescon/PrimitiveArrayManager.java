@@ -21,7 +21,13 @@ package org.apache.iotdb.db.rescon;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -46,6 +52,12 @@ public class PrimitiveArrayManager {
       TSDataType.class);
 
   /**
+   * data type -> threshold number of buffered arrays
+   */
+  private static final EnumMap<TSDataType, Double> bufferedArraysThresholdNumMap = new EnumMap<>(
+      TSDataType.class);
+
+  /**
    * data type -> current number of OOB arrays
    */
   private static final EnumMap<TSDataType, Integer> outOfBufferArraysNumMap = new EnumMap<>(
@@ -57,9 +69,14 @@ public class PrimitiveArrayManager {
       IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
 
   /**
-   * theshold number of arrays for one data type TODO modified as a config
+   * threshold number of arrays for all data type TODO modified as a config
    */
   private static final int ARRAY_NUM_THRESHOLD = 1024 * 1024;
+
+  /**
+   * collect schema data type number in specific interval time TODO modified as a config? shutdown?
+   */
+  private ScheduledExecutorService timedCollectSchemaDataTypeNumThread;
 
   static {
     bufferedArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque<>());
@@ -77,7 +94,11 @@ public class PrimitiveArrayManager {
   private static final PrimitiveArrayManager INSTANCE = new PrimitiveArrayManager();
 
   private PrimitiveArrayManager() {
-
+    timedCollectSchemaDataTypeNumThread = Executors
+        .newSingleThreadScheduledExecutor(
+            r -> new Thread(r, "timedCollectSchemaDataTypeNumThread"));
+    timedCollectSchemaDataTypeNumThread.scheduleAtFixedRate(this::collectSchemaDataTypeNum, 3600,
+        3600, TimeUnit.SECONDS);
   }
 
   /**
@@ -89,11 +110,14 @@ public class PrimitiveArrayManager {
   public synchronized Object getDataListByType(TSDataType dataType) {
     // check buffered array num
     if (bufferedArraysNumMap.containsKey(dataType)
-        && bufferedArraysNumMap.get(dataType) >= ARRAY_NUM_THRESHOLD) {
+        && bufferedArraysNumMap.get(dataType)
+        > bufferedArraysThresholdNumMap.get(dataType) * ARRAY_NUM_THRESHOLD) {
 
       if (logger.isDebugEnabled()) {
         logger.debug("Apply out of buffer array from system module...");
       }
+      // update bufferedArraysThresholdNumMap
+      collectSchemaDataTypeNum();
       boolean applyResult = applyOOBArray(dataType, ARRAY_SIZE);
       if (!applyResult) {
         if (logger.isDebugEnabled()) {
@@ -258,5 +282,28 @@ public class PrimitiveArrayManager {
    */
   private void bringBackOOBArray(TSDataType dataType, int size) {
     SystemInfo.getInstance().releaseOOBArray(dataType, size);
+  }
+
+  private void collectSchemaDataTypeNum() {
+    try {
+      Map<TSDataType, Integer> schemaDataTypeNumMap = IoTDB.metaManager
+          .collectSchemaDataTypeNum("root.*");
+      int total = 0;
+      for (int num : schemaDataTypeNumMap.values()) {
+        total += num;
+      }
+      for (Map.Entry<TSDataType, Double> entry : bufferedArraysThresholdNumMap.entrySet()) {
+        TSDataType dataType = entry.getKey();
+        if (schemaDataTypeNumMap.containsKey(dataType)) {
+          bufferedArraysThresholdNumMap
+              .put(dataType, 0.1 + 0.5 * schemaDataTypeNumMap.get(dataType) / total);
+        } else {
+          // least percentage for each data type is 0.1 TODO modified as a config
+          bufferedArraysThresholdNumMap.put(dataType, 0.1);
+        }
+      }
+    } catch (MetadataException e) {
+      logger.error("Failed to get schema data type num map. ", e);
+    }
   }
 }

@@ -936,9 +936,9 @@ public class MTree implements Serializable {
     }
   }
 
-  EnumMap<TSDataType, Integer> collectSchemaDataTypeNum(String prefixPath)
+  Map<TSDataType, Integer> collectSchemaDataTypeNum(String prefixPath)
       throws MetadataException {
-    EnumMap<TSDataType, Integer> schemaDataTypeNumMap = new EnumMap<>(
+    Map<TSDataType, Integer> schemaDataTypeNumMap = new EnumMap<>(
         TSDataType.class);
     String[] nodes = MetaUtils.getNodeNames(prefixPath);
     collectSchemaDataTypeNum(root, nodes, 1, schemaDataTypeNumMap);
@@ -946,7 +946,7 @@ public class MTree implements Serializable {
   }
 
   private void collectSchemaDataTypeNum(MNode node, String[] nodes, int idx,
-      EnumMap<TSDataType, Integer> schemaDataTypeNumMap) throws MetadataException {
+      Map<TSDataType, Integer> schemaDataTypeNumMap) throws MetadataException {
     if (node instanceof MeasurementMNode && nodes.length <= idx) {
       TSDataType type = ((MeasurementMNode) node).getSchema().getType();
       schemaDataTypeNumMap.put(type, schemaDataTypeNumMap.getOrDefault(type, 0) + 1);
