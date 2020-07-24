@@ -166,9 +166,10 @@ public class SeriesReaderTestUtil {
     IoTDB.metaManager.setStorageGroup(SERIES_READER_TEST_SG_LIST);
     for (List<String> device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        device.add(measurementSchema.getMeasurementId());
+        List<String> fullPath = new ArrayList<>(device);
+        fullPath.add(measurementSchema.getMeasurementId());
         IoTDB.metaManager.createTimeseries(
-            device, measurementSchema
+            fullPath, measurementSchema
                 .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());
       }
