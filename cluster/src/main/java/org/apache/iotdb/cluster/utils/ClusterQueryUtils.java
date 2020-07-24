@@ -47,7 +47,7 @@ public class ClusterQueryUtils {
       throws QueryProcessException {
     if (!IoTDB.metaManager.isPathExist(path)) {
       try {
-        metaGroupMember.pullTimeSeriesSchemas(Collections.singletonList(path));
+        metaGroupMember.pullTimeSeriesSchemas(Collections.singletonList(path), null);
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
       }

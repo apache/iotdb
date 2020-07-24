@@ -86,11 +86,11 @@ public class HDFSOutput implements TsFileOutput {
   }
 
   @Override
-  public void truncate(long position) throws IOException {
+  public void truncate(long size) throws IOException {
     if (fs.exists(path)) {
       fsDataOutputStream.close();
     }
-    fs.truncate(path, position);
+    fs.truncate(path, size);
     if (fs.exists(path)) {
       fsDataOutputStream = fs.append(path);
     }

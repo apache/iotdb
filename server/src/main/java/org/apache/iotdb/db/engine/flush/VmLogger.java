@@ -48,6 +48,12 @@ public class VmLogger {
     logStream.close();
   }
 
+  /**
+   * We need to log the offset of the device instead of depending on the selfCheck() func to do the
+   * truncation. Because if the current chunk group has been flushed to the tsfile but the device
+   * hasn't been logged into vmLog then selfCheck() func won't truncate the chunk group. When we do
+   * recovery, we will flush the device data again.
+   */
   public void logDevice(String device, long offset) throws IOException {
     logStream.write(String.format(FORMAT_DEVICE_OFFSET, device, offset));
     logStream.newLine();
@@ -56,6 +62,7 @@ public class VmLogger {
 
   public void logFile(String prefix, File file) throws IOException {
     logStream.write(prefix);
+    logStream.newLine();
     logStream.write(file.getAbsolutePath());
     logStream.newLine();
     logStream.flush();

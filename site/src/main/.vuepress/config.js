@@ -537,7 +537,8 @@ var config = {
 							['StorageEngine/FlushManager','FlushManager'],
 							['StorageEngine/MergeManager','MergeManager'],
 							['StorageEngine/DataPartition','DataPartition'],
-							['StorageEngine/DataManipulation','DataManipulation']
+							['StorageEngine/DataManipulation','DataManipulation'],
+							['StorageEngine/Recover','Recover']
 						]
 					},
 					{
@@ -1046,12 +1047,14 @@ var config = {
 					{
 						title: '存储引擎',
 						children: [
+							['StorageEngine/FileLists','磁盘文件汇总'],
 							['StorageEngine/StorageEngine','存储引擎'],
 							['StorageEngine/WAL','写前日志'],
 							['StorageEngine/FlushManager','FlushManager'],
 							['StorageEngine/MergeManager','文件合并机制'],
 							['StorageEngine/DataPartition','数据分区'],
-							['StorageEngine/DataManipulation','数据增删改']
+							['StorageEngine/DataManipulation','数据增删改'],
+							['StorageEngine/Recover','重启恢复'],
 						]
 					},
 					{

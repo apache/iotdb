@@ -715,10 +715,11 @@ public class MetaGroupMemberTest extends MemberTest {
     System.out.println("Start testPullTimeseriesSchema()");
     for (int i = 0; i < 10; i++) {
       List<MeasurementSchema> schemas =
-          testMetaMember.pullTimeSeriesSchemas(Collections.singletonList(TestUtils.getTestSg(i)));
+          testMetaMember.pullTimeSeriesSchemas(Collections.singletonList(TestUtils.getTestSg(i)),
+              null);
       assertEquals(20, schemas.size());
       for (int j = 0; j < 10; j++) {
-        assertEquals(TestUtils.getTestMeasurementSchema(j), schemas.get(j));
+        assertTrue(schemas.contains(TestUtils.getTestMeasurementSchema(j)));
       }
     }
   }
@@ -861,7 +862,7 @@ public class MetaGroupMemberTest extends MemberTest {
         .getMatchedPaths(TestUtils.getTestSg(0) + ".*");
     assertEquals(20, matchedPaths.size());
     for (int j = 0; j < 10; j++) {
-      assertEquals(TestUtils.getTestSeries(0, j), matchedPaths.get(j));
+      assertTrue(matchedPaths.contains(TestUtils.getTestSeries(0, j)));
     }
     matchedPaths = testMetaMember
         .getMatchedPaths(TestUtils.getTestSg(10) + ".*");

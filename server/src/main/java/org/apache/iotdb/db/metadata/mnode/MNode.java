@@ -26,6 +26,8 @@ import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -79,7 +81,7 @@ public class MNode implements Serializable {
    */
   public void addChild(String name, MNode child) {
     if (children == null) {
-      children = new LinkedHashMap<>();
+      children = new ConcurrentSkipListMap<>();
     }
     children.put(name, child);
   }

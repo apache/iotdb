@@ -31,8 +31,6 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -85,7 +83,8 @@ public class DataLogApplierTest extends IoTDBTest {
     }
 
     @Override
-    public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths)
+    public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths,
+        Node ignoredGroup)
       throws StorageGroupNotSetException {
       List<MeasurementSchema> ret = new ArrayList<>();
       for (String prefixPath : prefixPaths) {

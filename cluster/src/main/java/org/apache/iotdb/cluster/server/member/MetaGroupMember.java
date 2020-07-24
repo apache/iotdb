@@ -1927,8 +1927,10 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Pull the all timeseries schemas of given prefixPaths from remote nodes. All prefixPaths must
    * contain the storage group.
+   * @param ignoredGroup do not pull schema from the group to avoid backward dependency
    */
-  public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths)
+  public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths,
+      Node ignoredGroup)
       throws MetadataException {
     logger.debug("{}: Pulling timeseries schemas of {}", name, prefixPaths);
     // split the paths by the data groups that will hold them
@@ -1937,6 +1939,9 @@ public class MetaGroupMember extends RaftMember {
       PartitionGroup partitionGroup;
       try {
         partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
+        if (partitionGroup.getHeader().equals(ignoredGroup)) {
+          continue;
+        }
       } catch (StorageGroupNotSetException e) {
         // the storage group is not found locally, but may be found in the leader, retry after
         // synchronizing with the leader
@@ -2112,7 +2117,7 @@ public class MetaGroupMember extends RaftMember {
       pathStr.add(path.getFullPath());
     }
     // pull schemas remotely
-    List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStr);
+    List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStr, null);
     if (schemas.isEmpty()) {
       // if timeseries cannot be found remotely, too, it does not exist
       return null;
@@ -2169,7 +2174,7 @@ public class MetaGroupMember extends RaftMember {
       }
     } catch (PathNotExistException e) {
       // pull schemas remotely
-      List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStrs);
+      List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStrs, null);
       if (schemas.isEmpty()) {
         // if one timeseries cannot be found remotely, too, it does not exist
         throw e;

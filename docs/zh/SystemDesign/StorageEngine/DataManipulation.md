@@ -75,15 +75,19 @@
 每个 StorageGroupProsessor 中针对每个分区会维护一个自增的版本号，由 SimpleFileVersionController 管理。
 每个内存缓冲区 memtable 在持久化的时候会申请一个版本号。持久化到 TsFile 后，会在 TsFileMetadata 中记录此 memtable 对应的 多个 ChunkGroup 的终止位置和版本号。
 查询时会根据此信息对 ChunkMetadata 赋 version。
-​	
-* 总入口: public void delete(String deviceId, String measurementId, long timestamp) StorageEngine.java
+
+StorageEngine.java中的delete入口: 
+
+```public void delete(String deviceId, String measurementId, long timestamp)```
   * 找到对应的 StorageGroupProcessor
   * 找到受影响的所有 working TsFileProcessor 记录写前日志
-  * 找到受影响的所有 TsFileResource，在其对应的 mods 文件中记录一条记录：path，deleteTime，version
-  * 如果文件没有关闭，拿到对应的 TsFileProcessor
+  * 找到受影响的所有 TsFileResource，在其对应的 mods 文件中记录一条记录：path，version，startTime，endTime
     * 如果存在 working memtable：则删除内存中的数据
     * 如果存在 正在 flush 的 memtable，记录一条记录，查询时跳过删掉的数据（注意此时文件中已经为这些 memtable 记录了 mods）
 
+Mods文件用来存储所有的删除记录。下图的mods文件中，d1.s1落在 [100, 200], [180, 300]范围的数据，以及d1.s2落在[500, 1000]范围中的数据将会被删除。
+
+![](https://user-images.githubusercontent.com/59866276/88248546-20952600-ccd4-11ea-88e9-84af8dde4304.jpg)
 
 ## 数据TTL设置
 

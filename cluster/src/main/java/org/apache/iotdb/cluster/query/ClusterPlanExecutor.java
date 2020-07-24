@@ -113,7 +113,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       } catch (CheckConsistencyException e) {
         throw new QueryProcessException(e.getMessage());
       }
-      return processShowQuery((ShowPlan) queryPlan);
+      return processShowQuery((ShowPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
       try {
         metaGroupMember.syncLeaderWithConsistencyCheck();
@@ -495,7 +495,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
     ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
@@ -519,7 +519,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (PartitionGroup group : globalGroups) {
       futureList.add(pool.submit(() -> {
         try {
-          showTimeseries(group, plan, resultSet);
+          showTimeseries(group, plan, resultSet, context);
         } catch (CheckConsistencyException e) {
           logger.error("Cannot get show timeseries result of {} from {}", plan, group);
         }
@@ -568,21 +568,21 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private void showTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet) throws CheckConsistencyException {
+      Set<ShowTimeSeriesResult> resultSet, QueryContext context) throws CheckConsistencyException {
     if (group.contains(metaGroupMember.getThisNode())) {
-      showLocalTimeseries(group, plan, resultSet);
+      showLocalTimeseries(group, plan, resultSet, context);
     } else {
       showRemoteTimeseries(group, plan, resultSet);
     }
   }
 
   private void showLocalTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet) throws CheckConsistencyException {
+      Set<ShowTimeSeriesResult> resultSet, QueryContext context) throws CheckConsistencyException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeaderWithConsistencyCheck();
     try {
-      List<ShowTimeSeriesResult> localResult = IoTDB.metaManager.showTimeseries(plan);
+      List<ShowTimeSeriesResult> localResult = IoTDB.metaManager.showTimeseries(plan, context);
       resultSet.addAll(localResult);
       logger.debug("Fetched {} schemas of {} from {}", localResult.size(), plan.getPath(), group);
     } catch (MetadataException e) {
@@ -692,7 +692,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (String s : measurementList) {
       schemasToPull.add(deviceId + IoTDBConstant.PATH_SEPARATOR + s);
     }
-    List<MeasurementSchema> schemas = metaGroupMember.pullTimeSeriesSchemas(schemasToPull);
+    List<MeasurementSchema> schemas = metaGroupMember.pullTimeSeriesSchemas(schemasToPull, null);
     for (MeasurementSchema schema : schemas) {
       IoTDB.metaManager
           .cacheMeta(deviceId + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(),
