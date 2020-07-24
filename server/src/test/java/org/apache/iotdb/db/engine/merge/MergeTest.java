@@ -65,7 +65,7 @@ abstract class MergeTest {
   TSEncoding encoding = TSEncoding.PLAIN;
 
   String[] deviceIds;
-  private List<List<String>> deviceIdsList;
+  List<List<String>> deviceIdsList;
   MeasurementSchema[] measurementSchemas;
 
   List<TsFileResource> seqResources = new ArrayList<>();
@@ -103,17 +103,20 @@ abstract class MergeTest {
           encoding, CompressionType.UNCOMPRESSED);
     }
     deviceIdsList = new ArrayList<>();
+    deviceIds = new String[deviceNum];
     for (int i = 0; i < deviceNum; i++) {
       List<String> device = new ArrayList<>(MERGE_TEST_SG_LIST);
-      device.add("device" + i);
+      deviceIds[i] = "device" + i;
+      device.add(deviceIds[i]);
       deviceIdsList.add(device);
     }
     IoTDB.metaManager.setStorageGroup(MERGE_TEST_SG_LIST);
     for (List<String> device : deviceIdsList) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        device.add(measurementSchema.getMeasurementId());
+        List<String> fullPath = new ArrayList<>(device);
+        fullPath.add(measurementSchema.getMeasurementId());
         IoTDB.metaManager.createTimeseries(
-            device, measurementSchema
+            fullPath, measurementSchema
                 .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());
       }

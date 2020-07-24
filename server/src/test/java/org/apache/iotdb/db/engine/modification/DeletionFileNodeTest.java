@@ -83,8 +83,9 @@ public class DeletionFileNodeTest {
     IoTDB.metaManager.setStorageGroup(processorNameList);
     for (int i = 0; i < 10; i++) {
       deviceMNode.addChild(measurements[i], new MeasurementMNode(null, null, null, null));
-      processorNameList.add(measurements[i]);
-      IoTDB.metaManager.createTimeseries(processorNameList, dataType,
+      List<String> fullPath = new ArrayList<>(processorNameList);
+      fullPath.add(measurements[i]);
+      IoTDB.metaManager.createTimeseries(fullPath, dataType,
           encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
 
     }
@@ -98,6 +99,7 @@ public class DeletionFileNodeTest {
   private void insertToStorageEngine(TSRecord record) throws StorageEngineException {
     InsertRowPlan insertRowPlan = new InsertRowPlan(record);
     insertRowPlan.setDeviceMNode(deviceMNode);
+    insertRowPlan.setDeviceNodes(processorNameList);
     StorageEngine.getInstance().insert(insertRowPlan);
   }
 
@@ -118,8 +120,9 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(processorNameList, measurements[5], 0, 30);
     StorageEngine.getInstance().delete(processorNameList, measurements[5], 30, 50);
 
-    SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
-        measurements[5]), null);
+    List<String> fullPath = new ArrayList<>(processorNameList);
+    fullPath.add(measurements[5]);
+    SingleSeriesExpression expression = new SingleSeriesExpression(new Path(fullPath), null);
     QueryDataSource dataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
 
@@ -217,8 +220,9 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(processorNameList, measurements[5], 0, 30);
     StorageEngine.getInstance().delete(processorNameList, measurements[5], 30, 50);
 
-    SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
-        measurements[5]), null);
+    List<String> fullPath = new ArrayList<>(processorNameList);
+    fullPath.add(measurements[5]);
+    SingleSeriesExpression expression = new SingleSeriesExpression(new Path(fullPath), null);
 
     QueryDataSource dataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);

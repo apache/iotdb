@@ -449,10 +449,11 @@ public class StorageEngine implements IService {
       throws StorageEngineException, QueryProcessException {
     List<String> pathNodes = seriesExpression.getSeriesPath().getNodes();
     String measurementId = pathNodes.get(pathNodes.size() - 1);
-    pathNodes.remove(pathNodes.size() - 1);
-    StorageGroupProcessor storageGroupProcessor = getProcessor(pathNodes);
+    List<String> deviceNodes = new ArrayList<>(pathNodes);
+    deviceNodes.remove(deviceNodes.size() - 1);
+    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceNodes);
     return storageGroupProcessor
-        .query(pathNodes, measurementId, context, filePathsManager, seriesExpression.getFilter());
+        .query(deviceNodes, measurementId, context, filePathsManager, seriesExpression.getFilter());
   }
 
   /**

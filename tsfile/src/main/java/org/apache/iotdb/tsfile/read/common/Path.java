@@ -229,7 +229,8 @@ public class Path implements Serializable, Comparable<Path> {
     if(fullPath != null) {
       return fullPath.hashCode();
     } else {
-      return nodes.hashCode();
+      fullPath = getFullPath();
+      return fullPath.hashCode();
     }
   }
 
@@ -237,7 +238,7 @@ public class Path implements Serializable, Comparable<Path> {
   public boolean equals(Object obj) {
     if(obj instanceof Path) {
       if(fullPath != null) {
-        return fullPath.equals(((Path) obj).fullPath);
+        return fullPath.equals(((Path) obj).getFullPath());
       } else {
         for(int i = 0; i < nodes.size(); i++) {
           if(!nodes.get(0).equals(((Path) obj).nodes.get(0))) {

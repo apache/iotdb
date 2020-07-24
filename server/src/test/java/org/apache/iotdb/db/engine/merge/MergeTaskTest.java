@@ -236,7 +236,9 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    List<String> fullPath = new ArrayList<>(deviceIdsList.get(0));
+    fullPath.add(measurementSchemas[0].getMeasurementId());
+    Path path = new Path(fullPath);
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(), context,

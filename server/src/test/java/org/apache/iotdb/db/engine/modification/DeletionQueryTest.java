@@ -69,14 +69,14 @@ public class DeletionQueryTest {
   @Before
   public void setup() throws MetadataException {
     EnvironmentUtils.envSetUp();
-    deviceMNode = new MNode(null, processorNameList.get(1));
+    deviceMNode = new MNode(null, processorName);
     IoTDB.metaManager.setStorageGroup(processorNameList);
     for (int i = 0; i < 10; i++) {
-      processorNameList.add(measurements[i]);
+      List<String> fullPath = new ArrayList<>(processorNameList);
+      fullPath.add(measurements[i]);
       deviceMNode.addChild(measurements[i], new MeasurementMNode(null, null, null, null));
-      IoTDB.metaManager.createTimeseries(processorNameList, dataType,
+      IoTDB.metaManager.createTimeseries(fullPath, dataType,
           encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-      processorNameList.remove(processorNameList.size() - 1);
     }
   }
 
@@ -88,6 +88,7 @@ public class DeletionQueryTest {
   private void insertToStorageEngine(TSRecord record) throws StorageEngineException {
     InsertRowPlan insertRowPlan = new InsertRowPlan(record);
     insertRowPlan.setDeviceMNode(deviceMNode);
+    insertRowPlan.setDeviceNodes(processorNameList);
     StorageEngine.getInstance().insert(insertRowPlan);
   }
 
@@ -109,9 +110,15 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().delete(processorNameList, measurements[5], 30, 50);
 
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path(processorName, measurements[3]));
-    pathList.add(new Path(processorName, measurements[4]));
-    pathList.add(new Path(processorName, measurements[5]));
+    List<String> fullPath3 = new ArrayList<>(processorNameList);
+    fullPath3.add(measurements[3]);
+    pathList.add(new Path(fullPath3));
+    List<String> fullPath4 = new ArrayList<>(processorNameList);
+    fullPath4.add(measurements[4]);
+    pathList.add(new Path(fullPath4));
+    List<String> fullPath5 = new ArrayList<>(processorNameList);
+    fullPath5.add(measurements[5]);
+    pathList.add(new Path(fullPath5));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(dataType);
     dataTypes.add(dataType);
@@ -147,9 +154,15 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().delete(processorNameList, measurements[3], 0, 30);
 
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path(processorName, measurements[3]));
-    pathList.add(new Path(processorName, measurements[4]));
-    pathList.add(new Path(processorName, measurements[5]));
+    List<String> fullPath3 = new ArrayList<>(processorNameList);
+    fullPath3.add(measurements[3]);
+    pathList.add(new Path(fullPath3));
+    List<String> fullPath4 = new ArrayList<>(processorNameList);
+    fullPath4.add(measurements[4]);
+    pathList.add(new Path(fullPath4));
+    List<String> fullPath5 = new ArrayList<>(processorNameList);
+    fullPath5.add(measurements[5]);
+    pathList.add(new Path(fullPath5));
 
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(dataType);
@@ -197,9 +210,15 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().delete(processorNameList, measurements[5], 30, 50);
 
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path(processorName, measurements[3]));
-    pathList.add(new Path(processorName, measurements[4]));
-    pathList.add(new Path(processorName, measurements[5]));
+    List<String> fullPath3 = new ArrayList<>(processorNameList);
+    fullPath3.add(measurements[3]);
+    pathList.add(new Path(fullPath3));
+    List<String> fullPath4 = new ArrayList<>(processorNameList);
+    fullPath4.add(measurements[4]);
+    pathList.add(new Path(fullPath4));
+    List<String> fullPath5 = new ArrayList<>(processorNameList);
+    fullPath5.add(measurements[5]);
+    pathList.add(new Path(fullPath5));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(dataType);
     dataTypes.add(dataType);
@@ -246,9 +265,15 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().delete(processorNameList, measurements[3], 0, 30);
 
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path(processorName, measurements[3]));
-    pathList.add(new Path(processorName, measurements[4]));
-    pathList.add(new Path(processorName, measurements[5]));
+    List<String> fullPath3 = new ArrayList<>(processorNameList);
+    fullPath3.add(measurements[3]);
+    pathList.add(new Path(fullPath3));
+    List<String> fullPath4 = new ArrayList<>(processorNameList);
+    fullPath4.add(measurements[4]);
+    pathList.add(new Path(fullPath4));
+    List<String> fullPath5 = new ArrayList<>(processorNameList);
+    fullPath5.add(measurements[5]);
+    pathList.add(new Path(fullPath5));
 
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(dataType);
@@ -317,9 +342,15 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().syncCloseAllProcessor();
 
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path(processorName, measurements[3]));
-    pathList.add(new Path(processorName, measurements[4]));
-    pathList.add(new Path(processorName, measurements[5]));
+    List<String> fullPath3 = new ArrayList<>(processorNameList);
+    fullPath3.add(measurements[3]);
+    pathList.add(new Path(fullPath3));
+    List<String> fullPath4 = new ArrayList<>(processorNameList);
+    fullPath4.add(measurements[4]);
+    pathList.add(new Path(fullPath4));
+    List<String> fullPath5 = new ArrayList<>(processorNameList);
+    fullPath5.add(measurements[5]);
+    pathList.add(new Path(fullPath5));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(dataType);
     dataTypes.add(dataType);
