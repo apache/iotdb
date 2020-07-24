@@ -270,6 +270,8 @@ public class IoTDBConfig {
 
   private long reserveMemSize = 1024 * 1024 * 1024L;
 
+  private long writableMemSize = 1024 * 1024 * 1024 * 1024L;
+
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
    */
@@ -1232,6 +1234,10 @@ public class IoTDBConfig {
 
   public void setReserveMemSize(long reserveMemSize) {
     this.reserveMemSize = reserveMemSize;
+  }
+
+  public long getWritableMemSize() {
+    return writableMemSize;
   }
 
   public int getAvgSeriesPointNumberThreshold() {
