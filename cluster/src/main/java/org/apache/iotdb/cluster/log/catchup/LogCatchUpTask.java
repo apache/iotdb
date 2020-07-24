@@ -132,7 +132,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       }
       client.appendEntry(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-      appendSucceed.wait(RaftServer.getConnectionTimeoutInMS());
+      appendSucceed.wait(RaftServer.getWriteOperationTimeoutMS());
     }
     return appendSucceed.get();
   }

@@ -1088,7 +1088,7 @@ public class MetaGroupMember extends RaftMember {
       }
 
       try {
-        groupRemainings.wait(RaftServer.getConnectionTimeoutInMS());
+        groupRemainings.wait(RaftServer.getWriteOperationTimeoutMS());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for the group votes", e);
@@ -1794,11 +1794,12 @@ public class MetaGroupMember extends RaftMember {
       try {
         List<String> result;
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client = getAsyncDataClient(node);
+          AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           result = SyncClientAdaptor
               .getUnregisteredMeasurements(client, partitionGroup.getHeader(), seriesList);
         } else {
-          SyncDataClient syncDataClient = getSyncDataClient(node);
+          SyncDataClient syncDataClient = getSyncDataClient(node,
+              RaftServer.getReadOperationTimeoutMS());
           result = syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
           putBackSyncClient(syncDataClient);
         }
@@ -1861,7 +1862,8 @@ public class MetaGroupMember extends RaftMember {
    * @return a TSStatus indicating if the forwarding is successful.
    */
   TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header) throws IOException {
-    RaftService.AsyncClient client = getAsyncDataClient(receiver);
+    RaftService.AsyncClient client = getAsyncDataClient(receiver,
+        RaftServer.getWriteOperationTimeoutMS());
     try {
       TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
       if (tsStatus == null) {
@@ -1883,7 +1885,7 @@ public class MetaGroupMember extends RaftMember {
   }
 
   TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header) throws IOException {
-    Client client = getSyncDataClient(receiver);
+    Client client = getSyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
     try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       plan.serialize(dataOutputStream);
@@ -2047,10 +2049,11 @@ public class MetaGroupMember extends RaftMember {
       PullSchemaRequest request) throws TException, InterruptedException, IOException {
     List<MeasurementSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = getAsyncDataClient(node);
+      AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullTimeSeriesSchema(client, request);
     } else {
-      SyncDataClient syncDataClient = getSyncDataClient(node);
+      SyncDataClient syncDataClient = getSyncDataClient(node,
+          RaftServer.getReadOperationTimeoutMS());
       PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
       ByteBuffer buffer = pullSchemaResp.schemaBytes;
       int size = buffer.getInt();
@@ -2486,11 +2489,12 @@ public class MetaGroupMember extends RaftMember {
       throws IOException, TException, InterruptedException {
     List<ByteBuffer> resultBuffers;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = getAsyncDataClient(node);
+      AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       // each buffer is an AggregationResult
       resultBuffers = SyncClientAdaptor.getAggrResult(client, request);
     } else {
-      SyncDataClient syncDataClient = getSyncDataClient(node);
+      SyncDataClient syncDataClient = getSyncDataClient(node,
+          RaftServer.getReadOperationTimeoutMS());
       resultBuffers = syncDataClient.getAggrResult(request);
       putBackSyncClient(syncDataClient);
     }
@@ -2706,7 +2710,8 @@ public class MetaGroupMember extends RaftMember {
     }
     getAllPathsService.shutdown();
     try {
-      getAllPathsService.awaitTermination(RaftServer.getQueryTimeoutInSec(), TimeUnit.SECONDS);
+      getAllPathsService
+          .awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
@@ -2814,11 +2819,12 @@ public class MetaGroupMember extends RaftMember {
       throws IOException, TException, InterruptedException {
     List<String> paths;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = getAsyncDataClient(node);
+      AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       paths = SyncClientAdaptor.getAllPaths(client, header,
           pathsToQuery);
     } else {
-      SyncDataClient syncDataClient = getSyncDataClient(node);
+      SyncDataClient syncDataClient = getSyncDataClient(node,
+          RaftServer.getReadOperationTimeoutMS());
       paths = syncDataClient.getAllPaths(header, pathsToQuery);
       putBackSyncClient(syncDataClient);
     }
@@ -2896,11 +2902,12 @@ public class MetaGroupMember extends RaftMember {
       throws IOException, TException, InterruptedException {
     Set<String> paths;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = getAsyncDataClient(node);
+      AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       paths = SyncClientAdaptor.getAllDevices(client, header,
           pathsToQuery);
     } else {
-      SyncDataClient syncDataClient = getSyncDataClient(node);
+      SyncDataClient syncDataClient = getSyncDataClient(node,
+          RaftServer.getReadOperationTimeoutMS());
       paths = syncDataClient.getAllDevices(header, pathsToQuery);
       putBackSyncClient(syncDataClient);
     }
@@ -3198,23 +3205,29 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Get a thrift client that will connect to "node" using the data port.
    *
-   * @param node the node to be connected
+   * @param node    the node to be connected
+   * @param timeout timeout threshold of connection
    * @return
    * @throws IOException
    */
-  public AsyncDataClient getAsyncDataClient(Node node) throws IOException {
-    return (AsyncDataClient) getDataAsyncClientPool().getClient(node);
+  public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+    AsyncDataClient client = (AsyncDataClient) getDataAsyncClientPool().getClient(node);
+    client.setTimeout(timeout);
+    return client;
   }
 
   /**
    * Get a thrift client that will connect to "node" using the data port.
    *
-   * @param node the node to be connected
+   * @param node    the node to be connected
+   * @param timeout timeout threshold of connection
    * @return
    * @throws IOException
    */
-  public SyncDataClient getSyncDataClient(Node node) {
-    return (SyncDataClient) getDataSyncClientPool().getClient(node);
+  public SyncDataClient getSyncDataClient(Node node, int timeout) {
+    SyncDataClient client = (SyncDataClient) getDataSyncClientPool().getClient(node);
+    client.setTimeout(timeout);
+    return client;
   }
 
   /**
@@ -3367,10 +3380,11 @@ public class MetaGroupMember extends RaftMember {
       throws IOException, TException, InterruptedException {
     Long executorId;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = getAsyncDataClient(node);
+      AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       executorId = SyncClientAdaptor.getGroupByExecutor(client, request);
     } else {
-      SyncDataClient syncDataClient = getSyncDataClient(node);
+      SyncDataClient syncDataClient = getSyncDataClient(node,
+          RaftServer.getReadOperationTimeoutMS());
       executorId = syncDataClient.getGroupByExecutor(request);
       putBackSyncClient(syncDataClient);
     }
@@ -3409,7 +3423,7 @@ public class MetaGroupMember extends RaftMember {
     }
     fillService.shutdown();
     try {
-      fillService.awaitTermination(RaftServer.getQueryTimeoutInSec(), TimeUnit.SECONDS);
+      fillService.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for fill pool to stop", e);
@@ -3474,7 +3488,7 @@ public class MetaGroupMember extends RaftMember {
     ByteBuffer byteBuffer = null;
     AsyncDataClient asyncDataClient;
     try {
-      asyncDataClient = getAsyncDataClient(node);
+      asyncDataClient = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
     } catch (IOException e) {
       logger.warn("{}: Cannot connect to {} during previous fill", name, node);
       return null;
@@ -3493,7 +3507,7 @@ public class MetaGroupMember extends RaftMember {
   private ByteBuffer remoteSyncPreviousFill(Node node, PreviousFillRequest request,
       PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
-    SyncDataClient syncDataClient = getSyncDataClient(node);
+    SyncDataClient syncDataClient = getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
 
     try {
       byteBuffer = syncDataClient.previousFill(request);

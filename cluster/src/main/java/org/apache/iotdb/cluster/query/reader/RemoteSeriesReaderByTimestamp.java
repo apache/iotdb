@@ -43,7 +43,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
   public RemoteSeriesReaderByTimestamp(DataSourceInfo sourceInfo) {
     this.sourceInfo = sourceInfo;
     handler = new GenericHandler<>(sourceInfo.getCurrentNode(), fetchResult);
-}
+  }
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
@@ -66,9 +66,10 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
     synchronized (fetchResult) {
       fetchResult.set(null);
       try {
-        sourceInfo.getCurAsyncClient().fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
-            sourceInfo.getReaderId(), timestamp, handler);
-        fetchResult.wait(RaftServer.getConnectionTimeoutInMS());
+        sourceInfo.getCurAsyncClient(RaftServer.getReadOperationTimeoutMS())
+            .fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
+                sourceInfo.getReaderId(), timestamp, handler);
+        fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
       } catch (TException e) {
         //try other node
         if (!sourceInfo.switchNode(true, timestamp)) {
@@ -86,7 +87,8 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
 
   private ByteBuffer fetchResultSync(long timestamp) throws IOException {
     try {
-      SyncDataClient curSyncClient = sourceInfo.getCurSyncClient();
+      SyncDataClient curSyncClient = sourceInfo
+          .getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
       ByteBuffer buffer = curSyncClient
           .fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
               sourceInfo.getReaderId(), timestamp);

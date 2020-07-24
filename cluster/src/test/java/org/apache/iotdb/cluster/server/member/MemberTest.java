@@ -238,7 +238,7 @@ public class MemberTest {
       }
 
       @Override
-      public AsyncDataClient getAsyncDataClient(Node node) throws IOException {
+      public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
         return new TestAsyncDataClient(node, dataGroupMemberMap);
       }
     };
