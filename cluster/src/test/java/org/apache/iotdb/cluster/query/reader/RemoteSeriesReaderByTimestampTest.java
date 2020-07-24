@@ -63,7 +63,7 @@ public class RemoteSeriesReaderByTimestampTest {
 
   private MetaGroupMember metaGroupMember = new MetaGroupMember() {
     @Override
-    public AsyncDataClient getAsyncDataClient(Node node) throws IOException {
+    public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
       return new AsyncDataClient(null, null, node, null) {
         @Override
         public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
@@ -98,7 +98,8 @@ public class RemoteSeriesReaderByTimestampTest {
         }
 
         @Override
-        public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
+        public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
+            AsyncMethodCallback<Long> resultHandler) throws TException {
           if (failedNodes.contains(node)) {
             throw new TException("Node down.");
           }
@@ -120,7 +121,7 @@ public class RemoteSeriesReaderByTimestampTest {
     RemoteQueryContext context = new RemoteQueryContext(1);
 
     DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
-      request, context, metaGroupMember, group);
+        request, context, metaGroupMember, group);
     sourceInfo.nextDataClient(true, Long.MIN_VALUE);
 
     RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
@@ -143,21 +144,25 @@ public class RemoteSeriesReaderByTimestampTest {
     RemoteQueryContext context = new RemoteQueryContext(1);
 
     DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
-      request, context, metaGroupMember, group);
-    long startTime=System.currentTimeMillis();
+        request, context, metaGroupMember, group);
+    long startTime = System.currentTimeMillis();
     sourceInfo.nextDataClient(true, Long.MIN_VALUE);
     RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
 
-    long endTime=System.currentTimeMillis();
-    System.out.println(Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime-startTime));
+    long endTime = System.currentTimeMillis();
+    System.out.println(
+        Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime
+            - startTime));
     // normal read
     assertEquals(TestUtils.getNode(0), sourceInfo.getCurrentNode());
     for (int i = 0; i < 50; i++) {
       assertEquals(i * 1.0, reader.getValueInTimestamp(i));
     }
 
-    endTime=System.currentTimeMillis();
-    System.out.println(Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime-startTime));
+    endTime = System.currentTimeMillis();
+    System.out.println(
+        Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime
+            - startTime));
     failedNodes.add(TestUtils.getNode(0));
     for (int i = 50; i < 80; i++) {
       assertEquals(i * 1.0, reader.getValueInTimestamp(i));
@@ -171,8 +176,10 @@ public class RemoteSeriesReaderByTimestampTest {
     }
     assertEquals(TestUtils.getNode(2), sourceInfo.getCurrentNode());
 
-    endTime=System.currentTimeMillis();
-    System.out.println(Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime-startTime));
+    endTime = System.currentTimeMillis();
+    System.out.println(
+        Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime
+            - startTime));
     // all node failed
     failedNodes.add(TestUtils.getNode(2));
 
@@ -182,7 +189,9 @@ public class RemoteSeriesReaderByTimestampTest {
     } catch (IOException e) {
       assertEquals(e.getMessage(), "no available client.");
     }
-    endTime=System.currentTimeMillis();
-    System.out.println(Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime-startTime));
+    endTime = System.currentTimeMillis();
+    System.out.println(
+        Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime
+            - startTime));
   }
 }
