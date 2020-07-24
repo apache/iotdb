@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -468,7 +469,7 @@ public class MTreeTest {
     root.createTimeseries("root.laptop.d1.s0", TSDataType.TEXT, TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
 
-    EnumMap<TSDataType, Integer> res = root.collectSchemaDataTypeNum("root.*");
+    Map<TSDataType, Integer> res = root.collectSchemaDataTypeNum("root");
     assertEquals(1, (int) res.get(TSDataType.INT32));
     assertEquals(7, (int) res.get(TSDataType.INT64));
     assertEquals(2, (int) res.get(TSDataType.DOUBLE));

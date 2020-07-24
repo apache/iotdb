@@ -32,7 +32,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -1736,7 +1735,7 @@ public class MManager {
     collectMeasurementSchema(mNode, measurementSchemas);
   }
 
-  public EnumMap<TSDataType, Integer> collectSchemaDataTypeNum(String prefixPath)
+  public Map<TSDataType, Integer> collectSchemaDataTypeNum(String prefixPath)
       throws MetadataException {
     lock.readLock().lock();
     try {
