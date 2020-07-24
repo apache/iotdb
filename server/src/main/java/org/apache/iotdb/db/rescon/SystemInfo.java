@@ -19,16 +19,23 @@
 
 package org.apache.iotdb.db.rescon;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class SystemInfo {
 
-  long totalTspInfoMemCost;
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  long totalTspInfoMemCost;
   long arrayPoolMemCost;
 
   boolean reject = false;
+  // temporary value
+  private final double rejectProportion = 0.9;
+  private final double flushProportion = 0.6;
 
   /**
    * 通知system申请新数组。(调用者应在实际申请前调用该方法)
@@ -38,6 +45,20 @@ public class SystemInfo {
    * @return 如果同意，则返回true；否则返回false。
    */
   public boolean applyNewOOBArray(TSDataType type, int size) {
+    long arraySize = 0;
+    switch (type) {
+      case BOOLEAN:
+      case INT64:
+      case DOUBLE:
+        arraySize = size * 8L;
+        break;
+      case INT32:
+      case FLOAT:
+        arraySize = size * 4L;
+      case TEXT:
+      default:
+        throw new UnSupportedDataTypeException(type.toString());
+    }
     if (true) { // 内存够用时
       return true;
     } else { // 否则
@@ -51,10 +72,19 @@ public class SystemInfo {
    * 通知system自身tsp内存将发生变化。 当内存够用时，返回同意，否则不同意。 若不同意，则设置自身reject为false，触发flush。
    *
    * @param processor processor
-   * @param delta 变化量，大于等于0.
    */
-  public boolean reportTsFileProcessorStatus(TsFileProcessor processor, long delta) {
-    return false;
+  public synchronized boolean reportTsFileProcessorStatus(TsFileProcessor processor) {
+    long accumulatedCost = processor.getTsFileProcessorInfo().getAccumulatedMemCost();
+    processor.getTsFileProcessorInfo().clearAccumulatedMemCost();
+
+    if (this.totalTspInfoMemCost + accumulatedCost
+        < config.getWritableMemSize() * rejectProportion) {
+      this.totalTspInfoMemCost += accumulatedCost;
+      return false;
+    } else {
+      return true;
+    }
+
   }
 
   /**
@@ -71,7 +101,7 @@ public class SystemInfo {
    * 通知system将重置processor的内存占用量 （关闭文件后调用）。 设置自身reject为false
    *
    * @param processor processor
-   * @param original 原有值
+   * @param original  原有值
    */
   public void resetTsFileProcessorStatus(TsFileProcessor processor, long original) {
 
