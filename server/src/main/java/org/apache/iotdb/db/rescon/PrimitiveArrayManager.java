@@ -42,25 +42,25 @@ public class PrimitiveArrayManager {
   /**
    * data type -> ArrayDeque<Array>
    */
-  private static final EnumMap<TSDataType, ArrayDeque<Object>> bufferedArraysMap = new EnumMap<>(
+  private static final Map<TSDataType, ArrayDeque<Object>> bufferedArraysMap = new EnumMap<>(
       TSDataType.class);
 
   /**
    * data type -> current number of buffered arrays
    */
-  private static final EnumMap<TSDataType, Integer> bufferedArraysNumMap = new EnumMap<>(
+  private static final Map<TSDataType, Integer> bufferedArraysNumMap = new EnumMap<>(
       TSDataType.class);
 
   /**
    * data type -> threshold number of buffered arrays
    */
-  private static final EnumMap<TSDataType, Double> bufferedArraysThresholdNumMap = new EnumMap<>(
+  private static final Map<TSDataType, Double> bufferedArraysThresholdNumMap = new EnumMap<>(
       TSDataType.class);
 
   /**
    * data type -> current number of OOB arrays
    */
-  private static final EnumMap<TSDataType, Integer> outOfBufferArraysNumMap = new EnumMap<>(
+  private static final Map<TSDataType, Integer> outOfBufferArraysNumMap = new EnumMap<>(
       TSDataType.class);
 
   private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
@@ -116,7 +116,7 @@ public class PrimitiveArrayManager {
       if (logger.isDebugEnabled()) {
         logger.debug("Apply out of buffer array from system module...");
       }
-      // update bufferedArraysThresholdNumMap
+      // update bufferedArraysThresholdNumMap before applying OOB arrays
       collectSchemaDataTypeNum();
       boolean applyResult = applyOOBArray(dataType, ARRAY_SIZE);
       if (!applyResult) {
@@ -278,7 +278,7 @@ public class PrimitiveArrayManager {
    * Return out of buffered array to system module
    *
    * @param dataType data type
-   * @param size needed capacity
+   * @param size capacity
    */
   private void bringBackOOBArray(TSDataType dataType, int size) {
     SystemInfo.getInstance().releaseOOBArray(dataType, size);
@@ -291,6 +291,9 @@ public class PrimitiveArrayManager {
       int total = 0;
       for (int num : schemaDataTypeNumMap.values()) {
         total += num;
+      }
+      if (total == 0) {
+        return;
       }
       for (Map.Entry<TSDataType, Double> entry : bufferedArraysThresholdNumMap.entrySet()) {
         TSDataType dataType = entry.getKey();
