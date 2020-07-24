@@ -287,7 +287,7 @@ public class PrimitiveArrayManager {
   private void collectSchemaDataTypeNum() {
     try {
       Map<TSDataType, Integer> schemaDataTypeNumMap = IoTDB.metaManager
-          .collectSchemaDataTypeNum("root.*");
+          .collectSchemaDataTypeNum("root");
       int total = 0;
       for (int num : schemaDataTypeNumMap.values()) {
         total += num;

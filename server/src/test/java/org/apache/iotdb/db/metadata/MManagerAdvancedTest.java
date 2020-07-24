@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import java.util.EnumMap;
+import java.util.Map;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -158,7 +159,7 @@ public class MManagerAdvancedTest {
 
   @Test
   public void testCollectSchemaDataTypeNum() throws MetadataException {
-    EnumMap<TSDataType, Integer> res = mmanager.collectSchemaDataTypeNum("root.*");
+    Map<TSDataType, Integer> res = mmanager.collectSchemaDataTypeNum("root");
     assertEquals(2, (int) res.get(TSDataType.INT32));
     assertEquals(14, (int) res.get(TSDataType.INT64));
     assertEquals(2, (int) res.get(TSDataType.FLOAT));
