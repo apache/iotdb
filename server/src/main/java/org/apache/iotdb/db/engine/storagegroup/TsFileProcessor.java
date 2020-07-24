@@ -98,7 +98,7 @@ public class TsFileProcessor {
   private final String storageGroupName;
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private TsFileProcessorInfo tsFileProcessorInfo;
+  private TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo();
 
   /**
    * sync this object in query() and asyncTryToFlush()
