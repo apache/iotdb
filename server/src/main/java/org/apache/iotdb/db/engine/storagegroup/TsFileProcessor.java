@@ -211,8 +211,9 @@ public class TsFileProcessor {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
 
+    // If there are enough size of arrays in memtable, insert insertRowPlan to
+    // the work memtable directly
     if (workMemTable.checkIfArrayIsEnough(insertRowPlan)) {
-      // insert insertRowPlan to the work memtable
       workMemTable.insert(insertRowPlan);
   
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -223,7 +224,7 @@ public class TsFileProcessor {
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath()), e);
         }
       }
-  
+
       // update start time of this memtable
       tsFileResource.updateStartTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
       //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
@@ -232,17 +233,22 @@ public class TsFileProcessor {
         tsFileResource.updateEndTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
       }
     }
+    // If there aren't enough size of arrays in memtable, it may apply buffered array
+    // from the array pool or get OOB array before inserting into the memtable
     else {
       try {
+        // it may throw an exception if apply OOB array but System refused
         workMemTable.insert(insertRowPlan);
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           getLogNode().write(insertRowPlan);
         }
+        // if get buffered or OOB array successfully, estimate the memory cost
         long bytesCost = 0L;
         long unsealedResourceCost = 0L;
         long chunkMetadataCost = 0L;
         checkMemCost(insertRowPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
         long delta = bytesCost + unsealedResourceCost + chunkMetadataCost;
+
         if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(delta)) {
           boolean reject = SystemInfo.getInstance().reportTsFileProcessorStatus(this, delta);
           if (reject) {
@@ -282,6 +288,8 @@ public class TsFileProcessor {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
 
+    // If there are enough size of arrays in memtable, insert insertRowPlan to
+    // the work memtable directly
     if (workMemTable.checkIfArrayIsEnough(insertTabletPlan)) {
       // insert insertRowPlan to the work memtable
       try {
@@ -297,14 +305,13 @@ public class TsFileProcessor {
         }
         throw new WriteProcessException(e);
       }
-  
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.SUCCESS_STATUS;
       }
-  
+
       tsFileResource
           .updateStartTime(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[start]);
-  
+
       //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
       //for unsequence tsfile, we have to update the endTime for each insertion.
       if (!sequence) {
@@ -313,14 +320,18 @@ public class TsFileProcessor {
                 insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
       }
     }
+    // If there aren't enough size of arrays in memtable, it may apply buffered array
+    // from the array pool or get OOB array before inserting into the memtable
     else {
       try {
+        // it may throw an exception if apply OOB array but System refused
         workMemTable.insertTablet(insertTabletPlan, start, end);
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           insertTabletPlan.setStart(start);
           insertTabletPlan.setEnd(end);
           getLogNode().write(insertTabletPlan);
         }
+        // if get buffered or OOB array successfully, estimate the memory cost
         long bytesCost = 0L;
         long unsealedResourceCost = 0L;
         long chunkMetadataCost = 0L;
@@ -339,10 +350,10 @@ public class TsFileProcessor {
         for (int i = start; i < end; i++) {
           results[i] = RpcUtils.SUCCESS_STATUS;
         }
-    
+
         tsFileResource
             .updateStartTime(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[start]);
-    
+
         //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
         //for unsequence tsfile, we have to update the endTime for each insertion.
         if (!sequence) {
