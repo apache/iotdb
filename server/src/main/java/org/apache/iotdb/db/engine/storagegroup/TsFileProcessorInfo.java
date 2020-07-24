@@ -30,6 +30,7 @@ public class TsFileProcessorInfo {
   private long bytesMemCost;
   private long chunkMetadataMemCost;
   private long walMemCost;
+  private long accumulatedMemCost = 0;
 
   public TsFileProcessorInfo() {
     unsealedResourceMemCost = 0;
@@ -40,14 +41,17 @@ public class TsFileProcessorInfo {
 
   public void addUnsealedResourceMemCost(long cost) {
     unsealedResourceMemCost += cost;
+    accumulatedMemCost += cost;
   }
   
   public void addChunkMetadataMemCost(long cost) {
     chunkMetadataMemCost += cost;
+    accumulatedMemCost += cost;
   }
 
   public void addBytesMemCost(long cost) {
     bytesMemCost += cost;
+    accumulatedMemCost += cost;
   }
 
   public void removeUnsealedResourceMemCost(long cost) {
@@ -67,8 +71,12 @@ public class TsFileProcessorInfo {
   }
 
   public boolean checkIfNeedReportTsFileProcessorStatus(long cost) {
-    return (cost + getTsFileProcessorMemCost())
-        > (config.getReserveMemSize() / StorageEngine.getInstance().countTsFileProcessors());
+    if ((cost + accumulatedMemCost)
+        > (config.getReserveMemSize() / StorageEngine.getInstance().countTsFileProcessors())) {
+      accumulatedMemCost = 0;
+      return true;
+    }
+    return false;
   }
-  
+
 }
