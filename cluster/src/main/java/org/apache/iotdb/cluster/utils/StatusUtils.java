@@ -42,8 +42,6 @@ public class StatusUtils {
   public static final TSStatus NO_STORAGE_GROUP = getStatus(TSStatusCode.STORAGE_GROUP_ERROR);
   public static final TSStatus NODE_READ_ONLY = getStatus(TSStatusCode.NODE_READ_ONLY);
   public static final TSStatus CONSISTENCY_FAILURE = getStatus(TSStatusCode.CONSISTENCY_FAILURE);
-  public static final TSStatus LOG_NUMBER_OUT_OF_BOUND_ERROR = getStatus(
-      TSStatusCode.LOG_NUMBER_OUT_OF_BOUND_ERROR);
 
 
   private static TSStatus getStatus(TSStatusCode statusCode) {
@@ -192,8 +190,6 @@ public class StatusUtils {
       case UNSUPPORTED_OPERATION:
         status.setMessage("unsupported operation. ");
         break;
-      case LOG_NUMBER_OUT_OF_BOUND_ERROR:
-        status.setMessage("Log number is out of bound. ");
       default:
         status.setMessage("");
         break;

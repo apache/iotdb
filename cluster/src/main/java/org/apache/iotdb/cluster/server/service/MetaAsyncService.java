@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.server.service;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
-import org.apache.iotdb.cluster.exception.LogNumberOutOfBoundException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -70,7 +69,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
     AddNodeResponse addNodeResponse = null;
     try {
       addNodeResponse = metaGroupMember.addNode(node, startUpStatus);
-    } catch (AddSelfException | LogExecutionException | LogNumberOutOfBoundException e) {
+    } catch (AddSelfException | LogExecutionException e) {
       resultHandler.onError(e);
     }
     if (addNodeResponse != null) {
@@ -147,7 +146,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
     long result = Response.RESPONSE_NULL;
     try {
       result = metaGroupMember.removeNode(node);
-    } catch (PartitionTableUnavailableException | LogExecutionException | LogNumberOutOfBoundException e) {
+    } catch (PartitionTableUnavailableException | LogExecutionException e) {
       resultHandler.onError(e);
     }
 

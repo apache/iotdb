@@ -68,7 +68,7 @@ public class ClusterConfig {
   /**
    * max number of committed logs in memory
    */
-  private int maxNumOfLogsInMem = 100;
+  private int maxNumOfLogsInMem = 1000;
 
   /**
    * deletion check period of the submitted log
