@@ -31,7 +31,8 @@ from thrift.transport import TSocket, TTransport
 
 from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, TSInsertTabletReq, \
      TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, TSFetchResultsReq, TSCloseOperationReq, \
-     TSCreateMultiTimeseriesReq, TSCloseSessionReq, TSInsertTabletsReq, TSInsertRecordsReq
+     TSCreateMultiTimeseriesReq, TSCloseSessionReq, TSInsertTabletsReq, TSInsertRecordsReq, TSInsertStringRecordReq, \
+     TSInsertStringRecordsReq
 from iotdb.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq
 
 
@@ -186,13 +187,14 @@ class Session(object):
         data_set.close_operation_handle()
         return result
 
-    def delete_data(self, paths_list, timestamp):
+    def delete_data(self, paths_list, start_time, end_time):
         """
         delete all data <= time in multiple time series
         :param paths_list: time series list that the data in.
-        :param timestamp: data with time stamp less than or equal to time will be deleted.
+        :param start_time: data with time stamp bigger than or equal to time will be deleted.
+        :param end_time: data with time stamp less than or equal to time will be deleted.
         """
-        request = TSDeleteDataReq(self.__session_id, paths_list, timestamp)
+        request = TSDeleteDataReq(self.__session_id, paths_list, start_time, end_time)
         try:
             status = self.__client.deleteData(request)
             print("delete data from {}, message: {}".format(paths_list, status.message))
@@ -200,10 +202,9 @@ class Session(object):
             print("data deletion fails because: ", e)
 
     def insert_str_record(self, device_id, timestamp, measurements, string_values):
-        """ special case for inserting one row of String (TEXT) value """
-        data_types = [TSDataType.TEXT.value for _ in string_values]
-        request = self.gen_insert_record_req(device_id, timestamp, measurements, data_types, string_values)
-        status = self.__client.insertRecord(request)
+        """ inserting one row of String value, the data will be automatically converted to proper type"""
+        request = self.gen_insert_string_record_req(device_id, measurements, string_values, timestamp)
+        status = self.__client.insertStringRecord(request)
         print("insert one record to device {} message: {}".format(device_id, status.message))
 
     def insert_record(self, device_id, timestamp, measurements, data_types, values):
@@ -222,6 +223,12 @@ class Session(object):
         request = self.gen_insert_record_req(device_id, timestamp, measurements, data_types, values)
         status = self.__client.insertRecord(request)
         print("insert one record to device {} message: {}".format(device_id, status.message))
+
+    def insert_str_records(self, device_ids, times, measurements_lst, values_lst):
+        """ inserting multiple rows of String value, the data will be automatically converted to proper types """
+        request = self.gen_insert_string_records_req(device_ids, times, measurements_lst, values_lst)
+        status = self.__client.insertStringRecords(request)
+        print("insert multiple string records to devices {} message: {}".format(device_ids, status.message))
 
     def insert_records(self, device_ids, times, measurements_lst, types_lst, values_lst):
         """
@@ -281,6 +288,12 @@ class Session(object):
             return
         values_in_bytes = Session.value_to_bytes(data_types, values)
         return TSInsertRecordReq(self.__session_id, device_id, measurements, values_in_bytes, timestamp)
+
+    def gen_insert_string_record_req(self, device_id, measurements, string_values, timestamp):
+        return TSInsertStringRecordReq(self.__session_id, device_id, measurements, string_values, timestamp)
+
+    def gen_insert_string_records_req(self, device_ids, times, measurements_lst, values_lst):
+        return TSInsertStringRecordsReq(self.__session_id, device_ids, measurements_lst, values_lst, times)
 
     def gen_insert_records_req(self, device_ids, times, measurements_lst, types_lst, values_lst):
         if (len(device_ids) != len(measurements_lst)) or (len(times) != len(types_lst)) or \
