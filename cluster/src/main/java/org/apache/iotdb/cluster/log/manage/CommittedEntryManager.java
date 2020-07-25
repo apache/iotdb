@@ -44,7 +44,7 @@ public class CommittedEntryManager {
    * instance is created.
    */
   public CommittedEntryManager(int maxNumOfLogInMem) {
-    entries = new ArrayList<>(maxNumOfLogInMem);
+    entries = Collections.synchronizedList(new ArrayList<>(maxNumOfLogInMem));
     entries.add(new EmptyContentLog(-1, -1));
   }
 
