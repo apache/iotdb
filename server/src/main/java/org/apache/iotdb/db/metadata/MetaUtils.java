@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -98,10 +99,11 @@ public class MetaUtils {
     if (nodeNames.size() <= level || !nodeNames.get(0).equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(getPathByNodes(nodeNames));
     }
-    for(int i = nodeNames.size() - 1; nodeNames.size() - 1 > level; i--) {
-      nodeNames.remove(i);
+    List<String> storageGroup = new ArrayList<>(nodeNames);
+    for(int i = storageGroup.size() - 1; storageGroup.size() - 1 > level; i--) {
+      storageGroup.remove(i);
     }
-    return nodeNames;
+    return storageGroup;
   }
 
   /**

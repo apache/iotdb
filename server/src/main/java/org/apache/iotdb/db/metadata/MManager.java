@@ -1097,13 +1097,20 @@ public class MManager {
       }
 
       List<ShowTimeSeriesResult> res = new LinkedList<>();
-      String[] prefixNodes = MetaUtils.getNodeNames(plan.getPath().getFullPath());
+      List<String> prefixNodes = plan.getPath().getNodes();
       int curOffset = -1;
       int count = 0;
       int limit = plan.getLimit();
       int offset = plan.getOffset();
       for (MeasurementMNode leaf : allMatchedNodes) {
-        if (match(leaf.getFullPath(), prefixNodes)) {
+        MNode temp = leaf;
+        List<String> path = new ArrayList<>();
+        path.add(temp.getName());
+        while (temp.getParent() != null) {
+          temp = temp.getParent();
+          path.add(0, temp.getName());
+        }
+        if (match(path, prefixNodes)) {
           if (limit != 0 || offset != 0) {
             curOffset++;
             if (curOffset < offset || count == limit) {
@@ -1137,13 +1144,12 @@ public class MManager {
   /**
    * whether the full path has the prefixNodes
    */
-  private boolean match(String fullPath, String[] prefixNodes) {
-    String[] nodes = MetaUtils.getNodeNames(fullPath);
-    if (nodes.length < prefixNodes.length) {
+  private boolean match(List<String> nodes, List<String> prefixNodes) {
+    if (nodes.size() < prefixNodes.size()) {
       return false;
     }
-    for (int i = 0; i < prefixNodes.length; i++) {
-      if (!"*".equals(prefixNodes[i]) && !prefixNodes[i].equals(nodes[i])) {
+    for (int i = 0; i < prefixNodes.size(); i++) {
+      if (!"*".equals(prefixNodes.get(i)) && !prefixNodes.get(i).equals(nodes.get(i))) {
         return false;
       }
     }
@@ -1433,11 +1439,19 @@ public class MManager {
         path, nodes, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
 
-  public MNode getDeviceNode(String path) throws MetadataException {
+  public MNode getDeviceNode(String path, List<String> nodes) throws MetadataException {
     lock.readLock().lock();
     MNode node;
     try {
       node = mNodeCache.get(path);
+      if (node == null) {
+        node = mtree.getNodeByNodesWithStorageGroupCheck(nodes);
+        if (path == null) {
+          mNodeCache.put(node.getFullPath(), node);
+        } else {
+          mNodeCache.put(path, node);
+        }
+      }
       return node;
     } catch (Exception e) {
       throw new PathNotExistException(path);
@@ -1453,10 +1467,11 @@ public class MManager {
    * @param path read from disk
    * @return deviceId
    */
+  @TestOnly
   public String getDeviceId(String path) {
     MNode deviceNode = null;
     try {
-      deviceNode = getDeviceNode(path);
+      deviceNode = getDeviceNode(path, MetaUtils.getDeviceNodeNames(path));
       path = deviceNode.getFullPath();
     } catch (MetadataException | NullPointerException e) {
       // Cannot get deviceId from MManager, return the input deviceId
@@ -2344,9 +2359,9 @@ public class MManager {
    * after insert, we should call this function to unlock the device node
    * @param deviceId
    */
-  public void unlockDeviceReadLock(String deviceId) {
+  public void unlockDeviceReadLock(String deviceId, List<String> deviceNodes) {
     try {
-      MNode mNode = getDeviceNode(deviceId);
+      MNode mNode = getDeviceNode(deviceId, deviceNodes);
       mNode.readUnlock();
     } catch (MetadataException e) {
       // ignore the exception

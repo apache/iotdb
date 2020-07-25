@@ -869,7 +869,7 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockDeviceReadLock(insertRowPlan.getDeviceId());
+      mManager.unlockDeviceReadLock(insertRowPlan.getDeviceId(), insertRowPlan.getDeviceNodes());
     }
   }
 
@@ -886,7 +886,7 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockDeviceReadLock(insertTabletPlan.getDeviceId());
+      mManager.unlockDeviceReadLock(insertTabletPlan.getDeviceId(), insertTabletPlan.getDeviceNodes());
     }
   }
 

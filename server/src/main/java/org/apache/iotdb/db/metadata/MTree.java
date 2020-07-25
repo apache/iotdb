@@ -1096,7 +1096,7 @@ public class MTree implements Serializable {
    */
   List<String[]> getAllMeasurementSchemaByHeatOrder(ShowTimeSeriesPlan plan)
       throws MetadataException {
-    String[] nodes = MetaUtils.getNodeNames(plan.getPath().getFullPath());
+    String[] nodes = plan.getPath().getNodes().toArray(new String[0]);
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(plan.getPath().getFullPath());
     }
@@ -1124,7 +1124,7 @@ public class MTree implements Serializable {
    */
   List<String[]> getAllMeasurementSchema(ShowTimeSeriesPlan plan) throws MetadataException {
     List<String[]> res;
-    String[] nodes = MetaUtils.getNodeNames(plan.getPath().getFullPath());
+    String[] nodes = plan.getPath().getNodes().toArray(new String[0]);
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(plan.getPath().getFullPath());
     }

@@ -378,7 +378,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES,
           parsePrefixPath(ctx.prefixPath()), orderByHeat);
     } else {
-      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES, new Path("root"),
+      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES, new Path(Collections.singletonList(SQLConstant.ROOT)),
           orderByHeat);
     }
   }
