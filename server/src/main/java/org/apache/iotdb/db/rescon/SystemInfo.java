@@ -78,7 +78,7 @@ public class SystemInfo {
     processor.getTsFileProcessorInfo().clearAccumulatedMemCost();
 
     if (this.totalTspInfoMemCost + accumulatedCost
-        < config.getWritableMemSize() * rejectProportion) {
+        < config.getAllocateMemoryForWrite() * rejectProportion) {
       this.totalTspInfoMemCost += accumulatedCost;
       return false;
     } else {

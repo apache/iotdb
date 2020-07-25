@@ -118,12 +118,12 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /**
-   * Memory allocated for the read process
+   * Memory allocated for the write process
    */
   private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 6 / 10;
 
   /**
-   * Memory allocated for the write process
+   * Memory allocated for the read process
    */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
@@ -269,8 +269,6 @@ public class IoTDBConfig {
   private int maxMergeChunkNumInTsFile = 25;
 
   private long reserveMemSize = 1024 * 1024 * 1024L;
-
-  private long writableMemSize = 1024 * 1024 * 1024 * 1024L;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -1234,10 +1232,6 @@ public class IoTDBConfig {
 
   public void setReserveMemSize(long reserveMemSize) {
     this.reserveMemSize = reserveMemSize;
-  }
-
-  public long getWritableMemSize() {
-    return writableMemSize;
   }
 
   public int getAvgSeriesPointNumberThreshold() {
