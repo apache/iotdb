@@ -107,7 +107,7 @@ abstract class MergeTest {
     for (int i = 0; i < deviceNum; i++) {
       List<String> device = new ArrayList<>(MERGE_TEST_SG_LIST);
       deviceIds[i] = MERGE_TEST_SG + PATH_SEPARATOR + "device" + i;
-      device.add(deviceIds[i]);
+      device.add("device" + i);
       deviceIdsList.add(device);
     }
     IoTDB.metaManager.setStorageGroup(MERGE_TEST_SG_LIST);

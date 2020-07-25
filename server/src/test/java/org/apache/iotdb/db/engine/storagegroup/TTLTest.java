@@ -32,6 +32,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -314,11 +315,11 @@ public class TTLTest {
     Planner planner = new Planner();
     SetTTLPlan plan = (SetTTLPlan) planner
         .parseSQLToPhysicalPlan("SET TTL TO " + sg1 + " 10000");
-    assertEquals(sg1, plan.getStorageGroupNodes());
+    assertEquals(sg1, MetaUtils.getPathByNodes(plan.getStorageGroupNodes()));
     assertEquals(10000, plan.getDataTTL());
 
     plan = (SetTTLPlan) planner.parseSQLToPhysicalPlan("UNSET TTL TO " + sg2);
-    assertEquals(sg2, plan.getStorageGroupNodes());
+    assertEquals(sg2, MetaUtils.getPathByNodes(plan.getStorageGroupNodes()));
     assertEquals(Long.MAX_VALUE, plan.getDataTTL());
   }
 
