@@ -171,6 +171,11 @@ public abstract class RaftMember {
    */
   private ExecutorService commitLogPool;
 
+  /**
+   * the lock is to make sure that only one thread can apply snapshot at the same time
+   */
+  private final Object snapshotApplyLock = new Object();
+
   public RaftMember() {
   }
 
@@ -1069,7 +1074,8 @@ public abstract class RaftMember {
       // check if the last catch-up is still ongoing
       Long lastCatchupResp = lastCatchUpResponseTime.get(follower);
       if (lastCatchupResp != null
-          && System.currentTimeMillis() - lastCatchupResp < RaftServer.getWriteOperationTimeoutMS()) {
+          && System.currentTimeMillis() - lastCatchupResp < RaftServer
+          .getWriteOperationTimeoutMS()) {
         logger.debug("{}: last catch up of {} is ongoing", name, follower);
         return;
       } else {
@@ -1578,6 +1584,10 @@ public abstract class RaftMember {
 
   public ExecutorService getAsyncThreadPool() {
     return asyncThreadPool;
+  }
+
+  public Object getSnapshotApplyLock() {
+    return snapshotApplyLock;
   }
 
   public interface OnCommitLogEventListener {
