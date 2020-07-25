@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.cluster.log.catchup;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
@@ -37,10 +32,17 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpInBatchHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * LogCatchUpTask sends a list of logs to a node to make the node keep up with the leader.
@@ -50,8 +52,9 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
   // sending logs may take longer than normal communications
   private static final long SEND_LOGS_WAIT_MS = 5 * 60 * 1000L;
+  private static final int LOG_NUM_IN_BATCH = 1024;
+  private static final int LEFT_SIZE_IN_REQUEST = 1024;
   private static final Logger logger = LoggerFactory.getLogger(LogCatchUpTask.class);
-  private static final int LOG_NUM_IN_BATCH = 128;
   Node node;
   RaftMember raftMember;
   private List<Log> logs;
@@ -178,11 +181,21 @@ public class LogCatchUpTask implements Callable<Boolean> {
     }
 
     List<ByteBuffer> logList = new ArrayList<>();
-    for (int i = 0; i < logs.size() && !abort; i += LOG_NUM_IN_BATCH) {
+    for (int i = 0; i < logs.size() && !abort;) {
       logList.clear();
-      for (int j = i; j < i + LOG_NUM_IN_BATCH && j < logs.size(); j++) {
-        logList.add(logs.get(j).serialize());
+      long totalLogSize = 0;
+      int newStart = i;
+      for (int curNum = 0; curNum < LOG_NUM_IN_BATCH && i < logs.size(); i++, curNum++) {
+        ByteBuffer logData = logs.get(i).serialize();
+        totalLogSize += logData.array().length;
+        // we should send logs who's size is smaller than the max frame size of thrift
+        // left 200 byte for other fields of AppendEntriesRequest
+        if (totalLogSize > IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() - LEFT_SIZE_IN_REQUEST) {
+          break;
+        }
+        logList.add(logData);
       }
+
       synchronized (raftMember.getTerm()) {
         // make sure this node is still a leader
         if (raftMember.getCharacter() != NodeCharacter.LEADER) {
@@ -195,9 +208,9 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
       request.setEntries(logList);
       // set index for raft
-      request.setPrevLogIndex(logs.get(i).getCurrLogIndex() - 1);
-      if (i != 0) {
-        request.setPrevLogTerm(logs.get(i - 1).getCurrLogTerm());
+      request.setPrevLogIndex(logs.get(newStart).getCurrLogIndex() - 1);
+      if (newStart != 0) {
+        request.setPrevLogTerm(logs.get(newStart - 1).getCurrLogTerm());
       }
 
       // do append entries

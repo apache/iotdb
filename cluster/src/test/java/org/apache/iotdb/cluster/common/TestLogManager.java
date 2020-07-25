@@ -19,12 +19,27 @@
 
 package org.apache.iotdb.cluster.common;
 
+import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
+
+import java.io.IOException;
 
 public class TestLogManager extends RaftLogManager {
 
   public TestLogManager(int nodeIdentifier) {
     super(new SyncLogDequeSerializer(nodeIdentifier), new TestLogApplier(), "Test");
   }
+
+  @Override
+  public Snapshot getSnapshot() {
+    return null;
+  }
+
+  @Override
+  public void takeSnapshot() throws IOException {
+
+  }
+
+
 }
