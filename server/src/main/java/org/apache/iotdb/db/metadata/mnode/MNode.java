@@ -27,7 +27,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -56,7 +55,14 @@ public class MNode implements Serializable {
    */
   protected String fullPath;
 
+  /**
+   * IMPORTANT, the children should be thread-safe
+   */
   transient Map<String, MNode> children;
+
+  /**
+   * IMPORTANT, the aliasChildren should be thread-safe
+   */
   transient Map<String, MNode> aliasChildren;
 
   protected transient ReadWriteLock lock = new ReentrantReadWriteLock();
@@ -151,7 +157,7 @@ public class MNode implements Serializable {
    */
   public void addAlias(String alias, MNode child) {
     if (aliasChildren == null) {
-      aliasChildren = new LinkedHashMap<>();
+      aliasChildren = new ConcurrentSkipListMap<>();
     }
     aliasChildren.put(alias, child);
   }

@@ -586,14 +586,14 @@ public class DataGroupMember extends RaftMember {
    */
   private void applyPartitionedSnapshot(PartitionedSnapshot snapshot)
       throws SnapshotApplicationException {
-    synchronized (logManager) {
-      List<Integer> slots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
-      for (Integer slot : slots) {
-        Snapshot subSnapshot = snapshot.getSnapshot(slot);
-        if (subSnapshot != null) {
-          applySnapshot(subSnapshot, slot);
-        }
+    List<Integer> slots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+    for (Integer slot : slots) {
+      Snapshot subSnapshot = snapshot.getSnapshot(slot);
+      if (subSnapshot != null) {
+        applySnapshot(subSnapshot, slot);
       }
+    }
+    synchronized (logManager) {
       logManager.applyingSnapshot(snapshot);
     }
   }

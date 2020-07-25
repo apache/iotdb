@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log.manage;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -32,13 +33,14 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Different from PartitionedSnapshotLogManager, FilePartitionedSnapshotLogManager does not store
- * the committed in memory after snapshots, it considers the logs are contained in the TsFiles so it will record
- * every TsFiles in the slot instead.
+ * the committed in memory after snapshots, it considers the logs are contained in the TsFiles so it
+ * will record every TsFiles in the slot instead.
  */
 public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogManager<FileSnapshot> {
 
@@ -60,13 +62,36 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       collectTimeseriesSchemas();
       snapshotLastLogIndex = getCommitLogIndex();
       snapshotLastLogTerm = getCommitLogTerm();
-      collectTsFiles();
+      collectTsFilesAndFillTimeseriesSchemas();
       logger.info("Snapshot is taken");
     }
   }
 
-  private void collectTsFiles() throws IOException {
+  /**
+   * IMPORTANT, separate the collection timeseries schema from tsfile to avoid the following
+   * situations: If the tsfile is empty at this time (only the metadata is registered, but the
+   * tsfile has not been written yet), then the timeseries schema snapshot can still be generated
+   * and sent to the followers.
+   *
+   * @throws IOException
+   */
+  private void collectTsFilesAndFillTimeseriesSchemas() throws IOException {
+    // 1.collect tsfile
+    collectTsFiles();
 
+    //2.register the measurement
+    for (Map.Entry<Integer, Collection<TimeseriesSchema>> entry : slotTimeseries.entrySet()) {
+      int slotNum = entry.getKey();
+      FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
+          s -> new FileSnapshot());
+      if (snapshot.getTimeseriesSchemas().isEmpty()) {
+        snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
+            Collections.emptySet()));
+      }
+    }
+  }
+
+  private void collectTsFiles() throws IOException {
     slotSnapshots.clear();
     Map<String, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
         .getInstance().getAllClosedStorageGroupTsFile();
@@ -94,6 +119,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
   /**
    * Create hardlinks for files in one partition and add them into the corresponding snapshot.
+   *
    * @param partitionNum
    * @param resourceList
    * @param storageGroupName
@@ -108,11 +134,6 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
         partitionNum, partitionTable.getTotalSlotNumbers());
     FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
         s -> new FileSnapshot());
-    if (snapshot.getTimeseriesSchemas().isEmpty()) {
-      snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
-          Collections.emptySet()));
-    }
-
     for (TsFileResource tsFileResource : resourceList) {
       TsFileResource hardlink = tsFileResource.createHardlink();
       if (hardlink == null) {
