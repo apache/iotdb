@@ -643,7 +643,7 @@ public class PhysicalGenerator {
       return;
     }
 
-    Path concatPath = Path.addNodes(filterPath, prefix);
+    Path concatPath = Path.addNodes(prefix, filterPath);
     filterPaths.add(concatPath);
     basicOperator.setSinglePath(concatPath);
   }
