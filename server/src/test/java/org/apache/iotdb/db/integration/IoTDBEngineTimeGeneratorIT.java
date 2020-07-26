@@ -29,6 +29,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -209,7 +211,7 @@ public class IoTDBEngineTimeGeneratorIT {
   public void testEmptySeriesWithValueFilter() throws IOException, StorageEngineException {
     //System.out.println("Test >>> root.vehicle.d1.s0 >= 5");
 
-    Path pd1s0 = new Path(TestConstant.d1s0);
+    Path pd1s0 = new Path(Arrays.asList("root", "vehicle", "d1", "s0"));
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(5);
 
     IExpression singleSeriesExpression = new SingleSeriesExpression(pd1s0, valueGtEq);
