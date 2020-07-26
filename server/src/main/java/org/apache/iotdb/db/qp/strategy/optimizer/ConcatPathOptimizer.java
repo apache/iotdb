@@ -92,7 +92,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         isAlignByDevice = true;
         for (Path path : initialSuffixPaths) {
           List<String> device = path.getNodes();
-          if (!device.isEmpty()) {
+          if (device.size() > 1) {
             throw new LogicalOptimizeException(
                     "The paths of the SELECT clause can only be single level. In other words, "
                             + "the paths of the SELECT clause can only be measurements or STAR, without DOT."

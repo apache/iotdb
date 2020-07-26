@@ -41,6 +41,7 @@ import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1350,6 +1351,7 @@ public class MManager {
       String path, List<String> nodes, boolean autoCreateSchema, int sgLevel) throws MetadataException {
     lock.readLock().lock();
     MNode node = null;
+    boolean shouldSetStorageGroup = false;
     try {
       node = mNodeCache.get(path);
       if (node == null) {
@@ -1357,26 +1359,38 @@ public class MManager {
         mNodeCache.put(path, node);
       }
       return node;
-    } catch (Exception e) {
+    } catch (PathNotExistException e) {
       if (!autoCreateSchema) {
         throw new PathNotExistException(path);
       }
-      if (e.getCause() instanceof StorageGroupNotSetException) {
-        List<String> storageGroupName = MetaUtils.getStorageGroupNameNodesByLevel(nodes, sgLevel);
-        setStorageGroup(storageGroupName);
-        node = mtree.getDeviceNodeWithAutoCreating(nodes, sgLevel);
-        return node;
-      }
-      if (e.getCause() instanceof StorageGroupAlreadySetException) {
-        node = mtree.getDeviceNodeWithAutoCreating(nodes, sgLevel);
-        return node;
-      }
-      return node;
+    } catch (StorageGroupNotSetException e) {
+      shouldSetStorageGroup = true;
     } finally {
       if (node != null) {
         node.readLock();
       }
       lock.readLock().unlock();
+    }
+
+    lock.writeLock().lock();
+    try {
+      if(shouldSetStorageGroup) {
+        List<String> storageGroupName = MetaUtils.getStorageGroupNameNodesByLevel(nodes, sgLevel);
+        setStorageGroup(storageGroupName);
+      }
+      node = mtree.getDeviceNodeWithAutoCreating(nodes, sgLevel);
+      mNodeCache.put(path, node);
+      return node;
+    } catch (StorageGroupAlreadySetException e) {
+      // ignore set storage group concurrently
+      node = mtree.getDeviceNodeWithAutoCreating(nodes, sgLevel);
+      mNodeCache.put(path, node);
+      return node;
+    } finally {
+      if (node != null) {
+        node.readLock();
+      }
+      lock.writeLock().unlock();
     }
   }
 
@@ -2259,6 +2273,7 @@ public class MManager {
             getDefaultEncoding(dataType),
             TSFileDescriptor.getInstance().getConfig().getCompressor(),
             Collections.emptyMap());
+          nodes.remove(nodes.size() - 1);
         }
 
         MeasurementMNode measurementNode = (MeasurementMNode) getChild(deviceNode, measurementList[i]);

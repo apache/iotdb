@@ -441,14 +441,14 @@ public class PhysicalGenerator {
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
 
         // if const measurement
-        if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
+        if (suffixPath.getMeasurement().startsWith("'")) {
           measurements.add(suffixPath.getMeasurement());
           measurementTypeMap.put(suffixPath.getMeasurement(), MeasurementType.Constant);
           continue;
         }
 
         for (Path device : devicePaths) { // per device in FROM after deduplication
-          Path fullPath = Path.addNodes(suffixPath, device);
+          Path fullPath = Path.addNodes(device, suffixPath);
           try {
             // remove stars in SELECT to get actual paths
             List<String> nodes = fullPath.getNodes();
