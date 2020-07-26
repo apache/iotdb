@@ -999,7 +999,7 @@ public class IoTDBAlignByDeviceIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-          "select s5, s0, s5, \"11\", s2, \"11\", \"22\", s5, s3, s0 from root.vehicle.d1, root.vehicle.d0  align by device");
+          "select s5, s0, s5, '11', s2, '11', '22', s5, s3, s0 from root.vehicle.d1, root.vehicle.d0  align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
