@@ -415,11 +415,7 @@ public class PhysicalGenerator {
 
       List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
       // remove stars in fromPaths and get deviceId with deduplication
-      List<Path> devicePaths = this.removeStarsInDeviceWithUnique(prefixPaths);
-      List<String> devices = new ArrayList<>();
-      for(Path devicePath : devicePaths) {
-        devices.add(devicePath.getDevice());
-      }
+      List<Path> devices = this.removeStarsInDeviceWithUnique(prefixPaths);
       List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
       List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
 
@@ -447,7 +443,7 @@ public class PhysicalGenerator {
           continue;
         }
 
-        for (Path device : devicePaths) { // per device in FROM after deduplication
+        for (Path device : devices) { // per device in FROM after deduplication
           Path fullPath = Path.addNodes(device, suffixPath);
           try {
             // remove stars in SELECT to get actual paths
@@ -547,7 +543,7 @@ public class PhysicalGenerator {
       // get deviceToFilterMap
       FilterOperator filterOperator = queryOperator.getFilterOperator();
       if (filterOperator != null) {
-        alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(devicePaths, filterOperator));
+        alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(devices, filterOperator));
       }
 
       queryPlan = alignByDevicePlan;
@@ -618,7 +614,7 @@ public class PhysicalGenerator {
   private List<Path> removeStarsInDeviceWithUnique(List<Path> paths)
       throws LogicalOptimizeException {
     List<Path> retDevices;
-    Set<Path> deviceSet = new HashSet<>();
+    Set<Path> deviceSet = new LinkedHashSet<>();
     try {
       for (Path path : paths) {
         Set<Path> tempDS = getMatchedDevices(path.getNodes());
@@ -647,7 +643,7 @@ public class PhysicalGenerator {
       return;
     }
 
-    Path concatPath = Path.addNodes(filterPath, prefix);
+    Path concatPath = Path.addNodes(prefix, filterPath);
     filterPaths.add(concatPath);
     basicOperator.setSinglePath(concatPath);
   }

@@ -23,13 +23,14 @@ import java.util.Map;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 public class AlignByDevicePlan extends QueryPlan {
 
   private List<String> measurements; // to record result measurement columns, e.g. temperature, status, speed
   // to check data type consistency for the same name sensor of different devices
-  private List<String> devices;
+  private List<Path> devices;
   // to record the datatype of the column in the result set
   private Map<String, TSDataType> columnDataTypeMap;
   private Map<String, IExpression> deviceToFilterMap;
@@ -56,11 +57,11 @@ public class AlignByDevicePlan extends QueryPlan {
     return measurements;
   }
 
-  public void setDevices(List<String> devices) {
+  public void setDevices(List<Path> devices) {
     this.devices = devices;
   }
 
-  public List<String> getDevices() {
+  public List<Path> getDevices() {
     return devices;
   }
 
@@ -130,7 +131,7 @@ public class AlignByDevicePlan extends QueryPlan {
    * Exist: the measurements which don't belong to NonExist and Constant.
    * NonExist: the measurements that do not exist in any device, data type is considered as String.
    * The value is considered as null.
-   * Constant: the measurements that have quotation mark. e.g. "abc",'11'.
+   * Constant: the measurements that have quotation mark. e.g. 'abc','11'.
    * The data type is considered as String and the value is the measurement name.
    */
   public enum MeasurementType {

@@ -279,6 +279,9 @@ public class Path implements Serializable, Comparable<Path> {
 
   @Override
   public Path clone() {
+    if (nodes != null) {
+      return new Path(nodes);
+    }
     return new Path(fullPath);
   }
 

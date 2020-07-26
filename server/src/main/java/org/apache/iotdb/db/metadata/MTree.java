@@ -1568,7 +1568,7 @@ public class MTree implements Serializable {
       throw new IllegalPathException(MetaUtils.getPathByNodes(nodes));
     }
     Set<Path> devices = new TreeSet<>();
-    findDevicesPath(root, nodes.toArray(new String[0]), 1, devices);
+    findDevicesPath(root, nodes.toArray(new String[0]), 1, devices, new ArrayList<>());
     return devices;
   }
 
@@ -1583,42 +1583,32 @@ public class MTree implements Serializable {
    * @param idx   the current index of array nodes
    * @param res   store all matched device names
    */
-  private void findDevicesPath(MNode node, String[] nodes, int idx, Set<Path> res) {
+  private void findDevicesPath(MNode node, String[] nodes, int idx, Set<Path> res, List<String> curNodes) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChild(nodeReg)) {
         if (node.getChild(nodeReg) instanceof MeasurementMNode) {
-          List<String> nodeNames = new ArrayList<>();
-          nodeNames.add(0, node.getName());
-          MNode tempNode = node;
-          while(!tempNode.getName().equals(IoTDBConstant.PATH_ROOT)) {
-            tempNode = tempNode.getParent();
-            nodeNames.add(0, tempNode.getName());
-          }
-          Path path = new Path(nodeNames);
+          curNodes.add(node.getName());
+          Path path = new Path(new ArrayList<>(curNodes));
           path.setDevice(node.getFullPath());
           res.add(path);
         } else {
-          findDevicesPath(node.getChild(nodeReg), nodes, idx + 1, res);
+          curNodes.add(node.getName());
+          findDevicesPath(node.getChild(nodeReg), nodes, idx + 1, res, curNodes);
         }
       }
     } else {
       boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
+        curNodes.add(idx - 1, node.getName());
         if (child instanceof MeasurementMNode && !deviceAdded) {
-          List<String> nodeNames = new ArrayList<>();
-          nodeNames.add(0, node.getName());
-          MNode tempNode = node;
-          while(!tempNode.getName().equals(IoTDBConstant.PATH_ROOT)) {
-            tempNode = tempNode.getParent();
-            nodeNames.add(0, tempNode.getName());
-          }
-          Path path = new Path(nodeNames);
+          Path path = new Path(new ArrayList<>(curNodes));
           path.setDevice(node.getFullPath());
           res.add(path);
           deviceAdded = true;
         }
-        findDevicesPath(child, nodes, idx + 1, res);
+        findDevicesPath(child, nodes, idx + 1, res, curNodes);
+        curNodes.remove(curNodes.size() - 1);
       }
     }
   }
