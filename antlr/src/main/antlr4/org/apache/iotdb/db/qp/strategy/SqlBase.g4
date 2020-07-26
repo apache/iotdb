@@ -103,7 +103,7 @@ statement
 selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
-    | {isID = true;} stringLiteral (COMMA stringLiteral)* #selectConstElement
+    | {isID = false;} stringLiteral (COMMA stringLiteral)* #selectConstElement
     | lastClause #lastElement
     ;
 
