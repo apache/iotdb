@@ -116,8 +116,6 @@ public class PrimitiveArrayManager {
       if (logger.isDebugEnabled()) {
         logger.debug("Apply out of buffer array from system module...");
       }
-      // update bufferedArraysThresholdNumMap before applying OOB arrays
-      collectSchemaDataTypeNum();
       boolean applyResult = applyOOBArray(dataType, ARRAY_SIZE);
       if (!applyResult) {
         if (logger.isDebugEnabled()) {
@@ -167,6 +165,8 @@ public class PrimitiveArrayManager {
       default:
         throw new UnSupportedDataTypeException(dataType.toString());
     }
+
+    // report creating a new array to system
     SystemInfo.getInstance().reportCreateArray(dataType, ARRAY_SIZE);
     return dataArray;
   }
@@ -184,42 +184,55 @@ public class PrimitiveArrayManager {
       case BOOLEAN:
         boolean[][] booleans = new boolean[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
-          booleans[i] = (boolean[]) getDataListByType(dataType);
+          booleans[i] = (boolean[]) waitAndGetDataListByType(dataType);
         }
         return booleans;
       case INT32:
         int[][] ints = new int[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
-          ints[i] = (int[]) getDataListByType(dataType);
+          ints[i] = (int[]) waitAndGetDataListByType(dataType);
         }
         return ints;
       case INT64:
         long[][] longs = new long[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
-          longs[i] = (long[]) getDataListByType(dataType);
+          longs[i] = (long[]) waitAndGetDataListByType(dataType);
         }
         return longs;
       case FLOAT:
         float[][] floats = new float[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
-          floats[i] = (float[]) getDataListByType(dataType);
+          floats[i] = (float[]) waitAndGetDataListByType(dataType);
         }
         return floats;
       case DOUBLE:
         double[][] doubles = new double[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
-          doubles[i] = (double[]) getDataListByType(dataType);
+          doubles[i] = (double[]) waitAndGetDataListByType(dataType);
         }
         return doubles;
       case TEXT:
         Binary[][] binaries = new Binary[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
-          binaries[i] = (Binary[]) getDataListByType(dataType);
+          binaries[i] = (Binary[]) waitAndGetDataListByType(dataType);
         }
         return binaries;
       default:
         return null;
     }
+  }
+
+  private Object waitAndGetDataListByType(TSDataType dataType) {
+    Object res = getDataListByType(dataType);
+    while (res == null) {
+      try {
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException e) {
+        logger.error("Failed when waiting for getting an out of buffer array from system. ", e);
+      }
+      res = getDataListByType(dataType);
+    }
+    return res;
   }
 
   /**
@@ -296,15 +309,10 @@ public class PrimitiveArrayManager {
       if (total == 0) {
         return;
       }
-      for (Map.Entry<TSDataType, Double> entry : bufferedArraysThresholdNumMap.entrySet()) {
+      for (Map.Entry<TSDataType, Integer> entry : schemaDataTypeNumMap.entrySet()) {
         TSDataType dataType = entry.getKey();
-        if (schemaDataTypeNumMap.containsKey(dataType)) {
-          bufferedArraysThresholdNumMap
-              .put(dataType, 0.1 + 0.5 * schemaDataTypeNumMap.get(dataType) / total);
-        } else {
-          // least percentage for each data type is 0.1 TODO modified as a config
-          bufferedArraysThresholdNumMap.put(dataType, 0.1);
-        }
+        bufferedArraysThresholdNumMap
+            .put(dataType, (double) schemaDataTypeNumMap.get(dataType) / total);
       }
     } catch (MetadataException e) {
       logger.error("Failed to get schema data type num map. ", e);
