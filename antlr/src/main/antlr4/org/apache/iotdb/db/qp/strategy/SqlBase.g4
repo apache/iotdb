@@ -375,7 +375,7 @@ suffixPath
 nodeName
     : ID
     | STAR
-    | {isID = true;} stringLiteral
+    | {isID = false;} stringLiteral
     | ID STAR
     | DURATION
     | encoding
@@ -390,7 +390,7 @@ nodeName
 
 nodeNameWithoutStar
     : ID
-    | {isID = true;} stringLiteral
+    | {isID = false;} stringLiteral
     | DURATION
     | encoding
     | dataType
