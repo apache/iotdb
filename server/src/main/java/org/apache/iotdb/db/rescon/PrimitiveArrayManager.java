@@ -52,15 +52,9 @@ public class PrimitiveArrayManager {
       TSDataType.class);
 
   /**
-   * data type -> threshold number of buffered arrays
+   * data type -> ratio of data type in schema, which could be seen as recommended ratio
    */
-  private static final Map<TSDataType, Double> bufferedArraysThresholdNumMap = new EnumMap<>(
-      TSDataType.class);
-
-  /**
-   * data type -> current number of OOB arrays
-   */
-  private static final Map<TSDataType, Integer> outOfBufferArraysNumMap = new EnumMap<>(
+  private static final Map<TSDataType, Double> bufferedArraysNumRatio = new EnumMap<>(
       TSDataType.class);
 
   private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
@@ -69,12 +63,22 @@ public class PrimitiveArrayManager {
       IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
 
   /**
-   * threshold number of arrays for all data type TODO modified as a config
+   * threshold total size of arrays for all data types TODO modified as a config
    */
-  private static final int ARRAY_NUM_THRESHOLD = 1024 * 1024;
+  private static final int BUFFERED_ARRAY_SIZE_THRESHOLD = 1024 * 1024;
 
   /**
-   * collect schema data type number in specific interval time TODO modified as a config? shutdown?
+   * total size of buffered arrays
+   */
+  private int bufferedArraysSize;
+
+  /**
+   * total size of out of buffer arrays
+   */
+  private int outOfBufferArraysSize;
+
+  /**
+   * collect schema data type number in specific interval time
    */
   private ScheduledExecutorService timedCollectSchemaDataTypeNumThread;
 
@@ -97,8 +101,11 @@ public class PrimitiveArrayManager {
     timedCollectSchemaDataTypeNumThread = Executors
         .newSingleThreadScheduledExecutor(
             r -> new Thread(r, "timedCollectSchemaDataTypeNumThread"));
-    timedCollectSchemaDataTypeNumThread.scheduleAtFixedRate(this::collectSchemaDataTypeNum, 3600,
-        3600, TimeUnit.SECONDS);
+    timedCollectSchemaDataTypeNumThread.scheduleAtFixedRate(this::collectSchemaDataTypeNum, 0,
+        3600, TimeUnit.SECONDS); // TODO modified as a config
+
+    bufferedArraysSize = 0;
+    outOfBufferArraysSize = 0;
   }
 
   /**
@@ -109,10 +116,8 @@ public class PrimitiveArrayManager {
    */
   public synchronized Object getDataListByType(TSDataType dataType) {
     // check buffered array num
-    if (bufferedArraysNumMap.containsKey(dataType)
-        && bufferedArraysNumMap.get(dataType)
-        > bufferedArraysThresholdNumMap.get(dataType) * ARRAY_NUM_THRESHOLD) {
-
+    if (bufferedArraysSize + ARRAY_SIZE * dataType.getDataTypeSize()
+        > BUFFERED_ARRAY_SIZE_THRESHOLD) {
       if (logger.isDebugEnabled()) {
         logger.debug("Apply out of buffer array from system module...");
       }
@@ -124,8 +129,7 @@ public class PrimitiveArrayManager {
         return null;
       } else {
         // return an out of buffer array
-        outOfBufferArraysNumMap
-            .put(dataType, outOfBufferArraysNumMap.getOrDefault(dataType, 0) + 1);
+        outOfBufferArraysSize += ARRAY_SIZE * dataType.getDataTypeSize();
         return getDataList(dataType);
       }
     }
@@ -134,6 +138,7 @@ public class PrimitiveArrayManager {
     bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
     ArrayDeque<Object> dataListQueue = bufferedArraysMap
         .computeIfAbsent(dataType, k -> new ArrayDeque<>());
+    bufferedArraysSize += ARRAY_SIZE * dataType.getDataTypeSize();
     Object dataArray = dataListQueue.poll();
     if (dataArray != null) {
       return dataArray;
@@ -226,9 +231,10 @@ public class PrimitiveArrayManager {
     Object res = getDataListByType(dataType);
     while (res == null) {
       try {
-        TimeUnit.SECONDS.sleep(1);
+        TimeUnit.MILLISECONDS.sleep(100);
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting an out of buffer array from system. ", e);
+        Thread.currentThread().interrupt();
       }
       res = getDataListByType(dataType);
     }
@@ -259,21 +265,39 @@ public class PrimitiveArrayManager {
       throw new UnSupportedDataTypeException("Unknown data array type");
     }
 
-    // check out of buffer array num
-    if (outOfBufferArraysNumMap.containsKey(dataType)
-        && outOfBufferArraysNumMap.get(dataType) > 0) {
-
-      if (logger.isDebugEnabled()) {
-        logger.debug("Bring back out of buffer array to system module...");
-      }
+    // Check out of buffer array num
+    if (outOfBufferArraysSize > 0 && checkBufferedDataTypeNum(dataType)) {
       // bring back an out of buffer array
       bringBackOOBArray(dataType, ARRAY_SIZE);
-      dataArray = null;
-      outOfBufferArraysNumMap.put(dataType, outOfBufferArraysNumMap.get(dataType) - 1);
+    } else if (outOfBufferArraysSize > 0 && !checkBufferedDataTypeNum(dataType)) {
+      // if the ratio of buffered arrays of this data type has not reached the schema ratio,
+      // choose one replaced array who has larger ratio than schema recommended ratio
+      TSDataType replacedDataType = null;
+      for (Map.Entry<TSDataType, Integer> entry : bufferedArraysNumMap.entrySet()) {
+        replacedDataType = entry.getKey();
+        if (checkBufferedDataTypeNum(replacedDataType)) {
+          // bring back the replaced array as OOB array
+          bringBackOOBArray(replacedDataType, ARRAY_SIZE);
+          break;
+        }
+      }
+      if (replacedDataType != null) {
+        // if we find a replaced array, bring back the original array as a buffered array
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "The ratio of {} in buffered array has not reached the schema ratio. Replaced by {}",
+              dataType, replacedDataType);
+        }
+        bringBackBufferedArray(dataType, dataArray);
+        bufferedArraysSize +=
+            ARRAY_SIZE * (dataType.getDataTypeSize() - replacedDataType.getDataTypeSize());
+      } else {
+        // or else bring back the original array as OOB array
+        bringBackOOBArray(dataType, ARRAY_SIZE);
+      }
     } else {
-      // bring back a buffered array
-      bufferedArraysMap.get(dataType).add(dataArray);
-      bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.get(dataType) + 1);
+      // if there is no out of buffer array, bring back as buffered array directly
+      bringBackBufferedArray(dataType, dataArray);
     }
   }
 
@@ -289,12 +313,27 @@ public class PrimitiveArrayManager {
   }
 
   /**
+   * Bring back a buffered array
+   *
+   * @param dataType data type
+   * @param dataArray data array
+   */
+  private void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
+    bufferedArraysMap.get(dataType).add(dataArray);
+    bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.get(dataType) - 1);
+  }
+
+  /**
    * Return out of buffered array to system module
    *
    * @param dataType data type
    * @param size capacity
    */
   private void bringBackOOBArray(TSDataType dataType, int size) {
+    if (logger.isDebugEnabled()) {
+      logger.debug("Bring back out of buffer array of {} to system module...", dataType);
+    }
+    outOfBufferArraysSize -= ARRAY_SIZE * dataType.getDataTypeSize();
     SystemInfo.getInstance().reportReleaseOOBArray(dataType, size);
   }
 
@@ -311,11 +350,40 @@ public class PrimitiveArrayManager {
       }
       for (Map.Entry<TSDataType, Integer> entry : schemaDataTypeNumMap.entrySet()) {
         TSDataType dataType = entry.getKey();
-        bufferedArraysThresholdNumMap
+        bufferedArraysNumRatio
             .put(dataType, (double) schemaDataTypeNumMap.get(dataType) / total);
       }
     } catch (MetadataException e) {
       logger.error("Failed to get schema data type num map. ", e);
     }
+  }
+
+  /**
+   * check whether the ratio of buffered array of specific data type reaches the ratio in schema (as
+   * recommended ratio)
+   *
+   * @param dataType data type
+   * @return true if the buffered array ratio reaches the recommend ratio
+   */
+  private boolean checkBufferedDataTypeNum(TSDataType dataType) {
+    int total = 0;
+    for (int num : bufferedArraysNumMap.values()) {
+      total += num;
+    }
+    return total != 0 && bufferedArraysNumMap.get(dataType) / total > bufferedArraysNumRatio
+        .get(dataType);
+  }
+
+  public void close() {
+    if (timedCollectSchemaDataTypeNumThread != null) {
+      timedCollectSchemaDataTypeNumThread.shutdownNow();
+      timedCollectSchemaDataTypeNumThread = null;
+    }
+    bufferedArraysMap.clear();
+    bufferedArraysNumMap.clear();
+    bufferedArraysNumRatio.clear();
+
+    bufferedArraysSize = 0;
+    outOfBufferArraysSize = 0;
   }
 }
