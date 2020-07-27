@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.client.rpcutils.TimeoutChangeableTFastFramedTran
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Client;
 import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -33,8 +34,12 @@ import org.apache.thrift.transport.TTransportException;
  */
 public class SyncDataClient extends Client {
 
-  private Node node;
-  private SyncClientPool pool;
+  Node node;
+  SyncClientPool pool;
+
+  SyncDataClient(TProtocol prot) {
+    super(prot);
+  }
 
   public SyncDataClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {

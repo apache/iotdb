@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.client.sync;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Client;
 import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
@@ -33,8 +34,12 @@ import org.apache.thrift.transport.TTransportException;
  */
 public class SyncMetaClient extends Client {
 
-  private Node node;
-  private SyncClientPool pool;
+  Node node;
+  SyncClientPool pool;
+
+  SyncMetaClient(TProtocol prot) {
+    super(prot);
+  }
 
   public SyncMetaClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {

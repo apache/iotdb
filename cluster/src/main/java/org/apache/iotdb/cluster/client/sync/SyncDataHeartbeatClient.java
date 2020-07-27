@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
+import org.apache.iotdb.cluster.client.rpcutils.TimeoutChangeableTFastFramedTransport;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
 /**
@@ -34,9 +38,12 @@ public class SyncDataHeartbeatClient extends SyncDataClient {
   public SyncDataHeartbeatClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
     // the difference of the two clients lies in the port
-    super(protocolFactory,
-        new ClusterNode(node.getIp(), node.getMetaPort(), node.getNodeIdentifier(),
-            node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET), pool);
+    super(protocolFactory.getProtocol(new TimeoutChangeableTFastFramedTransport(
+        new TSocket(node.getIp(), node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
+            RaftServer.getConnectionTimeoutInMS()))));
+    this.node = node;
+    this.pool = pool;
+    getInputProtocol().getTransport().open();
   }
 
 

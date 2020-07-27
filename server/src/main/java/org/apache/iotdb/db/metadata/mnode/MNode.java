@@ -23,6 +23,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -191,7 +192,7 @@ public class MNode implements Serializable {
 
   public Map<String, MNode> getChildren() {
     if (children == null) {
-      return new LinkedHashMap<>();
+      return Collections.emptyMap();
     }
     return children;
   }
