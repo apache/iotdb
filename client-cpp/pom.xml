@@ -73,19 +73,19 @@
                                             <destinationFile>${project.build.directory}/thrift/rpc.thrift</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>${basedir}/CMakeLists.txt</sourceFile>
+                                            <sourceFile>${project.basedir}/CMakeLists.txt</sourceFile>
                                             <destinationFile>${project.build.directory}/build/CMakeLists.txt</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>${basedir}/src/CMakeLists.txt</sourceFile>
+                                            <sourceFile>${project.basedir}/src/CMakeLists.txt</sourceFile>
                                             <destinationFile>${project.build.directory}/build/src/CMakeLists.txt</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>${basedir}/src/IOTDBSession.h</sourceFile>
+                                            <sourceFile>${project.basedir}/src/IOTDBSession.h</sourceFile>
                                             <destinationFile>${project.build.directory}/build/src/IOTDBSession.h</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>${basedir}/src/IOTDBSession.cpp</sourceFile>
+                                            <sourceFile>${project.basedir}/src/IOTDBSession.cpp</sourceFile>
                                             <destinationFile>${project.build.directory}/build/src/IOTDBSession.cpp</destinationFile>
                                         </fileSet>
                                     </fileSets>
@@ -100,7 +100,7 @@
                                 <configuration>
                                     <fileSets>
                                         <fileSet>
-                                            <sourceFile>${basedir}/src/CMakeLists.txt</sourceFile>
+                                            <sourceFile>${project.basedir}/src/CMakeLists.txt</sourceFile>
                                             <destinationFile>${project.build.directory}/build/generated-sources-cpp/CMakeLists.txt</destinationFile>
                                         </fileSet>
                                     </fileSets>
