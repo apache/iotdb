@@ -72,6 +72,22 @@
                                             <sourceFile>../thrift/src/main/thrift/rpc.thrift</sourceFile>
                                             <destinationFile>${project.build.directory}/thrift/rpc.thrift</destinationFile>
                                         </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/CMakeLists.txt</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/CMakeLists.txt</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/CMakeLists.txt</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/src/CMakeLists.txt</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/IOTDBSession.h</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/src/IOTDBSession.h</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${basedir}/src/IOTDBSession.cpp</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/src/IOTDBSession.cpp</destinationFile>
+                                        </fileSet>
                                     </fileSets>
                                 </configuration>
                             </execution>
@@ -85,7 +101,7 @@
                                     <fileSets>
                                         <fileSet>
                                             <sourceFile>${basedir}/src/CMakeLists.txt</sourceFile>
-                                            <destinationFile>${project.build.directory}/generated-sources-cpp/CMakeLists.txt</destinationFile>
+                                            <destinationFile>${project.build.directory}/build/generated-sources-cpp/CMakeLists.txt</destinationFile>
                                         </fileSet>
                                     </fileSets>
                                 </configuration>
@@ -145,7 +161,7 @@
                                     <generator>cpp</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${project.build.directory}/thrift</thriftSourceRoot>
-                                    <outputDirectory>${project.build.directory}/generated-sources-cpp</outputDirectory>
+                                    <outputDirectory>${project.build.directory}/build/generated-sources-cpp</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
@@ -172,12 +188,12 @@
                                       Actually the path to the CMakeList.txt file which then again
                                       tells to tool where to find the sources.
                                     -->
-                                    <sourcePath>${project.basedir}</sourcePath>
+                                    <sourcePath>${project.build.directory}/build</sourcePath>
                                     <!--
                                       Path to where the build configuration is generated
                                       (This directory is then used in the compile step to actually perform the build)
                                     -->
-                                    <targetPath>${project.basedir}</targetPath>
+                                    <targetPath>${project.build.directory}/build</targetPath>
                                     <!--
                                       Name of the generator the compile step will be executing.
                                     -->
@@ -201,7 +217,7 @@
                                     -->
                                     <downloadBinaries>false</downloadBinaries>
                                     <!-- The directory where the "generate" step generated the build configuration -->
-                                    <projectDirectory>${project.basedir}</projectDirectory>
+                                    <projectDirectory>${project.build.directory}/build</projectDirectory>
                                 </configuration>
                             </execution>
                         </executions>

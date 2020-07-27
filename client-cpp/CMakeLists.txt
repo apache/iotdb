@@ -19,21 +19,22 @@
 project(iotdb_session_cpp)
 cmake_minimum_required(VERSION 3.16)
 set (CMAKE_REQUIRED_INCLUDES "/usr/local/include")
+set (TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../tools")
 add_subdirectory(src)
-add_subdirectory(target/generated-sources-cpp)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${CMAKE_SOURCE_DIR}/tools/thrift/target/thrift-0.13.0/lib/cpp/src")
+add_subdirectory(generated-sources-cpp)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
 
 aux_source_directory(./src SESSION_SRCS)
 
-aux_source_directory(./target/generated-sources-cpp GEN_SRCS)
+aux_source_directory(./generated-sources-cpp GEN_SRCS)
 
 list(APPEND SESSION_SRCS ${GEN_SRCS})
 
-link_directories(lib)
+#link_directories(lib)
 
 add_library(iotdb_session_cpp SHARED ${SESSION_SRCS})
 #target_link_libraries(client-cpp Session)
 #target_link_libraries(client-cpp GenCPP)
 
-target_link_libraries(iotdb_session_cpp ${CMAKE_SOURCE_DIR}/tools/thrift/target/build/lib/libthrift.a)
+target_link_libraries(iotdb_session_cpp ${TOOLS_DIR}/thrift/target/build/lib/libthrift.a)
