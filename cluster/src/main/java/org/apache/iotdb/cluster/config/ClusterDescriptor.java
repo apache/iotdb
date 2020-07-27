@@ -207,6 +207,8 @@ public class ClusterDescriptor {
     config.setReplicationNum(Integer.parseInt(properties.getProperty(
         "default_replica_num", String.valueOf(config.getReplicationNum()))));
 
+    config.setClusterName(properties.getProperty("cluster_name", config.getClusterName()));
+
     config.setRpcThriftCompressionEnabled(Boolean.parseBoolean(properties.getProperty(
         "rpc_thrift_compression_enable", String.valueOf(config.isRpcThriftCompressionEnabled()))));
 

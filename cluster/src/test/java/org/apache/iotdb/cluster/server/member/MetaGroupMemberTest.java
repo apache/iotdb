@@ -562,11 +562,12 @@ public class MetaGroupMemberTest extends MemberTest {
     MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
     newMember.start();
     try {
-      assertTrue(newMember.joinCluster());
+      newMember.joinCluster();
       newMember.setCharacter(ELECTOR);
       while (!LEADER.equals(newMember.getCharacter())) {
-
       }
+    } catch (Exception e) {
+      fail("The expected exception is not thrown");
     } finally {
       newMember.stop();
     }
@@ -577,12 +578,14 @@ public class MetaGroupMemberTest extends MemberTest {
     System.out.println("Start testJoinClusterFailed()");
     long prevInterval = RaftServer.getHeartBeatIntervalMs();
     RaftServer.setHeartBeatIntervalMs(10);
+    dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
+    MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
     try {
-      dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
-      MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
-      assertFalse(newMember.joinCluster());
-      newMember.closeLogManager();
+      newMember.joinCluster();
+      fail("The unexpected exception is thrown");
+    } catch (Exception e) {
     } finally {
+      newMember.closeLogManager();
       RaftServer.setHeartBeatIntervalMs(prevInterval);
     }
   }
@@ -1049,6 +1052,7 @@ public class MetaGroupMemberTest extends MemberTest {
       assertTrue(response.getCheckStatusResponse().isPartitionalIntervalEquals());
       assertTrue(response.getCheckStatusResponse().isHashSaltEquals());
       assertFalse(response.getCheckStatusResponse().isReplicationNumEquals());
+      assertTrue(response.getCheckStatusResponse().isClusterNameEquals());
 
       // cannot add a node due to network failure
       dummyResponse.set(Response.RESPONSE_NO_CONNECTION);

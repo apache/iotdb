@@ -79,28 +79,34 @@ public class ClusterMain {
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
     logger.info("Running mode {}", mode);
-    try {
-      if (MODE_START.equals(mode)) {
+    if (MODE_START.equals(mode)) {
+      try {
         metaServer = new MetaClusterServer();
         startServerCheck();
         metaServer.start();
         metaServer.buildCluster();
-      } else if (MODE_ADD.equals(mode)) {
+      } catch (TTransportException | StartupException | QueryProcessException |
+          StartUpCheckFailureException | ConfigInconsistentException e) {
+        metaServer.stop();
+        logger.error("Fail to start meta server", e);
+      }
+    } else if (MODE_ADD.equals(mode)) {
+      try {
         metaServer = new MetaClusterServer();
         metaServer.start();
-        if (!metaServer.joinCluster()) {
-          metaServer.stop();
-          logger.error("Fail to join cluster");
-        }
-      } else if (MODE_REMOVE.equals(mode)) {
-        doRemoveNode(args);
-      } else {
-        logger.error("Unrecognized mode {}", mode);
+        metaServer.joinCluster();
+      } catch (TTransportException | StartupException | QueryProcessException | StartUpCheckFailureException | ConfigInconsistentException e) {
+        metaServer.stop();
+        logger.error("Fail to join cluster", e);
       }
-    } catch (IOException | TTransportException | StartupException | QueryProcessException |
-        StartUpCheckFailureException | ConfigInconsistentException e) {
-      metaServer.stop();
-      logger.error("Fail to start meta server", e);
+    } else if (MODE_REMOVE.equals(mode)) {
+      try {
+        doRemoveNode(args);
+      } catch (IOException e) {
+        logger.error("Fail to remove node in cluster", e);
+      }
+    } else {
+      logger.error("Unrecognized mode {}", mode);
     }
   }
 
