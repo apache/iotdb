@@ -794,10 +794,12 @@ public class StorageGroupProcessor {
       if (tmpMeasurementNode != null) {
         // just for performance, because in single node version, we do not need the full path of measurement
         // so, we want to avoid concat the device and measurement string in single node version
-        IoTDB.metaManager.updateLastCache(node.getFullPath(),
+        IoTDB.metaManager.updateLastCache(plan.getDeviceNodes(),
           plan.composeLastTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
       } else {
-        IoTDB.metaManager.updateLastCache(node.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurementList[i],
+        List<String> fullPath = new ArrayList<>(plan.getDeviceNodes());
+        fullPath.add(measurementList[i]);
+        IoTDB.metaManager.updateLastCache( fullPath,
           plan.composeLastTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
       }
     }
@@ -849,10 +851,12 @@ public class StorageGroupProcessor {
       if (tmpMeasurementNode != null) {
         // just for performance, because in single node version, we do not need the full path of measurement
         // so, we want to avoid concat the device and measurement string in single node version
-        IoTDB.metaManager.updateLastCache(node.getFullPath(),
+        IoTDB.metaManager.updateLastCache(plan.getDeviceNodes(),
           plan.composeTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
       } else {
-        IoTDB.metaManager.updateLastCache(node.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurementList[i],
+        List<String> fullPath = new ArrayList<>(plan.getDeviceNodes());
+        fullPath.add(measurementList[i]);
+        IoTDB.metaManager.updateLastCache(fullPath,
           plan.composeTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
       }
     }

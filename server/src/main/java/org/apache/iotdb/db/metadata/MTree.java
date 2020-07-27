@@ -1409,7 +1409,14 @@ public class MTree implements Serializable {
       return node.getCachedLast().getTimestamp();
     } else {
       try {
-        last = calculateLastPairForOneSeriesLocally(new Path(node.getFullPath()),
+        MNode temp = node;
+        List<String> nodes = new ArrayList<>();
+        nodes.add(temp.getName());
+        while (temp.getParent() != null) {
+          temp = temp.getParent();
+          nodes.add(0, temp.getName());
+        }
+        last = calculateLastPairForOneSeriesLocally(new Path(nodes),
             node.getSchema().getType(), new QueryContext(-1), Collections.emptySet());
         return last.getTimestamp();
       } catch (Exception e) {

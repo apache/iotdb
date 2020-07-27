@@ -2165,27 +2165,27 @@ public class MManager {
     // do nothing
   }
 
-  public void updateLastCache(String seriesPath, TimeValuePair timeValuePair,
+  public void updateLastCache(List<String> nodes, TimeValuePair timeValuePair,
                               boolean highPriorityUpdate, Long latestFlushedTime,
                               MeasurementMNode node) {
     if (node != null) {
       node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
     } else {
       try {
-        MeasurementMNode node1 = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
+        MeasurementMNode node1 = (MeasurementMNode) mtree.getNodeByNodes(nodes);
         node1.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
       } catch (MetadataException e) {
-        logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
+        logger.warn("failed to update last cache for the {}, err:{}", MetaUtils.getPathByNodes(nodes), e.getMessage());
       }
     }
   }
 
-  public TimeValuePair getLastCache(String seriesPath) {
+  public TimeValuePair getLastCache(List<String> nodes) {
    try {
-     MeasurementMNode node = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
+     MeasurementMNode node = (MeasurementMNode) mtree.getNodeByNodes(nodes);
      return node.getCachedLast();
   } catch (MetadataException e) {
-     logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
+     logger.warn("failed to get last cache for the {}, err:{}", MetaUtils.getPathByNodes(nodes), e.getMessage());
   }
   return null;
 }

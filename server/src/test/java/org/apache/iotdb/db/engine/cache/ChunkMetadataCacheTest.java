@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.cache;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -55,7 +57,8 @@ public class ChunkMetadataCacheTest {
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
   private String storageGroup = "root.vehicle.d0";
-  private List<String> storageGroupList = Arrays.asList("root", "vehicle", "d0");
+  private List<String> storageGroupList = new ArrayList<>(Arrays.asList(storageGroup.split(
+      TsFileConstant.PATH_SEPARATER_NO_REGEX)));
   private String measurementId0 = "s0";
   private String measurementId1 = "s1";
   private String measurementId2 = "s2";

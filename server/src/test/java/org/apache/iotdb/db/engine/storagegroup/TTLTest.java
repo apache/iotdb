@@ -70,7 +70,7 @@ import static org.junit.Assert.*;
 public class TTLTest {
 
   private String sg1 = "root.TTL_SG1";
-  private List<String> sg1List = Arrays.asList("root", "TTL_SG1");
+  private List<String> sg1List = new ArrayList<>(Arrays.asList("root", "TTL_SG1"));
   private String sg2 = "root.TTL_SG2";
   private long ttl = 12345;
   private StorageGroupProcessor storageGroupProcessor;
@@ -208,6 +208,7 @@ public class TTLTest {
 
     storageGroupProcessor.setDataTTL(500);
 
+    sg1List.remove(sg1List.size() - 1);
     // files after ttl
     dataSource = storageGroupProcessor
         .query(sg1List, s1, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
@@ -215,7 +216,9 @@ public class TTLTest {
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
-    Path path = new Path(sg1, s1);
+    List<String> fullPath = new ArrayList<>(sg1List);
+    fullPath.add(s1);
+    Path path = new Path(fullPath);
     Set<String> allSensors = new HashSet<>();
     allSensors.add(s1);
     IBatchReader reader = new SeriesRawDataBatchReader(path, allSensors, TSDataType.INT64,
