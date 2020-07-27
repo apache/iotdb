@@ -230,8 +230,11 @@ public class ClusterDescriptor {
     config.setUseBatchInLogCatchUp(Boolean.parseBoolean(properties.getProperty(
         "use_batch_in_catch_up", String.valueOf(config.isUseBatchInLogCatchUp()))));
 
-    config.setMaxNumberOfLogs(Integer.parseInt(
-        properties.getProperty("max_number_of_logs", String.valueOf(config.getMaxNumberOfLogs()))));
+    config.setMinNumOfLogsInMem(Integer.parseInt(properties
+        .getProperty("min_num_of_logs_in_mem", String.valueOf(config.getMinNumOfLogsInMem()))));
+
+    config.setMaxNumOfLogsInMem(Integer.parseInt(properties
+        .getProperty("max_num_of_logs_in_mem", String.valueOf(config.getMaxNumOfLogsInMem()))));
 
     config.setLogDeleteCheckIntervalSecond(Integer.parseInt(properties
         .getProperty("log_deletion_check_interval_second",

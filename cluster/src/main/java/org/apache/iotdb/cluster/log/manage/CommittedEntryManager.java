@@ -43,8 +43,8 @@ public class CommittedEntryManager {
    * Note that it is better to use applyingSnapshot to update dummy entry immediately after this
    * instance is created.
    */
-  public CommittedEntryManager() {
-    entries = new ArrayList<>();
+  public CommittedEntryManager(int maxNumOfLogInMem) {
+    entries = new ArrayList<>(maxNumOfLogInMem);
     entries.add(new EmptyContentLog(-1, -1));
   }
 

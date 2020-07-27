@@ -61,15 +61,22 @@ public class RaftLogManager {
 
 
   /**
-   * max number of committed logs to be saved
+   * minimum number of committed logs in memory
    */
-  private int maxNumberOfLogs = ClusterDescriptor.getInstance().getConfig().getMaxNumberOfLogs();
+  private int minNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig()
+      .getMinNumOfLogsInMem();
+
+  /**
+   * maximum number of committed logs in memory
+   */
+  private int maxNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig()
+      .getMaxNumOfLogsInMem();
 
 
   public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
     this.name = name;
-    this.setCommittedEntryManager(new CommittedEntryManager());
+    this.setCommittedEntryManager(new CommittedEntryManager(maxNumOfLogsInMem));
     this.setStableEntryManager(stableEntryManager);
     try {
       this.getCommittedEntryManager().append(stableEntryManager.getAllEntries());
@@ -157,8 +164,8 @@ public class RaftLogManager {
    * Returns the term for given index.
    *
    * @param index request entry index
-   * @return throw EntryCompactedException if index < dummyIndex, -1 if
-   * index > lastIndex, otherwise return the entry's term for given index
+   * @return throw EntryCompactedException if index < dummyIndex, -1 if index > lastIndex, otherwise
+   * return the entry's term for given index
    * @throws EntryCompactedException
    */
   public long getTerm(long index) throws EntryCompactedException {
@@ -415,6 +422,11 @@ public class RaftLogManager {
               .clear();
         }
         try {
+          if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
+            synchronized (this) {
+              innerDeleteLog();
+            }
+          }
           getCommittedEntryManager().append(entries);
           if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
             getStableEntryManager().append(entries);
@@ -530,8 +542,8 @@ public class RaftLogManager {
   }
 
   @TestOnly
-  public void setMaxNumberOfLogs(int maxNumberOfLogs) {
-    this.maxNumberOfLogs = maxNumberOfLogs;
+  public void setMinNumOfLogsInMem(int minNumOfLogsInMem) {
+    this.minNumOfLogsInMem = minNumOfLogsInMem;
   }
 
   public void close() {
@@ -574,25 +586,29 @@ public class RaftLogManager {
    */
   public void checkDeleteLog() {
     synchronized (this) {
-      if (committedEntryManager.getTotalSize() <= maxNumberOfLogs) {
+      if (committedEntryManager.getTotalSize() <= minNumOfLogsInMem) {
         return;
       }
-      long removeSize = committedEntryManager.getTotalSize() - maxNumberOfLogs;
-      long compactIndex = committedEntryManager.getDummyIndex() + removeSize;
-      try {
-        logger.info("{}: Before compaction index {}-{}, compactIndex {}, removeSize {}, "
-                + "committedLogSize {}",
-            name,
-            getFirstIndex(), getLastLogIndex(), compactIndex, removeSize, committedEntryManager.getTotalSize());
-        getCommittedEntryManager().compactEntries(compactIndex);
-        if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
-          getStableEntryManager().removeCompactedEntries(compactIndex);
-        }
-        logger.info("{}: After compaction index {}-{}, committedLogSize {}", name,
-            getFirstIndex(), getLastLogIndex(), committedEntryManager.getTotalSize());
-      } catch (EntryUnavailableException e) {
-        logger.error("{}: regular compact log entries failed, error={}", name, e.getMessage());
+      innerDeleteLog();
+    }
+  }
+
+  private void innerDeleteLog() {
+    long removeSize = committedEntryManager.getTotalSize() - minNumOfLogsInMem;
+    long compactIndex = committedEntryManager.getDummyIndex() + removeSize;
+    try {
+      logger.info(
+          "{}: Before compaction index {}-{}, compactIndex {}, removeSize {}, committedLogSize {}",
+          name, getFirstIndex(), getLastLogIndex(), compactIndex, removeSize,
+          committedEntryManager.getTotalSize());
+      getCommittedEntryManager().compactEntries(compactIndex);
+      if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+        getStableEntryManager().removeCompactedEntries(compactIndex);
       }
+      logger.info("{}: After compaction index {}-{}, committedLogSize {}", name,
+          getFirstIndex(), getLastLogIndex(), committedEntryManager.getTotalSize());
+    } catch (EntryUnavailableException e) {
+      logger.error("{}: regular compact log entries failed, error={}", name, e.getMessage());
     }
   }
 }
