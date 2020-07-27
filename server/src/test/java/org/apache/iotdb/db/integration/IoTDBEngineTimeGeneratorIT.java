@@ -185,7 +185,7 @@ public class IoTDBEngineTimeGeneratorIT {
   public void testOneSeriesWithValueAndTimeFilter() throws IOException, StorageEngineException {
     //System.out.println("Test >>> root.vehicle.d0.s0 >= 14 && time > 500");
 
-    Path pd0s0 = new Path(TestConstant.d0s0);
+    Path pd0s0 = new Path(Arrays.asList("root", "vehicle", "d0", "s0"));
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(14);
     TimeFilter.TimeGt timeGt = TimeFilter.gt(500);
 
@@ -239,8 +239,8 @@ public class IoTDBEngineTimeGeneratorIT {
     System.out
         .println("Test >>> root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11.5 || time > 900");
 
-    Path pd0s0 = new Path(TestConstant.d0s0);
-    Path pd0s2 = new Path(TestConstant.d0s2);
+    Path pd0s0 = new Path(Arrays.asList("root", "vehicle", "d0", "s0"));
+    Path pd0s2 = new Path(Arrays.asList("root", "vehicle", "d0", "s2"));
 
     ValueFilter.ValueGtEq valueGtEq5 = ValueFilter.gtEq(5);
     ValueFilter.ValueGtEq valueGtEq11 = ValueFilter.gtEq(11.5f);
