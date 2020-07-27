@@ -19,6 +19,9 @@
 
 -->
 
+Requirement:
+Maven 3.6
+
 #### Mac
 
 Make sure `Homebrew` ist installed in order to update `Bison` to a newer version (the version 2.3 installed per default is too old)
