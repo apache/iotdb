@@ -45,7 +45,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   private int testIdentifier = 1;
 
   @Test
-  public void testReadAndWrite() {
+  public void testReadAndWrite() throws IOException {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     try {
       List<Log> testLogs1 = TestUtils.prepareNodeLogs(10);
@@ -61,7 +61,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   }
 
   @Test
-  public void testRecovery() {
+  public void testRecovery() throws IOException {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     int logNum;
     List<Log> testLogs1;
@@ -88,7 +88,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   }
 
   @Test
-  public void testDeleteLogs() {
+  public void testDeleteLogs() throws IOException {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     try {
       syncLogDequeSerializer.setMaxRemovedLogSize(10);
@@ -106,7 +106,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   }
 
   @Test
-  public void testDeleteLogsByRecovery() {
+  public void testDeleteLogsByRecovery() throws IOException {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     List<Log> testLogs1;
     List<Log> testLogs2;
@@ -144,7 +144,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   }
 
   @Test
-  public void testRemoveOldFile() {
+  public void testRemoveOldFile() throws IOException {
     System.out.println("Start testRemoveOldFile()");
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     List<Log> testLogs2;
@@ -185,7 +185,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   }
 
   @Test
-  public void testRemoveOldFileAtRecovery() throws InterruptedException {
+  public void testRemoveOldFileAtRecovery() throws InterruptedException, IOException {
     System.out.println("Start testRemoveOldFileAtRecovery()");
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     List<Log> testLogs2;
@@ -229,7 +229,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   }
 
   @Test
-  public void testRecoveryByAppendList() {
+  public void testRecoveryByAppendList() throws IOException {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     int logNum;
     List<Log> testLogs1;
@@ -257,7 +257,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   }
 
   @Test
-  public void testRecoveryWithTempLog() {
+  public void testRecoveryWithTempLog() throws IOException {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     int logNum;
     List<Log> testLogs1;
@@ -289,7 +289,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   }
 
   @Test
-  public void testRecoveryWithEmptyTempLog() {
+  public void testRecoveryWithEmptyTempLog() throws IOException {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     int logNum;
     List<Log> testLogs1;
@@ -325,7 +325,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   }
 
   @Test
-  public void testRecoveryWithTempLogWithoutOriginalLog() {
+  public void testRecoveryWithTempLogWithoutOriginalLog() throws IOException {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     int logNum;
     List<Log> testLogs1;

@@ -639,6 +639,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   @Override
   public void close() {
+    flushLogBuffer();
+    lock.writeLock().lock();
     try {
       if (currentLogOutputStream != null) {
         currentLogOutputStream.close();
@@ -646,6 +648,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       }
     } catch (IOException e) {
       logger.error("Error in log serialization: ", e);
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 
