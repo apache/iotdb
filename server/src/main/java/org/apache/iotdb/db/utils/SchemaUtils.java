@@ -146,7 +146,7 @@ public class SchemaUtils {
       if (dataType != null) {
         tsDataTypes.add(dataType);
       } else {
-        tsDataTypes.add(IoTDB.metaManager.getSeriesType(paths.get(i).getFullPath()));
+        tsDataTypes.add(IoTDB.metaManager.getSeriesType(paths.get(i).getNodes()));
       }
     }
     return tsDataTypes;

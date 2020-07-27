@@ -213,14 +213,8 @@ public class Path implements Serializable, Comparable<Path> {
     if(device != null) {
       return device + TsFileConstant.PATH_SEPARATOR + alias;
     } else {
-      StringBuilder s = new StringBuilder();
-      for(int i = 0; i < nodes.size() - 1; i++) {
-        s.append(nodes.get(i));
-        s.append(TsFileConstant.PATH_SEPARATOR);
-      }
-      device = s.toString();
-      s.append(alias);
-      return s.toString();
+      this.device = getDevice();
+      return device + TsFileConstant.PATH_SEPARATOR + alias;
     }
   }
 
@@ -262,12 +256,7 @@ public class Path implements Serializable, Comparable<Path> {
   @Override
   public int compareTo(Path path) {
     if(fullPath == null) {
-      StringBuilder s = new StringBuilder(nodes.get(0));
-      for(int i = 1; i < nodes.size(); i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(nodes.get(i));
-      }
-      fullPath = s.toString();
+      this.fullPath = getFullPath();
     }
     return fullPath.compareTo(path.getFullPath());
   }

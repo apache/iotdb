@@ -101,6 +101,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -667,9 +668,9 @@ public class PhysicalGenerator {
         Path path = paths.get(i);
         String column;
         if (path.getAlias() != null) {
-          column = MetaUtils.getPathByNodes(path.getNodes()) + path.getAlias();
+          column = path.getDevice() + TsFileConstant.PATH_SEPARATOR +  path.getAlias();
         } else {
-          column = MetaUtils.getPathByNodes(path.getNodes());
+          column = path.getDevice();
         }
         if (!columnSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);

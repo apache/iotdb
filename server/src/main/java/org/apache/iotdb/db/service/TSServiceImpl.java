@@ -345,12 +345,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setMetadataInJson(metadataInJson);
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
-        case "COLUMN":
-          List<TSDataType> dataTypes =
-              getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null);
-          resp.setDataType(dataTypes.get(0).toString());
-          status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-          break;
         case "ALL_COLUMNS":
           resp.setColumnsList(getPaths(req.getColumnPath()));
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -767,14 +761,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
+        List<List<String>> pathNodesList = new ArrayList<>();
         for (Path path : paths) {
           if (path.getAlias() != null) {
             respColumns.add(path.getFullPathWithAlias());
           } else {
             respColumns.add(path.getFullPath());
           }
+          pathNodesList.add(path.getNodes());
         }
-        seriesTypes = getSeriesTypesByString(respColumns, null);
+        seriesTypes = getSeriesTypesByString(pathNodesList, null);
         break;
       case AGGREGATION:
       case GROUPBYTIME:
@@ -1603,7 +1599,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
   }
 
-  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
+  protected List<TSDataType> getSeriesTypesByString(List<List<String>> paths, String aggregation)
       throws MetadataException {
     return SchemaUtils.getSeriesTypesByString(paths, aggregation);
   }
