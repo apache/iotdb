@@ -452,6 +452,13 @@
                 <artifactId>mqtt-client</artifactId>
                 <version>1.12</version>
             </dependency>
+            <!-- many dependencies (hadoop, spark, hive, flink) use findbugs but with different version...-->
+            <dependency>
+                <groupId>com.google.code.findbugs</groupId>
+                <artifactId>jsr305</artifactId>
+                <!-- spark uses the lastest version than hive, flink and hadoop-->
+                <version>3.0.2</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>

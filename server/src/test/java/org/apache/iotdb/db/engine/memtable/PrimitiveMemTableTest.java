@@ -24,6 +24,8 @@ import java.util.Collections;
 import java.util.Random;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -93,6 +95,27 @@ public class PrimitiveMemTableTest {
       Assert.assertEquals(i, timeValuePair.getTimestamp());
       Assert.assertEquals(i, timeValuePair.getValue().getValue());
     }
+  }
+
+  @Test
+  public void testCheckArrayInMemTable() throws QueryProcessException, IOException {
+    IMemTable memTable = new PrimitiveMemTable();
+    String deviceId = "root.sg.device99";
+    String sensorId = "sensor4";
+    InsertPlan insertPlan = new InsertRowPlan(deviceId, 64, sensorId, TSDataType.INT64, "4");
+    Assert.assertFalse(memTable.checkIfArrayIsEnough(insertPlan));
+
+    for (long i = 0; i < 63; i++) {
+      memTable.write(deviceId, sensorId, new MeasurementSchema(sensorId, TSDataType.INT64, TSEncoding.RLE), i,
+          i + 10);
+    }
+
+    Assert.assertTrue(memTable.checkIfArrayIsEnough(insertPlan));
+    memTable.write(deviceId, sensorId, new MeasurementSchema(sensorId, TSDataType.INT64, TSEncoding.RLE), 63L,
+        10L);
+    Assert.assertFalse(memTable.checkIfArrayIsEnough(insertPlan));
+    insertPlan = new InsertRowPlan(deviceId, 11, "sensor3", TSDataType.INT32, "4");
+    Assert.assertFalse(memTable.checkIfArrayIsEnough(insertPlan));
   }
 
   private void write(IMemTable memTable, String deviceId, String sensorId, TSDataType dataType,

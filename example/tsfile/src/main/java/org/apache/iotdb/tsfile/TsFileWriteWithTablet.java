@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -53,6 +54,8 @@ public class TsFileWriteWithTablet {
 
       Schema schema = new Schema();
 
+      String device = "root.sg.device_1";
+      String sensorPrefix = "sensor_";
       // the number of rows to include in the tablet
       int rowNum = 1000000;
       // the number of values to include in the tablet
@@ -61,15 +64,17 @@ public class TsFileWriteWithTablet {
       List<MeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
-        measurementSchemas.add(
-            new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
+        MeasurementSchema measurementSchema = new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
+        measurementSchemas.add(measurementSchema);
+        schema.registerTimeseries(new Path(device, sensorPrefix + (i + 1)),
+            new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
 
       // add measurements into TSFileWriter
       try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
 
         // construct the tablet
-        Tablet tablet = new Tablet("device_1", measurementSchemas);
+        Tablet tablet = new Tablet(device, measurementSchemas);
 
         long[] timestamps = tablet.timestamps;
         Object[] values = tablet.values;
