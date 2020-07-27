@@ -47,6 +47,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class DeviceStringTest {
@@ -108,9 +110,9 @@ public class DeviceStringTest {
   public void testDeviceString() throws IOException {
     resource = new TsFileResource(tsF);
     resource.deserialize();
-    assertTrue(!resource.getDeviceToIndexMap().keySet().isEmpty());
+    assertFalse(resource.getDeviceToIndexMap().keySet().isEmpty());
     for (String device : resource.getDeviceToIndexMap().keySet()) {
-      assertTrue(device == mManager.getDeviceId(device));
+      assertEquals(device, mManager.getDeviceId(device));
     }
   }
 }
