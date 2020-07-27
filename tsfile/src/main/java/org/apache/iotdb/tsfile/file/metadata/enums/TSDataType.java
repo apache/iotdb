@@ -96,13 +96,16 @@ public enum TSDataType {
 
   public int getDataTypeSize() {
     switch (this) {
+      case BOOLEAN:
+        return 1;
       case INT32:
       case FLOAT:
+        // For text: return the size of reference here
+      case TEXT:
         return 4;
       case INT64:
       case DOUBLE:
         return 8;
-      case TEXT:
       default:
         throw new UnSupportedDataTypeException(this.toString());
     }

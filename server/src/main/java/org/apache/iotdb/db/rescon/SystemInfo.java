@@ -22,7 +22,6 @@ package org.apache.iotdb.db.rescon;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class SystemInfo {
@@ -38,33 +37,26 @@ public class SystemInfo {
   private final double flushProportion = 0.6;
 
   /**
-   * 通知system申请新数组。(调用者应在实际申请前调用该方法)
+   * Inform system applying a new out of buffered array.
+   * Attention: It should be invoked before applying new OOB array actually.
    *
-   * @param type data type
-   * @param size size
+   * @param dataType data type of array
+   * @param size size of array
    * @return 如果同意，则返回true；否则返回false。
    */
-  public boolean applyNewOOBArray(TSDataType type, int size) {
-    long arraySize = 0;
-    switch (type) {
-      case BOOLEAN:
-      case INT64:
-      case DOUBLE:
-        arraySize = size * 8L;
-        break;
-      case INT32:
-      case FLOAT:
-        arraySize = size * 4L;
-      case TEXT:
-      default:
-        throw new UnSupportedDataTypeException(type.toString());
+  public synchronized boolean applyNewOOBArray(TSDataType dataType, int size) {
+    if (!reject) {
+
     }
-    if (true) { // 内存够用时
-      return true;
-    } else { // 否则
+    // if current memory is enough
+    if (arrayPoolMemCost + totalTspInfoMemCost + dataType.getDataTypeSize() * size
+        < config.getAllocateMemoryForWrite() * rejectProportion) {
+      arrayPoolMemCost += dataType.getDataTypeSize() * size;
+      return reject;
+    } else {
       this.reject = true;
       flush();
-      return false;
+      return reject;
     }
   }
 
@@ -88,22 +80,21 @@ public class SystemInfo {
   }
 
   /**
-   *
-   * @param type
-   * @param size
+   * @param IncreasingSize increasing size of buffered array
    */
-  public void reportCreateArray(TSDataType type, int size) {
-
+  public void reportIncreasingArraySize(int IncreasingSize) {
+    this.arrayPoolMemCost += IncreasingSize;
   }
 
   /**
-   * 通知system将释放OOP数组（在释放后调用）
+   * Inform system releasing a out of buffered array.
+   * Attention: It should be invoked after releasing.
    *
-   * @param type type
-   * @param size size
+   * @param dataType data type of array
+   * @param size size of array
    */
-  public void reportReleaseOOBArray(TSDataType type, int size) {
-    this.reject = false;
+  public void reportReleaseOOBArray(TSDataType dataType, int size) {
+    this.arrayPoolMemCost -=  dataType.getDataTypeSize() * size;
   }
 
   /**
