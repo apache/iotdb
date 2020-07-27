@@ -47,7 +47,6 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
   private long commitIndex;
   private long term;
 
-
   public MetaSingleSnapshotLogManager(LogApplier logApplier, MetaGroupMember metaGroupMember) {
     super(new SyncLogDequeSerializer(0), logApplier, metaGroupMember.getName());
     this.metaGroupMember = metaGroupMember;
