@@ -751,13 +751,14 @@ public class PlanExecutor implements IPlanExecutor {
     Set<Path> registeredSeries = new HashSet<>();
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       String device = chunkGroupMetadata.getDevice();
-      List<String> nodes = MetaUtils.getDeviceNodeNames(device);
+      List<String> nodes = MetaUtils.splitPathToNodes(device);
       MNode node = null;
       try {
         node = mManager.getDeviceNodeWithAutoCreateAndReadLock(device, nodes, true, sgLevel);
         for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
-          nodes.add(chunkMetadata.getMeasurementUid());
-          Path series = new Path(nodes);
+          List<String> pathNodes = new ArrayList<>(nodes);
+          pathNodes.add(chunkMetadata.getMeasurementUid());
+          Path series = new Path(pathNodes);
           if (!registeredSeries.contains(series)) {
             registeredSeries.add(series);
             MeasurementSchema schema = knownSchemas.get(series);
@@ -769,7 +770,7 @@ public class PlanExecutor implements IPlanExecutor {
             }
             if (!node.hasChild(chunkMetadata.getMeasurementUid())) {
               mManager.createTimeseries(
-                  Arrays.asList(),
+                  pathNodes,
                   schema.getType(),
                   schema.getEncodingType(),
                   schema.getCompressor(),

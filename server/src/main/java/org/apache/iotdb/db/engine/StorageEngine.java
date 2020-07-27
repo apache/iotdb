@@ -275,7 +275,7 @@ public class StorageEngine implements IService {
     String storageGroupName;
     try {
       storageGroupNodes = IoTDB.metaManager.getStorageGroupNameNodes(nodes);
-      storageGroupName = MetaUtils.getPathByNodes(nodes);
+      storageGroupName = MetaUtils.getPathByNodes(storageGroupNodes);
       StorageGroupProcessor processor;
       processor = processorMap.get(storageGroupName);
       if (processor == null) {

@@ -22,6 +22,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -64,7 +65,35 @@ public class MetaUtils {
   }
 
   public static List<String> getDeviceNodeNames(String path) {
-    return Arrays.asList(path.split(PATH_SEPARATOR));
+    List<String> deviceNodes = new ArrayList<>();
+    Collections.addAll(deviceNodes, path.split(PATH_SEPARATOR));
+    return deviceNodes;
+  }
+
+  public static List<String> splitPathToNodes(String path) throws IllegalPathException {
+    List<String> nodes = new ArrayList<>();
+    int startIndex = 0;
+    for (int i = 0; i < path.length(); i++) {
+      if (path.charAt(i) == '.') {
+        nodes.add(path.substring(startIndex, i));
+        startIndex = i + 1;
+      } else if (path.charAt(i) == '"') {
+        int endIndex = path.indexOf('"', i + 1);
+        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
+          nodes.add(path.substring(startIndex, endIndex + 1));
+          i = endIndex + 1;
+          startIndex = endIndex + 2;
+        } else {
+          throw new IllegalPathException("Illegal path: " + path);
+        }
+      } else if (path.charAt(i) == '\'') {
+        throw new IllegalPathException("Illegal path with single quote: " + path);
+      }
+    }
+    if (startIndex <= path.length() - 1) {
+      nodes.add(path.substring(startIndex));
+    }
+    return nodes;
   }
 
   /**
