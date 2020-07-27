@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
@@ -86,7 +87,9 @@ public class RaftLogManagerTest {
     long num = 100;
     long half = offset + num / 2;
     long last = offset + num;
-    CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+    CommittedEntryManager committedEntryManager =
+        new CommittedEntryManager(
+            ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
     RaftLogManager instance = new RaftLogManager(committedEntryManager,
         new SyncLogDequeSerializer(testIdentifier), logApplier);
@@ -126,7 +129,9 @@ public class RaftLogManagerTest {
   @Test
   public void getFirstIndex() {
     long offset = 100;
-    CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+    CommittedEntryManager committedEntryManager =
+        new CommittedEntryManager(
+            ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
     RaftLogManager instance = new RaftLogManager(committedEntryManager,
         new SyncLogDequeSerializer(testIdentifier), logApplier);
@@ -144,7 +149,8 @@ public class RaftLogManagerTest {
   public void getLastLogIndex() {
     long offset = 100;
     long num = 100;
-    CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
     RaftLogManager instance = new RaftLogManager(committedEntryManager,
         new SyncLogDequeSerializer(testIdentifier), logApplier);
@@ -165,7 +171,8 @@ public class RaftLogManagerTest {
   public void getLastLogTerm() {
     long offset = 100;
     long num = 100;
-    CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
     RaftLogManager instance = new RaftLogManager(committedEntryManager,
         new SyncLogDequeSerializer(testIdentifier), logApplier);
@@ -207,7 +214,8 @@ public class RaftLogManagerTest {
     long num = 100;
     long half = offset + num / 2;
     long last = offset + num;
-    CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
     for (long i = 1; i < num / 2; i++) {
       long index = i;
@@ -274,7 +282,8 @@ public class RaftLogManagerTest {
     long num = 100;
     long half = offset + num / 2;
     long last = offset + num;
-    CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
     for (long i = 1; i < num / 2; i++) {
       long index = i;
@@ -317,7 +326,8 @@ public class RaftLogManagerTest {
   @Test
   public void applyEntries() throws Exception {
     List<Log> testLogs = TestUtils.prepareTestLogs(10);
-    RaftLogManager instance = new RaftLogManager(new CommittedEntryManager(),
+    RaftLogManager instance = new RaftLogManager(new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()),
         new SyncLogDequeSerializer(testIdentifier), logApplier);
     try {
       instance.applyEntries(testLogs, false);
@@ -345,7 +355,8 @@ public class RaftLogManagerTest {
     long num = 100;
     long half = offset + num / 2;
     long last = offset + num;
-    CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
     for (long i = 1; i < num / 2; i++) {
       long index = i;
@@ -460,7 +471,8 @@ public class RaftLogManagerTest {
       }}, lastIndex - 2, lastTerm - 2, lastIndex, lastIndex, lastIndex, true));
     }};
     for (RaftLogManagerTester test : tests) {
-      CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+      CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+          ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
       committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
       RaftLogManager instance = new RaftLogManager(committedEntryManager,
           new SyncLogDequeSerializer(testIdentifier), logApplier);
@@ -539,7 +551,8 @@ public class RaftLogManagerTest {
           lastTerm - 2, lastIndex, lastIndex - 1, lastIndex - 1, true));
     }};
     for (RaftLogManagerTester test : tests) {
-      CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+      CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+          ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
       committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
       RaftLogManager instance = new RaftLogManager(committedEntryManager,
           new SyncLogDequeSerializer(testIdentifier), logApplier);
@@ -607,7 +620,8 @@ public class RaftLogManagerTest {
       }}, 2, 3));
     }};
     for (RaftLogManagerTester test : tests) {
-      CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+      CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+          ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
       committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
       try {
         committedEntryManager.append(previousEntries);
@@ -667,7 +681,8 @@ public class RaftLogManagerTest {
       }}, 2, 3));
     }};
     for (RaftLogManagerTester test : tests) {
-      CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+      CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+          ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
       committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
       try {
         committedEntryManager.append(previousEntries);
@@ -709,7 +724,8 @@ public class RaftLogManagerTest {
     long num = 100;
     long half = offset + num / 2;
     long last = offset + num;
-    CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
     for (long i = 1; i < num / 2; i++) {
       long index = i;
@@ -761,7 +777,8 @@ public class RaftLogManagerTest {
   public void applyingSnapshot() throws Exception {
     long index = 100;
     long term = 100;
-    CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     committedEntryManager.applyingSnapshot(new SimpleSnapshot(index, term));
     RaftLogManager instance = new RaftLogManager(committedEntryManager,
         new SyncLogDequeSerializer(testIdentifier), logApplier);
@@ -816,7 +833,8 @@ public class RaftLogManagerTest {
     long num = 100;
     long half = offset + num / 2;
     long last = offset + num;
-    CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
     for (long i = 1; i < num / 2; i++) {
       long index = i;
@@ -900,7 +918,8 @@ public class RaftLogManagerTest {
       add(new EmptyContentLog(1, 1));
       add(new EmptyContentLog(2, 2));
     }};
-    RaftLogManager instance = new RaftLogManager(new CommittedEntryManager(),
+    RaftLogManager instance = new RaftLogManager(new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()),
         new SyncLogDequeSerializer(testIdentifier), logApplier);
     try {
       instance.append(previousEntries);
@@ -987,7 +1006,8 @@ public class RaftLogManagerTest {
       add(new EmptyContentLog(1, 1));
       add(new EmptyContentLog(2, 2));
     }};
-    RaftLogManager instance = new RaftLogManager(new CommittedEntryManager(),
+    RaftLogManager instance = new RaftLogManager(new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()),
         new SyncLogDequeSerializer(testIdentifier), logApplier);
     try {
       instance.append(previousEntries);
@@ -1018,7 +1038,8 @@ public class RaftLogManagerTest {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     syncLogDequeSerializer.setMaxRemovedLogSize(10);
 
-    CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     RaftLogManager raftLogManager = new RaftLogManager(committedEntryManager,
         syncLogDequeSerializer, logApplier);
 
