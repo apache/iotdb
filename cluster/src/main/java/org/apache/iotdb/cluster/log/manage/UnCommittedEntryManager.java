@@ -39,7 +39,7 @@ public class UnCommittedEntryManager {
 
   public UnCommittedEntryManager(long offset) {
     this.offset = offset;
-    this.entries = new ArrayList<>();
+    this.entries = Collections.synchronizedList(new ArrayList<>());
   }
 
   /**

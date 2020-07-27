@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log.catchup;
 
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
@@ -52,8 +53,6 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
   // sending logs may take longer than normal communications
   private static final long SEND_LOGS_WAIT_MS = 5 * 60 * 1000L;
-  private static final int LOG_NUM_IN_BATCH = 1024;
-  private static final int LEFT_SIZE_IN_REQUEST = 1024;
   private static final Logger logger = LoggerFactory.getLogger(LogCatchUpTask.class);
   Node node;
   RaftMember raftMember;
@@ -185,15 +184,22 @@ public class LogCatchUpTask implements Callable<Boolean> {
       logList.clear();
       long totalLogSize = 0;
       int newStart = i;
-      for (int curNum = 0; curNum < LOG_NUM_IN_BATCH && i < logs.size(); i++, curNum++) {
+      for (int curNum = 0; curNum < ClusterConstant.LOG_NUM_IN_BATCH && i < logs.size(); i++, curNum++) {
         ByteBuffer logData = logs.get(i).serialize();
         totalLogSize += logData.array().length;
         // we should send logs who's size is smaller than the max frame size of thrift
         // left 200 byte for other fields of AppendEntriesRequest
-        if (totalLogSize > IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() - LEFT_SIZE_IN_REQUEST) {
+        if (totalLogSize >
+          IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
           break;
         }
         logList.add(logData);
+      }
+
+      if (logList.isEmpty()) {
+        logger.warn("the frame size {} of thrift is too small", IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
+        abort = true;
+        break;
       }
 
       synchronized (raftMember.getTerm()) {
