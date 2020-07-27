@@ -261,7 +261,7 @@ public class PlanExecutor implements IPlanExecutor {
         DeletePartitionPlan p = (DeletePartitionPlan) plan;
         TimePartitionFilter filter =
             (storageGroupName, partitionId) ->
-                storageGroupName.equals(((DeletePartitionPlan) plan).getStorageGroupNameNodes())
+                storageGroupName.equals(MetaUtils.getPathByNodes(p.getStorageGroupNameNodes()))
                     && p.getPartitionId().contains(partitionId);
         StorageEngine.getInstance().removePartitions(((DeletePartitionPlan) plan).getStorageGroupNameNodes(), filter);
         return true;

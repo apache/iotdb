@@ -295,7 +295,7 @@ public class MManager {
           tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
         }
 
-        CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(args[1]),
+        CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(MetaUtils.splitPathToNodes(args[1])),
             TSDataType.deserialize(Short.parseShort(args[2])),
             TSEncoding.deserialize(Short.parseShort(args[3])),
             CompressionType.deserialize(Short.parseShort(args[4])), props, tagMap, null, alias);
@@ -309,7 +309,7 @@ public class MManager {
         }
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
-        setStorageGroup(MetaUtils.getDeviceNodeNames(args[1]));
+        setStorageGroup(MetaUtils.splitPathToNodes(args[1]));
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP:
         List<String> storageGroups = new ArrayList<>(Arrays.asList(args).subList(1, args.length));

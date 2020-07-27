@@ -670,7 +670,7 @@ public class PhysicalGenerator {
         if (path.getAlias() != null) {
           column = path.getDevice() + TsFileConstant.PATH_SEPARATOR +  path.getAlias();
         } else {
-          column = path.getDevice();
+          column = path.getFullPath();
         }
         if (!columnSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);

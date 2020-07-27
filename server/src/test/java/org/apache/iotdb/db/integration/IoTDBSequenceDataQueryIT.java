@@ -28,6 +28,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -167,19 +169,19 @@ public class IoTDBSequenceDataQueryIT {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new Path(TestConstant.d0s0));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d0s0.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d0s1));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d0s1.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.INT64);
-    pathList.add(new Path(TestConstant.d0s2));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d0s2.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.FLOAT);
-    pathList.add(new Path(TestConstant.d0s3));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d0s3.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.TEXT);
-    pathList.add(new Path(TestConstant.d0s4));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d0s4.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.BOOLEAN);
-    pathList.add(new Path(TestConstant.d1s0));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d1s0.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s1));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d1s1.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.INT64);
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
@@ -205,11 +207,11 @@ public class IoTDBSequenceDataQueryIT {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new Path(TestConstant.d0s0));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d0s0.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s0));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d1s0.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s1));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d1s1.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.INT64);
 
     GlobalTimeExpression globalTimeExpression = new GlobalTimeExpression(TimeFilter.gtEq(800L));
@@ -242,22 +244,22 @@ public class IoTDBSequenceDataQueryIT {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new Path(TestConstant.d0s0));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d0s0.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d0s1));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d0s1.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.INT64);
-    pathList.add(new Path(TestConstant.d0s2));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d0s2.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.FLOAT);
-    pathList.add(new Path(TestConstant.d0s3));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d0s3.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.TEXT);
-    pathList.add(new Path(TestConstant.d0s4));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d0s4.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.BOOLEAN);
-    pathList.add(new Path(TestConstant.d1s0));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d1s0.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s1));
+    pathList.add(new Path(new ArrayList<>(Arrays.asList(TestConstant.d1s1.split(TsFileConstant.PATH_SEPARATER_NO_REGEX)))));
     dataTypes.add(TSDataType.INT64);
 
-    Path queryPath = new Path(TestConstant.d0s0);
+    Path queryPath = new Path(new ArrayList<>(Arrays.asList(TestConstant.d0s0.split(TsFileConstant.PATH_SEPARATER_NO_REGEX))));
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(queryPath,
         ValueFilter.gtEq(14));
 
