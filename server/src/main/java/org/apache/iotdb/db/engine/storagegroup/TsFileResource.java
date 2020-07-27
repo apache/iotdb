@@ -62,6 +62,8 @@ public class TsFileResource {
   private static final String CLOSING_SUFFIX = ".closing";
   protected static final int INIT_ARRAY_SIZE = 64;
 
+  public static Map<String, String> devicePool = new HashMap<>();
+
   /**
    * start times array. 
    */
@@ -282,9 +284,11 @@ public class TsFileResource {
         long time = ReadWriteIOUtils.readLong(inputStream);
         // To reduce the String number in memory, 
         // use the deviceId from memory instead of the deviceId read from disk
-        Map<String, String> devicePool = new HashMap<>();
-        path = devicePool.putIfAbsent(path, path);
-        deviceMap.put(path, i);
+        String tempPath = devicePool.putIfAbsent(path, path);
+        if (tempPath == null) {
+          tempPath = path;
+        }
+        deviceMap.put(tempPath, i);
         startTimesArray[i] = time;
       }
       size = ReadWriteIOUtils.readInt(inputStream);
