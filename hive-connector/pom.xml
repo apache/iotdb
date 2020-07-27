@@ -43,6 +43,17 @@
         <dependency>
             <groupId>org.apache.hive</groupId>
             <artifactId>hive-serde</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.orc</groupId>
+                    <artifactId>orc-core</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.orc</groupId>
+            <artifactId>orc-core</artifactId>
+            <version>1.6.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.hive</groupId>
