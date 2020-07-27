@@ -284,6 +284,9 @@ public class TsFileResource {
         long time = ReadWriteIOUtils.readLong(inputStream);
         // To reduce the String number in memory, 
         // use the deviceId from memory instead of the deviceId read from disk
+        if (devicePool == null) {
+          devicePool = new HashMap<>();
+        }
         String tempPath = devicePool.putIfAbsent(path, path);
         if (tempPath == null) {
           tempPath = path;
