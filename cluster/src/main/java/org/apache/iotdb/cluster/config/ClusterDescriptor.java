@@ -244,6 +244,23 @@ public class ClusterDescriptor {
         .getProperty("enable_auto_create_schema",
             String.valueOf(config.isEnableAutoCreateSchema()))));
 
+    config.setEnableRaftLogPersistence(
+        Boolean.parseBoolean(properties.getProperty("is_enable_raft_log_persistence",
+            String.valueOf(config.isEnableRaftLogPersistence()))));
+
+    config.setFlushRaftLogThreshold(Integer.parseInt(properties
+        .getProperty("flush_raft_log_threshold", String.valueOf(config.getFlushRaftLogThreshold())))
+    );
+
+    config.setForceRaftLogPeriodInMS(Integer.parseInt(properties
+        .getProperty("force_raft_log_period_in_ms",
+            String.valueOf(config.getForceRaftLogPeriodInMS())))
+    );
+
+    config.setRaftLogBufferSize(Integer.parseInt(properties
+        .getProperty("raft_log_buffer_size", String.valueOf(config.getRaftLogBufferSize())))
+    );
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));

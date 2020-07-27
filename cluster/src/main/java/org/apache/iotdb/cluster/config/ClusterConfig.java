@@ -99,6 +99,17 @@ public class ClusterConfig {
 
   private boolean enableRaftLogPersistence = true;
 
+
+  private int flushRaftLogThreshold=10000;
+
+  private int forceRaftLogPeriodInMS=10;
+
+  /**
+   * Size of log buffer. If raft log persistence is enabled and the size of a insert plan
+   * is smaller than this parameter, then the insert plan will be rejected by WAL.
+   */
+  private int raftLogBufferSize = 16 * 1024 * 1024;
+
   /**
    * consistency level, now three consistency levels are supported: strong, mid and weak. Strong
    * consistency means the server will first try to synchronize with the leader to get the newest
@@ -108,6 +119,8 @@ public class ClusterConfig {
    * with the leader and simply use the local data
    */
   private ConsistencyLevel consistencyLevel = ConsistencyLevel.MID_CONSISTENCY;
+
+
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
@@ -300,4 +313,29 @@ public class ClusterConfig {
   public void setMaxNumOfLogsInMem(int maxNumOfLogsInMem) {
     this.maxNumOfLogsInMem = maxNumOfLogsInMem;
   }
+
+  public int getRaftLogBufferSize() {
+    return raftLogBufferSize;
+  }
+
+  public void setRaftLogBufferSize(int raftLogBufferSize) {
+    this.raftLogBufferSize = raftLogBufferSize;
+  }
+
+  public int getFlushRaftLogThreshold() {
+    return flushRaftLogThreshold;
+  }
+
+  public void setFlushRaftLogThreshold(int flushRaftLogThreshold) {
+    this.flushRaftLogThreshold = flushRaftLogThreshold;
+  }
+
+  public int getForceRaftLogPeriodInMS() {
+    return forceRaftLogPeriodInMS;
+  }
+
+  public void setForceRaftLogPeriodInMS(int forceRaftLogPeriodInMS) {
+    this.forceRaftLogPeriodInMS = forceRaftLogPeriodInMS;
+  }
+
 }
