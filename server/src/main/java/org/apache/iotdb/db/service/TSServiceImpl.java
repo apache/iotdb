@@ -50,10 +50,12 @@ import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -1124,7 +1126,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
         plan.setDeviceId(req.getDeviceIds().get(i));
-        plan.setDeviceNodes(splitPathToNodes(req.getDeviceIds().get(i)));
+        try {
+          plan.setDeviceNodes(MetaUtils.splitPathToNodes(req.getDeviceIds().get(i)));
+        } catch (IllegalPathException e) {
+          return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
+        }
         plan.setTime(req.getTimestamps().get(i));
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1163,7 +1169,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
         plan.setDeviceId(req.getDeviceIds().get(i));
-        plan.setDeviceNodes(splitPathToNodes(req.getDeviceIds().get(i)));
+        try {
+          plan.setDeviceNodes(MetaUtils.splitPathToNodes(req.getDeviceIds().get(i)));
+        } catch (IllegalPathException e) {
+          return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
+        }
         plan.setTime(req.getTimestamps().get(i));
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1234,7 +1244,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDeviceId(req.getDeviceId());
-      plan.setDeviceNodes(splitPathToNodes(req.getDeviceId()));
+      try {
+        plan.setDeviceNodes(MetaUtils.splitPathToNodes(req.getDeviceId()));
+      } catch (IllegalPathException e) {
+        return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
+      }
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1266,7 +1280,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDeviceId(req.getDeviceId());
-      plan.setDeviceNodes(splitPathToNodes(req.getDeviceId()));
+      try {
+        plan.setDeviceNodes(MetaUtils.splitPathToNodes(req.getDeviceId()));
+      } catch (IllegalPathException e) {
+        return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
+      }
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1296,7 +1314,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     plan.setDeleteEndTime(req.getEndTime());
     List<Path> paths = new ArrayList<>();
     for (String path : req.getPaths()) {
-      paths.add(new Path(splitPathToNodes(path)));
+      try {
+        paths.add(new Path(MetaUtils.splitPathToNodes(path)));
+      } catch (IllegalPathException e) {
+        return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
+      }
     }
     plan.addPaths(paths);
 
@@ -1317,7 +1339,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceId, req.measurements);
-      insertTabletPlan.setDeviceNodes(splitPathToNodes(req.deviceId));
+      try {
+        insertTabletPlan.setDeviceNodes(MetaUtils.splitPathToNodes(req.deviceId));
+      } catch (IllegalPathException e) {
+        return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
+      }
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
           QueryDataSetUtils.readValuesFromBuffer(
@@ -1353,7 +1379,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       for (int i = 0; i < req.deviceIds.size(); i++) {
         InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceIds.get(i),
             req.measurementsList.get(i));
-        insertTabletPlan.setDeviceNodes(splitPathToNodes(req.deviceIds.get(i)));
+        try {
+          insertTabletPlan.setDeviceNodes(MetaUtils.splitPathToNodes(req.deviceIds.get(i)));
+        } catch (IllegalPathException e) {
+          return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
+        }
         insertTabletPlan.setTimes(
             QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
         insertTabletPlan.setColumns(
@@ -1387,8 +1417,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
-
-    List<String> storageGroupNodes = splitPathToNodes(storageGroup);
+    List<String> storageGroupNodes;
+    try {
+      storageGroupNodes = MetaUtils.splitPathToNodes(storageGroup);
+    } catch (IllegalPathException e) {
+      return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
+    }
     TSStatus status = checkPathValidityWithNodes(storageGroupNodes);
     if (status != null) {
       return status;
@@ -1410,7 +1444,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     List<Path> storageGroupList = new ArrayList<>();
     for (String storageGroup : storageGroups) {
-      storageGroupList.add(new Path(splitPathToNodes(storageGroup)));
+      try {
+        storageGroupList.add(new Path(MetaUtils.splitPathToNodes(storageGroup)));
+      } catch (IllegalPathException e) {
+        return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
+      }
     }
     DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(storageGroupList);
     TSStatus status = checkAuthority(plan, sessionId);
@@ -1430,7 +1468,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (auditLogger.isDebugEnabled()) {
       auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
     }
-    List<String> seriesNodes = splitPathToNodes(req.path);
+    List<String> seriesNodes;
+    try {
+      seriesNodes = MetaUtils.splitPathToNodes(req.path);
+    } catch (IllegalPathException e) {
+      return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
+    }
     TSStatus status = checkPathValidityWithNodes(seriesNodes);
     if (status != null) {
       return status;
@@ -1459,7 +1502,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     List<TSStatus> statusList = new ArrayList<>(req.paths.size());
     for (int i = 0; i < req.paths.size(); i++) {
-      List<String> seriesNodes = splitPathToNodes(req.paths.get(i));
+      List<String> seriesNodes;
+      try {
+        seriesNodes = MetaUtils.splitPathToNodes(req.paths.get(i));
+      } catch (IllegalPathException e) {
+        return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
+      }
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(seriesNodes),
           TSDataType.values()[req.dataTypes.get(i)], TSEncoding.values()[req.encodings.get(i)],
           CompressionType.values()[req.compressors.get(i)],
@@ -1512,7 +1560,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     List<Path> pathList = new ArrayList<>();
     for (String path : paths) {
-      pathList.add(new Path(splitPathToNodes(path)));
+      try {
+        pathList.add(new Path(MetaUtils.splitPathToNodes(path)));
+      } catch (IllegalPathException e) {
+        return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
+      }
     }
     DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(pathList);
     TSStatus status = checkAuthority(plan, sessionId);
@@ -1604,29 +1656,4 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return SchemaUtils.getSeriesTypesByString(paths, aggregation);
   }
 
-  private List<String> splitPathToNodes(String path) {
-    List<String> nodes = new ArrayList<>();
-    int startIndex = 0;
-    for (int i = 0; i < path.length(); i++) {
-      if (path.charAt(i) == '.') {
-        nodes.add(path.substring(startIndex, i));
-        startIndex = i + 1;
-      } else if (path.charAt(i) == '"') {
-        int endIndex = path.indexOf('"', i + 1);
-        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
-          nodes.add(path.substring(startIndex, endIndex + 1));
-          i = endIndex + 1;
-          startIndex = endIndex + 2;
-        } else {
-          return null;
-        }
-      } else if (path.charAt(i) == '\'') {
-        return null;
-      }
-    }
-    if (startIndex < path.length() - 1) {
-      nodes.add(path.substring(startIndex));
-    }
-    return nodes;
-  }
 }
