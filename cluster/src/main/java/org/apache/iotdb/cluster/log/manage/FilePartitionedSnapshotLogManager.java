@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.log.manage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -85,8 +84,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
           s -> new FileSnapshot());
       if (snapshot.getTimeseriesSchemas().isEmpty()) {
-        snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
-            Collections.emptySet()));
+        snapshot.setTimeseriesSchemas(entry.getValue());
       }
     }
   }
