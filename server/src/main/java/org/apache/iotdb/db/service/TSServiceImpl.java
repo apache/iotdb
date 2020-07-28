@@ -547,7 +547,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    */
   private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
       long statementId, PhysicalPlan plan, int fetchSize, String username) throws IOException {
-    auditLogger.info("Session {} execute Query: {}", currSessionId.get(), statement);
+    auditLogger.debug("Session {} execute Query: {}", currSessionId.get(), statement);
     long startTime = System.currentTimeMillis();
     long queryId = -1;
     try {
