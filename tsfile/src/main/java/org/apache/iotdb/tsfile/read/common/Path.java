@@ -235,7 +235,7 @@ public class Path implements Serializable, Comparable<Path> {
         return fullPath.equals(((Path) obj).getFullPath());
       } else {
         for(int i = 0; i < nodes.size(); i++) {
-          if(!nodes.get(0).equals(((Path) obj).nodes.get(0))) {
+          if(!nodes.get(i).equals(((Path) obj).nodes.get(i))) {
             return false;
           }
         }

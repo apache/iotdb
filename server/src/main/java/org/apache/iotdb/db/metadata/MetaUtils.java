@@ -128,11 +128,7 @@ public class MetaUtils {
     if (nodeNames.size() <= level || !nodeNames.get(0).equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(getPathByNodes(nodeNames));
     }
-    List<String> storageGroup = new ArrayList<>(nodeNames);
-    for(int i = storageGroup.size() - 1; storageGroup.size() - 1 > level; i--) {
-      storageGroup.remove(i);
-    }
-    return storageGroup;
+    return new ArrayList<>(nodeNames.subList(0, level+1));
   }
 
   /**
@@ -141,13 +137,7 @@ public class MetaUtils {
    */
 
   public static String getPathByNodes(List<String> nodes) {
-    StringBuilder path = new StringBuilder();
-    path.append(nodes.get(0));
-    for(int i = 1; i < nodes.size(); i++) {
-      path.append(TsFileConstant.PATH_SEPARATOR);
-      path.append(nodes.get(i));
-    }
-    return path.toString();
+    return String.join(TsFileConstant.PATH_SEPARATOR, nodes);
   }
 
 }

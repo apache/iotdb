@@ -292,11 +292,12 @@ public class TsFileResource {
         if (devicePool == null) {
           devicePool = new HashMap<>();
         }
-        String tempPath = devicePool.putIfAbsent(path, path);
-        if (tempPath == null) {
-          tempPath = path;
-        }
-        deviceMap.put(tempPath, i);
+    String tempPath = devicePool.get(path);
+    if (tempPath == null) {
+      devicePool.put(path, path);
+      tempPath = path;
+    }
+    deviceMap.put(tempPath, i);
         startTimesArray[i] = time;
       }
       size = ReadWriteIOUtils.readInt(inputStream);
