@@ -39,7 +39,7 @@ public class UnCommittedEntryManager {
 
   public UnCommittedEntryManager(long offset) {
     this.offset = offset;
-    this.entries = new ArrayList<>();
+    this.entries = Collections.synchronizedList(new ArrayList<>());
   }
 
   /**
@@ -69,8 +69,8 @@ public class UnCommittedEntryManager {
    * Return the entry's term for given index. Note that the called should ensure index >= offset.
    *
    * @param index request entry index
-   * @return -1 if index < offset, or index > last or entries is
-   * empty, or return the entry's term for given index
+   * @return -1 if index < offset, or index > last or entries is empty, or return the entry's term
+   * for given index
    * @throws EntryUnavailableException
    */
   public long maybeTerm(long index) {
