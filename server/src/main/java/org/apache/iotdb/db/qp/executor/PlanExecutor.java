@@ -424,8 +424,8 @@ public class PlanExecutor implements IPlanExecutor {
     return IoTDB.metaManager.getNodesCountInGivenLevel(path, level);
   }
 
-  protected List<List<String>> getPathsName(List<String> nodes) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesNodes(nodes);
+  protected List<Path> getPathsName(List<String> nodes) throws MetadataException {
+    return IoTDB.metaManager.getAllTimeseriesPath(nodes);
   }
 
   protected List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
@@ -653,15 +653,15 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void delete(DeletePlan deletePlan) throws QueryProcessException {
     try {
-      Set<List<String>> existingPaths = new HashSet<>();
+      Set<Path> existingPaths = new HashSet<>();
       for (Path p : deletePlan.getPaths()) {
         existingPaths.addAll(getPathsName(p.getNodes()));
       }
       if (existingPaths.isEmpty()) {
         throw new QueryProcessException("TimeSeries does not exist and its data cannot be deleted");
       }
-      for (List<String> path : existingPaths) {
-        delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
+      for (Path path : existingPaths) {
+        delete(path.getNodes(), deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
