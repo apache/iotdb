@@ -79,10 +79,6 @@ public class StorageEngine implements IService {
   private static final ExecutorService recoveryThreadPool = IoTDBThreadPoolFactory
       .newFixedThreadPool(Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
 
-  public ConcurrentHashMap<String, StorageGroupProcessor> getProcessorMap() {
-    return processorMap;
-  }
-
   public boolean isAllSgReady() {
     return isAllSgReady.get();
   }

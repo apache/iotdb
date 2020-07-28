@@ -1088,7 +1088,7 @@ public class TsFileProcessor {
     closeTsFileCallback.call(this);
     tsFileProcessorInfo.resetUnsealedResourceMemCost();
     tsFileProcessorInfo.resetChunkMetadataMemCost();
-    SystemInfo.getInstance().resetTsFileProcessorStatus(this, 0L);
+    SystemInfo.getInstance().resetTsFileProcessorStatus(this);
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
       logger.info("Storage group {} close the file {}, TsFile size is {}, "

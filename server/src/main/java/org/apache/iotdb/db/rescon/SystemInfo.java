@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.rescon;
 
-import java.util.Iterator;
+import java.util.TreeMap;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -35,12 +33,17 @@ public class SystemInfo {
   long totalTspInfoMemCost;
   long arrayPoolMemCost;
 
+  TreeMap<TsFileProcessor, Long> reportedTspMemCostMap = new TreeMap<>(
+      (o1, o2) -> (int) (o2.getTsFileProcessorInfo().getTsFileProcessorMemCost() - o1
+          .getTsFileProcessorInfo()
+          .getTsFileProcessorMemCost()));
+
   // temporary value
   private final double rejectProportion = 0.9;
   private final int flushQueueThreshold = 6;
 
   /**
-   * Inform system applying a new out of buffered array. Attention: It should be invoked before
+   * Report applying a new out of buffered array to system. Attention: It should be invoked before
    * applying new OOB array actually.
    *
    * @param dataType data type of array
@@ -61,19 +64,25 @@ public class SystemInfo {
   }
 
   /**
-   * Inform system increasing mem cost of tsp.
+   * Report current mem cost of tsp to system.
    *
    * @param processor processor
    * @return Return true if it's agreed when memory is enough.
    */
   public synchronized boolean reportTsFileProcessorStatus(TsFileProcessor processor) {
-    long accumulatedCost = processor.getTsFileProcessorInfo().getAccumulatedMemCost();
-    // set the accumulated increasing mem cost to 0
-    processor.getTsFileProcessorInfo().clearAccumulatedMemCost();
+    long variation;
+    Long originalValue = reportedTspMemCostMap.get(processor);
+    reportedTspMemCostMap
+        .put(processor, processor.getTsFileProcessorInfo().getTsFileProcessorMemCost());
+    if (originalValue == null) {
+      variation = processor.getTsFileProcessorInfo().getTsFileProcessorMemCost();
+    } else {
+      variation = processor.getTsFileProcessorInfo().getTsFileProcessorMemCost() - originalValue;
+    }
 
-    if (this.totalTspInfoMemCost + accumulatedCost
+    if (this.totalTspInfoMemCost + variation
         < config.getAllocateMemoryForWrite() * rejectProportion) {
-      this.totalTspInfoMemCost += accumulatedCost;
+      this.totalTspInfoMemCost += variation;
       return true;
     } else {
       return false;
@@ -82,7 +91,7 @@ public class SystemInfo {
   }
 
   /**
-   * Update the current mem cost of buffered array pool
+   * Update the current mem cost of buffered array pool.
    *
    * @param increasingArraySize increasing size of buffered array
    */
@@ -91,7 +100,7 @@ public class SystemInfo {
   }
 
   /**
-   * Inform system releasing a out of buffered array. Attention: It should be invoked after
+   * Report releasing an out of buffered array to system. Attention: It should be invoked after
    * releasing.
    *
    * @param dataType data type of array
@@ -102,13 +111,15 @@ public class SystemInfo {
   }
 
   /**
-   * 通知system将重置processor的内存占用量 （关闭文件后调用）。 设置自身reject为false
+   * Report resetting the mem cost of processor to system. It will be invoked after closing file.
    *
-   * @param processor processor
-   * @param original  original value
+   * @param processor closing processor
    */
-  public void resetTsFileProcessorStatus(TsFileProcessor processor, long original) {
-    this.totalTspInfoMemCost -= original;
+  public void resetTsFileProcessorStatus(TsFileProcessor processor) {
+    if (reportedTspMemCostMap.containsKey(processor)) {
+      this.totalTspInfoMemCost -= processor.getTsFileProcessorInfo().getTsFileProcessorMemCost();
+      reportedTspMemCostMap.remove(processor);
+    }
   }
 
   /**
@@ -120,37 +131,8 @@ public class SystemInfo {
       return;
     }
 
-    Iterator<StorageGroupProcessor> allSGProcessors = StorageEngine.getInstance()
-        .getProcessorMap().values().iterator();
-    long maxMemCost = Long.MIN_VALUE;
-    TsFileProcessor flushedProcessor = null;
-    while (allSGProcessors.hasNext()) {
-      StorageGroupProcessor storageGroupProcessor = allSGProcessors.next();
-
-      // calculate the max mem cost of sequence tsfile
-      Iterator<TsFileProcessor> sequenceTsFileProcessors = storageGroupProcessor
-          .getWorkSequenceTsFileProcessors().iterator();
-
-      while (sequenceTsFileProcessors.hasNext()) {
-        TsFileProcessor sequenceTsFileProcessor = sequenceTsFileProcessors.next();
-        if (sequenceTsFileProcessor.getTsFileProcessorInfo().getTsFileProcessorMemCost() > maxMemCost) {
-          maxMemCost = sequenceTsFileProcessor.getTsFileProcessorInfo().getTsFileProcessorMemCost();
-          flushedProcessor = sequenceTsFileProcessor;
-        }
-      }
-      // calculate the max mem cost of unSequence tsfiles
-      Iterator<TsFileProcessor> unSequenceTsFileProcessors = storageGroupProcessor
-          .getWorkUnsequenceTsFileProcessors().iterator();
-
-      while (unSequenceTsFileProcessors.hasNext()) {
-        TsFileProcessor unSequenceTsFileProcessor = sequenceTsFileProcessors.next();
-        if (unSequenceTsFileProcessor.getTsFileProcessorInfo().getTsFileProcessorMemCost()
-            > maxMemCost) {
-          maxMemCost = unSequenceTsFileProcessor.getTsFileProcessorInfo().getTsFileProcessorMemCost();
-          flushedProcessor = unSequenceTsFileProcessor;
-        }
-      }
-    }
+    // get the first processor which has the max mem cost
+    TsFileProcessor flushedProcessor = reportedTspMemCostMap.firstKey();
 
     if (flushedProcessor != null) {
       flushedProcessor.asyncFlush();
