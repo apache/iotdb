@@ -62,7 +62,7 @@ public class TsFileResource {
   private static final String CLOSING_SUFFIX = ".closing";
   protected static final int INIT_ARRAY_SIZE = 64;
 
-  public static Map<String, String> devicePool;
+  protected static Map<String, String> devicePool;
 
   /**
    * start times array.
