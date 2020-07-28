@@ -151,7 +151,7 @@ public class TsFileProcessor {
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = new TsFileResource(tsfile, this);
-    this.tsFileProcessorInfo.addUnsealedResourceMemCost(RamUsageEstimator.sizeOf(tsFileResource));
+    this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.vmTsFileResources = new CopyOnWriteArrayList<>();
@@ -182,14 +182,13 @@ public class TsFileProcessor {
       RestorableTsFileIOWriter writer, List<List<RestorableTsFileIOWriter>> vmWriters) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
-    this.tsFileProcessorInfo.addUnsealedResourceMemCost(RamUsageEstimator.sizeOf(tsFileResource));
+    this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
     this.vmTsFileResources = new CopyOnWriteArrayList<>();
     for (List<TsFileResource> subTsFileResourceList : vmTsFileResources) {
       this.vmTsFileResources.add(new CopyOnWriteArrayList<>(subTsFileResourceList));
     }
     this.versionController = versionController;
     this.writer = writer;
-    // TODO: this.tsFileProcessorInfo.addChunkMetadataCost(ChunkMetadataCost); 
     this.vmWriters = new CopyOnWriteArrayList<>();
     for (List<RestorableTsFileIOWriter> subWriterList : vmWriters) {
       this.vmWriters.add(new CopyOnWriteArrayList<>(subWriterList));
@@ -344,6 +343,7 @@ public class TsFileProcessor {
             throw new WriteProcessException("This insertion is rejected by system.");
           }
         }
+        workMemTable.addBytesMemSize(bytesCost);
         tsFileProcessorInfo.addBytesMemCost(bytesCost);
         tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
         tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
@@ -375,6 +375,7 @@ public class TsFileProcessor {
       long chunkMetadataCost) {
     if (!tsFileResource.getDeviceToIndexMap().containsKey(insertPlan.getDeviceId())) {
       unsealedResourceCost += RamUsageEstimator.sizeOf(insertPlan.getDeviceId()) + Integer.BYTES;
+      // if needs to extend the startTimes and endTimes arrays
       if (tsFileResource.getDeviceToIndexMap().size() >= tsFileResource.getStartTimes().length) {
         unsealedResourceCost += tsFileResource.getDeviceToIndexMap().size() * Long.BYTES;
       }
@@ -716,6 +717,10 @@ public class TsFileProcessor {
             memTable.isSignalMemTable(), flushingMemTables.size());
       }
       memTable.release();
+      // For text type data, reset the mem cost in tsFileProcessorInfo
+      tsFileProcessorInfo.resetBytesMemCost(memTable.getBytesMemSize());
+      // report to System
+      SystemInfo.getInstance().reportTsFileProcessorStatus(this);
       MemTablePool.getInstance().putBack(memTable, storageGroupName);
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} flush finished, remove a memtable from flushing list, "
@@ -1081,7 +1086,9 @@ public class TsFileProcessor {
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
     closeTsFileCallback.call(this);
-
+    tsFileProcessorInfo.resetUnsealedResourceMemCost();
+    tsFileProcessorInfo.resetChunkMetadataMemCost();
+    SystemInfo.getInstance().resetTsFileProcessorStatus(this, 0L);
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
       logger.info("Storage group {} close the file {}, TsFile size is {}, "
