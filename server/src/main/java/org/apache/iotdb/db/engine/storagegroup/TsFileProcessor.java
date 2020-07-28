@@ -151,7 +151,7 @@ public class TsFileProcessor {
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = new TsFileResource(tsfile, this);
-    this.tsFileProcessorInfo.addUnsealedResourceMemCost(RamUsageEstimator.sizeOf(tsFileResource));
+    this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.vmTsFileResources = new CopyOnWriteArrayList<>();
@@ -182,14 +182,13 @@ public class TsFileProcessor {
       RestorableTsFileIOWriter writer, List<List<RestorableTsFileIOWriter>> vmWriters) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
-    this.tsFileProcessorInfo.addUnsealedResourceMemCost(RamUsageEstimator.sizeOf(tsFileResource));
+    this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
     this.vmTsFileResources = new CopyOnWriteArrayList<>();
     for (List<TsFileResource> subTsFileResourceList : vmTsFileResources) {
       this.vmTsFileResources.add(new CopyOnWriteArrayList<>(subTsFileResourceList));
     }
     this.versionController = versionController;
     this.writer = writer;
-    // TODO: this.tsFileProcessorInfo.addChunkMetadataCost(ChunkMetadataCost); 
     this.vmWriters = new CopyOnWriteArrayList<>();
     for (List<RestorableTsFileIOWriter> subWriterList : vmWriters) {
       this.vmWriters.add(new CopyOnWriteArrayList<>(subWriterList));
@@ -376,6 +375,7 @@ public class TsFileProcessor {
       long chunkMetadataCost) {
     if (!tsFileResource.getDeviceToIndexMap().containsKey(insertPlan.getDeviceId())) {
       unsealedResourceCost += RamUsageEstimator.sizeOf(insertPlan.getDeviceId()) + Integer.BYTES;
+      // if needs to extend the startTimes and endTimes arrays
       if (tsFileResource.getDeviceToIndexMap().size() >= tsFileResource.getStartTimes().length) {
         unsealedResourceCost += tsFileResource.getDeviceToIndexMap().size() * Long.BYTES;
       }
