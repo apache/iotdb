@@ -60,6 +60,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long totalPointsNumThreshold = 0;
 
+  private long bytesMemSize = 0;
+
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
   }
@@ -175,6 +177,16 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
     return !memSeries.containsKey(measurement);
+  }
+
+  @Override
+  public void addBytesMemSize(long size) {
+    bytesMemSize += size;
+  }
+
+  @Override
+  public long getBytesMemSize() {
+    return bytesMemSize;
   }
 
   public int getSeriesNumber() {

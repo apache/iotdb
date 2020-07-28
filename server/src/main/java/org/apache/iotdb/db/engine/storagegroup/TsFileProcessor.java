@@ -344,6 +344,7 @@ public class TsFileProcessor {
             throw new WriteProcessException("This insertion is rejected by system.");
           }
         }
+        workMemTable.addBytesMemSize(bytesCost);
         tsFileProcessorInfo.addBytesMemCost(bytesCost);
         tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
         tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
@@ -716,6 +717,10 @@ public class TsFileProcessor {
             memTable.isSignalMemTable(), flushingMemTables.size());
       }
       memTable.release();
+      // For text type data, reset the mem cost in tsFileProcessorInfo
+      tsFileProcessorInfo.resetBytesMemCost(memTable.getBytesMemSize());
+      // report to System
+      SystemInfo.getInstance().reportTsFileProcessorStatus(this);
       MemTablePool.getInstance().putBack(memTable, storageGroupName);
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} flush finished, remove a memtable from flushing list, "
@@ -1081,7 +1086,9 @@ public class TsFileProcessor {
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
     closeTsFileCallback.call(this);
-
+    tsFileProcessorInfo.resetUnsealedResourceMemCost();
+    tsFileProcessorInfo.resetChunkMetadataMemCost();
+    SystemInfo.getInstance().resetTsFileProcessorStatus(this, 0L);
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
       logger.info("Storage group {} close the file {}, TsFile size is {}, "

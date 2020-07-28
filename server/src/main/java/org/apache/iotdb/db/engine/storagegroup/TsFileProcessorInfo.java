@@ -51,15 +51,15 @@ public class TsFileProcessorInfo {
     bytesMemCost += cost;
   }
 
-  public void removeUnsealedResourceMemCost(long cost) {
-    unsealedResourceMemCost -= cost;
+  public void resetUnsealedResourceMemCost() {
+    unsealedResourceMemCost = 0;
   }
 
-  public void removeChunkMetadataMemCost(long cost) {
-    chunkMetadataMemCost -= cost;
+  public void resetChunkMetadataMemCost() {
+    chunkMetadataMemCost = 0;
   }
 
-  public void removeBytesMemCost(long cost) {
+  public void resetBytesMemCost(long cost) {
     bytesMemCost -= cost;
   }
 
