@@ -100,7 +100,8 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   @Override
   public void checkStatus(StartUpStatus startUpStatus,
       AsyncMethodCallback<CheckStatusResponse> resultHandler) {
-    CheckStatusResponse response = ClusterUtils.checkStatus(startUpStatus, metaGroupMember.getNewStartUpStatus());
+    CheckStatusResponse response = ClusterUtils
+        .checkStatus(startUpStatus, metaGroupMember.getNewStartUpStatus());
     resultHandler.onComplete(response);
   }
 
@@ -154,8 +155,10 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
       return;
     }
 
-    if (metaGroupMember.getCharacter() == NodeCharacter.FOLLOWER && metaGroupMember.getLeader() != null) {
-      logger.info("Forward the node removal request of {} to leader {}", node, metaGroupMember.getLeader());
+    if (metaGroupMember.getCharacter() == NodeCharacter.FOLLOWER
+        && metaGroupMember.getLeader() != null) {
+      logger.info("Forward the node removal request of {} to leader {}", node,
+          metaGroupMember.getLeader());
       if (forwardRemoveNode(node, resultHandler)) {
         return;
       }

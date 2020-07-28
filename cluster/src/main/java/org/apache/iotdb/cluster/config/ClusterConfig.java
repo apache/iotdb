@@ -45,6 +45,9 @@ public class ClusterConfig {
   private int replicationNum = 2;
 
   @ClusterConsistent
+  private String clusterName = "default";
+
+  @ClusterConsistent
   private boolean useAsyncServer = true;
 
   private boolean useAsyncApplier = false;
@@ -65,7 +68,12 @@ public class ClusterConfig {
   /**
    * max number of committed logs to be saved
    */
-  private int maxNumberOfLogs = 100;
+  private int minNumOfLogsInMem = 100;
+
+  /**
+   * max number of committed logs in memory
+   */
+  private int maxNumOfLogsInMem = 1000;
 
   /**
    * deletion check period of the submitted log
@@ -181,6 +189,14 @@ public class ClusterConfig {
     this.replicationNum = replicationNum;
   }
 
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
   public int getInternalDataPort() {
     return internalDataPort;
   }
@@ -221,12 +237,12 @@ public class ClusterConfig {
     this.writeOperationTimeoutMS = writeOperationTimeoutMS;
   }
 
-  public int getMaxNumberOfLogs() {
-    return maxNumberOfLogs;
+  public int getMinNumOfLogsInMem() {
+    return minNumOfLogsInMem;
   }
 
-  public void setMaxNumberOfLogs(int maxNumberOfLogs) {
-    this.maxNumberOfLogs = maxNumberOfLogs;
+  public void setMinNumOfLogsInMem(int minNumOfLogsInMem) {
+    this.minNumOfLogsInMem = minNumOfLogsInMem;
   }
 
   public int getLogDeleteCheckIntervalSecond() {
@@ -275,5 +291,13 @@ public class ClusterConfig {
 
   public void setUseAsyncApplier(boolean useAsyncApplier) {
     this.useAsyncApplier = useAsyncApplier;
+  }
+
+  public int getMaxNumOfLogsInMem() {
+    return maxNumOfLogsInMem;
+  }
+
+  public void setMaxNumOfLogsInMem(int maxNumOfLogsInMem) {
+    this.maxNumOfLogsInMem = maxNumOfLogsInMem;
   }
 }

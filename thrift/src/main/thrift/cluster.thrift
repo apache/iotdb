@@ -121,6 +121,7 @@ struct StartUpStatus {
   2: required int hashSalt
   3: required int replicationNumber
   4: required list<Node> seedNodeList
+  5: required string clusterName
 }
 
 // follower -> leader
@@ -129,6 +130,7 @@ struct CheckStatusResponse {
   2: required bool hashSaltEquals
   3: required bool replicationNumEquals
   4: required bool seedNodeEquals
+  5: required bool clusterNameEquals
 }
 
 struct SendSnapshotRequest {

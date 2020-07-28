@@ -1251,7 +1251,8 @@ public abstract class RaftMember {
    * @param log
    * @return true if the log is accepted by the quorum of the group, false otherwise
    */
-  protected boolean appendLogInGroup(Log log) throws LogExecutionException {
+  protected boolean appendLogInGroup(Log log)
+      throws LogExecutionException {
     int retryTime = 0;
     while (true) {
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
