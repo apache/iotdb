@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
@@ -836,7 +835,7 @@ public class MTree implements Serializable {
    *
    * @return storage group in the given path
    */
-  String getStorageGroupName(List<String> nodes) throws StorageGroupNotSetException { ;
+  String getStorageGroupName(List<String> nodes) throws StorageGroupNotSetException {
     MNode cur = root;
     for (int i = 1; i < nodes.size(); i++) {
       cur = cur.getChild(nodes.get(i));
@@ -856,7 +855,7 @@ public class MTree implements Serializable {
    *
    * @return storage group in the given nodes
    */
-  List<String> getStorageGroupNodes(List<String> nodes) throws StorageGroupNotSetException { ;
+  List<String> getStorageGroupNodes(List<String> nodes) throws StorageGroupNotSetException {
     MNode cur = root;
     for (int i = 1; i < nodes.size(); i++) {
       cur = cur.getChild(nodes.get(i));
@@ -1290,10 +1289,8 @@ public class MTree implements Serializable {
           continue;
         }
         findPath(child, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast, queryContext);
-        if (hasLimit) {
-          if (count.get().intValue() == limit.get().intValue()) {
-            return;
-          }
+        if (hasLimit && count.get().intValue() == limit.get().intValue()) {
+          return;
         }
       }
     }
@@ -1339,10 +1336,8 @@ public class MTree implements Serializable {
           continue;
         }
         findPathNameNodes(child, nodes, idx + 1, timeseriesSchemaList, hasLimit);
-        if (hasLimit) {
-          if (count.get().intValue() == limit.get().intValue()) {
-            return;
-          }
+        if (hasLimit && count.get().intValue() == limit.get().intValue()) {
+          return;
         }
       }
     }
@@ -1398,10 +1393,8 @@ public class MTree implements Serializable {
           continue;
         }
         findPathNameNodesAndSchema(child, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast, queryContext);
-        if (hasLimit) {
-          if (count.get().intValue() == limit.get().intValue()) {
-            return;
-          }
+        if (hasLimit && count.get().intValue() == limit.get().intValue()) {
+          return;
         }
       }
     }
