@@ -250,8 +250,8 @@ public class TsFileProcessor {
         long delta = bytesCost + unsealedResourceCost + chunkMetadataCost;
 
         if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(delta)) {
-          boolean reject = SystemInfo.getInstance().reportTsFileProcessorStatus(this);
-          if (reject) {
+          boolean agreed = SystemInfo.getInstance().reportTsFileProcessorStatus(this);
+          if (!agreed) {
             SystemInfo.getInstance().flush();
             throw new WriteProcessException("This insertion is rejected by system.");
           }
@@ -338,8 +338,8 @@ public class TsFileProcessor {
         checkMemCost(insertTabletPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
         long delta = bytesCost + unsealedResourceCost + chunkMetadataCost;
         if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(delta)) {
-          boolean reject = SystemInfo.getInstance().reportTsFileProcessorStatus(this);
-          if (reject) {
+          boolean agreed = SystemInfo.getInstance().reportTsFileProcessorStatus(this);
+          if (!agreed) {
             SystemInfo.getInstance().flush();
             throw new WriteProcessException("This insertion is rejected by system.");
           }

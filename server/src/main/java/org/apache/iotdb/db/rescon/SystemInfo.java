@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.rescon;
 
+import java.util.Iterator;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.flush.FlushManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -31,86 +35,126 @@ public class SystemInfo {
   long totalTspInfoMemCost;
   long arrayPoolMemCost;
 
-  boolean reject = false;
   // temporary value
   private final double rejectProportion = 0.9;
-  private final double flushProportion = 0.6;
+  private final int flushQueueThreshold = 6;
 
   /**
-   * Inform system applying a new out of buffered array.
-   * Attention: It should be invoked before applying new OOB array actually.
+   * Inform system applying a new out of buffered array. Attention: It should be invoked before
+   * applying new OOB array actually.
    *
    * @param dataType data type of array
-   * @param size size of array
-   * @return 如果同意，则返回true；否则返回false。
+   * @param size     size of array
+   * @return Return true if it's agreed when memory is enough.
    */
   public synchronized boolean applyNewOOBArray(TSDataType dataType, int size) {
-    if (!reject) {
-
-    }
     // if current memory is enough
     if (arrayPoolMemCost + totalTspInfoMemCost + dataType.getDataTypeSize() * size
         < config.getAllocateMemoryForWrite() * rejectProportion) {
       arrayPoolMemCost += dataType.getDataTypeSize() * size;
-      return reject;
+      return true;
     } else {
-      this.reject = true;
+      // invoke flush()
       flush();
-      return reject;
+      return false;
     }
   }
 
   /**
-   * 通知system自身tsp内存将发生变化。 当内存够用时，返回同意，否则不同意。 若不同意，则设置自身reject为false，触发flush。
+   * Inform system increasing mem cost of tsp.
    *
    * @param processor processor
+   * @return Return true if it's agreed when memory is enough.
    */
   public synchronized boolean reportTsFileProcessorStatus(TsFileProcessor processor) {
     long accumulatedCost = processor.getTsFileProcessorInfo().getAccumulatedMemCost();
+    // set the accumulated increasing mem cost to 0
     processor.getTsFileProcessorInfo().clearAccumulatedMemCost();
 
     if (this.totalTspInfoMemCost + accumulatedCost
         < config.getAllocateMemoryForWrite() * rejectProportion) {
       this.totalTspInfoMemCost += accumulatedCost;
-      return false;
-    } else {
       return true;
+    } else {
+      return false;
     }
 
   }
 
   /**
-   * @param IncreasingSize increasing size of buffered array
+   * Update the current mem cost of buffered array pool
+   *
+   * @param increasingArraySize increasing size of buffered array
    */
-  public void reportIncreasingArraySize(int IncreasingSize) {
-    this.arrayPoolMemCost += IncreasingSize;
+  public void reportIncreasingArraySize(int increasingArraySize) {
+    this.arrayPoolMemCost += increasingArraySize;
   }
 
   /**
-   * Inform system releasing a out of buffered array.
-   * Attention: It should be invoked after releasing.
+   * Inform system releasing a out of buffered array. Attention: It should be invoked after
+   * releasing.
    *
    * @param dataType data type of array
-   * @param size size of array
+   * @param size     size of array
    */
   public void reportReleaseOOBArray(TSDataType dataType, int size) {
-    this.arrayPoolMemCost -=  dataType.getDataTypeSize() * size;
+    this.arrayPoolMemCost -= dataType.getDataTypeSize() * size;
   }
 
   /**
    * 通知system将重置processor的内存占用量 （关闭文件后调用）。 设置自身reject为false
    *
    * @param processor processor
-   * @param original  原有值
+   * @param original  original value
    */
   public void resetTsFileProcessorStatus(TsFileProcessor processor, long original) {
-
+    this.totalTspInfoMemCost -= original;
   }
 
   /**
-   * 触发刷写。 若发现队列队长大于k，则不触发，否则触发。
+   * Flush the tsfileProcessor with the max mem cost. If the queue size of flushing > threshold,
+   * it's identified as flushing is in progress.
    */
   public void flush() {
+    if (FlushManager.getInstance().getTsFileProcessorQueueSize() > flushQueueThreshold) {
+      return;
+    }
+
+    Iterator<StorageGroupProcessor> allSGProcessors = StorageEngine.getInstance()
+        .getProcessorMap().values().iterator();
+    long maxMemCost = Long.MIN_VALUE;
+    TsFileProcessor flushedProcessor = null;
+    while (allSGProcessors.hasNext()) {
+      StorageGroupProcessor storageGroupProcessor = allSGProcessors.next();
+
+      // calculate the max mem cost of sequence tsfile
+      Iterator<TsFileProcessor> sequenceTsFileProcessors = storageGroupProcessor
+          .getWorkSequenceTsFileProcessors().iterator();
+
+      while (sequenceTsFileProcessors.hasNext()) {
+        TsFileProcessor sequenceTsFileProcessor = sequenceTsFileProcessors.next();
+        if (sequenceTsFileProcessor.getTsFileProcessorInfo().getTsFileProcessorMemCost() > maxMemCost) {
+          maxMemCost = sequenceTsFileProcessor.getTsFileProcessorInfo().getTsFileProcessorMemCost();
+          flushedProcessor = sequenceTsFileProcessor;
+        }
+      }
+      // calculate the max mem cost of unSequence tsfiles
+      Iterator<TsFileProcessor> unSequenceTsFileProcessors = storageGroupProcessor
+          .getWorkUnsequenceTsFileProcessors().iterator();
+
+      while (unSequenceTsFileProcessors.hasNext()) {
+        TsFileProcessor unSequenceTsFileProcessor = sequenceTsFileProcessors.next();
+        if (unSequenceTsFileProcessor.getTsFileProcessorInfo().getTsFileProcessorMemCost()
+            > maxMemCost) {
+          maxMemCost = unSequenceTsFileProcessor.getTsFileProcessorInfo().getTsFileProcessorMemCost();
+          flushedProcessor = unSequenceTsFileProcessor;
+        }
+      }
+    }
+
+    if (flushedProcessor != null) {
+      flushedProcessor.asyncFlush();
+    }
 
   }
 
