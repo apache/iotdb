@@ -58,7 +58,6 @@
             <artifactId>orc-core</artifactId>
             <version>1.6.0</version>
         </dependency>
-        </dependency>
         <dependency>
             <groupId>org.apache.hive</groupId>
             <artifactId>hive-exec</artifactId>
