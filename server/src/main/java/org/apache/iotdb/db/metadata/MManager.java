@@ -1414,60 +1414,6 @@ public class MManager {
     }
   }
 
-  /**
-   * get device node, if the storage group is not set, create it when autoCreateSchema is true <p>
-   * (we develop this method as we need to get the node's lock after we get the lock.writeLock())
-   *
-   * <p>!!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method.
-   *
-   * @param path path
-   */
-  public MNode getDeviceNodeWithAutoCreateAndReadLock(
-      String path, boolean autoCreateSchema, int sgLevel) throws MetadataException {
-    lock.readLock().lock();
-    MNode node = null;
-    try {
-      node = mNodeCache.get(path);
-      if (node == null) {
-        node = mtree.getNodeByPathWithStorageGroupCheck(path);
-        if (path == null) {
-          mNodeCache.put(node.getFullPath(), node);
-        } else {
-          mNodeCache.put(path, node);
-        }
-      }
-      return node;
-    } catch (Exception e) {
-      if (!autoCreateSchema) {
-        throw new PathNotExistException(path);
-      }
-      if (e.getCause() instanceof StorageGroupNotSetException) {
-        String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
-        setStorageGroup(storageGroupName);
-        node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
-        return node;
-      }
-      if (e.getCause() instanceof StorageGroupAlreadySetException) {
-        node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
-        return node;
-      }
-      return node;
-    } finally {
-      if (node != null) {
-        node.readLock();
-      }
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * !!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method.
-   */
-  public MNode getDeviceNodeWithAutoCreateAndReadLock(String path) throws MetadataException {
-    return getDeviceNodeWithAutoCreateAndReadLock(
-        path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
-  }
-
   public MNode getDeviceNodeWithAutoCreateAndReadLock(String path, List<String> nodes) throws MetadataException {
     return getDeviceNodeWithAutoCreateAndReadLock(
         path, nodes, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
@@ -1553,25 +1499,6 @@ public class MManager {
     } finally {
       lock.writeLock().unlock();
     }
-  }
-
-  /**
-   * get all storageGroups ttl
-   *
-   * @return key-> storageGroupName, value->ttl
-   */
-  public Map<String, Long> getStorageGroupsTTL() {
-    Map<String, Long> storageGroupsTTL = new HashMap<>();
-    try {
-      List<String> storageGroups = this.getAllStorageGroupNames();
-      for (String storageGroup : storageGroups) {
-        long ttl = getStorageGroupNode(storageGroup).getDataTTL();
-        storageGroupsTTL.put(storageGroup, ttl);
-      }
-    } catch (MetadataException e) {
-      logger.error("get storage groups ttl failed.", e);
-    }
-    return storageGroupsTTL;
   }
 
   /**
@@ -2032,18 +1959,6 @@ public class MManager {
   /**
    * Check whether the given path contains a storage group
    */
-  boolean checkStorageGroupByPath(String path) {
-    lock.readLock().lock();
-    try {
-      return mtree.checkStorageGroupByPath(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Check whether the given path contains a storage group
-   */
   boolean checkStorageGroupByPath(List<String> nodes) {
     lock.readLock().lock();
     try {
@@ -2053,26 +1968,9 @@ public class MManager {
     }
   }
 
-  /**
-   * Get all storage groups under the given path
-   *
-   * @return List of String represented all storage group names
-   * @apiNote :for cluster
-   */
-  List<String> getStorageGroupByPath(String path) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.getStorageGroupByPath(path);
-    } catch (MetadataException e) {
-      throw new MetadataException(e);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
 
   /**
-   * Get all storage groups under the given path
+   * Get all storage groups under the nodes of given path
    *
    * @return List of String represented all storage group names
    * @apiNote :for cluster
@@ -2085,21 +1983,6 @@ public class MManager {
       throw new MetadataException(e);
     } finally {
       lock.readLock().unlock();
-    }
-  }
-
-  public void collectTimeseriesSchema(MNode startingNode, Collection<TimeseriesSchema> timeseriesSchemas) {
-    Deque<MNode> nodeDeque = new ArrayDeque<>();
-    nodeDeque.addLast(startingNode);
-    while (!nodeDeque.isEmpty()) {
-      MNode node = nodeDeque.removeFirst();
-      if (node instanceof MeasurementMNode) {
-        MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
-        timeseriesSchemas.add(new TimeseriesSchema(node.getFullPath(), nodeSchema.getType(),
-            nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
-      } else if (!node.getChildren().isEmpty()) {
-        nodeDeque.addAll(node.getChildren().values());
-      }
     }
   }
 

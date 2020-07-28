@@ -103,62 +103,6 @@ public class MTree implements Serializable {
    * Create a timeseries with a full path from root to leaf node Before creating a timeseries, the
    * storage group should be set first, throw exception otherwise
    *
-   * @param path       timeseries path
-   * @param dataType   data type
-   * @param encoding   encoding
-   * @param compressor compressor
-   * @param props      props
-   * @param alias      alias of measurement
-   */
-  MeasurementMNode createTimeseries(
-      String path,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressor,
-      Map<String, String> props,
-      String alias)
-      throws MetadataException {
-    String[] nodeNames = MetaUtils.getNodeNames(path);
-    if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
-      throw new IllegalPathException(path);
-    }
-    MNode cur = root;
-    boolean hasSetStorageGroup = false;
-    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
-    for (int i = 1; i < nodeNames.length - 1; i++) {
-      String nodeName = nodeNames[i];
-      if (cur instanceof StorageGroupMNode) {
-        hasSetStorageGroup = true;
-      }
-      if (!cur.hasChild(nodeName)) {
-        if (!hasSetStorageGroup) {
-          throw new StorageGroupNotSetException("Storage group should be created first");
-        }
-        cur.addChild(nodeName, new MNode(cur, nodeName));
-      }
-      cur = cur.getChild(nodeName);
-    }
-    String leafName = nodeNames[nodeNames.length - 1];
-    if (cur.hasChild(leafName)) {
-      throw new PathAlreadyExistException(path);
-    }
-    if (alias != null && cur.hasChild(alias)) {
-      throw new AliasAlreadyExistException(path, alias);
-    }
-    MeasurementMNode leaf = new MeasurementMNode(cur, leafName, alias, dataType, encoding,
-        compressor, props);
-    cur.addChild(leafName, leaf);
-    // link alias to LeafMNode
-    if (alias != null) {
-      cur.addAlias(alias, leaf);
-    }
-    return leaf;
-  }
-
-  /**
-   * Create a timeseries with a full path from root to leaf node Before creating a timeseries, the
-   * storage group should be set first, throw exception otherwise
-   *
    * @param nodeNames       timeseries path
    * @param dataType   data type
    * @param encoding   encoding
@@ -581,38 +525,6 @@ public class MTree implements Serializable {
   MeasurementSchema getSchema(List<String> nodes) throws MetadataException {
     MeasurementMNode node = (MeasurementMNode) getNodeByNodes(nodes);
     return node.getSchema();
-  }
-
-  /**
-   * Get node by path with storage group check If storage group is not set,
-   * StorageGroupNotSetException will be thrown
-   */
-  MNode getNodeByPathWithStorageGroupCheck(String path) throws MetadataException {
-    boolean storageGroupChecked = false;
-    String[] nodes = MetaUtils.getNodeNames(path);
-    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
-      throw new IllegalPathException(path);
-    }
-
-    MNode cur = root;
-    for (int i = 1; i < nodes.length; i++) {
-      if (!cur.hasChild(nodes[i])) {
-        if (!storageGroupChecked) {
-          throw new StorageGroupNotSetException(path);
-        }
-        throw new PathNotExistException(path);
-      }
-      cur = cur.getChild(nodes[i]);
-
-      if (cur instanceof StorageGroupMNode) {
-        storageGroupChecked = true;
-      }
-    }
-
-    if (!storageGroupChecked) {
-      throw new StorageGroupNotSetException(path);
-    }
-    return cur;
   }
 
   /**
