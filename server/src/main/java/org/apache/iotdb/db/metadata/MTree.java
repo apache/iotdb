@@ -607,38 +607,20 @@ public class MTree implements Serializable {
    */
   List<String> getStorageGroupNodes(List<String> nodes) throws StorageGroupNotSetException {
     MNode cur = root;
+    List<String> storageGroupNodes = new ArrayList<>();
+    storageGroupNodes.add(root.getName());
     for (int i = 1; i < nodes.size(); i++) {
       cur = cur.getChild(nodes.get(i));
       if (cur instanceof StorageGroupMNode) {
+        storageGroupNodes.add(cur.getName());
         break;
       } else if (cur == null) {
         throw new StorageGroupNotSetException(MetaUtils.getPathByNodes(nodes));
+      } else {
+        storageGroupNodes.add(cur.getName());
       }
-    }
-    List<String> storageGroupNodes = new ArrayList<>();
-    storageGroupNodes.add(0, cur.getName());
-    while(cur.getParent() != null) {
-      cur = cur.getParent();
-      storageGroupNodes.add(0, cur.getName());
     }
     return storageGroupNodes;
-  }
-
-  /**
-   * Check whether the given path contains a storage group
-   */
-  boolean checkStorageGroupByPath(String path) {
-    String[] nodes = MetaUtils.getNodeNames(path);
-    MNode cur = root;
-    for (int i = 1; i <= nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
-      if (cur == null) {
-        return false;
-      } else if (cur instanceof StorageGroupMNode) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /**

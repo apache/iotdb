@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.tsfile.common.cache.Cache;
 
-public abstract class RandomDeleteCache<K, V> implements Cache<K, V> {
+public class RandomDeleteCache<K, V> implements Cache<K, V> {
 
   private int cacheSize;
   private Map<K, V> cache;
