@@ -82,7 +82,7 @@ public class LogCatchUpTaskTest {
               receivedLogs.add(testLog);
             }
 
-            if (testLeadershipFlag && testLog.getCurrLogIndex() == 255) {
+            if (testLeadershipFlag && testLog.getCurrLogIndex() == 1023) {
               sender.setCharacter(NodeCharacter.ELECTOR);
             }
             resultHandler.onComplete(Response.RESPONSE_AGREE);
@@ -181,12 +181,12 @@ public class LogCatchUpTaskTest {
       throws InterruptedException, TException, LeaderUnknownException {
     testLeadershipFlag = true;
     // the leadership will be lost after sending 256 logs
-    List<Log> logList = TestUtils.prepareTestLogs(300);
+    List<Log> logList = TestUtils.prepareTestLogs(1030);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
     task.call();
 
-    assertEquals(logList.subList(0, 256), receivedLogs);
+    assertEquals(logList.subList(0, 1024), receivedLogs);
   }
 }

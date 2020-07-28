@@ -41,7 +41,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RaftLogManager {
+abstract public class RaftLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftLogManager.class);
 
@@ -102,14 +102,9 @@ public class RaftLogManager {
             TimeUnit.SECONDS);
   }
 
-  public Snapshot getSnapshot() {
-    // placeholder method
-    return null;
-  }
+  abstract public Snapshot getSnapshot();
 
-  public void takeSnapshot() throws IOException {
-    // placeholder method
-  }
+  abstract public void takeSnapshot() throws IOException;
 
   /**
    * Update the raftNode's hardState(currentTerm,voteFor) and flush to disk.

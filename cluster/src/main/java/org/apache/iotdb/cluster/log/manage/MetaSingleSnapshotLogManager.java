@@ -44,6 +44,8 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
   private Map<String, User> userMap;
   private Map<String, Role> roleMap;
   private MetaGroupMember metaGroupMember;
+  private long commitIndex;
+  private long term;
 
   public MetaSingleSnapshotLogManager(LogApplier logApplier, MetaGroupMember metaGroupMember) {
     super(new SyncLogDequeSerializer(0), logApplier, metaGroupMember.getName());
@@ -52,14 +54,18 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
 
   @Override
   public void takeSnapshot() {
-    storageGroupTTLMap = IoTDB.metaManager.getStorageGroupsTTL();
-    try {
-      IAuthorizer authorizer = BasicAuthorizer.getInstance();
-      userMap = authorizer.getAllUsers();
-      roleMap = authorizer.getAllRoles();
-
-    } catch (AuthException e) {
-      logger.error("get user or role info failed", e);
+    // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
+    synchronized (this) {
+      storageGroupTTLMap = IoTDB.metaManager.getStorageGroupsTTL();
+      try {
+        IAuthorizer authorizer = BasicAuthorizer.getInstance();
+        userMap = authorizer.getAllUsers();
+        roleMap = authorizer.getAllRoles();
+        commitIndex = getCommitLogIndex();
+        term = getCommitLogTerm();
+      } catch (AuthException e) {
+        logger.error("get user or role info failed", e);
+      }
     }
   }
 
@@ -68,9 +74,8 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
     takeSnapshot();
     MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot(storageGroupTTLMap, userMap, roleMap,
         metaGroupMember.getPartitionTable().serialize());
-
-    snapshot.setLastLogIndex(getCommitLogIndex());
-    snapshot.setLastLogTerm(getCommitLogTerm());
+    snapshot.setLastLogIndex(commitIndex);
+    snapshot.setLastLogTerm(term);
     return snapshot;
   }
 }

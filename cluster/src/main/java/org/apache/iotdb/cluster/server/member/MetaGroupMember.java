@@ -1300,7 +1300,7 @@ public class MetaGroupMember extends RaftMember {
    * @param snapshot
    */
   private void applySnapshot(MetaSimpleSnapshot snapshot) {
-    synchronized (logManager) {
+    synchronized (super.getSnapshotApplyLock()) {
       // 0. first delete all storage groups
       try {
         IoTDB.metaManager
@@ -1345,7 +1345,9 @@ public class MetaGroupMember extends RaftMember {
       // 5. accept partition table
       acceptPartitionTable(snapshot.getPartitionTableBuffer());
 
-      logManager.applyingSnapshot(snapshot);
+      synchronized (logManager) {
+        logManager.applyingSnapshot(snapshot);
+      }
     }
   }
 
@@ -1943,6 +1945,7 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Pull the all timeseries schemas of given prefixPaths from remote nodes. All prefixPaths must
    * contain the storage group.
+   *
    * @param ignoredGroup do not pull schema from the group to avoid backward dependency
    */
   public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths,
