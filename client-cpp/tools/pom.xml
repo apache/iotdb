@@ -28,7 +28,7 @@
         <boost.version>1.73.0</boost.version>
         <boost.version.underline-short>1_73</boost.version.underline-short>
         <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
-        <thrift.version>0.13.0</thrift.version>
+        <thrift.version>0.12.0</thrift.version>
         <cmake-version>3.17.3</cmake-version>
     </properties>
     <modules>
@@ -49,7 +49,7 @@
                 <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-Linux-x86_64.tar.gz</cmake.url>
                 <cmake.root>${project.build.directory}/cmake-${cmake-version}-Linux-x86_64/bin/</cmake.root>
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <boost.url>https://dl.bintray.com/boostorg/release/${boost.version}/source/boost_${boost.version.underline}.tar.gz</boost.url>
+                <boost.url>https://dl.bintray.com/boostorg/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
                 <boost.bootstrap.executable>./bootstrap.sh</boost.bootstrap.executable>
                 <boost.build.executable>./b2</boost.build.executable>
                 <thrift.bootstrap.executable>./bootstrap.sh</thrift.bootstrap.executable>
@@ -72,7 +72,7 @@
                 <cmake.url>https://github.com/Kitware/CMake/releases/download/v${cmake-version}/cmake-${cmake-version}-Darwin-x86_64.tar.gz</cmake.url>
                 <cmake.root>${project.build.directory}/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents/bin</cmake.root>
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <boost.url>https://dl.bintray.com/boostorg/release/${boost.version}/source/boost_${boost.version.underline}.tar.gz</boost.url>
+                <boost.url>https://dl.bintray.com/boostorg/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
                 <boost.bootstrap.executable>./bootstrap.sh</boost.bootstrap.executable>
                 <boost.build.executable>./b2</boost.build.executable>
                 <thrift.bootstrap.executable>./bootstrap.sh</thrift.bootstrap.executable>

@@ -131,7 +131,7 @@
                     <plugin>
                         <groupId>com.googlecode.cmake-maven-project</groupId>
                         <artifactId>cmake-maven-plugin</artifactId>
-                        <!--<version>3.16.3-b2</version>-->
+                        <version>3.7.2-b1</version>
                         <executions>
                             <!-- Uses a CMake generator to generate the build using the build tool of choice -->
                             <execution>
@@ -141,6 +141,7 @@
                                     <goal>generate</goal>
                                 </goals>
                                 <configuration>
+                                    <classifier>linux-x86_64</classifier>
                                     <!--
                                       We need to use a newer version of cmake, so disable downloading
                                       and tell the plugin where to find that version.
@@ -159,7 +160,7 @@
                                     <!--
                                       Name of the generator the compile step will be executing.
                                     -->
-                                    <generator>${cmake.generator}</generator>
+                                    <generator>Unix Makefiles</generator>
                                     <options>
                                         <option>-DWITH_PROXIES:BOOL=${option.with-proxies}</option>
                                     </options>
@@ -173,6 +174,7 @@
                                     <goal>compile</goal>
                                 </goals>
                                 <configuration>
+                                    <classifier>linux-x86_64</classifier>
                                     <!--
                                       We need to use a newer version of cmake, so disable downloading
                                       and tell the plugin where to find that version.

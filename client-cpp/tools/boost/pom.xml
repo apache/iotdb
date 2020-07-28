@@ -80,7 +80,7 @@
                                     <executable>${boost.bootstrap.executable}</executable>
                                     <arguments>
                                         <!-- Use clang instead of gcc as this requires far less memory -->
-                                        <argument>--with-toolset=clang</argument>
+                                        <argument>--with-toolset=gcc</argument>
                                     </arguments>
                                     <workingDirectory>${project.build.directory}/boost_${boost.version.underline}</workingDirectory>
                                 </configuration>

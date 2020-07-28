@@ -262,6 +262,7 @@
             <plugin>
                 <groupId>com.googlecode.cmake-maven-project</groupId>
                 <artifactId>cmake-maven-plugin</artifactId>
+                <version>3.7.2-b1</version>
                 <executions>
                     <!-- Uses a CMake generator to generate the build using the build tool of choice -->
                     <execution>
@@ -271,6 +272,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
+                            <classifier>${os.classifier}</classifier>
                             <!--
                 We need to use a newer version of cmake, so disable downloading
                 and tell the plugin where to find that version.
@@ -339,6 +341,7 @@
                             <goal>compile</goal>
                         </goals>
                         <configuration>
+                            <classifier>${os.classifier}</classifier>
                             <!--
                 We need to use a newer version of cmake, so disable downloading
                 and tell the plugin where to find that version.

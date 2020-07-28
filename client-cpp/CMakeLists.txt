@@ -17,15 +17,15 @@
 #
 
 PROJECT(iotdb_session_cpp)
-CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
 SET (CMAKE_REQUIRED_INCLUDES "/usr/local/include")
 SET (TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../tools")
 INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include)
-INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src)
+INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.12.0/lib/cpp/src)
 ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(generated-sources-cpp)
 #SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -fPIC")
 
 AUX_SOURCE_DIRECTORY(./src SESSION_SRCS)
 
