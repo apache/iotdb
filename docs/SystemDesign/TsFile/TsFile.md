@@ -25,6 +25,6 @@ TsFile is the data file of IoTDB.
 
 ## Related
 
-* [File Format](/SystemDesign/TsFile/Format.html)
-* [Write Process](/SystemDesign/TsFile/Write.html)
-* [Read Process](/SystemDesign/TsFile/Read.html)
+* [File Format](../TsFile/Format.md)
+* [Write Process](../TsFile/Write.md)
+* [Read Process](../TsFile/Read.md)

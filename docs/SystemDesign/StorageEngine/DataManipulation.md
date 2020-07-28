@@ -63,7 +63,7 @@ The following describes four common data manipulation operations, which are inse
 Currently does not support data in-place update operations, that is, update statements, but users can directly insert new data, the same time series at the same time point is based on the latest inserted data.
 Old data is automatically deleted by merging, see:
 
-* [File merge mechanism](/SystemDesign/StorageEngine/MergeManager.html)
+* [File merge mechanism](../StorageEngine/MergeManager.md)
 
 ## Data deletion
 

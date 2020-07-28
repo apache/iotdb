@@ -64,7 +64,7 @@
 目前不支持数据的原地更新操作，即update语句，但用户可以直接插入新的数据，在同一个时间点上的同一个时间序列以最新插入的数据为准
 旧数据会通过合并来自动删除，参见：
 
-* [文件合并机制](/zh/SystemDesign/StorageEngine/MergeManager.html)
+* [文件合并机制](../StorageEngine/MergeManager.md)
 
 ## 数据删除
 
