@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.rescon;
 
+import java.util.TreeMap;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class SystemInfo {
@@ -32,94 +33,110 @@ public class SystemInfo {
   long totalTspInfoMemCost;
   long arrayPoolMemCost;
 
-  boolean reject = false;
+  TreeMap<TsFileProcessor, Long> reportedTspMemCostMap = new TreeMap<>(
+      (o1, o2) -> (int) (o2.getTsFileProcessorInfo().getTsFileProcessorMemCost() - o1
+          .getTsFileProcessorInfo()
+          .getTsFileProcessorMemCost()));
+
   // temporary value
   private final double rejectProportion = 0.9;
-  private final double flushProportion = 0.6;
+  private final int flushQueueThreshold = 6;
 
   /**
-   * 通知system申请新数组。(调用者应在实际申请前调用该方法)
+   * Report applying a new out of buffered array to system. Attention: It should be invoked before
+   * applying new OOB array actually.
    *
-   * @param type data type
-   * @param size size
-   * @return 如果同意，则返回true；否则返回false。
+   * @param dataType data type of array
+   * @param size     size of array
+   * @return Return true if it's agreed when memory is enough.
    */
-  public boolean applyNewOOBArray(TSDataType type, int size) {
-    long arraySize = 0;
-    switch (type) {
-      case BOOLEAN:
-      case INT64:
-      case DOUBLE:
-        arraySize = size * 8L;
-        break;
-      case INT32:
-      case FLOAT:
-        arraySize = size * 4L;
-      case TEXT:
-      default:
-        throw new UnSupportedDataTypeException(type.toString());
-    }
-    if (true) { // 内存够用时
+  public synchronized boolean applyNewOOBArray(TSDataType dataType, int size) {
+    // if current memory is enough
+    if (arrayPoolMemCost + totalTspInfoMemCost + dataType.getDataTypeSize() * size
+        < config.getAllocateMemoryForWrite() * rejectProportion) {
+      arrayPoolMemCost += dataType.getDataTypeSize() * size;
       return true;
-    } else { // 否则
-      this.reject = true;
+    } else {
+      // invoke flush()
       flush();
       return false;
     }
   }
 
   /**
-   * 通知system自身tsp内存将发生变化。 当内存够用时，返回同意，否则不同意。 若不同意，则设置自身reject为false，触发flush。
+   * Report current mem cost of tsp to system.
    *
    * @param processor processor
+   * @return Return true if it's agreed when memory is enough.
    */
   public synchronized boolean reportTsFileProcessorStatus(TsFileProcessor processor) {
-    long accumulatedCost = processor.getTsFileProcessorInfo().getAccumulatedMemCost();
-    processor.getTsFileProcessorInfo().clearAccumulatedMemCost();
-
-    if (this.totalTspInfoMemCost + accumulatedCost
-        < config.getWritableMemSize() * rejectProportion) {
-      this.totalTspInfoMemCost += accumulatedCost;
-      return false;
+    long variation;
+    Long originalValue = reportedTspMemCostMap.get(processor);
+    reportedTspMemCostMap
+        .put(processor, processor.getTsFileProcessorInfo().getTsFileProcessorMemCost());
+    if (originalValue == null) {
+      variation = processor.getTsFileProcessorInfo().getTsFileProcessorMemCost();
     } else {
+      variation = processor.getTsFileProcessorInfo().getTsFileProcessorMemCost() - originalValue;
+    }
+
+    if (this.totalTspInfoMemCost + variation
+        < config.getAllocateMemoryForWrite() * rejectProportion) {
+      this.totalTspInfoMemCost += variation;
       return true;
+    } else {
+      return false;
     }
 
   }
 
   /**
+   * Update the current mem cost of buffered array pool.
    *
-   * @param type
-   * @param size
+   * @param increasingArraySize increasing size of buffered array
    */
-  public void reportCreateArray(TSDataType type, int size) {
-
+  public void reportIncreasingArraySize(int increasingArraySize) {
+    this.arrayPoolMemCost += increasingArraySize;
   }
 
   /**
-   * 通知system将释放OOP数组（在释放后调用）
+   * Report releasing an out of buffered array to system. Attention: It should be invoked after
+   * releasing.
    *
-   * @param type type
-   * @param size size
+   * @param dataType data type of array
+   * @param size     size of array
    */
-  public void reportReleaseOOBArray(TSDataType type, int size) {
-    this.reject = false;
+  public void reportReleaseOOBArray(TSDataType dataType, int size) {
+    this.arrayPoolMemCost -= dataType.getDataTypeSize() * size;
   }
 
   /**
-   * 通知system将重置processor的内存占用量 （关闭文件后调用）。 设置自身reject为false
+   * Report resetting the mem cost of processor to system. It will be invoked after closing file.
    *
-   * @param processor processor
-   * @param original  原有值
+   * @param processor closing processor
    */
-  public void resetTsFileProcessorStatus(TsFileProcessor processor, long original) {
-
+  public void resetTsFileProcessorStatus(TsFileProcessor processor) {
+    if (reportedTspMemCostMap.containsKey(processor)) {
+      this.totalTspInfoMemCost -= processor.getTsFileProcessorInfo().getTsFileProcessorMemCost();
+      reportedTspMemCostMap.remove(processor);
+    }
   }
 
   /**
-   * 触发刷写。 若发现队列队长大于k，则不触发，否则触发。
+   * Flush the tsfileProcessor with the max mem cost. If the queue size of flushing > threshold,
+   * it's identified as flushing is in progress.
    */
   public void flush() {
+    if (FlushManager.getInstance().getTsFileProcessorQueueSize() > flushQueueThreshold) {
+      return;
+    }
+
+    // get the first processor which has the max mem cost
+    TsFileProcessor flushedProcessor = reportedTspMemCostMap.firstKey();
+
+    if (flushedProcessor != null) {
+      flushedProcessor.asyncFlush();
+    }
 
   }
 

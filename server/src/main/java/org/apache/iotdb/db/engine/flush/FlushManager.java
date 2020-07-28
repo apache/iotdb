@@ -101,6 +101,13 @@ public class FlushManager implements FlushManagerMBean, IService {
   }
 
   /**
+   * get the current size of flush queue
+   */
+  public int getTsFileProcessorQueueSize() {
+    return tsFileProcessorQueue.size();
+  }
+
+  /**
    * Add TsFileProcessor to asyncTryToFlush manager
    */
   @SuppressWarnings("squid:S2445")

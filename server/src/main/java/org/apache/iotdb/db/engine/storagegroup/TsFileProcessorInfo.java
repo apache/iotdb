@@ -67,14 +67,6 @@ public class TsFileProcessorInfo {
     return unsealedResourceMemCost + bytesMemCost + chunkMetadataMemCost + walMemCost;
   }
 
-  public long getAccumulatedMemCost() {
-    return accumulatedMemCost;
-  }
-
-  public void clearAccumulatedMemCost() {
-    this.accumulatedMemCost = 0;
-  }
-
   public boolean checkIfNeedReportTsFileProcessorStatus(long cost) {
     this.accumulatedMemCost += cost;
     if (accumulatedMemCost > (config.getReserveMemSize() / StorageEngine.getInstance()

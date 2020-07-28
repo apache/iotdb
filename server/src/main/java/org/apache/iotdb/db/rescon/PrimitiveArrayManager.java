@@ -72,6 +72,7 @@ public class PrimitiveArrayManager {
    */
   private int bufferedArraysSize;
 
+  private int lastReportArraySize = 0;
   /**
    * total size of out of buffer arrays
    */
@@ -139,6 +140,11 @@ public class PrimitiveArrayManager {
     ArrayDeque<Object> dataListQueue = bufferedArraysMap
         .computeIfAbsent(dataType, k -> new ArrayDeque<>());
     bufferedArraysSize += ARRAY_SIZE * dataType.getDataTypeSize();
+    if (bufferedArraysSize - lastReportArraySize >= BUFFERED_ARRAY_SIZE_THRESHOLD / 8) {
+      // report current buffed array size to system
+      SystemInfo.getInstance().reportIncreasingArraySize(bufferedArraysSize - lastReportArraySize);
+      lastReportArraySize = bufferedArraysSize;
+    }
     Object dataArray = dataListQueue.poll();
     if (dataArray != null) {
       return dataArray;
@@ -171,8 +177,6 @@ public class PrimitiveArrayManager {
         throw new UnSupportedDataTypeException(dataType.toString());
     }
 
-    // report creating a new array to system
-    SystemInfo.getInstance().reportCreateArray(dataType, ARRAY_SIZE);
     return dataArray;
   }
 
