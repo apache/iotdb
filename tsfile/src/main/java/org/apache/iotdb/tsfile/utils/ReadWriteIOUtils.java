@@ -370,6 +370,13 @@ public class ReadWriteIOUtils {
     return bytes.length;
   }
 
+  public static int writeWithoutSize(ByteBuffer byteBuffer, int offset, int len,
+      OutputStream outputStream) throws IOException {
+    byte[] bytes = byteBuffer.array();
+    outputStream.write(bytes, 0, len);
+    return len;
+  }
+
   /**
    * write byteBuffer.capacity and byteBuffer.array to byteBuffer.
    */

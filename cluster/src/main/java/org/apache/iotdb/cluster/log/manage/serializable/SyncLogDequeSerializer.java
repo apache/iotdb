@@ -198,13 +198,18 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private void putLogs(List<Log> entries) {
     for (Log log : entries) {
       logBuffer.mark();
+      ByteBuffer logData = log.serialize();
       try {
-        logBuffer.put(log.serialize());
+        int size = logData.capacity() + Integer.BYTES;
+        logSizeDeque.addLast(size);
+        logBuffer.putInt(logData.capacity());
+        logBuffer.put(logData);
       } catch (BufferOverflowException e) {
         logger.info("Raft log buffer overflow!");
         logBuffer.reset();
         flushLogBuffer();
-        logBuffer.put(log.serialize());
+        logBuffer.putInt(logData.capacity());
+        logBuffer.put(logData);
       }
       bufferedLogNum++;
     }
@@ -222,7 +227,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       // write into disk
       try {
         checkStream();
-        ReadWriteIOUtils.writeWithoutSize(logBuffer, currentLogOutputStream);
+        ReadWriteIOUtils.writeWithoutSize(logBuffer, 0, logBuffer.position(), currentLogOutputStream);
       } catch (IOException e) {
         logger.error("Error in logs serialization: ", e);
         return;
