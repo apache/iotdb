@@ -94,7 +94,7 @@ public class SyncFileManager implements ISyncFileManager {
         .listFiles();
     for (File sgFolder : allSgFolders) {
       if (!sgFolder.getName().startsWith(IoTDBConstant.PATH_ROOT) || sgFolder.getName()
-          .equals(TsFileConstant.PATH_UPGRADE)) {
+          .equals(TsFileConstant.TMP_SUFFIX)) {
         continue;
       }
       allSGs.putIfAbsent(sgFolder.getName(), new HashSet<>());

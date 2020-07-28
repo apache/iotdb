@@ -52,7 +52,7 @@ public class FilePathUtils {
   }
 
   public static String[] splitTsFilePath(TsFileResource resource) {
-    return resource.getFile().getAbsolutePath().split(PATH_SPLIT_STRING);
+    return resource.getTsFile().getAbsolutePath().split(PATH_SPLIT_STRING);
   }
 
   /**

@@ -18,16 +18,22 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import static org.junit.Assert.assertFalse;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -38,12 +44,10 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -51,15 +55,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static org.junit.Assert.assertFalse;
 
 public class StorageGroupProcessorTest {
 
@@ -124,16 +119,22 @@ public class StorageGroupProcessorTest {
 
     processor.delete(deviceList, measurementId, 0, 15L);
 
-    Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = null;
+    List<TsFileResource> unLockList = new ArrayList<>();
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
-      pair = tsfileProcessor
+      tsfileProcessor
           .query(deviceId, measurementId, TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
-              new QueryContext());
+              new QueryContext(), tsfileResourcesForQuery);
+      unLockList.add(tsfileProcessor.getTsFileResource());
+      for (List<TsFileResource> subTsFileResources : tsfileProcessor.getVmTsFileResources()) {
+        unLockList.addAll(subTsFileResources);
+      }
       break;
     }
 
-    List<ReadOnlyMemChunk> memChunks = pair.left;
-
+    Assert.assertEquals(1, tsfileResourcesForQuery.size());
+    Assert.assertEquals(0, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
+    List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
     long time = 16;
     for (ReadOnlyMemChunk memChunk : memChunks) {
       IPointReader iterator = memChunk.getPointReader();
@@ -143,7 +144,7 @@ public class StorageGroupProcessorTest {
       }
     }
 
-    Assert.assertEquals(0, pair.right.size());
+    unLockList.forEach(TsFileResource::readUnlock);
   }
 
   @Test

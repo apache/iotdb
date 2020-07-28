@@ -1,5 +1,3 @@
-#!/bin/sh
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -18,30 +16,37 @@
 # under the License.
 #
 
-if [ -z "${IOTDB_HOME}" ]; then
-  export IOTDB_HOME="$(cd "`dirname "$0"`"/../..; pwd)"
-fi
+from enum import Enum, unique
 
-IOTDB_CONF=${IOTDB_HOME}/conf
 
-CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
-  CLASSPATH=${CLASSPATH}":"$f
-done
+@unique
+class TSDataType(Enum):
+    BOOLEAN = 0
+    INT32 = 1
+    INT64 = 2
+    FLOAT = 3
+    DOUBLE = 4
+    TEXT = 5
 
-MAIN_CLASS=org.apache.iotdb.db.tools.logvisual.gui.LogVisualizationGui
 
-if [ -n "$JAVA_HOME" ]; then
-    for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
-        if [ -x "$java" ]; then
-            JAVA="$java"
-            break
-        fi
-    done
-else
-    JAVA=java
-fi
+@unique
+class TSEncoding(Enum):
+    PLAIN = 0
+    PLAIN_DICTIONARY = 1
+    RLE = 2
+    DIFF = 3
+    TS_2DIFF = 4
+    BITMAP = 5
+    GORILLA = 6
+    REGULAR = 7
 
-iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback-tool.xml"
 
-exec "$JAVA" $iotdb_parms -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+@unique
+class Compressor(Enum):
+    UNCOMPRESSED = 0
+    SNAPPY = 1
+    GZIP = 2
+    LZO = 3
+    SDT = 4
+    PAA = 5
+    PLA = 6

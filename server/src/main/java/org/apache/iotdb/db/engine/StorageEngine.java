@@ -167,7 +167,7 @@ public class StorageEngine implements IService {
           logger.info("Storage Group Processor {} is recovered successfully",
             storageGroup.getFullPath());
         } catch (Exception e) {
-          logger.error("meet error when recovering storage group: {}", storageGroup, e);
+          logger.error("meet error when recovering storage group: {}", storageGroup.getFullPath(), e);
         }
         return null;
       }));
@@ -541,7 +541,7 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws StorageEngineException, LoadFileException {
-    getProcessor(MetaUtils.getDeviceNodeNames(newTsFileResource.getFile().getParentFile().getName()))
+    getProcessor(MetaUtils.getDeviceNodeNames(newTsFileResource.getTsFile().getParentFile().getName()))
         .loadNewTsFileForSync(newTsFileResource);
   }
 

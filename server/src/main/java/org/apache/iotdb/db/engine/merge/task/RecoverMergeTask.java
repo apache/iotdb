@@ -144,8 +144,8 @@ public class RecoverMergeTask extends MergeTask {
           resource.getFileReader(unseqFile));
       long totalChunkNum = chunkNums[0];
       long maxChunkNum = chunkNums[1];
-      singleSeriesUnseqCost += unseqFile.getFileSize() * maxChunkNum / totalChunkNum;
-      maxUnseqCost += unseqFile.getFileSize();
+      singleSeriesUnseqCost += unseqFile.getTsFileSize() * maxChunkNum / totalChunkNum;
+      maxUnseqCost += unseqFile.getTsFileSize();
     }
 
     long singleSeriesSeqReadCost = 0;
@@ -187,7 +187,7 @@ public class RecoverMergeTask extends MergeTask {
     logger.info("{} recovering chunk counts", taskName);
     int fileCnt = 1;
     for (TsFileResource tsFileResource : resource.getSeqFiles()) {
-      logger.info("{} recovering {}  {}/{}", taskName, tsFileResource.getFile().getName(),
+      logger.info("{} recovering {}  {}/{}", taskName, tsFileResource.getTsFile().getName(),
           fileCnt, resource.getSeqFiles().size());
       RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(tsFileResource);
       mergeFileWriter.makeMetadataVisible();
@@ -203,7 +203,7 @@ public class RecoverMergeTask extends MergeTask {
           if (newProgress - progress >= 1.0) {
             progress = newProgress;
             logger.info("{} {}% series count of {} are recovered", taskName, progress,
-                tsFileResource.getFile().getName());
+                tsFileResource.getTsFile().getName());
           }
         }
       }
