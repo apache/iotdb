@@ -87,9 +87,9 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
     assertTrue(manager.isPathExist(Arrays.asList("root", "laptop")));
-    assertTrue(manager.isPathExist("root.laptop.d1"));
-    assertTrue(manager.isPathExist("root.laptop.d1.s0"));
-    assertFalse(manager.isPathExist("root.laptop.d1.s1"));
+    assertTrue(manager.isPathExist(Arrays.asList("root", "laptop", "d1")));
+    assertTrue(manager.isPathExist(Arrays.asList("root", "laptop", "d1", "s0")));
+    assertFalse(manager.isPathExist(Arrays.asList("root", "laptop", "d1", "s1")));
     try {
       manager.createTimeseries(Arrays.asList("root", "laptop", "d1", "s1"), TSDataType.valueOf("INT32"),
           TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
