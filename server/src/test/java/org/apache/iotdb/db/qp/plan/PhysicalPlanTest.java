@@ -62,7 +62,7 @@ public class PhysicalPlanTest {
   @Before
   public void before() throws MetadataException {
     IoTDB.metaManager.init();
-    IoTDB.metaManager.setStorageGroup("root.vehicle");
+    IoTDB.metaManager.setStorageGroup(Arrays.asList("root", "vehicle"));
     IoTDB.metaManager
         .createTimeseries(Arrays.asList("root", "vehicle", "d1", "s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED, null);

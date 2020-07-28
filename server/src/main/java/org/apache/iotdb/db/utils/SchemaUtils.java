@@ -89,37 +89,6 @@ public class SchemaUtils {
     return dataTypes;
   }
 
-  /**
-   * @param paths time series paths
-   * @param aggregation aggregation function, may be null
-   * @return The data type of aggregation or (data type of paths if aggregation is null)
-   */
-  public static List<TSDataType> getSeriesTypesByNodes(Collection<String> paths,
-      String aggregation) throws MetadataException {
-    TSDataType dataType = getAggregationType(aggregation);
-    if (dataType != null) {
-      return Collections.nCopies(paths.size(), dataType);
-    }
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (String path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path));
-    }
-    return dataTypes;
-  }
-
-  public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths,
-      String aggregation) throws MetadataException {
-    TSDataType dataType = getAggregationType(aggregation);
-    if (dataType != null) {
-      return Collections.nCopies(paths.size(), dataType);
-    }
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (Path path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path.getFullPath()));
-    }
-    return dataTypes;
-  }
-
   public static List<TSDataType> getSeriesTypesByPath(List<Path> paths,
       List<String> aggregations) throws MetadataException {
     List<TSDataType> tsDataTypes = new ArrayList<>();

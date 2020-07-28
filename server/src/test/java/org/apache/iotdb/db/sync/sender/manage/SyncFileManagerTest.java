@@ -74,7 +74,7 @@ public class SyncFileManagerTest {
 
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {
-      IoTDB.metaManager.setStorageGroup(getSgName(i));
+      IoTDB.metaManager.setStorageGroup(Arrays.asList(IoTDBConstant.PATH_ROOT, String.valueOf(i)));
     }
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {

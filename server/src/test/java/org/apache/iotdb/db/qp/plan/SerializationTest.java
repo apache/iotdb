@@ -47,7 +47,7 @@ public class SerializationTest {
   @Before
   public void before() throws MetadataException {
     MManager.getInstance().init();
-    MManager.getInstance().setStorageGroup("root.vehicle");
+    MManager.getInstance().setStorageGroup(Arrays.asList("root", "vehicle"));
     MManager.getInstance()
         .createTimeseries(Arrays.asList("root", "vehicle", "d1", "s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED, null);

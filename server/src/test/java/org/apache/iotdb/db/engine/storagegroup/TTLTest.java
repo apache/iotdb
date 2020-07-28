@@ -72,6 +72,7 @@ public class TTLTest {
   private String sg1 = "root.TTL_SG1";
   private List<String> sg1List = new ArrayList<>(Arrays.asList("root", "TTL_SG1"));
   private String sg2 = "root.TTL_SG2";
+  private List<String> sg2List = new ArrayList<>(Arrays.asList("root", "TTL_SG2"));
   private long ttl = 12345;
   private StorageGroupProcessor storageGroupProcessor;
   private String s1 = "s1";
@@ -106,8 +107,8 @@ public class TTLTest {
 
   private void createSchemas()
       throws MetadataException, StorageGroupProcessorException {
-    IoTDB.metaManager.setStorageGroup(sg1);
-    IoTDB.metaManager.setStorageGroup(sg2);
+    IoTDB.metaManager.setStorageGroup(sg1List);
+    IoTDB.metaManager.setStorageGroup(sg2List);
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
         .getSystemDir(), sg1, new DirectFlushPolicy());
     IoTDB.metaManager.createTimeseries(g1s1List, TSDataType.INT64, TSEncoding.PLAIN,

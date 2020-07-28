@@ -80,7 +80,7 @@ public class SyncSenderLogAnalyzerTest {
     Map<String, Map<Long, Set<File>>> allFileList = new HashMap<>();
 
     for (int i = 0; i < 3; i++) {
-      IoTDB.metaManager.setStorageGroup(getSgName(i));
+      IoTDB.metaManager.setStorageGroup(Arrays.asList(IoTDBConstant.PATH_ROOT, String.valueOf(i)));
     }
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {

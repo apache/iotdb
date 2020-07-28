@@ -75,7 +75,7 @@ public class FileNodeManagerBenchmark {
   private static void prepare()
       throws MetadataException {
     MManager manager = IoTDB.metaManager;
-    manager.setStorageGroup(prefix);
+    manager.setStorageGroup(prefixList);
     for (List<String> device : devicesList) {
       for (String measurement : measurements) {
         device.add(measurement);

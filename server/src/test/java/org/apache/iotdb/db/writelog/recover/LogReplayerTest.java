@@ -90,7 +90,7 @@ public class LogReplayerTest {
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
 
-    IoTDB.metaManager.setStorageGroup("root.sg");
+    IoTDB.metaManager.setStorageGroup(Arrays.asList("root", "sg"));
     try {
       for (int i = 0; i < 5; i++) {
         for (int j = 0; j < 5; j++) {

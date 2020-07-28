@@ -98,7 +98,7 @@ public class SeqTsFileRecoverTest {
     tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
-    IoTDB.metaManager.setStorageGroup("root.sg");
+    IoTDB.metaManager.setStorageGroup(Arrays.asList("root", "sg"));
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         IoTDB.metaManager

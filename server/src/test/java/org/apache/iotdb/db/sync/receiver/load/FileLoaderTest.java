@@ -65,9 +65,9 @@ public class FileLoaderTest {
   private void initMetadata() throws MetadataException {
     MManager mmanager = IoTDB.metaManager;
     mmanager.init();
-    mmanager.setStorageGroup("root.sg0");
-    mmanager.setStorageGroup("root.sg1");
-    mmanager.setStorageGroup("root.sg2");
+    mmanager.setStorageGroup(Arrays.asList("root", "sg0"));
+    mmanager.setStorageGroup(Arrays.asList("root", "sg1"));
+    mmanager.setStorageGroup(Arrays.asList("root", "sg2"));
   }
 
   @After

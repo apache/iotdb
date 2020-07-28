@@ -131,7 +131,7 @@ public class PerformanceTest {
     tempProcessorStore.createNewFile();
 
     try {
-      IoTDB.metaManager.setStorageGroup("root.logTestDevice");
+      IoTDB.metaManager.setStorageGroup(Arrays.asList("root", "logTestDevice"));
     } catch (MetadataException ignored) {
     }
     IoTDB.metaManager

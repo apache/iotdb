@@ -34,9 +34,9 @@ public class MetadataManagerHelper {
     MManager mmanager = IoTDB.metaManager;
     mmanager.init();
     try {
-      mmanager.setStorageGroup("root.vehicle.d0");
-      mmanager.setStorageGroup("root.vehicle.d1");  
-      mmanager.setStorageGroup("root.vehicle.d2");
+      mmanager.setStorageGroup(Arrays.asList("root", "vehicle", "d0"));
+      mmanager.setStorageGroup(Arrays.asList("root", "vehicle", "d1"));
+      mmanager.setStorageGroup(Arrays.asList("root", "vehicle", "d2"));
 
       CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
 

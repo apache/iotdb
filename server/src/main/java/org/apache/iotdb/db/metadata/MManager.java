@@ -320,7 +320,7 @@ public class MManager {
         createTimeseries(plan, offset);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
-        String failedTimeseries = deleteTimeseries(args[1]);
+        String failedTimeseries = deleteTimeseries(MetaUtils.splitPathToNodes(args[1]));
         if (!failedTimeseries.isEmpty()) {
           throw new DeleteFailedException(failedTimeseries);
         }
@@ -439,56 +439,6 @@ public class MManager {
   /**
    * Delete all timeseries under the given path, may cross different storage group
    *
-   * @param prefixPath path to be deleted, could be root or a prefix path or a full path
-   * @return The String is the deletion failed Timeseries
-   */
-  public String deleteTimeseries(String prefixPath) throws MetadataException {
-    lock.writeLock().lock();
-
-    if (isStorageGroup(prefixPath)) {
-
-      if (config.isEnableParameterAdapter()) {
-        int size = seriesNumberInStorageGroups.get(prefixPath);
-        seriesNumberInStorageGroups.put(prefixPath, 0);
-        if (size == maxSeriesNumberAmongStorageGroup) {
-          seriesNumberInStorageGroups.values().stream()
-              .max(Integer::compareTo)
-              .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
-        }
-      }
-
-      mNodeCache.clear();
-    }
-    try {
-      List<String> allTimeseries = mtree.getAllTimeseriesName(prefixPath);
-      // Monitor storage group seriesPath is not allowed to be deleted
-      allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_PREFIX));
-
-      Set<String> failedNames = new HashSet<>();
-      for (String p : allTimeseries) {
-        try {
-          String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
-          if (!isRecovering) {
-            if (emptyStorageGroup != null) {
-              StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
-            }
-            logWriter.deleteTimeseries(p);
-          }
-        } catch (DeleteFailedException e) {
-          failedNames.add(e.getName());
-        }
-      }
-      return String.join(",", failedNames);
-    } catch (IOException e) {
-      throw new MetadataException(e.getMessage());
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  /**
-   * Delete all timeseries under the given path, may cross different storage group
-   *
    * @param prefixPathNodes path to be deleted, could be root or a prefix path or a full path
    * @return The String is the deletion failed Timeseries
    */
@@ -576,41 +526,6 @@ public class MManager {
   }
 
   /**
-   * @param path full path from root to leaf node
-   * @return after delete if the storage group is empty, return its name, otherwise return null
-   */
-  private String deleteOneTimeseriesAndUpdateStatistics(String path)
-      throws MetadataException, IOException {
-    lock.writeLock().lock();
-    try {
-      Pair<String, MeasurementMNode> pair = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
-      removeFromTagInvertedIndex(pair.right);
-      String storageGroupName = pair.left;
-
-      // TODO: delete the path node and all its ancestors
-      mNodeCache.clear();
-      try {
-        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(-1);
-      } catch (ConfigAdjusterException e) {
-        throw new MetadataException(e);
-      }
-
-      if (config.isEnableParameterAdapter()) {
-        String storageGroup = getStorageGroupName(path);
-        int size = seriesNumberInStorageGroups.get(storageGroup);
-        seriesNumberInStorageGroups.put(storageGroup, size - 1);
-        if (size == maxSeriesNumberAmongStorageGroup) {
-          seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
-              .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
-        }
-      }
-      return storageGroupName;
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  /**
    * @param nodes nodes of full path from root to leaf node
    * @return after delete if the storage group is empty, return its name, otherwise return null
    */
@@ -640,34 +555,6 @@ public class MManager {
         }
       }
       return storageGroupName;
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
-  /**
-   * Set storage group of the given path to MTree. Check
-   *
-   * @param storageGroup root.node.(node)*
-   */
-  public void setStorageGroup(String storageGroup) throws MetadataException {
-    lock.writeLock().lock();
-    try {
-      mtree.setStorageGroup(storageGroup);
-      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-
-      if (config.isEnableParameterAdapter()) {
-        ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-        seriesNumberInStorageGroups.put(storageGroup, 0);
-      }
-      if (!isRecovering) {
-        logWriter.setStorageGroup(storageGroup);
-      }
-    } catch (IOException e) {
-      throw new MetadataException(e.getMessage());
-    } catch (ConfigAdjusterException e) {
-      mtree.deleteStorageGroup(storageGroup);
-      throw new MetadataException(e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -748,21 +635,6 @@ public class MManager {
   /**
    * Check if the given path is storage group or not.
    *
-   * @param path Format: root.node.(node)*
-   * @apiNote :for cluster
-   */
-  boolean isStorageGroup(String path) {
-    lock.readLock().lock();
-    try {
-      return mtree.isStorageGroup(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Check if the given path is storage group or not.
-   *
    * @param nodes Format: [root, node]
    * @apiNote :for cluster
    */
@@ -775,24 +647,6 @@ public class MManager {
     }
   }
 
-
-  /**
-   * Get series type for given seriesPath.
-   *
-   * @param path full path
-   */
-  public TSDataType getSeriesType(String path) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      if (path.equals(SQLConstant.RESERVED_TIME)) {
-        return TSDataType.INT64;
-      }
-
-      return mtree.getSchema(path).getType();
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
 
   /**
    * Get series type for given seriesPath.
@@ -1276,20 +1130,6 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getChildNodePathInNextLevel(nodes);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Check whether the path exists.
-   *
-   * @param path a full path or a prefix path
-   */
-  public boolean isPathExist(String path) {
-    lock.readLock().lock();
-    try {
-      return mtree.isPathExist(path);
     } finally {
       lock.readLock().unlock();
     }
