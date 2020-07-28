@@ -74,7 +74,7 @@ public class MetaUtils {
     List<String> nodes = new ArrayList<>();
     int startIndex = 0;
     for (int i = 0; i < path.length(); i++) {
-      if (path.charAt(i) == '.') {
+      if (path.charAt(i) == IoTDBConstant.PATH_SEPARATOR) {
         nodes.add(path.substring(startIndex, i));
         startIndex = i + 1;
       } else if (path.charAt(i) == '"') {
