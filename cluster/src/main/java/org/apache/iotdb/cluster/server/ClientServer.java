@@ -132,7 +132,7 @@ public class ClientServer extends TSServiceImpl {
 
     // this defines how thrift parse the requests bytes to a request
     TProtocolFactory protocolFactory;
-    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+    if (ClusterDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()) {
       protocolFactory = new TCompactProtocol.Factory();
     } else {
       protocolFactory = new TBinaryProtocol.Factory();

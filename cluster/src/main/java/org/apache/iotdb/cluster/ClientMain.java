@@ -35,8 +35,8 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -257,7 +257,7 @@ public class ClientMain {
     TTransport transport = new TFastFramedTransport(new TSocket(ip, port));
     transport.open();
     TProtocol protocol =
-        IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable() ?
+        ClusterDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled() ?
             new TCompactProtocol(transport) : new TBinaryProtocol(transport);
     return factory.getClient(protocol);
   }
@@ -405,6 +405,7 @@ public class ClientMain {
 
   private static void testBatch(String ip, int port) throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
+    Config.rpcThriftCompressionEnable = ClusterDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled();
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + String.format("%s:%d/", ip, port), "root",
             "root");
