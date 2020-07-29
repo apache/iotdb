@@ -374,6 +374,9 @@ public class PrimitiveArrayManager {
     for (int num : bufferedArraysNumMap.values()) {
       total += num;
     }
+    if (!bufferedArraysNumRatio.containsKey(dataType)) {
+      return false;
+    }
     return total != 0 && bufferedArraysNumMap.get(dataType) / total > bufferedArraysNumRatio
         .get(dataType);
   }
