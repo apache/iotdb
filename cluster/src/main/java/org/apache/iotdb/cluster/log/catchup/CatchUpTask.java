@@ -25,6 +25,7 @@ import java.util.ConcurrentModificationException;
 import java.util.List;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -47,7 +48,6 @@ public class CatchUpTask implements Runnable {
   private RaftMember raftMember;
   private Snapshot snapshot;
   private List<Log> logs;
-
 
   public CatchUpTask(Node node, Peer peer, RaftMember raftMember) {
     this.node = node;
@@ -89,6 +89,8 @@ public class CatchUpTask implements Runnable {
     } catch (Exception e) {
       logger.error("Unexpected error in logManager's getEntries during matchIndexCheck", e);
     }
+
+
     int index = logs.size() - 1;
     // if index < 0 then send Snapshot and all the logs in logManager
     // if index >= 0 but there is no matched log, still send Snapshot and all the logs in logManager
@@ -121,15 +123,22 @@ public class CatchUpTask implements Runnable {
         throw new LeaderUnknownException(raftMember.getAllNodes());
       }
     }
-    long prevLogTerm = -1;
-    try {
-      prevLogTerm = raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1);
-    } catch (Exception e) {
-      logger.error("getTerm failed for newly append entries", e);
-    }
+
     long prevLogIndex = log.getCurrLogIndex() - 1;
+    long prevLogTerm = -1;
     if (index > 0) {
       prevLogTerm = logs.get(index - 1).getCurrLogTerm();
+    } else {
+      try {
+        prevLogTerm = raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1);
+      } catch (EntryCompactedException e) {
+        logger.info("Log [{}] is compacted during catchup", logs.get(0).getCurrLogIndex() - 1);
+      }
+    }
+
+    if (prevLogTerm == -1) {
+      // prev log cannot be found, we cannot know whether is matches
+      return false;
     }
 
     boolean matched;

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -388,23 +389,30 @@ public class IoTDBLoadExternalTsfileIT {
 
       boolean hasResultSet = statement.execute("SHOW timeseries");
       Assert.assertTrue(hasResultSet);
-      StringBuilder timeseriesPath = new StringBuilder();
+      List<String> answers = new ArrayList<>();
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          timeseriesPath.append(
+          answers.add(
               resultSet.getString(1) + "," + resultSet.getString(3) + "," + resultSet.getString(4));
-          timeseriesPath.append(' ');
         }
       }
-      Assert.assertEquals(
-          "root.vehicle.d0.s0,root.vehicle,INT32 root.vehicle.d0.s1,root.vehicle,TEXT root.vehicle.d1.s2,root.vehicle,FLOAT root.vehicle.d1.s3,root.vehicle,BOOLEAN root.test.d0.s0,root.test,INT32 root.test.d0.s1,root.test,TEXT root.test.d1.g0.s0,root.test,INT32 ",
-          timeseriesPath.toString());
+      List<String> expected = Arrays.asList(
+          "root.vehicle.d0.s0,root.vehicle,INT32",
+          "root.vehicle.d0.s1,root.vehicle,TEXT",
+          "root.vehicle.d1.s2,root.vehicle,FLOAT",
+          "root.vehicle.d1.s3,root.vehicle,BOOLEAN",
+          "root.test.d0.s0,root.test,INT32",
+          "root.test.d0.s1,root.test,TEXT",
+          "root.test.d1.g0.s0,root.test,INT32"
+      );
+      for (String s : expected) {
+        assertTrue(answers.contains(s));
+      }
 
       // remove metadata
       for (String sql : deleteSqls) {
         statement.execute(sql);
       }
-
 
       // test not load metadata automatically, it will occur errors.
       boolean hasError = false;

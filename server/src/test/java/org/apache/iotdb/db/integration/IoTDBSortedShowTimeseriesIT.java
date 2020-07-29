@@ -19,12 +19,15 @@
 package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -96,7 +99,7 @@ public class IoTDBSortedShowTimeseriesIT {
 
   @Test
   public void showTimeseriesOrderByHeatTest1() throws ClassNotFoundException {
-    String[] retArray1 = new String[]{
+    List<String> retArray1 = Arrays.asList(
         "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test1,100,50,null,null,f",
         "root.turbine.d0.s1,power,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test2,99.9,44.4,null,null,kw",
         "root.turbine.d0.s2,cpu,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a cpu,99.9,44.4,null,null,cores",
@@ -109,9 +112,9 @@ public class IoTDBSortedShowTimeseriesIT {
         "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,ln this is a test1,1000,500,null,null,c",
         "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,ln this is a test2,9.9,4.4,null,null,w",
         "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,ln this is a test3,90,50,null,null,null"
-    };
+    );
 
-    String[] retArray2 = new String[]{
+    List<String> retArray2 = Arrays.asList(
         "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test1,null,null,100,1,f",
         "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test2,null,null,99.9,44.4,kw",
         "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,turbine d2 this is a test3,null,null,9,5,null",
@@ -123,8 +126,8 @@ public class IoTDBSortedShowTimeseriesIT {
         "root.turbine.d1.s0,status,root.turbine,INT32,RLE,SNAPPY,turbine this is a test3,9,5,null,null,null",
         "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,ln this is a test1,1000,500,null,null,c",
         "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,ln this is a test2,9.9,4.4,null,null,w",
-        "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,ln this is a test3,90,50,null,null,null",
-    };
+        "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,ln this is a test3,90,50,null,null,null"
+        );
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
@@ -149,10 +152,10 @@ public class IoTDBSortedShowTimeseriesIT {
             + "," + resultSet.getString("MinValue")
             + "," + resultSet.getString("unit");
 
-        assertEquals(retArray1[count], ans);
+        assertTrue(retArray1.contains(ans));
         count++;
       }
-      assertEquals(retArray1.length, count);
+      assertEquals(retArray1.size(), count);
 
       hasResultSet = statement.execute("show LATEST timeseries");
       Assert.assertTrue(hasResultSet);
@@ -173,10 +176,10 @@ public class IoTDBSortedShowTimeseriesIT {
             + "," + resultSet.getString("unit");
 
         System.out.println("\"" + ans + "\",");
-        assertEquals(retArray2[count], ans);
+        assertTrue(retArray2.contains(ans));
         count++;
       }
-      assertEquals(retArray2.length, count);
+      assertEquals(retArray2.size(), count);
 
     } catch (Exception e) {
       e.printStackTrace();

@@ -159,16 +159,15 @@ abstract public class RaftLogManager {
    * Returns the term for given index.
    *
    * @param index request entry index
-   * @return throw EntryCompactedException if index < dummyIndex, -1 if index > lastIndex, otherwise
+   * @return throw EntryCompactedException if index < dummyIndex, -1 if index > lastIndex or the
+   * entry is compacted, otherwise
    * return the entry's term for given index
    * @throws EntryCompactedException
    */
   public long getTerm(long index) throws EntryCompactedException {
     long dummyIndex = getFirstIndex() - 1;
     if (index < dummyIndex) {
-      logger.info("{}: invalid getTerm: parameter: index({}) < compactIndex({})", name, index,
-          dummyIndex);
-      throw new EntryCompactedException(index, dummyIndex);
+      return -1;
     }
     long lastIndex = getLastLogIndex();
     if (index > lastIndex) {

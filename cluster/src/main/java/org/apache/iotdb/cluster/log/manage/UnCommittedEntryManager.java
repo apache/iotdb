@@ -74,17 +74,29 @@ public class UnCommittedEntryManager {
    * @throws EntryUnavailableException
    */
   public long maybeTerm(long index) {
-    if (index < offset) {
+    int entryPos = (int) (index - offset);
+    if (entryPos < 0) {
       logger.debug(
           "invalid unCommittedEntryManager maybeTerm : parameter: index({}) < offset({})",
-          index, offset);
+          index, index - entryPos);
       return -1;
     }
     long last = maybeLastIndex();
     if (last == -1 || index > last) {
       return -1;
     }
-    return entries.get((int) (index - offset)).getCurrLogTerm();
+
+    Log log;
+    // TODO-Cluster: improve concurrent safety
+    try {
+      log = entries.get(entryPos);
+    } catch (ArrayIndexOutOfBoundsException e) {
+      return -1;
+    }
+    if (log.getCurrLogIndex() != index) {
+      return -1;
+    }
+    return log.getCurrLogTerm();
   }
 
   /**

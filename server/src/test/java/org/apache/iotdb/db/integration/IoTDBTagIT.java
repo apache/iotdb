@@ -26,7 +26,9 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -401,7 +403,7 @@ public class IoTDBTagIT {
 
   @Test
   public void queryWithWhereTest1() throws ClassNotFoundException {
-    String[] ret1 = {
+    List<String> ret1 = Arrays.asList(
             "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test1,100,50,null,null,f",
             "root.turbine.d0.s1,power,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test2,99.9,44.4,null,null,kw",
             "root.turbine.d1.s0,status,root.turbine,INT32,RLE,SNAPPY,turbine this is a test3,9,5,null,null,null",
@@ -410,8 +412,8 @@ public class IoTDBTagIT {
             "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,turbine d2 this is a test3,null,null,9,5,null",
             "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,ln this is a test1,1000,500,null,null,c",
             "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,ln this is a test2,9.9,4.4,null,null,w",
-            "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,ln this is a test3,90,50,null,null,null",
-    };
+            "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,ln this is a test3,90,50,null,null,null"
+        );
 
     Set<String> ret2 = new HashSet<>();
     ret2.add("root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test1,100,50,null,null,f");
@@ -470,11 +472,10 @@ public class IoTDBTagIT {
                 + "," + resultSet.getString("MinValue")
                 + "," + resultSet.getString("unit");
 
-        assertEquals(ret1[count], ans);
+        assertTrue(ret1.contains(ans));
         count++;
       }
-      assertEquals(ret1.length, count);
-
+      assertEquals(ret1.size(), count);
 
       hasResult = statement.execute("show timeseries where unit=f");
       assertTrue(hasResult);
