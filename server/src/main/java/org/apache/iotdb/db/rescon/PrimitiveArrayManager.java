@@ -323,6 +323,9 @@ public class PrimitiveArrayManager {
    * @param dataArray data array
    */
   private void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
+    if (!bufferedArraysMap.containsKey(dataType)) {
+      bufferedArraysMap.put(dataType, new ArrayDeque<>());
+    }
     bufferedArraysMap.get(dataType).add(dataArray);
     bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
   }
@@ -374,11 +377,8 @@ public class PrimitiveArrayManager {
     for (int num : bufferedArraysNumMap.values()) {
       total += num;
     }
-    if (!bufferedArraysNumRatio.containsKey(dataType)) {
-      return false;
-    }
-    return total != 0 && bufferedArraysNumMap.get(dataType) / total > bufferedArraysNumRatio
-        .get(dataType);
+    return total != 0 && bufferedArraysNumMap.getOrDefault(dataType, 0) / total >
+        bufferedArraysNumRatio.getOrDefault(dataType, 0.0);
   }
 
   public void close() {
