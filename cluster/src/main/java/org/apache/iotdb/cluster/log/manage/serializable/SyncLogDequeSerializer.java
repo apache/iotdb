@@ -495,6 +495,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   public void removeFirst(int num) {
+    if(bufferedLogNum > 0){
+      flushLogBuffer();
+    }
     firstLogPosition += num;
     for (int i = 0; i < num; i++) {
       removedLogSize += logSizeDeque.removeFirst();
@@ -678,6 +681,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         logger.debug("Examining file for removal, file: {}, len: {}, removedLogSize: {}", logFile
             , logFile.length(), removedLogSize);
       }
+      long len = logFile.length();
       if (logFile.length() > removedLogSize) {
         break;
       }
