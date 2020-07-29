@@ -69,11 +69,8 @@ public class TsFileProcessorInfo {
 
   public boolean checkIfNeedReportTsFileProcessorStatus(long cost) {
     this.accumulatedMemCost += cost;
-    if (accumulatedMemCost > (config.getReserveMemSize() / StorageEngine.getInstance()
-        .countTsFileProcessors())) {
-      return true;
-    }
-    return false;
+    int tsFileProcessorNum = StorageEngine.getInstance().countTsFileProcessors();
+    return tsFileProcessorNum != 0
+        && accumulatedMemCost > config.getReserveMemSize() / tsFileProcessorNum;
   }
-
 }
