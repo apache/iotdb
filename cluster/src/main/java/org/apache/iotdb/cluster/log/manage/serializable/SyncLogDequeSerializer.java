@@ -228,7 +228,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         checkStream();
         ReadWriteIOUtils
             .writeWithoutSize(logBuffer, 0, logBuffer.position(), currentLogOutputStream);
-        if(ClusterDescriptor.getInstance().getConfig().getForceRaftLogPeriodInMS() == 0){
+        if (ClusterDescriptor.getInstance().getConfig().getForceRaftLogPeriodInMS() == 0) {
           currentLogOutputStream.getChannel().force(true);
         }
       } catch (IOException e) {

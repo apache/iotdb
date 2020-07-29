@@ -28,7 +28,6 @@ public interface StableEntryManager {
 
   void append(List<Log> entries) throws IOException;
 
-
   void flushLogBuffer();
 
   void forceFlushLogBuffer();
