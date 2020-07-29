@@ -27,7 +27,6 @@
 #include <memory>
 #include <thread>
 #include <mutex>
-#include <shared_mutex>
 #include <stdexcept>
 #include <cstdlib>
 #include <thrift/protocol/TBinaryProtocol.h>

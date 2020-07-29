@@ -20,7 +20,7 @@
 -->
 
 Requirement:
-Maven 3.6
+Maven 3.5+
 
 #### Mac
 
