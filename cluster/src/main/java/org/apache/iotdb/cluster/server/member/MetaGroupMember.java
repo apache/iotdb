@@ -161,6 +161,7 @@ import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -1452,9 +1453,9 @@ public class MetaGroupMember extends RaftMember {
    * @return
    */
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
-    if (plan instanceof DeleteTimeSeriesPlan) {
+    if (plan instanceof DeleteTimeSeriesPlan || plan instanceof DeletePlan) {
       try {
-        plan = getDeleteTimeseriesPlanWithFullPaths((DeleteTimeSeriesPlan) plan);
+        convertToFullPaths(plan);
       } catch (PathNotExistException e) {
         TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
         tsStatus.setMessage(e.getMessage());
@@ -1473,7 +1474,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  DeleteTimeSeriesPlan getDeleteTimeseriesPlanWithFullPaths(DeleteTimeSeriesPlan plan)
+  private void convertToFullPaths(PhysicalPlan plan)
       throws PathNotExistException {
     Pair<List<String>, List<String>> getMatchedPathsRet = getMatchedPaths(plan.getPathsStrings());
     List<String> fullPathsStrings = getMatchedPathsRet.left;
@@ -1486,7 +1487,6 @@ public class MetaGroupMember extends RaftMember {
       fullPaths.add(new Path(pathStr));
     }
     plan.setPaths(fullPaths);
-    return plan;
   }
 
   /**

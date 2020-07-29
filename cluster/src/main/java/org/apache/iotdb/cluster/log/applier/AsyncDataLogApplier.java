@@ -63,7 +63,7 @@ public class AsyncDataLogApplier implements LogApplier {
         // decide the consumer by deviceId
         InsertPlan insertPlan = (InsertPlan) plan;
         String deviceId = insertPlan.getDeviceId();
-        consumers[deviceId.hashCode() % consumers.length].accept(log);
+        consumers[Math.abs(deviceId.hashCode() % consumers.length)].accept(log);
         return;
       }
     }

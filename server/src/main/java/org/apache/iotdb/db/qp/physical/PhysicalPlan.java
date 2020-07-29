@@ -79,6 +79,10 @@ public abstract class PhysicalPlan {
 
   public abstract List<String> getPathsStrings();
 
+  public void setPaths(List<Path> paths) {
+
+  }
+
   public boolean isQuery() {
     return isQuery;
   }
