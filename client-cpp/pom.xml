@@ -38,7 +38,7 @@
         <boost.version.underline-short>1_73</boost.version.underline-short>
         <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
         <cmake-version>3.17.3</cmake-version>
-        <cmake.root.dir>${project.build.directory}/dependency/cmake/bin</cmake.root.dir>
+        <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
     </properties>
     <modules>
         <module>tools</module>
