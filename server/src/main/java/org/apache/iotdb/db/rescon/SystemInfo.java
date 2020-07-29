@@ -33,6 +33,7 @@ public class SystemInfo {
   long totalTspInfoMemCost;
   long arrayPoolMemCost;
 
+  // processor -> mem cost of it
   TreeMap<TsFileProcessor, Long> reportedTspMemCostMap = new TreeMap<>(
       (o1, o2) -> (int) (o2.getTsFileProcessorInfo().getTsFileProcessorMemCost() - o1
           .getTsFileProcessorInfo()
@@ -72,6 +73,7 @@ public class SystemInfo {
   public synchronized boolean reportTsFileProcessorStatus(TsFileProcessor processor) {
     long variation;
     Long originalValue = reportedTspMemCostMap.get(processor);
+    // update the mem cost of processor
     reportedTspMemCostMap
         .put(processor, processor.getTsFileProcessorInfo().getTsFileProcessorMemCost());
     if (originalValue == null) {
@@ -95,7 +97,7 @@ public class SystemInfo {
    *
    * @param increasingArraySize increasing size of buffered array
    */
-  public void reportIncreasingArraySize(int increasingArraySize) {
+  public synchronized void reportIncreasingArraySize(int increasingArraySize) {
     this.arrayPoolMemCost += increasingArraySize;
   }
 
@@ -106,7 +108,7 @@ public class SystemInfo {
    * @param dataType data type of array
    * @param size     size of array
    */
-  public void reportReleaseOOBArray(TSDataType dataType, int size) {
+  public synchronized void reportReleaseOOBArray(TSDataType dataType, int size) {
     this.arrayPoolMemCost -= dataType.getDataTypeSize() * size;
   }
 
@@ -115,7 +117,7 @@ public class SystemInfo {
    *
    * @param processor closing processor
    */
-  public void resetTsFileProcessorStatus(TsFileProcessor processor) {
+  public synchronized void resetTsFileProcessorStatus(TsFileProcessor processor) {
     if (reportedTspMemCostMap.containsKey(processor)) {
       this.totalTspInfoMemCost -= processor.getTsFileProcessorInfo().getTsFileProcessorMemCost();
       reportedTspMemCostMap.remove(processor);
@@ -137,7 +139,6 @@ public class SystemInfo {
     if (flushedProcessor != null) {
       flushedProcessor.asyncFlush();
     }
-
   }
 
   public static SystemInfo getInstance() {
