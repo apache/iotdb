@@ -218,18 +218,19 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   @Override
   public void flushLogBuffer() {
-
     lock.writeLock().lock();
     try {
       if (bufferedLogNum == 0) {
         return;
       }
       // write into disk
-      System.out.println(">>>>>>>>>>>>>>>>>>> flush log");
       try {
         checkStream();
         ReadWriteIOUtils
             .writeWithoutSize(logBuffer, 0, logBuffer.position(), currentLogOutputStream);
+        if(ClusterDescriptor.getInstance().getConfig().getForceRaftLogPeriodInMS() == 0){
+          currentLogOutputStream.getChannel().force(true);
+        }
       } catch (IOException e) {
         logger.error("Error in logs serialization: ", e);
         return;
@@ -247,7 +248,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     flushLogBuffer();
     lock.writeLock().lock();
     try {
-      currentLogOutputStream.getChannel().force(true);
+      if (currentLogOutputStream != null) {
+        currentLogOutputStream.getChannel().force(true);
+      }
     } catch (IOException e) {
       logger.error("Error when force flushing logs serialization: ", e);
       return;

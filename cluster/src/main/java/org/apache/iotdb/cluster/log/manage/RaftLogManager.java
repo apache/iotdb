@@ -600,7 +600,7 @@ abstract public class RaftLogManager {
 
   public void flushLogPeriodically() {
     synchronized (this) {
-      getStableEntryManager().flushLogBuffer();
+      getStableEntryManager().forceFlushLogBuffer();
     }
   }
 
