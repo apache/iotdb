@@ -381,6 +381,10 @@ public class TsFileProcessor {
       }
     }
     for (int i = 0; i < insertPlan.getDataTypes().length; i++) {
+      // skip failed Measurements
+      if (insertPlan.getDataTypes()[i] == null) {
+        continue;
+      }
       // String array cost
       if (insertPlan.getDataTypes()[i] == TSDataType.TEXT) {
         if (insertPlan instanceof InsertRowPlan) {
