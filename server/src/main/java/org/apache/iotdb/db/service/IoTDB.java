@@ -170,8 +170,8 @@ public class IoTDB implements IoTDBMBean {
     logger.info("Deactivating IoTDB...");
     IoTDB.metaManager.clear();
     TracingManager.getInstance().close();
-    PrimitiveArrayManager.getInstance().close();
     registerManager.shutdownAll();
+    PrimitiveArrayManager.getInstance().close();
     JMXService.deregisterMBean(mbeanName);
     logger.info("IoTDB is deactivated.");
   }
