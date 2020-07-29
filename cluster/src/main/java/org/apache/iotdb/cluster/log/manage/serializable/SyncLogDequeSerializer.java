@@ -85,7 +85,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private ByteBuffer logBuffer = ByteBuffer
       .allocate(ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize());
 
-  private int flushRaftLogThreshold = ClusterDescriptor.getInstance().getConfig()
+  private final int flushRaftLogThreshold = ClusterDescriptor.getInstance().getConfig()
       .getFlushRaftLogThreshold();
 
   private int bufferedLogNum = 0;
@@ -398,39 +398,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logger.warn("Cannot create new log file {}", logFile);
     }
     return logFile;
-  }
-
-  public void appendInternal(List<Log> logs) {
-    int bufferSize = 0;
-    List<ByteBuffer> bufferList = new ArrayList<>(logs.size());
-    lock.writeLock().lock();
-    try {
-      for (Log log : logs) {
-        ByteBuffer data = log.serialize();
-        int size = data.capacity() + Integer.BYTES;
-        logSizeDeque.addLast(size);
-        bufferSize += size;
-
-        bufferList.add(data);
-      }
-    } finally {
-      lock.writeLock().unlock();
-    }
-
-    ByteBuffer finalBuffer = ByteBuffer.allocate(bufferSize);
-    for (ByteBuffer byteBuffer : bufferList) {
-      finalBuffer.putInt(byteBuffer.capacity());
-      finalBuffer.put(byteBuffer.array());
-    }
-
-    // write into disk
-    try {
-      checkStream();
-      ReadWriteIOUtils.writeWithoutSize(finalBuffer, currentLogOutputStream);
-    } catch (IOException e) {
-      logger.error("Error in appending {} logs serialization: ", logs.size(), e);
-    }
-
   }
 
   @SuppressWarnings("unused") // to support serialization of uncommitted logs
