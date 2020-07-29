@@ -1770,7 +1770,7 @@ public class MetaGroupMember extends RaftMember {
     List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
     for (String seriesPath : unregisteredSeriesList) {
       int index = seriesList.indexOf(seriesPath);
-      TSDataType dataType = insertPlan.getDataTypes() != null
+      TSDataType dataType = (insertPlan.getDataTypes() != null && insertPlan.getDataTypes()[index] != null)
           ? insertPlan.getDataTypes()[index]
           : TypeInferenceUtils.getPredictedDataType(insertPlan instanceof InsertTabletPlan
               ? Array.get(((InsertTabletPlan) insertPlan).getColumns()[index], 0)
