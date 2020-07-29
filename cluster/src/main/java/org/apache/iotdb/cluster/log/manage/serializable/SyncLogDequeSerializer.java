@@ -23,6 +23,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
@@ -80,6 +81,15 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private String logDir;
   // version controller
   private VersionController versionController;
+
+  private ByteBuffer logBuffer = ByteBuffer
+      .allocate(ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize());
+
+  private final int flushRaftLogThreshold = ClusterDescriptor.getInstance().getConfig()
+      .getFlushRaftLogThreshold();
+
+  private int bufferedLogNum = 0;
+
 
   /**
    * the lock uses when change the logSizeDeque
@@ -158,13 +168,78 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   @Override
-  public void append(List<Log> entries) {
+  public void append(List<Log> entries) throws IOException {
     Log entry = entries.get(entries.size() - 1);
     meta.setCommitLogIndex(entry.getCurrLogIndex());
     meta.setCommitLogTerm(entry.getCurrLogTerm());
     meta.setLastLogIndex(entry.getCurrLogIndex());
     meta.setLastLogTerm(entry.getCurrLogTerm());
-    appendInternal(entries);
+    lock.writeLock().lock();
+    try {
+      putLogs(entries);
+      if (bufferedLogNum >= flushRaftLogThreshold) {
+        flushLogBuffer();
+      }
+    } catch (BufferOverflowException e) {
+      throw new IOException(
+          "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+              + "otherwise, please increase the JVM memory", e
+      );
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  /**
+   * Put each log in entries to local buffer. If the buffer overflows, flush the buffer to the disk,
+   * and try to push the log again.
+   *
+   * @param entries logs to put to buffer
+   */
+  private void putLogs(List<Log> entries) {
+    for (Log log : entries) {
+      logBuffer.mark();
+      ByteBuffer logData = log.serialize();
+      try {
+        int size = logData.capacity() + Integer.BYTES;
+        logSizeDeque.addLast(size);
+        logBuffer.putInt(logData.capacity());
+        logBuffer.put(logData);
+      } catch (BufferOverflowException e) {
+        logger.info("Raft log buffer overflow!");
+        logBuffer.reset();
+        flushLogBuffer();
+        logBuffer.putInt(logData.capacity());
+        logBuffer.put(logData);
+      }
+      bufferedLogNum++;
+    }
+  }
+
+  /**
+   * Flush current log buffer to the disk.
+   */
+  private void flushLogBuffer() {
+    lock.writeLock().lock();
+    try {
+      if (bufferedLogNum == 0) {
+        return;
+      }
+      // write into disk
+      try {
+        checkStream();
+        ReadWriteIOUtils
+            .writeWithoutSize(logBuffer, 0, logBuffer.position(), currentLogOutputStream);
+      } catch (IOException e) {
+        logger.error("Error in logs serialization: ", e);
+        return;
+      }
+      logBuffer.clear();
+      bufferedLogNum = 0;
+      logger.debug("End flushing log buffer.");
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   @Override
@@ -325,59 +400,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     return logFile;
   }
 
-  public void append(Log log) {
-    ByteBuffer data = log.serialize();
-    int totalSize = 0;
-    // write into disk
-    try {
-      checkStream();
-      totalSize = ReadWriteIOUtils.write(data, currentLogOutputStream);
-    } catch (IOException e) {
-      logger.error("Error in appending log {} ", log, e);
-    }
-
-    lock.writeLock().lock();
-    try {
-      logSizeDeque.addLast(totalSize);
-    } finally {
-      lock.writeLock().unlock();
-    }
-
-  }
-
-  public void appendInternal(List<Log> logs) {
-    int bufferSize = 0;
-    List<ByteBuffer> bufferList = new ArrayList<>(logs.size());
-    lock.writeLock().lock();
-    try {
-      for (Log log : logs) {
-        ByteBuffer data = log.serialize();
-        int size = data.capacity() + Integer.BYTES;
-        logSizeDeque.addLast(size);
-        bufferSize += size;
-
-        bufferList.add(data);
-      }
-    } finally {
-      lock.writeLock().unlock();
-    }
-
-    ByteBuffer finalBuffer = ByteBuffer.allocate(bufferSize);
-    for (ByteBuffer byteBuffer : bufferList) {
-      finalBuffer.putInt(byteBuffer.capacity());
-      finalBuffer.put(byteBuffer.array());
-    }
-
-    // write into disk
-    try {
-      checkStream();
-      ReadWriteIOUtils.writeWithoutSize(finalBuffer, currentLogOutputStream);
-    } catch (IOException e) {
-      logger.error("Error in appending {} logs serialization: ", logs.size(), e);
-    }
-
-  }
-
   @SuppressWarnings("unused") // to support serialization of uncommitted logs
   public void truncateLog(int count, LogManagerMeta meta) {
     truncateLogIntern(count);
@@ -442,6 +464,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   public void removeFirst(int num) {
+    if (bufferedLogNum > 0) {
+      flushLogBuffer();
+    }
     firstLogPosition += num;
     for (int i = 0; i < num; i++) {
       removedLogSize += logSizeDeque.removeFirst();
@@ -591,6 +616,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   @Override
   public void close() {
+    flushLogBuffer();
+    lock.writeLock().lock();
     try {
       if (currentLogOutputStream != null) {
         currentLogOutputStream.close();
@@ -598,6 +625,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       }
     } catch (IOException e) {
       logger.error("Error in log serialization: ", e);
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 

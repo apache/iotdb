@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.cluster.log;
 
+import java.io.IOException;
 import java.util.List;
 
 public interface StableEntryManager {
 
   List<Log> getAllEntries();
 
-  void append(List<Log> entries);
+  void append(List<Log> entries) throws IOException;
 
   void removeCompactedEntries(long index);
 
