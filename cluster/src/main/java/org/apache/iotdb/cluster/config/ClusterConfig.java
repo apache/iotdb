@@ -100,13 +100,13 @@ public class ClusterConfig {
   private boolean enableRaftLogPersistence = true;
 
 
-  private int flushRaftLogThreshold=10000;
+  private int flushRaftLogThreshold = 10000;
 
-  private int forceRaftLogPeriodInMS=10;
+  private int forceRaftLogPeriodInMS = 10;
 
   /**
-   * Size of log buffer. If raft log persistence is enabled and the size of a insert plan
-   * is smaller than this parameter, then the insert plan will be rejected by WAL.
+   * Size of log buffer. If raft log persistence is enabled and the size of a insert plan is smaller
+   * than this parameter, then the insert plan will be rejected by WAL.
    */
   private int raftLogBufferSize = 16 * 1024 * 1024;
 
@@ -119,7 +119,6 @@ public class ClusterConfig {
    * with the leader and simply use the local data
    */
   private ConsistencyLevel consistencyLevel = ConsistencyLevel.MID_CONSISTENCY;
-
 
 
   public int getSelectorNumOfClientPool() {
