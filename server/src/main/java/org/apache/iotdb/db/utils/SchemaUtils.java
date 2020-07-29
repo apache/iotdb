@@ -51,7 +51,7 @@ public class SchemaUtils {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      IoTDB.metaManager.createTimeseries(Arrays.asList(MetaUtils.getNodeNames(path)), dataType, encoding,
+      IoTDB.metaManager.createTimeseries(MetaUtils.splitPathToNodes(path), dataType, encoding,
           compressionType, Collections.emptyMap());
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries

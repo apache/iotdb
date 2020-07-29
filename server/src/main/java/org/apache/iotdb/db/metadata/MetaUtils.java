@@ -37,29 +37,6 @@ public class MetaUtils {
     throw new IllegalStateException("Utility class");
   }
 
-  public static String[] getNodeNames(String path) {
-    String[] nodeNames;
-    int indexOfLeftDoubleQuote = path.indexOf('\"');
-    int indexOfRightDoubleQuote = path.lastIndexOf('\"');
-    String measurement;
-    String device;
-    String[] deviceNodeNames;
-    if(indexOfRightDoubleQuote != -1 && indexOfRightDoubleQuote == path.length() -1) {
-      measurement = path.substring(indexOfLeftDoubleQuote);
-      if(indexOfLeftDoubleQuote == 0) {
-        device = path;
-      } else {
-        device = path.substring(0, indexOfLeftDoubleQuote-1);
-      }
-      deviceNodeNames = device.split(PATH_SEPARATOR);
-      nodeNames = Arrays.copyOf(deviceNodeNames, deviceNodeNames.length + 1);
-      nodeNames[nodeNames.length - 1] = measurement;
-    } else {
-      nodeNames = path.split(PATH_SEPARATOR);
-    }
-    return nodeNames;
-  }
-
   static String getNodeRegByIdx(int idx, String[] nodes) {
     return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
   }
@@ -94,26 +71,6 @@ public class MetaUtils {
       nodes.add(path.substring(startIndex));
     }
     return nodes;
-  }
-
-  /**
-   * Get storage group name when creating schema automatically is enable
-   *
-   * e.g., path = root.a.b.c and level = 1, return root.a
-   *
-   * @param path path
-   * @param level level
-   */
-  public static String getStorageGroupNameByLevel(String path, int level) throws MetadataException {
-    String[] nodeNames = MetaUtils.getNodeNames(path);
-    if (nodeNames.length <= level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
-      throw new IllegalPathException(path);
-    }
-    StringBuilder storageGroupName = new StringBuilder(nodeNames[0]);
-    for (int i = 1; i <= level; i++) {
-      storageGroupName.append(IoTDBConstant.PATH_SEPARATOR).append(nodeNames[i]);
-    }
-    return storageGroupName.toString();
   }
 
   /**

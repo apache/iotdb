@@ -69,7 +69,7 @@ public class FilePathUtils {
 
     int i = 0;
     for (Path value : rawPaths) {
-      String[] tmpPath = MetaUtils.getNodeNames(value.getFullPath());
+      String[] tmpPath =value.getNodes().toArray(new String[0]);
 
       String key;
       if (tmpPath.length <= level) {

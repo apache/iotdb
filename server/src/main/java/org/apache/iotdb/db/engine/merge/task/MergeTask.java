@@ -122,7 +122,7 @@ public class MergeTask implements Callable<Void> {
     mergeLogger = new MergeLogger(storageGroupSysDir);
 
     mergeLogger.logFiles(resource);
-    List<String> storageGroupNameNodes = MetaUtils.getDeviceNodeNames(storageGroupName);
+    List<String> storageGroupNameNodes = MetaUtils.splitPathToNodes(storageGroupName);
     Set<Path> devices = IoTDB.metaManager.getDevicePaths(storageGroupNameNodes);
     Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
     List<Path> unmergedSeries = new ArrayList<>();

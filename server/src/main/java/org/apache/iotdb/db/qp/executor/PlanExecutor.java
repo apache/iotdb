@@ -70,6 +70,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartiti
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -382,7 +383,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
-    int num = getNodesNumInGivenLevel(countPlan.getPath().toString(), countPlan.getLevel());
+    int num = getNodesNumInGivenLevel(countPlan.getPath().getNodes(), countPlan.getLevel());
     SingleDataSet singleDataSet =
         new SingleDataSet(
             Collections.singletonList(new Path(COLUMN_COUNT)),
@@ -397,7 +398,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan) throws MetadataException {
     // get the nodes that need to group by first
-    List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
+    List<String> nodes = getNodesList(countPlan.getPath().getNodes(), countPlan.getLevel());
     ListDataSet listDataSet =
         new ListDataSet(
             Arrays.asList(new Path(COLUMN_COLUMN), new Path(COLUMN_COUNT)),
@@ -408,7 +409,7 @@ public class PlanExecutor implements IPlanExecutor {
       field.setBinaryV(new Binary(columnPath));
       Field field1 = new Field(TSDataType.TEXT);
       // get the count of every group
-      field1.setBinaryV(new Binary(Integer.toString(getPathsNum(columnPath))));
+      field1.setBinaryV(new Binary(Integer.toString(getPathsNum(countPlan.getPath().getNodes()))));
       record.addField(field);
       record.addField(field1);
       listDataSet.putRecord(record);
@@ -416,24 +417,24 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected int getPathsNum(String path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesCount(path);
+  protected int getPathsNum(List<String> nodes) throws MetadataException {
+    return IoTDB.metaManager.getAllTimeseriesCount(nodes);
   }
 
-  protected int getNodesNumInGivenLevel(String path, int level) throws MetadataException {
-    return IoTDB.metaManager.getNodesCountInGivenLevel(path, level);
+  protected int getNodesNumInGivenLevel(List<String> nodes, int level) throws MetadataException {
+    return IoTDB.metaManager.getNodesCountInGivenLevel(nodes, level);
   }
 
   protected List<Path> getPathsName(List<String> nodes) throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPath(nodes);
   }
 
-  protected List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
-    return IoTDB.metaManager.getNodesList(schemaPattern, level);
+  protected List<String> getNodesList(List<String> nodes, int level) throws MetadataException {
+    return IoTDB.metaManager.getNodesList(nodes, level);
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
-    int num = getPathsNum(countPlan.getPath().toString());
+    int num = getPathsNum(countPlan.getPath().getNodes());
     SingleDataSet singleDataSet =
         new SingleDataSet(
             Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
@@ -452,7 +453,7 @@ public class PlanExecutor implements IPlanExecutor {
         new ListDataSet(
             Collections.singletonList(new Path(COLUMN_DEVICES)),
             Collections.singletonList(TSDataType.TEXT));
-    Set<String> devices = getDevices(showDevicesPlan.getPath().toString());
+    Set<String> devices = getDevices(showDevicesPlan.getPath().getNodes());
     for (String s : devices) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
@@ -463,13 +464,13 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected Set<String> getDevices(String path) throws MetadataException {
-    return IoTDB.metaManager.getDevices(path);
+  protected Set<String> getDevices(List<String> nodes) throws MetadataException {
+    return IoTDB.metaManager.getDevices(nodes);
   }
 
   private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
       throws MetadataException {
-    Set<String> childPathsList = getPathNextChildren(showChildPathsPlan.getPath().toString());
+    Set<String> childPathsList = getPathNextChildren(showChildPathsPlan.getPath().getNodes());
     ListDataSet listDataSet =
         new ListDataSet(
             Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
@@ -484,8 +485,8 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected Set<String> getPathNextChildren(String path) throws MetadataException {
-    return IoTDB.metaManager.getChildNodePathInNextLevel(path);
+  protected Set<String> getPathNextChildren(List<String> nodes) throws MetadataException {
+    return IoTDB.metaManager.getChildNodePathInNextLevel(nodes);
   }
 
   protected List<String> getAllStorageGroupNames() {
@@ -793,7 +794,7 @@ public class PlanExecutor implements IPlanExecutor {
         throw new QueryProcessException(
             String.format("File %s doesn't exist.", plan.getFile().getName()));
       }
-    } catch (StorageEngineException e) {
+    } catch (StorageEngineException | IllegalPathException e) {
       throw new QueryProcessException(
           String.format("Cannot remove file because %s", e.getMessage()));
     }
@@ -809,7 +810,7 @@ public class PlanExecutor implements IPlanExecutor {
         throw new QueryProcessException(
             String.format("File %s doesn't exist.", plan.getFile().getName()));
       }
-    } catch (StorageEngineException | IOException e) {
+    } catch (StorageEngineException | IOException | IllegalPathException e) {
       throw new QueryProcessException(
           String.format(
               "Cannot move file %s to target directory %s because %s",

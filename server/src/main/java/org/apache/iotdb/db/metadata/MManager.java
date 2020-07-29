@@ -191,7 +191,7 @@ public class MManager {
       if (config.isEnableParameterAdapter()) {
         List<String> storageGroups = mtree.getAllStorageGroupNames();
         for (String sg : storageGroups) {
-          MNode node = mtree.getNodeByPath(sg);
+          MNode node = mtree.getNodeByNodes(MetaUtils.splitPathToNodes(sg));
           seriesNumberInStorageGroups.put(sg, node.getLeafCount());
         }
         maxSeriesNumberAmongStorageGroup =
@@ -332,18 +332,18 @@ public class MManager {
         List<String> storageGroups = new ArrayList<>(Arrays.asList(args).subList(1, args.length));
         List<List<String>> storageGroupNodesList = new ArrayList<>();
         for(String storageGroup : storageGroups) {
-          storageGroupNodesList.add(MetaUtils.getDeviceNodeNames(storageGroup));
+          storageGroupNodesList.add(MetaUtils.splitPathToNodes(storageGroup));
         }
         deleteStorageGroups(storageGroupNodesList);
         break;
       case MetadataOperationType.SET_TTL:
-        setTTL(MetaUtils.getDeviceNodeNames(args[1]), Long.parseLong(args[2]));
+        setTTL(MetaUtils.splitPathToNodes(args[1]), Long.parseLong(args[2]));
         break;
       case MetadataOperationType.CHANGE_OFFSET:
-        changeOffset(args[1], Long.parseLong(args[2]));
+        changeOffset(MetaUtils.splitPathToNodes(args[1]), Long.parseLong(args[2]));
         break;
       case MetadataOperationType.CHANGE_ALIAS:
-        changeAlias(args[1], args[2]);
+        changeAlias(MetaUtils.splitPathToNodes(args[1]), args[2]);
         break;
       default:
         logger.error("Unrecognizable command {}", cmd);
@@ -666,36 +666,20 @@ public class MManager {
     }
   }
 
-  public MeasurementSchema[] getSchemas(String deviceId, String[] measurements)
+  public MeasurementSchema[] getSchemas(List<String> deviceNodes, String[] measurements)
       throws MetadataException {
     lock.readLock().lock();
     try {
-      MNode deviceNode = getNodeByPath(deviceId);
+      MNode deviceNode = getNodeByNodes(deviceNodes);
       MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurements.length];
       for (int i = 0; i < measurementSchemas.length; i++) {
         if (!deviceNode.hasChild(measurements[i])) {
-          throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
+          throw new MetadataException(measurements[i] + " does not exist in " + MetaUtils.getPathByNodes(deviceNodes));
         }
         measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]))
             .getSchema();
       }
       return measurementSchemas;
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Get all devices under given prefixPath.
-   *
-   * @param prefixPath a prefix of a full path. if the wildcard is not at the tail, then each
-   *                   wildcard can only match one level, otherwise it can match to the tail.
-   * @return A HashSet instance which stores devices names with given prefixPath.
-   */
-  public Set<String> getDevices(String prefixPath) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.getDevices(prefixPath);
     } finally {
       lock.readLock().unlock();
     }
@@ -736,37 +720,21 @@ public class MManager {
   /**
    * Get all nodes from the given level
    *
-   * @param prefixPath can be a prefix of a full path. Can not be a full path. can not have
+   * @param nodes can be nodes of a prefixPath or a full path. Can not be a full path. can not have
    *                   wildcard. But, the level of the prefixPath can be smaller than the given
    *                   level, e.g., prefixPath = root.a while the given level is 5
    * @param nodeLevel  the level can not be smaller than the level of the prefixPath
    * @return A List instance which stores all node at given level
    */
-  public List<String> getNodesList(String prefixPath, int nodeLevel) throws MetadataException {
-    return getNodesList(prefixPath, nodeLevel, null);
+  public List<String> getNodesList(List<String> nodes, int nodeLevel) throws MetadataException {
+    return getNodesList(nodes, nodeLevel, null);
   }
 
-  public List<String> getNodesList(String prefixPath, int nodeLevel, StorageGroupFilter filter)
+  public List<String> getNodesList(List<String> nodes, int nodeLevel, StorageGroupFilter filter)
       throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getNodesList(prefixPath, nodeLevel, filter);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Get storage group name by path
-   *
-   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
-   *
-   * @return storage group in the given path
-   */
-  public String getStorageGroupName(String path) throws StorageGroupNotSetException {
-    lock.readLock().lock();
-    try {
-      return mtree.getStorageGroupName(path);
+      return mtree.getNodesList(nodes, nodeLevel, filter);
     } finally {
       lock.readLock().unlock();
     }
@@ -907,10 +875,10 @@ public class MManager {
   /**
    * To calculate the count of timeseries for given prefix path.
    */
-  public int getAllTimeseriesCount(String prefixPath) throws MetadataException {
+  public int getAllTimeseriesCount(List<String> nodes) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getAllTimeseriesCount(prefixPath);
+      return mtree.getAllTimeseriesCount(nodes);
     } finally {
       lock.readLock().unlock();
     }
@@ -919,13 +887,13 @@ public class MManager {
   /**
    * To calculate the count of nodes in the given level for given prefix path.
    *
-   * @param prefixPath a prefix path or a full path, can not contain '*'
+   * @param nodes nodes of a prefix path or a full path, can not contain '*'
    * @param level      the level can not be smaller than the level of the prefixPath
    */
-  public int getNodesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
+  public int getNodesCountInGivenLevel(List<String> nodes, int level) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getNodesCountInGivenLevel(prefixPath, level);
+      return mtree.getNodesCountInGivenLevel(nodes, level);
     } finally {
       lock.readLock().unlock();
     }
@@ -998,7 +966,7 @@ public class MManager {
             pair.left.putAll(pair.right);
             MeasurementSchema measurementSchema = leaf.getSchema();
             res.add(new ShowTimeSeriesResult(leaf.getFullPath(), leaf.getAlias(),
-                getStorageGroupName(leaf.getFullPath()), measurementSchema.getType().toString(),
+                getStorageGroupName(path), measurementSchema.getType().toString(),
                 measurementSchema.getEncodingType().toString(),
                 measurementSchema.getCompressor().toString(), pair.left));
             if (limit != 0) {
@@ -1109,23 +1077,6 @@ public class MManager {
    *
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.getChildNodePathInNextLevel(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Get child node path in the next level of the given path.
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [root.sg1.d1, root.sg1.d2]
-   *
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
   public Set<String> getChildNodePathInNextLevel(List<String> nodes) throws MetadataException {
     lock.readLock().lock();
     try {
@@ -1150,37 +1101,12 @@ public class MManager {
   }
 
   /**
-   * Get node by path
-   */
-  public MNode getNodeByPath(String path) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.getNodeByPath(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
    * Get node by nodes of path
    */
   public MNode getNodeByNodes(List<String> nodes) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getNodeByNodes(nodes);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * Get storage group node by path. If storage group is not set, StorageGroupNotSetException will
-   * be thrown
-   */
-  public StorageGroupMNode getStorageGroupNode(String path) throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.getStorageGroupNode(path);
     } finally {
       lock.readLock().unlock();
     }
@@ -1291,7 +1217,7 @@ public class MManager {
   public String getDeviceId(String path) {
     MNode deviceNode = null;
     try {
-      deviceNode = getDeviceNode(path, MetaUtils.getDeviceNodeNames(path));
+      deviceNode = getDeviceNode(path, MetaUtils.splitPathToNodes(path));
       path = deviceNode.getFullPath();
     } catch (MetadataException | NullPointerException e) {
       // Cannot get deviceId from MManager, return the input deviceId
@@ -1345,22 +1271,22 @@ public class MManager {
    * Check whether the given path contains a storage group change or set the new offset of a
    * timeseries
    *
-   * @param path   timeseries
+   * @param nodes   timeseries
    * @param offset offset in the tag file
    */
-  public void changeOffset(String path, long offset) throws MetadataException {
+  public void changeOffset(List<String> nodes, long offset) throws MetadataException {
     lock.writeLock().lock();
     try {
-      ((MeasurementMNode) mtree.getNodeByPath(path)).setOffset(offset);
+      ((MeasurementMNode) mtree.getNodeByNodes(nodes)).setOffset(offset);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public void changeAlias(String path, String alias) throws MetadataException {
+  public void changeAlias(List<String> nodes, String alias) throws MetadataException {
     lock.writeLock().lock();
     try {
-      MeasurementMNode leafMNode = (MeasurementMNode) mtree.getNodeByPath(path);
+      MeasurementMNode leafMNode = (MeasurementMNode) mtree.getNodeByNodes(nodes);
       if (leafMNode.getAlias() != null) {
         leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
       }
@@ -1845,13 +1771,13 @@ public class MManager {
   /**
    * Collect the timeseries schemas under "startingPath".
    *
-   * @param startingPath
+   * @param startingPathNodes
    * @param measurementSchemas
    */
-  public void collectSeries(String startingPath, List<MeasurementSchema> measurementSchemas) {
+  public void collectSeries(List<String> startingPathNodes, List<MeasurementSchema> measurementSchemas) {
     MNode mNode;
     try {
-      mNode = getNodeByPath(startingPath);
+      mNode = getNodeByNodes(startingPathNodes);
     } catch (MetadataException e) {
       return;
     }
@@ -1879,13 +1805,13 @@ public class MManager {
    *
    * <p>Eg3: for input "root.area1.*", returns ("root.area1.group3", "root.area1.group3.*")
    *
-   * @param path can be a prefix or a full path.
+   * @param nodes of path can be a prefix or a full path.
    * @return StorageGroupName-FullPath pairs
    */
-  public Map<String, String> determineStorageGroup(String path) throws IllegalPathException {
+  public Map<String, String> determineStorageGroup(List<String> nodes) throws IllegalPathException {
     lock.readLock().lock();
     try {
-      return mtree.determineStorageGroup(path);
+      return mtree.determineStorageGroup(nodes);
     } finally {
       lock.readLock().unlock();
     }
