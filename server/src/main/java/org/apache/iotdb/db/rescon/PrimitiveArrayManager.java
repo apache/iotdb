@@ -141,7 +141,7 @@ public class PrimitiveArrayManager {
         .computeIfAbsent(dataType, k -> new ArrayDeque<>());
     bufferedArraysSize += ARRAY_SIZE * dataType.getDataTypeSize();
     if (bufferedArraysSize - lastReportArraySize >= BUFFERED_ARRAY_SIZE_THRESHOLD / 8) {
-      // report current buffed array size to system
+      // report current buffered array size to system
       SystemInfo.getInstance().reportIncreasingArraySize(bufferedArraysSize - lastReportArraySize);
       lastReportArraySize = bufferedArraysSize;
     }
