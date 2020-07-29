@@ -40,6 +40,10 @@
 * fix doc of MeasurementSchema in Tablet 
 * [IOTDB-811] fix upgrading mlog many times when upgrading system.properties crashed
 * Improve IoTDB restart process
+* remove jol-core dependency which is introduced by hive-serde 2.8.4
+* remove org.json dependency because of license compatibility
+* [ISSUE-1551] fix set historical version when loading additional tsfile
+
 
 # Apache IoTDB (incubating) 0.10.0
 
