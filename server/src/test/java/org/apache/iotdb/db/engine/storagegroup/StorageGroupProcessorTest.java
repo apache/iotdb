@@ -125,9 +125,6 @@ public class StorageGroupProcessorTest {
           .query(deviceId, measurementId, TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
               new QueryContext(), tsfileResourcesForQuery);
       unLockList.add(tsfileProcessor.getTsFileResource());
-      for (List<TsFileResource> subTsFileResources : tsfileProcessor.getVmTsFileResources()) {
-        unLockList.addAll(subTsFileResources);
-      }
       break;
     }
 
