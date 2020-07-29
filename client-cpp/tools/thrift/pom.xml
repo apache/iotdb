@@ -57,7 +57,7 @@
                                     <goal>exec</goal>
                                 </goals>
                                 <configuration>
-                                    <basedir>${cmake.root}</basedir>
+                                    <basedir>${cmake.root.dir}/bin</basedir>
                                     <executable>chmod</executable>
                                     <arguments>
                                         <argument>+x</argument>
@@ -92,7 +92,7 @@
                                     <goal>exec</goal>
                                 </goals>
                                 <configuration>
-                                    <basedir>${cmake.root}</basedir>
+                                    <basedir>${cmake.root.dir}/bin</basedir>
                                     <executable>chmod</executable>
                                     <arguments>
                                         <argument>+x</argument>
@@ -278,7 +278,7 @@
                 and tell the plugin where to find that version.
               -->
                             <downloadBinaries>false</downloadBinaries>
-                            <cmakeDir>${cmake.root}</cmakeDir>
+                            <cmakeDir>${cmake.root.dir}</cmakeDir>
                             <sourcePath>${project.build.directory}/thrift-${thrift.version}</sourcePath>
                             <targetPath>${project.build.directory}/build</targetPath>
                             <generator>${cmake.generator}</generator>
@@ -330,6 +330,7 @@
                                 <option>-DBOOST_INCLUDEDIR=${project.build.directory}/boost/include</option>
                                 <option>-DBOOST_LIBRARYDIR=${project.build.directory}/boost/lib</option>
                                 <option>-DWITH_STATIC_LIB=ON</option>
+                                <option>-DCMAKE_POSITION_INDEPENDENT_CODE=ON</option>
                             </options>
                         </configuration>
                     </execution>
