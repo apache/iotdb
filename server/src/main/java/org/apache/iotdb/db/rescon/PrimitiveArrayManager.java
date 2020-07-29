@@ -324,7 +324,7 @@ public class PrimitiveArrayManager {
    */
   private void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
     bufferedArraysMap.get(dataType).add(dataArray);
-    bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.get(dataType) - 1);
+    bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
   }
 
   /**
