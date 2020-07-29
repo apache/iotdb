@@ -100,6 +100,16 @@ abstract public class RaftLogManager {
         .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
             logDeleteCheckIntervalSecond,
             TimeUnit.SECONDS);
+
+    /**
+     * flush log to file periodically
+     */
+    int logFlushTimeIntervalMS = ClusterDescriptor.getInstance().getConfig()
+        .getForceRaftLogPeriodInMS();
+    if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+      executorService.scheduleAtFixedRate(this::flushLogPeriodically, logFlushTimeIntervalMS,
+          logFlushTimeIntervalMS, TimeUnit.MILLISECONDS);
+    }
   }
 
   abstract public Snapshot getSnapshot();
@@ -160,8 +170,7 @@ abstract public class RaftLogManager {
    *
    * @param index request entry index
    * @return throw EntryCompactedException if index < dummyIndex, -1 if index > lastIndex or the
-   * entry is compacted, otherwise
-   * return the entry's term for given index
+   * entry is compacted, otherwise return the entry's term for given index
    * @throws EntryCompactedException
    */
   public long getTerm(long index) throws EntryCompactedException {
@@ -431,7 +440,7 @@ abstract public class RaftLogManager {
           applyEntries(entries, ignoreExecutionExceptions);
         } catch (TruncateCommittedEntryException e) {
           logger.error("{}: Unexpected error:", name, e);
-        } catch (IOException e){
+        } catch (IOException e) {
           throw new LogExecutionException(e);
         }
       }
@@ -586,6 +595,12 @@ abstract public class RaftLogManager {
         return;
       }
       innerDeleteLog();
+    }
+  }
+
+  public void flushLogPeriodically() {
+    synchronized (this) {
+      getStableEntryManager().flushLogBuffer();
     }
   }
 
