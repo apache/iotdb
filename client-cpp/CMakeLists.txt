@@ -18,14 +18,23 @@
 
 PROJECT(iotdb_session_cpp)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
-SET (CMAKE_REQUIRED_INCLUDES "/usr/local/include")
-SET (TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../tools")
-INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include)
+
+SET(CMAKE_CXX_STANDARD 11)
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -Wall")
+SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../tools")
+IF(MSVC)
+    SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/Release/thriftmd.lib")
+    INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include/boost-1_72)
+ELSE()
+    SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/libthrift.a")
+    INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include)
+ENDIF()
+
 INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.12.0/lib/cpp/src)
 ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(generated-sources-cpp)
-#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -Wall")
 
 AUX_SOURCE_DIRECTORY(./src SESSION_SRCS)
 
@@ -34,4 +43,4 @@ AUX_SOURCE_DIRECTORY(./generated-sources-cpp GEN_SRCS)
 LIST(APPEND SESSION_SRCS ${GEN_SRCS})
 
 ADD_LIBRARY(iotdb_session_cpp SHARED ${SESSION_SRCS})
-TARGET_LINK_LIBRARIES(iotdb_session_cpp ${TOOLS_DIR}/thrift/target/build/lib/libthrift.a)
+TARGET_LINK_LIBRARIES(iotdb_session_cpp ${THRIFT_STATIC_LIB})

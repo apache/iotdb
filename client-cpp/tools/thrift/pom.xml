@@ -344,6 +344,7 @@
                         </goals>
                         <configuration>
                             <classifier>${os.classifier}</classifier>
+                            <config>${cmake.build.type}</config>
                             <!--
                 We need to use a newer version of cmake, so disable downloading
                 and tell the plugin where to find that version.

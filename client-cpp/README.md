@@ -45,6 +45,4 @@ Some tools need to be installed before being able to build on Windows:
 * WinBuilds (for `with-cpp`, `with-proxies` profiles)
 * Bison (for `with-cpp` profiles)
 * Flex (for `with-cpp` profiles)
-* Python 2.7 (for `with-python`, `with-proxies` profiles)
-* WinPCAP
 * OpenSSL

@@ -56,6 +56,7 @@
                 <os.classifier>linux-x86_64</os.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.basedir}/tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
+                <thrift.exec.absolute.path>${project.basedir}/tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
             </properties>
         </profile>
         <profile>
@@ -70,6 +71,7 @@
                 <os.classifier>mac-x86_64</os.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.basedir}/tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
+                <thrift.exec.absolute.path>${project.basedir}/tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
             </properties>
         </profile>
         <profile>
@@ -82,8 +84,11 @@
             <properties>
                 <os.suffix>win</os.suffix>
                 <os.classifier>windows-x86_64</os.classifier>
-                <cmake.generator>MinGW Makefiles</cmake.generator>
+                <!--<cmake.generator>MinGW Makefiles</cmake.generator>-->
+                <cmake.generator>Visual Studio 16 2019</cmake.generator>
                 <cmake.root.dir>${project.basedir}/tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
+                <cmake.build.type>Release</cmake.build.type>
+                <thrift.exec.absolute.path>${project.basedir}/tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
             </properties>
         </profile>
         <profile>
@@ -93,9 +98,6 @@
                     <exists>../thrift/src/main/thrift</exists>
                 </file>
             </activation>
-            <properties>
-                <thrift.exec.absolute.path>${project.basedir}/tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
-            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -162,7 +164,7 @@
                                     <goal>compile</goal>
                                 </goals>
                                 <configuration>
-                                    <generator>cpp</generator>
+                                    <generator>cpp:no_skeleton</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${project.build.directory}/thrift</thriftSourceRoot>
                                     <outputDirectory>${project.build.directory}/build/generated-sources-cpp</outputDirectory>
@@ -217,6 +219,7 @@
                                 </goals>
                                 <configuration>
                                     <classifier>${os.classifier}</classifier>
+                                    <config>${cmake.build.type}</config>
                                     <!--
                                       We need to use a newer version of cmake, so disable downloading
                                       and tell the plugin where to find that version.
