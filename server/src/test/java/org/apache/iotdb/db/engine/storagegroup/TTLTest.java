@@ -129,11 +129,11 @@ public class TTLTest {
 
     // normally set ttl
     IoTDB.metaManager.setTTL(sg1List, ttl);
-    StorageGroupMNode mNode = IoTDB.metaManager.getStorageGroupNode(MetaUtils.getDeviceNodeNames(sg1));
+    StorageGroupMNode mNode = IoTDB.metaManager.getStorageGroupNode(MetaUtils.splitPathByDot(sg1));
     assertEquals(ttl, mNode.getDataTTL());
 
     // default ttl
-    mNode = IoTDB.metaManager.getStorageGroupNode(MetaUtils.getDeviceNodeNames(sg2));
+    mNode = IoTDB.metaManager.getStorageGroupNode(MetaUtils.splitPathByDot(sg2));
     assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 

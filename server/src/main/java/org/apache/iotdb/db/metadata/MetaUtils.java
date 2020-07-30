@@ -27,6 +27,7 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 public class MetaUtils {
@@ -41,7 +42,8 @@ public class MetaUtils {
     return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
   }
 
-  public static List<String> getDeviceNodeNames(String path) {
+  @TestOnly
+  public static List<String> splitPathByDot(String path) {
     List<String> deviceNodes = new ArrayList<>();
     Collections.addAll(deviceNodes, path.split(PATH_SEPARATOR));
     return deviceNodes;
