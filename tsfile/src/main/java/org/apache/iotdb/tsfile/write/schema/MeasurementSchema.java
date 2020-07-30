@@ -288,7 +288,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   public String toString() {
     StringContainer sc = new StringContainer("");
     sc.addTail("[", measurementId, ",", type.toString(), ",", encoding.toString(), ",",
-        props.toString(), ",",
+        props == null ? "" : props.toString(), ",",
         compressor.toString());
     sc.addTail("]");
     return sc.toString();
