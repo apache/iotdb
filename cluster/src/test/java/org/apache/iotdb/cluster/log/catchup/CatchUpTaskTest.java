@@ -28,19 +28,26 @@ import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
+import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
+import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
@@ -56,8 +63,12 @@ public class CatchUpTaskTest {
   private boolean prevUseAsyncServer;
 
 
-
   private RaftMember sender = new TestMetaGroupMember() {
+    @Override
+    public PartitionTable getPartitionTable() {
+      return new SlotPartitionTable(TestUtils.getNode(0));
+    }
+
     @Override
     public AsyncClient getAsyncClient(Node node) {
       return new TestClient() {
@@ -120,6 +131,12 @@ public class CatchUpTaskTest {
             resultHandler.onComplete(false);
           }).start();
         }
+
+        @Override
+        public void sendSnapshot(SendSnapshotRequest request,
+            AsyncMethodCallback<Void> resultHandler) {
+          new Thread(() -> resultHandler.onComplete(null)).start();
+        }
       };
     }
 
@@ -131,6 +148,7 @@ public class CatchUpTaskTest {
 
   @Before
   public void setUp() {
+    IoTDB.metaManager.init();
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     testLeadershipFlag = false;
@@ -144,6 +162,7 @@ public class CatchUpTaskTest {
 
   @After
   public void tearDown() throws Exception {
+    IoTDB.metaManager.clear();
     sender.stop();
     EnvironmentUtils.cleanAllDir();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);

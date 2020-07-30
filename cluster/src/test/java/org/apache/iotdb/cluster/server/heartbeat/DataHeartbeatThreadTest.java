@@ -46,6 +46,7 @@ import org.junit.Before;
 public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
 
   private TestLogManager dataLogManager;
+  private MetaGroupMember metaGroupMember = (MetaGroupMember) super.getMember();
 
   @Override
   RaftMember getMember() {
@@ -71,7 +72,7 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
 
       @Override
       public MetaGroupMember getMetaGroupMember() {
-        return (MetaGroupMember) DataHeartbeatThreadTest.super.getMember();
+        return metaGroupMember;
       }
     };
   }
@@ -135,8 +136,11 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
 
   @Override
   @After
-  public void tearDown() {
+  public void tearDown() throws InterruptedException {
     dataLogManager.close();
+    dataLogManager = null;
+    metaGroupMember.closeLogManager();
+    metaGroupMember = null;
     super.tearDown();
     File dir = new File(SyncLogDequeSerializer.getLogDir(2));
     for (File file : dir.listFiles()) {

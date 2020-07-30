@@ -24,6 +24,7 @@ import static org.junit.Assert.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
+import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Test;
 

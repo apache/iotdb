@@ -26,7 +26,9 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -43,6 +45,11 @@ public class AppendNodeEntryHandlerTest {
   @Before
   public void setUp() {
     this.member = new TestMetaGroupMember();
+  }
+
+  @After
+  public void tearDown() {
+    member.closeLogManager();
   }
 
   @Test

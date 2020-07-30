@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
@@ -58,6 +59,7 @@ abstract public class RaftLogManager {
   private String name;
 
   private ScheduledExecutorService executorService;
+  private ScheduledFuture deleteLogFuture;
 
 
   /**
@@ -96,7 +98,7 @@ abstract public class RaftLogManager {
      */
     int logDeleteCheckIntervalSecond = ClusterDescriptor.getInstance().getConfig()
         .getLogDeleteCheckIntervalSecond();
-    executorService
+    deleteLogFuture = executorService
         .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
             logDeleteCheckIntervalSecond,
             TimeUnit.SECONDS);
@@ -546,6 +548,13 @@ abstract public class RaftLogManager {
     getStableEntryManager().close();
     if (executorService != null) {
       executorService.shutdownNow();
+      deleteLogFuture.cancel(true);
+      try {
+        executorService.awaitTermination(20, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Close check log thread interrupted");
+      }
       executorService = null;
     }
   }

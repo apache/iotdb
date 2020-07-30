@@ -125,7 +125,7 @@ public class RaftLogManagerTest {
         }});
       }
       List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
-        add(new RaftLogManagerTester(offset - 1, 0, EntryCompactedException.class));
+        add(new RaftLogManagerTester(offset - 1, -1, null));
         add(new RaftLogManagerTester(offset, offset, null));
         add(new RaftLogManagerTester(half, half, null));
         add(new RaftLogManagerTester(last - 1, last - 1, null));
