@@ -55,6 +55,7 @@
                 <os.suffix>linux</os.suffix>
                 <os.classifier>linux-x86_64</os.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
+                <cmake.root.dir>${project.basedir}/tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
             </properties>
         </profile>
         <profile>
@@ -68,6 +69,7 @@
                 <os.suffix>mac</os.suffix>
                 <os.classifier>mac-x86_64</os.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
+                <cmake.root.dir>${project.basedir}/tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
             </properties>
         </profile>
         <profile>
@@ -81,6 +83,7 @@
                 <os.suffix>win</os.suffix>
                 <os.classifier>windows-x86_64</os.classifier>
                 <cmake.generator>MinGW Makefiles</cmake.generator>
+                <cmake.root.dir>${project.basedir}/tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
             </properties>
         </profile>
         <profile>
@@ -185,7 +188,7 @@
                                       We need to use a newer version of cmake, so disable downloading
                                       and tell the plugin where to find that version.
                                     -->
-                                    <downloadBinaries>true</downloadBinaries>
+                                    <downloadBinaries>false</downloadBinaries>
                                     <!--
                                       Actually the path to the CMakeList.txt file which then again
                                       tells to tool where to find the sources.
