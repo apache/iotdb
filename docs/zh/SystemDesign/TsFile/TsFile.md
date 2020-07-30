@@ -26,6 +26,6 @@ TsFile 是 IoTDB 的底层数据文件，专门为时间序列数据设计的列
 
 ## 相关文档
 
-* [文件格式](../TsFile/Format.md)
-* [写流程](../TsFile/Write.md)
-* [读流程](../TsFile/Read.md)
+* [文件格式](Format.md)
+* [写流程](Write.md)
+* [读流程](Read.md)
