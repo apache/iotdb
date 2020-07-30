@@ -34,7 +34,7 @@
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TTransportException.h>
 #include <thrift/transport/TBufferTransports.h>
-#include "../generated-sources-cpp/TSIService.h"
+#include "TSIService.h"
 
 using namespace std;
 using ::apache::thrift::protocol::TBinaryProtocol;

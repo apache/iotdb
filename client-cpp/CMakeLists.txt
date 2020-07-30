@@ -16,7 +16,7 @@
 # under the License.
 #
 
-PROJECT(iotdb_session_cpp)
+PROJECT(iotdb_session)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
 
 SET(CMAKE_CXX_STANDARD 11)
@@ -33,14 +33,9 @@ ELSE()
 ENDIF()
 
 INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.12.0/lib/cpp/src)
-ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(generated-sources-cpp)
 
-AUX_SOURCE_DIRECTORY(./src SESSION_SRCS)
+AUX_SOURCE_DIRECTORY(./generated-sources-cpp SESSION_SRCS)
 
-AUX_SOURCE_DIRECTORY(./generated-sources-cpp GEN_SRCS)
-
-LIST(APPEND SESSION_SRCS ${GEN_SRCS})
-
-ADD_LIBRARY(iotdb_session_cpp SHARED ${SESSION_SRCS})
-TARGET_LINK_LIBRARIES(iotdb_session_cpp ${THRIFT_STATIC_LIB})
+ADD_LIBRARY(iotdb_session SHARED ${SESSION_SRCS})
+TARGET_LINK_LIBRARIES(iotdb_session ${THRIFT_STATIC_LIB})
