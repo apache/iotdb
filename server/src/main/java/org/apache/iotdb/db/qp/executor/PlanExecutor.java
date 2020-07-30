@@ -259,7 +259,7 @@ public class PlanExecutor implements IPlanExecutor {
         DeletePartitionPlan p = (DeletePartitionPlan) plan;
         TimePartitionFilter filter =
             (storageGroupName, partitionId) ->
-                storageGroupName.equals(MetaUtils.getPathByNodes(p.getStorageGroupNameNodes()))
+                storageGroupName.equals(MetaUtils.concatNodesByDot(p.getStorageGroupNameNodes()))
                     && p.getPartitionId().contains(partitionId);
         StorageEngine.getInstance().removePartitions(((DeletePartitionPlan) plan).getStorageGroupNameNodes(), filter);
         return true;
@@ -840,7 +840,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       if (!mManager.isPathExist(path)) {
         throw new QueryProcessException(
-            String.format("Time series %s does not exist.", MetaUtils.getPathByNodes(path)));
+            String.format("Time series %s does not exist.", MetaUtils.concatNodesByDot(path)));
       }
       mManager.getStorageGroupName(path);
       path.remove(path.size()-1);
@@ -1047,7 +1047,7 @@ public class PlanExecutor implements IPlanExecutor {
     List<List<String>> deletePathList = new ArrayList<>();
     try {
       for (Path storageGroupPath : deleteStorageGroupPlan.getPaths()) {
-        StorageEngine.getInstance().deleteStorageGroup(MetaUtils.getPathByNodes(storageGroupPath.getNodes()));
+        StorageEngine.getInstance().deleteStorageGroup(MetaUtils.concatNodesByDot(storageGroupPath.getNodes()));
         deletePathList.add(storageGroupPath.getNodes());
       }
       mManager.deleteStorageGroups(deletePathList);

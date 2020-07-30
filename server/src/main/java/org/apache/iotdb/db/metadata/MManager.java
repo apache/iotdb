@@ -460,8 +460,8 @@ public class MManager {
     if (isStorageGroup(prefixPathNodes)) {
 
       if (config.isEnableParameterAdapter()) {
-        int size = seriesNumberInStorageGroups.get(MetaUtils.getPathByNodes(prefixPathNodes));
-        seriesNumberInStorageGroups.put(MetaUtils.getPathByNodes(prefixPathNodes), 0);
+        int size = seriesNumberInStorageGroups.get(MetaUtils.concatNodesByDot(prefixPathNodes));
+        seriesNumberInStorageGroups.put(MetaUtils.concatNodesByDot(prefixPathNodes), 0);
         if (size == maxSeriesNumberAmongStorageGroup) {
           seriesNumberInStorageGroups.values().stream()
               .max(Integer::compareTo)
@@ -484,7 +484,7 @@ public class MManager {
             if (emptyStorageGroup != null) {
               StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
             }
-            logWriter.deleteTimeseries(MetaUtils.getPathByNodes(prefixPathNodes));
+            logWriter.deleteTimeseries(MetaUtils.concatNodesByDot(prefixPathNodes));
           }
         } catch (DeleteFailedException e) {
           failedNames.add(e.getName());
@@ -621,10 +621,10 @@ public class MManager {
 
         if (config.isEnableParameterAdapter()) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
-          int size = seriesNumberInStorageGroups.get(MetaUtils.getPathByNodes(storageGroup));
+          int size = seriesNumberInStorageGroups.get(MetaUtils.concatNodesByDot(storageGroup));
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(size * -1);
-          ActiveTimeSeriesCounter.getInstance().delete(MetaUtils.getPathByNodes(storageGroup));
-          seriesNumberInStorageGroups.remove(MetaUtils.getPathByNodes(storageGroup));
+          ActiveTimeSeriesCounter.getInstance().delete(MetaUtils.concatNodesByDot(storageGroup));
+          seriesNumberInStorageGroups.remove(MetaUtils.concatNodesByDot(storageGroup));
           if (size == maxSeriesNumberAmongStorageGroup) {
             maxSeriesNumberAmongStorageGroup =
                 seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
@@ -632,7 +632,7 @@ public class MManager {
         }
         // if success
         if (!isRecovering) {
-          logWriter.deleteStorageGroup(MetaUtils.getPathByNodes(storageGroup));
+          logWriter.deleteStorageGroup(MetaUtils.concatNodesByDot(storageGroup));
         }
       }
     } catch (ConfigAdjusterException e) {
@@ -686,7 +686,7 @@ public class MManager {
       MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurements.length];
       for (int i = 0; i < measurementSchemas.length; i++) {
         if (!deviceNode.hasChild(measurements[i])) {
-          throw new MetadataException(measurements[i] + " does not exist in " + MetaUtils.getPathByNodes(deviceNodes));
+          throw new MetadataException(measurements[i] + " does not exist in " + MetaUtils.concatNodesByDot(deviceNodes));
         }
         measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]))
             .getSchema();
@@ -1263,7 +1263,7 @@ public class MManager {
     try {
       getStorageGroupNode(storageGroupNodes).setDataTTL(dataTTL);
       if (!isRecovering) {
-        logWriter.setTTL(MetaUtils.getPathByNodes(storageGroupNodes), dataTTL);
+        logWriter.setTTL(MetaUtils.concatNodesByDot(storageGroupNodes), dataTTL);
       }
     } finally {
       lock.writeLock().unlock();
@@ -1315,7 +1315,7 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
+        throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // upsert alias
@@ -1330,7 +1330,7 @@ public class MManager {
         leafMNode.getParent().addAlias(alias, leafMNode);
         leafMNode.setAlias(alias);
         // persist to WAL
-        logWriter.changeAlias(MetaUtils.getPathByNodes(nodes), alias);
+        logWriter.changeAlias(MetaUtils.concatNodesByDot(nodes), alias);
       }
 
       if (tagsMap == null && attributesMap == null) {
@@ -1339,7 +1339,7 @@ public class MManager {
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, attributesMap);
-        logWriter.changeOffset(MetaUtils.getPathByNodes(nodes), offset);
+        logWriter.changeOffset(MetaUtils.concatNodesByDot(nodes), offset);
         leafMNode.setOffset(offset);
         // update inverted Index map
         if (tagsMap != null) {
@@ -1418,13 +1418,13 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
+        throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(Collections.emptyMap(), attributesMap);
-        logWriter.changeOffset(MetaUtils.getPathByNodes(nodes), offset);
+        logWriter.changeOffset(MetaUtils.concatNodesByDot(nodes), offset);
         leafMNode.setOffset(offset);
         return;
       }
@@ -1437,7 +1437,7 @@ public class MManager {
         String value = entry.getValue();
         if (pair.right.containsKey(key)) {
           throw new MetadataException(
-              String.format("TimeSeries [%s] already has the attribute [%s].", MetaUtils.getPathByNodes(nodes), key));
+              String.format("TimeSeries [%s] already has the attribute [%s].", MetaUtils.concatNodesByDot(nodes), key));
         }
         pair.right.put(key, value);
       }
@@ -1461,13 +1461,13 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
+        throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
-        logWriter.changeOffset(MetaUtils.getPathByNodes(nodes), offset);
+        logWriter.changeOffset(MetaUtils.concatNodesByDot(nodes), offset);
         leafMNode.setOffset(offset);
         // update inverted Index map
         for (Entry<String, String> entry : tagsMap.entrySet()) {
@@ -1485,7 +1485,7 @@ public class MManager {
         String value = entry.getValue();
         if (pair.left.containsKey(key)) {
           throw new MetadataException(
-              String.format("TimeSeries [%s] already has the tag [%s].", MetaUtils.getPathByNodes(nodes), key));
+              String.format("TimeSeries [%s] already has the tag [%s].", MetaUtils.concatNodesByDot(nodes), key));
         }
         pair.left.put(key, value);
       }
@@ -1514,7 +1514,7 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
+        throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // no tag or attribute, just do nothing.
@@ -1585,12 +1585,12 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
+        throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       if (leafMNode.getOffset() < 0) {
         throw new MetadataException(
-            String.format("TimeSeries [%s] does not have any tag/attribute.", MetaUtils.getPathByNodes(nodes)));
+            String.format("TimeSeries [%s] does not have any tag/attribute.", MetaUtils.concatNodesByDot(nodes)));
       }
 
       // tags, attributes
@@ -1612,7 +1612,7 @@ public class MManager {
           pair.right.put(key, value);
         } else {
           throw new MetadataException(
-              String.format("TimeSeries [%s] does not have tag/attribute [%s].", MetaUtils.getPathByNodes(nodes), key));
+              String.format("TimeSeries [%s] does not have tag/attribute [%s].", MetaUtils.concatNodesByDot(nodes), key));
         }
       }
 
@@ -1664,12 +1664,12 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
+        throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       if (leafMNode.getOffset() < 0) {
         throw new MetadataException(
-            String.format("TimeSeries [%s] does not have [%s] tag/attribute.", MetaUtils.getPathByNodes(nodes), oldKey));
+            String.format("TimeSeries [%s] does not have [%s] tag/attribute.", MetaUtils.concatNodesByDot(nodes), oldKey));
       }
       // tags, attributes
       Pair<Map<String, String>, Map<String, String>> pair =
@@ -1679,7 +1679,7 @@ public class MManager {
       if (pair.left.containsKey(newKey) || pair.right.containsKey(newKey)) {
         throw new MetadataException(
             String.format(
-                "TimeSeries [%s] already has a tag/attribute named [%s].", MetaUtils.getPathByNodes(nodes), newKey));
+                "TimeSeries [%s] already has a tag/attribute named [%s].", MetaUtils.concatNodesByDot(nodes), newKey));
       }
 
       // check tag map
@@ -1718,7 +1718,7 @@ public class MManager {
         tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
       } else {
         throw new MetadataException(
-            String.format("TimeSeries [%s] does not have tag/attribute [%s].", MetaUtils.getPathByNodes(nodes), oldKey));
+            String.format("TimeSeries [%s] does not have tag/attribute [%s].", MetaUtils.concatNodesByDot(nodes), oldKey));
       }
     } finally {
       lock.writeLock().unlock();
@@ -1848,7 +1848,7 @@ public class MManager {
         MeasurementMNode node1 = (MeasurementMNode) mtree.getNodeByNodes(nodes);
         node1.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
       } catch (MetadataException e) {
-        logger.warn("failed to update last cache for the {}, err:{}", MetaUtils.getPathByNodes(nodes), e.getMessage());
+        logger.warn("failed to update last cache for the {}, err:{}", MetaUtils.concatNodesByDot(nodes), e.getMessage());
       }
     }
   }
@@ -1859,7 +1859,7 @@ public class MManager {
       MeasurementMNode node = (MeasurementMNode) mtree.getNodeByNodes(nodes);
       return node.getCachedLast();
     } catch (MetadataException e) {
-      logger.warn("failed to get last cache for the {}, err:{}", MetaUtils.getPathByNodes(nodes), e.getMessage());
+      logger.warn("failed to get last cache for the {}, err:{}", MetaUtils.concatNodesByDot(nodes), e.getMessage());
     }
     return null;
   }

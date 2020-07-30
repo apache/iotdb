@@ -1390,7 +1390,7 @@ public class StorageGroupProcessor {
     long timeLowerBound = dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long
         .MIN_VALUE;
     context.setQueryTimeLowerBound(timeLowerBound);
-    String deviceId = MetaUtils.getPathByNodes(deviceNodes);
+    String deviceId = MetaUtils.concatNodesByDot(deviceNodes);
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter, isSeq)) {
@@ -1471,7 +1471,7 @@ public class StorageGroupProcessor {
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
-    String deviceId = MetaUtils.getPathByNodes(deviceNodes);
+    String deviceId = MetaUtils.concatNodesByDot(deviceNodes);
 
     try {
       Long lastUpdateTime = null;

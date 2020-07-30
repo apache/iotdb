@@ -60,7 +60,7 @@ public class SetTTLPlan extends PhysicalPlan {
     int type = PhysicalPlanType.TTL.ordinal();
     stream.writeByte((byte) type);
     stream.writeLong(dataTTL);
-    putString(stream, MetaUtils.getPathByNodes(storageGroupNodes));
+    putString(stream, MetaUtils.concatNodesByDot(storageGroupNodes));
   }
 
   @Override
