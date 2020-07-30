@@ -1774,6 +1774,22 @@ public class MManager {
     return storageGroupsTTL;
   }
 
+  public void collectTimeseriesSchema(MNode startingNode,
+      Collection<TimeseriesSchema> timeseriesSchemas) {
+    Deque<MNode> nodeDeque = new ArrayDeque<>();
+    nodeDeque.addLast(startingNode);
+    while (!nodeDeque.isEmpty()) {
+      MNode node = nodeDeque.removeFirst();
+      if (node instanceof MeasurementMNode) {
+        MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
+        timeseriesSchemas.add(new TimeseriesSchema(node.getFullPath(), nodeSchema.getType(),
+            nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
+      } else if (!node.getChildren().isEmpty()) {
+        nodeDeque.addAll(node.getChildren().values());
+      }
+    }
+  }
+
   public void collectMeasurementSchema(MNode startingNode,
       Collection<MeasurementSchema> timeseriesSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();
