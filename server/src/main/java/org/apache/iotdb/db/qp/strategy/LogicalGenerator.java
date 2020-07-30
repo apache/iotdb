@@ -278,7 +278,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
           parsePrefixPath(ctx.prefixPath()));
     } else {
       initializedOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES,
-          new Path(SQLConstant.ROOT));
+          new Path(new ArrayList<>(Collections.singletonList(SQLConstant.ROOT))));
     }
   }
 
