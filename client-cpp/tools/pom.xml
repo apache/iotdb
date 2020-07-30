@@ -25,8 +25,8 @@
     <packaging>pom</packaging>
     <name>Tools</name>
     <properties>
-        <boost.version>1.73.0</boost.version>
-        <boost.version.underline-short>1_73</boost.version.underline-short>
+        <boost.version>1.72.0</boost.version>
+        <boost.version.underline-short>1_72</boost.version.underline-short>
         <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
         <thrift.version>0.12.0</thrift.version>
         <cmake-version>3.17.3</cmake-version>

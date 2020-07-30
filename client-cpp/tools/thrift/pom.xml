@@ -329,6 +329,7 @@
                                 <!-- Tell CMake where our boost includes and libs are located -->
                                 <option>-DBOOST_INCLUDEDIR=${project.build.directory}/boost/include</option>
                                 <option>-DBOOST_LIBRARYDIR=${project.build.directory}/boost/lib</option>
+                                <option>-DWITH_SHARED_LIB=OFF</option>
                                 <option>-DWITH_STATIC_LIB=ON</option>
                                 <option>-DCMAKE_POSITION_INDEPENDENT_CODE=ON</option>
                             </options>
