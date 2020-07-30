@@ -145,6 +145,11 @@ public class IoTDBConfig {
   private double rejectProportion = 0.8;
 
   /**
+   * Report buffered arrays threshold
+   */
+  private double reportBufferedArraysThreshold = 0.125;
+
+  /**
    * Is the write ahead log enable.
    */
   private boolean enableWal = true;
@@ -1141,6 +1146,14 @@ public class IoTDBConfig {
 
   public void setRejectProportion(double rejectProportion) {
     this.rejectProportion = rejectProportion;
+  }
+
+  public double getReportBufferedArraysThreshold() {
+    return reportBufferedArraysThreshold;
+  }
+
+  public void setReportBufferedArraysThreshold(double reportBufferedArraysThreshold) {
+    this.reportBufferedArraysThreshold = reportBufferedArraysThreshold;
   }
 
   public long getAllocateMemoryForWrite() {

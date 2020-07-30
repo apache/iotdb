@@ -72,6 +72,12 @@ public class PrimitiveArrayManager {
       config.getAllocateMemoryForWrite() * config.getBufferedArraysMemoryProportion();
 
   /**
+   * Report buffered arrays threshold, 0.125 by default
+   */
+  private static final double REPORT_BUFFERED_ARRAYS_THRESHOLD =
+      config.getReportBufferedArraysThreshold();
+
+  /**
    * total size of buffered arrays
    */
   private int bufferedArraysSize;
@@ -144,7 +150,8 @@ public class PrimitiveArrayManager {
     ArrayDeque<Object> dataListQueue = bufferedArraysMap
         .computeIfAbsent(dataType, k -> new ArrayDeque<>());
     bufferedArraysSize += ARRAY_SIZE * dataType.getDataTypeSize();
-    if (bufferedArraysSize - lastReportArraySize >= BUFFERED_ARRAY_SIZE_THRESHOLD / 8) {
+    if (bufferedArraysSize - lastReportArraySize
+        >= BUFFERED_ARRAY_SIZE_THRESHOLD * REPORT_BUFFERED_ARRAYS_THRESHOLD) {
       // report current buffered array size to system
       SystemInfo.getInstance().reportIncreasingArraySize(bufferedArraysSize - lastReportArraySize);
       lastReportArraySize = bufferedArraysSize;

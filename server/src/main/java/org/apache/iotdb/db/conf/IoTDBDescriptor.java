@@ -190,6 +190,10 @@ public class IoTDBDescriptor {
       conf.setRejectProportion(Double.parseDouble(properties.getProperty("reject_proportion",
           Double.toString(conf.getRejectProportion()))));
 
+      conf.setReportBufferedArraysThreshold(
+          Double.parseDouble(properties.getProperty("report_buffered_arrays_threshold",
+              Double.toString(conf.getReportBufferedArraysThreshold()))));
+
       conf.setMetaDataCacheEnable(
           Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
               Boolean.toString(conf.isMetaDataCacheEnable()))));
