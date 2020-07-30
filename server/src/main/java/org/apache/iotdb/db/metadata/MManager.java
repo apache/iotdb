@@ -54,7 +54,6 @@ import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -203,7 +202,7 @@ public class MManager {
       if (config.isEnableParameterAdapter()) {
         List<String> storageGroups = mtree.getAllStorageGroupNames();
         for (String sg : storageGroups) {
-          MNode node = mtree.getNodeByNodes(MetaUtils.splitPathToNodes(sg));
+          MNode node = mtree.getMNodeByNodes(MetaUtils.splitPathToNodes(sg));
           seriesNumberInStorageGroups.put(sg, node.getLeafCount());
         }
         maxSeriesNumberAmongStorageGroup =
@@ -1067,7 +1066,7 @@ public class MManager {
       throws MetadataException {
     lock.readLock().lock();
     try {
-      MNode node = mtree.getNodeByNodes(deviceNodes);
+      MNode node = mtree.getMNodeByNodes(deviceNodes);
       MNode leaf = node.getChild(measurement);
       if (leaf != null) {
         return ((MeasurementMNode) leaf).getSchema();
@@ -1118,7 +1117,7 @@ public class MManager {
   public MNode getNodeByNodes(List<String> nodes) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getNodeByNodes(nodes);
+      return mtree.getMNodeByNodes(nodes);
     } finally {
       lock.readLock().unlock();
     }
@@ -1280,7 +1279,7 @@ public class MManager {
   public void changeOffset(List<String> nodes, long offset) throws MetadataException {
     lock.writeLock().lock();
     try {
-      ((MeasurementMNode) mtree.getNodeByNodes(nodes)).setOffset(offset);
+      ((MeasurementMNode) mtree.getMNodeByNodes(nodes)).setOffset(offset);
     } finally {
       lock.writeLock().unlock();
     }
@@ -1289,7 +1288,7 @@ public class MManager {
   public void changeAlias(List<String> nodes, String alias) throws MetadataException {
     lock.writeLock().lock();
     try {
-      MeasurementMNode leafMNode = (MeasurementMNode) mtree.getNodeByNodes(nodes);
+      MeasurementMNode leafMNode = (MeasurementMNode) mtree.getMNodeByNodes(nodes);
       if (leafMNode.getAlias() != null) {
         leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
       }
@@ -1313,7 +1312,7 @@ public class MManager {
       Map<String, String> attributesMap, List<String> nodes) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode mNode = mtree.getNodeByNodes(nodes);
+      MNode mNode = mtree.getMNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
         throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
       }
@@ -1416,7 +1415,7 @@ public class MManager {
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode mNode = mtree.getNodeByNodes(nodes);
+      MNode mNode = mtree.getMNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
         throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
       }
@@ -1459,7 +1458,7 @@ public class MManager {
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode mNode = mtree.getNodeByNodes(nodes);
+      MNode mNode = mtree.getMNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
         throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
       }
@@ -1512,7 +1511,7 @@ public class MManager {
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode mNode = mtree.getNodeByNodes(nodes);
+      MNode mNode = mtree.getMNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
         throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
       }
@@ -1583,7 +1582,7 @@ public class MManager {
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode mNode = mtree.getNodeByNodes(nodes);
+      MNode mNode = mtree.getMNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
         throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
       }
@@ -1662,7 +1661,7 @@ public class MManager {
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode mNode = mtree.getNodeByNodes(nodes);
+      MNode mNode = mtree.getMNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
         throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
       }
@@ -1880,7 +1879,7 @@ public class MManager {
       node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
     } else {
       try {
-        MeasurementMNode node1 = (MeasurementMNode) mtree.getNodeByNodes(nodes);
+        MeasurementMNode node1 = (MeasurementMNode) mtree.getMNodeByNodes(nodes);
         node1.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
       } catch (MetadataException e) {
         logger.warn("failed to update last cache for the {}, err:{}", MetaUtils.concatNodesByDot(nodes), e.getMessage());
@@ -1891,7 +1890,7 @@ public class MManager {
 
   public TimeValuePair getLastCache(List<String> nodes) {
     try {
-      MeasurementMNode node = (MeasurementMNode) mtree.getNodeByNodes(nodes);
+      MeasurementMNode node = (MeasurementMNode) mtree.getMNodeByNodes(nodes);
       return node.getCachedLast();
     } catch (MetadataException e) {
       logger.warn("failed to get last cache for the {}, err:{}", MetaUtils.concatNodesByDot(nodes), e.getMessage());

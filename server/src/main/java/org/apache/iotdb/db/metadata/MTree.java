@@ -240,7 +240,7 @@ public class MTree implements Serializable {
    * Delete a storage group
    */
   List<MeasurementMNode> deleteStorageGroup(List<String> nodes) throws MetadataException {
-    MNode cur = getNodeByNodes(nodes);
+    MNode cur = getMNodeByNodes(nodes);
     if (!(cur instanceof StorageGroupMNode)) {
       throw new StorageGroupNotSetException(cur.getFullPath());
     }
@@ -305,7 +305,7 @@ public class MTree implements Serializable {
    */
   Pair<String, MeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(List<String> nodes)
       throws MetadataException {
-    MNode curNode = getNodeByNodes(nodes);
+    MNode curNode = getMNodeByNodes(nodes);
     if (!(curNode instanceof MeasurementMNode)) {
       throw new PathNotExistException(MetaUtils.concatNodesByDot(nodes));
     }
@@ -337,7 +337,7 @@ public class MTree implements Serializable {
    * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
    */
   MeasurementSchema getSchema(List<String> nodes) throws MetadataException {
-    MeasurementMNode node = (MeasurementMNode) getNodeByNodes(nodes);
+    MeasurementMNode node = (MeasurementMNode) getMNodeByNodes(nodes);
     return node.getSchema();
   }
 
@@ -376,7 +376,7 @@ public class MTree implements Serializable {
    * Get storage group node, if the give path is not a storage group, throw exception
    */
   StorageGroupMNode getStorageGroupNode(List<String> nodes) throws MetadataException {
-    MNode node = getNodeByNodes(nodes);
+    MNode node = getMNodeByNodes(nodes);
     if (node instanceof StorageGroupMNode) {
       return (StorageGroupMNode) node;
     } else {
@@ -389,7 +389,7 @@ public class MTree implements Serializable {
    *
    * @return last node in given seriesPath
    */
-  MNode getNodeByNodes(List<String> nodes) throws MetadataException {
+  MNode getMNodeByNodes(List<String> nodes) throws MetadataException {
     if (nodes.isEmpty() || !nodes.get(0).equals(root.getName())) {
       throw new IllegalPathException(MetaUtils.concatNodesByDot(nodes));
     }
