@@ -132,8 +132,10 @@ public class MeasurementMNode extends MNode {
     s.append(",").append(schema.getType().ordinal()).append(",");
     s.append(schema.getEncodingType().ordinal()).append(",");
     s.append(schema.getCompressor().ordinal()).append(",");
-    for (Map.Entry<String, String> entry : schema.getProps().entrySet()) {
-      s.append(entry.getKey()).append(":").append(entry.getValue()).append(";");
+    if (schema.getProps() != null) {
+      for (Map.Entry<String, String> entry : schema.getProps().entrySet()) {
+        s.append(entry.getKey()).append(":").append(entry.getValue()).append(";");
+      }
     }
     s.append(",").append(offset).append(",");
     s.append(children == null ? "0" : children.size());
