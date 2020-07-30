@@ -95,7 +95,7 @@ public class MetaUtils {
    * e.g., nodes = [root, a, b, c], return root.a.b.c
    */
 
-  public static String getPathByNodes(List<String> nodes) {
+  public static String concatNodesByDot(List<String> nodes) {
     return String.join(TsFileConstant.PATH_SEPARATOR, nodes);
   }
 
