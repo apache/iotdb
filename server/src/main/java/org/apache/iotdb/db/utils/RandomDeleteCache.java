@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.tsfile.common.cache.Cache;
+import org.apache.iotdb.tsfile.exception.cache.CacheException;
 
-public class RandomDeleteCache<K, V> implements Cache<K, V> {
+public abstract class RandomDeleteCache<K, V>  {
 
   private int cacheSize;
   private Map<K, V> cache;
@@ -32,17 +34,19 @@ public class RandomDeleteCache<K, V> implements Cache<K, V> {
     this.cache = new ConcurrentHashMap<>();
   }
 
-  @Override
-  public V get(K key) {
-    return cache.get(key);
+
+  public V get(K key, List<K> keyNodes) throws CacheException {
+    V v = cache.get(key);
+    if (v == null) {
+      randomRemoveObjectIfCacheIsFull();
+      cache.put(key, loadObjectByKey(key, keyNodes));
+      v = cache.get(key);
+    }
+    return v;
   }
 
-  public void put(K key, V value) {
-    cache.put(key, value);
-    if(cache.get(key) == null) {
-      randomRemoveObjectIfCacheIsFull();
-    }
-  }
+  public abstract V loadObjectByKey(K key, List<K> keyNodes) throws CacheException;
+
 
   private void randomRemoveObjectIfCacheIsFull() {
     if (cache.size() == this.cacheSize) {
@@ -62,7 +66,6 @@ public class RandomDeleteCache<K, V> implements Cache<K, V> {
     cache.remove(key);
   }
 
-  @Override
   public void clear() {
     cache.clear();
   }

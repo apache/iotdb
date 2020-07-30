@@ -157,7 +157,19 @@ public class MManager {
     isRecovering = true;
 
     int cacheSize = config.getmManagerCacheSize();
-    mNodeCache = new RandomDeleteCache<String, MNode>(cacheSize){};
+    mNodeCache = new RandomDeleteCache<String, MNode>(cacheSize){
+      @Override
+      public MNode loadObjectByKey(String key, List<String> keyNodes) throws CacheException {
+        lock.readLock().lock();
+        try {
+          return mtree.getNodeByNodesWithStorageGroupCheck(keyNodes);
+        } catch (MetadataException e) {
+          throw new CacheException(e);
+        } finally {
+          lock.readLock().unlock();
+        }
+      }
+    };
 
     timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
         "timedCreateMTreeSnapshotThread"));
@@ -1136,25 +1148,25 @@ public class MManager {
    */
   public MNode getDeviceNodeWithAutoCreateAndReadLock(
       String deviceId, List<String> deviceNodes, boolean autoCreateSchema, int sgLevel) throws MetadataException {
+
     lock.readLock().lock();
-    MNode deviceMNode = null;
+    MNode node = null;
     boolean shouldSetStorageGroup = false;
     try {
-      deviceMNode = mNodeCache.get(deviceId);
-      if (deviceMNode == null) {
-        deviceMNode = mtree.getNodeByNodesWithStorageGroupCheck(deviceNodes);
-        mNodeCache.put(deviceId, deviceMNode);
+      node = mNodeCache.get(deviceId, deviceNodes);
+      return node;
+    } catch (CacheException e) {
+      if(e.getCause() instanceof  PathNotExistException) {
+        if (!autoCreateSchema) {
+          throw new PathNotExistException(deviceId);
+        }
       }
-      return deviceMNode;
-    } catch (PathNotExistException e) {
-      if (!autoCreateSchema) {
-        throw new PathNotExistException(deviceId);
+      if(e.getCause() instanceof  StorageGroupNotSetException) {
+        shouldSetStorageGroup = true;
       }
-    } catch (StorageGroupNotSetException e) {
-      shouldSetStorageGroup = true;
     } finally {
-      if (deviceMNode != null) {
-        deviceMNode.readLock();
+      if (node != null) {
+        node.readLock();
       }
       lock.readLock().unlock();
     }
@@ -1165,17 +1177,15 @@ public class MManager {
         List<String> storageGroupName = MetaUtils.getStorageGroupNameNodesByLevel(deviceNodes, sgLevel);
         setStorageGroup(storageGroupName);
       }
-      deviceMNode = mtree.getDeviceNodeWithAutoCreating(deviceNodes, sgLevel);
-      mNodeCache.put(deviceId, deviceMNode);
-      return deviceMNode;
-    } catch (StorageGroupAlreadySetException e) {
+      node = mNodeCache.get(deviceId, deviceNodes);
+      return node;
+    } catch (CacheException e) {
       // ignore set storage group concurrently
-      deviceMNode = mtree.getDeviceNodeWithAutoCreating(deviceNodes, sgLevel);
-      mNodeCache.put(deviceId, deviceMNode);
-      return deviceMNode;
+      node = mtree.getDeviceNodeWithAutoCreating(deviceNodes, sgLevel);
+      return node;
     } finally {
-      if (deviceMNode != null) {
-        deviceMNode.readLock();
+      if (node != null) {
+        node.readLock();
       }
       lock.writeLock().unlock();
     }
@@ -1190,15 +1200,7 @@ public class MManager {
     lock.readLock().lock();
     MNode node;
     try {
-      node = mNodeCache.get(path);
-      if (node == null) {
-        node = mtree.getNodeByNodesWithStorageGroupCheck(nodes);
-        if (path == null) {
-          mNodeCache.put(node.getFullPath(), node);
-        } else {
-          mNodeCache.put(path, node);
-        }
-      }
+      node = mNodeCache.get(path, nodes);
       return node;
     } catch (Exception e) {
       throw new PathNotExistException(path);
