@@ -583,11 +583,6 @@ public class PlanExecutor implements IPlanExecutor {
     addRowRecordForShowQuery(
         listDataSet,
         timestamp++,
-        "memtable number",
-        IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber() + "B");
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
         "tsfile size threshold",
         IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold() + "B");
     addRowRecordForShowQuery(

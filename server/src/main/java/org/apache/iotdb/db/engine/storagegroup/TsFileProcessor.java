@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter.MEMTABLE_NUM_FOR_EACH_PARTITION;
 import static org.apache.iotdb.db.engine.flush.VmLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.flush.VmLogger.TARGET_NAME;
 import static org.apache.iotdb.db.engine.flush.VmLogger.VM_LOG_NAME;
@@ -45,7 +44,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
@@ -57,6 +55,7 @@ import org.apache.iotdb.db.engine.flush.VmLogger;
 import org.apache.iotdb.db.engine.flush.VmMergeUtils;
 import org.apache.iotdb.db.engine.flush.pool.VmMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -72,7 +71,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -207,7 +205,7 @@ public class TsFileProcessor {
   public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
     if (workMemTable == null) {
-      workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
+      workMemTable = new PrimitiveMemTable();
     }
 
     // If there are enough size of arrays in memtable, insert insertRowPlan to
@@ -284,7 +282,7 @@ public class TsFileProcessor {
       TSStatus[] results) throws WriteProcessException {
 
     if (workMemTable == null) {
-      workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
+      workMemTable = new PrimitiveMemTable();
     }
 
     // If there are enough size of arrays in memtable, insert insertRowPlan to
@@ -470,15 +468,7 @@ public class TsFileProcessor {
    * size. We need to adjust it according to the number of timeseries in a specific storage group.
    */
   private long getMemtableSizeThresholdBasedOnSeriesNum() {
-    if (!config.isEnableParameterAdapter()) {
-      return config.getMemtableSizeThreshold();
-    }
-    long memTableSize = (long) (config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
-        / IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition()
-        / MEMTABLE_NUM_FOR_EACH_PARTITION
-        * ActiveTimeSeriesCounter.getInstance()
-        .getActiveRatio(storageGroupName));
-    return Math.max(memTableSize, config.getMemtableSizeThreshold());
+    return config.getMemtableSizeThreshold();
   }
 
   public boolean shouldClose() {
@@ -725,7 +715,7 @@ public class TsFileProcessor {
       tsFileProcessorInfo.resetBytesMemCost(memTable.getBytesMemSize());
       // report to System
       SystemInfo.getInstance().reportTsFileProcessorStatus(this);
-      MemTablePool.getInstance().putBack(memTable, storageGroupName);
+      memTable = null;
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} flush finished, remove a memtable from flushing list, "
                 + "flushing memtable list size: {}", storageGroupName,
@@ -1249,7 +1239,7 @@ public class TsFileProcessor {
   public void putMemTableBackAndClose() throws TsFileProcessorException {
     if (workMemTable != null) {
       workMemTable.release();
-      MemTablePool.getInstance().putBack(workMemTable, storageGroupName);
+      workMemTable = null;
     }
     try {
       writer.close();

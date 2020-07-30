@@ -48,7 +48,6 @@ public class MemEstToolCmd extends WrappedRunnable {
     // backup origin config parameters
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     long memTableSize = config.getMemtableSizeThreshold();
-    int maxMemtableNumber = config.getMaxMemtableNumber();
     long tsFileSize = config.getTsFileSizeThreshold();
 
     // parse input parameters
@@ -67,7 +66,6 @@ public class MemEstToolCmd extends WrappedRunnable {
       // recover config parameter
       config.setAllocateMemoryForWrite(currentMemory);
       config.setMemtableSizeThreshold(memTableSize);
-      config.setMaxMemtableNumber(maxMemtableNumber);
       config.setTsFileSizeThreshold(tsFileSize);
       IoTDBConfigDynamicAdapter.getInstance().reset();
       IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);

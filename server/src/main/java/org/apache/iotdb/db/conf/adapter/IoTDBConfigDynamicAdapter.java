@@ -160,7 +160,6 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     }
 
     if (canAdjust) {
-      CONFIG.setMaxMemtableNumber(maxMemTableNum);
       CONFIG.setWalBufferSize(
           (int) Math
               .min(Integer.MAX_VALUE, allocateMemoryForWrite * WAL_MEMORY_RATIO / maxMemTableNum));
@@ -176,7 +175,6 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       currentMemTableSize = memtableSizeInByte;
     }
     if (!initialized) {
-      CONFIG.setMaxMemtableNumber(maxMemTableNum);
       return true;
     }
     return canAdjust;
@@ -233,7 +231,6 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
         MEMTABLE_NUM_FOR_EACH_PARTITION * IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() * diff
             + diff;
     if (!CONFIG.isEnableParameterAdapter()) {
-      CONFIG.setMaxMemtableNumber(maxMemTableNum);
       return;
     }
 

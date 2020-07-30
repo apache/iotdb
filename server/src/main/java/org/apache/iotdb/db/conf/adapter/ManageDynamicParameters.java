@@ -53,9 +53,9 @@ public class ManageDynamicParameters implements ManageDynamicParametersMBean, IS
   @Override
   public void showDynamicParameters() {
     LOGGER.info(
-        "Memtable size threshold: {}B, Memtable number: {}, Tsfile size threshold: {}B, Compression ratio: {}, "
+        "Memtable size threshold: {}B, Tsfile size threshold: {}B, Compression ratio: {}, "
             + "Storage group number: {}, Timeseries number: {}, Maximal timeseries number among storage groups: {}",
-        CONFIG.getMemtableSizeThreshold(), CONFIG.getMaxMemtableNumber(),
+        CONFIG.getMemtableSizeThreshold(),
         CONFIG.getTsFileSizeThreshold(), CompressionRatio.getInstance().getRatio(),
         IoTDBConfigDynamicAdapter.getInstance().getTotalStorageGroup(),
         IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries(),
@@ -80,16 +80,6 @@ public class ManageDynamicParameters implements ManageDynamicParametersMBean, IS
   @Override
   public void setMemTableSizeThreshold(long memTableSizeThreshold) {
     CONFIG.setMemtableSizeThreshold(memTableSizeThreshold);
-  }
-
-  @Override
-  public int getMemTableNumber() {
-    return CONFIG.getMaxMemtableNumber();
-  }
-
-  @Override
-  public void setMemTableNumber(int memTableNumber) {
-    CONFIG.setMaxMemtableNumber(memTableNumber);
   }
 
   @Override

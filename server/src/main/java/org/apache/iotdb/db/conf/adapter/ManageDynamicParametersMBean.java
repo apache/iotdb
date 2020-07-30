@@ -35,10 +35,6 @@ public interface ManageDynamicParametersMBean {
 
   void setMemTableSizeThreshold(long memTableSizeThreshold);
 
-  int getMemTableNumber();
-
-  void setMemTableNumber(int memTableNumber);
-
   long getTsfileSizeThreshold();
 
   void setTsfileSizeThreshold(long tsfileSizeThreshold);

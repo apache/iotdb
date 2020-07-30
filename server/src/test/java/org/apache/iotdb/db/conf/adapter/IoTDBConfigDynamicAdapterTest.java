@@ -36,8 +36,6 @@ public class IoTDBConfigDynamicAdapterTest {
 
   private long oldTsFileThreshold = CONFIG.getTsFileSizeThreshold();
 
-  private int oldMaxMemTableNumber = CONFIG.getMaxMemtableNumber();
-
   private long oldGroupSizeInByte = CONFIG.getMemtableSizeThreshold();
 
   @Before
@@ -50,7 +48,6 @@ public class IoTDBConfigDynamicAdapterTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    CONFIG.setMaxMemtableNumber(oldMaxMemTableNumber);
     CONFIG.setTsFileSizeThreshold(oldTsFileThreshold);
     CONFIG.setMemtableSizeThreshold(oldGroupSizeInByte);
     IoTDB.metaManager.setMaxSeriesNumberAmongStorageGroup(0);
@@ -70,11 +67,9 @@ public class IoTDBConfigDynamicAdapterTest {
         memTableNum += IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() * MEMTABLE_NUM_FOR_EACH_PARTITION + 1;
         assertEquals(IoTDBConfigDynamicAdapter.getInstance().getCurrentMemTableSize(),
             CONFIG.getMemtableSizeThreshold());
-        assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);
       } catch (ConfigAdjusterException e) {
         assertEquals(String.format(ConfigAdjusterException.ERROR_MSG_FORMAT,
             IoTDBConfigDynamicAdapter.CREATE_STORAGE_GROUP), e.getMessage());
-        assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);
         break;
       }
     }

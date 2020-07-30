@@ -99,16 +99,14 @@ public class CompressionRatio {
         LOGGER.info(
             "After updating compression ratio, trying to adjust parameters, the original parameters: "
                 + "MemTableSize threshold is {}B, TsfileSize threshold is {}B, MemTableNumber is {}",
-            CONFIG.getMemtableSizeThreshold(), CONFIG.getTsFileSizeThreshold(),
-            CONFIG.getMaxMemtableNumber());
+            CONFIG.getMemtableSizeThreshold(), CONFIG.getTsFileSizeThreshold());
       }
       IoTDBConfigDynamicAdapter.getInstance().tryToAdaptParameters();
       if(LOGGER.isInfoEnabled()) {
         LOGGER.info(
             "After updating compression ratio, trying to adjust parameters, the modified parameters: "
                 + "MemTableSize threshold is {}B, TsfileSize threshold is {}B, MemTableNumber is {}",
-            CONFIG.getMemtableSizeThreshold(), CONFIG.getTsFileSizeThreshold(),
-            CONFIG.getMaxMemtableNumber());
+            CONFIG.getMemtableSizeThreshold(), CONFIG.getTsFileSizeThreshold());
       }
     }
   }
