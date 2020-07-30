@@ -22,13 +22,9 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -345,18 +341,18 @@ public class PrimitiveArrayManager {
   }
 
   public void updateSchemaDataTypeNum(Map<TSDataType, Integer> schemaDataTypeNumMap) {
-      int total = 0;
-      for (int num : schemaDataTypeNumMap.values()) {
-        total += num;
-      }
-      if (total == 0) {
-        return;
-      }
-      for (Map.Entry<TSDataType, Integer> entry : schemaDataTypeNumMap.entrySet()) {
-        TSDataType dataType = entry.getKey();
-        bufferedArraysNumRatio
-            .put(dataType, (double) schemaDataTypeNumMap.get(dataType) / total);
-      }
+    int total = 0;
+    for (int num : schemaDataTypeNumMap.values()) {
+      total += num;
+    }
+    if (total == 0) {
+      return;
+    }
+    for (Map.Entry<TSDataType, Integer> entry : schemaDataTypeNumMap.entrySet()) {
+      TSDataType dataType = entry.getKey();
+      bufferedArraysNumRatio
+          .put(dataType, (double) schemaDataTypeNumMap.get(dataType) / total);
+    }
   }
 
   /**
