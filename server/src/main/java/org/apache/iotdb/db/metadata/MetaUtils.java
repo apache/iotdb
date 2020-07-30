@@ -79,14 +79,14 @@ public class MetaUtils {
    *
    * e.g., nodes = [root, a, b, c] and level = 1, return [root, a]
    *
-   * @param nodeNames nodeNames
+   * @param detachedPath nodeNames
    * @param level level
    */
-  public static List<String> getDetachedStorageGroupPathByLevel(List<String> nodeNames, int level) throws MetadataException {
-    if (nodeNames.size() <= level || !nodeNames.get(0).equals(IoTDBConstant.PATH_ROOT)) {
-      throw new IllegalPathException(concatDetachedPathByDot(nodeNames));
+  public static List<String> getDetachedStorageGroupByLevel(List<String> detachedPath, int level) throws MetadataException {
+    if (detachedPath.size() <= level || !detachedPath.get(0).equals(IoTDBConstant.PATH_ROOT)) {
+      throw new IllegalPathException(concatDetachedPathByDot(detachedPath));
     }
-    return new ArrayList<>(nodeNames.subList(0, level+1));
+    return new ArrayList<>(detachedPath.subList(0, level+1));
   }
 
   /**

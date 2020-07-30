@@ -303,7 +303,7 @@ public class MManagerBasicTest {
     try {
       List<String> storageGroup = new ArrayList<>(Arrays.asList("root", "laptop", "d1", "s1"));
       assertEquals(Arrays.asList("root", "laptop"),
-          MetaUtils.getDetachedStorageGroupPathByLevel(storageGroup, level));
+          MetaUtils.getDetachedStorageGroupByLevel(storageGroup, level));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -311,7 +311,7 @@ public class MManagerBasicTest {
 
     caughtException = false;
     try {
-      MetaUtils.getDetachedStorageGroupPathByLevel(Arrays.asList("root1", "laptop", "d1", "s1"), level);
+      MetaUtils.getDetachedStorageGroupByLevel(Arrays.asList("root1", "laptop", "d1", "s1"), level);
     } catch (MetadataException e) {
       caughtException = true;
       assertEquals("root1.laptop.d1.s1 is not a legal path", e.getMessage());
@@ -320,7 +320,7 @@ public class MManagerBasicTest {
 
     caughtException = false;
     try {
-      MetaUtils.getDetachedStorageGroupPathByLevel(Collections.singletonList("root"), level);
+      MetaUtils.getDetachedStorageGroupByLevel(Collections.singletonList("root"), level);
     } catch (MetadataException e) {
       caughtException = true;
       assertEquals("root is not a legal path", e.getMessage());

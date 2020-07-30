@@ -380,7 +380,7 @@ public class MManager {
           throw e;
         }
         List<String> detachedStorageGroupPath =
-            MetaUtils.getDetachedStorageGroupPathByLevel(detachedPath, config.getDefaultStorageGroupLevel());
+            MetaUtils.getDetachedStorageGroupByLevel(detachedPath, config.getDefaultStorageGroupLevel());
         setStorageGroup(detachedStorageGroupPath);
       }
 
@@ -1173,7 +1173,7 @@ public class MManager {
     lock.writeLock().lock();
     try {
       if(shouldSetStorageGroup) {
-        List<String> storageGroupName = MetaUtils.getDetachedStorageGroupPathByLevel(detachedDevice, sgLevel);
+        List<String> storageGroupName = MetaUtils.getDetachedStorageGroupByLevel(detachedDevice, sgLevel);
         setStorageGroup(storageGroupName);
       }
       node = mNodeCache.get(deviceId, detachedDevice);
