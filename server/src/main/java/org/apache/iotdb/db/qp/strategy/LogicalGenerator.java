@@ -705,7 +705,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterSetTTLStatement(SetTTLStatementContext ctx) {
     super.enterSetTTLStatement(ctx);
     SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_SET);
-    operator.setStorageGroupNodes(parsePrefixPathNodes(ctx.prefixPath()));
+    operator.setDetachedStorageGroup(parsePrefixPathNodes(ctx.prefixPath()));
     operator.setDataTTL(Long.parseLong(ctx.INT().getText()));
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_SET;
@@ -715,7 +715,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterUnsetTTLStatement(UnsetTTLStatementContext ctx) {
     super.enterUnsetTTLStatement(ctx);
     SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_UNSET);
-    operator.setStorageGroupNodes(parsePrefixPathNodes(ctx.prefixPath()));
+    operator.setDetachedStorageGroup(parsePrefixPathNodes(ctx.prefixPath()));
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_UNSET;
   }

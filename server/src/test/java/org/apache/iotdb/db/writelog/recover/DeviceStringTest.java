@@ -112,7 +112,7 @@ public class DeviceStringTest {
     resource.deserialize();
     assertFalse(resource.getDeviceToIndexMap().keySet().isEmpty());
     for (String device : resource.getDeviceToIndexMap().keySet()) {
-      assertEquals(device, mManager.getDeviceId(device));
+      assertEquals(device, mManager.getDevice(device));
     }
   }
 }
