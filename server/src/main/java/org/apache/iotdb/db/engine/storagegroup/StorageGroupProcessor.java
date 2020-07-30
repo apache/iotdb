@@ -318,7 +318,6 @@ public class StorageGroupProcessor {
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
         recoverTsFiles(value, vmUnseqFiles, false);
       }
-      TsFileResource.devicePool = null;
 
       for (TsFileResource resource : sequenceFileTreeSet) {
         long partitionNum = resource.getTimePartition();

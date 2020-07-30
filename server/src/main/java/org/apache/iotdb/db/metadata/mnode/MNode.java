@@ -32,6 +32,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.rescon.CachedStringPool;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -40,6 +41,8 @@ import org.apache.iotdb.db.metadata.MetadataConstant;
 public class MNode implements Serializable {
 
   private static final long serialVersionUID = -770028375899514063L;
+
+  private static Map<String, String> cachedPathPool = CachedStringPool.getInstance().getCachedStringPool();
 
   /**
    * Name of the MNode
@@ -157,11 +160,11 @@ public class MNode implements Serializable {
    * get full path
    */
   public String getFullPath() {
-    if (fullPath != null) {
-      return fullPath;
+    if (fullPath == null) {
+      fullPath = concatFullPath();
     }
-    fullPath = concatFullPath();
-    return fullPath;
+    String cachedPath = cachedPathPool.putIfAbsent(fullPath, fullPath);
+    return cachedPath == null ? fullPath : cachedPath;
   }
 
   String concatFullPath() {
