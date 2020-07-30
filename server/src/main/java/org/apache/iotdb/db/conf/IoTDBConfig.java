@@ -135,6 +135,16 @@ public class IoTDBConfig {
   private boolean enableParameterAdapter = false;
 
   /**
+   * Ratio of memory allocated for buffered arrays
+   */
+  private double bufferedArraysMemoryProportion = 0.8;
+
+  /**
+   * Reject proportion for system
+   */
+  private double rejectProportion = 0.8;
+
+  /**
    * Is the write ahead log enable.
    */
   private boolean enableWal = true;
@@ -1115,6 +1125,22 @@ public class IoTDBConfig {
 
   public void setEnableParameterAdapter(boolean enableParameterAdapter) {
     this.enableParameterAdapter = enableParameterAdapter;
+  }
+
+  public double getBufferedArraysMemoryProportion() {
+    return bufferedArraysMemoryProportion;
+  }
+
+  public void setBufferedArraysMemoryProportion(double bufferedArraysMemoryProportion) {
+    this.bufferedArraysMemoryProportion = bufferedArraysMemoryProportion;
+  }
+
+  public double getRejectProportion() {
+    return rejectProportion;
+  }
+
+  public void setRejectProportion(double rejectProportion) {
+    this.rejectProportion = rejectProportion;
   }
 
   public long getAllocateMemoryForWrite() {

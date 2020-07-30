@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.service.IoTDB;
@@ -62,10 +63,13 @@ public class PrimitiveArrayManager {
   public static final int ARRAY_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
 
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   /**
-   * threshold total size of arrays for all data types TODO modified as a config
+   * threshold total size of arrays for all data types
    */
-  private static final int BUFFERED_ARRAY_SIZE_THRESHOLD = 1024 * 1024;
+  private static final double BUFFERED_ARRAY_SIZE_THRESHOLD =
+      config.getAllocateMemoryForWrite() * config.getBufferedArraysMemoryProportion();
 
   /**
    * total size of buffered arrays
@@ -103,7 +107,7 @@ public class PrimitiveArrayManager {
         .newSingleThreadScheduledExecutor(
             r -> new Thread(r, "timedCollectSchemaDataTypeNumThread"));
     timedCollectSchemaDataTypeNumThread.scheduleAtFixedRate(this::collectSchemaDataTypeNum, 0,
-        3600, TimeUnit.SECONDS); // TODO modified as a config
+        3600, TimeUnit.SECONDS);
 
     bufferedArraysSize = 0;
     outOfBufferArraysSize = 0;

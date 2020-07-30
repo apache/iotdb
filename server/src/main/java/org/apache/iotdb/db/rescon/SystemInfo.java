@@ -28,20 +28,17 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class SystemInfo {
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  long totalTspInfoMemCost;
-  long arrayPoolMemCost;
+  private long totalTspInfoMemCost;
+  private long arrayPoolMemCost;
 
   // processor -> mem cost of it
-  TreeMap<TsFileProcessor, Long> reportedTspMemCostMap = new TreeMap<>(
+  private TreeMap<TsFileProcessor, Long> reportedTspMemCostMap = new TreeMap<>(
       (o1, o2) -> (int) (o2.getTsFileProcessorInfo().getTsFileProcessorMemCost() - o1
-          .getTsFileProcessorInfo()
-          .getTsFileProcessorMemCost()));
+          .getTsFileProcessorInfo().getTsFileProcessorMemCost()));
 
-  // temporary value
-  private final double rejectProportion = 0.9;
-  private final int flushQueueThreshold = 6;
+  private static final double rejectProportion = config.getRejectProportion();
 
   /**
    * Report applying a new out of buffered array to system. Attention: It should be invoked before
@@ -129,7 +126,7 @@ public class SystemInfo {
    * it's identified as flushing is in progress.
    */
   public void flush() {
-    if (FlushManager.getInstance().getTsFileProcessorQueueSize() > flushQueueThreshold) {
+    if (FlushManager.getInstance().getTsFileProcessorQueueSize() >= 1) {
       return;
     }
 

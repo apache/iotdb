@@ -183,6 +183,13 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
               Boolean.toString(conf.isEnableParameterAdapter()))));
 
+      conf.setBufferedArraysMemoryProportion(
+          Double.parseDouble(properties.getProperty("buffered_arrays_memory_proportion",
+              Double.toString(conf.getBufferedArraysMemoryProportion()))));
+
+      conf.setRejectProportion(Double.parseDouble(properties.getProperty("reject_proportion",
+          Double.toString(conf.getRejectProportion()))));
+
       conf.setMetaDataCacheEnable(
           Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
               Boolean.toString(conf.isMetaDataCacheEnable()))));
