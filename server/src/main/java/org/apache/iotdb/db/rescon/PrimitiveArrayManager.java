@@ -88,11 +88,6 @@ public class PrimitiveArrayManager {
    */
   private int outOfBufferArraysSize;
 
-  /**
-   * collect schema data type number in specific interval time
-   */
-  private ScheduledExecutorService timedCollectSchemaDataTypeNumThread;
-
   static {
     bufferedArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque<>());
     bufferedArraysMap.put(TSDataType.INT32, new ArrayDeque<>());
@@ -109,12 +104,6 @@ public class PrimitiveArrayManager {
   private static final PrimitiveArrayManager INSTANCE = new PrimitiveArrayManager();
 
   private PrimitiveArrayManager() {
-    timedCollectSchemaDataTypeNumThread = Executors
-        .newSingleThreadScheduledExecutor(
-            r -> new Thread(r, "timedCollectSchemaDataTypeNumThread"));
-    timedCollectSchemaDataTypeNumThread.scheduleAtFixedRate(this::collectSchemaDataTypeNum, 0,
-        3600, TimeUnit.SECONDS);
-
     bufferedArraysSize = 0;
     outOfBufferArraysSize = 0;
   }
@@ -355,10 +344,7 @@ public class PrimitiveArrayManager {
     SystemInfo.getInstance().reportReleaseOOBArray(dataType, size);
   }
 
-  private void collectSchemaDataTypeNum() {
-    try {
-      Map<TSDataType, Integer> schemaDataTypeNumMap = IoTDB.metaManager
-          .collectSchemaDataTypeNum("root");
+  public void updateSchemaDataTypeNum(Map<TSDataType, Integer> schemaDataTypeNumMap) {
       int total = 0;
       for (int num : schemaDataTypeNumMap.values()) {
         total += num;
@@ -371,9 +357,6 @@ public class PrimitiveArrayManager {
         bufferedArraysNumRatio
             .put(dataType, (double) schemaDataTypeNumMap.get(dataType) / total);
       }
-    } catch (MetadataException e) {
-      logger.error("Failed to get schema data type num map. ", e);
-    }
   }
 
   /**
@@ -393,10 +376,6 @@ public class PrimitiveArrayManager {
   }
 
   public void close() {
-    if (timedCollectSchemaDataTypeNumThread != null) {
-      timedCollectSchemaDataTypeNumThread.shutdownNow();
-      timedCollectSchemaDataTypeNumThread = null;
-    }
     bufferedArraysMap.clear();
     bufferedArraysNumMap.clear();
     bufferedArraysNumRatio.clear();

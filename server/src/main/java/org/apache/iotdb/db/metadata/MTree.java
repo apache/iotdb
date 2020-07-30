@@ -936,38 +936,6 @@ public class MTree implements Serializable {
     }
   }
 
-  Map<TSDataType, Integer> collectSchemaDataTypeNum(String prefixPath)
-      throws MetadataException {
-    Map<TSDataType, Integer> schemaDataTypeNumMap = new EnumMap<>(
-        TSDataType.class);
-    String[] nodes = MetaUtils.getNodeNames(prefixPath);
-    collectSchemaDataTypeNum(root, nodes, 1, schemaDataTypeNumMap);
-    return schemaDataTypeNumMap;
-  }
-
-  private void collectSchemaDataTypeNum(MNode node, String[] nodes, int idx,
-      Map<TSDataType, Integer> schemaDataTypeNumMap) throws MetadataException {
-    if (node instanceof MeasurementMNode && nodes.length <= idx) {
-      TSDataType type = ((MeasurementMNode) node).getSchema().getType();
-      schemaDataTypeNumMap.put(type, schemaDataTypeNumMap.getOrDefault(type, 0) + 1);
-      schemaDataTypeNumMap.put(TSDataType.INT64,
-          schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + 1);
-    }
-    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (!nodeReg.contains(PATH_WILDCARD)) {
-      if (node.hasChild(nodeReg)) {
-        collectSchemaDataTypeNum(node.getChild(nodeReg), nodes, idx + 1, schemaDataTypeNumMap);
-      }
-    } else {
-      for (MNode child : node.getChildren().values()) {
-        if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
-          continue;
-        }
-        collectSchemaDataTypeNum(child, nodes, idx + 1, schemaDataTypeNumMap);
-      }
-    }
-  }
-
   public void serializeTo(String snapshotPath) throws IOException {
     try (BufferedWriter bw = new BufferedWriter(
         new FileWriter(SystemFileFactory.INSTANCE.getFile(snapshotPath)))) {

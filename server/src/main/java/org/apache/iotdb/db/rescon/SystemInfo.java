@@ -38,7 +38,7 @@ public class SystemInfo {
       (o1, o2) -> (int) (o2.getTsFileProcessorInfo().getTsFileProcessorMemCost() - o1
           .getTsFileProcessorInfo().getTsFileProcessorMemCost()));
 
-  private static final double rejectProportion = config.getRejectProportion();
+  private static final double REJECT_PROPORTION = config.getRejectProportion();
 
   /**
    * Report applying a new out of buffered array to system. Attention: It should be invoked before
@@ -51,7 +51,7 @@ public class SystemInfo {
   public synchronized boolean applyNewOOBArray(TSDataType dataType, int size) {
     // if current memory is enough
     if (arrayPoolMemCost + totalTspInfoMemCost + dataType.getDataTypeSize() * size
-        < config.getAllocateMemoryForWrite() * rejectProportion) {
+        < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
       arrayPoolMemCost += dataType.getDataTypeSize() * size;
       return true;
     } else {
@@ -80,7 +80,7 @@ public class SystemInfo {
     }
 
     if (this.totalTspInfoMemCost + variation
-        < config.getAllocateMemoryForWrite() * rejectProportion) {
+        < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
       this.totalTspInfoMemCost += variation;
       return true;
     } else {
