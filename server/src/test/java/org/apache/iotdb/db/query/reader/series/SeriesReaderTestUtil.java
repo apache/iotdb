@@ -129,11 +129,11 @@ public class SeriesReaderTestUtil {
     }
     fileWriter.registerDeviceTemplate("template0", template);
     for (List<String> deviceId : deviceIds) {
-      fileWriter.registerDevice(MetaUtils.getPathByNodes(deviceId), "template0");
+      fileWriter.registerDevice(MetaUtils.concatNodesByDot(deviceId), "template0");
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (List<String> deviceId : deviceIds) {
-        String device = MetaUtils.getPathByNodes(deviceId);
+        String device = MetaUtils.concatNodesByDot(deviceId);
         TSRecord record = new TSRecord(i, device);
         for (MeasurementSchema measurementSchema : measurementSchemas) {
           record.addTuple(DataPoint.getDataPoint(measurementSchema.getType(),

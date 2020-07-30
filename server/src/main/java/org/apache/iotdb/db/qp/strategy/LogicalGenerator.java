@@ -205,7 +205,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCountTimeseries(CountTimeseriesContext ctx) {
     super.enterCountTimeseries(ctx);
     PrefixPathContext pathContext = ctx.prefixPath();
-    Path path = (pathContext != null ? parsePrefixPath(pathContext) : new Path(SQLConstant.ROOT));
+    Path path = (pathContext != null ? parsePrefixPath(pathContext) : new Path(new ArrayList<>(Collections.singletonList(SQLConstant.ROOT))));
     if (ctx.INT() != null) {
       initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODE_TIMESERIES,
           path, Integer.parseInt(ctx.INT().getText()));
@@ -278,7 +278,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
           parsePrefixPath(ctx.prefixPath()));
     } else {
       initializedOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES,
-          new Path(SQLConstant.ROOT));
+          new Path(new ArrayList<>(Collections.singletonList(SQLConstant.ROOT))));
     }
   }
 
@@ -290,7 +290,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
           parsePrefixPath(ctx.prefixPath()));
     } else {
       initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS,
-          new Path(SQLConstant.ROOT));
+          new Path(new ArrayList<>(Collections.singletonList(SQLConstant.ROOT))));
     }
   }
 

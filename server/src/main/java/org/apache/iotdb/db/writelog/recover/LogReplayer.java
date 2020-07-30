@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -158,7 +159,7 @@ public class LogReplayer {
     }
     MeasurementSchema[] schemas;
     try {
-      schemas = IoTDB.metaManager.getSchemas(plan.getDeviceId(), plan
+      schemas = IoTDB.metaManager.getSchemas(MetaUtils.splitPathToNodes(plan.getDeviceId()), plan
           .getMeasurements());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetaUtils;
@@ -167,8 +168,8 @@ public class StatMonitor implements IService {
           logger.error("Registering metadata but data type of {} is null", entry.getKey());
         }
 
-        if (!mManager.isPathExist(MetaUtils.getDeviceNodeNames(entry.getKey()))) {
-          mManager.createTimeseries(Arrays.asList(MetaUtils.getNodeNames(entry.getKey())), TSDataType.valueOf(entry.getValue()),
+        if (!mManager.isPathExist(MetaUtils.splitPathToNodes(entry.getKey()))) {
+          mManager.createTimeseries(MetaUtils.splitPathToNodes(entry.getKey()), TSDataType.valueOf(entry.getValue()),
               TSEncoding.valueOf("RLE"),
               TSFileDescriptor.getInstance().getConfig().getCompressor(),
               Collections.emptyMap());
@@ -368,12 +369,12 @@ public class StatMonitor implements IService {
         for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
           for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
             if (temporaryStatList.contains(statParamName)) {
-              fManager.delete(MetaUtils.getDeviceNodeNames(entry.getKey()), statParamName, Long.MIN_VALUE,
+              fManager.delete(MetaUtils.splitPathToNodes(entry.getKey()), statParamName, Long.MIN_VALUE,
                   currentTimeMillis - statMonitorRetainIntervalSec * 1000);
             }
           }
         }
-      } catch (StorageEngineException e) {
+      } catch (StorageEngineException | IllegalPathException e) {
         logger
             .error("Error occurred when deleting statistics information periodically, because",
                 e);

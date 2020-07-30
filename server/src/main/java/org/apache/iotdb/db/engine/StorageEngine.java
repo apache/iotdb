@@ -48,13 +48,8 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.BatchInsertionException;
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.ShutdownException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.*;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -291,7 +286,7 @@ public class StorageEngine implements IService {
     String storageGroupName;
     try {
       storageGroupNodes = IoTDB.metaManager.getStorageGroupNameNodes(nodes);
-      storageGroupName = MetaUtils.getPathByNodes(storageGroupNodes);
+      storageGroupName = MetaUtils.concatNodesByDot(storageGroupNodes);
       StorageGroupProcessor processor;
       processor = processorMap.get(storageGroupName);
       if (processor == null) {
@@ -448,11 +443,11 @@ public class StorageEngine implements IService {
   /**
    * delete data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
    */
-  public void delete(List<String> nodes, String measurementId, long startTime, long endTime)
+  public void delete(List<String> deviceNodes, String measurementId, long startTime, long endTime)
       throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(nodes);
+    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceNodes);
     try {
-      storageGroupProcessor.delete(nodes, measurementId, startTime, endTime);
+      storageGroupProcessor.delete(deviceNodes, measurementId, startTime, endTime);
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }
@@ -557,9 +552,8 @@ public class StorageEngine implements IService {
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
-      throws StorageEngineException, LoadFileException {
-    getProcessor(
-        MetaUtils.getDeviceNodeNames(newTsFileResource.getTsFile().getParentFile().getName()))
+      throws StorageEngineException, LoadFileException, IllegalPathException {
+    getProcessor(MetaUtils.splitPathToNodes(newTsFileResource.getTsFile().getParentFile().getName()))
         .loadNewTsFileForSync(newTsFileResource);
   }
 
@@ -570,26 +564,23 @@ public class StorageEngine implements IService {
       throw new StorageEngineException("Can not get the corresponding storage group.");
     }
     String device = deviceMap.keySet().iterator().next();
-    List<String> storageGroupNameNodes = IoTDB.metaManager
-        .getStorageGroupNameNodes(MetaUtils.splitPathToNodes(device));
+    List<String> storageGroupNameNodes = IoTDB.metaManager.getStorageGroupNameNodes(MetaUtils.splitPathToNodes(device));
     getProcessor(storageGroupNameNodes).loadNewTsFile(newTsFileResource);
   }
 
   public boolean deleteTsfileForSync(File deletedTsfile)
-      throws StorageEngineException {
-    return getProcessor(MetaUtils.getDeviceNodeNames(deletedTsfile.getParentFile().getName()))
-        .deleteTsfile(deletedTsfile);
+      throws StorageEngineException, IllegalPathException {
+    return getProcessor(MetaUtils.splitPathToNodes(deletedTsfile.getParentFile().getName())).deleteTsfile(deletedTsfile);
   }
 
-  public boolean deleteTsfile(File deletedTsfile) throws StorageEngineException {
-    return getProcessor(MetaUtils.getDeviceNodeNames(getSgByEngineFile(deletedTsfile)))
-        .deleteTsfile(deletedTsfile);
+  public boolean deleteTsfile(File deletedTsfile)
+      throws StorageEngineException, IllegalPathException {
+    return getProcessor(MetaUtils.splitPathToNodes(getSgByEngineFile(deletedTsfile))).deleteTsfile(deletedTsfile);
   }
 
   public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
-      throws StorageEngineException, IOException {
-    return getProcessor(MetaUtils.getDeviceNodeNames(getSgByEngineFile(tsfileToBeMoved)))
-        .moveTsfile(tsfileToBeMoved, targetDir);
+      throws StorageEngineException, IOException, IllegalPathException {
+    return getProcessor(MetaUtils.splitPathToNodes(getSgByEngineFile(tsfileToBeMoved))).moveTsfile(tsfileToBeMoved, targetDir);
   }
 
   /**

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.slf4j.Logger;
@@ -139,7 +140,7 @@ public class FileLoader implements IFileLoader {
       StorageEngine.getInstance().loadNewTsFileForSync(tsFileResource);
     } catch (SyncDeviceOwnerConflictException e) {
       LOGGER.error("Device owner has conflicts, so skip the loading file", e);
-    } catch (LoadFileException | StorageEngineException e) {
+    } catch (LoadFileException | StorageEngineException | IllegalPathException e) {
       LOGGER.error("Can not load new tsfile {}", newTsFile.getAbsolutePath(), e);
       throw new IOException(e);
     }
@@ -155,7 +156,7 @@ public class FileLoader implements IFileLoader {
       if (!StorageEngine.getInstance().deleteTsfileForSync(deletedTsFile)) {
         LOGGER.info("The file {} to be deleted doesn't exist.", deletedTsFile.getAbsolutePath());
       }
-    } catch (StorageEngineException e) {
+    } catch (StorageEngineException | IllegalPathException e) {
       LOGGER.error("Can not load deleted tsfile {}", deletedTsFile.getAbsolutePath(), e);
       throw new IOException(e);
     }
