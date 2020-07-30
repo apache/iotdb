@@ -1755,6 +1755,25 @@ public class MManager {
     }
   }
 
+  /**
+   * get all storageGroups ttl
+   *
+   * @return key-> storageGroupName, value->ttl
+   */
+  public Map<String, Long> getStorageGroupsTTL() {
+    Map<String, Long> storageGroupsTTL = new HashMap<>();
+    try {
+      List<String> storageGroups = this.getAllStorageGroupNames();
+      for (String storageGroup : storageGroups) {
+        long ttl = getStorageGroupNode(MetaUtils.splitPathToNodes(storageGroup)).getDataTTL();
+        storageGroupsTTL.put(storageGroup, ttl);
+      }
+    } catch (MetadataException e) {
+      logger.error("get storage groups ttl failed.", e);
+    }
+    return storageGroupsTTL;
+  }
+
   public void collectMeasurementSchema(MNode startingNode,
       Collection<MeasurementSchema> timeseriesSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();
