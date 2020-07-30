@@ -18,6 +18,23 @@
  */
 package org.apache.iotdb.db.engine;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -53,13 +70,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class StorageEngine implements IService {
 
@@ -116,8 +126,7 @@ public class StorageEngine implements IService {
   private static long timePartitionInterval = -1;
 
   /**
-   * whether enable data partition
-   * if disabled, all data belongs to partition 0
+   * whether enable data partition if disabled, all data belongs to partition 0
    */
   @ServerConfigConsistent
   private static boolean enablePartition =
@@ -148,7 +157,7 @@ public class StorageEngine implements IService {
 
   public void recover() {
     recoverAllSgThreadPool = IoTDBThreadPoolFactory
-      .newSingleThreadExecutor("Begin-Recovery-Pool");
+        .newSingleThreadExecutor("Begin-Recovery-Pool");
     recoverAllSgThreadPool.submit(this::recoverAllSgs);
   }
 
@@ -162,13 +171,14 @@ public class StorageEngine implements IService {
       futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
         try {
           StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
-            storageGroup.getFullPath(), fileFlushPolicy);
+              storageGroup.getFullPath(), fileFlushPolicy);
           processor.setDataTTL(storageGroup.getDataTTL());
           processorMap.put(storageGroup.getFullPath(), processor);
           logger.info("Storage Group Processor {} is recovered successfully",
-            storageGroup.getFullPath());
+              storageGroup.getFullPath());
         } catch (Exception e) {
-          logger.error("meet error when recovering storage group: {}", storageGroup.getFullPath(), e);
+          logger
+              .error("meet error when recovering storage group: {}", storageGroup.getFullPath(), e);
         }
         return null;
       }));
@@ -287,17 +297,18 @@ public class StorageEngine implements IService {
             processor = processorMap.get(storageGroupName);
             if (processor == null) {
               logger.info("construct a processor instance, the storage group is {}, Thread is {}",
-                storageGroupName, Thread.currentThread().getId());
+                  storageGroupName, Thread.currentThread().getId());
               processor = new StorageGroupProcessor(systemDir, storageGroupName, fileFlushPolicy);
               StorageGroupMNode storageGroup = IoTDB.metaManager
-                .getStorageGroupNode(storageGroupNodes);
+                  .getStorageGroupNode(storageGroupNodes);
               processor.setDataTTL(storageGroup.getDataTTL());
               processorMap.put(storageGroupName, processor);
             }
           }
         } else {
           // not finished recover, refuse the request
-          throw new StorageEngineException("the sg " + storageGroupName + " may not ready now, please wait and retry later");
+          throw new StorageEngineException(
+              "the sg " + storageGroupName + " may not ready now, please wait and retry later");
         }
       }
       return processor;
@@ -632,11 +643,13 @@ public class StorageEngine implements IService {
 
   /**
    * Set the version of given partition to newMaxVersion if it is larger than the current version.
+   *
    * @param storageGroup
    * @param partitionId
    * @param newMaxVersion
    */
-  public void setPartitionVersionToMax(List<String> storageGroup, long partitionId, long newMaxVersion)
+  public void setPartitionVersionToMax(List<String> storageGroup, long partitionId,
+      long newMaxVersion)
       throws StorageEngineException {
     getProcessor(storageGroup).setPartitionFileVersionToMax(partitionId, newMaxVersion);
   }
