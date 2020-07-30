@@ -68,7 +68,7 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
 
 因此，按设备对齐在此阶段所做的工作只包括对 WHERE 语句中过滤条件的优化。
 
-对过滤条件的优化主要包括三部分：去非、转化析取范式、合并同路径过滤条件。对应的优化器分别为：RemoveNotOptimizer, DnfFilterOptimizer, MergeSingleFilterOptimizer。该部分逻辑可参考：[Planner](/zh/SystemDesign/QueryEngine/Planner.html).
+对过滤条件的优化主要包括三部分：去非、转化析取范式、合并同路径过滤条件。对应的优化器分别为：RemoveNotOptimizer, DnfFilterOptimizer, MergeSingleFilterOptimizer。该部分逻辑可参考：[Planner](../QueryEngine/Planner.md).
 
 ### 物理计划生成
 
@@ -253,7 +253,7 @@ private void getAlignByDeviceQueryHeaders(
 1. 首先判断当前结果集是否被初始化且有下一个结果，如果是则直接返回 true，即当前可以调用 `next()` 方法获取下一个 `RowRecord`；否则设置结果集未被初始化进入步骤2.
 2. 迭代 `deviceIterator` 获取本次执行需要的设备，之后通过设备路径在 MManager 中查询到该设备节点，并取得该设备节点下的所有传感器节点，保存为 `measurementOfGivenDevice`.
 3. 遍历当前查询中的所有 measurement，将其与执行设备的所有传感器节点进行比较，得到该设备需要查询的列 `executeColumns`. 之后拼接当前设备名与 measurements，计算当前设备的查询路径、数据类型及过滤条件，得到对应的字段分别为 `executePaths`, `tsDataTypes`, `expression`，如果是聚合查询，则还需要计算 `executeAggregations`。
-4. 判断当前子查询类型为 GroupByQuery, AggregationQuery, FillQuery 或 RawDataQuery 进行对应的查询并返回结果集，实现逻辑可参考[原始数据查询](../DataQuery/RawDataQuery.html)，[聚合查询](../DataQuery/AggregationQuery.html)，[降采样查询](../DataQuery/GroupByQuery.html)。
+4. 判断当前子查询类型为 GroupByQuery, AggregationQuery, FillQuery 或 RawDataQuery 进行对应的查询并返回结果集，实现逻辑可参考[原始数据查询](../DataQuery/RawDataQuery.md)，[聚合查询](../DataQuery/AggregationQuery.md)，[降采样查询](../DataQuery/GroupByQuery.md)。
 
 通过 `hasNextWithoutConstraint()` 方法初始化结果集并确保有下一结果后，则可调用 `QueryDataSet.next()` 方法获取下一个 `RowRecord`.
 

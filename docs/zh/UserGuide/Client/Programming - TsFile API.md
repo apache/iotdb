@@ -226,7 +226,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
       
     * type: 数据类型，现在支持六种类型: `BOOLEAN`, `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `TEXT`;
     
-    * encoding: 编码类型. 参见 [Chapter 2-3](../Concept/Encoding.html).
+    * encoding: 编码类型. 参见 [Chapter 2-3](../Concept/Encoding.md).
     
     * compression: 压缩方式. 现在支持 `UNCOMPRESSED` 和 `SNAPPY`.
     

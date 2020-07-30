@@ -23,7 +23,7 @@
 
 IoTDB为用户提供了权限管理操作，从而为用户提供对于数据的权限管理功能，保障数据的安全。
 
-我们将通过以下几个具体的例子为您示范基本的用户权限操作，详细的SQL语句及使用方式详情请参见本文[第5.4节](../Concept/Data%20Model%20and%20Terminology.html)。同时，在JAVA编程环境中，您可以使用[JDBC API](../Client/Programming%20-%20JDBC.html)单条或批量执行权限管理类语句。
+我们将通过以下几个具体的例子为您示范基本的用户权限操作，详细的SQL语句及使用方式详情请参见本文[第5.4节](../Concept/Data%20Model%20and%20Terminology.md)。同时，在JAVA编程环境中，您可以使用[JDBC API](../Client/Programming%20-%20JDBC.md)单条或批量执行权限管理类语句。
 
 ## 基本概念
 
