@@ -47,8 +47,8 @@ The server mainly includes a query engine that processes all user requests and d
 
 IoTDB is connected with big data systems.
 
-* [Hadoop-TsFile](../../UserGuide/Ecosystem Integration/MapReduce%20TsFile.md)
+* [Hadoop-TsFile](../../UserGuide/Ecosystem%20Integration/MapReduce%20TsFile.md)
 * [Hive-TsFile](../Connector/Hive-TsFile.md)
 * [Spark-TsFile](../Connector/Spark-TsFile.md)
 * [Spark-IoTDB](../Connector/Spark-IOTDB.md)
-* [Grafana](../../UserGuide/Ecosystem Integration/Grafana.md)
+* [Grafana](../../UserGuide/Ecosystem%20Integration/Grafana.md)
