@@ -129,11 +129,11 @@ public class TTLTest {
 
     // normally set ttl
     IoTDB.metaManager.setTTL(sg1List, ttl);
-    StorageGroupMNode mNode = IoTDB.metaManager.getStorageGroupNode(MetaUtils.splitPathByDot(sg1));
+    StorageGroupMNode mNode = IoTDB.metaManager.getStorageGroupMNode(MetaUtils.splitPathByDot(sg1));
     assertEquals(ttl, mNode.getDataTTL());
 
     // default ttl
-    mNode = IoTDB.metaManager.getStorageGroupNode(MetaUtils.splitPathByDot(sg2));
+    mNode = IoTDB.metaManager.getStorageGroupMNode(MetaUtils.splitPathByDot(sg2));
     assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
   }
 
@@ -319,11 +319,11 @@ public class TTLTest {
     Planner planner = new Planner();
     SetTTLPlan plan = (SetTTLPlan) planner
         .parseSQLToPhysicalPlan("SET TTL TO " + sg1 + " 10000");
-    assertEquals(sg1, MetaUtils.concatNodesByDot(plan.getStorageGroupNodes()));
+    assertEquals(sg1, MetaUtils.concatDetachedPathByDot(plan.getDetachedStorageGroups()));
     assertEquals(10000, plan.getDataTTL());
 
     plan = (SetTTLPlan) planner.parseSQLToPhysicalPlan("UNSET TTL TO " + sg2);
-    assertEquals(sg2, MetaUtils.concatNodesByDot(plan.getStorageGroupNodes()));
+    assertEquals(sg2, MetaUtils.concatDetachedPathByDot(plan.getDetachedStorageGroups()));
     assertEquals(Long.MAX_VALUE, plan.getDataTTL());
   }
 

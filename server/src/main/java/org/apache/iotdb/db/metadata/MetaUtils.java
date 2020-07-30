@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -38,18 +37,18 @@ public class MetaUtils {
     throw new IllegalStateException("Utility class");
   }
 
-  static String getNodeRegByIdx(int idx, String[] nodes) {
+  static String getNodeNameRegByIdx(int idx, String[] nodes) {
     return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
   }
 
   @TestOnly
   public static List<String> splitPathByDot(String path) {
-    List<String> deviceNodes = new ArrayList<>();
-    Collections.addAll(deviceNodes, path.split(PATH_SEPARATOR));
-    return deviceNodes;
+    List<String> detachedDevicePath = new ArrayList<>();
+    Collections.addAll(detachedDevicePath, path.split(PATH_SEPARATOR));
+    return detachedDevicePath;
   }
 
-  public static List<String> splitPathToNodes(String path) throws IllegalPathException {
+  public static List<String> splitPathToDetachedPath(String path) throws IllegalPathException {
     List<String> nodes = new ArrayList<>();
     int startIndex = 0;
     for (int i = 0; i < path.length(); i++) {
@@ -83,9 +82,9 @@ public class MetaUtils {
    * @param nodeNames nodeNames
    * @param level level
    */
-  public static List<String> getStorageGroupNameNodesByLevel(List<String> nodeNames, int level) throws MetadataException {
+  public static List<String> getDetachedStorageGroupPathByLevel(List<String> nodeNames, int level) throws MetadataException {
     if (nodeNames.size() <= level || !nodeNames.get(0).equals(IoTDBConstant.PATH_ROOT)) {
-      throw new IllegalPathException(concatNodesByDot(nodeNames));
+      throw new IllegalPathException(concatDetachedPathByDot(nodeNames));
     }
     return new ArrayList<>(nodeNames.subList(0, level+1));
   }
@@ -95,8 +94,8 @@ public class MetaUtils {
    * e.g., nodes = [root, a, b, c], return root.a.b.c
    */
 
-  public static String concatNodesByDot(List<String> nodes) {
-    return String.join(TsFileConstant.PATH_SEPARATOR, nodes);
+  public static String concatDetachedPathByDot(List<String> detachedPath) {
+    return String.join(TsFileConstant.PATH_SEPARATOR, detachedPath);
   }
 
 }

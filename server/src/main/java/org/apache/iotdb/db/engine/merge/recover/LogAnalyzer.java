@@ -99,7 +99,7 @@ public class LogAnalyzer {
 
         analyzeUnseqFiles(bufferedReader);
 
-        List<String> storageGroupPaths = IoTDB.metaManager.getAllTimeseriesName(storageGroupName + ".*");
+        List<String> storageGroupPaths = IoTDB.metaManager.getAllTimeseries(storageGroupName + ".*");
         unmergedPaths = new ArrayList<>();
         for (String path : storageGroupPaths) {
           unmergedPaths.add(new Path(path));

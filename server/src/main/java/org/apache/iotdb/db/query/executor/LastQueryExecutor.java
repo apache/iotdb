@@ -123,9 +123,9 @@ public class LastQueryExecutor {
     // Retrieve last value from MNode
     MeasurementMNode node = null;
     try {
-      node = (MeasurementMNode) IoTDB.metaManager.getNodeByNodes(seriesPath.getNodes());
+      node = (MeasurementMNode) IoTDB.metaManager.getMNodeByDetachedPath(seriesPath.getDetachedPath());
     } catch (MetadataException e) {
-      TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(seriesPath.getNodes());
+      TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(seriesPath.getDetachedPath());
       if (timeValuePair != null) {
         return timeValuePair;
       }
@@ -193,7 +193,7 @@ public class LastQueryExecutor {
     }
 
     // Update cached last value with low priority
-    IoTDB.metaManager.updateLastCache(seriesPath.getNodes(),
+    IoTDB.metaManager.updateLastCache(seriesPath.getDetachedPath(),
       resultPair, false, Long.MIN_VALUE, node);
     return resultPair;
   }

@@ -165,7 +165,7 @@ public class StorageEngine implements IService {
     /*
      * recover all storage group processors.
      */
-    List<StorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
+    List<StorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupMNodes();
     List<Future> futures = new ArrayList<>();
     for (StorageGroupMNode storageGroup : sgNodes) {
       futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
@@ -285,8 +285,8 @@ public class StorageEngine implements IService {
     List<String> storageGroupNodes;
     String storageGroupName;
     try {
-      storageGroupNodes = IoTDB.metaManager.getStorageGroupNameNodes(nodes);
-      storageGroupName = MetaUtils.concatNodesByDot(storageGroupNodes);
+      storageGroupNodes = IoTDB.metaManager.getDetachedStorageGroup(nodes);
+      storageGroupName = MetaUtils.concatDetachedPathByDot(storageGroupNodes);
       StorageGroupProcessor processor;
       processor = processorMap.get(storageGroupName);
       if (processor == null) {
@@ -300,7 +300,7 @@ public class StorageEngine implements IService {
                   storageGroupName, Thread.currentThread().getId());
               processor = new StorageGroupProcessor(systemDir, storageGroupName, fileFlushPolicy);
               StorageGroupMNode storageGroup = IoTDB.metaManager
-                  .getStorageGroupNode(storageGroupNodes);
+                  .getStorageGroupMNode(storageGroupNodes);
               processor.setDataTTL(storageGroup.getDataTTL());
               processorMap.put(storageGroupName, processor);
             }
@@ -459,7 +459,7 @@ public class StorageEngine implements IService {
   public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,
       QueryFileManager filePathsManager)
       throws StorageEngineException, QueryProcessException {
-    List<String> pathNodes = seriesExpression.getSeriesPath().getNodes();
+    List<String> pathNodes = seriesExpression.getSeriesPath().getDetachedPath();
     String measurementId = pathNodes.get(pathNodes.size() - 1);
     List<String> deviceNodes = new ArrayList<>(pathNodes);
     deviceNodes.remove(deviceNodes.size() - 1);
@@ -532,7 +532,7 @@ public class StorageEngine implements IService {
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
-    for (String storageGroup : IoTDB.metaManager.getAllStorageGroupNames()) {
+    for (String storageGroup : IoTDB.metaManager.getAllDetachedStorageGroups()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
     return true;
@@ -553,7 +553,7 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws StorageEngineException, LoadFileException, IllegalPathException {
-    getProcessor(MetaUtils.splitPathToNodes(newTsFileResource.getTsFile().getParentFile().getName()))
+    getProcessor(MetaUtils.splitPathToDetachedPath(newTsFileResource.getTsFile().getParentFile().getName()))
         .loadNewTsFileForSync(newTsFileResource);
   }
 
@@ -564,23 +564,23 @@ public class StorageEngine implements IService {
       throw new StorageEngineException("Can not get the corresponding storage group.");
     }
     String device = deviceMap.keySet().iterator().next();
-    List<String> storageGroupNameNodes = IoTDB.metaManager.getStorageGroupNameNodes(MetaUtils.splitPathToNodes(device));
+    List<String> storageGroupNameNodes = IoTDB.metaManager.getDetachedStorageGroup(MetaUtils.splitPathToDetachedPath(device));
     getProcessor(storageGroupNameNodes).loadNewTsFile(newTsFileResource);
   }
 
   public boolean deleteTsfileForSync(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessor(MetaUtils.splitPathToNodes(deletedTsfile.getParentFile().getName())).deleteTsfile(deletedTsfile);
+    return getProcessor(MetaUtils.splitPathToDetachedPath(deletedTsfile.getParentFile().getName())).deleteTsfile(deletedTsfile);
   }
 
   public boolean deleteTsfile(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessor(MetaUtils.splitPathToNodes(getSgByEngineFile(deletedTsfile))).deleteTsfile(deletedTsfile);
+    return getProcessor(MetaUtils.splitPathToDetachedPath(getSgByEngineFile(deletedTsfile))).deleteTsfile(deletedTsfile);
   }
 
   public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
       throws StorageEngineException, IOException, IllegalPathException {
-    return getProcessor(MetaUtils.splitPathToNodes(getSgByEngineFile(tsfileToBeMoved))).moveTsfile(tsfileToBeMoved, targetDir);
+    return getProcessor(MetaUtils.splitPathToDetachedPath(getSgByEngineFile(tsfileToBeMoved))).moveTsfile(tsfileToBeMoved, targetDir);
   }
 
   /**

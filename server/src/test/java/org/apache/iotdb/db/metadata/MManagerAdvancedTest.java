@@ -91,7 +91,7 @@ public class MManagerAdvancedTest {
 
     try {
       // test file name
-      List<String> fileNames = mmanager.getAllStorageGroupNames();
+      List<String> fileNames = mmanager.getAllDetachedStorageGroups();
       assertEquals(3, fileNames.size());
       if (fileNames.get(0).equals("root.vehicle.d0")) {
         assertEquals("root.vehicle.d1", fileNames.get(1));
@@ -99,18 +99,18 @@ public class MManagerAdvancedTest {
         assertEquals("root.vehicle.d0", fileNames.get(1));
       }
       // test filename by seriesPath
-      assertEquals("root.vehicle.d0", mmanager.getStorageGroupName(Arrays.asList("root", "vehicle", "d0", "s1")));
-      List<String> pathList = mmanager.getAllTimeseriesName(Arrays.asList("root", "vehicle", "d1", "*"));
+      assertEquals("root.vehicle.d0", mmanager.getStorageGroup(Arrays.asList("root", "vehicle", "d0", "s1")));
+      List<String> pathList = mmanager.getAllTimeseries(Arrays.asList("root", "vehicle", "d1", "*"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getAllTimeseriesName(Arrays.asList("root", "vehicle", "d0"));
+      pathList = mmanager.getAllTimeseries(Arrays.asList("root", "vehicle", "d0"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getAllTimeseriesName(Arrays.asList("root", "vehicle", "d*"));
+      pathList = mmanager.getAllTimeseries(Arrays.asList("root", "vehicle", "d*"));
       assertEquals(12, pathList.size());
-      pathList = mmanager.getAllTimeseriesName(Arrays.asList("root", "ve*", "*"));
+      pathList = mmanager.getAllTimeseries(Arrays.asList("root", "ve*", "*"));
       assertEquals(12, pathList.size());
-      pathList = mmanager.getAllTimeseriesName(Arrays.asList("root", "vehicle*", "d*", "s1"));
+      pathList = mmanager.getAllTimeseries(Arrays.asList("root", "vehicle*", "d*", "s1"));
       assertEquals(2, pathList.size());
-      pathList = mmanager.getAllTimeseriesName(Arrays.asList("root", "vehicle", "d2"));
+      pathList = mmanager.getAllTimeseries(Arrays.asList("root", "vehicle", "d2"));
       assertEquals(0, pathList.size());
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -129,11 +129,11 @@ public class MManagerAdvancedTest {
     mmanager.createTimeseries(Arrays.asList("root", "vehicle", "d2", "s3"), TSDataType.TEXT, TSEncoding.PLAIN,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
 
-    MNode node = mmanager.getNodeByNodes(Arrays.asList("root", "vehicle", "d0"));
+    MNode node = mmanager.getMNodeByDetachedPath(Arrays.asList("root", "vehicle", "d0"));
     Assert.assertEquals(TSDataType.INT32, ((MeasurementMNode) node.getChild("s0")).getSchema().getType());
 
     try {
-      mmanager.getNodeByNodes(Arrays.asList("root", "vehicle", "d100"));
+      mmanager.getMNodeByDetachedPath(Arrays.asList("root", "vehicle", "d100"));
       fail();
     } catch (MetadataException e) {
       // ignore
@@ -148,7 +148,7 @@ public class MManagerAdvancedTest {
     TimeValuePair tv1 = new TimeValuePair(1000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0));
     TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 3.0));
     TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 2.5));
-    MNode node = mmanager.getNodeByNodes(Arrays.asList("root", "vehicle", "d2", "s0"));
+    MNode node = mmanager.getMNodeByDetachedPath(Arrays.asList("root", "vehicle", "d2", "s0"));
     ((MeasurementMNode)node).updateCachedLast(tv1, true, Long.MIN_VALUE);
     ((MeasurementMNode)node).updateCachedLast(tv2, true, Long.MIN_VALUE);
     Assert.assertEquals(tv2.getTimestamp(), ((MeasurementMNode)node).getCachedLast().getTimestamp());

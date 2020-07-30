@@ -144,7 +144,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         }
         if (measurementOfGivenDevice.contains(measurement)) {
           executeColumns.add(column);
-          List<String> executedNodes = new ArrayList<>(currentDevice.getNodes());
+          List<String> executedNodes = new ArrayList<>(currentDevice.getDetachedPath());
           executedNodes.add(measurement);
           executePaths.add(new Path(executedNodes));
           tsDataTypes.add(measurementDataTypeMap.get(column));
@@ -203,7 +203,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
   protected Set<String> getDeviceMeasurements(Path device) throws IOException {
     try {
-      MNode deviceNode = IoTDB.metaManager.getNodeByNodes(device.getNodes());
+      MNode deviceNode = IoTDB.metaManager.getMNodeByDetachedPath(device.getDetachedPath());
       return deviceNode.getChildren().keySet();
     } catch (MetadataException e) {
       throw new IOException("Cannot get node from " + device, e);

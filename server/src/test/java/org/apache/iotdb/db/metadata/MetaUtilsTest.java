@@ -28,30 +28,30 @@ public class MetaUtilsTest {
   @Test
   public void testSplitPathToNodes() throws IllegalPathException {
     Assert.assertEquals(Arrays.asList("root", "sg", "d1", "s1"),
-        MetaUtils.splitPathToNodes("root.sg.d1.s1"));
+        MetaUtils.splitPathToDetachedPath("root.sg.d1.s1"));
 
     Assert.assertEquals(Arrays.asList("root", "sg", "d1", "\"s.1\""),
-        MetaUtils.splitPathToNodes("root.sg.d1.\"s.1\""));
+        MetaUtils.splitPathToDetachedPath("root.sg.d1.\"s.1\""));
 
     Assert.assertEquals(Arrays.asList("root", "\"s g\"", "d1", "\"s.1\""),
-        MetaUtils.splitPathToNodes("root.\"s g\".d1.\"s.1\""));
+        MetaUtils.splitPathToDetachedPath("root.\"s g\".d1.\"s.1\""));
 
     Assert.assertEquals(Arrays.asList("root", "\"s g\"", "\"d_.1\"", "\"s.1.1\""),
-        MetaUtils.splitPathToNodes("root.\"s g\".\"d_.1\".\"s.1.1\""));
+        MetaUtils.splitPathToDetachedPath("root.\"s g\".\"d_.1\".\"s.1.1\""));
 
-    Assert.assertEquals(Arrays.asList("root", "1"), MetaUtils.splitPathToNodes("root.1"));
+    Assert.assertEquals(Arrays.asList("root", "1"), MetaUtils.splitPathToDetachedPath("root.1"));
 
     Assert.assertEquals(Arrays.asList("root", "sg", "d1", "s", "1"),
-        MetaUtils.splitPathToNodes("root.sg.d1.s.1"));
+        MetaUtils.splitPathToDetachedPath("root.sg.d1.s.1"));
 
     try {
-      MetaUtils.splitPathToNodes("root.sg.\"d.1\"\"s.1\"");
+      MetaUtils.splitPathToDetachedPath("root.sg.\"d.1\"\"s.1\"");
     } catch (IllegalPathException e) {
       Assert.assertTrue(e.getMessage().contains("Illegal path: "));
     }
 
     try {
-      MetaUtils.splitPathToNodes("root.sg.d1.\'s1\'");
+      MetaUtils.splitPathToDetachedPath("root.sg.d1.\'s1\'");
     } catch (IllegalPathException e) {
       Assert.assertTrue(e.getMessage().contains("Illegal path with single quote: "));
     }

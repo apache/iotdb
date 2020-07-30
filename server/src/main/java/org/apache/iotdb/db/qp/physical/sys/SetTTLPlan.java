@@ -31,23 +31,23 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class SetTTLPlan extends PhysicalPlan {
 
-  private List<String> storageGroupNodes;
+  private List<String> detachedStorageGroups;
   private long dataTTL;
 
   public SetTTLPlan() {
     super(false, OperatorType.TTL);
   }
 
-  public SetTTLPlan(List<String> storageGroupNodes, long dataTTL) {
+  public SetTTLPlan(List<String> detachedStorageGroups, long dataTTL) {
     // set TTL
     super(false, OperatorType.TTL);
-    this.storageGroupNodes = storageGroupNodes;
+    this.detachedStorageGroups = detachedStorageGroups;
     this.dataTTL = dataTTL;
   }
 
-  public SetTTLPlan(List<String> storageGroupNodes) {
+  public SetTTLPlan(List<String> detachedStorageGroups) {
     // unset TTL
-    this(storageGroupNodes, Long.MAX_VALUE);
+    this(detachedStorageGroups, Long.MAX_VALUE);
   }
 
   @Override
@@ -60,7 +60,7 @@ public class SetTTLPlan extends PhysicalPlan {
     int type = PhysicalPlanType.TTL.ordinal();
     stream.writeByte((byte) type);
     stream.writeLong(dataTTL);
-    putString(stream, MetaUtils.concatNodesByDot(storageGroupNodes));
+    putString(stream, MetaUtils.concatDetachedPathByDot(detachedStorageGroups));
   }
 
   @Override
@@ -68,7 +68,7 @@ public class SetTTLPlan extends PhysicalPlan {
     int type = PhysicalPlanType.TTL.ordinal();
     buffer.put((byte) type);
     buffer.putLong(dataTTL);
-    for(String storageGroupNode : storageGroupNodes)
+    for(String storageGroupNode : detachedStorageGroups)
       putString(buffer, storageGroupNode);
   }
 
@@ -76,16 +76,16 @@ public class SetTTLPlan extends PhysicalPlan {
   public void deserialize(ByteBuffer buffer) {
     this.dataTTL = buffer.getLong();
     while (readString(buffer) != null) {
-      storageGroupNodes.add(readString(buffer));
+      detachedStorageGroups.add(readString(buffer));
     }
   }
 
-  public List<String> getStorageGroupNodes() {
-    return storageGroupNodes;
+  public List<String> getDetachedStorageGroups() {
+    return detachedStorageGroups;
   }
 
-  public void setStorageGroupNodes(List<String> storageGroupNodes) {
-    this.storageGroupNodes = storageGroupNodes;
+  public void setDetachedStorageGroups(List<String> detachedStorageGroups) {
+    this.detachedStorageGroups = detachedStorageGroups;
   }
 
   public long getDataTTL() {

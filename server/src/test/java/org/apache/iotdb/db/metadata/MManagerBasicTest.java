@@ -251,7 +251,7 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
 
     try {
-      assertTrue(manager.getAllTimeseriesName(Collections.singletonList("root")).isEmpty());
+      assertTrue(manager.getAllTimeseries(Collections.singletonList("root")).isEmpty());
       assertTrue(manager.getStorageGroupByPath(Arrays.asList("root", "vehicle")).isEmpty());
       assertTrue(manager.getStorageGroupByPath(Arrays.asList("root", "vehicle", "device")).isEmpty());
       assertTrue(manager.getStorageGroupByPath(Arrays.asList("root", "vehicle", "device", "sensor")).isEmpty());
@@ -303,7 +303,7 @@ public class MManagerBasicTest {
     try {
       List<String> storageGroup = new ArrayList<>(Arrays.asList("root", "laptop", "d1", "s1"));
       assertEquals(Arrays.asList("root", "laptop"),
-          MetaUtils.getStorageGroupNameNodesByLevel(storageGroup, level));
+          MetaUtils.getDetachedStorageGroupPathByLevel(storageGroup, level));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -311,7 +311,7 @@ public class MManagerBasicTest {
 
     caughtException = false;
     try {
-      MetaUtils.getStorageGroupNameNodesByLevel(Arrays.asList("root1", "laptop", "d1", "s1"), level);
+      MetaUtils.getDetachedStorageGroupPathByLevel(Arrays.asList("root1", "laptop", "d1", "s1"), level);
     } catch (MetadataException e) {
       caughtException = true;
       assertEquals("root1.laptop.d1.s1 is not a legal path", e.getMessage());
@@ -320,7 +320,7 @@ public class MManagerBasicTest {
 
     caughtException = false;
     try {
-      MetaUtils.getStorageGroupNameNodesByLevel(Collections.singletonList("root"), level);
+      MetaUtils.getDetachedStorageGroupPathByLevel(Collections.singletonList("root"), level);
     } catch (MetadataException e) {
       caughtException = true;
       assertEquals("root is not a legal path", e.getMessage());
@@ -394,14 +394,14 @@ public class MManagerBasicTest {
       manager.createTimeseries(Arrays.asList("root", "vehicle", "b2", "d0", "s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
 
-      assertEquals(res[0], manager.getChildNodePathInNextLevel(Collections.singletonList("root")).toString());
-      assertEquals(res[1], manager.getChildNodePathInNextLevel(Arrays.asList("root", "laptop")).toString());
-      assertEquals(res[2], manager.getChildNodePathInNextLevel(Arrays.asList("root", "laptop", "b1")).toString());
-      assertEquals(res[3], manager.getChildNodePathInNextLevel(Arrays.asList("root", "*")).toString());
-      assertEquals(res[4], manager.getChildNodePathInNextLevel(Arrays.asList("root", "*", "b1")).toString());
-      assertEquals(res[5], manager.getChildNodePathInNextLevel(Arrays.asList("root", "l*", "b1")).toString());
-      assertEquals(res[6], manager.getChildNodePathInNextLevel(Arrays.asList("root", "v*", "*")).toString());
-      assertEquals(res[7], manager.getChildNodePathInNextLevel(Arrays.asList("root", "l*", "b*", "*")).toString());
+      assertEquals(res[0], manager.getChildPathInNextLevel(Collections.singletonList("root")).toString());
+      assertEquals(res[1], manager.getChildPathInNextLevel(Arrays.asList("root", "laptop")).toString());
+      assertEquals(res[2], manager.getChildPathInNextLevel(Arrays.asList("root", "laptop", "b1")).toString());
+      assertEquals(res[3], manager.getChildPathInNextLevel(Arrays.asList("root", "*")).toString());
+      assertEquals(res[4], manager.getChildPathInNextLevel(Arrays.asList("root", "*", "b1")).toString());
+      assertEquals(res[5], manager.getChildPathInNextLevel(Arrays.asList("root", "l*", "b1")).toString());
+      assertEquals(res[6], manager.getChildPathInNextLevel(Arrays.asList("root", "v*", "*")).toString());
+      assertEquals(res[7], manager.getChildPathInNextLevel(Arrays.asList("root", "l*", "b*", "*")).toString());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -1389,7 +1389,7 @@ public class StorageGroupProcessor {
     long timeLowerBound = dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long
         .MIN_VALUE;
     context.setQueryTimeLowerBound(timeLowerBound);
-    String deviceId = MetaUtils.concatNodesByDot(deviceNodes);
+    String deviceId = MetaUtils.concatDetachedPathByDot(deviceNodes);
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter, isSeq)) {
@@ -1470,7 +1470,7 @@ public class StorageGroupProcessor {
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
-    String deviceId = MetaUtils.concatNodesByDot(deviceNodes);
+    String deviceId = MetaUtils.concatDetachedPathByDot(deviceNodes);
 
     try {
       Long lastUpdateTime = null;
@@ -1571,7 +1571,7 @@ public class StorageGroupProcessor {
     MNode node = null;
     try {
       MManager manager = MManager.getInstance();
-      node = manager.getDeviceNodeWithAutoCreateAndReadLock(deviceId, deviceNodes);
+      node = manager.getDeviceMNodeWithAutoCreateAndReadLock(deviceId, deviceNodes);
 
       MNode measurementNode = manager.getChild(node, measurementId);
       if (measurementNode != null) {

@@ -93,7 +93,7 @@ public class RecoverResourceFromReaderTest {
         MeasurementSchema measurementSchema = new MeasurementSchema("sensor" + j, TSDataType.INT64,
             TSEncoding.PLAIN);
         schema.registerTimeseries(path, measurementSchema);
-        IoTDB.metaManager.createTimeseries(path.getNodes(), measurementSchema.getType(),
+        IoTDB.metaManager.createTimeseries(path.getDetachedPath(), measurementSchema.getType(),
             measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             measurementSchema.getProps());
       }

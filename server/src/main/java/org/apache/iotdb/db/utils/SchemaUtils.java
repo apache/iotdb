@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.utils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -51,7 +50,7 @@ public class SchemaUtils {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      IoTDB.metaManager.createTimeseries(MetaUtils.splitPathToNodes(path), dataType, encoding,
+      IoTDB.metaManager.createTimeseries(MetaUtils.splitPathToDetachedPath(path), dataType, encoding,
           compressionType, Collections.emptyMap());
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
@@ -66,7 +65,7 @@ public class SchemaUtils {
       throws MetadataException {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path.getNodes()));
+      dataTypes.add(IoTDB.metaManager.getSeriesType(path.getDetachedPath()));
     }
     return dataTypes;
   }
@@ -97,7 +96,7 @@ public class SchemaUtils {
       if (dataType != null) {
         tsDataTypes.add(dataType);
       } else {
-        tsDataTypes.add(IoTDB.metaManager.getSeriesType(paths.get(i).getNodes()));
+        tsDataTypes.add(IoTDB.metaManager.getSeriesType(paths.get(i).getDetachedPath()));
       }
     }
     return tsDataTypes;

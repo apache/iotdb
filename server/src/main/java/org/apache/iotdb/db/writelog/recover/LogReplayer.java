@@ -159,7 +159,7 @@ public class LogReplayer {
     }
     MeasurementSchema[] schemas;
     try {
-      schemas = IoTDB.metaManager.getSchemas(MetaUtils.splitPathToNodes(plan.getDeviceId()), plan
+      schemas = IoTDB.metaManager.getSchemas(MetaUtils.splitPathToDetachedPath(plan.getDeviceId()), plan
           .getMeasurements());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);

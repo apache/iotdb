@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -69,7 +68,7 @@ public class FilePathUtils {
 
     int i = 0;
     for (Path value : rawPaths) {
-      String[] tmpPath =value.getNodes().toArray(new String[0]);
+      String[] tmpPath =value.getDetachedPath().toArray(new String[0]);
 
       String key;
       if (tmpPath.length <= level) {

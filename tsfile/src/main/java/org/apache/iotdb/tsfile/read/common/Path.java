@@ -136,7 +136,7 @@ public class Path implements Serializable, Comparable<Path> {
     return new Path(sc);
   }
 
-  public static Path addNodes(Path src, Path tail) {
+  public static Path concatPath(Path src, Path tail) {
     if (tail.nodes.isEmpty()) {
       return src;
     }
@@ -203,7 +203,7 @@ public class Path implements Serializable, Comparable<Path> {
 
   public String getAlias() { return alias; }
 
-  public List<String> getNodes() {
+  public List<String> getDetachedPath() {
     return nodes;
   }
 

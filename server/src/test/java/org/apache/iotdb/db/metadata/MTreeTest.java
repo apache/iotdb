@@ -129,12 +129,12 @@ public class MTreeTest {
     }
 
     try {
-      List<String> result = root.getAllTimeseriesName(Arrays.asList("root", "a", "*", "s0"));
+      List<String> result = root.getAllTimeseries(Arrays.asList("root", "a", "*", "s0"));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0));
       assertEquals("root.a.d1.s0", result.get(1));
 
-      result = root.getAllTimeseriesName(Arrays.asList("root", "a", "*", "*", "s0"));
+      result = root.getAllTimeseries(Arrays.asList("root", "a", "*", "*", "s0"));
       assertEquals("root.a.b.d0.s0", result.get(0));
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -175,12 +175,12 @@ public class MTreeTest {
     }
 
     try {
-      List<String> result = root.getAllTimeseriesName(Arrays.asList("root", "a", "*", "s0"));
+      List<String> result = root.getAllTimeseries(Arrays.asList("root", "a", "*", "s0"));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0));
       assertEquals("root.a.d1.s0", result.get(1));
 
-      result = root.getAllTimeseriesName(Arrays.asList("root", "a", "*", "temperature"));
+      result = root.getAllTimeseries(Arrays.asList("root", "a", "*", "temperature"));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0));
       assertEquals("root.a.d1.s0", result.get(1));
@@ -263,10 +263,10 @@ public class MTreeTest {
       root.setStorageGroup(Arrays.asList("root", "laptop", "d1"));
       assertTrue(root.isPathExist(Arrays.asList("root", "laptop", "d1")));
       assertTrue(root.checkStorageGroupByPath(Arrays.asList("root", "laptop", "d1")));
-      assertEquals("root.laptop.d1", root.getStorageGroupName(Arrays.asList("root", "laptop", "d1")));
+      assertEquals("root.laptop.d1", root.getStorageGroup(Arrays.asList("root", "laptop", "d1")));
       assertFalse(root.isPathExist(Arrays.asList("root", "laptop", "d1", "s1")));
       assertTrue(root.checkStorageGroupByPath(Arrays.asList("root", "laptop", "d1", "s1")));
-      assertEquals("root.laptop.d1", root.getStorageGroupName(Arrays.asList("root", "laptop", "d1", "s1")));
+      assertEquals("root.laptop.d1", root.getStorageGroup(Arrays.asList("root", "laptop", "d1", "s1")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -290,16 +290,16 @@ public class MTreeTest {
     assertFalse(root.isPathExist(Arrays.asList("root", "laptop", "d2", "s1")));
 
     try {
-      assertEquals("root.laptop.d1", root.getStorageGroupName(Arrays.asList("root", "laptop", "d1", "s0")));
+      assertEquals("root.laptop.d1", root.getStorageGroup(Arrays.asList("root", "laptop", "d1", "s0")));
       root.createTimeseries(Arrays.asList("root", "laptop", "d1", "s0"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
-      assertEquals("root.laptop.d1", root.getStorageGroupName(Arrays.asList("root", "laptop", "d1", "s1")));
+      assertEquals("root.laptop.d1", root.getStorageGroup(Arrays.asList("root", "laptop", "d1", "s1")));
       root.createTimeseries(Arrays.asList("root", "laptop", "d1", "s1"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
-      assertEquals("root.laptop.d2", root.getStorageGroupName(Arrays.asList("root", "laptop", "d2", "s0")));
+      assertEquals("root.laptop.d2", root.getStorageGroup(Arrays.asList("root", "laptop", "d2", "s0")));
       root.createTimeseries(Arrays.asList("root", "laptop", "d2", "s0"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
-      assertEquals("root.laptop.d2", root.getStorageGroupName(Arrays.asList("root", "laptop", "d2", "s1")));
+      assertEquals("root.laptop.d2", root.getStorageGroup(Arrays.asList("root", "laptop", "d2", "s1")));
       root.createTimeseries(Arrays.asList("root", "laptop", "d2", "s1"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
     } catch (MetadataException e) {
@@ -368,12 +368,12 @@ public class MTreeTest {
       List<String> list = new ArrayList<>();
 
       list.add("root.laptop.d1");
-      assertEquals(list, root.getStorageGroupByPath(Arrays.asList("root", "laptop", "d1", "s1")));
-      assertEquals(list, root.getStorageGroupByPath(Arrays.asList("root", "laptop", "d1")));
+      assertEquals(list, root.getStorageGroupByDetachedPath(Arrays.asList("root", "laptop", "d1", "s1")));
+      assertEquals(list, root.getStorageGroupByDetachedPath(Arrays.asList("root", "laptop", "d1")));
 
       list.add("root.laptop.d2");
-      assertEquals(list, root.getStorageGroupByPath(Arrays.asList("root", "laptop")));
-      assertEquals(list, root.getStorageGroupByPath(Collections.singletonList("root")));
+      assertEquals(list, root.getStorageGroupByDetachedPath(Arrays.asList("root", "laptop")));
+      assertEquals(list, root.getStorageGroupByDetachedPath(Collections.singletonList("root")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -385,23 +385,23 @@ public class MTreeTest {
     // set storage group first
     MTree root = new MTree();
     try {
-      assertTrue(root.getStorageGroupByPath(Collections.singletonList("root")).isEmpty());
-      assertTrue(root.getStorageGroupByPath(Arrays.asList("root", "vehicle")).isEmpty());
-      assertTrue(root.getStorageGroupByPath(Arrays.asList("root", "vehicle", "device")).isEmpty());
-      assertTrue(root.getStorageGroupByPath(Arrays.asList("root", "vehicle", "device", "sensor")).isEmpty());
+      assertTrue(root.getStorageGroupByDetachedPath(Collections.singletonList("root")).isEmpty());
+      assertTrue(root.getStorageGroupByDetachedPath(Arrays.asList("root", "vehicle")).isEmpty());
+      assertTrue(root.getStorageGroupByDetachedPath(Arrays.asList("root", "vehicle", "device")).isEmpty());
+      assertTrue(root.getStorageGroupByDetachedPath(Arrays.asList("root", "vehicle", "device", "sensor")).isEmpty());
 
       root.setStorageGroup(Arrays.asList("root", "vehicle"));
-      assertFalse(root.getStorageGroupByPath(Arrays.asList("root", "vehicle")).isEmpty());
-      assertFalse(root.getStorageGroupByPath(Arrays.asList("root", "vehicle", "device")).isEmpty());
-      assertFalse(root.getStorageGroupByPath(Arrays.asList("root", "vehicle", "device", "sensor")).isEmpty());
-      assertTrue(root.getStorageGroupByPath(Arrays.asList("root", "vehicle1")).isEmpty());
-      assertTrue(root.getStorageGroupByPath(Arrays.asList("root", "vehicle1", "device")).isEmpty());
+      assertFalse(root.getStorageGroupByDetachedPath(Arrays.asList("root", "vehicle")).isEmpty());
+      assertFalse(root.getStorageGroupByDetachedPath(Arrays.asList("root", "vehicle", "device")).isEmpty());
+      assertFalse(root.getStorageGroupByDetachedPath(Arrays.asList("root", "vehicle", "device", "sensor")).isEmpty());
+      assertTrue(root.getStorageGroupByDetachedPath(Arrays.asList("root", "vehicle1")).isEmpty());
+      assertTrue(root.getStorageGroupByDetachedPath(Arrays.asList("root", "vehicle1", "device")).isEmpty());
 
       root.setStorageGroup(Arrays.asList("root", "vehicle1", "device"));
-      assertTrue(root.getStorageGroupByPath(Arrays.asList("root", "vehicle1", "device1")).isEmpty());
-      assertTrue(root.getStorageGroupByPath(Arrays.asList("root", "vehicle1", "device2")).isEmpty());
-      assertTrue(root.getStorageGroupByPath(Arrays.asList("root", "vehicle1", "device3")).isEmpty());
-      assertFalse(root.getStorageGroupByPath(Arrays.asList("root", "vehicle1", "device")).isEmpty());
+      assertTrue(root.getStorageGroupByDetachedPath(Arrays.asList("root", "vehicle1", "device1")).isEmpty());
+      assertTrue(root.getStorageGroupByDetachedPath(Arrays.asList("root", "vehicle1", "device2")).isEmpty());
+      assertTrue(root.getStorageGroupByDetachedPath(Arrays.asList("root", "vehicle1", "device3")).isEmpty());
+      assertFalse(root.getStorageGroupByDetachedPath(Arrays.asList("root", "vehicle1", "device")).isEmpty());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -446,7 +446,7 @@ public class MTreeTest {
 
     assertEquals(2, root.getDevices(Collections.singletonList("root")).size());
     assertEquals(2, root.getAllTimeseriesCount(Collections.singletonList("root")));
-    assertEquals(2, root.getAllTimeseriesName(Collections.singletonList("root")).size());
+    assertEquals(2, root.getAllTimeseries(Collections.singletonList("root")).size());
     assertEquals(2, root.getAllTimeseriesPath(Collections.singletonList("root")).size());
   }
 }

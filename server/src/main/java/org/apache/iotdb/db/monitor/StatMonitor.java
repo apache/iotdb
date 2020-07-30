@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.monitor;
 
-import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
@@ -168,8 +167,8 @@ public class StatMonitor implements IService {
           logger.error("Registering metadata but data type of {} is null", entry.getKey());
         }
 
-        if (!mManager.isPathExist(MetaUtils.splitPathToNodes(entry.getKey()))) {
-          mManager.createTimeseries(MetaUtils.splitPathToNodes(entry.getKey()), TSDataType.valueOf(entry.getValue()),
+        if (!mManager.isPathExist(MetaUtils.splitPathToDetachedPath(entry.getKey()))) {
+          mManager.createTimeseries(MetaUtils.splitPathToDetachedPath(entry.getKey()), TSDataType.valueOf(entry.getValue()),
               TSEncoding.valueOf("RLE"),
               TSFileDescriptor.getInstance().getConfig().getCompressor(),
               Collections.emptyMap());
@@ -369,7 +368,7 @@ public class StatMonitor implements IService {
         for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
           for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
             if (temporaryStatList.contains(statParamName)) {
-              fManager.delete(MetaUtils.splitPathToNodes(entry.getKey()), statParamName, Long.MIN_VALUE,
+              fManager.delete(MetaUtils.splitPathToDetachedPath(entry.getKey()), statParamName, Long.MIN_VALUE,
                   currentTimeMillis - statMonitorRetainIntervalSec * 1000);
             }
           }

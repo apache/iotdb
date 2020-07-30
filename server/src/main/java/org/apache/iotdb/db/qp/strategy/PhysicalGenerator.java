@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -178,7 +177,7 @@ public class PhysicalGenerator {
               "For Insert command, cannot specified more than one seriesPath: " + paths);
         }
 
-        return new InsertRowPlan(paths.get(0).getNodes(), paths.get(0).getDevice(), insert.getTime(),
+        return new InsertRowPlan(paths.get(0).getDetachedPath(), paths.get(0).getDevice(), insert.getTime(),
             insert.getMeasurementList(), insert.getValueList());
       case MERGE:
         if (operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
@@ -199,10 +198,10 @@ public class PhysicalGenerator {
         switch (operator.getTokenIntType()) {
           case SQLConstant.TOK_SET:
             SetTTLOperator setTTLOperator = (SetTTLOperator) operator;
-            return new SetTTLPlan(setTTLOperator.getStorageGroupNodes(), setTTLOperator.getDataTTL());
+            return new SetTTLPlan(setTTLOperator.getDetachedStorageGroup(), setTTLOperator.getDataTTL());
           case SQLConstant.TOK_UNSET:
             SetTTLOperator unsetTTLOperator = (SetTTLOperator) operator;
-            return new SetTTLPlan(unsetTTLOperator.getStorageGroupNodes());
+            return new SetTTLPlan(unsetTTLOperator.getDetachedStorageGroup());
           case SQLConstant.TOK_SHOW:
             ShowTTLOperator showTTLOperator = (ShowTTLOperator) operator;
             return new ShowTTLPlan(showTTLOperator.getStorageGroups());
@@ -445,10 +444,10 @@ public class PhysicalGenerator {
         }
 
         for (Path device : devices) { // per device in FROM after deduplication
-          Path fullPath = Path.addNodes(device, suffixPath);
+          Path fullPath = Path.concatPath(device, suffixPath);
           try {
             // remove stars in SELECT to get actual paths
-            List<String> nodes = fullPath.getNodes();
+            List<String> nodes = fullPath.getDetachedPath();
             List<List<String>> actualPaths = getMatchedTimeseries(nodes);
             // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
@@ -618,7 +617,7 @@ public class PhysicalGenerator {
     Set<Path> deviceSet = new LinkedHashSet<>();
     try {
       for (Path path : paths) {
-        Set<Path> tempDS = getMatchedDevices(path.getNodes());
+        Set<Path> tempDS = getMatchedDevices(path.getDetachedPath());
         deviceSet.addAll(tempDS);
       }
       retDevices = new ArrayList<>(deviceSet);
@@ -639,12 +638,12 @@ public class PhysicalGenerator {
     Path filterPath = basicOperator.getSinglePath();
 
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
-    if (SQLConstant.isReservedPath(filterPath) || filterPath.getNodes().get(0).equals(SQLConstant.ROOT)) {
+    if (SQLConstant.isReservedPath(filterPath) || filterPath.getDetachedPath().get(0).equals(SQLConstant.ROOT)) {
       filterPaths.add(filterPath);
       return;
     }
 
-    Path concatPath = Path.addNodes(prefix, filterPath);
+    Path concatPath = Path.concatPath(prefix, filterPath);
     filterPaths.add(concatPath);
     basicOperator.setSinglePath(concatPath);
   }
@@ -732,7 +731,7 @@ public class PhysicalGenerator {
   }
 
   protected List<List<String>> getMatchedTimeseries(List<String> nodes) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesNodes(nodes);
+    return IoTDB.metaManager.getDetachedAllTimeseries(nodes);
   }
 
   protected Set<Path> getMatchedDevices(List<String> nodes) throws MetadataException {

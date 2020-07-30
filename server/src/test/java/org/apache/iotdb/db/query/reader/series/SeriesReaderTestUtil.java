@@ -47,8 +47,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-
 public class SeriesReaderTestUtil {
 
   private static int seqFileNum = 5;
@@ -129,11 +127,11 @@ public class SeriesReaderTestUtil {
     }
     fileWriter.registerDeviceTemplate("template0", template);
     for (List<String> deviceId : deviceIds) {
-      fileWriter.registerDevice(MetaUtils.concatNodesByDot(deviceId), "template0");
+      fileWriter.registerDevice(MetaUtils.concatDetachedPathByDot(deviceId), "template0");
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (List<String> deviceId : deviceIds) {
-        String device = MetaUtils.concatNodesByDot(deviceId);
+        String device = MetaUtils.concatDetachedPathByDot(deviceId);
         TSRecord record = new TSRecord(i, device);
         for (MeasurementSchema measurementSchema : measurementSchemas) {
           record.addTuple(DataPoint.getDataPoint(measurementSchema.getType(),

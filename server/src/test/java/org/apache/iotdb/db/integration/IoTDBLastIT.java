@@ -130,7 +130,7 @@ public class IoTDBLastIT {
       }
 
       MeasurementMNode node =
-          (MeasurementMNode) IoTDB.metaManager.getNodeByNodes(Arrays.asList("root", "ln", "wf01", "wt01", "temperature"));
+          (MeasurementMNode) IoTDB.metaManager.getMNodeByDetachedPath(Arrays.asList("root", "ln", "wf01", "wt01", "temperature"));
       node.resetCache();
 
       statement.execute(
@@ -190,7 +190,7 @@ public class IoTDBLastIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      MNode node = IoTDB.metaManager.getNodeByNodes(Arrays.asList("root", "ln", "wf01", "wt02", "temperature"));
+      MNode node = IoTDB.metaManager.getMNodeByDetachedPath(Arrays.asList("root", "ln", "wf01", "wt02", "temperature"));
       ((MeasurementMNode) node).resetCache();
       boolean hasResultSet =
           statement.execute(
@@ -241,7 +241,7 @@ public class IoTDBLastIT {
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      MNode node = IoTDB.metaManager.getNodeByNodes(Arrays.asList("root", "ln", "wf01", "wt03", "temperature"));
+      MNode node = IoTDB.metaManager.getMNodeByDetachedPath(Arrays.asList("root", "ln", "wf01", "wt03", "temperature"));
       ((MeasurementMNode) node).resetCache();
 
       statement.execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(500, false, 9)");
@@ -289,7 +289,7 @@ public class IoTDBLastIT {
       statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(150,31.2)");
       statement.execute("flush");
 
-      MNode node = IoTDB.metaManager.getNodeByNodes(Arrays.asList("root", "ln", "wf01", "wt03", "temperature"));
+      MNode node = IoTDB.metaManager.getMNodeByDetachedPath(Arrays.asList("root", "ln", "wf01", "wt03", "temperature"));
       ((MeasurementMNode) node).resetCache();
 
       boolean hasResultSet = statement.execute(

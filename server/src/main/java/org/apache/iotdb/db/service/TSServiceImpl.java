@@ -376,7 +376,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   protected List<String> getPaths(String path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesName(path);
+    return IoTDB.metaManager.getAllTimeseries(path);
   }
 
   @Override
@@ -770,7 +770,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           } else {
             respColumns.add(path.getFullPath());
           }
-          pathNodesList.add(path.getNodes());
+          pathNodesList.add(path.getDetachedPath());
         }
         seriesTypes = getSeriesTypesByString(pathNodesList, null);
         break;
@@ -1127,7 +1127,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       try {
         plan.setDeviceId(req.getDeviceIds().get(i));
         try {
-          plan.setDeviceNodes(MetaUtils.splitPathToNodes(req.getDeviceIds().get(i)));
+          plan.setDeviceNodes(MetaUtils.splitPathToDetachedPath(req.getDeviceIds().get(i)));
         } catch (IllegalPathException e) {
           return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
         }
@@ -1170,7 +1170,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       try {
         plan.setDeviceId(req.getDeviceIds().get(i));
         try {
-          plan.setDeviceNodes(MetaUtils.splitPathToNodes(req.getDeviceIds().get(i)));
+          plan.setDeviceNodes(MetaUtils.splitPathToDetachedPath(req.getDeviceIds().get(i)));
         } catch (IllegalPathException e) {
           return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
         }
@@ -1245,7 +1245,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDeviceId(req.getDeviceId());
       try {
-        plan.setDeviceNodes(MetaUtils.splitPathToNodes(req.getDeviceId()));
+        plan.setDeviceNodes(MetaUtils.splitPathToDetachedPath(req.getDeviceId()));
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
       }
@@ -1281,7 +1281,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDeviceId(req.getDeviceId());
       try {
-        plan.setDeviceNodes(MetaUtils.splitPathToNodes(req.getDeviceId()));
+        plan.setDeviceNodes(MetaUtils.splitPathToDetachedPath(req.getDeviceId()));
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
       }
@@ -1315,7 +1315,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     List<Path> paths = new ArrayList<>();
     for (String path : req.getPaths()) {
       try {
-        paths.add(new Path(MetaUtils.splitPathToNodes(path)));
+        paths.add(new Path(MetaUtils.splitPathToDetachedPath(path)));
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
       }
@@ -1340,7 +1340,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceId, req.measurements);
       try {
-        insertTabletPlan.setDeviceNodes(MetaUtils.splitPathToNodes(req.deviceId));
+        insertTabletPlan.setDeviceNodes(MetaUtils.splitPathToDetachedPath(req.deviceId));
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
       }
@@ -1380,7 +1380,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceIds.get(i),
             req.measurementsList.get(i));
         try {
-          insertTabletPlan.setDeviceNodes(MetaUtils.splitPathToNodes(req.deviceIds.get(i)));
+          insertTabletPlan.setDeviceNodes(MetaUtils.splitPathToDetachedPath(req.deviceIds.get(i)));
         } catch (IllegalPathException e) {
           return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
         }
@@ -1419,7 +1419,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     List<String> storageGroupNodes;
     try {
-      storageGroupNodes = MetaUtils.splitPathToNodes(storageGroup);
+      storageGroupNodes = MetaUtils.splitPathToDetachedPath(storageGroup);
     } catch (IllegalPathException e) {
       return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
     }
@@ -1445,7 +1445,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     List<Path> storageGroupList = new ArrayList<>();
     for (String storageGroup : storageGroups) {
       try {
-        storageGroupList.add(new Path(MetaUtils.splitPathToNodes(storageGroup)));
+        storageGroupList.add(new Path(MetaUtils.splitPathToDetachedPath(storageGroup)));
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
       }
@@ -1470,7 +1470,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
     List<String> seriesNodes;
     try {
-      seriesNodes = MetaUtils.splitPathToNodes(req.path);
+      seriesNodes = MetaUtils.splitPathToDetachedPath(req.path);
     } catch (IllegalPathException e) {
       return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
     }
@@ -1504,7 +1504,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     for (int i = 0; i < req.paths.size(); i++) {
       List<String> seriesNodes;
       try {
-        seriesNodes = MetaUtils.splitPathToNodes(req.paths.get(i));
+        seriesNodes = MetaUtils.splitPathToDetachedPath(req.paths.get(i));
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
       }
@@ -1561,7 +1561,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     List<Path> pathList = new ArrayList<>();
     for (String path : paths) {
       try {
-        pathList.add(new Path(MetaUtils.splitPathToNodes(path)));
+        pathList.add(new Path(MetaUtils.splitPathToDetachedPath(path)));
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
       }

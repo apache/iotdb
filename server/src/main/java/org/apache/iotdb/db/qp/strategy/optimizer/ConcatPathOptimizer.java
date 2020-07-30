@@ -91,7 +91,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       } else {
         isAlignByDevice = true;
         for (Path path : initialSuffixPaths) {
-          List<String> device = path.getNodes();
+          List<String> device = path.getDetachedPath();
           if (device.size() > 1) {
             throw new LogicalOptimizeException(
                     "The paths of the SELECT clause can only be single level. In other words, "
@@ -164,7 +164,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       // selectPath cannot start with ROOT, which is guaranteed by TSParser
       Path selectPath = suffixPaths.get(i);
       for (Path fromPath : fromPaths) {
-        allPaths.add(Path.addNodes(fromPath, selectPath));
+        allPaths.add(Path.concatPath(fromPath, selectPath));
         extendListSafely(originAggregations, i, afterConcatAggregations);
       }
     }
@@ -220,12 +220,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     FunctionOperator functionOperator = (FunctionOperator) operator;
     Path filterPath = functionOperator.getSinglePath();
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
-    if (SQLConstant.isReservedPath(filterPath) || filterPath.getNodes().get(0).equals(SQLConstant.ROOT)) {
+    if (SQLConstant.isReservedPath(filterPath) || filterPath.getDetachedPath().get(0).equals(SQLConstant.ROOT)) {
       filterPaths.add(filterPath);
       return operator;
     }
     List<Path> concatPaths = new ArrayList<>();
-    fromPaths.forEach(fromPath -> concatPaths.add(Path.addNodes(fromPath, filterPath)));
+    fromPaths.forEach(fromPath -> concatPaths.add(Path.concatPath(fromPath, filterPath)));
     List<Path> noStarPaths = removeStarsInPathWithUnique(concatPaths);
     filterPaths.addAll(noStarPaths);
     if (noStarPaths.size() == 1) {
@@ -276,7 +276,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     HashSet<String> pathSet = new HashSet<>();
     try {
       for (Path path : paths) {
-        List<Path> all = removeWildcard(path.getNodes());
+        List<Path> all = removeWildcard(path.getDetachedPath());
         for (Path subPath : all) {
           if (!pathSet.contains(subPath.getFullPath())) {
             pathSet.add(subPath.getFullPath());
@@ -296,7 +296,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<String> newAggregations = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       try {
-        List<Path> actualPaths = removeWildcard(paths.get(i).getNodes());
+        List<Path> actualPaths = removeWildcard(paths.get(i).getDetachedPath());
         for (Path actualPath : actualPaths) {
           retPaths.add(actualPath);
           if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty()) {
