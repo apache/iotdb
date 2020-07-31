@@ -39,8 +39,8 @@ public class SystemInfo {
       (o1, o2) -> (int) (o2.getStorageGroupMemCost() - o1
           .getStorageGroupMemCost()));
 
-  private static final double flushProportion = config.getFlushProportion();
-  private static final double rejectProportion = config.getRejectProportion();
+  private static final double FLUSH_PROPORTION = config.getFlushProportion();
+  private static final double REJECT_PROPORTION = config.getRejectProportion();
 
   /**
    * Report applying a new out of buffered array to system. Attention: It should be invoked before
@@ -53,11 +53,11 @@ public class SystemInfo {
   public synchronized boolean applyNewOOBArray(TSDataType dataType, int size) {
     // if current memory is enough
     if (arrayPoolMemCost + totalSgInfoMemCost + dataType.getDataTypeSize() * size
-        < config.getAllocateMemoryForWrite() * flushProportion) {
+        < config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       arrayPoolMemCost += dataType.getDataTypeSize() * size;
       return true;
     } else if (arrayPoolMemCost + totalSgInfoMemCost + dataType.getDataTypeSize() * size
-        < config.getAllocateMemoryForWrite() * rejectProportion) {
+        < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
       arrayPoolMemCost += dataType.getDataTypeSize() * size;
       // invoke flush()
       flush();
@@ -73,17 +73,17 @@ public class SystemInfo {
    * Report current mem cost of storage group to system.
    *
    * @param StorageGroupInfo
-   * @return Return true if it's agreed when memory is enough.
+   * @param delta
    */
   public synchronized void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo, 
       long delta) {
     this.totalSgInfoMemCost += delta;
     if (this.arrayPoolMemCost + this.totalSgInfoMemCost
-        >= config.getAllocateMemoryForWrite() * flushProportion) {
+        >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       flush();
     } 
     if (this.arrayPoolMemCost + this.totalSgInfoMemCost
-        >= config.getAllocateMemoryForWrite() * rejectProportion) {
+        >= config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
       rejected = true;
     }
   }
@@ -118,7 +118,7 @@ public class SystemInfo {
       this.totalSgInfoMemCost -= reportedSgMemCostMap.get(storageGroupInfo)
           - storageGroupInfo.getStorageGroupMemCost();
       if (this.arrayPoolMemCost + this.totalSgInfoMemCost 
-          < config.getAllocateMemoryForWrite() * rejectProportion) {
+          < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
         rejected = false;
       }
       reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getStorageGroupMemCost());

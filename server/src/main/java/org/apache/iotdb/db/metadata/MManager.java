@@ -32,6 +32,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -68,6 +69,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -115,6 +117,12 @@ public class MManager {
 
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new HashMap<>();
+
+  // data type -> number
+  private Map<TSDataType, Integer> schemaDataTypeNumMap = new EnumMap<>(
+      TSDataType.class);
+  // reported total series number
+  private int reportedDataTypeTotalNum;
 
   // storage group name -> the series number
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
@@ -221,6 +229,7 @@ public class MManager {
       mtree = new MTree();
       logger.error("Cannot read MTree from file, using an empty new one", e);
     }
+    reportedDataTypeTotalNum = 0;
     initialized = true;
   }
 
@@ -290,6 +299,8 @@ public class MManager {
         tagLogFile.close();
         tagLogFile = null;
       }
+      this.schemaDataTypeNumMap.clear();
+      this.reportedDataTypeTotalNum = 0;
       initialized = false;
       if (timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();
@@ -388,9 +399,10 @@ public class MManager {
       // check memory
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
 
+      TSDataType type = plan.getDataType();
       // create time series in MTree
       MeasurementMNode leafMNode = mtree
-          .createTimeseries(path, plan.getDataType(), plan.getEncoding(), plan.getCompressor(),
+          .createTimeseries(path, type, plan.getEncoding(), plan.getCompressor(),
               plan.getProps(), plan.getAlias());
 
       // update tag index
@@ -410,6 +422,9 @@ public class MManager {
           maxSeriesNumberAmongStorageGroup = size + 1;
         }
       }
+
+      // update statistics in schemaDataTypeNumMap
+      updateSchemaDataTypeNumMap(type, 1);
 
       // write log
       if (!isRecovering) {
@@ -547,6 +562,9 @@ public class MManager {
       removeFromTagInvertedIndex(pair.right);
       String storageGroupName = pair.left;
 
+      // update statistics in schemaDataTypeNumMap
+      updateSchemaDataTypeNumMap(pair.right.getSchema().getType(), -1);
+
       // TODO: delete the path node and all its ancestors
       mNodeCache.clear();
       try {
@@ -615,6 +633,8 @@ public class MManager {
         List<MeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
         for (MeasurementMNode leafMNode : leafMNodes) {
           removeFromTagInvertedIndex(leafMNode);
+          // update statistics in schemaDataTypeNumMap
+          updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
         }
 
         if (config.isEnableParameterAdapter()) {
@@ -639,6 +659,23 @@ public class MManager {
       throw new MetadataException(e.getMessage());
     } finally {
       lock.writeLock().unlock();
+    }
+  }
+
+  /**
+   * update statistics in schemaDataTypeNumMap
+   *
+   * @param type data type
+   * @param num 1 for creating timeseries and -1 for deleting timeseries
+   */
+  private void updateSchemaDataTypeNumMap(TSDataType type, int num) {
+    schemaDataTypeNumMap.put(type, schemaDataTypeNumMap.getOrDefault(type, 0) + num);
+    schemaDataTypeNumMap.put(TSDataType.INT64,
+        schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + num);
+    int currentDataTypeTotalNum = schemaDataTypeNumMap.values().size();
+    if (num > 0 && currentDataTypeTotalNum >= reportedDataTypeTotalNum * 1.1) {
+      PrimitiveArrayManager.getInstance().updateSchemaDataTypeNum(schemaDataTypeNumMap);
+      reportedDataTypeTotalNum = currentDataTypeTotalNum;
     }
   }
 
@@ -1733,18 +1770,6 @@ public class MManager {
       return;
     }
     collectMeasurementSchema(mNode, measurementSchemas);
-  }
-
-  public Map<TSDataType, Integer> collectSchemaDataTypeNum(String prefixPath)
-      throws MetadataException {
-    lock.readLock().lock();
-    try {
-      return mtree.collectSchemaDataTypeNum(prefixPath);
-    } catch (MetadataException e) {
-      throw new MetadataException(e);
-    } finally {
-      lock.readLock().unlock();
-    }
   }
 
   /**
