@@ -187,6 +187,9 @@ public class IoTDBDescriptor {
           Double.parseDouble(properties.getProperty("buffered_arrays_memory_proportion",
               Double.toString(conf.getBufferedArraysMemoryProportion()))));
 
+      conf.setFlushProportion(Double.parseDouble(properties.getProperty("flush_proportion",
+          Double.toString(conf.getFlushProportion()))));
+
       conf.setRejectProportion(Double.parseDouble(properties.getProperty("reject_proportion",
           Double.toString(conf.getRejectProportion()))));
 
