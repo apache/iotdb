@@ -140,6 +140,11 @@ public class IoTDBConfig {
   private double bufferedArraysMemoryProportion = 0.8;
 
   /**
+   * Flush proportion for system
+   */
+  private double flushProportion = 0.5;
+
+  /**
    * Reject proportion for system
    */
   private double rejectProportion = 0.8;
@@ -278,7 +283,7 @@ public class IoTDBConfig {
    */
   private int maxMergeChunkNumInTsFile = 25;
 
-  private long reserveMemSize = 1024 * 1024 * 1024L;
+  private long storageGroupMemBlockSize = 4 * 1024 * 1024L;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -1140,6 +1145,14 @@ public class IoTDBConfig {
     this.bufferedArraysMemoryProportion = bufferedArraysMemoryProportion;
   }
 
+  public double getFlushProportion() {
+    return flushProportion;
+  }
+
+  public void setFlushProportion(double flushProportion) {
+    this.flushProportion = flushProportion;
+  }
+
   public double getRejectProportion() {
     return rejectProportion;
   }
@@ -1252,12 +1265,12 @@ public class IoTDBConfig {
     this.memtableSizeThreshold = memtableSizeThreshold;
   }
 
-  public long getReserveMemSize() {
-    return reserveMemSize;
+  public long getStorageGroupMemBlockSize() {
+    return storageGroupMemBlockSize;
   }
 
-  public void setReserveMemSize(long reserveMemSize) {
-    this.reserveMemSize = reserveMemSize;
+  public void setStorageGroupMemBlockSize(long storageGroupMemBlockSize) {
+    this.storageGroupMemBlockSize = storageGroupMemBlockSize;
   }
 
   public int getAvgSeriesPointNumberThreshold() {

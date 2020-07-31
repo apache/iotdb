@@ -18,59 +18,61 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 
 public class TsFileProcessorInfo {
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private StorageGroupInfo storageGroupInfo;
 
   private long unsealedResourceMemCost;
   private long bytesMemCost;
   private long chunkMetadataMemCost;
   private long walMemCost;
-  private long accumulatedMemCost = 0;
 
-  public TsFileProcessorInfo() {
-    unsealedResourceMemCost = 0;
-    bytesMemCost = 0;
-    chunkMetadataMemCost = 0;
-    walMemCost = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
+  public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
+    this.storageGroupInfo = storageGroupInfo;
+    this.unsealedResourceMemCost = 0;
+    this.bytesMemCost = 0;
+    this.chunkMetadataMemCost = 0;
+    this.walMemCost = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
   }
 
   public void addUnsealedResourceMemCost(long cost) {
     unsealedResourceMemCost += cost;
+    storageGroupInfo.addUnsealedResourceMemCost(cost);
   }
 
   public void addChunkMetadataMemCost(long cost) {
     chunkMetadataMemCost += cost;
+    storageGroupInfo.addChunkMetadataMemCost(cost);
   }
 
   public void addBytesMemCost(long cost) {
     bytesMemCost += cost;
+    storageGroupInfo.addBytesMemCost(cost);
   }
 
-  public void resetUnsealedResourceMemCost() {
+  public void emptyUnsealedResourceMemCost() {
+    storageGroupInfo.resetUnsealedResourceMemCost(unsealedResourceMemCost);
     unsealedResourceMemCost = 0;
   }
 
-  public void resetChunkMetadataMemCost() {
+  public void emptyChunkMetadataMemCost() {
+    storageGroupInfo.resetChunkMetadataMemCost(chunkMetadataMemCost);
     chunkMetadataMemCost = 0;
   }
 
+  public void emptyWalMemCost() {
+    storageGroupInfo.resetWalMemCost(walMemCost);
+    walMemCost = 0;
+  }
+
   public void resetBytesMemCost(long cost) {
+    storageGroupInfo.resetBytesMemCost(cost);
     bytesMemCost -= cost;
   }
 
   public long getTsFileProcessorMemCost() {
     return unsealedResourceMemCost + bytesMemCost + chunkMetadataMemCost + walMemCost;
-  }
-
-  public boolean checkIfNeedReportTsFileProcessorStatus(long cost) {
-    this.accumulatedMemCost += cost;
-    int tsFileProcessorNum = StorageEngine.getInstance().countTsFileProcessors();
-    return tsFileProcessorNum != 0
-        && accumulatedMemCost > config.getReserveMemSize() / tsFileProcessorNum;
   }
 }

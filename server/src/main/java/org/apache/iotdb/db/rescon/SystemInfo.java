@@ -23,6 +23,7 @@ import java.util.TreeMap;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupInfo;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -30,14 +31,15 @@ public class SystemInfo {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private long totalTspInfoMemCost;
+  private long totalSgInfoMemCost;
   private long arrayPoolMemCost;
+  private boolean rejected = false;
 
-  // processor -> mem cost of it
-  private TreeMap<TsFileProcessor, Long> reportedTspMemCostMap = new TreeMap<>(
-      (o1, o2) -> (int) (o2.getTsFileProcessorInfo().getTsFileProcessorMemCost() - o1
-          .getTsFileProcessorInfo().getTsFileProcessorMemCost()));
+  private TreeMap<StorageGroupInfo, Long> reportedSgMemCostMap = new TreeMap<>(
+      (o1, o2) -> (int) (o2.getStorageGroupMemCost() - o1
+          .getStorageGroupMemCost()));
 
+  private static final double flushProportion = config.getFlushProportion();
   private static final double rejectProportion = config.getRejectProportion();
 
   /**
@@ -50,43 +52,40 @@ public class SystemInfo {
    */
   public synchronized boolean applyNewOOBArray(TSDataType dataType, int size) {
     // if current memory is enough
-    if (arrayPoolMemCost + totalTspInfoMemCost + dataType.getDataTypeSize() * size
-        < config.getAllocateMemoryForWrite() * rejectProportion) {
+    if (arrayPoolMemCost + totalSgInfoMemCost + dataType.getDataTypeSize() * size
+        < config.getAllocateMemoryForWrite() * flushProportion) {
       arrayPoolMemCost += dataType.getDataTypeSize() * size;
       return true;
-    } else {
+    } else if (arrayPoolMemCost + totalSgInfoMemCost + dataType.getDataTypeSize() * size
+        < config.getAllocateMemoryForWrite() * rejectProportion) {
+      arrayPoolMemCost += dataType.getDataTypeSize() * size;
       // invoke flush()
+      flush();
+      return true;
+    } else {
+      rejected = true;
       flush();
       return false;
     }
   }
 
   /**
-   * Report current mem cost of tsp to system.
+   * Report current mem cost of storage group to system.
    *
-   * @param processor processor
+   * @param StorageGroupInfo
    * @return Return true if it's agreed when memory is enough.
    */
-  public synchronized boolean reportTsFileProcessorStatus(TsFileProcessor processor) {
-    long variation;
-    Long originalValue = reportedTspMemCostMap.get(processor);
-    // update the mem cost of processor
-    reportedTspMemCostMap
-        .put(processor, processor.getTsFileProcessorInfo().getTsFileProcessorMemCost());
-    if (originalValue == null) {
-      variation = processor.getTsFileProcessorInfo().getTsFileProcessorMemCost();
-    } else {
-      variation = processor.getTsFileProcessorInfo().getTsFileProcessorMemCost() - originalValue;
+  public synchronized void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo, 
+      long delta) {
+    this.totalSgInfoMemCost += delta;
+    if (this.arrayPoolMemCost + this.totalSgInfoMemCost
+        >= config.getAllocateMemoryForWrite() * flushProportion) {
+      flush();
+    } 
+    if (this.arrayPoolMemCost + this.totalSgInfoMemCost
+        >= config.getAllocateMemoryForWrite() * rejectProportion) {
+      rejected = true;
     }
-
-    if (this.totalTspInfoMemCost + variation
-        < config.getAllocateMemoryForWrite() * rejectProportion) {
-      this.totalTspInfoMemCost += variation;
-      return true;
-    } else {
-      return false;
-    }
-
   }
 
   /**
@@ -110,19 +109,24 @@ public class SystemInfo {
   }
 
   /**
-   * Report resetting the mem cost of processor to system. It will be invoked after closing file.
+   * Report resetting the mem cost of sg to system. It will be invoked after closing file.
    *
    * @param processor closing processor
    */
-  public synchronized void resetTsFileProcessorStatus(TsFileProcessor processor) {
-    if (reportedTspMemCostMap.containsKey(processor)) {
-      this.totalTspInfoMemCost -= processor.getTsFileProcessorInfo().getTsFileProcessorMemCost();
-      reportedTspMemCostMap.remove(processor);
+  public synchronized void resetStorageGroupInfoStatus(StorageGroupInfo storageGroupInfo) {
+    if (reportedSgMemCostMap.containsKey(storageGroupInfo)) {
+      this.totalSgInfoMemCost -= reportedSgMemCostMap.get(storageGroupInfo)
+          - storageGroupInfo.getStorageGroupMemCost();
+      if (this.arrayPoolMemCost + this.totalSgInfoMemCost 
+          < config.getAllocateMemoryForWrite() * rejectProportion) {
+        rejected = false;
+      }
+      reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getStorageGroupMemCost());
     }
   }
 
   /**
-   * Flush the tsfileProcessor with the max mem cost. If the queue size of flushing > threshold,
+   * Flush the tsfileProcessor in SG with the max mem cost. If the queue size of flushing > threshold,
    * it's identified as flushing is in progress.
    */
   public void flush() {
@@ -131,11 +135,16 @@ public class SystemInfo {
     }
 
     // get the first processor which has the max mem cost
-    TsFileProcessor flushedProcessor = reportedTspMemCostMap.firstKey();
+    StorageGroupInfo storageGroupInfo = reportedSgMemCostMap.firstKey();
+    TsFileProcessor flushedProcessor = storageGroupInfo.getLargestTsFileProcessor();
 
     if (flushedProcessor != null) {
       flushedProcessor.asyncFlush();
     }
+  }
+
+  public boolean isRejected() {
+    return rejected;
   }
 
   public static SystemInfo getInstance() {

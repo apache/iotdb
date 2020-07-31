@@ -259,6 +259,8 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
 
+  private StorageGroupInfo storageGroupInfo = new StorageGroupInfo();
+
   public StorageGroupProcessor(String systemDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
     this.storageGroupName = storageGroupName;
@@ -639,7 +641,8 @@ public class StorageGroupProcessor {
         if (IoTDBDescriptor.getInstance().getConfig().isEnableVm() && writer.canWrite()) {
           // vm is enable and the writer is not the last one but it can still be written
           // we still need to recover it
-          TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+          TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, storageGroupInfo,
+              tsFileResource,
               vmTsFileResources, getVersionControllerByTimePartitionId(timePartitionId),
               this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback,
               isSeq, writer, vmWriters);
@@ -659,7 +662,7 @@ public class StorageGroupProcessor {
         // the last file is not closed, continue writing to in
         TsFileProcessor tsFileProcessor;
         if (isSeq) {
-          tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+          tsFileProcessor = new TsFileProcessor(storageGroupName, storageGroupInfo, tsFileResource,
               vmTsFileResources, getVersionControllerByTimePartitionId(timePartitionId),
               this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback,
               true, writer, vmWriters);
@@ -667,7 +670,7 @@ public class StorageGroupProcessor {
           workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
           tsFileResource.setProcessor(tsFileProcessor);
         } else {
-          tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+          tsFileProcessor = new TsFileProcessor(storageGroupName,storageGroupInfo, tsFileResource,
               vmTsFileResources, getVersionControllerByTimePartitionId(timePartitionId),
               this::closeUnsealedTsFileProcessorCallBack, this::unsequenceFlushCallback, false,
               writer, vmWriters);
@@ -1074,12 +1077,12 @@ public class StorageGroupProcessor {
     TsFileProcessor tsFileProcessor;
     VersionController versionController = getVersionControllerByTimePartitionId(timePartitionId);
     if (sequence) {
-      tsFileProcessor = new TsFileProcessor(storageGroupName,
+      tsFileProcessor = new TsFileProcessor(storageGroupName, storageGroupInfo,
           fsFactory.getFileWithParent(filePath), new ArrayList<>(),
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::updateLatestFlushTimeCallback, true);
     } else {
-      tsFileProcessor = new TsFileProcessor(storageGroupName,
+      tsFileProcessor = new TsFileProcessor(storageGroupName, storageGroupInfo,
           fsFactory.getFileWithParent(filePath), new ArrayList<>(),
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::unsequenceFlushCallback, false);

@@ -58,6 +58,7 @@ public class TsFileProcessorEnableVmTest {
 
   private TsFileProcessor processor;
   private String storageGroup = "storage_group1";
+  private StorageGroupInfo sgInfo = new StorageGroupInfo();
   private String filePath = TestConstant.OUTPUT_DATA_DIR
       .concat("testUnsealedTsFileProcessor.tsfile");
   private String deviceId = "root.vehicle.d0";
@@ -86,7 +87,7 @@ public class TsFileProcessorEnableVmTest {
   @Test
   public void testWriteAndFlush() throws IOException, WriteProcessException {
     logger.info("testWriteAndFlush begin..");
-    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
+    processor = new TsFileProcessor(storageGroup, sgInfo, SystemFileFactory.INSTANCE.getFile(filePath),
         new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
@@ -143,7 +144,7 @@ public class TsFileProcessorEnableVmTest {
   @Test
   public void testWriteAndClose() throws IOException, WriteProcessException {
     logger.info("testWriteAndRestoreMetadata begin..");
-    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
+    processor = new TsFileProcessor(storageGroup, sgInfo, SystemFileFactory.INSTANCE.getFile(filePath),
         new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);

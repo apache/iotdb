@@ -95,8 +95,9 @@ public class TsFileProcessor {
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
   private final String storageGroupName;
 
+  private StorageGroupInfo storageGroupInfo;
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo();
+  private TsFileProcessorInfo tsFileProcessorInfo;
 
   /**
    * sync this object in query() and asyncTryToFlush()
@@ -142,12 +143,16 @@ public class TsFileProcessor {
   private final ReadWriteLock vmMergeLock = new ReentrantReadWriteLock();
   private final ReadWriteLock vmFileCreateLock = new ReentrantReadWriteLock();
 
-  TsFileProcessor(String storageGroupName, File tsfile, List<List<File>> vmFiles,
+  TsFileProcessor(String storageGroupName, StorageGroupInfo storageGroupInfo,
+      File tsfile, List<List<File>> vmFiles,
       VersionController versionController,
       CloseTsFileCallBack closeTsFileCallback,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
+    this.storageGroupInfo = storageGroupInfo;
+    this.tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+    this.storageGroupInfo.reportTsFileProcessorInfo(this);
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
     this.versionController = versionController;
@@ -173,12 +178,16 @@ public class TsFileProcessor {
         .setHistoricalVersions(Collections.singleton(versionController.currVersion()));
   }
 
-  public TsFileProcessor(String storageGroupName, TsFileResource tsFileResource,
+  public TsFileProcessor(String storageGroupName, StorageGroupInfo storageGroupInfo,
+      TsFileResource tsFileResource,
       List<List<TsFileResource>> vmTsFileResources,
       VersionController versionController, CloseTsFileCallBack closeUnsealedTsFileProcessor,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
       RestorableTsFileIOWriter writer, List<List<RestorableTsFileIOWriter>> vmWriters) {
     this.storageGroupName = storageGroupName;
+    this.storageGroupInfo = storageGroupInfo;
+    this.tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+    this.storageGroupInfo.reportTsFileProcessorInfo(this);
     this.tsFileResource = tsFileResource;
     this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
     this.vmTsFileResources = new CopyOnWriteArrayList<>();
@@ -204,6 +213,9 @@ public class TsFileProcessor {
    */
   public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
+    if (SystemInfo.getInstance().isRejected()) {
+      throw new WriteProcessException("This insertion is rejected by system.");
+    }
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable();
     }
@@ -246,12 +258,8 @@ public class TsFileProcessor {
         checkMemCost(insertRowPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
         long delta = bytesCost + unsealedResourceCost + chunkMetadataCost;
 
-        if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(delta)) {
-          boolean agreed = SystemInfo.getInstance().reportTsFileProcessorStatus(this);
-          if (!agreed) {
-            SystemInfo.getInstance().flush();
-            throw new WriteProcessException("This insertion is rejected by system.");
-          }
+        if (storageGroupInfo.checkIfNeedToReportStatusToSystem(delta)) {
+          SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo, delta);
         }
         tsFileProcessorInfo.addBytesMemCost(bytesCost);
         tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
@@ -281,6 +289,9 @@ public class TsFileProcessor {
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
 
+    if (SystemInfo.getInstance().isRejected()) {
+      throw new WriteProcessException("This insertion is rejected by system.");
+    }
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable();
     }
@@ -334,17 +345,16 @@ public class TsFileProcessor {
         long chunkMetadataCost = 0L;
         checkMemCost(insertTabletPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
         long delta = bytesCost + unsealedResourceCost + chunkMetadataCost;
-        if (tsFileProcessorInfo.checkIfNeedReportTsFileProcessorStatus(delta)) {
-          boolean agreed = SystemInfo.getInstance().reportTsFileProcessorStatus(this);
-          if (!agreed) {
-            SystemInfo.getInstance().flush();
-            throw new WriteProcessException("This insertion is rejected by system.");
-          }
+        if (storageGroupInfo.checkIfNeedToReportStatusToSystem(delta)) {
+          SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo, delta);
         }
         workMemTable.addBytesMemSize(bytesCost);
         tsFileProcessorInfo.addBytesMemCost(bytesCost);
         tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
         tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+        storageGroupInfo.addBytesMemCost(bytesCost);
+        storageGroupInfo.addUnsealedResourceMemCost(unsealedResourceCost);
+        storageGroupInfo.addChunkMetadataMemCost(chunkMetadataCost);
         for (int i = start; i < end; i++) {
           results[i] = RpcUtils.SUCCESS_STATUS;
         }
@@ -714,7 +724,7 @@ public class TsFileProcessor {
       // For text type data, reset the mem cost in tsFileProcessorInfo
       tsFileProcessorInfo.resetBytesMemCost(memTable.getBytesMemSize());
       // report to System
-      SystemInfo.getInstance().reportTsFileProcessorStatus(this);
+      SystemInfo.getInstance().resetStorageGroupInfoStatus(storageGroupInfo);
       memTable = null;
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} flush finished, remove a memtable from flushing list, "
@@ -1080,9 +1090,10 @@ public class TsFileProcessor {
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
     closeTsFileCallback.call(this);
-    tsFileProcessorInfo.resetUnsealedResourceMemCost();
-    tsFileProcessorInfo.resetChunkMetadataMemCost();
-    SystemInfo.getInstance().resetTsFileProcessorStatus(this);
+    tsFileProcessorInfo.emptyUnsealedResourceMemCost();
+    tsFileProcessorInfo.emptyChunkMetadataMemCost();
+    tsFileProcessorInfo.emptyWalMemCost();
+    storageGroupInfo.closeTsFileProcessorAndReportToSystem(this);
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
       logger.info("Storage group {} close the file {}, TsFile size is {}, "
@@ -1094,7 +1105,6 @@ public class TsFileProcessor {
 
     writer = null;
   }
-
 
   public boolean isManagedByFlushManager() {
     return managedByFlushManager;
