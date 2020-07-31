@@ -247,12 +247,10 @@ public class ClusterDescriptor {
     config.setUseAsyncServer(
             Boolean.parseBoolean(properties.getProperty("is_use_async_server",
                     String.valueOf(config.isUseAsyncServer()))));
-    logger.info("server+{}",config.isUseAsyncServer());
 
     config.setUseAsyncApplier(
             Boolean.parseBoolean(properties.getProperty("is_use_async_applier",
                     String.valueOf(config.isUseAsyncApplier()))));
-    logger.info("app+{}",config.isUseAsyncApplier());
 
     config.setEnableRaftLogPersistence(
         Boolean.parseBoolean(properties.getProperty("is_enable_raft_log_persistence",
