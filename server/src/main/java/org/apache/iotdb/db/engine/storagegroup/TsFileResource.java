@@ -807,7 +807,12 @@ public class TsFileResource {
   }
 
   public long calculateRamSize() {
-    return RamUsageEstimator.sizeOf(this);
+    long size = 0;
+    for (Entry<String, Integer> entry : deviceToIndex.entrySet()) {
+      size += RamUsageEstimator.sizeOf(entry);
+    }
+    size += startTimes.length * Long.BYTES * 2;
+    return size;
   }
 
 }
