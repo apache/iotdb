@@ -216,10 +216,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
   }
 
-  /**
-   * Flush current log buffer to the disk.
-   */
-  private void flushLogBuffer() {
+  @Override
+  public void flushLogBuffer() {
     lock.writeLock().lock();
     try {
       if (bufferedLogNum == 0) {
@@ -230,6 +228,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         checkStream();
         ReadWriteIOUtils
             .writeWithoutSize(logBuffer, 0, logBuffer.position(), currentLogOutputStream);
+        if (ClusterDescriptor.getInstance().getConfig().getForceRaftLogPeriodInMS() == 0) {
+          currentLogOutputStream.getChannel().force(true);
+        }
       } catch (IOException e) {
         logger.error("Error in logs serialization: ", e);
         return;
@@ -237,6 +238,22 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logBuffer.clear();
       bufferedLogNum = 0;
       logger.debug("End flushing log buffer.");
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void forceFlushLogBuffer() {
+    flushLogBuffer();
+    lock.writeLock().lock();
+    try {
+      if (currentLogOutputStream != null) {
+        currentLogOutputStream.getChannel().force(true);
+      }
+    } catch (IOException e) {
+      logger.error("Error when force flushing logs serialization: ", e);
+      return;
     } finally {
       lock.writeLock().unlock();
     }
@@ -616,7 +633,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   @Override
   public void close() {
-    flushLogBuffer();
+    forceFlushLogBuffer();
     lock.writeLock().lock();
     try {
       if (currentLogOutputStream != null) {
