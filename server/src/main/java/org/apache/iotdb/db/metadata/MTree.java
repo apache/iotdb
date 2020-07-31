@@ -1016,7 +1016,9 @@ public class MTree implements Serializable {
       jsonObject.put("DataType", leafMNode.getSchema().getType());
       jsonObject.put("Encoding", leafMNode.getSchema().getEncodingType());
       jsonObject.put("Compressor", leafMNode.getSchema().getCompressor());
-      jsonObject.put("args", leafMNode.getSchema().getProps().toString());
+      if (leafMNode.getSchema().getProps() != null) {
+        jsonObject.put("args", leafMNode.getSchema().getProps().toString());
+      }
       jsonObject.put("StorageGroup", storageGroupName);
     }
     return jsonObject;
