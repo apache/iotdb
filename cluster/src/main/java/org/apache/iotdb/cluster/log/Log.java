@@ -80,7 +80,7 @@ public abstract class Log {
     return Objects.hash(currLogIndex, currLogTerm);
   }
 
-  public boolean isApplied() {
+  public synchronized boolean isApplied() {
     return applied;
   }
 

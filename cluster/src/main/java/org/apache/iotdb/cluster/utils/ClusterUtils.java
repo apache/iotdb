@@ -37,9 +37,9 @@ public class ClusterUtils {
 
   public static final int WAIT_START_UP_CHECK_TIME_SEC = 5;
 
-  public static final long START_UP_TIME_THRESHOLD_MS = 60 * 1000;
+  public static final long START_UP_TIME_THRESHOLD_MS = 60 * 1000L;
 
-  public static final long START_UP_CHECK_TIME_INTERVAL_MS = 3 * 1000;
+  public static final long START_UP_CHECK_TIME_INTERVAL_MS = 3 * 1000L;
 
   /**
    * the data group member's heartbeat offset relative to the {@link ClusterConfig#getInternalDataPort()},
