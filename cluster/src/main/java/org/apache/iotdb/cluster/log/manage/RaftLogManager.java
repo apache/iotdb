@@ -57,8 +57,9 @@ abstract public class RaftLogManager {
   // to distinguish managers of different members
   private String name;
 
-  private ScheduledExecutorService executorService;
+  private ScheduledExecutorService raftLogDeleteExecutorService;
 
+  private ScheduledExecutorService raftLogFlushExecutorService;
 
   /**
    * minimum number of committed logs in memory
@@ -88,7 +89,7 @@ abstract public class RaftLogManager {
     // must have applied entry [compactIndex,last] to state machine
     this.commitIndex = last;
 
-    executorService = new ScheduledThreadPoolExecutor(1,
+    raftLogDeleteExecutorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
             .build());
     /**
@@ -96,7 +97,7 @@ abstract public class RaftLogManager {
      */
     int logDeleteCheckIntervalSecond = ClusterDescriptor.getInstance().getConfig()
         .getLogDeleteCheckIntervalSecond();
-    executorService
+    raftLogDeleteExecutorService
         .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
             logDeleteCheckIntervalSecond,
             TimeUnit.SECONDS);
@@ -107,8 +108,14 @@ abstract public class RaftLogManager {
     int logFlushTimeIntervalMS = ClusterDescriptor.getInstance().getConfig()
         .getForceRaftLogPeriodInMS();
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
-      executorService.scheduleAtFixedRate(this::flushLogPeriodically, logFlushTimeIntervalMS,
-          logFlushTimeIntervalMS, TimeUnit.MILLISECONDS);
+      if (raftLogFlushExecutorService == null) {
+        raftLogFlushExecutorService = new ScheduledThreadPoolExecutor(1,
+            new BasicThreadFactory.Builder().namingPattern("raft-log-write-%d").daemon(true)
+                .build());
+      }
+      raftLogFlushExecutorService
+          .scheduleAtFixedRate(this::flushLogPeriodically, logFlushTimeIntervalMS,
+              logFlushTimeIntervalMS, TimeUnit.MILLISECONDS);
     }
   }
 
@@ -553,9 +560,19 @@ abstract public class RaftLogManager {
 
   public void close() {
     getStableEntryManager().close();
-    if (executorService != null) {
-      executorService.shutdownNow();
-      executorService = null;
+    if (raftLogDeleteExecutorService != null) {
+      raftLogDeleteExecutorService.shutdownNow();
+      raftLogDeleteExecutorService = null;
+    }
+    if (raftLogFlushExecutorService != null) {
+      raftLogFlushExecutorService.shutdown();
+      try {
+        raftLogDeleteExecutorService.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("force flush raft log thread still doesn't exit after 30s.");
+        Thread.currentThread().interrupt();
+      }
+      raftLogFlushExecutorService = null;
     }
   }
 
