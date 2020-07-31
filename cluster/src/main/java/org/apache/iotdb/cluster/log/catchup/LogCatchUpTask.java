@@ -163,7 +163,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
     }
   }
 
-  void doLogCatchUpInBatch() throws TException, InterruptedException {
+  private AppendEntriesRequest prepareRequest(List<ByteBuffer> logList, int startPos) {
     AppendEntriesRequest request = new AppendEntriesRequest();
 
     if (raftMember.getHeader() != null) {
@@ -172,60 +172,92 @@ public class LogCatchUpTask implements Callable<Boolean> {
     request.setLeader(raftMember.getThisNode());
     request.setLeaderCommit(raftMember.getLogManager().getCommitLogIndex());
 
-    try {
-      request.setPrevLogTerm(
-          raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1));
-    } catch (Exception e) {
-      logger.error("getTerm failed for newly append entries", e);
+    synchronized (raftMember.getTerm()) {
+      // make sure this node is still a leader
+      if (raftMember.getCharacter() != NodeCharacter.LEADER) {
+        logger.debug("Leadership is lost when doing a catch-up to {}, aborting", node);
+        abort = true;
+        return null;
+      }
+      request.setTerm(raftMember.getTerm().get());
     }
 
+    request.setEntries(logList);
+    // set index for raft
+    request.setPrevLogIndex(logs.get(startPos).getCurrLogIndex() - 1);
+    if (startPos != 0) {
+      request.setPrevLogTerm(logs.get(startPos - 1).getCurrLogTerm());
+    } else {
+      try {
+        request.setPrevLogTerm(
+            raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1));
+      } catch (Exception e) {
+        logger.error("getTerm failed for newly append entries", e);
+      }
+    }
+    return request;
+  }
+
+
+  void doLogCatchUpInBatch() throws TException, InterruptedException {
+
+
     List<ByteBuffer> logList = new ArrayList<>();
-    for (int i = 0; i < logs.size() && !abort;) {
-      logList.clear();
-      long totalLogSize = 0;
-      int newStart = i;
-      for (int curNum = 0; curNum < ClusterConstant.LOG_NUM_IN_BATCH && i < logs.size(); i++, curNum++) {
-        ByteBuffer logData = logs.get(i).serialize();
-        totalLogSize += logData.array().length;
-        // we should send logs who's size is smaller than the max frame size of thrift
-        // left 200 byte for other fields of AppendEntriesRequest
-        if (totalLogSize >
+    long totalLogSize = 0;
+    int firstLogPos = 0;
+    boolean batchFull;
+
+    for (int i = 0; i < logs.size() && !abort; i++) {
+
+      ByteBuffer logData = logs.get(i).serialize();
+      int logSize = logData.array().length;
+      if (logSize > IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
+        logger.warn("the frame size {} of thrift is too small", IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
+        abort = true;
+        return;
+      }
+
+      totalLogSize += logSize;
+      // we should send logs who's size is smaller than the max frame size of thrift
+      // left 200 byte for other fields of AppendEntriesRequest
+      if (totalLogSize >
           IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
-          break;
-        }
+        // batch oversize, send previous batch and add the log to a new batch
+        sendBatchLogs(logList, firstLogPos);
+        logList.add(logData);
+        firstLogPos = i;
+        totalLogSize = logSize;
+      } else {
+        // just add the log the batch
         logList.add(logData);
       }
 
-      if (logList.isEmpty()) {
-        logger.warn("the frame size {} of thrift is too small", IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
-        abort = true;
-        break;
-      }
-
-      synchronized (raftMember.getTerm()) {
-        // make sure this node is still a leader
-        if (raftMember.getCharacter() != NodeCharacter.LEADER) {
-          logger.debug("Leadership is lost when doing a catch-up to {}, aborting", node);
-          abort = true;
-          break;
-        }
-        request.setTerm(raftMember.getTerm().get());
-      }
-
-      request.setEntries(logList);
-      // set index for raft
-      request.setPrevLogIndex(logs.get(newStart).getCurrLogIndex() - 1);
-      if (newStart != 0) {
-        request.setPrevLogTerm(logs.get(newStart - 1).getCurrLogTerm());
-      }
-
-      // do append entries
-      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-        abort = !appendEntriesAsync(logList, request);
-      } else {
-        abort = !appendEntriesSync(logList, request);
+      batchFull = logList.size() >= ClusterConstant.LOG_NUM_IN_BATCH;
+      if (batchFull) {
+        sendBatchLogs(logList, firstLogPos);
+        firstLogPos = i + 1;
+        totalLogSize = 0;
       }
     }
+
+    if (!logList.isEmpty()) {
+      sendBatchLogs(logList, firstLogPos);
+    }
+  }
+
+  private void sendBatchLogs(List<ByteBuffer> logList, int firstLogPos)
+      throws TException, InterruptedException {
+    AppendEntriesRequest request = prepareRequest(logList, firstLogPos);
+    if (request == null) {
+      return;
+    }
+    // do append entries
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      abort = !appendEntriesAsync(logList, request);
+    } else {
+      abort = !appendEntriesSync(logList, request);
+    }
+    logList.clear();
   }
 
   private boolean appendEntriesAsync(List<ByteBuffer> logList, AppendEntriesRequest request)

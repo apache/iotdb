@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.client.sync;
 
 import java.io.IOException;
-import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.thrift.transport.TTransportException;

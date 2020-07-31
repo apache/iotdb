@@ -21,8 +21,6 @@ package org.apache.iotdb.cluster.client.async;
 
 import java.io.IOException;
 import java.util.Date;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncClient;
@@ -76,25 +74,7 @@ public class AsyncDataClient extends AsyncClient {
     pool.recreateClient(node);
   }
 
-  public static class FactoryAsync implements AsyncClientFactory {
-
-    private static TAsyncClientManager[] managers;
-    static {
-      managers =
-          new TAsyncClientManager[ClusterDescriptor.getInstance().getConfig().getSelectorNumOfClientPool()];
-      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-        for (int i = 0; i < managers.length; i++) {
-          try {
-            managers[i] = new TAsyncClientManager();
-          } catch (IOException e) {
-            logger.error("Cannot create client manager for factory", e);
-          }
-        }
-      }
-    }
-
-    private org.apache.thrift.protocol.TProtocolFactory protocolFactory;
-    private AtomicInteger clientCnt = new AtomicInteger();
+  public static class FactoryAsync extends AsyncClientFactory {
 
     public FactoryAsync(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
       this.protocolFactory = protocolFactory;
@@ -125,7 +105,7 @@ public class AsyncDataClient extends AsyncClient {
     return ___currentMethod == null;
   }
 
-  public TAsyncMethodCall getCurrMethod() {
+  public TAsyncMethodCall<?> getCurrMethod() {
     return ___currentMethod;
   }
 }

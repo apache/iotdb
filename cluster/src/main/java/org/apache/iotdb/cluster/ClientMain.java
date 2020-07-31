@@ -82,6 +82,9 @@ public class ClientMain {
   private static final String PARAM_BATCH = "b";
   private static Options options = new Options();
 
+  private static String ip = "127.0.0.1";
+  private static int port = 55560;
+
   static {
     options.addOption(new Option(PARAM_INSERTION, "Perform insertion"));
     options.addOption(new Option(PARAM_QUERY, "Perform query"));
@@ -169,22 +172,34 @@ public class ClientMain {
     failedQueries = new HashMap<>();
     prepareSchema();
 
-    String ip = "127.0.0.1";
-    int port = 55560;
+
     if (commandLine.hasOption(PARAM_INSERT_PORT)){
       port = Integer.parseInt(commandLine.getOptionValue(PARAM_INSERT_PORT));
     }
-    Client client;
-    long sessionId;
 
+    doInsertion(noOption, commandLine);
+
+    doQuery(noOption, commandLine);
+
+    doDeleteSeries(noOption, commandLine);
+
+    doDeleteSG(noOption, commandLine);
+
+    doBatchStmt(noOption, commandLine);
+  }
+
+  private static void doInsertion(boolean noOption, CommandLine commandLine) throws TException {
     if (noOption || commandLine.hasOption(PARAM_INSERTION)) {
       System.out.println("Test insertion");
-      client = getClient(ip, port);
-      sessionId = connectClient(client);
+      Client client = getClient(ip, port);
+      long sessionId = connectClient(client);
       testInsertion(client, sessionId);
       client.closeSession(new TSCloseSessionReq(sessionId));
     }
+  }
 
+  private static void doQuery(boolean noOption, CommandLine commandLine)
+      throws StatementExecutionException, TException, IoTDBConnectionException {
     if (noOption || commandLine.hasOption(PARAM_QUERY)) {
       int[] queryPorts = null;
       if (commandLine.hasOption(PARAM_QUERY_PORTS)) {
@@ -196,8 +211,8 @@ public class ClientMain {
       for (int queryPort : queryPorts) {
         System.out.println("Test port: " + queryPort);
 
-        client = getClient(ip, queryPort);
-        sessionId = connectClient(client);
+        Client client = getClient(ip, queryPort);
+        long sessionId = connectClient(client);
         System.out.println("Test data queries");
         testQuery(client, sessionId, DATA_QUERIES);
 
@@ -208,23 +223,32 @@ public class ClientMain {
         client.closeSession(new TSCloseSessionReq(sessionId));
       }
     }
+  }
 
+  private static void doDeleteSeries(boolean noOption, CommandLine commandLine)
+      throws StatementExecutionException, TException, IoTDBConnectionException {
     if (noOption || commandLine.hasOption(PARAM_DELETE_SERIES)) {
       System.out.println("Test delete timeseries");
-      client = getClient(ip, port);
-      sessionId = connectClient(client);
+      Client client = getClient(ip, port);
+      long sessionId = connectClient(client);
       testDeleteTimeseries(client, sessionId);
       client.closeSession(new TSCloseSessionReq(sessionId));
     }
+  }
 
+  private static void doDeleteSG(boolean noOption, CommandLine commandLine)
+      throws StatementExecutionException, TException, IoTDBConnectionException {
     if (noOption || commandLine.hasOption(PARAM_DELETE_STORAGE_GROUP)) {
       System.out.println("Test delete storage group");
-      client = getClient(ip, port);
-      sessionId = connectClient(client);
+      Client client = getClient(ip, port);
+      long sessionId = connectClient(client);
       testDeleteStorageGroup(client, sessionId);
       client.closeSession(new TSCloseSessionReq(sessionId));
     }
+  }
 
+  private static void doBatchStmt(boolean noOption, CommandLine commandLine)
+      throws SQLException, ClassNotFoundException {
     if (noOption || commandLine.hasOption(PARAM_BATCH)) {
       System.out.println("Test batch create sgs");
       testBatch(ip, port);
@@ -400,7 +424,9 @@ public class ClientMain {
         paths.add(device + "." + measurement);
       }
     }
-    logger.info(client.deleteTimeseries(sessionId, paths).toString());
+    if (logger.isInfoEnabled()) {
+      logger.info(client.deleteTimeseries(sessionId, paths).toString());
+    }
   }
 
   private static void testBatch(String ip, int port) throws ClassNotFoundException, SQLException {

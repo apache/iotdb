@@ -83,7 +83,7 @@ public class SyncClientAdaptor {
   public static Long removeNode(AsyncMetaClient asyncMetaClient, Node nodeToRemove)
       throws TException, InterruptedException {
     AtomicReference<Long> responseRef = new AtomicReference<>();
-    GenericHandler handler = new GenericHandler(asyncMetaClient.getNode(), responseRef);
+    GenericHandler<Long> handler = new GenericHandler<>(asyncMetaClient.getNode(), responseRef);
     synchronized (responseRef) {
       asyncMetaClient.removeNode(nodeToRemove, handler);
       responseRef.wait(RaftServer.getConnectionTimeoutInMS());
@@ -94,7 +94,7 @@ public class SyncClientAdaptor {
   public static Boolean matchTerm(AsyncClient client, Node target, long prevLogIndex,
       long prevLogTerm, Node header) throws TException, InterruptedException {
     AtomicReference<Boolean> resultRef = new AtomicReference<>(false);
-    GenericHandler matchTermHandler = new GenericHandler(target, resultRef);
+    GenericHandler<Boolean> matchTermHandler = new GenericHandler<>(target, resultRef);
 
     synchronized (resultRef) {
       client.matchTerm(prevLogIndex, prevLogTerm, header, matchTermHandler);
@@ -207,7 +207,7 @@ public class SyncClientAdaptor {
       StartUpStatus startUpStatus)
       throws TException, InterruptedException {
     JoinClusterHandler handler = new JoinClusterHandler();
-    AtomicReference<AddNodeResponse> response = new AtomicReference(null);
+    AtomicReference<AddNodeResponse> response = new AtomicReference<>(null);
     handler.setResponse(response);
     response.set(null);
     handler.setContact(client.getNode());
@@ -360,7 +360,7 @@ public class SyncClientAdaptor {
   }
 
   public static Map<Integer, Snapshot> pullSnapshot(AsyncDataClient client,
-      PullSnapshotRequest request, List<Integer> slots, SnapshotFactory factory)
+      PullSnapshotRequest request, List<Integer> slots, SnapshotFactory<Snapshot> factory)
       throws TException, InterruptedException {
     AtomicReference<Map<Integer, Snapshot>> snapshotRef = new AtomicReference<>();
     synchronized (snapshotRef) {

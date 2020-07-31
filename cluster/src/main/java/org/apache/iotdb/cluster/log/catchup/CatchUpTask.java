@@ -125,16 +125,7 @@ public class CatchUpTask implements Runnable {
     }
 
     long prevLogIndex = log.getCurrLogIndex() - 1;
-    long prevLogTerm = -1;
-    if (index > 0) {
-      prevLogTerm = logs.get(index - 1).getCurrLogTerm();
-    } else {
-      try {
-        prevLogTerm = raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1);
-      } catch (EntryCompactedException e) {
-        logger.info("Log [{}] is compacted during catchup", logs.get(0).getCurrLogIndex() - 1);
-      }
-    }
+    long prevLogTerm = getPrevLogTerm(index);
 
     if (prevLogTerm == -1) {
       // prev log cannot be found, we cannot know whether is matches
@@ -175,6 +166,20 @@ public class CatchUpTask implements Runnable {
       return true;
     }
     return false;
+  }
+
+  private long getPrevLogTerm(int index) {
+    long prevLogTerm = -1;
+    if (index > 0) {
+      prevLogTerm = logs.get(index - 1).getCurrLogTerm();
+    } else {
+      try {
+        prevLogTerm = raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1);
+      } catch (EntryCompactedException e) {
+        logger.info("Log [{}] is compacted during catchup", logs.get(0).getCurrLogIndex() - 1);
+      }
+    }
+    return prevLogTerm;
   }
 
   private void doSnapshot() {

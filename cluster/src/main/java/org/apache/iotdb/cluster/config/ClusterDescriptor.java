@@ -266,7 +266,7 @@ public class ClusterDescriptor {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));
     }
 
-    String seedUrls = properties.getProperty("seed_nodes");
+    String seedUrls = properties.getProperty(OPTION_SEED_NODES);
     if (seedUrls != null) {
       List<String> urlList = getSeedUrlList(seedUrls);
       config.setSeedNodeUrls(urlList);

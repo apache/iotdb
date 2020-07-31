@@ -42,7 +42,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-abstract public class RaftLogManager {
+public abstract class RaftLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftLogManager.class);
 
@@ -59,7 +59,7 @@ abstract public class RaftLogManager {
   private String name;
 
   private ScheduledExecutorService executorService;
-  private ScheduledFuture deleteLogFuture;
+  private ScheduledFuture<?> deleteLogFuture;
 
 
   /**
@@ -104,9 +104,9 @@ abstract public class RaftLogManager {
             TimeUnit.SECONDS);
   }
 
-  abstract public Snapshot getSnapshot();
+  public abstract Snapshot getSnapshot();
 
-  abstract public void takeSnapshot() throws IOException;
+  public abstract void takeSnapshot() throws IOException;
 
   /**
    * Update the raftNode's hardState(currentTerm,voteFor) and flush to disk.
@@ -405,37 +405,39 @@ abstract public class RaftLogManager {
    */
   public void commitTo(long newCommitIndex, boolean ignoreExecutionExceptions)
       throws LogExecutionException {
-    if (commitIndex < newCommitIndex) {
-      long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
-      long hi = newCommitIndex + 1;
-      List<Log> entries = new ArrayList<>(getUnCommittedEntryManager()
-          .getEntries(lo, hi));
-      if (!entries.isEmpty()) {
-        if (getCommitLogIndex() >= entries.get(0).getCurrLogIndex()) {
-          entries
-              .subList(0,
-                  (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
-              .clear();
-        }
-        try {
-          if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
-            synchronized (this) {
-              innerDeleteLog();
-            }
+    if (commitIndex >= newCommitIndex) {
+      return;
+    }
+
+    long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
+    long hi = newCommitIndex + 1;
+    List<Log> entries = new ArrayList<>(getUnCommittedEntryManager()
+        .getEntries(lo, hi));
+    if (!entries.isEmpty()) {
+      if (getCommitLogIndex() >= entries.get(0).getCurrLogIndex()) {
+        entries
+            .subList(0,
+                (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
+            .clear();
+      }
+      try {
+        if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
+          synchronized (this) {
+            innerDeleteLog();
           }
-          getCommittedEntryManager().append(entries);
-          if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
-            getStableEntryManager().append(entries);
-          }
-          Log lastLog = entries.get(entries.size() - 1);
-          getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
-          commitIndex = lastLog.getCurrLogIndex();
-          applyEntries(entries, ignoreExecutionExceptions);
-        } catch (TruncateCommittedEntryException e) {
-          logger.error("{}: Unexpected error:", name, e);
-        } catch (IOException e){
-          throw new LogExecutionException(e);
         }
+        getCommittedEntryManager().append(entries);
+        if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+          getStableEntryManager().append(entries);
+        }
+        Log lastLog = entries.get(entries.size() - 1);
+        getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
+        commitIndex = lastLog.getCurrLogIndex();
+        applyEntries(entries, ignoreExecutionExceptions);
+      } catch (TruncateCommittedEntryException e) {
+        logger.error("{}: Unexpected error:", name, e);
+      } catch (IOException e){
+        throw new LogExecutionException(e);
       }
     }
   }
