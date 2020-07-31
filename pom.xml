@@ -114,6 +114,7 @@
         <flink.version>1.10.0</flink.version>
         <common.io.version>2.5</common.io.version>
         <commons.collections4>4.0</commons.collections4>
+        <!-- keep consistent with client-cpp/tools/thrift/pom.xml-->
         <thrift.version>0.13.0</thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.10.0</jackson.version>

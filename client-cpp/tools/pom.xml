@@ -28,8 +28,9 @@
         <boost.version>1.72.0</boost.version>
         <boost.version.underline-short>1_72</boost.version.underline-short>
         <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
-        <thrift.version>0.12.0</thrift.version>
         <cmake-version>3.17.3</cmake-version>
+        <openssl.lib.set/>
+        <cmake.build.type/>
     </properties>
     <modules>
         <module>boost</module>
@@ -80,6 +81,8 @@
                 <thrift.make.executable>make</thrift.make.executable>
                 <thrift.compiler.executable>thrift</thrift.compiler.executable>
                 <gradlew.executable>./gradlew</gradlew.executable>
+                <openssl.lib.default.path>/usr/local/opt/openssl/include</openssl.lib.default.path>
+                <openssl.lib.set>-DCMAKE_CXX_FLAGS="-I${openssl.lib.default.path}"</openssl.lib.set>
             </properties>
         </profile>
         <profile>

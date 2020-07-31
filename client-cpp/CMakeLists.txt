@@ -32,7 +32,7 @@ ELSE()
     INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include)
 ENDIF()
 
-INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.12.0/lib/cpp/src)
+INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src)
 ADD_SUBDIRECTORY(generated-sources-cpp)
 
 AUX_SOURCE_DIRECTORY(./generated-sources-cpp SESSION_SRCS)

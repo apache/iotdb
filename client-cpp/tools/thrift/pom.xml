@@ -30,6 +30,8 @@
     <name>Tools: Thrift</name>
     <description>Local build of the Apache Thrift compiler.</description>
     <properties>
+        <!-- keep consistent with root/pom.xml-->
+        <thrift.version>0.13.0</thrift.version>
         <thrift.with.cpp>ON</thrift.with.cpp>
         <thrift.with.csharp>OFF</thrift.with.csharp>
         <thrift.with.python>OFF</thrift.with.python>
@@ -278,7 +280,6 @@
                 and tell the plugin where to find that version.
               -->
                             <downloadBinaries>false</downloadBinaries>
-                            <cmakeDir>${cmake.root.dir}</cmakeDir>
                             <sourcePath>${project.build.directory}/thrift-${thrift.version}</sourcePath>
                             <targetPath>${project.build.directory}/build</targetPath>
                             <generator>${cmake.generator}</generator>
@@ -332,6 +333,7 @@
                                 <option>-DWITH_SHARED_LIB=OFF</option>
                                 <option>-DWITH_STATIC_LIB=ON</option>
                                 <option>-DCMAKE_POSITION_INDEPENDENT_CODE=ON</option>
+                                <option>${openssl.lib.set}</option>
                             </options>
                         </configuration>
                     </execution>
@@ -350,7 +352,6 @@
                 and tell the plugin where to find that version.
               -->
                             <downloadBinaries>false</downloadBinaries>
-                            <cmakeDir>${cmake.root}</cmakeDir>
                             <!-- The directory where the "generate" step generated the build configuration -->
                             <projectDirectory>${project.build.directory}/build</projectDirectory>
                         </configuration>
