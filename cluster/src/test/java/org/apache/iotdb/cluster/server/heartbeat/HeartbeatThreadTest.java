@@ -158,9 +158,13 @@ public class HeartbeatThreadTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws InterruptedException {
     logManager.close();
     member.closeLogManager();
+    logManager = null;
+    member = null;
+    testThread.interrupt();
+    testThread.join();
     File dir = new File(SyncLogDequeSerializer.getLogDir(1));
     for (File file : dir.listFiles()) {
       file.delete();

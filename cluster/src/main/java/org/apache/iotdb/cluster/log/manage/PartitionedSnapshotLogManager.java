@@ -49,7 +49,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshotLogManager.class);
 
   Map<Integer, T> slotSnapshots = new HashMap<>();
-  private SnapshotFactory factory;
+  private SnapshotFactory<T> factory;
   Map<Integer, Collection<TimeseriesSchema>> slotTimeseries = new HashMap<>();
   long snapshotLastLogIndex;
   long snapshotLastLogTerm;
@@ -71,7 +71,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   public Snapshot getSnapshot() {
     // copy snapshots
     synchronized (slotSnapshots) {
-      PartitionedSnapshot partitionedSnapshot = new PartitionedSnapshot(factory);
+      PartitionedSnapshot<T> partitionedSnapshot = new PartitionedSnapshot<>(factory);
       for (Entry<Integer, T> entry : slotSnapshots.entrySet()) {
         partitionedSnapshot.putSnapshot(entry.getKey(), entry.getValue());
       }

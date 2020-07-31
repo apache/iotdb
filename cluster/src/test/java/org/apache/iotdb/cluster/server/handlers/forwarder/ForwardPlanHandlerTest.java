@@ -25,6 +25,7 @@ import static org.junit.Assert.assertSame;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;

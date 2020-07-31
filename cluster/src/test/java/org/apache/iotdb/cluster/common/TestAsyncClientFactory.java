@@ -30,7 +30,7 @@ import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
 
-public class TestAsyncClientFactory implements AsyncClientFactory {
+public class TestAsyncClientFactory extends AsyncClientFactory {
 
   private TProtocolFactory protocolFactory;
   private TAsyncClientManager clientManager;

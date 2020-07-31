@@ -21,25 +21,19 @@ package org.apache.iotdb.cluster.client.async;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.RaftServer;
-import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
  * should not cache it anywhere else or there may be conflicts.
  */
 public class AsyncDataHeartbeatClient extends AsyncDataClient {
-
-  private static final Logger logger = LoggerFactory.getLogger(AsyncDataHeartbeatClient.class);
 
   public AsyncDataHeartbeatClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager, Node node, AsyncClientPool pool) throws IOException {
@@ -50,24 +44,7 @@ public class AsyncDataHeartbeatClient extends AsyncDataClient {
     this.pool = pool;
   }
 
-  public static class FactoryAsync implements AsyncClientFactory {
-
-    private static TAsyncClientManager[] managers;
-
-    static {
-      managers =
-          new TAsyncClientManager[ClusterDescriptor.getInstance().getConfig()
-              .getSelectorNumOfClientPool()];
-      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-        for (int i = 0; i < managers.length; i++) {
-          try {
-            managers[i] = new TAsyncClientManager();
-          } catch (IOException e) {
-            logger.error("Cannot create data heartbeat client manager for factory", e);
-          }
-        }
-      }
-    }
+  public static class FactoryAsync extends AsyncClientFactory {
 
     private TProtocolFactory protocolFactory;
     private AtomicInteger clientCnt = new AtomicInteger();

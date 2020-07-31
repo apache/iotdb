@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
+import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.junit.Test;
 
 public class PullSnapshotHandlerTest {

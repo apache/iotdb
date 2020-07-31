@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
@@ -41,7 +42,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-abstract public class RaftLogManager {
+public abstract class RaftLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftLogManager.class);
 
@@ -57,9 +58,10 @@ abstract public class RaftLogManager {
   // to distinguish managers of different members
   private String name;
 
-  private ScheduledExecutorService raftLogDeleteExecutorService;
+  private ScheduledExecutorService deleteLogExecutorService;
+  private ScheduledFuture<?> deleteLogFuture;
 
-  private ScheduledExecutorService raftLogFlushExecutorService;
+  private ScheduledExecutorService flushLogExecutorService;
 
   /**
    * minimum number of committed logs in memory
@@ -89,7 +91,7 @@ abstract public class RaftLogManager {
     // must have applied entry [compactIndex,last] to state machine
     this.commitIndex = last;
 
-    raftLogDeleteExecutorService = new ScheduledThreadPoolExecutor(1,
+    deleteLogExecutorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
             .build());
     /**
@@ -97,7 +99,8 @@ abstract public class RaftLogManager {
      */
     int logDeleteCheckIntervalSecond = ClusterDescriptor.getInstance().getConfig()
         .getLogDeleteCheckIntervalSecond();
-    raftLogDeleteExecutorService
+
+    deleteLogFuture = deleteLogExecutorService
         .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
             logDeleteCheckIntervalSecond,
             TimeUnit.SECONDS);
@@ -108,20 +111,20 @@ abstract public class RaftLogManager {
     int logFlushTimeIntervalMS = ClusterDescriptor.getInstance().getConfig()
         .getForceRaftLogPeriodInMS();
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
-      if (raftLogFlushExecutorService == null) {
-        raftLogFlushExecutorService = new ScheduledThreadPoolExecutor(1,
+      if (flushLogExecutorService == null) {
+        flushLogExecutorService = new ScheduledThreadPoolExecutor(1,
             new BasicThreadFactory.Builder().namingPattern("raft-log-write-%d").daemon(true)
                 .build());
       }
-      raftLogFlushExecutorService
+      flushLogExecutorService
           .scheduleAtFixedRate(this::flushLogPeriodically, logFlushTimeIntervalMS,
               logFlushTimeIntervalMS, TimeUnit.MILLISECONDS);
     }
   }
 
-  abstract public Snapshot getSnapshot();
+  public abstract Snapshot getSnapshot();
 
-  abstract public void takeSnapshot() throws IOException;
+  public abstract void takeSnapshot() throws IOException;
 
   /**
    * Update the raftNode's hardState(currentTerm,voteFor) and flush to disk.
@@ -419,37 +422,39 @@ abstract public class RaftLogManager {
    */
   public void commitTo(long newCommitIndex, boolean ignoreExecutionExceptions)
       throws LogExecutionException {
-    if (commitIndex < newCommitIndex) {
-      long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
-      long hi = newCommitIndex + 1;
-      List<Log> entries = new ArrayList<>(getUnCommittedEntryManager()
-          .getEntries(lo, hi));
-      if (!entries.isEmpty()) {
-        if (getCommitLogIndex() >= entries.get(0).getCurrLogIndex()) {
-          entries
-              .subList(0,
-                  (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
-              .clear();
-        }
-        try {
-          if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
-            synchronized (this) {
-              innerDeleteLog();
-            }
+    if (commitIndex >= newCommitIndex) {
+      return;
+    }
+
+    long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
+    long hi = newCommitIndex + 1;
+    List<Log> entries = new ArrayList<>(getUnCommittedEntryManager()
+        .getEntries(lo, hi));
+    if (!entries.isEmpty()) {
+      if (getCommitLogIndex() >= entries.get(0).getCurrLogIndex()) {
+        entries
+            .subList(0,
+                (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
+            .clear();
+      }
+      try {
+        if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
+          synchronized (this) {
+            innerDeleteLog();
           }
-          getCommittedEntryManager().append(entries);
-          if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
-            getStableEntryManager().append(entries);
-          }
-          Log lastLog = entries.get(entries.size() - 1);
-          getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
-          commitIndex = lastLog.getCurrLogIndex();
-          applyEntries(entries, ignoreExecutionExceptions);
-        } catch (TruncateCommittedEntryException e) {
-          logger.error("{}: Unexpected error:", name, e);
-        } catch (IOException e) {
-          throw new LogExecutionException(e);
         }
+        getCommittedEntryManager().append(entries);
+        if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+          getStableEntryManager().append(entries);
+        }
+        Log lastLog = entries.get(entries.size() - 1);
+        getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
+        commitIndex = lastLog.getCurrLogIndex();
+        applyEntries(entries, ignoreExecutionExceptions);
+      } catch (TruncateCommittedEntryException e) {
+        logger.error("{}: Unexpected error:", name, e);
+      } catch (IOException e){
+        throw new LogExecutionException(e);
       }
     }
   }
@@ -560,19 +565,26 @@ abstract public class RaftLogManager {
 
   public void close() {
     getStableEntryManager().close();
-    if (raftLogDeleteExecutorService != null) {
-      raftLogDeleteExecutorService.shutdownNow();
-      raftLogDeleteExecutorService = null;
-    }
-    if (raftLogFlushExecutorService != null) {
-      raftLogFlushExecutorService.shutdown();
+    if (deleteLogExecutorService != null) {
+      deleteLogExecutorService.shutdownNow();
+      deleteLogFuture.cancel(true);
       try {
-        raftLogDeleteExecutorService.awaitTermination(30, TimeUnit.SECONDS);
+        deleteLogExecutorService.awaitTermination(20, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Close check log thread interrupted");
+      }
+      deleteLogExecutorService = null;
+    }
+    if (flushLogExecutorService != null) {
+      flushLogExecutorService.shutdown();
+      try {
+        flushLogExecutorService.awaitTermination(30, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         logger.warn("force flush raft log thread still doesn't exit after 30s.");
         Thread.currentThread().interrupt();
       }
-      raftLogFlushExecutorService = null;
+      flushLogExecutorService = null;
     }
   }
 

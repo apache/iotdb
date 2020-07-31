@@ -699,22 +699,13 @@ public class DataGroupMember extends RaftMember {
     File tempModFile = new File(REMOTE_FILE_TEMP_DIR,
         tempFilePath + ModificationFile.FILE_SUFFIX);
     if (pullRemoteFile(resource.getTsFile().getAbsolutePath(), node, tempFile)) {
-      if (!checkMd5(tempFile, resource.getMd5())) {
-        logger.error("The downloaded file of {} does not have the right MD5", resource);
-        Files.delete(tempFile.toPath());
-        return null;
-      }
+      // TODO-Cluster#353: implement file examination, may be replaced with other algorithm
       if (resource.isWithModification()) {
         pullRemoteFile(resource.getModFile().getFilePath(), node, tempModFile);
       }
       return tempFile;
     }
     return null;
-  }
-
-  private boolean checkMd5(File tempFile, byte[] expectedMd5) {
-    // TODO-Cluster#353: implement, may be replaced with other algorithm
-    return true;
   }
 
   /**

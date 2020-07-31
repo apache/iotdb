@@ -82,12 +82,15 @@ public class MemberTest {
   private List<String> prevUrls;
   private long prevLeaderWait;
   private boolean prevUseAsyncServer;
+  private int preLogBufferSize;
 
 
   @Before
   public void setUp() throws Exception {
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
+    preLogBufferSize = ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
+    ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(4096);
     testThreadPool = Executors.newFixedThreadPool(4);
     prevLeaderWait = RaftMember.getWaitLeaderTimeMs();
     RaftMember.setWaitLeaderTimeMs(10);
@@ -138,9 +141,11 @@ public class MemberTest {
     for (DataGroupMember member : dataGroupMemberMap.values()) {
       member.stop();
     }
+    dataGroupMemberMap.clear();
     for (MetaGroupMember member : metaGroupMemberMap.values()) {
       member.stop();
     }
+    metaGroupMemberMap.clear();
     EnvironmentUtils.cleanEnv();
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevUrls);
     new File(MetaGroupMember.PARTITION_FILE_NAME).delete();
@@ -148,6 +153,7 @@ public class MemberTest {
     RaftMember.setWaitLeaderTimeMs(prevLeaderWait);
     testThreadPool.shutdownNow();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
+    ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(preLogBufferSize);
   }
 
   DataGroupMember getDataGroupMember(Node node) {

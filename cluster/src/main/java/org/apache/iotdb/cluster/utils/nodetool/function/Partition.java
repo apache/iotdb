@@ -80,7 +80,8 @@ public class Partition extends NodeToolCmd {
     } else {
       timeRangeMapRaftGroup.forEach(
           (timeRange, raftGroup) -> msgPrintln(String.format("DATA<%s, %d, %d>\t->\t%s", path,
-              timeRange.getKey(0), timeRange.getKey(1), partitionGroupToString(raftGroup))));
+              (long) timeRange.getKey(0), (long) timeRange.getKey(1),
+              partitionGroupToString(raftGroup))));
     }
   }
 }
