@@ -453,7 +453,7 @@ public abstract class RaftLogManager {
         applyEntries(entries, ignoreExecutionExceptions);
       } catch (TruncateCommittedEntryException e) {
         logger.error("{}: Unexpected error:", name, e);
-      } catch (IOException e){
+      } catch (IOException e) {
         throw new LogExecutionException(e);
       }
     }
