@@ -25,7 +25,7 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 
 public class StorageGroupInfo {
 
-  private long storageGroupMemCostThreshold;
+  private long storageGroupReportThreshold;
 
   private long unsealedResourceMemCost;
   private long bytesMemCost;
@@ -37,7 +37,7 @@ public class StorageGroupInfo {
           .getTsFileProcessorInfo().getTsFileProcessorMemCost()));
 
   public StorageGroupInfo() {
-    storageGroupMemCostThreshold = IoTDBDescriptor.getInstance().getConfig()
+    storageGroupReportThreshold = IoTDBDescriptor.getInstance().getConfig()
         .getStorageGroupMemBlockSize();
     unsealedResourceMemCost = 0;
     bytesMemCost = 0;
@@ -78,11 +78,15 @@ public class StorageGroupInfo {
   }
 
   public boolean checkIfNeedToReportStatusToSystem(long delta) {
-    return (getStorageGroupMemCost() + delta) >= storageGroupMemCostThreshold;
+    return (getStorageGroupMemCost() + delta) >= storageGroupReportThreshold;
   }
 
   public long getStorageGroupMemCost() {
     return unsealedResourceMemCost + bytesMemCost + chunkMetadataMemCost + walMemCost;
+  }
+
+  public void addStorageGroupReportThreshold(long value) {
+    storageGroupReportThreshold += value;
   }
 
   public TsFileProcessor getLargestTsFileProcessor() {

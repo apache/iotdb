@@ -78,6 +78,9 @@ public class SystemInfo {
   public synchronized void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo, 
       long delta) {
     this.totalSgInfoMemCost += delta;
+    long addReportThreshold = (delta / config.getStorageGroupMemBlockSize() + 1)
+        * config.getStorageGroupMemBlockSize();
+    storageGroupInfo.addStorageGroupReportThreshold(addReportThreshold);
     if (this.arrayPoolMemCost + this.totalSgInfoMemCost
         >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       flush();
