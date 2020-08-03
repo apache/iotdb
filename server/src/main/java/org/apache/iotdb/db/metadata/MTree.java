@@ -376,12 +376,17 @@ public class MTree implements Serializable {
    * Get storage group node, if the give path is not a storage group, throw exception
    */
   StorageGroupMNode getStorageGroupMNode(List<String> detachedPath) throws MetadataException {
-    MNode node = getMNodeByDetachedPath(detachedPath);
-    if (node instanceof StorageGroupMNode) {
-      return (StorageGroupMNode) node;
-    } else {
-      throw new StorageGroupNotSetException(MetaUtils.concatDetachedPathByDot(detachedPath));
+    if (detachedPath.isEmpty() || !detachedPath.get(0).equals(root.getName())) {
+      throw new IllegalPathException(MetaUtils.concatDetachedPathByDot(detachedPath));
     }
+    MNode cur = root;
+    for (int i = 1; i < detachedPath.size(); i++) {
+      cur = cur.getChild(detachedPath.get(i));
+      if (cur instanceof StorageGroupMNode) {
+        return (StorageGroupMNode) cur;
+      }
+    }
+    throw new StorageGroupNotSetException(MetaUtils.concatDetachedPathByDot(detachedPath));
   }
 
   /**
