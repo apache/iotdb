@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
@@ -96,7 +97,7 @@ public class PublishHandler extends AbstractInterceptHandler {
             boolean status = false;
             try {
                 status = executeNonQuery(plan);
-            } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e ) {
+            } catch (QueryProcessException | StorageEngineException | MetadataException e ) {
                 LOG.warn(
                     "meet error when inserting device {}, measurements {}, at time {}, because ",
                     event.getDevice(), event.getMeasurements(), event.getTimestamp(), e);
@@ -107,7 +108,7 @@ public class PublishHandler extends AbstractInterceptHandler {
     }
 
     private boolean executeNonQuery(PhysicalPlan plan)
-        throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+        throws QueryProcessException, MetadataException, StorageEngineException {
         if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
             throw new QueryProcessException(
                     "Current system mode is read-only, does not support non-query operation");

@@ -183,7 +183,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public boolean processNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
@@ -295,18 +295,18 @@ public class PlanExecutor implements IPlanExecutor {
     IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
   }
 
-  private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
+  private void operateFlush(FlushPlan plan) throws MetadataException {
     if (plan.getPaths() == null) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     } else {
       if (plan.isSeq() == null) {
         for (Path storageGroup : plan.getPaths()) {
-          StorageEngine.getInstance().asyncCloseProcessor(storageGroup.toString(), true);
-          StorageEngine.getInstance().asyncCloseProcessor(storageGroup.toString(), false);
+          StorageEngine.getInstance().asyncCloseProcessor(mManager.getStorageGroupMNode(storageGroup.getDetachedPath()), true);
+          StorageEngine.getInstance().asyncCloseProcessor(mManager.getStorageGroupMNode(storageGroup.getDetachedPath()), false);
         }
       } else {
         for (Path storageGroup : plan.getPaths()) {
-          StorageEngine.getInstance().asyncCloseProcessor(storageGroup.toString(), plan.isSeq());
+          StorageEngine.getInstance().asyncCloseProcessor(mManager.getStorageGroupMNode(storageGroup.getDetachedPath()), plan.isSeq());
         }
       }
     }
@@ -1063,7 +1063,7 @@ public class PlanExecutor implements IPlanExecutor {
    * @param pathList deleted paths
    */
   protected void deleteDataOfTimeSeries(List<Path> pathList)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, MetadataException, StorageEngineException {
     for (Path p : pathList) {
       DeletePlan deletePlan = new DeletePlan();
       deletePlan.addPath(p);

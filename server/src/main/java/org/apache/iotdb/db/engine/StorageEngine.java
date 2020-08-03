@@ -373,11 +373,11 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void asyncCloseProcessor(String storageGroupName, boolean isSeq)
+  public void asyncCloseProcessor(StorageGroupMNode storageGroupMNode, boolean isSeq)
       throws StorageGroupNotSetException {
-    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+    StorageGroupProcessor processor = processorMap.get(storageGroupMNode);
     if (processor != null) {
-      logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupName,
+      logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupMNode.getFullPath(),
           isSeq);
       processor.writeLock();
       try {
@@ -398,7 +398,7 @@ public class StorageEngine implements IService {
         processor.writeUnlock();
       }
     } else {
-      throw new StorageGroupNotSetException(storageGroupName);
+      throw new StorageGroupNotSetException(storageGroupMNode.getFullPath());
     }
   }
 
