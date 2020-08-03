@@ -539,9 +539,9 @@ public class StorageEngine implements IService {
     storageGroupProcessor.setDataTTL(dataTTL);
   }
 
-  public void deleteStorageGroup(String storageGroupName) {
-    deleteAllDataFilesInOneStorageGroup(storageGroupName);
-    StorageGroupProcessor processor = processorMap.remove(storageGroupName);
+  public void deleteStorageGroup(String storageGroup) {
+    deleteAllDataFilesInOneStorageGroup(storageGroup);
+    StorageGroupProcessor processor = processorMap.remove(storageGroup);
     if (processor != null) {
       processor.deleteFolder(systemDir);
     }
@@ -560,8 +560,8 @@ public class StorageEngine implements IService {
       throw new StorageEngineException("Can not get the corresponding storage group.");
     }
     String device = deviceMap.keySet().iterator().next();
-    List<String> storageGroupNameNodes = IoTDB.metaManager.getDetachedStorageGroup(MetaUtils.splitPathToDetachedPath(device));
-    getProcessor(storageGroupNameNodes).loadNewTsFile(newTsFileResource);
+    List<String> detachedStorageGroup = IoTDB.metaManager.getDetachedStorageGroup(MetaUtils.splitPathToDetachedPath(device));
+    getProcessor(detachedStorageGroup).loadNewTsFile(newTsFileResource);
   }
 
   public boolean deleteTsfileForSync(File deletedTsfile)
