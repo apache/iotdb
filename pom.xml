@@ -86,7 +86,6 @@
         <module>jdbc</module>
         <module>session</module>
         <module>cli</module>
-        <module>client-cpp</module>
         <module>server</module>
         <module>example</module>
         <module>grafana</module>
@@ -1226,6 +1225,16 @@
             <id>site</id>
             <modules>
                 <module>site</module>
+            </modules>
+        </profile>
+        <profile>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <id>cpp-client</id>
+            <modules>
+                <module>compile-tools</module>
+                <module>client-cpp</module>
             </modules>
         </profile>
     </profiles>

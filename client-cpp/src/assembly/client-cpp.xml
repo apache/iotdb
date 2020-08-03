@@ -39,7 +39,7 @@
             <outputDirectory>include</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>tools/thrift/target/${thrift.version}/lib/cpp/src</directory>
+            <directory>tools/thrift/target/thrift-${thrift.version}/lib/cpp/src</directory>
             <includes>
                 <include>**/*.h</include>
                 <include>**/*.tcc</include>

@@ -30,7 +30,7 @@
     <groupId>org.apache.iotdb</groupId>
     <artifactId>client-cpp</artifactId>
     <version>0.11.0-SNAPSHOT</version>
-    <name>client4cpp</name>
+    <name>Client for cpp</name>
     <description>C++ client</description>
     <packaging>pom</packaging>
     <properties>
@@ -40,9 +40,6 @@
         <cmake-version>3.17.3</cmake-version>
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
     </properties>
-    <modules>
-        <module>tools</module>
-    </modules>
     <profiles>
         <profile>
             <id>os-unix</id>
@@ -55,8 +52,8 @@
                 <os.suffix>linux</os.suffix>
                 <os.classifier>linux-x86_64</os.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <cmake.root.dir>${project.basedir}/tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
-                <thrift.exec.absolute.path>${project.basedir}/tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
+                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
+                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
             </properties>
         </profile>
         <profile>
@@ -70,8 +67,8 @@
                 <os.suffix>mac</os.suffix>
                 <os.classifier>mac-x86_64</os.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
-                <cmake.root.dir>${project.basedir}/tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
-                <thrift.exec.absolute.path>${project.basedir}/tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
+                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
+                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
             </properties>
         </profile>
         <profile>
@@ -84,11 +81,11 @@
             <properties>
                 <os.suffix>win</os.suffix>
                 <os.classifier>windows-x86_64</os.classifier>
-                <!--<cmake.generator>MinGW Makefiles</cmake.generator>-->
+                <!-- TODO: put this setting into a -D property, let users choose which generator to use. -->
                 <cmake.generator>Visual Studio 16 2019</cmake.generator>
-                <cmake.root.dir>${project.basedir}/tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
+                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
                 <cmake.build.type>Release</cmake.build.type>
-                <thrift.exec.absolute.path>${project.basedir}/tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
+                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
             </properties>
         </profile>
         <profile>
@@ -183,8 +180,8 @@
                                 <configuration>
                                     <classifier>${os.classifier}</classifier>
                                     <!--
-                                      We need to use a newer version of cmake, so disable downloading
-                                      and tell the plugin where to find that version.
+                                      We need to use a newer version of cmake, so disable downloading. If we do not
+                                      set this to false, a cmake of version 3.7.2 will be downloaded.
                                     -->
                                     <downloadBinaries>false</downloadBinaries>
                                     <!--
@@ -197,9 +194,6 @@
                                       (This directory is then used in the compile step to actually perform the build)
                                     -->
                                     <targetPath>${project.build.directory}/build</targetPath>
-                                    <!--
-                                      Name of the generator the compile step will be executing.
-                                    -->
                                     <generator>${cmake.generator}</generator>
                                     <options>
                                         <option>-DWITH_PROXIES:BOOL=${option.with-proxies}</option>
@@ -227,6 +221,7 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!--Package all C++ header files and client library-->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>

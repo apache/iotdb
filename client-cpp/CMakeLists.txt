@@ -19,11 +19,12 @@
 PROJECT(iotdb_session)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
 
+# this file is supposed to be copied to ./target/build
 SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -Wall")
-SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../tools")
+SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../../compile-tools")
 IF(MSVC)
     SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/Release/thriftmd.lib")
     INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include/boost-1_72)
