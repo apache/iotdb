@@ -517,6 +517,8 @@ public class IoTDBAuthorizationIT {
     adminStmt.execute("GRANT USER tempuser PRIVILEGES 'READ_TIMESERIES' on root.a");
     userStmt.execute("SELECT * from root.a");
     userStmt.getResultSet().close();
+    userStmt.execute("SELECT LAST b from root.a");
+    userStmt.getResultSet().close();
 
     // revoke privilege to query
     adminStmt.execute("REVOKE USER tempuser PRIVILEGES 'READ_TIMESERIES' on root.a");
