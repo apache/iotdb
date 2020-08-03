@@ -852,7 +852,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
     throws MetadataException {
-    return mManager.getSeriesSchemasAndReadLockDevice(insertPlan.getDeviceId(), insertPlan.getDeviceNodes(), insertPlan.getMeasurements(), insertPlan);
+    return mManager.getSeriesSchemasAndReadLockDevice(insertPlan.getDeviceId(), insertPlan.getDetachedDevice(), insertPlan.getMeasurements(), insertPlan);
   }
 
   @Override
@@ -868,7 +868,7 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockDeviceReadLock(insertRowPlan.getDeviceId(), insertRowPlan.getDeviceNodes());
+      mManager.unlockDeviceReadLock(insertRowPlan.getDeviceId(), insertRowPlan.getDetachedDevice());
     }
   }
 
@@ -885,7 +885,7 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockDeviceReadLock(insertTabletPlan.getDeviceId(), insertTabletPlan.getDeviceNodes());
+      mManager.unlockDeviceReadLock(insertTabletPlan.getDeviceId(), insertTabletPlan.getDetachedDevice());
     }
   }
 

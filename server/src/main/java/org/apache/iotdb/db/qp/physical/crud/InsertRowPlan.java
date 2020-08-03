@@ -116,7 +116,7 @@ public class InsertRowPlan extends InsertPlan {
       TSDataType[] dataTypes, Object[] insertValues) {
     super(Operator.OperatorType.INSERT);
     this.time = insertTime;
-    this.deviceNodes = deviceNodes;
+    this.detachedDevice = deviceNodes;
     this.deviceId = deviceId;
     this.measurements = measurementList;
     this.dataTypes = dataTypes;
@@ -127,7 +127,7 @@ public class InsertRowPlan extends InsertPlan {
       String[] insertValues) {
     super(Operator.OperatorType.INSERT);
     this.time = insertTime;
-    this.deviceNodes = deviceNodes;
+    this.detachedDevice = deviceNodes;
     this.deviceId = deviceId;
     this.measurements = measurementList;
     this.dataTypes = new TSDataType[measurements.length];

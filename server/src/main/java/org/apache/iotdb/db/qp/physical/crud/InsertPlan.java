@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 abstract public class InsertPlan extends PhysicalPlan {
 
   protected String deviceId;
-  protected List<String> deviceNodes;
+  protected List<String> detachedDevice;
   protected String[] measurements;
   protected TSDataType[] dataTypes;
   protected MeasurementSchema[] schemas;
@@ -90,12 +90,12 @@ abstract public class InsertPlan extends PhysicalPlan {
     return deviceMNode;
   }
 
-  public List<String> getDeviceNodes() {
-    return deviceNodes;
+  public List<String> getDetachedDevice() {
+    return detachedDevice;
   }
 
-  public void setDeviceNodes(List<String> deviceNodes) {
-    this.deviceNodes = deviceNodes;
+  public void setDetachedDevice(List<String> detachedDevice) {
+    this.detachedDevice = detachedDevice;
   }
 
   public void setDeviceMNode(MNode deviceMNode) {

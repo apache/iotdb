@@ -1127,7 +1127,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       try {
         plan.setDeviceId(req.getDeviceIds().get(i));
         try {
-          plan.setDeviceNodes(MetaUtils.splitPathToDetachedPath(req.getDeviceIds().get(i)));
+          plan.setDetachedDevice(MetaUtils.splitPathToDetachedPath(req.getDeviceIds().get(i)));
         } catch (IllegalPathException e) {
           return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
         }
@@ -1170,7 +1170,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       try {
         plan.setDeviceId(req.getDeviceIds().get(i));
         try {
-          plan.setDeviceNodes(MetaUtils.splitPathToDetachedPath(req.getDeviceIds().get(i)));
+          plan.setDetachedDevice(MetaUtils.splitPathToDetachedPath(req.getDeviceIds().get(i)));
         } catch (IllegalPathException e) {
           return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
         }
@@ -1245,7 +1245,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDeviceId(req.getDeviceId());
       try {
-        plan.setDeviceNodes(MetaUtils.splitPathToDetachedPath(req.getDeviceId()));
+        plan.setDetachedDevice(MetaUtils.splitPathToDetachedPath(req.getDeviceId()));
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
       }
@@ -1281,7 +1281,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDeviceId(req.getDeviceId());
       try {
-        plan.setDeviceNodes(MetaUtils.splitPathToDetachedPath(req.getDeviceId()));
+        plan.setDetachedDevice(MetaUtils.splitPathToDetachedPath(req.getDeviceId()));
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
       }
@@ -1340,7 +1340,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceId, req.measurements);
       try {
-        insertTabletPlan.setDeviceNodes(MetaUtils.splitPathToDetachedPath(req.deviceId));
+        insertTabletPlan.setDetachedDevice(MetaUtils.splitPathToDetachedPath(req.deviceId));
       } catch (IllegalPathException e) {
         return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
       }
@@ -1380,7 +1380,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceIds.get(i),
             req.measurementsList.get(i));
         try {
-          insertTabletPlan.setDeviceNodes(MetaUtils.splitPathToDetachedPath(req.deviceIds.get(i)));
+          insertTabletPlan.setDetachedDevice(MetaUtils.splitPathToDetachedPath(req.deviceIds.get(i)));
         } catch (IllegalPathException e) {
           return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, e.getMessage());
         }

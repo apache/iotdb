@@ -88,7 +88,7 @@ public class DeletionQueryTest {
   private void insertToStorageEngine(TSRecord record) throws StorageEngineException {
     InsertRowPlan insertRowPlan = new InsertRowPlan(record);
     insertRowPlan.setDeviceMNode(deviceMNode);
-    insertRowPlan.setDeviceNodes(processorNameList);
+    insertRowPlan.setDetachedDevice(processorNameList);
     StorageEngine.getInstance().insert(insertRowPlan);
   }
 

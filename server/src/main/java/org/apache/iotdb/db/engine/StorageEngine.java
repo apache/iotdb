@@ -329,7 +329,7 @@ public class StorageEngine implements IService {
    */
   public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException {
 
-    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceNodes());
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDetachedDevice());
 
     // TODO monitor: update statistics
     try {
@@ -346,7 +346,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException, BatchInsertionException {
     StorageGroupProcessor storageGroupProcessor;
     try {
-      storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceNodes());
+      storageGroupProcessor = getProcessor(insertTabletPlan.getDetachedDevice());
     } catch (StorageEngineException e) {
       throw new StorageEngineException(String.format("Get StorageGroupProcessor of device %s "
           + "failed", insertTabletPlan.getDeviceId()), e);
