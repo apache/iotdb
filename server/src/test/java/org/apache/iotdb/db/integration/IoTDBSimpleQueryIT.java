@@ -317,4 +317,24 @@ public class IoTDBSimpleQueryIT {
     }
   }
 
+  @Test
+  public void testTimeseriesMetadataCache() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      for (int i = 0; i < 10000; i++) {
+        statement.execute("CREATE TIMESERIES root.sg1.d0.s"+ i + " WITH DATATYPE=INT32,ENCODING=PLAIN");
+      }
+      for (int i = 1; i < 10000; i++) {
+        statement.execute("INSERT INTO root.sg1.d0(timestamp, s" + i + ") VALUES (1000, 1)");
+      }
+      statement.execute("flush");
+      statement.executeQuery("select s0 from root.sg1.d0");
+    } catch (SQLException e) {
+      fail();
+    }
+  }
 }
