@@ -203,35 +203,35 @@ public class MTree implements Serializable {
   /**
    * Set storage group. Make sure check seriesPath before setting storage group
    *
-   * @param nodeNames nodeNames
+   * @param detachedPath nodeNames
    */
-  MNode setStorageGroup(List<String> nodeNames) throws MetadataException {
+  MNode setStorageGroup(List<String> detachedPath) throws MetadataException {
     MNode cur = root;
     StorageGroupMNode storageGroupMNode = null;
-    if (nodeNames.size() <= 1 || !nodeNames.get(0).equals(root.getName())) {
-      throw new IllegalPathException(MetaUtils.concatDetachedPathByDot(nodeNames));
+    if (detachedPath.size() <= 1 || !detachedPath.get(0).equals(root.getName())) {
+      throw new IllegalPathException(MetaUtils.concatDetachedPathByDot(detachedPath));
     }
     int i = 1;
     // e.g., path = root.a.b.sg, create internal detachedPath for a, b
-    while (i < nodeNames.size() - 1) {
-      MNode temp = cur.getChild(nodeNames.get(i));
+    while (i < detachedPath.size() - 1) {
+      MNode temp = cur.getChild(detachedPath.get(i));
       if (temp == null) {
-        cur.addChild(nodeNames.get(i), new MNode(cur, nodeNames.get(i)));
+        cur.addChild(detachedPath.get(i), new MNode(cur, detachedPath.get(i)));
       } else if (temp instanceof StorageGroupMNode) {
         // before set storage group, check whether the exists or not
         throw new StorageGroupAlreadySetException(temp.getFullPath());
       }
-      cur = cur.getChild(nodeNames.get(i));
+      cur = cur.getChild(detachedPath.get(i));
       i++;
     }
-    if (cur.hasChild(nodeNames.get(i))) {
+    if (cur.hasChild(detachedPath.get(i))) {
       // node b has child sg
-      throw new StorageGroupAlreadySetException(MetaUtils.concatDetachedPathByDot(nodeNames));
+      throw new StorageGroupAlreadySetException(MetaUtils.concatDetachedPathByDot(detachedPath));
     } else {
       storageGroupMNode =
           new StorageGroupMNode(
-              cur, nodeNames.get(i), IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
-      cur.addChild(nodeNames.get(i), storageGroupMNode);
+              cur, detachedPath.get(i), IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+      cur.addChild(detachedPath.get(i), storageGroupMNode);
     }
     return storageGroupMNode;
   }

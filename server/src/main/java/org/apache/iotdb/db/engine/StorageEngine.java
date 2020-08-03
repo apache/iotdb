@@ -55,6 +55,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.MetaUtils;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -86,7 +87,7 @@ public class StorageEngine implements IService {
   /**
    * storage group name -> storage group processor
    */
-  private final ConcurrentHashMap<String, StorageGroupProcessor> processorMap = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<MNode, StorageGroupProcessor> processorMap = new ConcurrentHashMap<>();
 
   private static final ExecutorService recoveryThreadPool = IoTDBThreadPoolFactory
       .newFixedThreadPool(Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
@@ -173,7 +174,7 @@ public class StorageEngine implements IService {
           StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
               storageGroup.getFullPath(), fileFlushPolicy);
           processor.setDataTTL(storageGroup.getDataTTL());
-          processorMap.put(storageGroup.getFullPath(), processor);
+          processorMap.put(storageGroup, processor);
           logger.info("Storage Group Processor {} is recovered successfully",
               storageGroup.getFullPath());
         } catch (Exception e) {
@@ -281,34 +282,29 @@ public class StorageEngine implements IService {
     return ServiceType.STORAGE_ENGINE_SERVICE;
   }
 
-  public StorageGroupProcessor getProcessor(List<String> nodes) throws StorageEngineException {
-    List<String> storageGroupNodes;
-    String storageGroupName;
+  public StorageGroupProcessor getProcessor(List<String> detachedPath) throws StorageEngineException {
+    StorageGroupMNode storageGroupNode;
     try {
-      storageGroupNodes = IoTDB.metaManager.getDetachedStorageGroup(nodes);
-      storageGroupName = MetaUtils.concatDetachedPathByDot(storageGroupNodes);
+      storageGroupNode = IoTDB.metaManager.getStorageGroupMNode(detachedPath);
       StorageGroupProcessor processor;
-      processor = processorMap.get(storageGroupName);
+      processor = processorMap.get(storageGroupNode);
       if (processor == null) {
         // if finish recover
         if (isAllSgReady.get()) {
-          storageGroupName = storageGroupName.intern();
-          synchronized (storageGroupName) {
-            processor = processorMap.get(storageGroupName);
+          synchronized (storageGroupNode) {
+            processor = processorMap.get(storageGroupNode);
             if (processor == null) {
               logger.info("construct a processor instance, the storage group is {}, Thread is {}",
-                  storageGroupName, Thread.currentThread().getId());
-              processor = new StorageGroupProcessor(systemDir, storageGroupName, fileFlushPolicy);
-              StorageGroupMNode storageGroup = IoTDB.metaManager
-                  .getStorageGroupMNode(storageGroupNodes);
-              processor.setDataTTL(storageGroup.getDataTTL());
-              processorMap.put(storageGroupName, processor);
+                  storageGroupNode.getFullPath(), Thread.currentThread().getId());
+              processor = new StorageGroupProcessor(systemDir, storageGroupNode.getFullPath(), fileFlushPolicy);
+              processor.setDataTTL((storageGroupNode).getDataTTL());
+              processorMap.put(storageGroupNode, processor);
             }
           }
         } else {
           // not finished recover, refuse the request
           throw new StorageEngineException(
-              "the sg " + storageGroupName + " may not ready now, please wait and retry later");
+              "the sg " + storageGroupNode.getFullPath() + " may not ready now, please wait and retry later");
         }
       }
       return processor;
@@ -599,7 +595,7 @@ public class StorageEngine implements IService {
    */
   public Map<String, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
     Map<String, Map<Long, List<TsFileResource>>> ret = new HashMap<>();
-    for (Entry<String, StorageGroupProcessor> entry : processorMap.entrySet()) {
+    for (Entry<MNode, StorageGroupProcessor> entry : processorMap.entrySet()) {
       List<TsFileResource> allResources = entry.getValue().getSequenceFileTreeSet();
       allResources.addAll(entry.getValue().getUnSequenceFileList());
       for (TsFileResource sequenceFile : allResources) {
@@ -607,7 +603,7 @@ public class StorageEngine implements IService {
           continue;
         }
         long partitionNum = sequenceFile.getTimePartition();
-        Map<Long, List<TsFileResource>> storageGroupFiles = ret.computeIfAbsent(entry.getKey()
+        Map<Long, List<TsFileResource>> storageGroupFiles = ret.computeIfAbsent(entry.getKey().getFullPath()
             , n -> new HashMap<>());
         storageGroupFiles.computeIfAbsent(partitionNum, n -> new ArrayList<>()).add(sequenceFile);
       }
