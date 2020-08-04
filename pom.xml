@@ -1231,7 +1231,7 @@
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
-            <id>cpp-client</id>
+            <id>client-cpp</id>
             <modules>
                 <module>compile-tools</module>
                 <module>client-cpp</module>

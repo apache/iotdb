@@ -18,19 +18,22 @@
     under the License.
 
 -->
+# IoTDB C++ Client
 
-Requirement:
-Maven 3.5+
+## Requirement
+* Java 8+
+* Maven 3.5+
+* Flex
+* Bison 2.7+
+* OpenSSL 1.0+
 
-#### Mac
+### Mac
 
-Make sure `Homebrew` ist installed in order to update `Bison` to a newer version (the version 2.3 installed per default is too old)
+Bison 2.3 is preinstalled on OSX, but this version is too low. When building Thrift with Bison 2.3, the following error would pop out:
 
-```
-    /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-```
+```invalid directive: '%code'```
 
-Then update `Bison`:
+For such case, please update `Bison`:
 
 ```
     brew install bison
@@ -38,11 +41,29 @@ Then update `Bison`:
     echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile
 ```
 
-#### Windows
+Make sure the Openssl libraries has been install on your Mac.
+The default Openssl include file search path is "/usr/local/opt/openssl/include".
+If Openssl header files can not be found when building Thrift, please add option 
+```-Dopenssl.include.dir=""``` to specify the correct directory on your Mac.
 
-Some tools need to be installed before being able to build on Windows:
+### Windows
 
-* WinBuilds (for `with-cpp`, `with-proxies` profiles)
-* Bison (for `with-cpp` profiles)
-* Flex (for `with-cpp` profiles)
-* OpenSSL
+#### Flex and Bison
+For Flex and Bison, they could be downloaded from SourceForge: https://sourceforge.net/projects/winflexbison/
+
+After downloaded, please rename the executables to flex.exe and bison.exe and add them to "PATH" environment variables.
+
+
+#### Cmake generator on Windows
+
+There is a long list of supported Cmake generators on Windows environment. 
+You can use "cmake --help" to see all the generator names and decide which one to use in terms of the build environment.
+
+```
+Visual Studio 16 2019
+Visual Studio 15 2017
+Visual Studio 14 2015
+MinGW Makefiles
+...
+```
+When building client-cpp project, use -Dcmake.generator="" option to specify a Cmake generator.
