@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -35,7 +36,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void write(long insertTime, Object objectValue) {
+  public void write(long insertTime, Object objectValue) throws WriteProcessException {
     switch (schema.getType()) {
       case BOOLEAN:
         putBoolean(insertTime, (boolean) objectValue);
@@ -61,7 +62,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void write(long[] times, Object valueList, TSDataType dataType, int start, int end) {
+  public void write(long[] times, Object valueList, TSDataType dataType, int start, int end) throws WriteProcessException {
     switch (dataType) {
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) valueList;
@@ -98,62 +99,62 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void putLong(long t, long v) {
+  public void putLong(long t, long v) throws WriteProcessException {
     list.putLong(t, v);
   }
 
   @Override
-  public void putInt(long t, int v) {
+  public void putInt(long t, int v) throws WriteProcessException {
     list.putInt(t, v);
   }
 
   @Override
-  public void putFloat(long t, float v) {
+  public void putFloat(long t, float v) throws WriteProcessException {
     list.putFloat(t, v);
   }
 
   @Override
-  public void putDouble(long t, double v) {
+  public void putDouble(long t, double v) throws WriteProcessException {
     list.putDouble(t, v);
   }
 
   @Override
-  public void putBinary(long t, Binary v) {
+  public void putBinary(long t, Binary v) throws WriteProcessException {
     list.putBinary(t, v);
   }
 
   @Override
-  public void putBoolean(long t, boolean v) {
+  public void putBoolean(long t, boolean v) throws WriteProcessException {
     list.putBoolean(t, v);
   }
 
   @Override
-  public void putLongs(long[] t, long[] v, int start, int end) {
+  public void putLongs(long[] t, long[] v, int start, int end) throws WriteProcessException {
     list.putLongs(t, v, start, end);
   }
 
   @Override
-  public void putInts(long[] t, int[] v, int start, int end) {
+  public void putInts(long[] t, int[] v, int start, int end) throws WriteProcessException {
     list.putInts(t, v, start, end);
   }
 
   @Override
-  public void putFloats(long[] t, float[] v, int start, int end) {
+  public void putFloats(long[] t, float[] v, int start, int end) throws WriteProcessException {
     list.putFloats(t, v, start, end);
   }
 
   @Override
-  public void putDoubles(long[] t, double[] v, int start, int end) {
+  public void putDoubles(long[] t, double[] v, int start, int end) throws WriteProcessException {
     list.putDoubles(t, v, start, end);
   }
 
   @Override
-  public void putBinaries(long[] t, Binary[] v, int start, int end) {
+  public void putBinaries(long[] t, Binary[] v, int start, int end) throws WriteProcessException {
     list.putBinaries(t, v, start, end);
   }
 
   @Override
-  public void putBooleans(long[] t, boolean[] v, int start, int end) {
+  public void putBooleans(long[] t, boolean[] v, int start, int end) throws WriteProcessException {
     list.putBooleans(t, v, start, end);
   }
 

@@ -22,6 +22,8 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -43,7 +45,7 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  public void putBinary(long timestamp, Binary value) {
+  public void putBinary(long timestamp, Binary value) throws WriteProcessException {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
@@ -157,9 +159,13 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() {
-    values.add((Binary[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.TEXT));
+  protected void expandValues() throws WriteProcessException {
+    Binary[] newArray = (Binary[]) PrimitiveArrayManager
+        .getInstance().getDataListByType(TSDataType.TEXT);
+    if (newArray == null) {
+      throw new WriteProcessException("No available array.");
+    }
+    values.add(newArray);
   }
 
   @Override
@@ -191,7 +197,7 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  public void putBinaries(long[] time, Binary[] value, int start, int end) {
+  public void putBinaries(long[] time, Binary[] value, int start, int end) throws WriteProcessException {
     checkExpansion();
     int idx = start;
 

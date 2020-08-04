@@ -22,6 +22,8 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -42,7 +44,7 @@ public class IntTVList extends TVList {
   }
 
   @Override
-  public void putInt(long timestamp, int value) {
+  public void putInt(long timestamp, int value) throws WriteProcessException {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
@@ -156,9 +158,13 @@ public class IntTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() {
-    values.add((int[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.INT32));
+  protected void expandValues() throws WriteProcessException {
+    int[] newArray = (int[]) PrimitiveArrayManager
+        .getInstance().getDataListByType(TSDataType.INT32);
+    if (newArray == null) {
+      throw new WriteProcessException("No available array.");
+    }
+    values.add(newArray);
   }
 
   @Override
@@ -191,7 +197,7 @@ public class IntTVList extends TVList {
   }
 
   @Override
-  public void putInts(long[] time, int[] value, int start, int end) {
+  public void putInts(long[] time, int[] value, int start, int end) throws WriteProcessException {
     checkExpansion();
     int idx = start;
 

@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -51,7 +52,7 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void memSeriesSortIteratorTest() throws IOException {
+  public void memSeriesSortIteratorTest() throws IOException, WriteProcessException {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series = new WritableMemChunk(new MeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
     int count = 1000;
@@ -68,7 +69,7 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void simpleTest() throws IOException, QueryProcessException {
+  public void simpleTest() throws IOException, QueryProcessException, WriteProcessException {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";
@@ -98,7 +99,7 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void testCheckArrayInMemTable() throws QueryProcessException, IOException {
+  public void testCheckArrayInMemTable() throws QueryProcessException, IOException, WriteProcessException {
     IMemTable memTable = new PrimitiveMemTable();
     String deviceId = "root.sg.device99";
     String sensorId = "sensor4";
@@ -119,7 +120,7 @@ public class PrimitiveMemTableTest {
   }
 
   private void write(IMemTable memTable, String deviceId, String sensorId, TSDataType dataType,
-      TSEncoding encoding, int size) throws IOException, QueryProcessException {
+      TSEncoding encoding, int size) throws IOException, QueryProcessException, WriteProcessException {
     TimeValuePair[] ret = genTimeValuePair(size, dataType);
 
     for (TimeValuePair aRet : ret) {
@@ -157,7 +158,7 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void testFloatType() throws IOException, QueryProcessException {
+  public void testFloatType() throws IOException, QueryProcessException, WriteProcessException {
     IMemTable memTable = new PrimitiveMemTable();
     String deviceId = "d1";
     int size = 100;
@@ -165,7 +166,7 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void testAllType() throws IOException, QueryProcessException {
+  public void testAllType() throws IOException, QueryProcessException, WriteProcessException {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";

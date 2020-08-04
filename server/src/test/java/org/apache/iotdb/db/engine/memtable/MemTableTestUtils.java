@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -40,7 +41,7 @@ public class MemTableTestUtils {
   }
 
   public static void produceData(IMemTable iMemTable, long startTime, long endTime, String deviceId,
-      String measurementId, TSDataType dataType) {
+      String measurementId, TSDataType dataType) throws WriteProcessException {
     if (startTime > endTime) {
       throw new RuntimeException(String.format("start time %d > end time %d", startTime, endTime));
     }

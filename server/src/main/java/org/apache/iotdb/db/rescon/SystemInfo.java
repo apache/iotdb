@@ -26,10 +26,13 @@ import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupInfo;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SystemInfo {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final Logger logger = LoggerFactory.getLogger(SystemInfo.class);
 
   private long totalSgInfoMemCost;
   private long arrayPoolMemCost;
@@ -60,9 +63,11 @@ public class SystemInfo {
         < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
       arrayPoolMemCost += dataType.getDataTypeSize() * size;
       // invoke flush()
+      logger.debug("OOB array is too large, call for flushing.");
       flush();
       return true;
     } else {
+      logger.debug("OOB array is too large, reject and call for flushing.");
       rejected = true;
       flush();
       return false;
@@ -78,15 +83,19 @@ public class SystemInfo {
   public synchronized void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo, 
       long delta) {
     this.totalSgInfoMemCost += delta;
+    reportedSgMemCostMap.put(storageGroupInfo,
+        reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L) + delta);
     long addReportThreshold = (delta / config.getStorageGroupMemBlockSize() + 1)
         * config.getStorageGroupMemBlockSize();
     storageGroupInfo.addStorageGroupReportThreshold(addReportThreshold);
     if (this.arrayPoolMemCost + this.totalSgInfoMemCost
         >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
+      logger.debug("Storage groups are too large, call for flushing.");
       flush();
     } 
     if (this.arrayPoolMemCost + this.totalSgInfoMemCost
         >= config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
+      logger.debug("Storage groups are too large, reject.");
       rejected = true;
     }
   }
@@ -109,6 +118,10 @@ public class SystemInfo {
    */
   public synchronized void reportReleaseOOBArray(TSDataType dataType, int size) {
     this.arrayPoolMemCost -= dataType.getDataTypeSize() * size;
+    if (this.arrayPoolMemCost + this.totalSgInfoMemCost 
+        < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
+      this.rejected = false;
+    }
   }
 
   /**
@@ -134,6 +147,8 @@ public class SystemInfo {
    */
   public void flush() {
     if (FlushManager.getInstance().getTsFileProcessorQueueSize() >= 1) {
+      logger.info("TsFileProcessorQueueSize is larger than 1, reject insertion.");
+      rejected = true;
       return;
     }
 
@@ -141,9 +156,7 @@ public class SystemInfo {
     StorageGroupInfo storageGroupInfo = reportedSgMemCostMap.firstKey();
     TsFileProcessor flushedProcessor = storageGroupInfo.getLargestTsFileProcessor();
 
-    if (flushedProcessor != null) {
-      flushedProcessor.asyncFlush();
-    }
+    flushedProcessor.asyncFlush();
   }
 
   public boolean isRejected() {

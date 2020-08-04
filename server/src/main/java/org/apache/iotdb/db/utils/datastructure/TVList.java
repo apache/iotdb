@@ -24,6 +24,8 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -74,51 +76,51 @@ public abstract class TVList {
     return timestamps.get(arrayIndex)[elementIndex];
   }
 
-  public void putLong(long time, long value) {
+  public void putLong(long time, long value) throws WriteProcessException {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putInt(long time, int value) {
+  public void putInt(long time, int value) throws WriteProcessException {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putFloat(long time, float value) {
+  public void putFloat(long time, float value) throws WriteProcessException {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putDouble(long time, double value) {
+  public void putDouble(long time, double value) throws WriteProcessException {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putBinary(long time, Binary value) {
+  public void putBinary(long time, Binary value) throws WriteProcessException {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putBoolean(long time, boolean value) {
+  public void putBoolean(long time, boolean value) throws WriteProcessException {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putLongs(long[] time, long[] value, int start, int end) {
+  public void putLongs(long[] time, long[] value, int start, int end) throws WriteProcessException {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putInts(long[] time, int[] value, int start, int end) {
+  public void putInts(long[] time, int[] value, int start, int end) throws WriteProcessException {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putFloats(long[] time, float[] value, int start, int end) {
+  public void putFloats(long[] time, float[] value, int start, int end) throws WriteProcessException {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putDoubles(long[] time, double[] value, int start, int end) {
+  public void putDoubles(long[] time, double[] value, int start, int end) throws WriteProcessException {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putBinaries(long[] time, Binary[] value, int start, int end) {
+  public void putBinaries(long[] time, Binary[] value, int start, int end) throws WriteProcessException {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putBooleans(long[] time, boolean[] value, int start, int end) {
+  public void putBooleans(long[] time, boolean[] value, int start, int end) throws WriteProcessException {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -164,7 +166,7 @@ public abstract class TVList {
 
   protected abstract void reverseRange(int lo, int hi);
 
-  protected abstract void expandValues();
+  protected abstract void expandValues() throws WriteProcessException;
 
   public abstract TVList clone();
 
@@ -248,11 +250,14 @@ public abstract class TVList {
 
   abstract void clearSortedValue();
 
-  protected void checkExpansion() {
+  protected void checkExpansion() throws WriteProcessException {
     if ((size % ARRAY_SIZE) == 0) {
       expandValues();
-      timestamps.add(
-          (long[]) PrimitiveArrayManager.getInstance().getDataListByType(TSDataType.INT64));
+      long[] newArray = (long[]) PrimitiveArrayManager.getInstance().getDataListByType(TSDataType.INT64);
+      if (newArray == null) {
+        throw new WriteProcessException("No available array.");
+      }
+      timestamps.add(newArray);
     }
   }
 

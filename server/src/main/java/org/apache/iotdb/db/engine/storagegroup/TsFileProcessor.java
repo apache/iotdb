@@ -223,6 +223,7 @@ public class TsFileProcessor {
     // If there are enough size of arrays in memtable, insert insertRowPlan to
     // the work memtable directly
     if (workMemTable.checkIfArrayIsEnough(insertRowPlan)) {
+      logger.debug("Array in work MemTable is enough, insert the plan.");
       workMemTable.insert(insertRowPlan);
   
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -246,6 +247,7 @@ public class TsFileProcessor {
     // from the array pool or get OOB array before inserting into the memtable
     else {
       try {
+        logger.debug("Array in work MemTable isn't enough, apply OOB array and insert the plan.");
         // it may throw an exception if apply OOB array but System refused
         workMemTable.insert(insertRowPlan);
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -272,6 +274,7 @@ public class TsFileProcessor {
           tsFileResource.updateEndTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
         }
       } catch (Exception e) {
+        e.printStackTrace();
         throw new WriteProcessException(e);
       }
     }
@@ -603,6 +606,8 @@ public class TsFileProcessor {
     }
     try {
       tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
+      logger.info("{}: {} add a signal memtable into flushing memtable list when sync flush",
+          storageGroupName, tsFileResource.getTsFile().getName());
       if (logger.isDebugEnabled() && tmpMemTable.isSignalMemTable()) {
         logger.debug("{}: {} add a signal memtable into flushing memtable list when sync flush",
             storageGroupName, tsFileResource.getTsFile().getName());

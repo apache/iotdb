@@ -43,9 +43,9 @@ public interface IMemTable {
   Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
 
   void write(String deviceId, String measurement, MeasurementSchema schema,
-      long insertTime, Object objectValue);
+      long insertTime, Object objectValue) throws WriteProcessException;
 
-  void write(InsertTabletPlan insertTabletPlan, int start, int end);
+  void write(InsertTabletPlan insertTabletPlan, int start, int end) throws WriteProcessException;
 
   /**
    * @return the number of points

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.utils.datastructure;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.junit.Assert;
@@ -30,7 +32,7 @@ public class LongTVListTest {
 
 
   @Test
-  public void testLongTVList1() {
+  public void testLongTVList1() throws WriteProcessException {
     LongTVList tvList = new LongTVList();
     for (long i = 0; i < 1000; i++) {
       tvList.putLong(i, i);
@@ -43,7 +45,7 @@ public class LongTVListTest {
   }
 
   @Test
-  public void testLongTVList2() {
+  public void testLongTVList2() throws WriteProcessException {
     LongTVList tvList = new LongTVList();
     for (long i = 1000; i >= 0; i--) {
       tvList.putLong(i, i);
@@ -56,7 +58,7 @@ public class LongTVListTest {
   }
 
   @Test
-  public void testLongTVList3() {
+  public void testLongTVList3() throws WriteProcessException {
     Random random = new Random();
     LongTVList tvList = new LongTVList();
     List<TimeValuePair> inputs = new ArrayList<>();
@@ -76,7 +78,7 @@ public class LongTVListTest {
 
 
   @Test
-  public void compareLongTVListSortTime() {
+  public void compareLongTVListSortTime() throws WriteProcessException {
     for (int j = 0; j < 100; j++) {
       LongTVList tvList = new LongTVList();
       for (long i = 0; i < 1000; i++) {

@@ -22,6 +22,8 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -42,7 +44,7 @@ public class BooleanTVList extends TVList {
   }
 
   @Override
-  public void putBoolean(long timestamp, boolean value) {
+  public void putBoolean(long timestamp, boolean value) throws WriteProcessException {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
@@ -156,9 +158,13 @@ public class BooleanTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() {
-    values.add((boolean[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.BOOLEAN));
+  protected void expandValues() throws WriteProcessException {
+    boolean[] newArray = (boolean[]) PrimitiveArrayManager
+        .getInstance().getDataListByType(TSDataType.BOOLEAN);
+    if (newArray == null) {
+      throw new WriteProcessException("No available array.");
+    }
+    values.add(newArray);
   }
 
   @Override
@@ -191,7 +197,7 @@ public class BooleanTVList extends TVList {
   }
 
   @Override
-  public void putBooleans(long[] time, boolean[] value, int start, int end) {
+  public void putBooleans(long[] time, boolean[] value, int start, int end) throws WriteProcessException {
     checkExpansion();
     int idx = start;
 
