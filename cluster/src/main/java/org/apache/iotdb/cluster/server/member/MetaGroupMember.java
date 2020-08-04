@@ -411,7 +411,8 @@ public class MetaGroupMember extends RaftMember {
     // initialize allNodes
     for (String seedUrl : seedUrls) {
       Node node = generateNode(seedUrl);
-      if (node != null && (!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode.getMetaPort())
+      if (node != null && (!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode
+          .getMetaPort())
           && !allNodes.contains(node)) {
         // do not add the local node since it is added in `setThisNode()`
         allNodes.add(node);
@@ -1162,6 +1163,7 @@ public class MetaGroupMember extends RaftMember {
     File partitionFile = new File(PARTITION_FILE_NAME);
     if (!partitionFile.exists()) {
       logger.info("No partition table file found");
+      startOnlyOneServer();
       return;
     }
     initIdNodeMap();
@@ -1188,6 +1190,23 @@ public class MetaGroupMember extends RaftMember {
       logger.info("Load {} nodes: {}", allNodes.size(), allNodes);
     } catch (IOException e) {
       logger.error("Cannot load the partition table", e);
+    }
+  }
+
+  private void startOnlyOneServer() {
+    if (allNodes.size() == 1) {
+      initIdNodeMap();
+      initPeerMap();
+      for (Node node : allNodes) {
+        idNodeMap.put(node.getNodeIdentifier(), node);
+      }
+      if (partitionTable == null) {
+        partitionTable = new SlotPartitionTable(allNodes, thisNode);
+        logger.info("Partition table is set up when start only one server");
+      }
+      router = new ClusterPlanRouter(partitionTable);
+      startSubServers();
+      logger.info("start only one server = {} success", allNodes);
     }
   }
 
@@ -1770,11 +1789,12 @@ public class MetaGroupMember extends RaftMember {
     List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
     for (String seriesPath : unregisteredSeriesList) {
       int index = seriesList.indexOf(seriesPath);
-      TSDataType dataType = (insertPlan.getDataTypes() != null && insertPlan.getDataTypes()[index] != null)
-          ? insertPlan.getDataTypes()[index]
-          : TypeInferenceUtils.getPredictedDataType(insertPlan instanceof InsertTabletPlan
-              ? Array.get(((InsertTabletPlan) insertPlan).getColumns()[index], 0)
-              : ((InsertRowPlan) insertPlan).getValues()[index], true);
+      TSDataType dataType =
+          (insertPlan.getDataTypes() != null && insertPlan.getDataTypes()[index] != null)
+              ? insertPlan.getDataTypes()[index]
+              : TypeInferenceUtils.getPredictedDataType(insertPlan instanceof InsertTabletPlan
+                  ? Array.get(((InsertTabletPlan) insertPlan).getColumns()[index], 0)
+                  : ((InsertRowPlan) insertPlan).getValues()[index], true);
       TSEncoding encoding = getDefaultEncoding(dataType);
       CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
       CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(new Path(seriesPath),
