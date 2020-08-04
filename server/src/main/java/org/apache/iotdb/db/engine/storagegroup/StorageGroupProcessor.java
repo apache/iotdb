@@ -42,7 +42,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
@@ -167,20 +166,10 @@ public class StorageGroupProcessor {
    */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
 
-  // includes sealed and unsealed sequence TsFiles
-  private TreeSet<TsFileResource> sequenceFileTreeSet = new TreeSet<>(
-      (o1, o2) -> {
-        int rangeCompare = Long.compare(Long.parseLong(o1.getTsFile().getParentFile().getName()),
-            Long.parseLong(o2.getTsFile().getParentFile().getName()));
-        return rangeCompare == 0 ? compareFileName(o1.getTsFile(), o2.getTsFile()) : rangeCompare;
-      });
-
   // upgrading sequence TsFile resource list
   private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
 
   private CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
-  // includes sealed and unsealed unSequence TsFiles
-  private List<TsFileResource> unSequenceFileList = new ArrayList<>();
 
   // upgrading unsequence TsFile resource list
   private List<TsFileResource> upgradeUnseqFileList = new LinkedList<>();
@@ -300,10 +289,6 @@ public class StorageGroupProcessor {
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
-      Map<String, List<List<TsFileResource>>> vmSeqFiles = getAllVms(
-          DirectoryManager.getInstance().getAllSequenceFileFolders());
-      Map<String, List<List<TsFileResource>>> vmUnseqFiles = getAllVms(
-          DirectoryManager.getInstance().getAllUnSequenceFileFolders());
 
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
@@ -312,10 +297,10 @@ public class StorageGroupProcessor {
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles = splitResourcesByPartition(
           tmpUnseqTsFiles);
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
-        recoverTsFiles(value, vmSeqFiles, true);
+        recoverTsFiles(value, true);
       }
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
-        recoverTsFiles(value, vmUnseqFiles, false);
+        recoverTsFiles(value, false);
       }
 
       for (TsFileResource resource : sequenceFileTreeSet) {
@@ -603,17 +588,14 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverTsFiles(List<TsFileResource> tsFiles,
-      Map<String, List<List<TsFileResource>>> vmFiles, boolean isSeq) {
+  private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
-      List<List<TsFileResource>> vmTsFileResources = vmFiles
-          .getOrDefault(tsFileResource.getTsFilePath(), new ArrayList<>());
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(
           storageGroupName + FILE_NAME_SEPARATOR,
           getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, true,
-          i == tsFiles.size() - 1, vmTsFileResources);
+          i == tsFiles.size() - 1);
 
       RestorableTsFileIOWriter writer;
       List<List<RestorableTsFileIOWriter>> vmWriters;
@@ -662,22 +644,6 @@ public class StorageGroupProcessor {
       } else {
         unSequenceFileList.add(tsFileResource);
       }
-    }
-  }
-
-  // ({systemTime}-{versionNum}-{mergeNum}.tsfile)
-  private int compareFileName(File o1, File o2) {
-    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "")
-        .split(FILE_NAME_SEPARATOR);
-    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "")
-        .split(FILE_NAME_SEPARATOR);
-    long ver1 = Long.parseLong(items1[0]);
-    long ver2 = Long.parseLong(items2[0]);
-    int cmp = Long.compare(ver1, ver2);
-    if (cmp == 0) {
-      return Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
-    } else {
-      return cmp;
     }
   }
 
@@ -1043,12 +1009,12 @@ public class StorageGroupProcessor {
     VersionController versionController = getVersionControllerByTimePartitionId(timePartitionId);
     if (sequence) {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
-          fsFactory.getFileWithParent(filePath), new ArrayList<>(),
+          fsFactory.getFileWithParent(filePath),
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::updateLatestFlushTimeCallback, true);
     } else {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
-          fsFactory.getFileWithParent(filePath), new ArrayList<>(),
+          fsFactory.getFileWithParent(filePath),
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::unsequenceFlushCallback, false);
     }

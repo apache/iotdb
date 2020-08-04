@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.writelog.recover;
 
 import static org.apache.iotdb.db.engine.flush.MemTableFlushTask.getFlushLogFile;
-import static org.apache.iotdb.db.engine.flush.VmLogger.isVMLoggerFileExist;
+import static org.apache.iotdb.db.engine.tsfilemanagement.utils.VmLogger.isVMLoggerFileExist;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.createNewVMFile;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 

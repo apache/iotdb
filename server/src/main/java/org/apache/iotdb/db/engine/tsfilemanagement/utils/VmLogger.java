@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.flush;
+package org.apache.iotdb.db.engine.tsfilemanagement.utils;
 
 import java.io.BufferedWriter;
 import java.io.File;

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.flush;
+package org.apache.iotdb.db.engine.tsfilemanagement.utils;
 
 import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 

@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.flush;
+package org.apache.iotdb.db.engine.tsfilemanagement.utils;
 
-import static org.apache.iotdb.db.engine.flush.VmLogger.MERGE_FINISHED;
-import static org.apache.iotdb.db.engine.flush.VmLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.flush.VmLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.tsfilemanagement.utils.VmLogger.MERGE_FINISHED;
+import static org.apache.iotdb.db.engine.tsfilemanagement.utils.VmLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.tsfilemanagement.utils.VmLogger.TARGET_NAME;
 
 import java.io.BufferedReader;
 import java.io.File;
