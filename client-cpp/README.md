@@ -20,6 +20,8 @@
 -->
 # IoTDB C++ Client
 
+To compile cpp client, add "mvn -Pclient-cpp" option when running maven command in IoTDB root directory.
+
 ## Requirement
 * Java 8+
 * Maven 3.5+

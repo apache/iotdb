@@ -394,7 +394,7 @@
                         <goals>
                             <goal>copy</goal>
                         </goals>
-                        <phase>compile</phase>
+                        <phase>generate-resources</phase>
                         <configuration>
                             <fileSets>
                                 <fileSet>
