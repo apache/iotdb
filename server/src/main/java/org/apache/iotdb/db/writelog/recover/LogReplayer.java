@@ -165,7 +165,7 @@ public class LogReplayer {
     }
     if (plan instanceof InsertRowPlan) {
       InsertRowPlan tPlan = (InsertRowPlan) plan;
-      tPlan.setSchemasAndTransferType(schemas);
+      tPlan.transferType(schemas);
       recoverMemTable.insert(tPlan);
     } else {
       InsertTabletPlan tPlan = (InsertTabletPlan) plan;

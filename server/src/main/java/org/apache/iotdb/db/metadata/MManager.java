@@ -1869,9 +1869,8 @@ public class MManager {
    *
    * @throws MetadataException
    */
-  public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(String deviceId,
-      String[] measurementList, InsertPlan plan) throws MetadataException {
-    MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
+  public MNode getSeriesSchemasAndReadLockDevice(String deviceId,
+      String[] measurementList, MeasurementSchema[] schemas, TSDataType[] dataTypes, List<Integer> failed) throws MetadataException {
 
     MNode deviceNode;
     // 1. get device node
@@ -1891,12 +1890,11 @@ public class MManager {
 
           // create it
           Path path = new Path(deviceId, measurementList[i]);
-          TSDataType dataType = getTypeInLoc(plan, i);
 
           createTimeseries(
               path.getFullPath(),
-              dataType,
-              getDefaultEncoding(dataType),
+              dataTypes[i],
+              getDefaultEncoding(dataTypes[i]),
               TSFileDescriptor.getInstance().getConfig().getCompressor(),
               Collections.emptyMap());
         }
@@ -1905,28 +1903,17 @@ public class MManager {
             measurementList[i]);
 
         // check type is match
-        TSDataType insertDataType = null;
-        if (plan instanceof InsertRowPlan) {
-          if (!((InsertRowPlan) plan).isNeedInferType()) {
-            // only when InsertRowPlan's values is object[], we should check type
-            insertDataType = getTypeInLoc(plan, i);
-          } else {
-            insertDataType = measurementNode.getSchema().getType();
-          }
-        } else if (plan instanceof InsertTabletPlan) {
-          insertDataType = getTypeInLoc(plan, i);
-        }
 
-        if (measurementNode.getSchema().getType() != insertDataType) {
+        if (dataTypes[i] != null && measurementNode.getSchema().getType() != dataTypes[i]) {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-              measurementList[i], insertDataType, measurementNode.getSchema().getType());
+              measurementList[i], dataTypes[i], measurementNode.getSchema().getType());
           if (!config.isEnablePartialInsert()) {
             throw new MetadataException(String.format(
                 "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
-                measurementList[i], insertDataType, measurementNode.getSchema().getType()));
+                measurementList[i], dataTypes[i], measurementNode.getSchema().getType()));
           } else {
             // mark failed measurement
-            plan.markFailedMeasurementInsertion(i);
+            failed.add(i);
             continue;
           }
         }
@@ -1940,16 +1927,14 @@ public class MManager {
             e.getMessage());
         if (config.isEnablePartialInsert()) {
           // mark failed measurement
-          plan.markFailedMeasurementInsertion(i);
+          failed.add(i);
         } else {
           throw e;
         }
       }
     }
 
-    plan.setDeviceMNode(deviceNode);
-
-    return schemas;
+    return deviceNode;
   }
 
   /**

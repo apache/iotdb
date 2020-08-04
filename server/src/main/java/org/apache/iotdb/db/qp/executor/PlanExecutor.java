@@ -126,6 +126,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
@@ -850,18 +851,56 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
+  protected MNode setSeriesSchemas(InsertPlan insertPlan)
       throws MetadataException {
+    MeasurementSchema[] measurementSchemas = new MeasurementSchema[insertPlan.getMeasurements().length];
+    TSDataType[] dataTypes = insertPlan.getDataTypes();
+
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (insertPlan instanceof InsertRowPlan) {
+        if (!((InsertRowPlan) insertPlan).isNeedInferType()) {
+          // only when InsertRowPlan's values is object[], we should check type
+          dataTypes[i] = getTypeInLoc(insertPlan, i);
+        } else {
+          dataTypes[i] = null;
+        }
+      } else if (insertPlan instanceof InsertTabletPlan) {
+        dataTypes[i] = getTypeInLoc(insertPlan, i);
+      }
+    }
+
+    List<Integer> failed = new ArrayList<>(dataTypes.length);
     return mManager
         .getSeriesSchemasAndReadLockDevice(insertPlan.getDeviceId(), insertPlan.getMeasurements(),
-            insertPlan);
+            measurementSchemas, dataTypes, failed);
+  }
+
+  private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
+    TSDataType dataType;
+    if (plan instanceof InsertRowPlan) {
+      InsertRowPlan tPlan = (InsertRowPlan) plan;
+      dataType = TypeInferenceUtils
+          .getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
+    } else if (plan instanceof InsertTabletPlan) {
+      dataType = (plan).getDataTypes()[loc];
+    } else {
+      throw new MetadataException(String.format(
+          "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
+    }
+    return dataType;
   }
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
-      MeasurementSchema[] schemas = getSeriesSchemas(insertRowPlan);
-      insertRowPlan.setSchemasAndTransferType(schemas);
+      insertRowPlan.setSchemas(new MeasurementSchema[insertRowPlan.getValues().length]);
+      MNode device = setSeriesSchemas(insertRowPlan);
+      insertRowPlan.setDeviceMNode(device);
+
+      if (insertRowPlan.isNeedInferType()) {
+        insertRowPlan.transferType();
+      }
+
       StorageEngine.getInstance().insert(insertRowPlan);
       if (insertRowPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
@@ -877,8 +916,9 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
     try {
-      MeasurementSchema[] schemas = getSeriesSchemas(insertTabletPlan);
-      insertTabletPlan.setSchemas(schemas);
+      insertTabletPlan.setSchemas(new MeasurementSchema[insertTabletPlan.getColumns().length]);
+      MNode device = setSeriesSchemas(insertTabletPlan);
+      insertTabletPlan.setDeviceMNode(device);
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(

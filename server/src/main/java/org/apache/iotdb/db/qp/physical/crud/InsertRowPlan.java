@@ -156,31 +156,28 @@ public class InsertRowPlan extends InsertPlan {
    * if inferType is true, transfer String[] values to specific data types (Integer, Long, Float,
    * Double, Binary)
    */
-  public void setSchemasAndTransferType(MeasurementSchema[] schemas) throws QueryProcessException {
-    this.schemas = schemas;
-    if (isNeedInferType) {
-      for (int i = 0; i < schemas.length; i++) {
-        if (schemas[i] == null) {
-          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurementInsertion(i);
-          } else {
-            throw new QueryProcessException(new PathNotExistException(
-                deviceId + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
-          }
-          continue;
+  public void transferType() throws QueryProcessException {
+    for (int i = 0; i < schemas.length; i++) {
+      if (schemas[i] == null) {
+        if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+          markFailedMeasurementInsertion(i);
+        } else {
+          throw new QueryProcessException(new PathNotExistException(
+              deviceId + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
         }
-        dataTypes[i] = schemas[i].getType();
-        try {
-          values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
-        } catch (Exception e) {
-          logger.warn("{}.{} data type is not consistent, input {}, registered {}", deviceId,
-              measurements[i], values[i], dataTypes[i]);
-          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurementInsertion(i);
-            schemas[i] = null;
-          } else {
-            throw e;
-          }
+        continue;
+      }
+      dataTypes[i] = schemas[i].getType();
+      try {
+        values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
+      } catch (Exception e) {
+        logger.warn("{}.{} data type is not consistent, input {}, registered {}", deviceId,
+            measurements[i], values[i], dataTypes[i]);
+        if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+          markFailedMeasurementInsertion(i);
+          schemas[i] = null;
+        } else {
+          throw e;
         }
       }
     }
