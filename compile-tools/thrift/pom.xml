@@ -333,7 +333,7 @@
                                 <option>-DWITH_SHARED_LIB=OFF</option>
                                 <option>-DWITH_STATIC_LIB=ON</option>
                                 <option>-DCMAKE_POSITION_INDEPENDENT_CODE=ON</option>
-                                <option>${openssl.lib.set}</option>
+                                <option>${openssl.include.dir}</option>
                             </options>
                         </configuration>
                     </execution>
