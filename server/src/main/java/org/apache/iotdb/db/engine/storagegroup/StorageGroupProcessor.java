@@ -559,12 +559,9 @@ public class StorageGroupProcessor {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
 
-      List<List<TsFileResource>> defaultVmTsFileResources = new ArrayList<>();
-      defaultVmTsFileResources.add(new ArrayList<>());
-
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(
           storageGroupName + FILE_NAME_SEPARATOR,
-          getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, true,
+          getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, isSeq,
           i == tsFiles.size() - 1);
 
       RestorableTsFileIOWriter writer;
@@ -588,15 +585,14 @@ public class StorageGroupProcessor {
               this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback,
               true, writer);
           workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
-          tsFileResource.setProcessor(tsFileProcessor);
         } else {
           tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
               getVersionControllerByTimePartitionId(timePartitionId),
               this::closeUnsealedTsFileProcessorCallBack, this::unsequenceFlushCallback, false,
               writer);
           workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
-          tsFileResource.setProcessor(tsFileProcessor);
         }
+        tsFileResource.setProcessor(tsFileProcessor);
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();

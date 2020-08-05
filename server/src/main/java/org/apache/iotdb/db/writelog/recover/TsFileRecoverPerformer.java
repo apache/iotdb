@@ -23,15 +23,12 @@ import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SU
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -46,7 +43,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,12 +55,12 @@ public class TsFileRecoverPerformer {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileRecoverPerformer.class);
 
-  private String filePath;
-  private String logNodePrefix;
-  private VersionController versionController;
-  private TsFileResource tsFileResource;
-  private boolean sequence;
-  private boolean isLastFile;
+  private final String filePath;
+  private final String logNodePrefix;
+  private final VersionController versionController;
+  private final TsFileResource tsFileResource;
+  private final boolean sequence;
+  private final boolean isLastFile;
 
   /**
    * @param isLastFile whether this TsFile is the last file of its partition
@@ -110,29 +106,22 @@ public class TsFileRecoverPerformer {
 
     // judge whether tsfile is complete
     if (!restorableTsFileIOWriter.hasCrashed()) {
-      // if tsfile is complete, then there is no vmfiles.
       try {
-        recoverResource(tsFileResource);
+        recoverResource();
         return restorableTsFileIOWriter;
       } catch (IOException e) {
         throw new StorageGroupProcessorException(
-            "recover the resource file failed: " + filePath
-                + RESOURCE_SUFFIX + e);
+            "recover the resource file failed: " + filePath + RESOURCE_SUFFIX + e);
       }
     }
 
     // tsfile has crashed
     // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
     // map must be updated first to avoid duplicated insertion
-    recoverResourceFromWriter(restorableTsFileIOWriter, tsFileResource);
+    recoverResourceFromWriter(restorableTsFileIOWriter);
 
-    // If the vm is not enable, the walTargetWriter points to  the tsfile.
-    // If the vm is enable and flush log exists, the walTargetWriter points to the vm of the flush log
-    // if the vm is enable and flush log does not exist, the walTargetWriter is null.
-    RestorableTsFileIOWriter walTargetWriter = restorableTsFileIOWriter;
-    TsFileResource walTargetResource = tsFileResource;
     // redo logs
-    redoLogs(walTargetWriter, walTargetResource, restorableTsFileIOWriter);
+    redoLogs(restorableTsFileIOWriter);
 
     // clean logs
     try {
@@ -144,10 +133,10 @@ public class TsFileRecoverPerformer {
     return restorableTsFileIOWriter;
   }
 
-  private void recoverResource(TsFileResource tsFileResource) throws IOException {
+  private void recoverResource() throws IOException {
     if (tsFileResource.resourceFileExists()) {
       // .resource file exists, deserialize it
-      recoverResourceFromFile(tsFileResource);
+      recoverResourceFromFile();
     } else {
       // .resource file does not exist, read file metadata and recover tsfile resource
       try (TsFileSequenceReader reader = new TsFileSequenceReader(
@@ -163,18 +152,18 @@ public class TsFileRecoverPerformer {
     }
   }
 
-  private void recoverResourceFromFile(TsFileResource tsFileResource) throws IOException {
+  private void recoverResourceFromFile() throws IOException {
     try {
       tsFileResource.deserialize();
     } catch (IOException e) {
       logger.warn("Cannot deserialize TsFileResource {}, construct it using "
           + "TsFileSequenceReader", tsFileResource.getTsFile(), e);
-      recoverResourceFromReader(tsFileResource);
+      recoverResourceFromReader();
     }
   }
 
 
-  private void recoverResourceFromReader(TsFileResource tsFileResource) throws IOException {
+  private void recoverResourceFromReader() throws IOException {
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath(), true)) {
       for (Entry<String, List<TimeseriesMetadata>> entry : reader.getAllTimeseriesMetadata()
@@ -192,8 +181,7 @@ public class TsFileRecoverPerformer {
   }
 
 
-  private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter,
-      TsFileResource tsFileResource) {
+  private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter) {
     Map<String, List<ChunkMetadata>> deviceChunkMetaDataMap =
         restorableTsFileIOWriter.getDeviceChunkMetadataMap();
     for (Map.Entry<String, List<ChunkMetadata>> entry : deviceChunkMetaDataMap.entrySet()) {
@@ -209,15 +197,13 @@ public class TsFileRecoverPerformer {
     tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
   }
 
-  private boolean redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter,
-      TsFileResource tsFileResource, RestorableTsFileIOWriter tsFileIOWriter)
+  private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter)
       throws StorageGroupProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     recoverMemTable.setVersion(versionController.nextVersion());
     LogReplayer logReplayer = new LogReplayer(logNodePrefix, filePath, tsFileResource.getModFile(),
         versionController, tsFileResource, recoverMemTable, sequence);
     logReplayer.replayLogs();
-    boolean res = false;
     try {
       if (!recoverMemTable.isEmpty()) {
         // flush logs
@@ -225,7 +211,6 @@ public class TsFileRecoverPerformer {
             restorableTsFileIOWriter,
             tsFileResource.getTsFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
-        res = true;
       }
 
       if (!isLastFile || tsFileResource.isCloseFlagSet()) {
@@ -236,7 +221,6 @@ public class TsFileRecoverPerformer {
       }
       // otherwise this file is not closed before crush, do nothing so we can continue writing
       // into it
-      return res;
     } catch (IOException | InterruptedException | ExecutionException e) {
       throw new StorageGroupProcessorException(e);
     }
