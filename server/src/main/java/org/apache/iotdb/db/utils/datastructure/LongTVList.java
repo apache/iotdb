@@ -158,13 +158,9 @@ public class LongTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() throws WriteProcessException {
-    long[] newArray = (long[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.INT64);
-    if (newArray == null) {
-      throw new WriteProcessException("No available array.");
-    }
-    values.add(newArray);
+  protected void expandValues() {
+    values.add((long[]) PrimitiveArrayManager
+        .getInstance().getDataListByType(TSDataType.INT64));
   }
 
   @Override

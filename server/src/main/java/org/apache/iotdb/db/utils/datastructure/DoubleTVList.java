@@ -159,13 +159,9 @@ public class DoubleTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() throws WriteProcessException {
-    double[] newArray = (double[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.DOUBLE);
-    if (newArray == null) {
-      throw new WriteProcessException("No available array.");
-    }
-    values.add(newArray);
+  protected void expandValues() {
+    values.add((double[]) PrimitiveArrayManager
+        .getInstance().getDataListByType(TSDataType.DOUBLE));
   }
 
   @Override

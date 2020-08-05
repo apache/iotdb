@@ -166,7 +166,7 @@ public abstract class TVList {
 
   protected abstract void reverseRange(int lo, int hi);
 
-  protected abstract void expandValues() throws WriteProcessException;
+  protected abstract void expandValues();
 
   public abstract TVList clone();
 
@@ -252,12 +252,12 @@ public abstract class TVList {
 
   protected void checkExpansion() throws WriteProcessException {
     if ((size % ARRAY_SIZE) == 0) {
-      expandValues();
       long[] newArray = (long[]) PrimitiveArrayManager.getInstance().getDataListByType(TSDataType.INT64);
       if (newArray == null) {
         throw new WriteProcessException("No available array.");
       }
       timestamps.add(newArray);
+      expandValues();
     }
   }
 

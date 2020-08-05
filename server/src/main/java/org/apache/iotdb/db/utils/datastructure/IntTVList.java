@@ -158,13 +158,9 @@ public class IntTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() throws WriteProcessException {
-    int[] newArray = (int[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.INT32);
-    if (newArray == null) {
-      throw new WriteProcessException("No available array.");
-    }
-    values.add(newArray);
+  protected void expandValues() {
+    values.add((int[]) PrimitiveArrayManager
+        .getInstance().getDataListByType(TSDataType.INT32));
   }
 
   @Override

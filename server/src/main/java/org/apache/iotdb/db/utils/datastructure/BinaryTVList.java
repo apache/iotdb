@@ -159,13 +159,9 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() throws WriteProcessException {
-    Binary[] newArray = (Binary[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.TEXT);
-    if (newArray == null) {
-      throw new WriteProcessException("No available array.");
-    }
-    values.add(newArray);
+  protected void expandValues() {
+    values.add((Binary[]) PrimitiveArrayManager
+        .getInstance().getDataListByType(TSDataType.TEXT));
   }
 
   @Override

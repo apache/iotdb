@@ -159,13 +159,9 @@ public class FloatTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() throws WriteProcessException {
-    float[] newArray = (float[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.FLOAT);
-    if (newArray == null) {
-      throw new WriteProcessException("No available array.");
-    }
-    values.add(newArray);
+  protected void expandValues() {
+    values.add((float[]) PrimitiveArrayManager
+        .getInstance().getDataListByType(TSDataType.FLOAT));
   }
 
   @Override

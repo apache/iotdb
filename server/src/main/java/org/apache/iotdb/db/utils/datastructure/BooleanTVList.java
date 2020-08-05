@@ -158,13 +158,9 @@ public class BooleanTVList extends TVList {
   }
 
   @Override
-  protected void expandValues() throws WriteProcessException {
-    boolean[] newArray = (boolean[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.BOOLEAN);
-    if (newArray == null) {
-      throw new WriteProcessException("No available array.");
-    }
-    values.add(newArray);
+  protected void expandValues() {
+    values.add((boolean[]) PrimitiveArrayManager
+        .getInstance().getDataListByType(TSDataType.BOOLEAN));
   }
 
   @Override
