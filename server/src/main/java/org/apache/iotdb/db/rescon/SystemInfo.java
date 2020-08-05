@@ -58,12 +58,14 @@ public class SystemInfo {
     if (arrayPoolMemCost + totalSgInfoMemCost + dataType.getDataTypeSize() * size
         < config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       arrayPoolMemCost += dataType.getDataTypeSize() * size;
+      rejected = false;
       return true;
     } else if (arrayPoolMemCost + totalSgInfoMemCost + dataType.getDataTypeSize() * size
         < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
       arrayPoolMemCost += dataType.getDataTypeSize() * size;
       // invoke flush()
       logger.debug("OOB array is too large, call for flushing.");
+      rejected = false;
       flush();
       return true;
     } else {
@@ -156,6 +158,7 @@ public class SystemInfo {
 
     if (flushedProcessor != null) {
       flushedProcessor.asyncFlush();
+      rejected = false;
     }
   }
 
