@@ -305,10 +305,7 @@ public class MTree implements Serializable {
    */
   Pair<String, MeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(MeasurementMNode measurementMNode)
       throws MetadataException {
-
-    if (measurementMNode.getParent() == null || !IoTDBConstant.PATH_ROOT.equals(measurementMNode.getName())) {
-      throw new IllegalPathException(measurementMNode.getFullPath());
-    }
+    
     // delete the last node of path
     measurementMNode.getParent().deleteChild(measurementMNode.getName());
     if (measurementMNode.getAlias() != null) {
