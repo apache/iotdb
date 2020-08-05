@@ -25,7 +25,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -89,7 +88,6 @@ public class UnseqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);
     tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
@@ -174,7 +172,6 @@ public class UnseqTsFileRecoverTest {
     FileUtils.deleteDirectory(tsF.getParentFile());
     resource.close();
     node.delete();
-    IoTDBDescriptor.getInstance().getConfig().setEnableVm(true);
     EnvironmentUtils.cleanEnv();
   }
 

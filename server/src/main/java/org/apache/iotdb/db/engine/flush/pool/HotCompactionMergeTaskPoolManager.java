@@ -24,18 +24,18 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class VmMergeTaskPoolManager extends AbstractPoolManager {
+public class HotCompactionMergeTaskPoolManager extends AbstractPoolManager {
 
   private static final Logger LOGGER = LoggerFactory
-      .getLogger(VmMergeTaskPoolManager.class);
+      .getLogger(HotCompactionMergeTaskPoolManager.class);
 
-  private VmMergeTaskPoolManager() {
+  private HotCompactionMergeTaskPoolManager() {
     this.pool = IoTDBThreadPoolFactory
         .newCachedThreadPool(ThreadName.FLUSH_VM_SERVICE.getName());
   }
 
-  public static VmMergeTaskPoolManager getInstance() {
-    return VmMergeTaskPoolManager.InstanceHolder.instance;
+  public static HotCompactionMergeTaskPoolManager getInstance() {
+    return HotCompactionMergeTaskPoolManager.InstanceHolder.instance;
   }
 
   @Override
@@ -45,7 +45,7 @@ public class VmMergeTaskPoolManager extends AbstractPoolManager {
 
   @Override
   public String getName() {
-    return "vm merge task";
+    return "hot compaction merge task";
   }
 
   @Override
@@ -54,13 +54,13 @@ public class VmMergeTaskPoolManager extends AbstractPoolManager {
       this.pool = IoTDBThreadPoolFactory
           .newCachedThreadPool(ThreadName.FLUSH_VM_SERVICE.getName());
     }
-    LOGGER.info("Vm merge task manager started.");
+    LOGGER.info("Hot compaction merge task manager started.");
   }
 
   @Override
   public void stop() {
     super.stop();
-    LOGGER.info("Vm merge task manager stopped");
+    LOGGER.info("Hot compaction merge task manager stopped");
   }
 
   private static class InstanceHolder {
@@ -69,7 +69,7 @@ public class VmMergeTaskPoolManager extends AbstractPoolManager {
       //allowed to do nothing
     }
 
-    private static VmMergeTaskPoolManager instance = new VmMergeTaskPoolManager();
+    private static HotCompactionMergeTaskPoolManager instance = new HotCompactionMergeTaskPoolManager();
   }
 
 }
