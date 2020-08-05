@@ -85,8 +85,8 @@ public class SystemInfo {
   public synchronized void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo, 
       long delta) {
     this.totalSgInfoMemCost += delta;
-    reportedSgMemCostMap.put(storageGroupInfo,
-        reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L) + delta);
+    //reportedSgMemCostMap.put(storageGroupInfo,
+    //    reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L) + delta);
     long addReportThreshold = (delta / config.getStorageGroupMemBlockSize() + 1)
         * config.getStorageGroupMemBlockSize();
     storageGroupInfo.addStorageGroupReportThreshold(addReportThreshold);
