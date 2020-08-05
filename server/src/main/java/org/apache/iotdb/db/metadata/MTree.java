@@ -305,7 +305,7 @@ public class MTree implements Serializable {
    */
   Pair<String, MeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(MeasurementMNode measurementMNode)
       throws MetadataException {
-
+    
     // delete the last node of path
     measurementMNode.getParent().deleteChild(measurementMNode.getName());
     if (measurementMNode.getAlias() != null) {
@@ -392,9 +392,9 @@ public class MTree implements Serializable {
     MNode cur = root;
     for (int i = 1; i < detachedPath.size(); i++) {
       cur = cur.getChild(detachedPath.get(i));
-    }
-    if(cur instanceof StorageGroupMNode) {
-      return (StorageGroupMNode) cur;
+      if (cur instanceof StorageGroupMNode) {
+        return (StorageGroupMNode) cur;
+      }
     }
     throw new StorageGroupNotSetException(MetaUtils.concatDetachedPathByDot(detachedPath));
   }
