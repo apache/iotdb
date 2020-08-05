@@ -147,8 +147,6 @@ public class SystemInfo {
    */
   public void flush() {
     if (FlushManager.getInstance().getTsFileProcessorQueueSize() >= 1) {
-      logger.info("TsFileProcessorQueueSize is larger than 1, reject insertion.");
-      rejected = true;
       return;
     }
 
@@ -156,7 +154,9 @@ public class SystemInfo {
     StorageGroupInfo storageGroupInfo = reportedSgMemCostMap.firstKey();
     TsFileProcessor flushedProcessor = storageGroupInfo.getLargestTsFileProcessor();
 
-    flushedProcessor.asyncFlush();
+    if (flushedProcessor != null) {
+      flushedProcessor.asyncFlush();
+    }
   }
 
   public boolean isRejected() {

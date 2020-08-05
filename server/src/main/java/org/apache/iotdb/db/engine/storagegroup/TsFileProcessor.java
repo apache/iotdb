@@ -274,7 +274,6 @@ public class TsFileProcessor {
           tsFileResource.updateEndTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
         }
       } catch (Exception e) {
-        e.printStackTrace();
         throw new WriteProcessException(e);
       }
     }
@@ -606,8 +605,6 @@ public class TsFileProcessor {
     }
     try {
       tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
-      logger.info("{}: {} add a signal memtable into flushing memtable list when sync flush",
-          storageGroupName, tsFileResource.getTsFile().getName());
       if (logger.isDebugEnabled() && tmpMemTable.isSignalMemTable()) {
         logger.debug("{}: {} add a signal memtable into flushing memtable list when sync flush",
             storageGroupName, tsFileResource.getTsFile().getName());
