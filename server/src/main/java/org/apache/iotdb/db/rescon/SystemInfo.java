@@ -158,11 +158,10 @@ public class SystemInfo {
 
     if (flushedProcessor != null) {
       flushedProcessor.asyncFlush();
-      rejected = false;
     }
   }
 
-  public boolean isRejected() {
+  public synchronized boolean isRejected() {
     return rejected;
   }
 
