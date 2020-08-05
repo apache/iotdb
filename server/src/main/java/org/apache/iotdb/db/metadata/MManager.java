@@ -1177,7 +1177,7 @@ public class MManager {
   }
 
   /**
-   * Get storage group node by path. If storage group is not set, StorageGroupNotSetException will
+   * Get storage group node by detached path. If storage group is not set, StorageGroupNotSetException will
    * be thrown
    */
   public StorageGroupMNode getStorageGroupMNode(List<String> detachedPath) throws MetadataException {
@@ -1189,6 +1189,18 @@ public class MManager {
     }
   }
 
+  /**
+   * Get storage group node by detached storage group. If storage group is not set, StorageGroupNotSetException will
+   * be thrown
+   */
+  public StorageGroupMNode getStorageGroupMNodeByDetachedStorageGroup(List<String> detachedStorageGroup) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupMNodeByDetachedStorageGroup(detachedStorageGroup);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
   /**
    * get device node, if the storage group is not set, create it when autoCreateSchema is true <p>
    * (we develop this method as we need to get the node's lock after we get the lock.writeLock())
@@ -1313,7 +1325,7 @@ public class MManager {
   public void setTTL(List<String> detachedStorageGroup, long dataTTL) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      getStorageGroupMNode(detachedStorageGroup).setDataTTL(dataTTL);
+      getStorageGroupMNodeByDetachedStorageGroup(detachedStorageGroup).setDataTTL(dataTTL);
       if (!isRecovering) {
         logWriter.setTTL(MetaUtils.concatDetachedPathByDot(detachedStorageGroup), dataTTL);
       }
