@@ -73,6 +73,52 @@ public class LogicalPlanSmallTest {
   }
 
   @Test
+  public void checkDataTypeWithEncoding() {
+    try {
+      String sqlStr = "create timeseries root.sg1.d1.s1 with datatype=BOOLEAN, encoding=GORILLA";
+      parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      Assert.assertEquals("encoding GORILLA does not support BOOLEAN", e.getMessage());
+    }
+
+    try {
+      String sqlStr = "create timeseries root.sg1.d1.s1 with datatype=BOOLEAN, encoding=TS_2DIFF";
+      parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      Assert.assertEquals("encoding TS_2DIFF does not support BOOLEAN", e.getMessage());
+    }
+
+    try {
+      String sqlStr = "create timeseries root.sg1.d1.s1 with datatype=BOOLEAN, encoding=REGULAR";
+      parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      Assert.assertEquals("encoding REGULAR does not support BOOLEAN", e.getMessage());
+    }
+
+    try {
+      String sqlStr = "create timeseries root.sg1.d1.s1 with datatype=INT32, encoding=GORILLA";
+      parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      Assert.assertEquals("encoding GORILLA does not support INT32", e.getMessage());
+    }
+
+    try {
+      String sqlStr = "create timeseries root.sg1.d1.s1 with datatype=DOUBLE, encoding=REGULAR";
+      parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      Assert.assertEquals("encoding REGULAR does not support DOUBLE", e.getMessage());
+    }
+
+    try {
+      String sqlStr = "create timeseries root.sg1.d1.s1 with datatype=TEXT, encoding=GORILLA";
+      parseDriver.parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      Assert.assertEquals("encoding GORILLA does not support TEXT", e.getMessage());
+    }
+
+  }
+
+  @Test
   public void testSlimit() {
     String sqlStr = "select * from root.vehicle.d1 limit 10 slimit 1";
     RootOperator operator = (RootOperator) parseDriver
