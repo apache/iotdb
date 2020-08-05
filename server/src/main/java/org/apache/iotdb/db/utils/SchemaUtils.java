@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -40,6 +44,22 @@ public class SchemaUtils {
 
   private SchemaUtils() {
 
+  }
+
+  private static Map<TSDataType, Set<TSEncoding>> schemaChecker = new HashMap<>();
+
+  static {
+    schemaChecker.put(TSDataType.BOOLEAN, new HashSet<TSEncoding>(){{
+      add(TSEncoding.PLAIN);add(TSEncoding.RLE);}});
+    schemaChecker.put(TSDataType.INT32, new HashSet<TSEncoding>(){{
+      add(TSEncoding.PLAIN);add(TSEncoding.RLE);add(TSEncoding.TS_2DIFF);add(TSEncoding.REGULAR);}});
+    schemaChecker.put(TSDataType.INT64, new HashSet<TSEncoding>(){{
+      add(TSEncoding.PLAIN);add(TSEncoding.RLE);add(TSEncoding.TS_2DIFF);add(TSEncoding.REGULAR);}});
+    schemaChecker.put(TSDataType.FLOAT, new HashSet<TSEncoding>(){{
+      add(TSEncoding.PLAIN);add(TSEncoding.RLE);add(TSEncoding.GORILLA);}});
+    schemaChecker.put(TSDataType.DOUBLE, new HashSet<TSEncoding>(){{
+      add(TSEncoding.PLAIN);add(TSEncoding.RLE);add(TSEncoding.GORILLA);}});
+    schemaChecker.put(TSDataType.TEXT, new HashSet<TSEncoding>(){{ add(TSEncoding.PLAIN);}});
   }
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
@@ -140,6 +160,13 @@ public class SchemaUtils {
       default:
         throw new MetadataException(
             "aggregate does not support " + aggregation + " function.");
+    }
+  }
+
+  public static void checkDataTypeWithEncoding(TSDataType dataType, TSEncoding encoding)
+      throws MetadataException {
+    if(!schemaChecker.get(dataType).contains(encoding)) {
+      throw new MetadataException(String.format("encoding %s does not support %s", dataType.toString(), encoding.toString()));
     }
   }
 }
