@@ -1144,7 +1144,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
             property.propertyValue().getText().toLowerCase());
       }
     }
-    checkMetadataArgs(dataType, encoding, compressor.toString().toUpperCase());
     createTimeSeriesOperator.setCompressor(compressor);
     createTimeSeriesOperator.setProps(props);
     initializedOperator = createTimeSeriesOperator;
@@ -1631,73 +1630,5 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCreateSnapshot(CreateSnapshotContext ctx) {
     super.enterCreateSnapshot(ctx);
     initializedOperator = new CreateSnapshotOperator(SQLConstant.TOK_CREATE_SCHEMA_SNAPSHOT);
-  }
-
-  private void checkMetadataArgs(String dataType, String encoding, String compressor) {
-    TSDataType tsDataType;
-    TSEncoding tsEncoding;
-    if (dataType == null) {
-      throw new SQLParserException("data type cannot be null");
-    }
-
-    try {
-      tsDataType = TSDataType.valueOf(dataType);
-    } catch (Exception e) {
-      throw new SQLParserException(String.format("data type %s not support", dataType));
-    }
-
-    if (encoding == null) {
-      throw new SQLParserException("encoding type cannot be null");
-    }
-
-    try {
-      tsEncoding = TSEncoding.valueOf(encoding);
-    } catch (Exception e) {
-      throw new SQLParserException(String.format("encoding %s is not support", encoding));
-    }
-
-    try {
-      CompressionType.valueOf(compressor);
-    } catch (Exception e) {
-      throw new SQLParserException(String.format("compressor %s is not support", compressor));
-    }
-
-    checkDataTypeEncoding(tsDataType, tsEncoding);
-  }
-
-  private void checkDataTypeEncoding(TSDataType tsDataType, TSEncoding tsEncoding) {
-    boolean throwExp = false;
-    switch (tsDataType) {
-      case BOOLEAN:
-        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN))) {
-          throwExp = true;
-        }
-        break;
-      case INT32:
-      case INT64:
-        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN)
-            || tsEncoding.equals(TSEncoding.TS_2DIFF))) {
-          throwExp = true;
-        }
-        break;
-      case FLOAT:
-      case DOUBLE:
-        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN)
-            || tsEncoding.equals(TSEncoding.TS_2DIFF) || tsEncoding.equals(TSEncoding.GORILLA))) {
-          throwExp = true;
-        }
-        break;
-      case TEXT:
-        if (!tsEncoding.equals(TSEncoding.PLAIN)) {
-          throwExp = true;
-        }
-        break;
-      default:
-        throwExp = true;
-    }
-    if (throwExp) {
-      throw new SQLParserException(
-          String.format("encoding %s does not support %s", tsEncoding, tsDataType));
-    }
   }
 }
