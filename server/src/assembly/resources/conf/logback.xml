@@ -192,7 +192,7 @@
         <appender-ref ref="FILEDEBUG"/>
         <appender-ref ref="FILEWARN"/>
         <appender-ref ref="FILEERROR"/>
-        <appender-ref ref="FILEALL"/>
+        <appender-ref ref="FILEINFO"/>
         <appender-ref ref="stdout"/>
     </root>
     <logger level="info" name="org.apache.iotdb.db.cost.statistic">
