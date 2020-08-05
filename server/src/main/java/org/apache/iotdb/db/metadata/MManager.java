@@ -472,19 +472,19 @@ public class MManager {
       mNodeCache.clear();
     }
     try {
-      List<List<String>> allTimeseries = mtree.getAllDetachedTimeseries(detachedPath);
+      List<MeasurementMNode> allMeasurementMNodes = mtree.getAllMeasurementMNodes(detachedPath);
       // Monitor storage group seriesPath is not allowed to be deleted
-      allTimeseries.removeIf(p -> p.get(1).equals(MonitorConstants.STATS));
+      allMeasurementMNodes.removeIf(p -> p.getFullPath().contains(MonitorConstants.STATS));
 
       Set<String> failedNames = new HashSet<>();
-      for (List<String> p : allTimeseries) {
+      for (MeasurementMNode n : allMeasurementMNodes) {
         try {
-          String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
+          String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(n);
           if (!isRecovering) {
             if (emptyStorageGroup != null) {
               StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
             }
-            logWriter.deleteTimeseries(MetaUtils.concatDetachedPathByDot(detachedPath));
+            logWriter.deleteTimeseries(n.getFullPath());
           }
         } catch (DeleteFailedException e) {
           failedNames.add(e.getName());
@@ -538,14 +538,14 @@ public class MManager {
   }
 
   /**
-   * @param detachedPath detachedPath of full path from root to leaf node
+   * @param measurementMNode detachedPath of full path from root to leaf node
    * @return after delete if the storage group is empty, return its name, otherwise return null
    */
-  private String deleteOneTimeseriesAndUpdateStatistics(List<String> detachedPath)
+  private String deleteOneTimeseriesAndUpdateStatistics(MeasurementMNode measurementMNode)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      Pair<String, MeasurementMNode> pair = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(detachedPath);
+      Pair<String, MeasurementMNode> pair = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(measurementMNode);
       removeFromTagInvertedIndex(pair.right);
       String storageGroupName = pair.left;
 
@@ -558,7 +558,7 @@ public class MManager {
       }
 
       if (config.isEnableParameterAdapter()) {
-        String storageGroup = getStorageGroup(detachedPath);
+        String storageGroup = getStorageGroupMNodeByMNode(measurementMNode).getFullPath();
         int size = seriesNumberInStorageGroups.get(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, size - 1);
         if (size == maxSeriesNumberAmongStorageGroup) {
@@ -678,6 +678,49 @@ public class MManager {
     }
   }
 
+  /**
+   * Get series type for given measurementMNode
+   *
+   * @param measurementMNode measurementMNode
+   */
+  public TSDataType getSeriesTypeByMNode(MeasurementMNode measurementMNode) {
+    lock.readLock().lock();
+    try {
+      return mtree.getSchemaByMNode(measurementMNode).getType();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get node name by given MNode
+   * @param mNode mNode
+   * @return node name
+   */
+  public String getMNodeName(MNode mNode) {
+    lock.readLock().lock();
+    try {
+      return mNode.getName();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get detached path by give MNode
+   * @param mNode mNode
+   * @return node name
+   */
+  public List<String> getDetachedPathByMnode(MNode mNode) {
+    lock.readLock().lock();
+    try {
+      return mtree.getDetachedPathByMNode(mNode);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+
   public MeasurementSchema[] getSchemas(List<String> detachedDevice, String[] measurements)
       throws MetadataException {
     lock.readLock().lock();
@@ -768,6 +811,15 @@ public class MManager {
     }
   }
 
+  public StorageGroupMNode getStorageGroupMNodeByMNode(MNode mNode) {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupMNodeByMNode(mNode);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   /**
    * Get storage group detachedPath by detachedPath
    *
@@ -847,10 +899,10 @@ public class MManager {
    * @param detachedPath can be a prefix or a full path. if the wildcard is not at the tail, then each
    * wildcard can only match one level, otherwise it can match to the tail.
    */
-  public List<List<String>> getDetachedAllTimeseries(List<String> detachedPath) throws MetadataException {
+  public List<MeasurementMNode> getAllMeasurementMNodes(List<String> detachedPath) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getAllDetachedTimeseries(detachedPath);
+      return mtree.getAllMeasurementMNodes(detachedPath);
     } finally {
       lock.readLock().unlock();
     }
@@ -858,7 +910,7 @@ public class MManager {
 
 
   /**
-   * Similar to method getDetachedAllTimeseries(), but return Path instead of String in order to include
+   * Similar to method getAllMeasurementMNodes(), but return Path instead of String in order to include
    * alias.
    */
   public List<Path> getAllTimeseriesPath(String prefixPath) throws MetadataException {

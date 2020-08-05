@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -307,7 +308,7 @@ public class MTreeTest {
       fail(e.getMessage());
     }
     try {
-      root.deleteTimeseriesAndReturnEmptyStorageGroup(Arrays.asList("root", "laptop", "d1", "s0"));
+      root.deleteTimeseriesAndReturnEmptyStorageGroup((MeasurementMNode) root.getMNodeByDetachedPath(Arrays.asList("root", "laptop", "d1", "s0")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -298,9 +299,9 @@ public class PhysicalGenerator {
    * @return pair.left is the type of column in result set, pair.right is the real type of the
    * measurement
    */
-  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<List<String>> paths,
+  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<MeasurementMNode> measurementMNodes,
       String aggregation) throws MetadataException {
-    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByString(paths, null);
+    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByMNode(measurementMNodes, null);
     // if the aggregation function is null, the type of column in result set
     // is equal to the real type of the measurement
     if (aggregation == null) {
@@ -308,7 +309,7 @@ public class PhysicalGenerator {
     } else {
       // if the aggregation function is not null,
       // we should recalculate the type of column in result set
-      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByString(paths, aggregation);
+      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByMNode(measurementMNodes, aggregation);
       return new Pair<>(columnDataTypes, measurementDataTypes);
     }
   }
@@ -448,9 +449,9 @@ public class PhysicalGenerator {
           try {
             // remove stars in SELECT to get actual paths
             List<String> nodes = fullPath.getDetachedPath();
-            List<List<String>> actualPaths = getMatchedTimeseries(nodes);
+            List<MeasurementMNode> measurementMNodes = getMatchedMeasurementMNode(nodes);
             // for actual non exist path
-            if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
+            if (measurementMNodes.isEmpty() && originAggregations.isEmpty()) {
               String nonExistMeasurement = nodes.get(nodes.size() - 1);
               if (measurementSetOfGivenSuffix.add(nonExistMeasurement)
                   && measurementTypeMap.get(nonExistMeasurement) != MeasurementType.Exist) {
@@ -467,21 +468,20 @@ public class PhysicalGenerator {
                 originAggregations != null && !originAggregations.isEmpty()
                     ? originAggregations.get(i) : null;
 
-            Pair<List<TSDataType>, List<TSDataType>> pair = getSeriesTypes(actualPaths,
+            Pair<List<TSDataType>, List<TSDataType>> pair = getSeriesTypes(measurementMNodes,
                 aggregation);
             List<TSDataType> columnDataTypes = pair.left;
             List<TSDataType> measurementDataTypes = pair.right;
-            for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
-              nodes = actualPaths.get(pathIdx);
+            for (int pathIdx = 0; pathIdx < measurementMNodes.size(); pathIdx++) {
 
               // check datatype consistency
               // a example of inconsistency: select s0 from root.sg1.d1, root.sg1.d2 align by device,
               // while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
               String measurementChecked;
               if (originAggregations != null && !originAggregations.isEmpty()) {
-                measurementChecked = originAggregations.get(i) + "(" + nodes.get(nodes.size() - 1) + ")";
+                measurementChecked = originAggregations.get(i) + "(" + getMNodeName(measurementMNodes.get(pathIdx)) + ")";
               } else {
-                measurementChecked = nodes.get(nodes.size() - 1);
+                measurementChecked = getMNodeName(measurementMNodes.get(pathIdx));
               }
               TSDataType columnDataType = columnDataTypes.get(pathIdx);
               if (columnDataTypeMap.containsKey(measurementChecked)) {
@@ -504,7 +504,7 @@ public class PhysicalGenerator {
                 measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
               }
               // update paths
-              paths.add(new Path(nodes));
+              paths.add(new Path(IoTDB.metaManager.getDetachedPathByMnode(measurementMNodes.get(pathIdx))));
             }
 
           } catch (MetadataException e) {
@@ -730,11 +730,17 @@ public class PhysicalGenerator {
     return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
   }
 
-  protected List<List<String>> getMatchedTimeseries(List<String> nodes) throws MetadataException {
-    return IoTDB.metaManager.getDetachedAllTimeseries(nodes);
+  protected List<MeasurementMNode> getMatchedMeasurementMNode(List<String> nodes) throws MetadataException {
+    return IoTDB.metaManager.getAllMeasurementMNodes(nodes);
   }
 
   protected Set<Path> getMatchedDevices(List<String> nodes) throws MetadataException {
     return IoTDB.metaManager.getDevicePaths(nodes);
   }
+
+  protected String getMNodeName(MeasurementMNode measurementMNode) {
+    return IoTDB.metaManager.getMNodeName(measurementMNode);
+  }
+
+
 }

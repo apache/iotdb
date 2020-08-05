@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.MetaUtils;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -84,6 +85,24 @@ public class SchemaUtils {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (List<String> path : paths) {
       dataTypes.add(IoTDB.metaManager.getSeriesType(path));
+    }
+    return dataTypes;
+  }
+
+  /**
+   * @param measurementMNodes time series MNode
+   * @param aggregation aggregation function, may be null
+   * @return The data type of aggregation or (data type of paths if aggregation is null)
+   */
+  public static List<TSDataType> getSeriesTypesByMNode(List<MeasurementMNode> measurementMNodes,
+      String aggregation) throws MetadataException {
+    TSDataType dataType = getAggregationType(aggregation);
+    if (dataType != null) {
+      return Collections.nCopies(measurementMNodes.size(), dataType);
+    }
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (MeasurementMNode mNode : measurementMNodes) {
+      dataTypes.add(IoTDB.metaManager.getSeriesTypeByMNode(mNode));
     }
     return dataTypes;
   }
