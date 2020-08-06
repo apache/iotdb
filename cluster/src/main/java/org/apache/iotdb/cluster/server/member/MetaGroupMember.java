@@ -937,6 +937,11 @@ public class MetaGroupMember extends RaftMember {
    */
   private void checkSeedNodesStatus()
       throws ConfigInconsistentException, StartUpCheckFailureException {
+    if (getAllNodes().size() == 1) {
+      // one-node cluster, skip the check
+      return;
+    }
+
     boolean canEstablishCluster = false;
     long startTime = System.currentTimeMillis();
     AtomicInteger consistentNum = new AtomicInteger(1);
