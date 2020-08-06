@@ -527,9 +527,9 @@ public class IoTDBSimpleQueryIT {
       }
 
       try {
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=TS_2DIFF");
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
       } catch (Exception e) {
-        Assert.assertEquals("303: org.apache.iotdb.db.exception.metadata.MetadataException: encoding DOUBLE does not support TS_2DIFF", e.getMessage());
+        Assert.assertEquals("303: org.apache.iotdb.db.exception.metadata.MetadataException: encoding DOUBLE does not support REGULAR", e.getMessage());
       }
 
       try {
