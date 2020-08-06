@@ -471,6 +471,16 @@ public class MetaGroupMember extends RaftMember {
     loadPartitionTable();
     // just establish the heartbeat thread and it will do the remaining
     threadTaskInit();
+    if (allNodes.size() == 1) {
+      // if there is only one node in the cluster, no heartbeat will be received, and
+      // consequently data group will not be built
+      if (partitionTable == null) {
+        partitionTable = new SlotPartitionTable(allNodes, thisNode);
+        logger.info("Partition table is set up");
+      }
+      router = new ClusterPlanRouter(partitionTable);
+      startSubServers();
+    }
   }
 
   private void threadTaskInit() {

@@ -24,4 +24,8 @@ public class StartUpCheckFailureException extends Exception {
   public StartUpCheckFailureException() {
     super("The start up check cannot finish timely, please check the network");
   }
+
+  public StartUpCheckFailureException(Throwable e) {
+    super(e);
+  }
 }
