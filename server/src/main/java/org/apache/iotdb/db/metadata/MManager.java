@@ -310,10 +310,11 @@ public class MManager {
     String[] args = cmd.trim().split(",", -1);
     switch (args[0]) {
       case MetadataOperationType.CREATE_TIMESERIES:
-        Map<String, String> props = new HashMap<>();
+        Map<String, String> props = null;
         if (!args[5].isEmpty()) {
           String[] keyValues = args[5].split("&");
           String[] kv;
+          props = new HashMap<>();
           for (String keyValue : keyValues) {
             kv = keyValue.split("=");
             props.put(kv[0], kv[1]);
