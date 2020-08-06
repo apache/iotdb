@@ -49,17 +49,26 @@ public class SchemaUtils {
   private static Map<TSDataType, Set<TSEncoding>> schemaChecker = new HashMap<>();
 
   static {
-    schemaChecker.put(TSDataType.BOOLEAN, new HashSet<TSEncoding>(){{
-      add(TSEncoding.PLAIN);add(TSEncoding.RLE);}});
-    schemaChecker.put(TSDataType.INT32, new HashSet<TSEncoding>(){{
-      add(TSEncoding.PLAIN);add(TSEncoding.RLE);add(TSEncoding.TS_2DIFF);add(TSEncoding.REGULAR);}});
-    schemaChecker.put(TSDataType.INT64, new HashSet<TSEncoding>(){{
-      add(TSEncoding.PLAIN);add(TSEncoding.RLE);add(TSEncoding.TS_2DIFF);add(TSEncoding.REGULAR);}});
-    schemaChecker.put(TSDataType.FLOAT, new HashSet<TSEncoding>(){{
-      add(TSEncoding.PLAIN);add(TSEncoding.RLE);add(TSEncoding.GORILLA);}});
-    schemaChecker.put(TSDataType.DOUBLE, new HashSet<TSEncoding>(){{
-      add(TSEncoding.PLAIN);add(TSEncoding.RLE);add(TSEncoding.GORILLA);}});
-    schemaChecker.put(TSDataType.TEXT, new HashSet<TSEncoding>(){{ add(TSEncoding.PLAIN);}});
+    Set<TSEncoding> booleanSet = new HashSet<>();
+    booleanSet.add(TSEncoding.PLAIN);
+    booleanSet.add(TSEncoding.RLE);
+    schemaChecker.put(TSDataType.BOOLEAN, booleanSet);
+    Set<TSEncoding> int32Set = new HashSet<>();
+    int32Set.add(TSEncoding.PLAIN);
+    int32Set.add(TSEncoding.RLE);
+    int32Set.add(TSEncoding.TS_2DIFF);
+    int32Set.add(TSEncoding.REGULAR);
+    schemaChecker.put(TSDataType.INT32, int32Set);
+    schemaChecker.put(TSDataType.INT64, int32Set);
+    Set<TSEncoding> floatSet = new HashSet<>();
+    floatSet.add(TSEncoding.PLAIN);
+    floatSet.add(TSEncoding.RLE);
+    floatSet.add(TSEncoding.GORILLA);
+    schemaChecker.put(TSDataType.FLOAT, floatSet);
+    schemaChecker.put(TSDataType.DOUBLE, floatSet);
+    Set<TSEncoding> textSet = new HashSet<>();
+    textSet.add(TSEncoding.PLAIN);
+    schemaChecker.put(TSDataType.TEXT, textSet);
   }
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
