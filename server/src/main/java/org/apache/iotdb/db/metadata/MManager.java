@@ -482,7 +482,7 @@ public class MManager {
           String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(n);
           if (!isRecovering) {
             if (emptyStorageGroup != null) {
-              StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
+              StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(mtree.getStorageGroupMNodeByMNode(n));
             }
             logWriter.deleteTimeseries(n.getFullPath());
           }
@@ -848,6 +848,17 @@ public class MManager {
     }
   }
 
+  /**
+   * Get all storage group names
+   */
+  public List<StorageGroupMNode> getAllDetachedStorageGroupMNodes() {
+    lock.readLock().lock();
+    try {
+      return mtree.getAllDetachedStorageGroupMNodes();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
   /**
    * Get all storage group MNodes
    */

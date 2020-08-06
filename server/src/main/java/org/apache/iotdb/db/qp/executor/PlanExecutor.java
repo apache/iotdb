@@ -1051,7 +1051,7 @@ public class PlanExecutor implements IPlanExecutor {
     List<List<String>> deletePathList = new ArrayList<>();
     try {
       for (Path storageGroupPath : deleteStorageGroupPlan.getPaths()) {
-        StorageEngine.getInstance().deleteStorageGroup(MetaUtils.concatDetachedPathByDot(storageGroupPath.getDetachedPath()));
+        StorageEngine.getInstance().deleteStorageGroup(IoTDB.metaManager.getStorageGroupMNode(storageGroupPath.getDetachedPath()));
         deletePathList.add(storageGroupPath.getDetachedPath());
       }
       mManager.deleteStorageGroups(deletePathList);

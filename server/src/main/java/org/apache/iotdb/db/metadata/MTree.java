@@ -399,6 +399,16 @@ public class MTree implements Serializable {
     throw new StorageGroupNotSetException(MetaUtils.concatDetachedPathByDot(detachedPath));
   }
 
+  StorageGroupMNode getgetStorageGroupMNodeByMNode(MNode mNode) throws StorageGroupNotSetException {
+    MNode temp = mNode;
+    while (temp.getParent() != null) {
+      temp = temp.getParent();
+      if(temp instanceof StorageGroupMNode) {
+        return (StorageGroupMNode) temp;
+      }
+    }
+    throw new StorageGroupNotSetException(mNode.getFullPath());
+  }
   /**
    * Get storage group node, the give path must be storage group path.
    */
@@ -493,6 +503,26 @@ public class MTree implements Serializable {
       MNode current = nodeStack.pop();
       if (current instanceof StorageGroupMNode) {
         res.add(current.getFullPath());
+      } else {
+        nodeStack.addAll(current.getChildren().values());
+      }
+    }
+    return res;
+  }
+
+  /**
+   * Get all storage group names
+   *
+   * @return a list contains all distinct storage group MNode
+   */
+  List<StorageGroupMNode> getAllDetachedStorageGroupMNodes() {
+    List<StorageGroupMNode> res = new ArrayList<>();
+    Deque<MNode> nodeStack = new ArrayDeque<>();
+    nodeStack.add(root);
+    while (!nodeStack.isEmpty()) {
+      MNode current = nodeStack.pop();
+      if (current instanceof StorageGroupMNode) {
+        res.add((StorageGroupMNode) current);
       } else {
         nodeStack.addAll(current.getChildren().values());
       }

@@ -402,12 +402,12 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void asyncCloseProcessor(String storageGroupName, long partitionId, boolean isSeq)
+  public void asyncCloseProcessor(MNode storageGroupMNode, long partitionId, boolean isSeq)
       throws StorageGroupNotSetException {
-    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+    StorageGroupProcessor processor = processorMap.get(storageGroupMNode);
     if (processor != null) {
       logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
-          storageGroupName, isSeq, partitionId);
+          storageGroupMNode, isSeq, partitionId);
       processor.writeLock();
       // to avoid concurrent modification problem, we need a new array list
       List<TsFileProcessor> processors = isSeq ?
@@ -424,7 +424,7 @@ public class StorageEngine implements IService {
         processor.writeUnlock();
       }
     } else {
-      throw new StorageGroupNotSetException(storageGroupName);
+      throw new StorageGroupNotSetException(storageGroupMNode.getFullPath());
     }
   }
 
@@ -510,15 +510,15 @@ public class StorageEngine implements IService {
    * delete all data files (both memory data and file on disk) in a storage group. It is used when
    * there is no timeseries (which are all deleted) in this storage group)
    */
-  public void deleteAllDataFilesInOneStorageGroup(String storageGroupName) {
-    if (processorMap.containsKey(storageGroupName)) {
-      syncDeleteDataFiles(storageGroupName);
+  public void deleteAllDataFilesInOneStorageGroup(MNode mNode) {
+    if (processorMap.containsKey(mNode)) {
+      syncDeleteDataFiles(mNode);
     }
   }
 
-  private void syncDeleteDataFiles(String storageGroupName) {
-    logger.info("Force to delete the data in storage group processor {}", storageGroupName);
-    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+  private void syncDeleteDataFiles(MNode mNode) {
+    logger.info("Force to delete the data in storage group processor {}", mNode.getFullPath());
+    StorageGroupProcessor processor = processorMap.get(mNode);
     processor.syncDeleteDataFiles();
   }
 
@@ -528,7 +528,7 @@ public class StorageEngine implements IService {
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
-    for (String storageGroup : IoTDB.metaManager.getAllDetachedStorageGroups()) {
+    for (StorageGroupMNode storageGroup : IoTDB.metaManager.getAllDetachedStorageGroupMNodes()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
     return true;
@@ -539,7 +539,7 @@ public class StorageEngine implements IService {
     storageGroupProcessor.setDataTTL(dataTTL);
   }
 
-  public void deleteStorageGroup(String storageGroup) {
+  public void deleteStorageGroup(MNode storageGroup) {
     deleteAllDataFilesInOneStorageGroup(storageGroup);
     StorageGroupProcessor processor = processorMap.remove(storageGroup);
     if (processor != null) {
@@ -615,9 +615,9 @@ public class StorageEngine implements IService {
     this.fileFlushPolicy = fileFlushPolicy;
   }
 
-  public boolean isFileAlreadyExist(TsFileResource tsFileResource, String storageGroup,
+  public boolean isFileAlreadyExist(TsFileResource tsFileResource, MNode storageGroupMNode,
       long partitionNum) {
-    StorageGroupProcessor processor = processorMap.get(storageGroup);
+    StorageGroupProcessor processor = processorMap.get(storageGroupMNode);
     return processor != null && processor.isFileAlreadyExist(tsFileResource, partitionNum);
   }
 
