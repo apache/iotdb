@@ -58,9 +58,10 @@ public abstract class RaftLogManager {
   // to distinguish managers of different members
   private String name;
 
-  private ScheduledExecutorService executorService;
+  private ScheduledExecutorService deleteLogExecutorService;
   private ScheduledFuture<?> deleteLogFuture;
 
+  private ScheduledExecutorService flushLogExecutorService;
 
   /**
    * minimum number of committed logs in memory
@@ -90,7 +91,7 @@ public abstract class RaftLogManager {
     // must have applied entry [compactIndex,last] to state machine
     this.commitIndex = last;
 
-    executorService = new ScheduledThreadPoolExecutor(1,
+    deleteLogExecutorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
             .build());
     /**
@@ -98,10 +99,27 @@ public abstract class RaftLogManager {
      */
     int logDeleteCheckIntervalSecond = ClusterDescriptor.getInstance().getConfig()
         .getLogDeleteCheckIntervalSecond();
-    deleteLogFuture = executorService
+
+    deleteLogFuture = deleteLogExecutorService
         .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
             logDeleteCheckIntervalSecond,
             TimeUnit.SECONDS);
+
+    /**
+     * flush log to file periodically
+     */
+    int logFlushTimeIntervalMS = ClusterDescriptor.getInstance().getConfig()
+        .getForceRaftLogPeriodInMS();
+    if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+      if (flushLogExecutorService == null) {
+        flushLogExecutorService = new ScheduledThreadPoolExecutor(1,
+            new BasicThreadFactory.Builder().namingPattern("raft-log-write-%d").daemon(true)
+                .build());
+      }
+      flushLogExecutorService
+          .scheduleAtFixedRate(this::flushLogPeriodically, logFlushTimeIntervalMS,
+              logFlushTimeIntervalMS, TimeUnit.MILLISECONDS);
+    }
   }
 
   public abstract Snapshot getSnapshot();
@@ -162,8 +180,7 @@ public abstract class RaftLogManager {
    *
    * @param index request entry index
    * @return throw EntryCompactedException if index < dummyIndex, -1 if index > lastIndex or the
-   * entry is compacted, otherwise
-   * return the entry's term for given index
+   * entry is compacted, otherwise return the entry's term for given index
    * @throws EntryCompactedException
    */
   public long getTerm(long index) throws EntryCompactedException {
@@ -436,7 +453,7 @@ public abstract class RaftLogManager {
         applyEntries(entries, ignoreExecutionExceptions);
       } catch (TruncateCommittedEntryException e) {
         logger.error("{}: Unexpected error:", name, e);
-      } catch (IOException e){
+      } catch (IOException e) {
         throw new LogExecutionException(e);
       }
     }
@@ -548,16 +565,26 @@ public abstract class RaftLogManager {
 
   public void close() {
     getStableEntryManager().close();
-    if (executorService != null) {
-      executorService.shutdownNow();
+    if (deleteLogExecutorService != null) {
+      deleteLogExecutorService.shutdownNow();
       deleteLogFuture.cancel(true);
       try {
-        executorService.awaitTermination(20, TimeUnit.SECONDS);
+        deleteLogExecutorService.awaitTermination(20, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Close check log thread interrupted");
       }
-      executorService = null;
+      deleteLogExecutorService = null;
+    }
+    if (flushLogExecutorService != null) {
+      flushLogExecutorService.shutdown();
+      try {
+        flushLogExecutorService.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("force flush raft log thread still doesn't exit after 30s.");
+        Thread.currentThread().interrupt();
+      }
+      flushLogExecutorService = null;
     }
   }
 
@@ -597,6 +624,12 @@ public abstract class RaftLogManager {
         return;
       }
       innerDeleteLog();
+    }
+  }
+
+  public void flushLogPeriodically() {
+    synchronized (this) {
+      getStableEntryManager().forceFlushLogBuffer();
     }
   }
 

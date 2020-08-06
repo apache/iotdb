@@ -28,6 +28,10 @@ public interface StableEntryManager {
 
   void append(List<Log> entries) throws IOException;
 
+  void flushLogBuffer();
+
+  void forceFlushLogBuffer();
+
   void removeCompactedEntries(long index);
 
   void setHardStateAndFlush(HardState state);
