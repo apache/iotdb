@@ -21,7 +21,7 @@ package org.apache.iotdb.db.utils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +44,7 @@ public class SchemaUtils {
 
   }
 
-  private static Map<TSDataType, Set<TSEncoding>> schemaChecker = new HashMap<>();
+  private static Map<TSDataType, Set<TSEncoding>> schemaChecker = new EnumMap<>(TSDataType.class);
 
   static {
     Set<TSEncoding> booleanSet = new HashSet<>();
