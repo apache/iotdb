@@ -412,4 +412,39 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testInvalidSchema() throws MetadataException {
+    MManager manager = MManager.getInstance();
+    manager.setStorageGroup("root.sg1");
+
+    try {
+      manager.createTimeseries("root.sg1.d1.s1", TSDataType.BOOLEAN, TSEncoding.TS_2DIFF,
+          CompressionType.GZIP, null);
+    } catch (Exception e) {
+      Assert.assertEquals("encoding BOOLEAN does not support TS_2DIFF", e.getMessage());
+    }
+
+    try {
+      manager.createTimeseries("root.sg1.d1.s2", TSDataType.INT32, TSEncoding.GORILLA,
+          CompressionType.GZIP, null);
+    } catch (Exception e) {
+      Assert.assertEquals("encoding INT32 does not support GORILLA", e.getMessage());
+    }
+
+    try {
+      manager.createTimeseries("root.sg1.d1.s3", TSDataType.DOUBLE, TSEncoding.REGULAR,
+          CompressionType.GZIP, null);
+    } catch (Exception e) {
+      Assert.assertEquals("encoding DOUBLE does not support REGULAR", e.getMessage());
+    }
+
+    try {
+      manager.createTimeseries("root.sg1.d1.s4", TSDataType.TEXT, TSEncoding.TS_2DIFF,
+          CompressionType.GZIP, null);
+    } catch (Exception e) {
+      Assert.assertEquals("encoding TEXT does not support TS_2DIFF", e.getMessage());
+    }
+
+  }
 }
