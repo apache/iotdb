@@ -88,7 +88,7 @@
                 <thrift.compiler.executable>thrift</thrift.compiler.executable>
                 <gradlew.executable>./gradlew</gradlew.executable>
                 <openssl.include.default.path>/usr/local/opt/openssl/include</openssl.include.default.path>
-                <openssl.include.dir>-DCMAKE_CXX_FLAGS="-I${openssl.lib.default.path}"</openssl.include.dir>
+                <openssl.include.dir>-DCMAKE_CXX_FLAGS="-I${openssl.include.default.path}"</openssl.include.dir>
             </properties>
         </profile>
         <profile>
