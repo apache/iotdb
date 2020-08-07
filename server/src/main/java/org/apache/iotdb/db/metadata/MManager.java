@@ -293,9 +293,9 @@ public class MManager {
 
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     lock.writeLock().lock();
-    SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
     String path = plan.getPath().getFullPath();
     try {
+      SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
       /*
        * get the storage group with auto create schema
        */
