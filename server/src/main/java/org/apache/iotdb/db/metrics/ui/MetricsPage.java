@@ -14,13 +14,13 @@
  */
 package org.apache.iotdb.db.metrics.ui;
 
+import com.codahale.metrics.MetricRegistry;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -29,7 +29,6 @@ import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.codahale.metrics.MetricRegistry;
 
 public class MetricsPage {
 
