@@ -293,6 +293,7 @@ public class MManager {
 
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     lock.writeLock().lock();
+    SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
     String path = plan.getPath().getFullPath();
     try {
       /*
@@ -346,7 +347,6 @@ public class MManager {
         logWriter.createTimeseries(plan, offset);
       }
       leafMNode.setOffset(offset);
-      SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
     } catch (IOException | ConfigAdjusterException e) {
       throw new MetadataException(e.getMessage());
     } finally {
