@@ -506,4 +506,43 @@ public class IoTDBSimpleQueryIT {
       fail();
     }
   }
+
+
+  @Test
+  public void testInvalidSchema() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s1 with datatype=BOOLEAN, encoding=TS_2DIFF");
+      } catch (Exception e) {
+        Assert.assertEquals("303: org.apache.iotdb.db.exception.metadata.MetadataException: encoding BOOLEAN does not support TS_2DIFF", e.getMessage());
+      }
+
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s2 with datatype=INT32, encoding=GORILLA");
+      } catch (Exception e) {
+        Assert.assertEquals("303: org.apache.iotdb.db.exception.metadata.MetadataException: encoding INT32 does not support GORILLA", e.getMessage());
+      }
+
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
+      } catch (Exception e) {
+        Assert.assertEquals("303: org.apache.iotdb.db.exception.metadata.MetadataException: encoding DOUBLE does not support REGULAR", e.getMessage());
+      }
+
+      try {
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s4 with datatype=TEXT, encoding=TS_2DIFF");
+      } catch (Exception e) {
+        Assert.assertEquals("303: org.apache.iotdb.db.exception.metadata.MetadataException: encoding TEXT does not support TS_2DIFF", e.getMessage());
+      }
+
+
+    } catch (SQLException e) {
+      fail();
+    }
+  }
 }
