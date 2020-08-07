@@ -72,7 +72,7 @@ public class SeriesReaderTest {
       allSensors.add("sensor0");
       SeriesReader seriesReader = new SeriesReader(
           new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"), allSensors,
-          TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null);
+          TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null, true);
       IBatchReader batchReader = new SeriesRawDataBatchReader(seriesReader);
       int count = 0;
       while (batchReader.hasNextBatch()) {
@@ -107,7 +107,7 @@ public class SeriesReaderTest {
       allSensors.add("sensor0");
       SeriesReader seriesReader = new SeriesReader(
           new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"), allSensors,
-          TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null);
+          TSDataType.INT32, new QueryContext(), seqResources, unseqResources, null, null, true);
       IPointReader pointReader = new SeriesRawDataPointReader(seriesReader);
       long expectedTime = 0;
       while (pointReader.hasNextTimeValuePair()) {

@@ -35,10 +35,11 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   private SeriesReader seriesReader;
   private BatchData batchData;
 
-  public SeriesReaderByTimestamp(Path seriesPath, Set<String> allSensors,  TSDataType dataType, QueryContext context,
-                                 QueryDataSource dataSource, TsFileFilter fileFilter) {
+  public SeriesReaderByTimestamp(Path seriesPath, Set<String> allSensors, TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource, TsFileFilter fileFilter) {
     seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
-        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter);
+        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter, true);
   }
 
   public SeriesReaderByTimestamp(SeriesReader seriesReader) {

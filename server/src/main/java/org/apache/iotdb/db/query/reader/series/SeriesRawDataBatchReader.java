@@ -51,7 +51,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
       QueryContext context, QueryDataSource dataSource, Filter timeFilter, Filter valueFilter,
       TsFileFilter fileFilter) {
     this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, dataSource,
-        timeFilter, valueFilter, fileFilter);
+        timeFilter, valueFilter, fileFilter, true);
   }
 
   @TestOnly
@@ -61,7 +61,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     Set<String> allSensors = new HashSet<>();
     allSensors.add(seriesPath.getMeasurement());
     this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
-        seqFileResource, unseqFileResource, timeFilter, valueFilter);
+        seqFileResource, unseqFileResource, timeFilter, valueFilter, true);
   }
 
   /**

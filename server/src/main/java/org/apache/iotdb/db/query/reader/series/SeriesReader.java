@@ -213,25 +213,19 @@ public class SeriesReader {
    */
   private TimeseriesMetadata firstTimeSeriesMetadata;
   private final List<TimeseriesMetadata> seqTimeSeriesMetadata = new LinkedList<>();
-  private final PriorityQueue<TimeseriesMetadata> unSeqTimeSeriesMetadata =
-      new PriorityQueue<>(orderUtils.comparingLong(
-          timeSeriesMetadata -> orderUtils.getOrderTime(timeSeriesMetadata.getStatistics())));
+  private final PriorityQueue<TimeseriesMetadata> unSeqTimeSeriesMetadata;
 
   /*
    * chunk cache
    */
   private ChunkMetadata firstChunkMetadata;
-  private final PriorityQueue<ChunkMetadata> cachedChunkMetadata =
-      new PriorityQueue<>(orderUtils.comparingLong(
-          chunkMetadata -> orderUtils.getOrderTime(chunkMetadata.getStatistics())));
+  private final PriorityQueue<ChunkMetadata> cachedChunkMetadata;
 
   /*
    * page cache
    */
   private VersionPageReader firstPageReader;
-  private PriorityQueue<VersionPageReader> cachedPageReaders =
-      new PriorityQueue<>(orderUtils.comparingLong(
-          versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
+  private PriorityQueue<VersionPageReader> cachedPageReaders;
 
   /*
    * point cache
@@ -253,8 +247,6 @@ public class SeriesReader {
     this.dataType = dataType;
     this.context = context;
     QueryUtils.filterQueryDataSource(dataSource, fileFilter);
-    this.seqFileResource = new LinkedList<>(dataSource.getSeqResources());
-    this.unseqFileResource = sortUnSeqFileResources(dataSource.getUnseqResources());
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
     if (ascending) {
@@ -262,6 +254,15 @@ public class SeriesReader {
     } else {
       this.orderUtils = new DescTimeOrderUtils();
     }
+
+    this.seqFileResource = new LinkedList<>(dataSource.getSeqResources());
+    this.unseqFileResource = sortUnSeqFileResources(dataSource.getUnseqResources());
+    unSeqTimeSeriesMetadata = new PriorityQueue<>(orderUtils.comparingLong(
+        timeSeriesMetadata -> orderUtils.getOrderTime(timeSeriesMetadata.getStatistics())));
+    cachedChunkMetadata = new PriorityQueue<>(orderUtils.comparingLong(
+        chunkMetadata -> orderUtils.getOrderTime(chunkMetadata.getStatistics())));
+    cachedPageReaders = new PriorityQueue<>(orderUtils.comparingLong(
+        versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
   }
 
   @TestOnly
@@ -272,8 +273,6 @@ public class SeriesReader {
     this.allSensors = allSensors;
     this.dataType = dataType;
     this.context = context;
-    this.seqFileResource = new LinkedList<>(seqFileResource);
-    this.unseqFileResource = sortUnSeqFileResources(unseqFileResource);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
     if (ascending) {
@@ -281,6 +280,15 @@ public class SeriesReader {
     } else {
       this.orderUtils = new DescTimeOrderUtils();
     }
+
+    this.seqFileResource = new LinkedList<>(seqFileResource);
+    this.unseqFileResource = sortUnSeqFileResources(unseqFileResource);
+    unSeqTimeSeriesMetadata = new PriorityQueue<>(orderUtils.comparingLong(
+        timeSeriesMetadata -> orderUtils.getOrderTime(timeSeriesMetadata.getStatistics())));
+    cachedChunkMetadata = new PriorityQueue<>(orderUtils.comparingLong(
+        chunkMetadata -> orderUtils.getOrderTime(chunkMetadata.getStatistics())));
+    cachedPageReaders = new PriorityQueue<>(orderUtils.comparingLong(
+        versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
   }
 
   public boolean isEmpty() {
