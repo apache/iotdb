@@ -1232,10 +1232,8 @@ public class MManager {
       node = mNodeCache.get(deviceId, detachedDevice);
       return node;
     } catch (CacheException e) {
-      if(e.getCause() instanceof PathNotExistException) {
-        if (!autoCreateSchema) {
-          throw new PathNotExistException(deviceId);
-        }
+      if(e.getCause() instanceof PathNotExistException && !autoCreateSchema) {
+        throw new PathNotExistException(deviceId);
       }
       if(e.getCause() instanceof  StorageGroupNotSetException) {
         shouldSetStorageGroup = true;
