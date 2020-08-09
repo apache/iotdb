@@ -30,11 +30,9 @@
     <name>Tools: Thrift</name>
     <description>Local build of the Apache Thrift compiler.</description>
     <properties>
-        <!-- keep consistent with root/pom.xml-->
-        <thrift.version>0.13.0</thrift.version>
         <thrift.with.cpp>ON</thrift.with.cpp>
-        <thrift.with.csharp>OFF</thrift.with.csharp>
-        <thrift.with.python>OFF</thrift.with.python>
+        <thrift.with.csharp>ON</thrift.with.csharp>
+        <thrift.with.python>ON</thrift.with.python>
     </properties>
     <profiles>
         <!-- Profile for linux -->
@@ -269,7 +267,7 @@
                     <!-- Uses a CMake generator to generate the build using the build tool of choice -->
                     <execution>
                         <id>cmake-generate</id>
-                        <phase>process-sources</phase>
+                        <phase>generate-sources</phase>
                         <goals>
                             <goal>generate</goal>
                         </goals>
@@ -296,18 +294,18 @@
                                 <option>-DTHRIFT_COMPILER_DART=OFF</option>
                                 <option>-DTHRIFT_COMPILER_DELPHI=OFF</option>
                                 <option>-DTHRIFT_COMPILER_ERL=OFF</option>
-                                <option>-DTHRIFT_COMPILER_GO=OFF</option>
+                                <option>-DTHRIFT_COMPILER_GO=ON</option>
                                 <option>-DTHRIFT_COMPILER_GV=OFF</option>
                                 <option>-DTHRIFT_COMPILER_HAXE=OFF</option>
                                 <option>-DTHRIFT_COMPILER_HS=OFF</option>
                                 <option>-DTHRIFT_COMPILER_HTML=OFF</option>
                                 <option>-DTHRIFT_COMPILER_JAVA=ON</option>
-                                <option>-DTHRIFT_COMPILER_JAVAME=OFF</option>
-                                <option>-DTHRIFT_COMPILER_JS=OFF</option>
+                                <option>-DTHRIFT_COMPILER_JAVAME=ON</option>
+                                <option>-DTHRIFT_COMPILER_JS=ON</option>
                                 <option>-DTHRIFT_COMPILER_JSON=OFF</option>
                                 <option>-DTHRIFT_COMPILER_LUA=OFF</option>
-                                <option>-DTHRIFT_COMPILER_NETCORE=OFF</option>
-                                <option>-DTHRIFT_COMPILER_NETSTD=OFF</option>
+                                <option>-DTHRIFT_COMPILER_NETCORE=ON</option>
+                                <option>-DTHRIFT_COMPILER_NETSTD=ON</option>
                                 <option>-DTHRIFT_COMPILER_OCAML=OFF</option>
                                 <option>-DTHRIFT_COMPILER_PERL=OFF</option>
                                 <option>-DTHRIFT_COMPILER_PHP=OFF</option>
