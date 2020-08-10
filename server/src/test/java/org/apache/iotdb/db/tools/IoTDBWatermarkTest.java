@@ -29,6 +29,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.tools.watermark.WatermarkDetector;
@@ -62,6 +63,7 @@ public class IoTDBWatermarkTest {
     IoTDBDescriptor.getInstance().getConfig().setWatermarkBitString(watermarkBitString);
     IoTDBDescriptor.getInstance().getConfig().setWatermarkMethod(String.format("GroupBasedLSBMethod"
         + "(embed_row_cycle=%d,embed_lsb_num=%d)", embed_row_cycle, embed_lsb_num));
+    IoTDBDescriptor.getInstance().getConfig().setTsFileManagementStrategy(TsFileManagementStrategy.NormalStrategy);
 
     EnvironmentUtils.envSetUp();
     insertData();
@@ -92,6 +94,7 @@ public class IoTDBWatermarkTest {
       file2.delete();
     }
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setTsFileManagementStrategy(TsFileManagementStrategy.LevelStrategy);
   }
 
   private static void insertData()
