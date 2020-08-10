@@ -1557,7 +1557,6 @@ public class StorageGroupProcessor {
       closeStorageGroupCondition.notifyAll();
     }
     if (!hotCompactionMergeWorking) {
-      writeLock();
       hotCompactionMergeWorking = true;
       logger.info("{} submit a hot compaction merge task", storageGroupName);
       // fork and filter current tsfile, then commit then to hot compaction merge
@@ -1565,7 +1564,6 @@ public class StorageGroupProcessor {
       HotCompactionMergeTaskPoolManager.getInstance()
           .submit(tsFileManagement.new HotCompactionMergeTask(hotCompactionMergeLock,
               this::closeHotCompactionMergeCallBack));
-      writeUnlock();
     } else {
       logger.info("{} last hot compaction merge task is working, skip current merge",
           storageGroupName);
