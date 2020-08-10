@@ -37,10 +37,16 @@ import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSizeSelectorStrategy;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.utils.MergeUtils;
+import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -62,12 +68,13 @@ public abstract class BaseMergeSeriesTask {
   private int minChunkPointNum;
   protected int mergedSeriesCnt;
   private double progress;
+  protected String storageGroupName;
 
   protected RestorableTsFileIOWriter currentFileWriter;
   protected TsFileResource currentMergeResource;
 
   protected BaseMergeSeriesTask(MergeContext context, String taskName, MergeLogger mergeLogger,
-      MergeResource mergeResource, List<Path> unmergedSeries) {
+      MergeResource mergeResource, List<Path> unmergedSeries, String storageGroupName) {
     this.mergeContext = context;
     this.taskName = taskName;
     this.mergeLogger = mergeLogger;
@@ -78,6 +85,7 @@ public abstract class BaseMergeSeriesTask {
         .getMergeSizeSelectorStrategy();
     this.minChunkPointNum = IoTDBDescriptor.getInstance().getConfig()
         .getChunkMergePointThreshold();
+    this.storageGroupName = storageGroupName;
   }
 
   protected Pair<RestorableTsFileIOWriter, TsFileResource> createNewFileWriter(
@@ -93,11 +101,11 @@ public abstract class BaseMergeSeriesTask {
   private File createNewFile(PriorityQueue<File> mergeFileNameHeap, String mergeSuffix) {
     File originFile = mergeFileNameHeap.poll();
     String[] splits = originFile.getName().replace(TSFILE_SUFFIX, "")
-        .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+        .split(IoTDBConstant.FILE_NAME_SEPARATOR);
     int mergeVersion = Integer.parseInt(splits[2]) + 1;
     return FSFactoryProducer.getFSFactory().getFile(originFile.getParentFile(),
-        splits[0] + IoTDBConstant.TSFILE_NAME_SEPARATOR + splits[1] +
-            IoTDBConstant.TSFILE_NAME_SEPARATOR + mergeVersion + TSFILE_SUFFIX + mergeSuffix);
+        splits[0] + IoTDBConstant.FILE_NAME_SEPARATOR + splits[1] +
+            IoTDBConstant.FILE_NAME_SEPARATOR + mergeVersion + TSFILE_SUFFIX + mergeSuffix);
   }
 
   protected void logMergeProgress() {
@@ -137,12 +145,11 @@ public abstract class BaseMergeSeriesTask {
       idx++;
     }
 
-    List<Future<Long>> futures = new ArrayList<>();
+    List<Future<Void>> futures = new ArrayList<>();
     for (int i = 0; i < mergeChunkSubTaskNum; i++) {
       int finalI = i;
-      futures.add(MergeManager.getINSTANCE()
-          .submitChunkSubTask(
-              () -> mergeSubChunks(seriesHeaps[finalI], currSeqFiles, currUnseqFiles)));
+      futures.add(MergeManager.getINSTANCE().submitChunkSubTask(
+          new BaseMergeChunkHeapTask(seriesHeaps[finalI], currSeqFiles, currUnseqFiles, i)));
     }
     for (int i = 0; i < mergeChunkSubTaskNum; i++) {
       try {
@@ -155,45 +162,79 @@ public abstract class BaseMergeSeriesTask {
     currentFileWriter.endChunkGroup();
   }
 
-  private long mergeSubChunks(PriorityQueue<Path> seriesHeaps, List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles)
-      throws IOException {
-    while (!seriesHeaps.isEmpty()) {
-      Path path = seriesHeaps.poll();
-      long currMinTime = Long.MAX_VALUE;
-      long currMaxTime = Long.MIN_VALUE;
-      IChunkWriter chunkWriter = resource.getChunkWriter(path);
-      currentFileWriter.addSchema(path, chunkWriter.getMeasurementSchema());
-      QueryContext context = new QueryContext();
-      IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path,
-          chunkWriter.getMeasurementSchema().getType(),
-          context, seqFiles, unseqFiles, null, null);
-      while (tsFilesReader.hasNextBatch()) {
-        BatchData batchData = tsFilesReader.nextBatch();
-        currMinTime = Math.min(currMinTime, batchData.getTimeByIndex(0));
-        for (int i = 0; i < batchData.length(); i++) {
-          writeBatchPoint(batchData, i, chunkWriter);
-        }
-        if (!tsFilesReader.hasNextBatch()) {
-          currMaxTime = Math.max(batchData.getTimeByIndex(batchData.length() - 1), currMaxTime);
-        }
-        if (mergeSizeSelectorStrategy
-            .isChunkEnoughLarge(chunkWriter, minChunkPointNum, currMinTime, currMaxTime,
-                timeBlock)) {
-          mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
-          synchronized (currentFileWriter) {
-            chunkWriter.writeToFileWriter(currentFileWriter);
+  public class BaseMergeChunkHeapTask extends MergeChunkHeapTask {
+
+    private PriorityQueue<Path> seriesHeaps;
+    private List<TsFileResource> seqFiles;
+    private List<TsFileResource> unseqFiles;
+    private int taskNum;
+    private int mergedSeriesNum = 0;
+
+    public BaseMergeChunkHeapTask(PriorityQueue<Path> seriesHeaps, List<TsFileResource> seqFiles,
+        List<TsFileResource> unseqFiles, int taskNum) {
+      this.seriesHeaps = seriesHeaps;
+      this.seqFiles = seqFiles;
+      this.unseqFiles = unseqFiles;
+      this.taskNum = taskNum;
+    }
+
+    @Override
+    public Void call() throws Exception {
+      mergeChunkHeap();
+      return null;
+    }
+
+    @SuppressWarnings("java:S2445") // avoid reading the same reader concurrently
+    private void mergeChunkHeap() throws IOException {
+      while (!seriesHeaps.isEmpty()) {
+        Path path = seriesHeaps.poll();
+        long currMinTime = Long.MAX_VALUE;
+        long currMaxTime = Long.MIN_VALUE;
+        IChunkWriter chunkWriter = resource.getChunkWriter(path);
+        currentFileWriter.addSchema(path, chunkWriter.getMeasurementSchema());
+        QueryContext context = new QueryContext();
+        IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path,
+            chunkWriter.getMeasurementSchema().getType(),
+            context, seqFiles, unseqFiles, null, null);
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          currMinTime = Math.min(currMinTime, batchData.getTimeByIndex(0));
+          for (int i = 0; i < batchData.length(); i++) {
+            writeBatchPoint(batchData, i, chunkWriter);
+          }
+          if (!tsFilesReader.hasNextBatch()) {
+            currMaxTime = Math.max(batchData.getTimeByIndex(batchData.length() - 1), currMaxTime);
+          }
+          if (mergeSizeSelectorStrategy
+              .isChunkEnoughLarge(chunkWriter, minChunkPointNum, currMinTime, currMaxTime,
+                  timeBlock)) {
+            mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
+            synchronized (currentFileWriter) {
+              chunkWriter.writeToFileWriter(currentFileWriter);
+            }
           }
         }
+        synchronized (currentFileWriter) {
+          chunkWriter.writeToFileWriter(currentFileWriter);
+        }
+        currentMergeResource.updateStartTime(path.getDevice(), currMinTime);
+        currentMergeResource.updateEndTime(path.getDevice(), currMaxTime);
+        mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
+        tsFilesReader.close();
+        mergedSeriesNum++;
       }
-      synchronized (currentFileWriter) {
-        chunkWriter.writeToFileWriter(currentFileWriter);
-      }
-      currentMergeResource.updateStartTime(path.getDevice(), currMinTime);
-      currentMergeResource.updateEndTime(path.getDevice(), currMaxTime);
-      mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
-      tsFilesReader.close();
     }
-    return 0;
+
+    public String getStorageGroupName() {
+      return storageGroupName;
+    }
+
+    public String getTaskName() {
+      return taskName + "_" + taskNum;
+    }
+
+    public String getProgress() {
+      return String.format("Processed %d/%d series", mergedSeriesNum, seriesHeaps.size());
+    }
   }
 }

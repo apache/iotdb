@@ -102,7 +102,7 @@ public class MergeResource {
     RestorableTsFileIOWriter writer = fileWriterCache.get(resource);
     if (writer == null) {
       writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory()
-          .getFile(resource.getPath() + MERGE_SUFFIX));
+          .getFile(resource.getTsFilePath() + MERGE_SUFFIX));
       fileWriterCache.put(resource, writer);
     }
     return writer;
@@ -142,7 +142,7 @@ public class MergeResource {
   public TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
     TsFileSequenceReader reader = fileReaderCache.get(tsFileResource);
     if (reader == null) {
-      reader = new TsFileSequenceReader(tsFileResource.getPath(), true, cacheDeviceMeta);
+      reader = new TsFileSequenceReader(tsFileResource.getTsFilePath(), true, cacheDeviceMeta);
       fileReaderCache.put(tsFileResource, reader);
     }
     return reader;

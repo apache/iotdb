@@ -31,10 +31,19 @@ import org.apache.iotdb.db.engine.merge.seqMerge.squeeze.selector.SqueezeMaxFile
 import org.apache.iotdb.db.engine.merge.utils.SelectorContext;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.junit.Before;
 import org.junit.Test;
 
 public class SqueezeMaxFileMergeFileSelectorTest extends MergeTest {
+
+  @Before
+  public void setUp()
+      throws IOException, WriteProcessException, MetadataException {
+    super.setUp();
+  }
 
   @Test
   public void testFullSelection() throws MergeException, IOException {

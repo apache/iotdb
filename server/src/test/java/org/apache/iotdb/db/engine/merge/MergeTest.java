@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -47,7 +48,6 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
-import org.junit.Before;
 
 public abstract class MergeTest {
 
@@ -69,10 +69,8 @@ public abstract class MergeTest {
 
   private int prevMergeChunkThreshold;
 
-  @Before
-  public void setUp()
-      throws IOException, WriteProcessException, MetadataException {
-    MManager.getInstance().init();
+  public void setUp() throws IOException, WriteProcessException, MetadataException {
+    IoTDB.metaManager.init();
     prevMergeChunkThreshold =
         IoTDBDescriptor.getInstance().getConfig().getChunkMergePointThreshold();
     IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(-1);
@@ -88,12 +86,12 @@ public abstract class MergeTest {
     unseqResources.clear();
     IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(prevMergeChunkThreshold);
     ChunkMetadataCache.getInstance().clear();
-    MManager.getInstance().clear();
+    IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
     MergeManager.getINSTANCE().stop();
   }
 
-  private void prepareSeries() throws MetadataException, MetadataException {
+  private void prepareSeries() throws MetadataException {
     measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
@@ -103,10 +101,10 @@ public abstract class MergeTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = MERGE_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    MManager.getInstance().setStorageGroup(MERGE_TEST_SG);
+    IoTDB.metaManager.setStorageGroup(MERGE_TEST_SG);
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        MManager.getInstance().createTimeseries(
+        IoTDB.metaManager.createTimeseries(
             device + PATH_SEPARATOR + measurementSchema.getMeasurementId(), measurementSchema
                 .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());
@@ -118,8 +116,8 @@ public abstract class MergeTest {
       throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-          i + "seq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
-              + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
+          i + "seq" + IoTDBConstant.FILE_NAME_SEPARATOR + i + IoTDBConstant.FILE_NAME_SEPARATOR
+              + i + IoTDBConstant.FILE_NAME_SEPARATOR + 0
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
@@ -129,9 +127,9 @@ public abstract class MergeTest {
     }
     for (int i = 0; i < unseqFileNum; i++) {
       File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-          i + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR
-              + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
-              + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
+          i + "unseq" + IoTDBConstant.FILE_NAME_SEPARATOR
+              + i + IoTDBConstant.FILE_NAME_SEPARATOR
+              + i + IoTDBConstant.FILE_NAME_SEPARATOR + 0
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
@@ -141,9 +139,9 @@ public abstract class MergeTest {
     }
 
     File file = new File(TestConstant.BASE_OUTPUT_PATH
-        .concat(unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
-            + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
-            + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + ".tsfile"));
+        .concat(unseqFileNum + "unseq" + IoTDBConstant.FILE_NAME_SEPARATOR + unseqFileNum
+            + IoTDBConstant.FILE_NAME_SEPARATOR + unseqFileNum
+            + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
     tsFileResource.setHistoricalVersions(Collections.singleton((long) (seqFileNum + unseqFileNum)));
@@ -165,7 +163,7 @@ public abstract class MergeTest {
 
   void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
       long valueOffset) throws IOException, WriteProcessException {
-    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
+    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(

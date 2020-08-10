@@ -19,14 +19,35 @@
 
 package org.apache.iotdb.db.utils;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-
-import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public class QueryUtils {
 
@@ -36,59 +57,51 @@ public class QueryUtils {
 
   /**
    * modifyChunkMetaData iterates the chunkMetaData and applies all available modifications on it to
-   * generate a ModifiedChunkMetadata.
-   * <br/>
-   * the caller should guarantee that chunkMetaData and modifications refer to the same time series
-   * paths.
+   * generate a ModifiedChunkMetadata. <br/> the caller should guarantee that chunkMetaData and
+   * modifications refer to the same time series paths.
+   *
    * @param chunkMetaData the original chunkMetaData.
    * @param modifications all possible modifications.
    */
   public static void modifyChunkMetaData(List<ChunkMetadata> chunkMetaData,
-                                         List<Modification> modifications) {
+      List<Modification> modifications) {
     int modIndex = 0;
-
     for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
       ChunkMetadata metaData = chunkMetaData.get(metaIndex);
-      for (int j = modIndex; j < modifications.size(); j++) {
-        // iterate each modification to find the max deletion time
-        Modification modification = modifications.get(j);
+      for (Modification modification : modifications) {
         if (modification.getVersionNum() > metaData.getVersion()) {
-          // this modification is after the Chunk, try modifying the chunk
-          // if this modification succeeds, update modIndex so in the next loop the previous
-          // modifications will not be examined
-          modIndex = doModifyChunkMetaData(modification, metaData)? j : modIndex;
-        } else {
-          // skip old modifications for next metadata
-          modIndex++;
+          doModifyChunkMetaData(modification, metaData);
         }
       }
     }
     // remove chunks that are completely deleted
     chunkMetaData.removeIf(metaData -> {
-      if (metaData.getDeletedAt() >= metaData.getEndTime()) {
-        return true;
-      } else {
-        if (metaData.getDeletedAt() >= metaData.getStartTime()) {
-          metaData.setModified(true);
+      if (metaData.getDeleteIntervalList() != null) {
+        for (TimeRange range : metaData.getDeleteIntervalList()) {
+          if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
+            return true;
+          } else {
+            if (range.overlaps(new TimeRange(metaData.getStartTime(), metaData.getEndTime()))) {
+              metaData.setModified(true);
+            }
+            return false;
+          }
         }
-        return false;
       }
+      return false;
     });
   }
 
-  private static boolean doModifyChunkMetaData(Modification modification, ChunkMetadata metaData) {
+  private static void doModifyChunkMetaData(Modification modification, ChunkMetadata metaData) {
     if (modification instanceof Deletion) {
       Deletion deletion = (Deletion) modification;
-      if (metaData.getDeletedAt() < deletion.getTimestamp()) {
-        metaData.setDeletedAt(deletion.getTimestamp());
-        return true;
-      }
+      metaData.insertIntoSortedDeletions(deletion.getStartTime(), deletion.getEndTime());
     }
-    return false;
   }
 
   // remove files that do not satisfy the filter
-  public static void filterQueryDataSource(QueryDataSource queryDataSource, TsFileFilter fileFilter) {
+  public static void filterQueryDataSource(QueryDataSource queryDataSource,
+      TsFileFilter fileFilter) {
     if (fileFilter == null) {
       return;
     }
@@ -96,5 +109,91 @@ public class QueryUtils {
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
     seqResources.removeIf(fileFilter::fileNotSatisfy);
     unseqResources.removeIf(fileFilter::fileNotSatisfy);
+  }
+
+  public static void constructPathAndDataTypes(List<Path> paths, List<TSDataType> dataTypes,
+      List<ShowTimeSeriesResult> timeseriesList) {
+    paths.add(new Path(COLUMN_TIMESERIES));
+    dataTypes.add(TSDataType.TEXT);
+    paths.add(new Path(COLUMN_TIMESERIES_ALIAS));
+    dataTypes.add(TSDataType.TEXT);
+    paths.add(new Path(COLUMN_STORAGE_GROUP));
+    dataTypes.add(TSDataType.TEXT);
+    paths.add(new Path(COLUMN_TIMESERIES_DATATYPE));
+    dataTypes.add(TSDataType.TEXT);
+    paths.add(new Path(COLUMN_TIMESERIES_ENCODING));
+    dataTypes.add(TSDataType.TEXT);
+    paths.add(new Path(COLUMN_TIMESERIES_COMPRESSION));
+    dataTypes.add(TSDataType.TEXT);
+
+    Set<String> tagAndAttributeName = new TreeSet<>();
+    for (ShowTimeSeriesResult result : timeseriesList) {
+      tagAndAttributeName.addAll(result.getTagAndAttribute().keySet());
+    }
+    for (String key : tagAndAttributeName) {
+      paths.add(new Path(key));
+      dataTypes.add(TSDataType.TEXT);
+    }
+  }
+
+  public static QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList,
+      ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context) {
+    List<Path> paths = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    constructPathAndDataTypes(paths, dataTypes, timeseriesList);
+    ShowTimeseriesDataSet showTimeseriesDataSet = new ShowTimeseriesDataSet(paths, dataTypes,
+        showTimeSeriesPlan, context);
+
+    showTimeseriesDataSet.hasLimit = showTimeSeriesPlan.hasLimit();
+
+    for (ShowTimeSeriesResult result : timeseriesList) {
+      RowRecord record = new RowRecord(0);
+      updateRecord(record, result.getName());
+      updateRecord(record, result.getAlias());
+      updateRecord(record, result.getSgName());
+      updateRecord(record, result.getDataType());
+      updateRecord(record, result.getEncoding());
+      updateRecord(record, result.getCompressor());
+      updateRecord(record, result.getTagAndAttribute(), paths);
+      showTimeseriesDataSet.putRecord(record);
+    }
+    return showTimeseriesDataSet;
+  }
+
+  public static List<RowRecord> transferShowTimeSeriesResultToRecordList(
+      List<ShowTimeSeriesResult> timeseriesList) {
+    List<RowRecord> records = new ArrayList<>();
+    List<Path> paths = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    constructPathAndDataTypes(paths, dataTypes, timeseriesList);
+    for (ShowTimeSeriesResult result : timeseriesList) {
+      RowRecord record = new RowRecord(0);
+      updateRecord(record, result.getName());
+      updateRecord(record, result.getAlias());
+      updateRecord(record, result.getSgName());
+      updateRecord(record, result.getDataType());
+      updateRecord(record, result.getEncoding());
+      updateRecord(record, result.getCompressor());
+      updateRecord(record, result.getTagAndAttribute(), paths);
+      records.add(record);
+    }
+    return records;
+  }
+
+  private static void updateRecord(
+      RowRecord record, Map<String, String> tagAndAttribute, List<Path> paths) {
+    for (int i = 6; i < paths.size(); i++) {
+      updateRecord(record, tagAndAttribute.get(paths.get(i).getFullPath()));
+    }
+  }
+
+  private static void updateRecord(RowRecord record, String s) {
+    if (s == null) {
+      record.addField(null);
+      return;
+    }
+    Field field = new Field(TSDataType.TEXT);
+    field.setBinaryV(new Binary(s));
+    record.addField(field);
   }
 }

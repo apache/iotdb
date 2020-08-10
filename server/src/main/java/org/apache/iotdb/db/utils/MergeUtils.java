@@ -34,7 +34,6 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -92,10 +91,10 @@ public class MergeUtils {
       List<TsFileResource> unseqFiles) {
     long totalSize = 0;
     for (TsFileResource tsFileResource : seqFiles) {
-      totalSize += tsFileResource.getFileSize();
+      totalSize += tsFileResource.getTsFileSize();
     }
     for (TsFileResource tsFileResource : unseqFiles) {
-      totalSize += tsFileResource.getFileSize();
+      totalSize += tsFileResource.getTsFileSize();
     }
     return totalSize;
   }
@@ -158,7 +157,7 @@ public class MergeUtils {
   }
 
   public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) {
-    return seqFile.getFileSize() - sequenceReader.getFileMetadataPos();
+    return seqFile.getTsFileSize() - sequenceReader.getFileMetadataPos();
   }
 
   /**
@@ -269,7 +268,7 @@ public class MergeUtils {
     Set<String> devices = MManager.getInstance().getDevices(storageGroupName);
     Map<Path, IChunkWriter> chunkWriterCacheMap = new HashMap<>();
     for (String device : devices) {
-      InternalMNode deviceNode = (InternalMNode) MManager.getInstance().getNodeByPath(device);
+      MNode deviceNode = MManager.getInstance().getNodeByPath(device);
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
         MeasurementSchema measurementSchema = ((MeasurementMNode) entry.getValue()).getSchema();
         chunkWriterCacheMap

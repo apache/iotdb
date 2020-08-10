@@ -100,12 +100,13 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
     if (continueMerge) {
       resumeMergeProgress();
       MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName,
-          mergeLogger, resource,
-          fullMerge, analyzer.getUnmergedPaths());
+          (InplaceMergeLogger) mergeLogger, resource,
+          fullMerge, analyzer.getUnmergedPaths(), storageGroupName);
       analyzer.setUnmergedPaths(null);
       mergeChunkTask.mergeSeries();
 
-      MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
+      MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext,
+          (InplaceMergeLogger) mergeLogger, resource,
           resource.getSeqFiles());
       mergeFileTask.mergeFiles();
     }
@@ -115,7 +116,8 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
   private void resumeAfterAllTsMerged(boolean continueMerge) throws IOException {
     if (continueMerge) {
       resumeMergeProgress();
-      MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
+      MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext,
+          (InplaceMergeLogger) mergeLogger, resource,
           analyzer.getUnmergedFiles());
       analyzer.setUnmergedFiles(null);
       mergeFileTask.mergeFiles();
@@ -139,7 +141,7 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
     logger.info("{} recovering chunk counts", taskName);
     int fileCnt = 1;
     for (TsFileResource tsFileResource : resource.getSeqFiles()) {
-      logger.info("{} recovering {}  {}/{}", taskName, tsFileResource.getFile().getName(),
+      logger.info("{} recovering {}  {}/{}", taskName, tsFileResource.getTsFile().getName(),
           fileCnt, resource.getSeqFiles().size());
       RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(tsFileResource);
       mergeFileWriter.makeMetadataVisible();
@@ -155,7 +157,7 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
           if (newProgress - progress >= 1.0) {
             progress = newProgress;
             logger.info("{} {}% series count of {} are recovered", taskName, progress,
-                tsFileResource.getFile().getName());
+                tsFileResource.getTsFile().getName());
           }
         }
       }

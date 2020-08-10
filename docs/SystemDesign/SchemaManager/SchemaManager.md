@@ -175,6 +175,42 @@ The root node exists by default. Creating storage groups, deleting storage group
 
 * Deleting a storage group is similar to deleting a time series. That is, the storage group or time series node is deleted in its parent node. The time series node also needs to delete its alias in the parent node; if in the deletion process, a node is found not to have any child node, needs to be deleted recursively.
 	
+## MTree checkpoint
+
+### Create condition
+
+To speed up restarting of IoTDB, we set checkpoint for MTree to avoid reading `mlog.txt` and executing the commands line by line. There are two ways to create MTree snapshot:
+1. Background checking and creating automatically: Every 10 minutes, background thread checks the last modified time of MTree. If:
+  * If users haven’t modified MTree for more than 1 hour (could be configured), which means `mlog.txt` hasn’t been updated for more than 1 hour
+  * `mlog.txt` has reached 100000 lines (could be configured)
+
+2. Creating manually: Users can use `create snapshot for schema` to create MTree snapshot
+
+### Create process
+
+The method is `MManager.createMTreeSnapshot()`:
+1. Add read lock for MTree to avoid modifying during creating snapshot
+2. Serialize MTree into temporary snapshot file (`mtree.snapshot.tmp`). The serialization of MTree is depth-first from children to parent. Information of nodes are converted into String according to different node types, which is convenient for deserialization.
+  * MNode: 0, name, children size
+  * StorageGroupMNode: 1, name, TTL, children size
+  * MeasurementMNode: 2, name, alias, TSDataType, TSEncoding, CompressionType, props, offset, children size
+
+3. After serialization, rename the temp file to a formal file (`mtree.snapshot`), to avoid crush of server and failure of serialization.
+4. Clear `mlog.txt` by `MLogWriter.clear()` method:
+  * Close BufferedWriter and delete `mlog.txt` file
+  * Create a new BufferedWriter
+  * Set `lineNumber` as 0. `lineNumber` records the line number of `mlog.txt`, which is used for background thread to check whether it is larger than the threshold configured by user.
+
+5. Release the read lock.
+
+### Recover process
+
+The method is `MManager.initFromLog()`:
+
+1. Check whether the temp file `mtree.snapshot.tmp` exists. If so, there may exist crush of server and failure of serialization. Delete the temp file.
+2. Check whether the snapshot file `mtree.snapshot` exists. If not, use a new MTree; otherwise, start deserializing from snapshot and get MTree
+3. Read and operate all lines in `mlog.txt` and finish the recover process of MTree. Update `lineNumber` at the same time and return it for recording the line number of `mlog.txt` afterwards.
+
 ## Log management of metadata
 
 * org.apache.iotdb.db.metadata.MLogWriter
@@ -246,3 +282,48 @@ All timeseries tag/attribute information will be saved in the tag file, which de
 
 > tagsSize (tag1=v1, tag2=v2) attributesSize (attr1=v1, attr2=v2)
 
+## Metadata Query
+
+### show timeseries without index
+
+The main logic of query is in the `showTimeseries(ShowTimeSeriesPlan plan)` function of `MManager`
+
+First of all, we should judge whether we need to order by heat, if so, call the `getAllMeasurementSchemaByHeatOrder` function of `MTree`. Otherwise, call the `getAllMeasurementSchema` function.
+
+#### getAllMeasurementSchemaByHeatOrder
+
+The heat here is represented by the `lastTimeStamp` of each time series, so we need to fetch all the satisfied time series, and then order them by `lastTimeStamp`, cut them by `offset` and `limit`.
+
+#### getAllMeasurementSchema
+
+In this case, we need to pass the limit(if not exists, set fetch size as limit) and offset to the function `findPath` to reduce the memory footprint.
+
+#### findPath
+
+It's a recursive function to get all the statisfied MNode in MTree from root until the number of timeseries list has reached limit or all the MTree has been traversed.
+
+### show timeseries with index
+
+The filter condition here can only be tag attribute, or it will throw an exception.
+
+We can fetch all the satisfied `MeasurementMNode` through the inverted tag index in MTree fast without traversing the whole tree.
+
+If the result needs to be ordered by heat, we should sort them by the order of `lastTimeStamp` or by the natural order, and then we will trim the result by limit and offset.
+
+### ShowTimeseries Dataset
+
+If there is too much metadata , one whole `show timeseris` processing will cause OOM, so we need to add a `fetch size` parameter.
+
+While the client interacting with the server, it will get at most `fetch_size` records once.
+
+And the intermediate state will be saved in the `ShowTimeseriesDataSet`. The `queryId -> ShowTimeseriesDataSet` key-value pair will be saved in `TsServieImpl`.
+
+In `ShowTimeseriesDataSet`, we saved the `ShowTimeSeriesPlan`, current cursor `index` and cached result list `List<RowRecord> result`.
+
+* judge whether the cursor `index`is equal to the size of `List<RowRecord> result`
+    * if so, call the method `showTimeseries` in MManager to fetch result and put them into cache.
+        * we need to update the offset in plan each time we call the method in MManger to fetch result, we should add it with `fetch size`.
+        * if `hasLimit` is `false`, then reset `index` to zero.
+    * if not
+        * if `index < result.size()`，return true
+        * if `index > result.size()`，return false 

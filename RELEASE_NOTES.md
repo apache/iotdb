@@ -18,6 +18,213 @@
     under the License.
 
 -->
+# Apache IoTDB (incubating) 0.10.1
+
+* [IOTDB-797] InsertTablet deserialization from WAL error
+* [IOTDB-788] Can not upgrade all storage groups
+* [IOTDB-792] deadlock when insert while show latest timeseries
+* [IOTDB-794] Rename file or delete file Error in start check in Windows
+* [IOTDB-795] BufferUnderflowException in Hive-connector
+* [IOTDB-766] Do not release unclosed file reader, a small memory leak
+* [IOTDB-796] Concurrent Query throughput is low
+* Query result is not correct when some unsequence data exists
+* Change the default fetch size to 10000 in session
+* [IOTDB-798] fix a set rowLimit and rowOffset bug
+* [IOTDB-800] Add a new config type for those parameters which could not be modified any more after the first start 
+* [IOTDB-802] Improve "group by" query performance
+* [IOTDB-799] remove log visualizer tool from v0.10 
+* fix license-binary  
+* [IOTDB-805] Fix BufferUnderflowException when querying TsFile stored in HDFS 
+* python session client ver-0.10.0
+* [IOTDB-808] fix bug in selfCheck() truncate 
+* fix doc of MeasurementSchema in Tablet 
+* [IOTDB-811] fix upgrading mlog many times when upgrading system.properties crashed
+* Improve IoTDB restart process
+* remove jol-core dependency which is introduced by hive-serde 2.8.4
+* remove org.json dependency because of license compatibility
+* [ISSUE-1551] fix set historical version when loading additional tsfile
+
+
+# Apache IoTDB (incubating) 0.10.0
+
+## New Features
+
+* IOTDB-217 A new GROUPBY syntax, e.g., select avg(s1) from root.sg.d1.s1 GROUP BY ([1, 50), 5ms)
+* IOTDB-220 Add hot-load configuration function
+* IOTDB-275 allow using user defined JAVA_HOME and allow blank space in the JAVA_HOME
+* IOTDB-287 Allow domain in JDBC URL
+* IOTDB-292 Add load external tsfile feature
+* IOTDB-297 Support "show flush task info"
+* IOTDB-298 Support new Last point query. e.g, select last * from root
+* IOTDB-305 Add value filter function while executing align by device
+* IOTDB-309 add Dockerfiles for 0.8.1, 0.9.0, and 0.9.1
+* IOTDB-313 Add RandomOnDiskUsableSpaceStrategy
+* IOTDB-323 Support insertRecords in session
+* IOTDB-337 Add timestamp precision properties for grafana
+* IOTDB-343 Add test method in session
+* IOTDB-396 Support new query clause: disable align, e.g., select * from root disable align
+* IOTDB-447 Support querying non-existing measurement and constant measurement
+* IOTDB-448 Add IN operation, e.g., where time in (1,2,3)
+* IOTDB-456 Support GroupByFill Query, e.g., select last_value(s1) from root.sg.d1 GROUP BY ([1, 10), 2ms) FILL(int32[previousUntilLast])
+* IOTDB-467 The CLI displays query results in a batch manner
+* IOTDB-497 Support Apache Flink Connector with IoTDB
+* IOTDB-558 add text support for grafana
+* IOTDB-560 Support Apache Flink connecter with TsFile
+* IOTDB-565 MQTT Protocol Support, disabled by default, open in iotdb-engine.properties
+* IOTDB-574 Specify configuration when start iotdb
+* IOTDB-588 Add tags and attributes management
+* IOTDB-607 add batch create timeseries in native interface
+* IOTDB-612 add limit&offset to show timeseries
+* IOTDB-615 Use TsDataType + Binary to replace String in insert plan
+* IOTDB-617 Support alter one time series's tag/attribute
+* IOTDB-630 Add a jdbc-like way to fetch data in session
+* IOTDB-640 Enable system admin sql (flush/merge) in JDBC or Other API
+* IOTDB-671 Add clear cache command
+* Support open and close time range in group by, e.g, [), (]
+* Online upgrade from 0.9.x
+* Support speical characters in path: -/+&%$#@
+* IOTDB-446 Support path start with a digit, e.g., root.sg.12a
+* enable rpc compression in session pool
+* Make JDBC OSGi usable and added a feature file
+* add printing one resource file tool
+* Allow count timeseries group by level=x using default path
+* IOTDB-700 Add OpenID Connect based JWT Access as alternative to Username / Password
+* IOTDB-701 Set heap size by percentage of system total memory when starts
+* IOTDB-708 add config for inferring data type from string value
+* IOTDB-715 Support previous time range in previousuntillast
+* IOTDB-719 add avg_series_point_number_threshold in config
+* IOTDB-731 Continue write inside InsertPlan 
+* IOTDB-734 Add Support for NaN in Double / Floats in SQL Syntax.
+* IOTDB-744 Support upsert alias 
+
+
+## Incompatible changes
+
+* IOTDB-138 Move All metadata query to usual query
+* IOTDB-322 upgrade to thrift 0.12.0-0.13.0
+* IOTDB-325 Refactor Statistics in TsFile
+* IOTDB-419 Refactor the 'last' and 'first' aggregators to 'last_value' and 'first_value'
+* IOTDB-506 upgrade the rpc protocol to v2 to reject clients or servers that version < 0.10
+* IOTDB-587 TsFile is upgraded to version 2
+* IOTDB-593 add metaOffset in TsFileMetadata
+* IOTDB-597 Rename methods in Session: insertBatch to insertTablet, insertInBatch to insertRecords, insert to insertRecord
+* RPC is incompatible, you can not use client-v0.9 to connect with server-v0.10
+* TsFile format is incompatible, will be upgraded when starting 0.10
+* Refine exception code in narive api
+
+## Miscellaneous changes
+
+* IOTDB-190 upgrade from antlr3 to antlr4
+* IOTDB-418 new query engine
+* IOTDB-429 return empty dataset instead of throw exception, e.g., show child paths root.*
+* IOTDB-445 Unify the keyword of "timestamp" and "time"
+* IOTDB-450 Add design documents
+* IOTDB-498 Support date format "2020-02-10"
+* IOTDB-503 Add checkTimeseriesExists in java native api
+* IOTDB-605 Add more levels of index in TsFileMetadata for handling too many series in one device
+* IOTDB-625 Change default level number: root is level 0
+* IOTDB-628 rename client to cli
+* IOTDB-621 Add Check isNull in Field for querying using session
+* IOTDB-632 Performance improve for PreviousFill/LinearFill
+* IOTDB-695 Accelerate the count timeseries query 
+* IOTDB-707 Optimize TsFileResource memory usage  
+* IOTDB-730 continue write in MQTT when some events are failed
+* IOTDB-729 shutdown uncessary threadpool 
+* IOTDB-733 Enable setting for mqtt max length 
+* IOTDB-732 Upgrade fastjson version to 1.2.70
+* Allow "count timeseries" without a prefix path
+* Add max backup log file number
+* add rpc compression api in client and session module
+* Continue writing the last unclosed file
+* Move the vulnera-checks section into the apache-release profile to accelerate compile
+* Add metaquery in python example
+* Set inferType of MQTT InsertPlan to true
+
+
+
+## Bug Fixes
+
+* IOTDB-125 Potential Concurrency bug while deleting and inserting happen together
+* IOTDB-185 fix start-client failed on WinOS if there is blank space in the file path; let start-server.bat suport jdk12,13 etc
+* IOTDB-304 Fix bug of incomplete HDFS URI
+* IOTDB-341 Fix data type bug in grafana
+* IOTDB-346 Fix a bug of renaming tsfile in loading function
+* IOTDB-370 fix a concurrent problem in parsing sql
+* IOTDB-376 fix metric to show executeQuery
+* IOTDB-392 fix export CSV
+* IOTDB-393 Fix unclear error message for no privilege users
+* IOTDB-401 Correct the calculation of a chunk if there is no data in the chunk, do not flush empty chunk
+* IOTDB-412 Paths are not correctly deduplicated
+* IOTDB-420 Avoid encoding task dying silently
+* IOTDB-425 fix can't change the root password.
+* IOTDB-459 Fix calmem tool bug
+* IOTDB-470fix IllegalArgumentException when there exists 0 byte TsFile
+* IOTDB-529 Relative times and NOW() operator cannot be used in Group By
+* IOTDB-531 fix issue when grafana visualize boolean data
+* IOTDB-546 Fix show child paths statement doesn't show quotation marks
+* IOTDB-643 Concurrent queries cause BufferUnderflowException when storage in HDFS
+* IOTDB-663 Fix query cache OOM while executing query
+* IOTDB-664 Win -e option
+* IOTDB-669 fix getting two columns bug while ”show devices“ in session
+* IOTDB-692 merge behaves incorrectly
+* IOTDB-712 Meet BufferUnderflowException and can not recover
+* IOTDB-718 Fix wrong time precision of NOW()
+* IOTDB-735 Fix Concurrent error for MNode when creating time series automatically 
+* IOTDB-738 Fix measurements has blank 
+
+* fix concurrent auto create schema conflict bug
+* fix meet incompatible file error in restart
+* Fix bugs of set core-site.xml and hdfs-site.xml paths in HDFS storage
+* fix execute flush command while inserting bug
+* Fix sync schema pos bug
+* Fix batch execution bug, the following sqls will all fail after one error sql
+* Fix recover endTime set bug
+
+
+# Apache IoTDB (incubating) 0.9.3
+
+## Bug Fixes
+- IOTDB-531 Fix that JDBC URL does not support domain issue
+- IOTDB-563 Fix pentaho cannot be downloaded because of spring.io address
+- IOTDB-608 Skip error Mlog
+- IOTDB-634 Fix merge caused errors for TsFile storage in HDFS
+- IOTDB-636 Fix Grafana connector does not use correct time unit
+
+## Miscellaneous changes
+- IOTDB-528 Modify grafana group by
+- IOTDB-635 Add workaround when doing Aggregation over boolean Series
+- Remove docs of Load External Tsfile
+- Add Grafana IoTDB Bridge Artifact to distribution in tools/grafana folder
+
+
+# Apache IoTDB (incubating) 0.9.2
+
+## Bug Fixes
+- IOTDB-553 Fix Return Empty ResultSet when queried series doesn't exist
+- IOTDB-575 add default jmx user and password; fix issues that jmx can't be accessed remotely
+- IOTDB-584 Fix InitializerError when recovering files on HDFS
+- Fix batch insert once an illegal sql occurs all the sqls after that will not succeed
+- Fix concurrent modification exception when iterator TsFileResourceList 
+- Fix some HDFS config issues 
+- Fix runtime exception not catched and sync schema pos was nullpointer bug in DataTransferManager
+- Fix python rpc grammar mistakes
+- Fix upgrade ConcurrentModificationException
+
+## Miscellaneous changes
+- IOTDB-332 support Chinese characters in path
+- IOTDB-316 add AVG function to 4-SQL Reference.md and modify style 
+- improve start-server.bat by using quotes to protect against empty entries
+- Add Chinese documents for chapter 4.2
+- change download-maven-plugin to 1.3.0
+- add session pool 
+- add insertInBatch in Session
+- add insertInBatch to SessionPool
+- modify 0.9 docs to fit website
+- remove tsfile-format.properties
+- add bloom filter in iotdb-engien.properties
+- update server download doc
+- typos fix in Rel/0.9 docs
+- support 0.12.0 and 0.13.0 thrift
 
 # Apache IoTDB (incubating) 0.9.1
 

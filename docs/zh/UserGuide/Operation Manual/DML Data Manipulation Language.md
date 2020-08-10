@@ -23,9 +23,9 @@
 
 ## 数据接入
 
-IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](../Client/Command%20Line%20Interface.html)中直接输入插入数据的INSERT语句，或使用Java API（标准[Java JDBC](../Client/Programming%20-%20JDBC.html)接口）单条或批量执行插入数据的INSERT语句。
+IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](../Client/Command%20Line%20Interface.md)中直接输入插入数据的INSERT语句，或使用Java API（标准[Java JDBC](../Client/Programming%20-%20JDBC.md)接口）单条或批量执行插入数据的INSERT语句。
 
-本节主要为您介绍实时数据接入的INSERT语句在场景中的实际使用示例，有关INSERT SQL语句的详细语法请参见本文[INSERT语句](../Operation%20Manual/SQL%20Reference.html)节。
+本节主要为您介绍实时数据接入的INSERT语句在场景中的实际使用示例，有关INSERT SQL语句的详细语法请参见本文[INSERT语句](../Operation%20Manual/SQL%20Reference.md)节。
 
 ### 使用INSERT语句
 
@@ -89,7 +89,7 @@ error: The TEXT data type should be covered by " or '
 
 ### 时间切片查询
 
-本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](../Operation%20Manual/SQL%20Reference.html)。同时，您也可以使用[Java JDBC](../Client/Programming%20-%20JDBC.html)标准接口来执行相关的查询语句。
+本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](../Operation%20Manual/SQL%20Reference.md)。同时，您也可以使用[Java JDBC](../Client/Programming%20-%20JDBC.md)标准接口来执行相关的查询语句。
 
 #### 根据一个时间区间选择一列数据
 
@@ -101,7 +101,7 @@ select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 
 其含义为：
 
-被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](../Concept/Data%20Model%20and%20Terminology.html)）时间点以前的所有温度传感器的值。
+被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](../Concept/Data%20Model%20and%20Terminology.md)）时间点以前的所有温度传感器的值。
 
 该SQL语句的执行结果如下：
 
@@ -216,12 +216,10 @@ select count(status) from root.ln.wf01.wt01 group by level=2;
 ### 降频聚合查询
 
 本章节主要介绍降频聚合查询的相关示例，
-主要使用的是IoTDB SELECT语句的[GROUP BY子句](../Operation%20Manual/SQL%20Reference.html)，
+主要使用的是IoTDB SELECT语句的[GROUP BY子句](../Operation%20Manual/SQL%20Reference.md)，
 该子句是IoTDB中用于根据用户给定划分条件对结果集进行划分，并对已划分的结果集进行聚合计算的语句。
 IoTDB支持根据时间间隔和自定义的滑动步长（默认值与时间间隔相同，自定义的值必须大于等于时间间隔）对结果集进行划分，默认结果按照时间升序排列。
 同时，您也可以使用Java JDBC标准接口来执行相关的查询语句。
-
-Group By 语句不支持 limit 和 offset。
 
 GROUP BY语句为用户提供三类指定参数：
 
@@ -574,12 +572,12 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 ### 对查询结果的行和列控制
 
-IoTDB提供 [LIMIT/SLIMIT](../Operation%20Manual/SQL%20Reference.html) 子句和 [OFFSET/SOFFSET](../Operation%20Manual/SQL%20Reference.html) 子句，以使用户可以更好地控制查询结果。使用LIMIT和SLIMIT子句可让用户控制查询结果的行数和列数，
+IoTDB提供 [LIMIT/SLIMIT](../Operation%20Manual/SQL%20Reference.md) 子句和 [OFFSET/SOFFSET](../Operation%20Manual/SQL%20Reference.md) 子句，以使用户可以更好地控制查询结果。使用LIMIT和SLIMIT子句可让用户控制查询结果的行数和列数，
 并且使用OFFSET和SOFSET子句允许用户设置结果显示的起始位置。
 
 请注意，按组查询不支持LIMIT和OFFSET。
 
-本章主要介绍查询结果的行和列控制的相关示例。你还可以使用 [Java JDBC](../Client/Programming%20-%20JDBC.html) 标准接口执行查询。
+本章主要介绍查询结果的行和列控制的相关示例。你还可以使用 [Java JDBC](../Client/Programming%20-%20JDBC.md) 标准接口执行查询。
 
 #### 查询结果的行控制
 
@@ -829,7 +827,7 @@ SQL语句将不会执行，并且相应的错误提示如下：
 
 ### 数据删除
 
-用户使用[DELETE语句](../Operation%20Manual/SQL%20Reference.html)可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带\*路径对某时间之前的数据进行删除（当前版本暂不支持删除某一闭时间区间范围内的数据）。
+用户使用[DELETE语句](../Operation%20Manual/SQL%20Reference.md)可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带\*路径对某一个时间区间内的数据进行删除。
 
 在JAVA编程环境中，您可以使用JDBC API单条或批量执行DELETE语句。
 
@@ -843,9 +841,32 @@ wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态出现多段�
 delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 ```
 
+如果我们仅仅想要删除2017年内的在2017-11-01 16:26:00之前的数据，可以使用以下SQL:
+```
+delete from root.ln.wf02.wt02.status where time>=2017-01-01T00:00:00 and time<=2017-11-01T16:26:00;
+```
+
+IoTDB 支持删除一个时间序列任何一个时间范围内的所有时序点，用户可以使用以下SQL语句指定需要删除的时间范围：
+```
+delete from root.ln.wf02.wt02.status where time < 10
+delete from root.ln.wf02.wt02.status where time <= 10
+delete from root.ln.wf02.wt02.status where time < 20 and time > 10
+delete from root.ln.wf02.wt02.status where time <= 20 and time >= 10
+delete from root.ln.wf02.wt02.status where time > 20
+delete from root.ln.wf02.wt02.status where time >= 20
+delete from root.ln.wf02.wt02.status where time = 20
+```
+
+需要注意，当前的删除语句不支持where子句后的时间范围为多个由OR连接成的时间区间。如下删除语句将会解析出错：
+```
+delete from root.ln.wf02.wt02.status where time > 4 or time < 0
+Msg: 303: Check metadata error: For delete statement, where clause can only contain atomic
+expressions like : time > XXX, time <= XXX, or two atomic expressions connected by 'AND'
+```
+
 #### 多传感器时间序列值删除    
 
-当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](../Concept/Data%20Model%20and%20Terminology.html)进行删除操作，进行此操作的SQL语句为：
+当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](../Concept/Data%20Model%20and%20Terminology.md)进行删除操作，进行此操作的SQL语句为：
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
@@ -863,3 +884,15 @@ delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: TimeSeries does not exist and its data cannot be deleted
 ```
+
+## 删除时间分区 (实验性功能)
+您可以通过如下语句来删除某一个存储组下的指定时间分区:
+
+```
+DELETE PARTITION root.ln 0,1,2
+```
+
+上例中的0,1,2为待删除时间分区的id，您可以通过查看IoTDB的数据文件夹找到它，或者可以通过计算`timestamp / partitionInterval`(向下取整),
+手动地将一个时间戳转换为对应的id，其中的`partitionInterval`可以在IoTDB的配置文件中找到（如果您使用的版本支持时间分区）。
+
+请注意该功能目前只是实验性的，如果您不是开发者，使用时请务必谨慎。

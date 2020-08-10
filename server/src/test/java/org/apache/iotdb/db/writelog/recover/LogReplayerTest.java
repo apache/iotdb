@@ -39,9 +39,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -88,11 +88,11 @@ public class LogReplayerTest {
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
 
-    MManager.getInstance().setStorageGroup("root.sg");
+    IoTDB.metaManager.setStorageGroup("root.sg");
     try {
       for (int i = 0; i < 5; i++) {
         for (int j = 0; j < 5; j++) {
-          MManager.getInstance()
+          IoTDB.metaManager
               .createTimeseries("root.sg.device" + i + ".sensor" + j, TSDataType.INT64,
                   TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(),
                   Collections.emptyMap());
@@ -100,19 +100,20 @@ public class LogReplayerTest {
       }
 
       LogReplayer replayer = new LogReplayer(logNodePrefix, tsFile.getPath(), modFile,
-          versionController, tsFileResource, memTable, true);
+          versionController, tsFileResource, memTable, false);
 
       WriteLogNode node =
           MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsFile.getName());
       node.write(
-          new InsertPlan("root.sg.device0", 100, "sensor0", TSDataType.INT64, String.valueOf(0)));
+          new InsertRowPlan("root.sg.device0", 100, "sensor0", TSDataType.INT64,
+              String.valueOf(0)));
       node.write(
-          new InsertPlan("root.sg.device0", 2, "sensor1", TSDataType.INT64, String.valueOf(0)));
+          new InsertRowPlan("root.sg.device0", 2, "sensor1", TSDataType.INT64, String.valueOf(0)));
       for (int i = 1; i < 5; i++) {
-        node.write(new InsertPlan("root.sg.device" + i, i, "sensor" + i, TSDataType.INT64,
+        node.write(new InsertRowPlan("root.sg.device" + i, i, "sensor" + i, TSDataType.INT64,
             String.valueOf(i)));
       }
-      DeletePlan deletePlan = new DeletePlan(200, new Path("root.sg.device0", "sensor0"));
+      DeletePlan deletePlan = new DeletePlan(0, 200, new Path("root.sg.device0", "sensor0"));
       node.write(deletePlan);
       node.close();
 
@@ -136,13 +137,15 @@ public class LogReplayerTest {
 
       Modification[] mods = modFile.getModifications().toArray(new Modification[0]);
       assertEquals(1, mods.length);
-      assertEquals(new Deletion(new Path("root.sg.device0", "sensor0"), 5, 200), mods[0]);
+      assertEquals("root.sg.device0.sensor0", mods[0].getPathString());
+      assertEquals(5, mods[0].getVersionNum());
+      assertEquals(((Deletion) mods[0]).getEndTime(), 200);
 
-      assertEquals(2, (long) tsFileResource.getStartTime("root.sg.device0"));
-      assertEquals(100, (long) tsFileResource.getEndTime("root.sg.device0"));
+      assertEquals(2, tsFileResource.getStartTime("root.sg.device0"));
+      assertEquals(100, tsFileResource.getEndTime("root.sg.device0"));
       for (int i = 1; i < 5; i++) {
-        assertEquals(i, (long) tsFileResource.getStartTime("root.sg.device" + i));
-        assertEquals(i, (long) tsFileResource.getEndTime("root.sg.device" + i));
+        assertEquals(i, tsFileResource.getStartTime("root.sg.device" + i));
+        assertEquals(i, tsFileResource.getEndTime("root.sg.device" + i));
       }
     } finally {
       modFile.close();

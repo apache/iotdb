@@ -33,7 +33,7 @@ import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,7 +99,7 @@ public class LogAnalyzer {
 
         analyzeUnseqFiles(bufferedReader);
 
-        List<String> storageGroupPaths = MManager.getInstance().getAllTimeseriesName(storageGroupName + ".*");
+        List<String> storageGroupPaths = IoTDB.metaManager.getAllTimeseriesName(storageGroupName + ".*");
         unmergedPaths = new ArrayList<>();
         for (String path : storageGroupPaths) {
           unmergedPaths.add(new Path(path));
@@ -126,7 +126,7 @@ public class LogAnalyzer {
       Iterator<TsFileResource> iterator = resource.getSeqFiles().iterator();
       while (iterator.hasNext()) {
         TsFileResource seqFile = iterator.next();
-        if (seqFile.getFile().getAbsolutePath().equals(currLine)) {
+        if (seqFile.getTsFile().getAbsolutePath().equals(currLine)) {
           mergeSeqFiles.add(seqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -154,7 +154,7 @@ public class LogAnalyzer {
       Iterator<TsFileResource> iterator = resource.getUnseqFiles().iterator();
       while (iterator.hasNext()) {
         TsFileResource unseqFile = iterator.next();
-        if (unseqFile.getFile().getAbsolutePath().equals(currLine)) {
+        if (unseqFile.getTsFile().getAbsolutePath().equals(currLine)) {
           mergeUnseqFiles.add(unseqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -176,7 +176,7 @@ public class LogAnalyzer {
 
     status = Status.MERGE_START;
     for (TsFileResource seqFile : resource.getSeqFiles()) {
-      File mergeFile = SystemFileFactory.INSTANCE.getFile(seqFile.getPath() + InplaceMergeTask.MERGE_SUFFIX);
+      File mergeFile = SystemFileFactory.INSTANCE.getFile(seqFile.getTsFilePath() + InplaceMergeTask.MERGE_SUFFIX);
       fileLastPositions.put(mergeFile, 0L);
     }
 
@@ -242,7 +242,7 @@ public class LogAnalyzer {
         Iterator<TsFileResource> unmergedFileIter = unmergedFiles.iterator();
         while (unmergedFileIter.hasNext()) {
           TsFileResource seqFile = unmergedFileIter.next();
-          if (seqFile.getFile().getAbsolutePath().equals(seqFilePath)) {
+          if (seqFile.getTsFile().getAbsolutePath().equals(seqFilePath)) {
             mergedCnt ++;
             unmergedFileIter.remove();
             break;

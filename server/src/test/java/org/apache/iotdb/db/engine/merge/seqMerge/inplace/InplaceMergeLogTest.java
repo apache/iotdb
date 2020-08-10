@@ -56,7 +56,6 @@ public class InplaceMergeLogTest extends MergeTest {
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     FileUtils.deleteDirectory(tempSGDir);
-    FileUtils.deleteDirectory(tempSGDir);
   }
 
   @Test

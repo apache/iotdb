@@ -59,7 +59,7 @@ Note:
 Start Spark with TsFile-Spark-Connector in distributed mode (That is, the spark cluster is connected by spark-shell): 
 
 ```
-. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-0.8.0-jar-with-dependencies.jar  --master spark://ip:7077
+. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar  --master spark://ip:7077
 ```
 
 Note:
@@ -140,7 +140,7 @@ NOTE: Remember to assign necessary read and write permissions in advance.
 ### Example 1: read from the local file system
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val wide_df = spark.read.tsfile("test.tsfile")  
 wide_df.show
 
@@ -151,7 +151,7 @@ narrow_df.show
 ### Example 2: read from the hadoop file system
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val wide_df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
 wide_df.show
 
@@ -162,7 +162,7 @@ narrow_df.show
 ### Example 3: read from a specific directory
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/usr/hadoop") 
 df.show
 ```
@@ -174,7 +174,7 @@ Note 2: Measurements of the same name should have the same schema.
 ### Example 4: query in wide form
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
 df.createOrReplaceTempView("tsfile_table")
 val newDf = spark.sql("select * from tsfile_table where `device_1.sensor_1`>0 and `device_1.sensor_2` < 22")
@@ -182,7 +182,7 @@ newDf.show
 ```
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
 df.createOrReplaceTempView("tsfile_table")
 val newDf = spark.sql("select count(*) from tsfile_table")
@@ -191,7 +191,7 @@ newDf.show
 
 ### Example 5: query in narrow form
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true) 
 df.createOrReplaceTempView("tsfile_table")
 val newDf = spark.sql("select * from tsfile_table where device_name = 'root.ln.wf02.wt02' and temperature > 5")
@@ -199,7 +199,7 @@ newDf.show
 ```
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true) 
 df.createOrReplaceTempView("tsfile_table")
 val newDf = spark.sql("select count(*) from tsfile_table")
@@ -210,7 +210,7 @@ newDf.show
 
 ```scala
 // we only support wide_form table to write
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
 df.show
@@ -224,7 +224,7 @@ newDf.show
 
 ```scala
 // we only support wide_form table to write
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true) 
 df.show

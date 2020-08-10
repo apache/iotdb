@@ -30,7 +30,7 @@ The following describes four common data manipulation operations, which are inse
 * Corresponding interface
   * JDBC's execute and executeBatch interfaces
   * Session's insertRecord and insertRecords
-* Main entrance: ```public void insert(InsertPlan insertPlan)```   StorageEngine.java
+* Main entrance: ```public void insert(InsertRowPlan insertRowPlan)```   StorageEngine.java
   * Find the corresponding StorageGroupProcessor
   * Find the corresponding TsFileProcessor according to the time of writing the data and the last time stamp of the current device order
   * Pre-write log
@@ -46,7 +46,7 @@ The following describes four common data manipulation operations, which are inse
 * Corresponding interface
 	* Session‘s insertTablet
 
-* Main entrance: ```public Integer[] insertTablet(InsertTabletPlan insertTabletPlan)```  StorageEngine.java
+* Main entrance: ```public void insertTablet(InsertTabletPlan insertTabletPlan)```  StorageEngine.java
     * Find the corresponding StorageGroupProcessor
 	* According to the time of this batch of data and the last timestamp of the current device order, this batch of data is divided into small batches, which correspond to a TsFileProcessor
 	* Pre-write log
@@ -63,7 +63,7 @@ The following describes four common data manipulation operations, which are inse
 Currently does not support data in-place update operations, that is, update statements, but users can directly insert new data, the same time series at the same time point is based on the latest inserted data.
 Old data is automatically deleted by merging, see:
 
-* [File merge mechanism](/SystemDesign/StorageEngine/MergeManager.html)
+* [File merge mechanism](../StorageEngine/MergeManager.md)
 
 ## Data deletion
 
@@ -74,14 +74,20 @@ Each StorageGroupProcessor maintains a ascending version for each partition, whi
 Each memtable will apply a version when submitted to flush. After flushing to TsFile, a current position-version will added to TsFileMetadata. 
 This information will be used to set version to ChunkMetadata when query.
 
-* main entrance: public void delete(String deviceId, String measurementId, long timestamp) StorageEngine.java
+Main entrance in StorageEngine.java: 
+ 
+```public void delete(String deviceId, String measurementId, long startTime, long endTime)```
+
   * Find the corresponding StorageGroupProcessor
   * Find all impacted working TsFileProcessors to write WAL
-  * Find all impacted TsFileResources to record a Modification in its mods file, the Modification format is: path，deleteTime，version
+  * Find all impacted TsFileResources to record a Modification in its mods file, the Modification format is: path，version, startTime, endTime
   * If the TsFile is not closed，get its TsFileProcessor
     * If there exists the working memtable, delete data in it
-    * If there exists flushing memtable，record the deleted time in it for query.（Notice that the Modification is recorded in mods for these memtables）
+    * If there exists flushing memtable，record the deleted start time and end time in it for query.（Notice that the Modification is recorded in mods for these memtables）
 
+The Mods file stores records of delete information.
+For the following mods file, data of d1.s1 falls in range [100, 200], [180, 300], and data of d1.s2 falls in range [500, 1000] are deleted.
+![](https://user-images.githubusercontent.com/59866276/88248546-20952600-ccd4-11ea-88e9-84af8dde4304.jpg)
 ## Data TTL setting
 
 * Corresponding interface

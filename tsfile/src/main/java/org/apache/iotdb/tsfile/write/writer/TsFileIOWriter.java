@@ -163,6 +163,7 @@ public class TsFileIOWriter {
         .add(new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
     currentChunkGroupDeviceId = null;
     chunkMetadataList = null;
+    out.flush();
   }
 
   /**
@@ -176,14 +177,11 @@ public class TsFileIOWriter {
    * @throws IOException if I/O error occurs
    */
   public void startFlushChunk(MeasurementSchema measurementSchema,
-      CompressionType compressionCodecName,
-      TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, int dataSize,
-      int numOfPages)
-      throws IOException {
+      CompressionType compressionCodecName, TSDataType tsDataType, TSEncoding encodingType,
+      Statistics<?> statistics, int dataSize, int numOfPages) throws IOException {
 
     currentChunkMetadata = new ChunkMetadata(measurementSchema.getMeasurementId(), tsDataType,
-        out.getPosition(),
-        statistics);
+        out.getPosition(), statistics);
 
     ChunkHeader header = new ChunkHeader(measurementSchema.getMeasurementId(), dataSize, tsDataType,
         compressionCodecName, encodingType, numOfPages);
@@ -291,24 +289,22 @@ public class TsFileIOWriter {
     for (Map.Entry<Path, List<ChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
       Path path = entry.getKey();
       String device = path.getDevice();
-      // create TimeseriesMetaData
-      TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
-      timeseriesMetaData.setMeasurementId(path.getMeasurement());
-      TSDataType dataType = entry.getValue().get(0).getDataType();
-      timeseriesMetaData.setTSDataType(dataType);
-      timeseriesMetaData.setOffsetOfChunkMetaDataList(out.getPosition());
 
+      // create TimeseriesMetaData
+      TSDataType dataType = entry.getValue().get(0).getDataType();
+      long offsetOfChunkMetadataList = out.getPosition();
       Statistics seriesStatistics = Statistics.getStatsByType(dataType);
+
       int chunkMetadataListLength = 0;
       // flush chunkMetadataList one by one
       for (ChunkMetadata chunkMetadata : entry.getValue()) {
         chunkMetadataListLength += chunkMetadata.serializeTo(out.wrapAsStream());
         seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
       }
-      timeseriesMetaData.setStatistics(seriesStatistics);
-      timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetadataListLength);
+      TimeseriesMetadata timeseriesMetadata = new TimeseriesMetadata(offsetOfChunkMetadataList,
+          chunkMetadataListLength, path.getMeasurement(), dataType, seriesStatistics);
       deviceTimeseriesMetadataMap.computeIfAbsent(device, k -> new ArrayList<>())
-          .add(timeseriesMetaData);
+          .add(timeseriesMetadata);
     }
 
     // construct TsFileMetadata and return
@@ -376,6 +372,10 @@ public class TsFileIOWriter {
 
   public File getFile() {
     return file;
+  }
+
+  public void setFile(File file) {
+    this.file = file;
   }
 
   /**

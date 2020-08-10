@@ -27,6 +27,7 @@ import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
+import org.apache.iotdb.db.engine.merge.MergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.seqMerge.squeeze.recover.SqueezeMergeLogger;
@@ -40,30 +41,19 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SqueezeMergeTask implements Callable<Void> {
+public class SqueezeMergeTask extends MergeTask {
 
   public static final String MERGE_SUFFIX = ".merge.squeeze";
   private static final Logger logger = LoggerFactory.getLogger(SqueezeMergeTask.class);
 
-  MergeResource resource;
-  String storageGroupSysDir;
-  String storageGroupName;
   private SqueezeMergeLogger mergeLogger;
   private MergeContext mergeContext = new MergeContext();
-
-  MergeCallback callback;
-  String taskName;
-
   List<TsFileResource> newResources;
 
   public SqueezeMergeTask(
       MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
       String taskName, String storageGroupName) {
-    this.resource = mergeResource;
-    this.storageGroupSysDir = storageGroupSysDir;
-    this.callback = callback;
-    this.taskName = taskName;
-    this.storageGroupName = storageGroupName;
+    super(mergeResource, storageGroupSysDir, callback, taskName, false, storageGroupName);
   }
 
   @Override
@@ -108,7 +98,7 @@ public class SqueezeMergeTask implements Callable<Void> {
     mergeLogger.logMergeStart();
 
     MergeSeriesTask mergeChunkTask = new MergeSeriesTask(mergeContext, taskName, mergeLogger,
-        resource, unmergedSeries);
+        resource, unmergedSeries, storageGroupName);
     newResources = mergeChunkTask.mergeSeries();
 
     cleanUp(true);
@@ -158,8 +148,8 @@ public class SqueezeMergeTask implements Callable<Void> {
     try {
       resource.removeFileReader(seqFile);
       ChunkMetadataCache.getInstance().remove(seqFile);
-      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
-      File resourceFile = new File(seqFile.getPath() + MERGE_SUFFIX);
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
+      File resourceFile = new File(seqFile.getTsFilePath() + MERGE_SUFFIX);
       resourceFile.delete();
       seqFile.setMerging(false);
     } catch (Exception e) {

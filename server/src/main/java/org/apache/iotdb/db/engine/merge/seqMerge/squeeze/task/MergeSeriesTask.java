@@ -35,8 +35,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 class MergeSeriesTask extends BaseMergeSeriesTask {
 
   MergeSeriesTask(MergeContext context, String taskName, MergeLogger mergeLogger,
-      MergeResource mergeResource, List<Path> unmergedSeries) {
-    super(context, taskName, mergeLogger, mergeResource, unmergedSeries);
+      MergeResource mergeResource, List<Path> unmergedSeries, String storageGroupName) {
+    super(context, taskName, mergeLogger, mergeResource, unmergedSeries, storageGroupName);
   }
 
   List<TsFileResource> mergeSeries() throws IOException {
@@ -48,7 +48,7 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
       default:
         RegularizationMergeSeriesTask regularizationMergeSeriesTask = new RegularizationMergeSeriesTask(
             mergeContext, taskName, mergeLogger,
-            resource, unmergedSeries);
+            resource, unmergedSeries,storageGroupName);
         newResources = regularizationMergeSeriesTask.mergeSeries();
         break;
     }

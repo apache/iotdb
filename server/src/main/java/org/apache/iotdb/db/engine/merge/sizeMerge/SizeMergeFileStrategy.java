@@ -25,6 +25,7 @@ import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.IRecoverMergeTask;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
+import org.apache.iotdb.db.engine.merge.MergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.selector.RegularizationMaxFileSelector;
 import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RecoverRegularizationMergeTask;
@@ -44,7 +45,7 @@ public enum SizeMergeFileStrategy {
     }
   }
 
-  public Callable<Void> getMergeTask(MergeResource mergeResource, String storageGroupSysDir,
+  public MergeTask getMergeTask(MergeResource mergeResource, String storageGroupSysDir,
       MergeCallback callback, String taskName, String storageGroupName) {
     switch (this) {
       case REGULARIZATION:

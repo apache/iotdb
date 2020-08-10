@@ -20,7 +20,7 @@
 
 export THRIFT_EXE=thrift
 export SH_DIR=$(dirname $0)/
-export THRIFT_SCRIPT=${SH_DIR}../service-rpc/src/main/thrift/rpc.thrift
+export THRIFT_SCRIPT=${SH_DIR}../thrift/src/main/thrift/rpc.thrift
 export THRIFT_OUT=${SH_DIR}target/iotdb
 
 rm -rf ${THRIFT_OUT}

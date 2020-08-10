@@ -28,7 +28,7 @@ public interface MonitorMBean {
 
   long getBufferWriteCacheSize();
 
-  String getBaseDirectory();
+  String getSystemDirectory();
 
   boolean getWriteAheadLogStatus();
 

@@ -119,7 +119,7 @@
 |描述|元数据索引树的最大度（即每个节点的最大子节点个数）|
 |类型|Int32|
 |默认值| 1024 |
-|改后生效方式|触发生效|
+|改后生效方式|仅允许在第一次启动服务器前修改|
 
 * max\_string\_length
 
@@ -215,16 +215,25 @@
 |描述| 每个时间序列标签和属性的最大持久化字节数|
 |类型| Int32 |
 |默认值| 700 |
-|改后生效方式|重启服务器生效|
+|改后生效方式|仅允许在第一次启动服务器前修改|
 
 * enable\_partial\_insert
 
-|Name| enable\_partial\_insert |
+|名字| enable\_partial\_insert |
 |:---:|:---|
-|Description| 在一次insert请求中，如果部分测点写入失败，是否继续写入其他测点|
-|Type| Bool |
-|Default| true |
-|Effective|重启服务器生效|
+|描述| 在一次insert请求中，如果部分测点写入失败，是否继续写入其他测点|
+|类型| Bool |
+|默认值| true |
+|改后生效方式|重启服务器生效|
+
+* mtree\_snapshot\_interval
+
+|名字| mtree\_snapshot\_interval |
+|:---:|:---|
+|描述| 创建 MTree snapshot 时至少累积的 mlog 日志行数。单位为日志行数|
+|类型| Int32 |
+|默认值| 100000 |
+|改后生效方式|重启服务器生效|
 
 * fetch\_size
 
@@ -305,7 +314,7 @@
 |Description| 是否开启将数据按时间分区存储的功能，如果关闭，所有数据都属于分区 0|
 |Type|Bool|
 |Default| false |
-|Effective|重启服务器生效|
+|Effective|仅允许在第一次启动服务器前修改|
 
 * partition\_interval
 
@@ -406,7 +415,7 @@
 |描述| Tsfile和相关数据文件的存储文件系统。目前支持LOCAL（本地文件系统）和HDFS两种|
 |类型| String |
 |默认值|LOCAL |
-|改后生效方式|重启服务器生效|
+|改后生效方式|仅允许在第一次启动服务器前修改|
 
 * core\_site\_path
 

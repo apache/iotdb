@@ -115,7 +115,7 @@ public class InplaceMergeLogger implements MergeLogger {
     logStream.write(STR_SEQ_FILES);
     logStream.newLine();
     for (TsFileResource tsFileResource : seqFiles) {
-      logStream.write(tsFileResource.getFile().getAbsolutePath());
+      logStream.write(tsFileResource.getTsFile().getAbsolutePath());
       logStream.newLine();
     }
     logStream.flush();
@@ -125,7 +125,7 @@ public class InplaceMergeLogger implements MergeLogger {
     logStream.write(STR_UNSEQ_FILES);
     logStream.newLine();
     for (TsFileResource tsFileResource : unseqFiles) {
-      logStream.write(tsFileResource.getFile().getAbsolutePath());
+      logStream.write(tsFileResource.getTsFile().getAbsolutePath());
       logStream.newLine();
     }
     logStream.flush();

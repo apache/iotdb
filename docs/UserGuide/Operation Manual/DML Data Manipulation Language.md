@@ -24,12 +24,12 @@
 ## INSERT
 ### Insert Real-time Data
 
-IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) in [Client/Shell tools](../Client/Command%20Line%20Interface.html), or using [Java JDBC](../Client/Programming%20-%20JDBC.html) to perform single or batch execution of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
+IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.md) in [Client/Shell tools](../Client/Command%20Line%20Interface.md), or using [Java JDBC](../Client/Programming%20-%20JDBC.md) to perform single or batch execution of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.md).
 
-This section mainly introduces the use of [INSERT SQL statement](/#/Documents/progress/chap5/sec4) for real-time data import in the scenario. See Section 5.4 for a detailed syntax of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html).
+This section mainly introduces the use of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.md) for real-time data import in the scenario.
 
 #### Use of INSERT Statements
-The [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) statement can be used to insert data into one or more specified timeseries that have been created. For each point of data inserted, it consists of a [timestamp](../Concept/Data%20Model%20and%20Terminology.html) and a sensor acquisition value (see [Data Type](../Concept/Data%20Type.html)).
+The [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.md) statement can be used to insert data into one or more specified timeseries that have been created. For each point of data inserted, it consists of a [timestamp](../Concept/Data%20Model%20and%20Terminology.md) and a sensor acquisition value (see [Data Type](../Concept/Data%20Type.md)).
 
 In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` and `root.ln.wf02.wt02.hardware` as an example, and their data types are BOOLEAN and TEXT, respectively.
 
@@ -86,7 +86,7 @@ error: The TEXT data type should be covered by " or '
 
 ### Time Slice Query
 
-This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](../Operation%20Manual/SQL%20Reference.html). You can also use the [Java JDBC](../Client/Programming%20-%20JDBC.html) standard interface to execute related queries.
+This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](../Operation%20Manual/SQL%20Reference.md). You can also use the [Java JDBC](../Client/Programming%20-%20JDBC.md) standard interface to execute related queries.
 
 #### Select a Column of Data Based on a Time Interval
 
@@ -189,10 +189,10 @@ select count(status) from root.ln.wf01.wt01 group by level=2;
 ### Down-Frequency Aggregate Query
 
 This section mainly introduces the related examples of down-frequency aggregation query, 
-using the [GROUP BY clause](../Operation%20Manual/SQL%20Reference.html), 
+using the [GROUP BY clause](../Operation%20Manual/SQL%20Reference.md), 
 which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. 
 IoTDB supports partitioning result sets according to time interval and customized sliding step which should not be smaller than the time interval and defaults to equal the time interval if not set. And by default results are sorted by time in ascending order. 
-You can also use the [Java JDBC](../Client/Programming%20-%20Native%20API.html) standard interface to execute related queries.
+You can also use the [Java JDBC](../Client/Programming%20-%20Native%20API.md) standard interface to execute related queries.
 
 The GROUP BY statement provides users with three types of specified parameters:
 
@@ -534,14 +534,14 @@ When the fill method is not specified, each data type bears its own default fill
 
 ### Row and Column Control over Query Results
 
-IoTDB provides [LIMIT/SLIMIT](../Operation%20Manual/SQL%20Reference.html) clause and [OFFSET/SOFFSET](../Operation%20Manual/SQL%20Reference.html) 
+IoTDB provides [LIMIT/SLIMIT](../Operation%20Manual/SQL%20Reference.md) clause and [OFFSET/SOFFSET](../Operation%20Manual/SQL%20Reference.md) 
 clause in order to make users have more control over query results. 
 The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, 
 and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
 
 Note that the LIMIT and OFFSET are not supported in group by query.
 
-This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](../Client/Programming%20-%20JDBC.html) standard interface to execute queries.
+This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](../Client/Programming%20-%20JDBC.md) standard interface to execute queries.
 
 #### Row Control over Query Results
 
@@ -770,9 +770,9 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 
 ## DELETE
 
-Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](../Operation%20Manual/SQL%20Reference.html). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data before a certain time (current version does not support the deletion of data within a closed time interval).
+Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](../Operation%20Manual/SQL%20Reference.md). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data within a certain time interval.
 
-In a JAVA programming environment, you can use the [Java JDBC](../Client/Programming%20-%20JDBC.html) to execute single or batch UPDATE statements.
+In a JAVA programming environment, you can use the [Java JDBC](../Client/Programming%20-%20JDBC.md) to execute single or batch UPDATE statements.
 
 ### Delete Single Timeseries
 Taking ln Group as an example, there exists such a usage scenario:
@@ -783,8 +783,34 @@ The wf02 plant's wt02 device has many segments of errors in its power supply sta
 delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 ```
 
+In case we hope to merely delete the data before 2017-11-01 16:26:00 in the year of 2017, The SQL statement is:
+```
+delete from root.ln.wf02.wt02.status where time>=2017-01-01T00:00:00 and time<=2017-11-01T16:26:00;
+```
+
+IoTDB supports to delete a range of timeseries points. Users can write SQL expressions as follows to specify the delete interval:
+
+```
+delete from root.ln.wf02.wt02.status where time < 10
+delete from root.ln.wf02.wt02.status where time <= 10
+delete from root.ln.wf02.wt02.status where time < 20 and time > 10
+delete from root.ln.wf02.wt02.status where time <= 20 and time >= 10
+delete from root.ln.wf02.wt02.status where time > 20
+delete from root.ln.wf02.wt02.status where time >= 20
+delete from root.ln.wf02.wt02.status where time = 20
+```
+
+Please pay attention that multiple intervals connected by "OR" expression are not supported in delete statement:
+
+```
+delete from root.ln.wf02.wt02.status where time > 4 or time < 0
+Msg: 303: Check metadata error: For delete statement, where clause can only contain atomic
+expressions like : time > XXX, time <= XXX, or two atomic expressions connected by 'AND'
+```
+
+
 ### Delete Multiple Timeseries
-When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](../Concept/Data%20Model%20and%20Terminology.html) can be used to delete the data. The SQL statement for this operation is:
+When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](../Concept/Data%20Model%20and%20Terminology.md) can be used to delete the data. The SQL statement for this operation is:
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
@@ -800,3 +826,18 @@ It should be noted that when the deleted path does not exist, IoTDB will give th
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: TimeSeries does not exist and its data cannot be deleted
 ```
+
+## Delete Time Partition (experimental)
+You may delete all data in a time partition of a storage group using the following grammar:
+
+```
+DELETE PARTITION root.ln 0,1,2
+```
+
+The `0,1,2` above is the id of the partition that is to be deleted, you can find it from the IoTDB
+data folders or convert a timestamp manually to an id using `timestamp / partitionInterval
+` (flooring), and the `partitionInterval` should be in your config (if time-partitioning is
+supported in your version).
+
+Please notice that this function is experimental and mainly for development, please use it with
+extreme care.

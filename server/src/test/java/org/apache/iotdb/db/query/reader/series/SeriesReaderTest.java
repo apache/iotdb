@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.reader.series;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -57,7 +56,7 @@ public class SeriesReaderTest {
 
 
   @Before
-  public void setUp() throws MetadataException, PathException, IOException, WriteProcessException {
+  public void setUp() throws MetadataException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
   }
 

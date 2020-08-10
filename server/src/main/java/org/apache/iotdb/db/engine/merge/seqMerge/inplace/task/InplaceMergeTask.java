@@ -27,16 +27,27 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
+import org.apache.iotdb.db.engine.merge.MergeLogger;
+import org.apache.iotdb.db.engine.merge.MergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.Callable;
 
 /**
  * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
@@ -44,30 +55,17 @@ import org.slf4j.LoggerFactory;
  * merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the seqFiles
  * into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
  */
-public class InplaceMergeTask implements Callable<Void> {
+public class InplaceMergeTask extends MergeTask {
 
   public static final String MERGE_SUFFIX = ".merge.inplace";
   private static final Logger logger = LoggerFactory.getLogger(InplaceMergeTask.class);
 
-  MergeResource resource;
-  String storageGroupSysDir;
-  String storageGroupName;
-  InplaceMergeLogger mergeLogger;
-  MergeContext mergeContext = new MergeContext();
-
-  private MergeCallback callback;
-  String taskName;
-  boolean fullMerge;
+  MergeMultiChunkTask chunkTask;
+  MergeFileTask fileTask;
 
   public InplaceMergeTask(MergeResource mergeResource, String storageGroupSysDir,
-      MergeCallback callback,
-      String taskName, boolean fullMerge, String storageGroupName) {
-    this.resource = mergeResource;
-    this.storageGroupSysDir = storageGroupSysDir;
-    this.callback = callback;
-    this.taskName = taskName;
-    this.fullMerge = fullMerge;
-    this.storageGroupName = storageGroupName;
+      MergeCallback callback, String taskName, boolean fullMerge, String storageGroupName) {
+    super(mergeResource, storageGroupSysDir, callback, taskName, fullMerge, storageGroupName);
   }
 
   @Override
@@ -76,15 +74,18 @@ public class InplaceMergeTask implements Callable<Void> {
       doMerge();
     } catch (Exception e) {
       logger.error("Runtime exception in merge {}", taskName, e);
-      cleanUp(false);
-      // call the callback to make sure the StorageGroup exit merging status, but passing 2
-      // empty file lists to avoid files being deleted.
-      callback.call(Collections.emptyList(), Collections.emptyList(),
-          SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME),
-          null);
-      throw e;
+      abort();
     }
     return null;
+  }
+
+  private void abort() throws IOException {
+    states = States.ABORTED;
+    cleanUp(false);
+    // call the callback to make sure the StorageGroup exit merging status, but passing 2
+    // empty file lists to avoid files being deleted.
+    callback.call(Collections.emptyList(), Collections.emptyList(),
+        new File(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME), null);
   }
 
   private void doMerge() throws IOException, MetadataException {
@@ -100,23 +101,44 @@ public class InplaceMergeTask implements Callable<Void> {
 
     resource.setChunkWriterCache(MergeUtils.constructChunkWriterCache(storageGroupName));
 
-    List<String> storageGroupPaths = MManager.getInstance()
-        .getAllTimeseriesName(storageGroupName + ".*");
+    Set<String> devices = IoTDB.metaManager.getDevices(storageGroupName);
+    Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
     List<Path> unmergedSeries = new ArrayList<>();
-    for (String path : storageGroupPaths) {
-      unmergedSeries.add(new Path(path));
+    for (String device : devices) {
+      MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
+      for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
+        Path path = new Path(device, entry.getKey());
+        measurementSchemaMap.put(path, ((MeasurementMNode) entry.getValue()).getSchema());
+        unmergedSeries.add(path);
+      }
     }
 
     mergeLogger.logMergeStart();
 
-    MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName,
-        mergeLogger, resource, fullMerge, unmergedSeries);
-    mergeChunkTask.mergeSeries();
+    chunkTask = new MergeMultiChunkTask(mergeContext, taskName, (InplaceMergeLogger) mergeLogger,
+        resource,
+        fullMerge, unmergedSeries, storageGroupName);
+    states = States.MERGE_CHUNKS;
+    chunkTask.mergeSeries();
+    if (Thread.interrupted()) {
+      logger.info("Merge task {} aborted", taskName);
+      abort();
+      return;
+    }
 
-    MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
+    fileTask = new MergeFileTask(taskName, mergeContext, (InplaceMergeLogger) mergeLogger, resource,
         resource.getSeqFiles());
-    mergeFileTask.mergeFiles();
+    states = States.MERGE_FILES;
+    chunkTask = null;
+    fileTask.mergeFiles();
+    if (Thread.interrupted()) {
+      logger.info("Merge task {} aborted", taskName);
+      abort();
+      return;
+    }
 
+    states = States.CLEAN_UP;
+    fileTask = null;
     cleanUp(true);
     if (logger.isInfoEnabled()) {
       double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
@@ -143,7 +165,7 @@ public class InplaceMergeTask implements Callable<Void> {
     }
 
     for (TsFileResource seqFile : resource.getSeqFiles()) {
-      File mergeFile = new File(seqFile.getPath() + MERGE_SUFFIX);
+      File mergeFile = new File(seqFile.getTsFilePath() + MERGE_SUFFIX);
       mergeFile.delete();
       seqFile.setMerging(false);
     }

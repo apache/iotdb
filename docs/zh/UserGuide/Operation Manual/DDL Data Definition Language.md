@@ -41,7 +41,7 @@ Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.excepti
 
 ## 查看存储组
 
-在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.html)语句来查看所有的存储组，SQL语句如下所示：
+在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句来查看所有的存储组，SQL语句如下所示：
 
 ```
 IoTDB> show storage group
@@ -69,7 +69,7 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-详细的数据类型与编码方式的对应列表请参见[编码方式](../Concept/Encoding.html)。
+详细的数据类型与编码方式的对应列表请参见[编码方式](../Concept/Encoding.md)。
 
 ### 标签点管理
 
@@ -117,9 +117,9 @@ ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=
 
 ## 查看时间序列
 
-* SHOW TIMESERIES prefixPath? showWhereClause? limitClause?
+* SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
 
-  SHOW TIMESERIES 后可以跟三种可选的子句，查询结果为这些时间序列的所有信息
+  SHOW TIMESERIES 中可以有四种可选的子句，查询结果为这些时间序列的所有信息
 
 时间序列信息具体包括：时间序列路径名，存储组，Measurement别名，数据类型，编码方式，压缩方式，属性和标签。
 
@@ -161,7 +161,12 @@ show timeseries root.ln where description contains 'test1'
 
   只返回从指定下标开始的结果，最大返回条数被 LIMIT 限制，用于分页查询
 
+* SHOW LATEST TIMESERIES
+
+  表示查询出的时间序列需要按照最近插入时间戳降序排列
+  
 需要注意的是，当查询路径不存在时，系统会返回0条时间序列。
+
 
 ## 查看子路径
 
@@ -317,4 +322,10 @@ IoTDB> FULL MERGE
 IoTDB> CLEAR CACHE
 ```
 
+## 为 SCHEMA 创建快照
+
+为了加快 IoTDB 重启速度，用户可以手动触发创建 schema 的快照，从而避免服务器从 mlog 文件中恢复。
+```
+IoTDB> CREATE SNAPSHOT FOR SCHEMA
+```
 

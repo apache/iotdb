@@ -51,7 +51,7 @@ public class InplaceMergeTaskTest extends MergeTest {
 
   @Before
   public void setUp()
-      throws IOException, WriteProcessException, MetadataException, MetadataException {
+      throws IOException, WriteProcessException, MetadataException {
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
@@ -225,7 +225,7 @@ public class InplaceMergeTaskTest extends MergeTest {
   public void mergeWithDeletionTest() throws Exception {
     try {
       seqResources.get(0).getModFile().write(new Deletion(new Path(deviceIds[0],
-          measurementSchemas[0].getMeasurementId()), 10000, 49));
+          measurementSchemas[0].getMeasurementId()), 10000, 0, 49));
     } finally {
       seqResources.get(0).getModFile().close();
     }

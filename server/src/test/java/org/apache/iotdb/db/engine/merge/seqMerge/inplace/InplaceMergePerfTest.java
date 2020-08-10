@@ -28,17 +28,16 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.MergeTest;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class InplaceMergePerfTest extends MergeTest {
-
   private long timeConsumption;
   private boolean fullMerge;
   private File tempSGDir;
 
   public void test() throws Exception {
-    MManager.getInstance().init();
+    IoTDB.metaManager.init();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
     setUp();

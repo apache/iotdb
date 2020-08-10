@@ -82,6 +82,7 @@ pipeline {
             }
             steps {
                 echo 'Building'
+                sh 'mvn clean'
                 // We'll deploy to a relative directory so we can
                 // deploy new versions only if the entrie build succeeds
                 sh 'mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy'
@@ -136,26 +137,26 @@ pipeline {
         }
 
         //temporary disable this stage because VUEPRESS takes too much memory
-        stage('Deploy site') {
-            when {
-                branch 'master'
-            }
-            // Only the nodes labeled 'git-websites' have the credentials to commit to the.
-            agent {
-                node {
-                    label 'git-websites'
-                }
-            }
-            steps {
-                // Publish the site with the scm-publish plugin.
-                sh 'mvn -P site package scm-publish:publish-scm -pl site'
-
-                // Clean up the snapshots directory (freeing up more space after deploying).
-                dir("target") {
-                    deleteDir()
-                }
-            }
-        }
+//        stage('Deploy site') {
+//            when {
+//                branch 'master'
+//            }
+//            // Only the nodes labeled 'git-websites' have the credentials to commit to the.
+//            agent {
+//                node {
+//                    label 'git-websites'
+//                }
+//            }
+//            steps {
+//                // Publish the site with the scm-publish plugin.
+//                sh 'mvn -P site package scm-publish:publish-scm -pl site'
+//
+//                // Clean up the snapshots directory (freeing up more space after deploying).
+//                dir("target") {
+//                    deleteDir()
+//                }
+//            }
+//        }
 
 
         stage('Cleanup') {

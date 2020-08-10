@@ -21,11 +21,11 @@
 
 # 数据模型与技术
 
-我们为您提供一份简化的[样例数据](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt)。
+本节，我们以电力场景为例，说明如何在IoTDB中创建一个正确的数据模型。附件是一个样例数据文件，方便您练习IoTDB。
 
-下载文件: [IoTDB-SampleData.txt](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt).
+附件下载: [IoTDB-SampleData.txt](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt)。
 
-根据本文描述的[数据](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt)属性层级，按照属性涵盖范围以及它们之间的从属关系，我们可将其表示为如下图2.1的属性层级组织结构，其层级关系为：集团层-电场层-设备层-传感器层。其中ROOT为根节点，传感器层的每一个节点称为叶子节点。在使用IoTDB的过程中，您可以直接将由ROOT节点到每一个叶子节点路径上的属性用“.”连接，将其作为一个IoTDB的时间序列的名称。图2.1中最左侧的路径可以生成一个名为`ROOT.ln.wf01.wt01.status`的时间序列。
+根据[数据](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt)的属性层级，属性涵盖范围以及数据之间的从属关系，我们可将其数据模型表示为如图2.1所示的属性层级组织结构，即电力集团层-电厂层-设备层-传感器层。其中ROOT为根节点，传感器层的每一个节点为叶子节点。IoTDB的语法规定，ROOT节点到叶子节点的路径以“.”连接，以此完整路径命名IoTDB中的一个时间序列。例如，图2.1最左侧路径对应的时间序列名称为`ROOT.ln.wf01.wt01.status`。
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg"></center>
 

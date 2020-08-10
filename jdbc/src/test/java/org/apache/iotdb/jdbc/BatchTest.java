@@ -28,11 +28,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
@@ -52,7 +52,7 @@ public class BatchTest {
   @Mock
   private IoTDBStatement statement;
   private TSStatus errorStatus = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
-  private TSExecuteBatchStatementResp resp;
+  private TSStatus resp;
   private ZoneId zoneID = ZoneId.systemDefault();
 
   @Before
@@ -71,8 +71,10 @@ public class BatchTest {
   @Test
   public void testExecuteBatchSQL1() throws SQLException, TException {
     Statement statement = connection.createStatement();
-    resp = new TSExecuteBatchStatementResp();
-    resp = RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+    statement.addBatch("sql1");
+    resp = new TSStatus();
+    resp =
+        RpcUtils.getStatus(Collections.singletonList(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)));
     when(client.executeBatchStatement(any(TSExecuteBatchStatementReq.class))).thenReturn(resp);
     int[] result = statement.executeBatch();
     assertEquals(1, result.length);
@@ -90,8 +92,9 @@ public class BatchTest {
         add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       }
     };
-    resp.setStatusList(resExpected);
+    resp.setSubStatus(resExpected);
 
+    statement.clearBatch();
     statement.addBatch("SET STORAGE GROUP TO root.ln.wf01.wt01");
     statement.addBatch(
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
@@ -110,8 +113,8 @@ public class BatchTest {
     statement.addBatch(
         "insert into root.ln.wf01.wt01(timestamp,temperature) vvvvvv(1509465720000,20.092794)");
     result = statement.executeBatch();
-    assertEquals(resp.statusList.size(), result.length);
-    for (int i = 0; i < resp.statusList.size(); i++) {
+    assertEquals(resp.getSubStatus().size(), result.length);
+    for (int i = 0; i < resp.getSubStatus().size(); i++) {
       assertEquals(resExpected.get(i).code, result[i]);
     }
     statement.clearBatch();
@@ -120,7 +123,9 @@ public class BatchTest {
   @Test(expected = BatchUpdateException.class)
   public void testExecuteBatchSQL2() throws SQLException, TException {
     Statement statement = connection.createStatement();
-    resp = RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR);
+    statement.addBatch("sql1");
+    resp =
+        RpcUtils.getStatus(Collections.singletonList(RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR)));
 
     when(client.executeBatchStatement(any(TSExecuteBatchStatementReq.class))).thenReturn(resp);
     statement.executeBatch();
@@ -130,14 +135,16 @@ public class BatchTest {
   @Test
   public void testExecuteBatchSQL3() throws SQLException, TException {
     Statement statement = connection.createStatement();
-    resp = RpcUtils.getTSBatchExecuteStatementResp(errorStatus);
+    resp = RpcUtils.getStatus(Collections.singletonList(errorStatus));
+    statement.addBatch("sql1");
+    statement.addBatch("sql1");
     List<TSStatus> resExpected = new ArrayList<TSStatus>() {
       {
         add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
         add(RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR));
       }
     };
-    resp.setStatusList(resExpected);
+    resp.setSubStatus(resExpected);
     when(client.executeBatchStatement(any(TSExecuteBatchStatementReq.class))).thenReturn(resp);
     try {
       statement.executeBatch();

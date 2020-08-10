@@ -33,6 +33,10 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   private String value;
   private int limit = 0;
   private int offset = 0;
+  // if is true, the result will be sorted according to the inserting frequency of the timeseries
+  private boolean orderByHeat;
+
+  private boolean hasLimit;
 
   public ShowTimeSeriesPlan(Path path) {
     super(ShowContentType.TIMESERIES);
@@ -40,7 +44,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   }
 
   public ShowTimeSeriesPlan(Path path, boolean isContains, String key, String value, int limit,
-      int offset) {
+      int offset, boolean orderByHeat) {
     super(ShowContentType.TIMESERIES);
     this.path = path;
     this.isContains = isContains;
@@ -48,6 +52,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     this.value = value;
     this.limit = limit;
     this.offset = offset;
+    this.orderByHeat = orderByHeat;
   }
 
   public ShowTimeSeriesPlan() {
@@ -74,8 +79,32 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     return limit;
   }
 
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
   public int getOffset() {
     return offset;
+  }
+
+  public void setOffset(int offset) {
+    this.offset = offset;
+  }
+
+  public boolean isOrderByHeat() {
+    return orderByHeat;
+  }
+
+  public void setOrderByHeat(boolean orderByHeat) {
+    this.orderByHeat = orderByHeat;
+  }
+
+  public boolean hasLimit() {
+    return hasLimit;
+  }
+
+  public void setHasLimit(boolean hasLimit) {
+    this.hasLimit = hasLimit;
   }
 
   @Override
@@ -89,6 +118,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
     outputStream.writeInt(limit);
     outputStream.writeInt(offset);
+    outputStream.writeBoolean(orderByHeat);
   }
 
   @Override
@@ -100,5 +130,6 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
     limit = buffer.getInt();
     limit = buffer.getInt();
+    orderByHeat = buffer.get() == 1;
   }
 }

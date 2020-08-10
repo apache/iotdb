@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.IRecoverMergeTask;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
+import org.apache.iotdb.db.engine.merge.MergeTask;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.selector.InplaceMaxFileSelector;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.RecoverInplaceMergeTask;
@@ -51,7 +52,7 @@ public enum SeqMergeFileStrategy {
     }
   }
 
-  public Callable<Void> getMergeTask(MergeResource mergeResource, String storageGroupSysDir,
+  public MergeTask getMergeTask(MergeResource mergeResource, String storageGroupSysDir,
       MergeCallback callback, String taskName, String storageGroupName,
       boolean isFullMerge) {
     switch (this) {

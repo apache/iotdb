@@ -76,6 +76,9 @@ public class MemUtils {
     }
     long memSize = 0;
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      if (insertTabletPlan.getDataTypes()[i] == null) {
+        continue;
+      }
       switch (insertTabletPlan.getDataTypes()[i]) {
         case INT32:
           memSize += (end - start) * (8L + 4L); break;

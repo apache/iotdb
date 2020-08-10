@@ -28,6 +28,7 @@ import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
+import org.apache.iotdb.db.engine.merge.MergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.recover.RegularizationMergeLogger;
@@ -45,31 +46,21 @@ import org.slf4j.LoggerFactory;
  * RegularizationMergeTask merges given seqFiles into new ones, which basically consists of two
  * steps: 1. write whole data to new files by device 2. remove old files
  */
-public class RegularizationMergeTask implements Callable<Void> {
+public class RegularizationMergeTask extends MergeTask {
 
   public static final String MERGE_SUFFIX = ".merge.regularization";
   private static final Logger logger = LoggerFactory.getLogger(
       RegularizationMergeTask.class);
 
-  MergeResource resource;
-  String storageGroupSysDir;
-  String storageGroupName;
   private RegularizationMergeLogger mergeLogger;
   private MergeContext mergeContext = new MergeContext();
-
-  MergeCallback callback;
-  String taskName;
 
   List<TsFileResource> newResources = new ArrayList<>();
 
   public RegularizationMergeTask(
       MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
       String taskName, String storageGroupName) {
-    this.resource = mergeResource;
-    this.storageGroupSysDir = storageGroupSysDir;
-    this.callback = callback;
-    this.taskName = taskName;
-    this.storageGroupName = storageGroupName;
+    super(mergeResource, storageGroupSysDir, callback, taskName, false, storageGroupName);
   }
 
   @Override
@@ -115,7 +106,7 @@ public class RegularizationMergeTask implements Callable<Void> {
 
     RegularizationMergeSeriesTask mergeChunkTask = new RegularizationMergeSeriesTask(mergeContext,
         taskName, mergeLogger,
-        resource, unmergedSeries);
+        resource, unmergedSeries, storageGroupName);
     newResources = mergeChunkTask.mergeSeries();
 
     cleanUp(true);
@@ -163,7 +154,7 @@ public class RegularizationMergeTask implements Callable<Void> {
     try {
       resource.removeFileReader(seqFile);
       ChunkMetadataCache.getInstance().remove(seqFile);
-      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setMerging(false);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);

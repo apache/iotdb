@@ -49,7 +49,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   private TSEncoding encoding;
   private TSEncodingBuilder encodingConverter;
   private CompressionType compressor;
-  private Map<String, String> props = new HashMap<>();
+  private Map<String, String> props = null;
 
   public MeasurementSchema() {
   }
@@ -58,7 +58,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     this(measurementId, tsDataType,
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
+        null);
   }
 
   /**
@@ -67,12 +67,12 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding) {
     this(measurementId, type, encoding,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
-        Collections.emptyMap());
+        null);
   }
 
   public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding,
       CompressionType compressionType) {
-    this(measurementId, type, encoding, compressionType, Collections.emptyMap());
+    this(measurementId, type, encoding, compressionType, null);
   }
 
   /**
@@ -86,7 +86,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     this.type = type;
     this.measurementId = measurementId;
     this.encoding = encoding;
-    this.props = props == null ? Collections.emptyMap() : props;
+    this.props = props;
     this.compressor = compressionType;
   }
 
@@ -288,10 +288,13 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   public String toString() {
     StringContainer sc = new StringContainer("");
     sc.addTail("[", measurementId, ",", type.toString(), ",", encoding.toString(), ",",
-        props.toString(), ",",
+        props == null ? "" : props.toString(), ",",
         compressor.toString());
     sc.addTail("]");
     return sc.toString();
   }
 
+  public void setType(TSDataType type) {
+    this.type = type;
+  }
 }

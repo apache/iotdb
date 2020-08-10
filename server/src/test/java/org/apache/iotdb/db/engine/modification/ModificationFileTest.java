@@ -39,8 +39,8 @@ public class ModificationFileTest {
     Modification[] modifications = new Modification[]{
         new Deletion(new Path("d1", "s1"), 1, 1),
         new Deletion(new Path("d1", "s2"), 2, 2),
-        new Deletion(new Path("d1", "s3"), 3, 3),
-        new Deletion(new Path("d1", "s41"), 4, 4)
+        new Deletion(new Path("d1", "s3"), 3, 3, 4),
+        new Deletion(new Path("d1", "s41"), 4, 4, 5)
     };
     try (ModificationFile mFile = new ModificationFile(tempFileName)) {
       for (int i = 0; i < 2; i++) {
@@ -71,8 +71,8 @@ public class ModificationFileTest {
     Modification[] modifications = new Modification[]{
         new Deletion(new Path("d1", "s1"), 1, 1),
         new Deletion(new Path("d1", "s2"), 2, 2),
-        new Deletion(new Path("d1", "s3"), 3, 3),
-        new Deletion(new Path("d1", "s41"), 4, 4),
+        new Deletion(new Path("d1", "s3"), 3, 3, 4),
+        new Deletion(new Path("d1", "s41"), 4, 4, 5),
     };
     try (ModificationFile mFile = new ModificationFile(tempFileName)) {
       for (int i = 0; i < 2; i++) {

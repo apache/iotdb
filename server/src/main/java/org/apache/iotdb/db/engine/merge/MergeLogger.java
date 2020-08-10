@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.merge;
 
 import java.io.IOException;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 public interface MergeLogger {
@@ -26,4 +27,10 @@ public interface MergeLogger {
   void logAllTsEnd() throws IOException;
 
   void logNewFile(TsFileResource resource) throws IOException;
+
+  void close() throws IOException;
+
+  void logFiles(MergeResource resource) throws IOException;
+
+  void logMergeStart() throws IOException;
 }

@@ -194,10 +194,17 @@ public class IoTDBDescriptor {
 
       loadWALProps(properties);
 
-      conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
-
-      conf.setSystemDir(
-          FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.SYSTEM_FOLDER_NAME);
+      String systemDir = properties.getProperty("system_dir");
+      if(systemDir == null) {
+        systemDir = properties.getProperty("base_dir");
+        if(systemDir != null){
+          systemDir = FilePathUtils.regularizePath(systemDir) + IoTDBConstant.SYSTEM_FOLDER_NAME;
+        }
+        else {
+          systemDir = conf.getSystemDir();
+        }
+      }
+      conf.setSystemDir(systemDir);
 
       conf.setSchemaDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SCHEMA_FOLDER_NAME);
@@ -205,13 +212,16 @@ public class IoTDBDescriptor {
       conf.setSyncDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
 
+      conf.setTracingDir(FilePathUtils
+          .regularizePath(conf.getSystemDir() + IoTDBConstant.TRACING_FOLDER_NAME));
+
       conf.setQueryDir(
-          FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
+          FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
 
-      conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
+      conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
 
       int walBufferSize = Integer.parseInt(properties.getProperty("wal_buffer_size",
           Integer.toString(conf.getWalBufferSize())));
@@ -242,6 +252,22 @@ public class IoTDBDescriptor {
       conf.setAvgSeriesPointNumberThreshold(Integer.parseInt(properties
           .getProperty("avg_series_point_number_threshold",
               Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
+
+      conf.setMergeChunkPointNumberThreshold(Integer.parseInt(properties
+          .getProperty("merge_chunk_point_number",
+              Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
+
+      conf.setMaxMergeChunkNumInTsFile(Integer.parseInt(properties
+          .getProperty("max_merge_chunk_num_in_tsfile",
+              Integer.toString(conf.getMaxMergeChunkNumInTsFile()))));
+
+      conf.setEnableVm(Boolean.parseBoolean(properties
+          .getProperty("enable_vm",
+              Boolean.toString(conf.isEnableVm()))));
+
+      conf.setMaxVmNum(Integer.parseInt(properties
+          .getProperty("max_vm_num",
+              Integer.toString(conf.getMaxVmNum()))));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
@@ -326,9 +352,19 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
               String.valueOf(conf.isEnablePartialInsert()))));
 
+      conf.setMtreeSnapshotInterval(Integer.parseInt(properties.getProperty(
+          "mtree_snapshot_interval", Integer.toString(conf.getMtreeSnapshotInterval()))));
+      conf.setMtreeSnapshotThresholdTime(Integer.parseInt(properties.getProperty(
+          "mtree_snapshot_threshold_time",
+          Integer.toString(conf.getMtreeSnapshotThresholdTime()))));
+
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
               Boolean.toString(conf.isEnablePerformanceStat())).trim()));
+
+      conf.setEnablePerformanceTracing(Boolean
+          .parseBoolean(properties.getProperty("enable_performance_tracing",
+              Boolean.toString(conf.isEnablePerformanceTracing())).trim()));
 
       conf.setPerformanceStatDisplayInterval(Long
           .parseLong(properties.getProperty("performance_stat_display_interval",
@@ -439,7 +475,6 @@ public class IoTDBDescriptor {
       //if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
       conf.setOpenIdProviderUrl(properties.getProperty("openID_url", ""));
 
-
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(FSType.valueOf(
@@ -504,12 +539,15 @@ public class IoTDBDescriptor {
     conf.setAutoCreateSchemaEnabled(
         Boolean.parseBoolean(properties.getProperty("enable_auto_create_schema",
             Boolean.toString(conf.isAutoCreateSchemaEnabled()).trim())));
-    conf.setBooleanStringInferType(TSDataType.valueOf(properties.getProperty("boolean_string_infer_type",
-        conf.getBooleanStringInferType().toString())));
-    conf.setIntegerStringInferType(TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
-        conf.getIntegerStringInferType().toString())));
-    conf.setFloatingStringInferType(TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
-        conf.getFloatingStringInferType().toString())));
+    conf.setBooleanStringInferType(
+        TSDataType.valueOf(properties.getProperty("boolean_string_infer_type",
+            conf.getBooleanStringInferType().toString())));
+    conf.setIntegerStringInferType(
+        TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
+            conf.getIntegerStringInferType().toString())));
+    conf.setFloatingStringInferType(
+        TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
+            conf.getFloatingStringInferType().toString())));
     conf.setNanStringInferType(TSDataType.valueOf(properties.getProperty("nan_string_infer_type",
         conf.getNanStringInferType().toString())));
     conf.setDefaultStorageGroupLevel(

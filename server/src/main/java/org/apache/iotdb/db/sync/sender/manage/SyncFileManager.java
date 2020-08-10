@@ -18,28 +18,24 @@
  */
 package org.apache.iotdb.db.sync.sender.manage;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class SyncFileManager implements ISyncFileManager {
 
@@ -76,7 +72,7 @@ public class SyncFileManager implements ISyncFileManager {
   private Map<String, Map<Long, Set<File>>> toBeSyncedFilesMap;
 
   private SyncFileManager() {
-    MManager.getInstance().init();
+    IoTDB.metaManager.init();
   }
 
   public static SyncFileManager getInstance() {
@@ -98,7 +94,7 @@ public class SyncFileManager implements ISyncFileManager {
         .listFiles();
     for (File sgFolder : allSgFolders) {
       if (!sgFolder.getName().startsWith(IoTDBConstant.PATH_ROOT) || sgFolder.getName()
-          .equals(TsFileConstant.PATH_UPGRADE)) {
+          .equals(TsFileConstant.TMP_SUFFIX)) {
         continue;
       }
       allSGs.putIfAbsent(sgFolder.getName(), new HashSet<>());

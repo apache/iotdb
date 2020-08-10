@@ -30,9 +30,12 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -85,7 +88,15 @@ public class ChunkMetadataCacheTest {
     record.addTuple(DataPoint.getDataPoint(TSDataType.FLOAT, measurementId2, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.DOUBLE, measurementId3, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.BOOLEAN, measurementId4, "True"));
-    storageGroupProcessor.insert(new InsertPlan(record));
+    InsertRowPlan insertRowPlan = new InsertRowPlan(record);
+    MNode mNode = new MNode(null, storageGroup);
+    mNode.addChild(measurementId0, new MeasurementMNode(null, null, null, null));
+    mNode.addChild(measurementId1, new MeasurementMNode(null, null, null, null));
+    mNode.addChild(measurementId2, new MeasurementMNode(null, null, null, null));
+    mNode.addChild(measurementId3, new MeasurementMNode(null, null, null, null));
+    mNode.addChild(measurementId4, new MeasurementMNode(null, null, null, null));
+    insertRowPlan.setDeviceMNode(mNode);
+    storageGroupProcessor.insert(insertRowPlan);
   }
 
   protected void insertData() throws IOException, WriteProcessException {
@@ -102,7 +113,7 @@ public class ChunkMetadataCacheTest {
     for (int j = 11; j <= 20; j++) {
       insertOneRecord(j, j);
     }
-    storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
+    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 21; j <= 30; j += 2) {
       insertOneRecord(j, 0); // will be covered when read
@@ -127,15 +138,14 @@ public class ChunkMetadataCacheTest {
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
 
     Assert.assertEquals(1, seqResources.size());
-    Assert.assertEquals(4, unseqResources.size());
+    Assert.assertEquals(3, unseqResources.size());
     Assert.assertTrue(seqResources.get(0).isClosed());
     Assert.assertTrue(unseqResources.get(0).isClosed());
     Assert.assertTrue(unseqResources.get(1).isClosed());
     Assert.assertTrue(unseqResources.get(2).isClosed());
-    Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
 
@@ -149,15 +159,14 @@ public class ChunkMetadataCacheTest {
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
 
     Assert.assertEquals(1, seqResources.size());
-    Assert.assertEquals(4, unseqResources.size());
+    Assert.assertEquals(3, unseqResources.size());
     Assert.assertTrue(seqResources.get(0).isClosed());
     Assert.assertTrue(unseqResources.get(0).isClosed());
     Assert.assertTrue(unseqResources.get(1).isClosed());
     Assert.assertTrue(unseqResources.get(2).isClosed());
-    Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
 

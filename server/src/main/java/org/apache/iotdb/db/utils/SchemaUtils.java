@@ -21,16 +21,20 @@ package org.apache.iotdb.db.utils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,21 +44,47 @@ public class SchemaUtils {
 
   }
 
+  private static Map<TSDataType, Set<TSEncoding>> schemaChecker = new EnumMap<>(TSDataType.class);
+
+  static {
+    Set<TSEncoding> booleanSet = new HashSet<>();
+    booleanSet.add(TSEncoding.PLAIN);
+    booleanSet.add(TSEncoding.RLE);
+    schemaChecker.put(TSDataType.BOOLEAN, booleanSet);
+    Set<TSEncoding> int32Set = new HashSet<>();
+    int32Set.add(TSEncoding.PLAIN);
+    int32Set.add(TSEncoding.RLE);
+    int32Set.add(TSEncoding.TS_2DIFF);
+    int32Set.add(TSEncoding.REGULAR);
+    schemaChecker.put(TSDataType.INT32, int32Set);
+    schemaChecker.put(TSDataType.INT64, int32Set);
+    Set<TSEncoding> floatSet = new HashSet<>();
+    floatSet.add(TSEncoding.PLAIN);
+    floatSet.add(TSEncoding.RLE);
+    floatSet.add(TSEncoding.TS_2DIFF);
+    floatSet.add(TSEncoding.GORILLA);
+    schemaChecker.put(TSDataType.FLOAT, floatSet);
+    schemaChecker.put(TSDataType.DOUBLE, floatSet);
+    Set<TSEncoding> textSet = new HashSet<>();
+    textSet.add(TSEncoding.PLAIN);
+    schemaChecker.put(TSDataType.TEXT, textSet);
+  }
+
   private static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
 
-  public static void registerTimeseries(MeasurementSchema schema) {
+  public static void registerTimeseries(TimeseriesSchema schema) {
     try {
       logger.debug("Registering timeseries {}", schema);
-      String path = schema.getMeasurementId();
+      String path = schema.getFullPath();
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      MManager.getInstance().createTimeseries(path, dataType, encoding,
+      IoTDB.metaManager.createTimeseries(path, dataType, encoding,
           compressionType, Collections.emptyMap());
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
     } catch (MetadataException e) {
-      logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getMeasurementId(),
+      logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(),
           e);
     }
 
@@ -64,7 +94,7 @@ public class SchemaUtils {
       throws MetadataException {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : paths) {
-      dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+      dataTypes.add(IoTDB.metaManager.getSeriesType(path.getFullPath()));
     }
     return dataTypes;
   }
@@ -82,7 +112,7 @@ public class SchemaUtils {
     }
     List<TSDataType> dataTypes = new ArrayList<>();
     for (String path : paths) {
-      dataTypes.add(MManager.getInstance().getSeriesType(path));
+      dataTypes.add(IoTDB.metaManager.getSeriesType(path));
     }
     return dataTypes;
   }
@@ -95,7 +125,7 @@ public class SchemaUtils {
     }
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : paths) {
-      dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+      dataTypes.add(IoTDB.metaManager.getSeriesType(path.getFullPath()));
     }
     return dataTypes;
   }
@@ -108,7 +138,7 @@ public class SchemaUtils {
       if (dataType != null) {
         tsDataTypes.add(dataType);
       } else {
-        tsDataTypes.add(MManager.getInstance().getSeriesType(paths.get(i).getFullPath()));
+        tsDataTypes.add(IoTDB.metaManager.getSeriesType(paths.get(i).getFullPath()));
       }
     }
     return tsDataTypes;
@@ -138,6 +168,13 @@ public class SchemaUtils {
       default:
         throw new MetadataException(
             "aggregate does not support " + aggregation + " function.");
+    }
+  }
+
+  public static void checkDataTypeWithEncoding(TSDataType dataType, TSEncoding encoding)
+      throws MetadataException {
+    if(!schemaChecker.get(dataType).contains(encoding)) {
+      throw new MetadataException(String.format("encoding %s does not support %s", dataType.toString(), encoding.toString()));
     }
   }
 }

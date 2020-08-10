@@ -21,6 +21,7 @@ import io.moquette.interception.AbstractInterceptHandler;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -29,12 +30,10 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
 
 /**
  * PublishHandler handle the messages from MQTT clients.
@@ -86,13 +85,13 @@ public class PublishHandler extends AbstractInterceptHandler {
                 continue;
             }
 
-            InsertPlan plan = new InsertPlan();
+            InsertRowPlan plan = new InsertRowPlan();
             plan.setDeviceId(event.getDevice());
             plan.setTime(event.getTimestamp());
             plan.setMeasurements(event.getMeasurements().toArray(new String[event.getMeasurements().size()]));
             plan.setValues(event.getValues().toArray(new Object[event.getValues().size()]));
-            plan.setTypes(new TSDataType[event.getValues().size()]);
-            plan.setInferType(true);
+            plan.setDataTypes(new TSDataType[event.getValues().size()]);
+            plan.setNeedInferType(true);
 
             boolean status = false;
             try {
