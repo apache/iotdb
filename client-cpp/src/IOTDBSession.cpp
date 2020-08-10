@@ -19,6 +19,8 @@
 
 #include "IOTDBSession.h"
 
+using namespace std;
+
 const string Config::DEFAULT_USER = "user";
 const string Config::DEFAULT_PASSWORD = "password";
 

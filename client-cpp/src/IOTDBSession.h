@@ -36,7 +36,6 @@
 #include <thrift/transport/TBufferTransports.h>
 #include "TSIService.h"
 
-using namespace std;
 using ::apache::thrift::protocol::TBinaryProtocol;
 using ::apache::thrift::protocol::TCompactProtocol;
 using ::apache::thrift::transport::TSocket;
@@ -45,47 +44,47 @@ using ::apache::thrift::transport::TTransportException;
 using ::apache::thrift::transport::TBufferedTransport;
 using ::apache::thrift::TException;
 
-class IoTDBConnectionException : public exception
+class IoTDBConnectionException : public std::exception
 {
     public:
         IoTDBConnectionException() : message() {}
         IoTDBConnectionException(const char* m) : message(m) {}
-        IoTDBConnectionException(string m) : message(m) {}
+        IoTDBConnectionException(std::string m) : message(m) {}
         virtual const char* what() const throw () 
         {
             return message.c_str();
         }
 
     private:
-        string message;
+        std::string message;
 };
 
-class BatchExecutionException : public exception
+class BatchExecutionException : public std::exception
 {
 public:
     BatchExecutionException() : message() {}
     BatchExecutionException(const char* m) : message(m) {}
-    BatchExecutionException(string m) : message(m) {}
-    BatchExecutionException(vector<TSStatus> statusList) : message(), statusList(statusList) {}
-    BatchExecutionException(vector<TSStatus> statusList, string m) : message(m), statusList(statusList) {}
+    BatchExecutionException(std::string m) : message(m) {}
+    BatchExecutionException(std::vector<TSStatus> statusList) : message(), statusList(statusList) {}
+    BatchExecutionException(std::vector<TSStatus> statusList, std::string m) : message(m), statusList(statusList) {}
     virtual const char* what() const throw ()
     {
         return message.c_str();
     }
-    vector<TSStatus> statusList;
+    std::vector<TSStatus> statusList;
 private:
-    string message;
+    std::string message;
     
 };
 
-class UnSupportedDataTypeException : public exception
+class UnSupportedDataTypeException : public std::exception
 {
 private:
-    string message;
+    std::string message;
 public:
     UnSupportedDataTypeException() : message() {}
     UnSupportedDataTypeException(const char* m) : message(m) {}
-    UnSupportedDataTypeException(string m) : message("UnSupported dataType: " + m) {}
+    UnSupportedDataTypeException(std::string m) : message("UnSupported dataType: " + m) {}
 };
 
 namespace CompressionType{
@@ -161,8 +160,8 @@ namespace TSStatusCode {
 class Config
 {
 public:
-    static const string DEFAULT_USER;
-    static const string DEFAULT_PASSWORD;
+    static const std::string DEFAULT_USER;
+    static const std::string DEFAULT_PASSWORD;
     static const int DEFAULT_FETCH_SIZE = 10000;
     static const int DEFAULT_TIMEOUT_MS = 0;
 };
@@ -170,21 +169,21 @@ public:
 class RpcUtils
 {
 public:
-    shared_ptr<TSStatus> SUCCESS_STATUS;
+    std::shared_ptr<TSStatus> SUCCESS_STATUS;
     RpcUtils() {
-        SUCCESS_STATUS = make_shared<TSStatus>();
+        SUCCESS_STATUS = std::make_shared<TSStatus>();
         SUCCESS_STATUS->__set_code(TSStatusCode::SUCCESS_STATUS);
     }
     static void verifySuccess(TSStatus& status);
-    static void verifySuccess(vector<TSStatus>& statuses);
+    static void verifySuccess(std::vector<TSStatus>& statuses);
     static TSStatus getStatus(TSStatusCode::TSStatusCode tsStatusCode);
-    static TSStatus getStatus(int code, string message);
-    static shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode);
-    static shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, string message);
-    static shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(TSStatus& status);
-    static shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode);
-    static shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode, string appendMessage);
-    static shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(TSStatus& status);
+    static TSStatus getStatus(int code, std::string message);
+    static std::shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode);
+    static std::shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, std::string message);
+    static std::shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(TSStatus& status);
+    static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode);
+    static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode, std::string appendMessage);
+    static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(TSStatus& status);
 };
 
 // Simulate the ByteBuffer class in Java
@@ -205,7 +204,7 @@ private:
             str += ins[i];
     }
 public:
-    string str;
+    std::string str;
     int pos;
 
     bool hasRemaining() {
@@ -214,7 +213,7 @@ public:
 
     MyStringBuffer() {}
 
-    MyStringBuffer(string str) {
+    MyStringBuffer(std::string str) {
         this->str = str;
         this->pos = 0;
     }
@@ -270,10 +269,10 @@ public:
         return bo == 1;
     }
 
-    string getString()
+    std::string getString()
     {
         int len = getInt();
-        string ret;
+        std::string ret;
         for (int i = 0; i < len; i++) ret.append(1, getChar());
         return ret;
     }
@@ -315,7 +314,7 @@ public:
         putChar(tmp);
     }
 
-    void putString(string ins)
+    void putString(std::string ins)
     {
         int len = ins.size();
         putInt(len);
@@ -332,7 +331,7 @@ public:
     int64_t longV;
     float floatV;
     double doubleV;
-    string stringV;
+    std::string stringV;
     Field(TSDataType::TSDataType a)
     {
         dataType = a;
@@ -358,10 +357,10 @@ class Tablet {
 private:
     static const int DEFAULT_SIZE = 1024;
 public:
-    string deviceId; // deviceId of this tablet
-    vector<pair<string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
+    std::string deviceId; // deviceId of this tablet
+    std::vector<std::pair<std::string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
     int64_t* timestamps;   //timestamps in this tablet
-    vector<vector<string>> values;
+    std::vector<std::vector<std::string>> values;
     int rowSize;    //the number of rows to include in this tablet
     int maxRowNumber;   // the maximum number of rows for this tablet
 
@@ -373,7 +372,7 @@ public:
    * @param deviceId   the name of the device specified to be written in
    * @param timeseries the list of measurement schemas for creating the tablet
    */
-    Tablet(string deviceId, vector<pair<string, TSDataType::TSDataType>>& timeseries) {
+    Tablet(std::string deviceId, std::vector<std::pair<std::string, TSDataType::TSDataType>>& timeseries) {
         Tablet(deviceId, timeseries, DEFAULT_SIZE);
     }
 
@@ -387,7 +386,7 @@ public:
      *                     batch
      * @param maxRowNumber the maximum number of rows for this tablet
      */
-    Tablet(string deviceId, vector<pair<string, TSDataType::TSDataType>>& schemas, int maxRowNumber) {
+    Tablet(std::string deviceId, std::vector<std::pair<std::string, TSDataType::TSDataType>>& schemas, int maxRowNumber) {
         this->deviceId = deviceId;
         this->schemas = schemas;
         this->maxRowNumber = maxRowNumber;
@@ -411,20 +410,20 @@ public:
 
 class SessionUtils {
 public:
-    static string getTime(Tablet& tablet);
-    static string getValue(Tablet& tablet);
+    static std::string getTime(Tablet& tablet);
+    static std::string getValue(Tablet& tablet);
 };
 
 class RowRecord
 {
 public:
     int64_t timestamp;
-    vector<Field*> fields;
+    std::vector<Field*> fields;
     RowRecord(int64_t timestamp)
     {
         this->timestamp = timestamp;
     }
-    RowRecord(int64_t timestamp, vector<Field*> fields) {
+    RowRecord(int64_t timestamp, std::vector<Field*> fields) {
         this->timestamp = timestamp;
         this->fields = fields;
     }
@@ -432,11 +431,11 @@ public:
     {
         this->timestamp = -1;
     }
-    string toString()
+    std::string toString()
     {
         char buf[111];
-        sprintf(buf,"%ld",timestamp);
-        string ret = buf;
+        sprintf(buf,"%lld",timestamp);
+        std::string ret = buf;
         for (int i = 0; i < fields.size(); i++)
         {
             ret.append("\t");
@@ -456,7 +455,7 @@ public:
                 }
                 case TSDataType::INT64: {
                     char buf[111];
-                    sprintf(buf,"%ld",fields[i]->longV);
+                    sprintf(buf,"%lld",fields[i]->longV);
                     ret.append(buf);
                     break;
                 }
@@ -490,22 +489,22 @@ class SessionDataSet
 {
 private:
     bool hasCachedRecord = false;
-    string sql;
+    std::string sql;
     int64_t queryId;
     int64_t sessionId;
-	shared_ptr<TSIServiceIf> client;
+	std::shared_ptr<TSIServiceIf> client;
     int batchSize = 1024;
-    vector<string> columnNameList;
-    vector<string> columnTypeDeduplicatedList;
+    std::vector<std::string> columnNameList;
+    std::vector<std::string> columnTypeDeduplicatedList;
     // duplicated column index -> origin index
-    map<int, int> duplicateLocation;
+    std::map<int, int> duplicateLocation;
     // column name -> column location
-    map<string, int> columnMap;
+    std::map<std::string, int> columnMap;
     // column size
     int columnSize = 0;
 
     int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
-    shared_ptr<TSQueryDataSet> tsQueryDataSet;
+    std::shared_ptr<TSQueryDataSet> tsQueryDataSet;
     MyStringBuffer tsQueryDataSetTimeBuffer;
     RowRecord rowRecord;
     char* currentBitmap; // used to cache the current bitmap for every column
@@ -513,8 +512,8 @@ private:
     
 public:
     SessionDataSet(){}
-    SessionDataSet(string sql, vector<string>& columnNameList, vector<string>& columnTypeList, int64_t queryId, 
-        shared_ptr<TSIServiceIf> client, int64_t sessionId, shared_ptr<TSQueryDataSet> queryDataSet) : tsQueryDataSetTimeBuffer(queryDataSet->time)
+    SessionDataSet(std::string sql, std::vector<std::string>& columnNameList, std::vector<std::string>& columnTypeList, int64_t queryId,
+        std::shared_ptr<TSIServiceIf> client, int64_t sessionId, std::shared_ptr<TSQueryDataSet> queryDataSet) : tsQueryDataSetTimeBuffer(queryDataSet->time)
     {
         this->sessionId = sessionId;
         this->sql = sql;
@@ -526,7 +525,7 @@ public:
 
         // column name -> column location
         for (int i = 0; i < columnNameList.size(); i++) {
-            string name = columnNameList[i];
+            std::string name = columnNameList[i];
             if (this->columnMap.find(name) != this->columnMap.end()) {
                 duplicateLocation[i] = columnMap[name];
             }
@@ -540,7 +539,7 @@ public:
 
     int getBatchSize();
     void setBatchSize(int batchSize);
-    vector<string> getColumnNames();
+    std::vector<std::string> getColumnNames();
     bool hasNext();
     void constructOneRow();
     bool isNull(int index, int rowNum);
@@ -552,42 +551,42 @@ public:
 class Session
 {
     private:
-        string host;
+        std::string host;
         int port;
-        string username;
-        string password;
+        std::string username;
+        std::string password;
         TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V2;
-        shared_ptr<TSIServiceIf> client;
-        shared_ptr<apache::thrift::transport::TSocket> transport;
+        std::shared_ptr<TSIServiceIf> client;
+        std::shared_ptr<apache::thrift::transport::TSocket> transport;
         bool isClosed = true;
         int64_t sessionId;
         int64_t statementId;
-        string zoneId;
+        std::string zoneId;
         int fetchSize;
 
         //  mutex to solve synchronization problem
-        mutex sessionMutex;
+        std::mutex sessionMutex;
         
         bool checkSorted(Tablet& tablet);
         void sortTablet(Tablet& tablet);
-        vector<string> sortList(vector<string>& valueList, int* index, int indexLength);
+        std::vector<std::string> sortList(std::vector<std::string>& valueList, int* index, int indexLength);
         void sortIndexByTimestamp(int* index, int64_t* timestamps, int length);
-        string getTimeZone();
-        void setTimeZone(string zoneId);
+        std::string getTimeZone();
+        void setTimeZone(std::string zoneId);
     public:
-        Session(string host, int port) { Session(host, port, Config::DEFAULT_USER, Config::DEFAULT_PASSWORD); }
-        Session(string host, int port, string username, string password) 
+        Session(std::string host, int port) { Session(host, port, Config::DEFAULT_USER, Config::DEFAULT_PASSWORD); }
+        Session(std::string host, int port, std::string username, std::string password)
         {
             this->host = host;
             this->port = port;
             this->username = username;
             this->password = password;
         }
-        Session(string host, string port, string username, string password) 
+        Session(std::string host, std::string port, std::string username, std::string password)
         {
             Session(host, stoi(port), username, password);
         }
-        Session(string host, int port, string username, string password, int fetchSize)
+        Session(std::string host, int port, std::string username, std::string password, int fetchSize)
         {
             this->host = host;
             this->port = port;
@@ -600,28 +599,29 @@ class Session
         void open(bool enableRPCCompression);
         void open(bool enableRPCCompression, int connectionTimeoutInMs);
         void close();
-        void insertRecord(string deviceId, int64_t time, vector<string>& measurements, vector<string>& values);
-        void insertRecords(vector<string>& deviceIds, vector<int64_t>& times, vector<vector<string>>& measurementsList, vector<vector<string>>& valuesList);
+        void insertRecord(std::string deviceId, int64_t time, std::vector<std::string>& measurements, std::vector<std::string>& values);
+        //void insertRecord(std::string deviceId, int64_t time, std::vector<std::string>& measurements, std::vector<TSDataType::Type>& types, )
+        void insertRecords(std::vector<std::string>& deviceIds, std::vector<int64_t>& times, std::vector<std::vector<std::string>>& measurementsList, std::vector<std::vector<std::string>>& valuesList);
         void insertTablet(Tablet& tablet);
         void insertTablet(Tablet& tablet, bool sorted);
-        void insertTablets(map<string, Tablet*>& tablets);
-        void insertTablets(map<string, Tablet*>& tablets, bool sorted);
-        void testInsertRecord(string deviceId, int64_t time, vector<string>& measurements, vector<string>& values);
+        void insertTablets(std::map<std::string, Tablet*>& tablets);
+        void insertTablets(std::map<std::string, Tablet*>& tablets, bool sorted);
+        void testInsertRecord(std::string deviceId, int64_t time, std::vector<std::string>& measurements, std::vector<std::string>& values);
         void testInsertTablet(Tablet& tablet);
-        void testInsertRecords(vector<string>& deviceIds, vector<int64_t>& times, vector<vector<string>>& measurementsList, vector<vector<string>>& valuesList);
-        void deleteTimeseries(string path);
-        void deleteTimeseries(vector<string>& paths);
-        void deleteData(string path, int64_t time);
-        void deleteData(vector<string>& deviceId, int64_t time);
-        void setStorageGroup(string storageGroupId);
-        void deleteStorageGroup(string storageGroup);
-        void deleteStorageGroups(vector<string>& storageGroups);
-        void createTimeseries(string path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding, CompressionType::CompressionType compressor);
-        void createTimeseries(string path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding, CompressionType::CompressionType compressor,
-            map<string, string>* props, map<string, string>* tags, map<string, string>* attributes, string measurementAlias);
-        void createMultiTimeseries(vector<string> paths, vector<TSDataType::TSDataType> dataTypes, vector<TSEncoding::TSEncoding> encodings, vector<CompressionType::CompressionType> compressors,
-            vector<map<string, string>>* propsList, vector<map<string, string>>* tagsList, vector<map<string, string>>* attributesList, vector<string>* measurementAliasList);
-        bool checkTimeseriesExists(string path);
-        SessionDataSet* executeQueryStatement(string sql);
-        void executeNonQueryStatement(string sql);
+        void testInsertRecords(std::vector<std::string>& deviceIds, std::vector<int64_t>& times, std::vector<std::vector<std::string>>& measurementsList, std::vector<std::vector<std::string>>& valuesList);
+        void deleteTimeseries(std::string path);
+        void deleteTimeseries(std::vector<std::string>& paths);
+        void deleteData(std::string path, int64_t time);
+        void deleteData(std::vector<std::string>& deviceId, int64_t time);
+        void setStorageGroup(std::string storageGroupId);
+        void deleteStorageGroup(std::string storageGroup);
+        void deleteStorageGroups(std::vector<std::string>& storageGroups);
+        void createTimeseries(std::string path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding, CompressionType::CompressionType compressor);
+        void createTimeseries(std::string path, TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding, CompressionType::CompressionType compressor,
+            std::map<std::string, std::string>* props, std::map<std::string, std::string>* tags, std::map<std::string, std::string>* attributes, std::string measurementAlias);
+        void createMultiTimeseries(std::vector<std::string> paths, std::vector<TSDataType::TSDataType> dataTypes, std::vector<TSEncoding::TSEncoding> encodings, std::vector<CompressionType::CompressionType> compressors,
+            std::vector<std::map<std::string, std::string>>* propsList, std::vector<std::map<std::string, std::string>>* tagsList, std::vector<std::map<std::string, std::string>>* attributesList, std::vector<std::string>* measurementAliasList);
+        bool checkTimeseriesExists(std::string path);
+        SessionDataSet* executeQueryStatement(std::string sql);
+        void executeNonQueryStatement(std::string sql);
 };

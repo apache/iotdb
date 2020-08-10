@@ -17,7 +17,7 @@
  * under the License.
  */
 
-#include "../src/IOTDBSession.h"
+#include "IOTDBSession.h"
 
 Session *session;
 
