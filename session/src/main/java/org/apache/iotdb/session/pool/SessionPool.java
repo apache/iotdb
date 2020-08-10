@@ -115,10 +115,12 @@ public class SessionPool {
             //we have to wait for someone returns a session.
             try {
               this.wait(1000);
-              if (System.currentTimeMillis() - start > 60_000) {
+              long time = timeout < 60_000 ? timeout : 60_000;
+              if (System.currentTimeMillis() - start > time) {
                 logger.warn(
                     "the SessionPool has wait for {} seconds to get a new connection: {}:{} with {}, {}",
                     (System.currentTimeMillis() - start) / 1000, ip, port, user, password);
+                logger.warn("current occupied size {}, queue size {}, considered size {} ",occupied.size(), queue.size(), size);
                 if (System.currentTimeMillis() - start > timeout) {
                   throw new IoTDBConnectionException(
                       String.format("timeout to get a connection from %s:%s", ip, port));
@@ -139,7 +141,16 @@ public class SessionPool {
         logger.debug("Create a new Session {}, {}, {}, {}", ip, port, user, password);
       }
       session = new Session(ip, port, user, password, fetchSize);
-      session.open(enableCompression);
+      try {
+        session.open(enableCompression);
+      } catch (IoTDBConnectionException e) {
+        //if exception, we will throw the exception.
+        //Meanwhile, we have to set size--
+        synchronized (this) {
+          size --;
+        }
+        throw e;
+      }
       return session;
     }
   }
