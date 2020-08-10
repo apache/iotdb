@@ -38,11 +38,11 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 
 /**
- * Migrate all data belongs to a path from one IoTDB to another IoTDB
- * Each thread migrate one series, the concurrent thread can be configured by concurrency
+ * Migrate all data belongs to a path from one IoTDB to another IoTDB Each thread migrate one
+ * series, the concurrent thread can be configured by concurrency
  *
- * This example is
- * migrating all timeseries from a local IoTDB with 6667 port to a local IoTDB with 6668 port
+ * This example is migrating all timeseries from a local IoTDB with 6667 port to a local IoTDB with
+ * 6668 port
  */
 public class DataMigrationExample {
 
@@ -67,7 +67,8 @@ public class DataMigrationExample {
     readerPool = new SessionPool("127.0.0.1", 6667, "root", "root", concurrency);
     writerPool = new SessionPool("127.0.0.1", 6668, "root", "root", concurrency);
 
-    SessionDataSetWrapper schemaDataSet = readerPool.executeQueryStatement("count timeseries " + path);
+    SessionDataSetWrapper schemaDataSet = readerPool
+        .executeQueryStatement("count timeseries " + path);
     DataIterator schemaIter = schemaDataSet.iterator();
     int total;
     if (schemaIter.next()) {
@@ -79,7 +80,6 @@ public class DataMigrationExample {
     }
     readerPool.closeResultSet(schemaDataSet);
 
-
     schemaDataSet = readerPool
         .executeQueryStatement("show timeseries " + path);
     schemaIter = schemaDataSet.iterator();
@@ -89,18 +89,19 @@ public class DataMigrationExample {
     while (schemaIter.next()) {
       count ++;
       Path currentPath = new Path(schemaIter.getString("timeseries"));
-      Future future = executorService.submit(new LoadThread(count, currentPath, TSDataType.valueOf(schemaIter.getString("dataType"))));
+      Future future = executorService.submit(
+          new LoadThread(count, currentPath, TSDataType.valueOf(schemaIter.getString("dataType"))));
       futureList.add(future);
     }
     readerPool.closeResultSet(schemaDataSet);
 
-    for (Future future: futureList) {
+    for (Future future : futureList) {
       future.get();
     }
     executorService.shutdown();
 
     readerPool.close();
-    readerPool.close();
+    writerPool.close();
   }
 
 
@@ -169,7 +170,8 @@ public class DataMigrationExample {
         }
 
       } catch (Exception e) {
-        System.out.println("Loading the " + i + "-th timeseries: " + series + " failed " + e.getMessage());
+        System.out.println(
+            "Loading the " + i + "-th timeseries: " + series + " failed " + e.getMessage());
         return null;
       } finally {
         readerPool.closeResultSet(dataSet);
