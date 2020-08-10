@@ -213,8 +213,14 @@ public class TsFileProcessor {
    */
   public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
-    if (SystemInfo.getInstance().isRejected()) {
-      throw new WriteProcessException("This insertion is rejected by system.");
+    while (SystemInfo.getInstance().isRejected()) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(1000);
+        logger.info("Still waiting for memory... ");
+      } catch (InterruptedException e) {
+        logger.error("Failed when waiting for getting memory for insertion ", e);
+        Thread.currentThread().interrupt();
+      }
     }
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable();
@@ -223,7 +229,7 @@ public class TsFileProcessor {
     // If there are enough size of arrays in memtable, insert insertRowPlan to
     // the work memtable directly
     if (workMemTable.checkIfArrayIsEnough(insertRowPlan)) {
-      logger.debug("Array in work MemTable is enough, insert the plan.");
+      logger.debug("Array in work MemTable is enough");
       workMemTable.insert(insertRowPlan);
   
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -247,8 +253,8 @@ public class TsFileProcessor {
     // from the array pool or get OOB array before inserting into the memtable
     else {
       try {
-        logger.debug("Array in work MemTable isn't enough, apply OOB array and insert the plan.");
-        // it may throw an exception if apply OOB array but System refused
+        logger.debug("Array in work MemTable isn't enough");
+        // it may throw an exception when apply OOB array but System refused
         workMemTable.insert(insertRowPlan);
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           getLogNode().write(insertRowPlan);
@@ -259,7 +265,6 @@ public class TsFileProcessor {
         long chunkMetadataCost = 0L;
         checkMemCost(insertRowPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
         long delta = bytesCost + unsealedResourceCost + chunkMetadataCost;
-
         if (storageGroupInfo.checkIfNeedToReportStatusToSystem(delta)) {
           SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo, delta);
         }
@@ -291,8 +296,14 @@ public class TsFileProcessor {
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
 
-    if (SystemInfo.getInstance().isRejected()) {
-      throw new WriteProcessException("This insertion is rejected by system.");
+    while (SystemInfo.getInstance().isRejected()) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(1000);
+        logger.info("Still waiting for memory... ");
+      } catch (InterruptedException e) {
+        logger.error("Failed when waiting for getting memory for insertion ", e);
+        Thread.currentThread().interrupt();
+      }
     }
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable();

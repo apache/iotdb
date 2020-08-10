@@ -54,6 +54,11 @@ public class SystemInfo {
    * @return Return true if it's agreed when memory is enough.
    */
   public synchronized boolean applyNewOOBArray(TSDataType dataType, int size) {
+    if (rejected) {
+      logger.debug("apply OOB Array for sorting when flush memtable");
+      arrayPoolMemCost += dataType.getDataTypeSize() * size;
+      return true;
+    }
     // if current memory is enough
     if (arrayPoolMemCost + totalSgInfoMemCost + dataType.getDataTypeSize() * size
         < config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
@@ -84,10 +89,12 @@ public class SystemInfo {
    */
   public synchronized void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo, 
       long delta) {
-    this.totalSgInfoMemCost += delta;
-    //reportedSgMemCostMap.put(storageGroupInfo,
-    //    reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L) + delta);
-    long addReportThreshold = (delta / config.getStorageGroupMemBlockSize() + 1)
+    long realDelta = delta + storageGroupInfo.getStorageGroupMemCost() - 
+        reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L);
+    this.totalSgInfoMemCost += realDelta;
+    reportedSgMemCostMap.put(storageGroupInfo,
+        reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L) + realDelta);
+    long addReportThreshold = (realDelta / config.getStorageGroupMemBlockSize() + 1)
         * config.getStorageGroupMemBlockSize();
     storageGroupInfo.addStorageGroupReportThreshold(addReportThreshold);
     if (this.arrayPoolMemCost + this.totalSgInfoMemCost
@@ -161,7 +168,7 @@ public class SystemInfo {
     }
   }
 
-  public synchronized boolean isRejected() {
+  public boolean isRejected() {
     return rejected;
   }
 

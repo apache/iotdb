@@ -280,6 +280,7 @@ public class PrimitiveArrayManager {
           bringBackOOBArray(replacedDataType, ARRAY_SIZE);
           break;
         }
+        replacedDataType = null;
       }
       if (replacedDataType != null) {
         // if we find a replaced array, bring back the original array as a buffered array
@@ -336,7 +337,7 @@ public class PrimitiveArrayManager {
     if (logger.isDebugEnabled()) {
       logger.debug("Bring back out of buffer array of {} to system module...", dataType);
     }
-    outOfBufferArraysSize -= ARRAY_SIZE * dataType.getDataTypeSize();
+    outOfBufferArraysSize -= size * dataType.getDataTypeSize();
     SystemInfo.getInstance().reportReleaseOOBArray(dataType, size);
   }
 
