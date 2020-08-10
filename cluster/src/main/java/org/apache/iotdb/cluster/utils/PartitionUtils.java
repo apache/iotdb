@@ -111,9 +111,8 @@ public class PartitionUtils {
 
   public static int calculateStorageGroupSlotByTime(String storageGroupName, long timestamp,
       int slotNum) {
-    long partitionInstance = StorageEngine.getTimePartition(timestamp);
-    int hash = Murmur128Hash.hash(storageGroupName, partitionInstance, HASH_SALT);
-    return Math.abs(hash % slotNum);
+    long partitionNum = StorageEngine.getTimePartition(timestamp);
+    return calculateStorageGroupSlotByPartition(storageGroupName, partitionNum, slotNum);
   }
 
   public static int calculateStorageGroupSlotByPartition(String storageGroupName, long partitionNum,

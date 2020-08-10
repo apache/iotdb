@@ -148,7 +148,7 @@ public class NodeReport {
           ", commitIndex=" + commitIndex +
           ", commitTerm=" + commitTerm +
           ", readOnly=" + isReadOnly +
-          ", headerLatency=" + headerLatency +
+          ", headerLatency=" + headerLatency + "ns" +
           ", lastHeartbeat=" + (System.currentTimeMillis() - lastHeartbeatReceivedTime) + "ms ago" +
           '}';
     }
