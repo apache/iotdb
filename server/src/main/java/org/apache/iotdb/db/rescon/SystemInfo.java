@@ -167,6 +167,14 @@ public class SystemInfo {
     return rejected;
   }
 
+  public long getTotalSgInfoMemCost() {
+    return totalSgInfoMemCost;
+  }
+
+  public long getArrayPoolMemCost() {
+    return arrayPoolMemCost;
+  }
+
   public static SystemInfo getInstance() {
     return InstanceHolder.instance;
   }

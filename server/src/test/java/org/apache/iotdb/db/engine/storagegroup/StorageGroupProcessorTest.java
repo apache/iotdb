@@ -41,6 +41,7 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -300,6 +301,24 @@ public class StorageGroupProcessorTest {
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
+  }
+
+  @Test
+  public void testMemCostRecovery() throws Exception {
+    for (int j = 1; j <= 4500000; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      insertToStorageGroupProcessor(record);
+    }
+    long sgMemCost = processor.getStorageGroupInfo().getStorageGroupMemCost();
+    long totalSgMemCost = SystemInfo.getInstance().getTotalSgInfoMemCost();
+    long arrayPoolMemCost = SystemInfo.getInstance().getArrayPoolMemCost();
+    System.out.println(arrayPoolMemCost);
+    EnvironmentUtils.restartDaemon();
+    Assert.assertEquals(sgMemCost, processor.getStorageGroupInfo().getStorageGroupMemCost());
+    Assert.assertEquals(totalSgMemCost, SystemInfo.getInstance().getTotalSgInfoMemCost());
+    Assert.assertEquals(arrayPoolMemCost, SystemInfo.getInstance().getArrayPoolMemCost());
+    processor.syncCloseAllWorkingTsFileProcessors();
   }
 
   class DummySGP extends StorageGroupProcessor {

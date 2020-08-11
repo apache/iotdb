@@ -2503,6 +2503,10 @@ public class StorageGroupProcessor {
     return storageGroupName;
   }
 
+  public StorageGroupInfo getStorageGroupInfo() {
+    return storageGroupInfo;
+  }
+
   /**
    * Check if the data of "tsFileResource" all exist locally by comparing the historical versions in
    * the partition of "partitionNumber". This is available only when the IoTDB instances which
