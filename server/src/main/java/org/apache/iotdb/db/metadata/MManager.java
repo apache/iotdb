@@ -1005,13 +1005,7 @@ public class MManager {
       int limit = plan.getLimit();
       int offset = plan.getOffset();
       for (MeasurementMNode leaf : allMatchedMNodes) {
-        MNode temp = leaf;
-        List<String> path = new ArrayList<>();
-        path.add(temp.getName());
-        while (temp.getParent() != null) {
-          temp = temp.getParent();
-          path.add(0, temp.getName());
-        }
+        List<String> path = mtree.getDetachedPathByMNode(leaf);
         if (match(path, prefixNodes)) {
           if (limit != 0 || offset != 0) {
             curOffset++;
