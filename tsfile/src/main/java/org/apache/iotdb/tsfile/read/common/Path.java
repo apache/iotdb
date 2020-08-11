@@ -83,28 +83,33 @@ public class Path implements Serializable, Comparable<Path> {
    * @param pathSc complete path string
    */
   private void init(String pathSc) {
-    int indexOfLeftDoubleQuote = pathSc.indexOf('\"');
-    int indexOfRightDoubleQuote = pathSc.lastIndexOf('\"');
-    if(indexOfRightDoubleQuote != -1 && indexOfRightDoubleQuote == pathSc.length() - 1) {
-      measurement = pathSc.substring(indexOfLeftDoubleQuote);
-      if(indexOfLeftDoubleQuote == 0) {
-        device = "";
-      } else {
-        device = pathSc.substring(0, indexOfLeftDoubleQuote-1);
-      }
-      fullPath = pathSc;
-    } else {
-      StringContainer sc = new StringContainer(pathSc.split(TsFileConstant.PATH_SEPARATER_NO_REGEX),
-          TsFileConstant.PATH_SEPARATOR);
-      if (sc.size() <= 1) {
-        device = "";
-        fullPath = measurement = sc.toString();
-      } else {
-        device = sc.getSubStringContainer(0, -2).toString();
-        measurement = sc.getSubString(-1);
-        fullPath = sc.toString();
+    this.nodes = splitPathToDetachedPath(pathSc);
+  }
+
+  public static List<String> splitPathToDetachedPath(String path) {
+    List<String> nodes = new ArrayList<>();
+    int startIndex = 0;
+    for (int i = 0; i < path.length(); i++) {
+      if (path.charAt(i) == TsFileConstant.PATH_SEPARATOR_CHAR) {
+        nodes.add(path.substring(startIndex, i));
+        startIndex = i + 1;
+      } else if (path.charAt(i) == '"') {
+        int endIndex = path.indexOf('"', i + 1);
+        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
+          nodes.add(path.substring(startIndex, endIndex + 1));
+          i = endIndex + 1;
+          startIndex = endIndex + 2;
+        } else {
+          throw new IllegalArgumentException("Illegal path: " + path);
+        }
+      } else if (path.charAt(i) == '\'') {
+        throw new IllegalArgumentException("Illegal path with single quote: " + path);
       }
     }
+    if (startIndex <= path.length() - 1) {
+      nodes.add(path.substring(startIndex));
+    }
+    return nodes;
   }
 
   public static Path mergePath(Path prefix, Path suffix) {
