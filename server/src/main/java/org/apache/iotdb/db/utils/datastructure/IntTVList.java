@@ -22,7 +22,6 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -96,11 +95,10 @@ public class IntTVList extends TVList {
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps = (long[][]) PrimitiveArrayManager
-          .getInstance().getDataListsByType(TSDataType.INT64, size);
+          .getDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
-      sortedValues = (int[][]) PrimitiveArrayManager
-          .getInstance().getDataListsByType(TSDataType.INT32, size);
+      sortedValues = (int[][]) PrimitiveArrayManager.getDataListsByType(TSDataType.INT32, size);
     }
     sort(0, size);
     clearSortedValue();
@@ -112,7 +110,7 @@ public class IntTVList extends TVList {
   void clearValue() {
     if (values != null) {
       for (int[] dataArray : values) {
-        PrimitiveArrayManager.getInstance().release(dataArray);
+        PrimitiveArrayManager.release(dataArray);
       }
       values.clear();
     }
@@ -122,7 +120,7 @@ public class IntTVList extends TVList {
   void clearSortedValue() {
     if (sortedValues != null) {
       for (int[] dataArray : sortedValues) {
-        PrimitiveArrayManager.getInstance().release(dataArray);
+        PrimitiveArrayManager.release(dataArray);
       }
       sortedValues = null;
     }
@@ -159,8 +157,7 @@ public class IntTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((int[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.INT32));
+    values.add((int[]) PrimitiveArrayManager.getDataListByType(TSDataType.INT32));
   }
 
   @Override
@@ -189,7 +186,7 @@ public class IntTVList extends TVList {
 
   @Override
   protected void releaseLastValueArray() {
-    PrimitiveArrayManager.getInstance().release(values.remove(values.size() - 1));
+    PrimitiveArrayManager.release(values.remove(values.size() - 1));
   }
 
   @Override

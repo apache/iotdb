@@ -178,7 +178,7 @@ public abstract class TVList {
   protected abstract void releaseLastValueArray();
 
   protected void releaseLastTimeArray() {
-    PrimitiveArrayManager.getInstance().release(timestamps.remove(timestamps.size() - 1));
+    PrimitiveArrayManager.release(timestamps.remove(timestamps.size() - 1));
   }
 
   public int delete(long lowerBound, long upperBound) {
@@ -231,7 +231,7 @@ public abstract class TVList {
   protected void clearTime() {
     if (timestamps != null) {
       for (long[] dataArray : timestamps) {
-        PrimitiveArrayManager.getInstance().release(dataArray);
+        PrimitiveArrayManager.release(dataArray);
       }
       timestamps.clear();
     }
@@ -240,7 +240,7 @@ public abstract class TVList {
   protected void clearSortedTime() {
     if (sortedTimestamps != null) {
       for (long[] dataArray : sortedTimestamps) {
-        PrimitiveArrayManager.getInstance().release(dataArray);
+        PrimitiveArrayManager.release(dataArray);
       }
       sortedTimestamps = null;
     }
@@ -252,7 +252,7 @@ public abstract class TVList {
 
   protected void checkExpansion() throws WriteProcessException {
     if ((size % ARRAY_SIZE) == 0) {
-      long[] newArray = (long[]) PrimitiveArrayManager.getInstance().getDataListByType(TSDataType.INT64);
+      long[] newArray = (long[]) PrimitiveArrayManager.getDataListByType(TSDataType.INT64);
       if (newArray == null) {
         throw new WriteProcessException("No available array.");
       }

@@ -22,7 +22,6 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -96,11 +95,11 @@ public class BooleanTVList extends TVList {
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps = (long[][]) PrimitiveArrayManager
-          .getInstance().getDataListsByType(TSDataType.INT64, size);
+          .getDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
       sortedValues = (boolean[][]) PrimitiveArrayManager
-          .getInstance().getDataListsByType(TSDataType.BOOLEAN, size);
+          .getDataListsByType(TSDataType.BOOLEAN, size);
     }
     sort(0, size);
     clearSortedValue();
@@ -112,7 +111,7 @@ public class BooleanTVList extends TVList {
   void clearValue() {
     if (values != null) {
       for (boolean[] dataArray : values) {
-        PrimitiveArrayManager.getInstance().release(dataArray);
+        PrimitiveArrayManager.release(dataArray);
       }
       values.clear();
     }
@@ -122,7 +121,7 @@ public class BooleanTVList extends TVList {
   void clearSortedValue() {
     if (sortedValues != null) {
       for (boolean[] dataArray : sortedValues) {
-        PrimitiveArrayManager.getInstance().release(dataArray);
+        PrimitiveArrayManager.release(dataArray);
       }
       sortedValues = null;
     }
@@ -159,8 +158,7 @@ public class BooleanTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((boolean[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.BOOLEAN));
+    values.add((boolean[]) PrimitiveArrayManager.getDataListByType(TSDataType.BOOLEAN));
   }
 
   @Override
@@ -189,11 +187,12 @@ public class BooleanTVList extends TVList {
 
   @Override
   protected void releaseLastValueArray() {
-    PrimitiveArrayManager.getInstance().release(values.remove(values.size() - 1));
+    PrimitiveArrayManager.release(values.remove(values.size() - 1));
   }
 
   @Override
-  public void putBooleans(long[] time, boolean[] value, int start, int end) throws WriteProcessException {
+  public void putBooleans(long[] time, boolean[] value, int start, int end)
+      throws WriteProcessException {
     checkExpansion();
     int idx = start;
 

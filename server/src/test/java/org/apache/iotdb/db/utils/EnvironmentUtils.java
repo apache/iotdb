@@ -140,7 +140,7 @@ public class EnvironmentUtils {
     TracingManager.getInstance().close();
 
     // close array manager
-    PrimitiveArrayManager.getInstance().close();
+    PrimitiveArrayManager.close();
 
     // delete all directory
     cleanAllDir();

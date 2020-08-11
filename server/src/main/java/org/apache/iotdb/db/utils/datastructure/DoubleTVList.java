@@ -22,7 +22,6 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -97,11 +96,11 @@ public class DoubleTVList extends TVList {
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps = (long[][]) PrimitiveArrayManager
-          .getInstance().getDataListsByType(TSDataType.INT64, size);
+          .getDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
       sortedValues = (double[][]) PrimitiveArrayManager
-          .getInstance().getDataListsByType(TSDataType.DOUBLE, size);
+          .getDataListsByType(TSDataType.DOUBLE, size);
     }
     sort(0, size);
     clearSortedValue();
@@ -113,7 +112,7 @@ public class DoubleTVList extends TVList {
   void clearValue() {
     if (values != null) {
       for (double[] dataArray : values) {
-        PrimitiveArrayManager.getInstance().release(dataArray);
+        PrimitiveArrayManager.release(dataArray);
       }
       values.clear();
     }
@@ -123,7 +122,7 @@ public class DoubleTVList extends TVList {
   void clearSortedValue() {
     if (sortedValues != null) {
       for (double[] dataArray : sortedValues) {
-        PrimitiveArrayManager.getInstance().release(dataArray);
+        PrimitiveArrayManager.release(dataArray);
       }
       sortedValues = null;
     }
@@ -161,7 +160,7 @@ public class DoubleTVList extends TVList {
   @Override
   protected void expandValues() {
     values.add((double[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.DOUBLE));
+        .getDataListByType(TSDataType.DOUBLE));
   }
 
   @Override
@@ -193,11 +192,12 @@ public class DoubleTVList extends TVList {
 
   @Override
   protected void releaseLastValueArray() {
-    PrimitiveArrayManager.getInstance().release(values.remove(values.size() - 1));
+    PrimitiveArrayManager.release(values.remove(values.size() - 1));
   }
 
   @Override
-  public void putDoubles(long[] time, double[] value, int start, int end) throws WriteProcessException {
+  public void putDoubles(long[] time, double[] value, int start, int end)
+      throws WriteProcessException {
     checkExpansion();
     int idx = start;
 

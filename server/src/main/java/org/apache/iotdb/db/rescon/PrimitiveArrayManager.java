@@ -77,17 +77,17 @@ public class PrimitiveArrayManager {
   /**
    * total size of buffered arrays
    */
-  private AtomicInteger bufferedArraysSize;
+  private static AtomicInteger bufferedArraysSize;
 
   /**
    * last reported size of arrays
    */
-  private AtomicInteger lastReportArraySize;
+  private static AtomicInteger lastReportArraySize;
 
   /**
    * total size of out of buffer arrays
    */
-  private AtomicInteger outOfBufferArraysSize;
+  private static AtomicInteger outOfBufferArraysSize;
 
   static {
     bufferedArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque<>());
@@ -97,12 +97,6 @@ public class PrimitiveArrayManager {
     bufferedArraysMap.put(TSDataType.DOUBLE, new ArrayDeque<>());
     bufferedArraysMap.put(TSDataType.TEXT, new ArrayDeque<>());
   }
-
-  public static PrimitiveArrayManager getInstance() {
-    return INSTANCE;
-  }
-
-  private static final PrimitiveArrayManager INSTANCE = new PrimitiveArrayManager();
 
   private PrimitiveArrayManager() {
     bufferedArraysSize = new AtomicInteger();
@@ -116,7 +110,7 @@ public class PrimitiveArrayManager {
    * @param dataType data type
    * @return an array, or null if the system module refuse to offer an out of buffer array
    */
-  public Object getDataListByType(TSDataType dataType) {
+  public static Object getDataListByType(TSDataType dataType) {
     // check buffered array num
     if (bufferedArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize())
         > BUFFERED_ARRAY_SIZE_THRESHOLD) {
@@ -155,7 +149,7 @@ public class PrimitiveArrayManager {
     return getDataList(dataType);
   }
 
-  private Object getDataList(TSDataType dataType) {
+  private static Object getDataList(TSDataType dataType) {
     Object dataArray;
     switch (dataType) {
       case BOOLEAN:
@@ -190,7 +184,7 @@ public class PrimitiveArrayManager {
    * @param size needed capacity
    * @return an array of primitive data arrays
    */
-  public synchronized Object getDataListsByType(TSDataType dataType, int size) {
+  public synchronized static Object getDataListsByType(TSDataType dataType, int size) {
     int arrayNumber = (int) Math.ceil((float) size / (float) ARRAY_SIZE);
     switch (dataType) {
       case BOOLEAN:
@@ -234,7 +228,7 @@ public class PrimitiveArrayManager {
     }
   }
 
-  private Object waitAndGetDataListByType(TSDataType dataType) {
+  private static Object waitAndGetDataListByType(TSDataType dataType) {
     Object res = getDataListByType(dataType);
     while (res == null) {
       try {
@@ -253,7 +247,7 @@ public class PrimitiveArrayManager {
    *
    * @param dataArray data array
    */
-  public synchronized void release(Object dataArray) {
+  public synchronized static void release(Object dataArray) {
     TSDataType dataType;
     if (dataArray instanceof boolean[]) {
       dataType = TSDataType.BOOLEAN;
@@ -315,7 +309,7 @@ public class PrimitiveArrayManager {
    * @param size needed capacity
    * @return true if successfully applied and false if rejected
    */
-  private boolean applyOOBArray(TSDataType dataType, int size) {
+  private static boolean applyOOBArray(TSDataType dataType, int size) {
     return SystemInfo.getInstance().applyNewOOBArray(dataType, size);
   }
 
@@ -325,7 +319,7 @@ public class PrimitiveArrayManager {
    * @param dataType data type
    * @param dataArray data array
    */
-  private void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
+  private static void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
     if (!bufferedArraysMap.containsKey(dataType)) {
       bufferedArraysMap.put(dataType, new ArrayDeque<>());
     }
@@ -339,7 +333,7 @@ public class PrimitiveArrayManager {
    * @param dataType data type
    * @param size capacity
    */
-  private void bringBackOOBArray(TSDataType dataType, int size) {
+  private static void bringBackOOBArray(TSDataType dataType, int size) {
     if (logger.isDebugEnabled()) {
       logger.debug("Bring back out of buffer array of {} to system module...", dataType);
     }
@@ -347,7 +341,7 @@ public class PrimitiveArrayManager {
     SystemInfo.getInstance().reportReleaseOOBArray(dataType, size);
   }
 
-  public void updateSchemaDataTypeNum(Map<TSDataType, Integer> schemaDataTypeNumMap) {
+  public static void updateSchemaDataTypeNum(Map<TSDataType, Integer> schemaDataTypeNumMap) {
     int total = 0;
     for (int num : schemaDataTypeNumMap.values()) {
       total += num;
@@ -369,7 +363,7 @@ public class PrimitiveArrayManager {
    * @param dataType data type
    * @return true if the buffered array ratio reaches the recommend ratio
    */
-  private boolean checkBufferedDataTypeNum(TSDataType dataType) {
+  private static boolean checkBufferedDataTypeNum(TSDataType dataType) {
     int total = 0;
     for (int num : bufferedArraysNumMap.values()) {
       total += num;
@@ -378,7 +372,7 @@ public class PrimitiveArrayManager {
         bufferedArraysNumRatio.getOrDefault(dataType, 0.0);
   }
 
-  public void close() {
+  public static void close() {
     bufferedArraysMap.clear();
     bufferedArraysNumMap.clear();
     bufferedArraysNumRatio.clear();

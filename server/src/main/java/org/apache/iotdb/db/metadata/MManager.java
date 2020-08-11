@@ -675,7 +675,7 @@ public class MManager {
         schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + num);
     int currentDataTypeTotalNum = schemaDataTypeNumMap.values().size();
     if (num > 0 && currentDataTypeTotalNum >= reportedDataTypeTotalNum * 1.1) {
-      PrimitiveArrayManager.getInstance().updateSchemaDataTypeNum(schemaDataTypeNumMap);
+      PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap);
       reportedDataTypeTotalNum = currentDataTypeTotalNum;
     }
   }

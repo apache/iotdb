@@ -96,12 +96,10 @@ public class FloatTVList extends TVList {
 
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
-      sortedTimestamps = (long[][]) PrimitiveArrayManager
-          .getInstance().getDataListsByType(TSDataType.INT64, size);
+      sortedTimestamps = (long[][]) PrimitiveArrayManager.getDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
-      sortedValues = (float[][]) PrimitiveArrayManager
-          .getInstance().getDataListsByType(TSDataType.FLOAT, size);
+      sortedValues = (float[][]) PrimitiveArrayManager.getDataListsByType(TSDataType.FLOAT, size);
     }
     sort(0, size);
     clearSortedValue();
@@ -113,7 +111,7 @@ public class FloatTVList extends TVList {
   void clearValue() {
     if (values != null) {
       for (float[] dataArray : values) {
-        PrimitiveArrayManager.getInstance().release(dataArray);
+        PrimitiveArrayManager.release(dataArray);
       }
       values.clear();
     }
@@ -123,7 +121,7 @@ public class FloatTVList extends TVList {
   void clearSortedValue() {
     if (sortedValues != null) {
       for (float[] dataArray : sortedValues) {
-        PrimitiveArrayManager.getInstance().release(dataArray);
+        PrimitiveArrayManager.release(dataArray);
       }
       sortedValues = null;
     }
@@ -160,8 +158,7 @@ public class FloatTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((float[]) PrimitiveArrayManager
-        .getInstance().getDataListByType(TSDataType.FLOAT));
+    values.add((float[]) PrimitiveArrayManager.getDataListByType(TSDataType.FLOAT));
   }
 
   @Override
@@ -193,7 +190,7 @@ public class FloatTVList extends TVList {
 
   @Override
   protected void releaseLastValueArray() {
-    PrimitiveArrayManager.getInstance().release(values.remove(values.size() - 1));
+    PrimitiveArrayManager.release(values.remove(values.size() - 1));
   }
 
   @Override
