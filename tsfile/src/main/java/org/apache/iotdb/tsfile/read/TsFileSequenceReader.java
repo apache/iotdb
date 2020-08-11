@@ -100,7 +100,6 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param loadMetadataSize -whether load meta data size
    */
   public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
-    System.out.println("open reader:" + file);
     if (resourceLogger.isDebugEnabled()) {
       resourceLogger.debug("{} reader is opened. {}", file, getClass().getName());
     }
@@ -736,7 +735,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   public void close() throws IOException {
-    System.out.println("close reader:" + file);
     if (resourceLogger.isDebugEnabled()) {
       resourceLogger.debug("{} reader is closed.", file);
     }

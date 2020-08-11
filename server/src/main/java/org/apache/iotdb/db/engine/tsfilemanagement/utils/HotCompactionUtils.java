@@ -241,21 +241,4 @@ public class HotCompactionUtils {
           }
         });
   }
-
-  public static TsFileSequenceReader buildReaderFromTsFileResource(TsFileResource tsFileResource,
-      String storageGroup) {
-    try {
-      if (tsFileResource.getTsFile().exists()) {
-        return new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath());
-      } else {
-        logger.info("{} tsfile does not exist", tsFileResource.getTsFile().getAbsolutePath());
-        return null;
-      }
-    } catch (IOException e) {
-      logger.error(
-          "Storage group {}, flush recover meets error. reader create failed.",
-          storageGroup, e);
-      return null;
-    }
-  }
 }
