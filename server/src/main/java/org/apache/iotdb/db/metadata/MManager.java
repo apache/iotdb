@@ -367,6 +367,11 @@ public class MManager {
     createTimeseries(plan, -1);
   }
 
+  /**
+   * Create timeseries by CreateTimeSeriesPlan plan
+   *
+   * @param plan should contains a path which be initialized by detached path. E.g., new Path([root, sg1, d1, s1])
+   */
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     lock.writeLock().lock();
     try {
@@ -436,10 +441,9 @@ public class MManager {
    * @param detachedPath detachedPath of the timeseries path
    * @param dataType the dateType {@code DataType} of the timeseries
    * @param encoding the encoding function {@code Encoding} of the timeseries
-   * @param dataType   the dateType {@code DataType} of the timeseries
-   * @param encoding   the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
-   * @return whether the measurement occurs for the first time in this storage group (if true, the
+   *
+   * whether the measurement occurs for the first time in this storage group (if true, the
    * measurement should be registered to the StorageEngine too)
    */
   public void createTimeseries(List<String> detachedPath, TSDataType dataType, TSEncoding encoding,
