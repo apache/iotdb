@@ -73,6 +73,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
+    System.out.println("open writer:" + file.getPath());
     if (logger.isDebugEnabled()) {
       logger.debug("{} is opened.", file.getName());
     }

@@ -127,10 +127,6 @@ public class ChunkMetadataCacheTest {
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     insertOneRecord(2, 100);
-
-    while (storageGroupProcessor.isHotCompactionMergeWorking()) {
-      //wait until hot compaction finished
-    }
   }
 
   @Test

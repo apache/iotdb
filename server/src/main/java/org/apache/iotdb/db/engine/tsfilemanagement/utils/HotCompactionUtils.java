@@ -23,6 +23,7 @@ import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -210,7 +211,14 @@ public class HotCompactionUtils {
     for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
       reader.close();
     }
+    Set<Long> historicalVersions = new HashSet<>();
+    for (TsFileResource tsFileResource : tsFileResources) {
+      historicalVersions.addAll(tsFileResource.getHistoricalVersions());
+    }
+    targetResource.setHistoricalVersions(historicalVersions);
+    targetResource.serialize();
     writer.endFile();
+    targetResource.cleanCloseFlag();
     targetResource.close();
   }
 
