@@ -845,17 +845,6 @@ public class MManager {
   }
 
   /**
-   * Get all storage group names
-   */
-  public List<StorageGroupMNode> getAllDetachedStorageGroupMNodes() {
-    lock.readLock().lock();
-    try {
-      return mtree.getAllDetachedStorageGroupMNodes();
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-  /**
    * Get all storage group MNodes
    */
   public List<StorageGroupMNode> getAllStorageGroupMNodes() {

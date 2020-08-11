@@ -529,7 +529,7 @@ public class StorageEngine implements IService {
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
-    for (StorageGroupMNode storageGroup : IoTDB.metaManager.getAllDetachedStorageGroupMNodes()) {
+    for (StorageGroupMNode storageGroup : IoTDB.metaManager.getAllStorageGroupMNodes()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
     return true;
