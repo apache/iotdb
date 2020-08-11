@@ -551,7 +551,7 @@ public class MTree implements Serializable {
   /**
    * Get storage group mNode by mNode
    *
-   * @return storage group mNode in the given mNode
+   * @return storage group mNode of the given mNode
    */
   StorageGroupMNode getStorageGroupMNodeByMNode(MNode mNode) {
     while (!(mNode instanceof StorageGroupMNode)) {
