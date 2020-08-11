@@ -923,12 +923,7 @@ public class MTree implements Serializable {
       }
       String nodePath = mNode.getParent().getFullPath() + TsFileConstant.PATH_SEPARATOR + nodeName;
       detachedPath[detachedPath.length - 1] = nodeName;
-      List<String> fullPath = new ArrayList<>(Arrays.asList(detachedPath));
-      MNode temp = mNode;
-      while (temp.getParent() != null) {
-        temp = temp.getParent();
-        fullPath.add(0, temp.getName());
-      }
+      List<String> fullPath = getDetachedPathByMNode(mNode);
       String[] tsRow = new String[8];
       tsRow[0] = nodePath;
       tsRow[1] = ((MeasurementMNode) mNode).getAlias();

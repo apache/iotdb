@@ -896,6 +896,7 @@ public class StorageGroupProcessor {
   private void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime) {
     MNode node = plan.getDeviceMNode();
     String[] measurementList = plan.getMeasurements();
+    List<String> fullPath = new ArrayList<>(plan.getDetachedDevice());
     for (int i = 0; i < measurementList.length; i++) {
       if (plan.getColumns()[i] == null) {
         continue;
@@ -911,10 +912,10 @@ public class StorageGroupProcessor {
         IoTDB.metaManager.updateLastCache(null,
           plan.composeLastTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
       } else {
-        List<String> fullPath = new ArrayList<>(plan.getDetachedDevice());
         fullPath.add(measurementList[i]);
         IoTDB.metaManager.updateLastCache( fullPath,
           plan.composeLastTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
+        fullPath.remove(fullPath.size() - 1);
       }
     }
   }

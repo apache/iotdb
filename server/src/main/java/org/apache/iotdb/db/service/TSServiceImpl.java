@@ -1629,8 +1629,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (nodes.get(index).equals(IoTDBConstant.PATH_ROOT)) {
       for (index = 1; index < nodes.size(); index++) {
         if (!NODE_NAME_PATTERN.matcher(nodes.get(index)).matches()) {
-          // support double quote on measurement only now
-          if (index == nodes.size() - 1 && NODE_NAME_WITH_QUOTATION_PATTERN.matcher(nodes.get(index)).matches()) {
+          // support double quote
+          if (NODE_NAME_WITH_QUOTATION_PATTERN.matcher(nodes.get(index)).matches()) {
             continue;
           }
           break;

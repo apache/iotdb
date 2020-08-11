@@ -298,7 +298,7 @@ public class StorageEngine implements IService {
               logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                   storageGroupNode.getFullPath(), Thread.currentThread().getId());
               processor = new StorageGroupProcessor(systemDir, storageGroupNode.getFullPath(), fileFlushPolicy);
-              processor.setDataTTL((storageGroupNode).getDataTTL());
+              processor.setDataTTL(storageGroupNode.getDataTTL());
               processorMap.put(storageGroupNode, processor);
             }
           }
@@ -518,7 +518,9 @@ public class StorageEngine implements IService {
   }
 
   private void syncDeleteDataFiles(MNode mNode) {
-    logger.info("Force to delete the data in storage group processor {}", mNode.getFullPath());
+    if (logger.isInfoEnabled()) {
+      logger.info("Force to delete the data in storage group processor {}", mNode.getFullPath());
+    }
     StorageGroupProcessor processor = processorMap.get(mNode);
     processor.syncDeleteDataFiles();
   }
@@ -527,7 +529,9 @@ public class StorageEngine implements IService {
    * delete all data of storage groups' timeseries.
    */
   public synchronized boolean deleteAll() {
-    logger.info("Start deleting all storage groups' timeseries");
+    if (logger.isInfoEnabled()) {
+      logger.info("Start deleting all storage groups' timeseries");
+    }
     syncCloseAllProcessor();
     for (StorageGroupMNode storageGroup : IoTDB.metaManager.getAllStorageGroupMNodes()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
