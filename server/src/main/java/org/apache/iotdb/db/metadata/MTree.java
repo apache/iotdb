@@ -238,6 +238,9 @@ public class MTree implements Serializable {
 
   /**
    * Delete a storage group
+   *
+   * @param detachedPath detached path of storage group, e.g., [root, sg]
+   * @return all MeasurementMNode belongs to the given storage group
    */
   List<MeasurementMNode> deleteStorageGroup(List<String> detachedPath) throws MetadataException {
     MNode cur = getMNodeByDetachedPath(detachedPath);
