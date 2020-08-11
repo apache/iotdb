@@ -1347,8 +1347,9 @@ public class StorageGroupProcessor {
           upgradeSeqFileList, deviceNodes, measurementId, context, timeFilter, true);
       List<TsFileResource> unseqResources = getFileResourceListForQuery(unSequenceFileList,
           upgradeUnseqFileList, deviceNodes, measurementId, context, timeFilter, false);
-      deviceNodes.add(measurementId); // device nodes is full path nodes now
-      QueryDataSource dataSource = new QueryDataSource(new Path(deviceNodes),
+      List<String> fullPath = new ArrayList<>(deviceNodes);
+      fullPath.add(measurementId);
+      QueryDataSource dataSource = new QueryDataSource(new Path(fullPath),
           seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge

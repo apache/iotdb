@@ -86,7 +86,7 @@ public class MetaUtils {
     if (detachedPath.size() <= level || !detachedPath.get(0).equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(concatDetachedPathByDot(detachedPath));
     }
-    return new ArrayList<>(detachedPath.subList(0, level+1));
+    return detachedPath.subList(0, level+1);
   }
 
   /**
