@@ -54,11 +54,6 @@ public class SystemInfo {
    * @return Return true if it's agreed when memory is enough.
    */
   public synchronized boolean applyNewOOBArray(TSDataType dataType, int size) {
-//    if (rejected) {
-//      logger.debug("apply OOB Array for sorting when flush memtable");
-//      arrayPoolMemCost += dataType.getDataTypeSize() * size;
-//      return true;
-//    }
     // if current memory is enough
     if (arrayPoolMemCost + totalSgInfoMemCost + dataType.getDataTypeSize() * size
         < config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {

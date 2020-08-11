@@ -77,17 +77,17 @@ public class PrimitiveArrayManager {
   /**
    * total size of buffered arrays
    */
-  private static AtomicInteger bufferedArraysSize;
+  private static AtomicInteger bufferedArraysSize = new AtomicInteger();
 
   /**
    * last reported size of arrays
    */
-  private static AtomicInteger lastReportArraySize;
+  private static AtomicInteger lastReportArraySize = new AtomicInteger();
 
   /**
    * total size of out of buffer arrays
    */
-  private static AtomicInteger outOfBufferArraysSize;
+  private static AtomicInteger outOfBufferArraysSize = new AtomicInteger();
 
   static {
     bufferedArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque<>());
@@ -99,9 +99,6 @@ public class PrimitiveArrayManager {
   }
 
   private PrimitiveArrayManager() {
-    bufferedArraysSize = new AtomicInteger();
-    outOfBufferArraysSize = new AtomicInteger();
-    lastReportArraySize = new AtomicInteger();
   }
 
   /**
@@ -184,7 +181,7 @@ public class PrimitiveArrayManager {
    * @param size needed capacity
    * @return an array of primitive data arrays
    */
-  public synchronized static Object getDataListsByType(TSDataType dataType, int size) {
+  public static synchronized Object getDataListsByType(TSDataType dataType, int size) {
     int arrayNumber = (int) Math.ceil((float) size / (float) ARRAY_SIZE);
     switch (dataType) {
       case BOOLEAN:
@@ -377,8 +374,8 @@ public class PrimitiveArrayManager {
     bufferedArraysNumMap.clear();
     bufferedArraysNumRatio.clear();
 
-    bufferedArraysSize = new AtomicInteger();
-    outOfBufferArraysSize = new AtomicInteger();
-    lastReportArraySize = new AtomicInteger();
+    bufferedArraysSize.set(0);
+    outOfBufferArraysSize.set(0);
+    lastReportArraySize.set(0);
   }
 }

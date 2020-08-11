@@ -75,21 +75,4 @@ public class LongTVListTest {
       Assert.assertEquals(inputs.get((int)i).getValue().getLong(), tvList.getLong((int)i));
     }
   }
-
-
-  @Test
-  public void compareLongTVListSortTime() throws WriteProcessException {
-    for (int j = 0; j < 100; j++) {
-      LongTVList tvList = new LongTVList();
-      for (long i = 0; i < 1000; i++) {
-        tvList.putLong(i, i);
-      }
-      tvList.sort();
-      for (int i = 0; i < tvList.size; i++) {
-        tvList.getLong(i);
-        tvList.getTime(i);
-      }
-    }
-  }
-
 }
