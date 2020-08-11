@@ -32,7 +32,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -118,9 +117,8 @@ public class MManager {
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new HashMap<>();
 
-  // data type -> number
-  private Map<TSDataType, Integer> schemaDataTypeNumMap = new EnumMap<>(
-      TSDataType.class);
+  // number for 6 data types
+  private int[] schemaDataTypeNum = new int[6];
   // reported total series number
   private int reportedDataTypeTotalNum;
 
@@ -299,7 +297,7 @@ public class MManager {
         tagLogFile.close();
         tagLogFile = null;
       }
-      this.schemaDataTypeNumMap.clear();
+      this.schemaDataTypeNum = new int[6];
       this.reportedDataTypeTotalNum = 0;
       initialized = false;
       if (timedCreateMTreeSnapshotThread != null) {
@@ -424,7 +422,7 @@ public class MManager {
         }
       }
 
-      // update statistics in schemaDataTypeNumMap
+      // update statistics in schemaDataTypeNum
       updateSchemaDataTypeNumMap(type, 1);
 
       // write log
@@ -563,7 +561,7 @@ public class MManager {
       removeFromTagInvertedIndex(pair.right);
       String storageGroupName = pair.left;
 
-      // update statistics in schemaDataTypeNumMap
+      // update statistics in schemaDataTypeNum
       updateSchemaDataTypeNumMap(pair.right.getSchema().getType(), -1);
 
       // TODO: delete the path node and all its ancestors
@@ -634,7 +632,7 @@ public class MManager {
         List<MeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
         for (MeasurementMNode leafMNode : leafMNodes) {
           removeFromTagInvertedIndex(leafMNode);
-          // update statistics in schemaDataTypeNumMap
+          // update statistics in schemaDataTypeNum
           updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
         }
 
@@ -664,18 +662,20 @@ public class MManager {
   }
 
   /**
-   * update statistics in schemaDataTypeNumMap
+   * update statistics in schemaDataTypeNum
    *
    * @param type data type
-   * @param num 1 for creating timeseries and -1 for deleting timeseries
+   * @param delta 1 for creating timeseries and -1 for deleting timeseries
    */
-  private void updateSchemaDataTypeNumMap(TSDataType type, int num) {
-    schemaDataTypeNumMap.put(type, schemaDataTypeNumMap.getOrDefault(type, 0) + num);
-    schemaDataTypeNumMap.put(TSDataType.INT64,
-        schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + num);
-    int currentDataTypeTotalNum = schemaDataTypeNumMap.values().size();
-    if (num > 0 && currentDataTypeTotalNum >= reportedDataTypeTotalNum * 1.1) {
-      PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap);
+  private void updateSchemaDataTypeNumMap(TSDataType type, int delta) {
+    schemaDataTypeNum[type.ordinal()] += delta;
+    schemaDataTypeNum[TSDataType.INT64.ordinal()] += delta;
+    int currentDataTypeTotalNum = 0;
+    for (int num : schemaDataTypeNum) {
+      currentDataTypeTotalNum += num;
+    }
+    if (delta > 0 && currentDataTypeTotalNum >= reportedDataTypeTotalNum * 1.1) {
+      PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNum);
       reportedDataTypeTotalNum = currentDataTypeTotalNum;
     }
   }
