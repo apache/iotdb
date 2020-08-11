@@ -563,7 +563,7 @@ public class MManager {
       }
 
       if (config.isEnableParameterAdapter()) {
-        String storageGroup = getStorageGroupMNodeByMNode(measurementMNode).getFullPath();
+        String storageGroup = mtree.getStorageGroupMNodeByMNode(measurementMNode).getFullPath();
         int size = seriesNumberInStorageGroups.get(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, size - 1);
         if (size == maxSeriesNumberAmongStorageGroup) {
@@ -811,15 +811,6 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getStorageGroup(detachedPath);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  public StorageGroupMNode getStorageGroupMNodeByMNode(MNode mNode) {
-    lock.readLock().lock();
-    try {
-      return mtree.getStorageGroupMNodeByMNode(mNode);
     } finally {
       lock.readLock().unlock();
     }
