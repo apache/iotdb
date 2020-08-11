@@ -201,10 +201,10 @@ public class MManager {
       int lineNumber = initFromLog(logFile);
 
       if (config.isEnableParameterAdapter()) {
-        List<String> storageGroups = mtree.getAllStorageGroups();
-        for (String sg : storageGroups) {
-          MNode node = mtree.getMNodeByDetachedPath(MetaUtils.splitPathToDetachedPath(sg));
-          seriesNumberInStorageGroups.put(sg, node.getLeafCount());
+        List<StorageGroupMNode> storageGroups = mtree.getAllStorageGroupMNodes();
+        for (MNode sg : storageGroups) {
+          MNode node = mtree.getMNodeByDetachedPath(mtree.getDetachedPathByMNode(sg));
+          seriesNumberInStorageGroups.put(sg.getFullPath(), node.getLeafCount());
         }
         maxSeriesNumberAmongStorageGroup =
             seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
