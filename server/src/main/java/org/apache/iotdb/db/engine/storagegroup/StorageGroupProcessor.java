@@ -965,7 +965,7 @@ public class StorageGroupProcessor {
       if (tmpMeasurementNode != null) {
         // just for performance, because in single node version, we do not need the full path of measurement
         // so, we want to avoid concat the device and measurement string in single node version
-        IoTDB.metaManager.updateLastCache(plan.getDetachedDevice(),
+        IoTDB.metaManager.updateLastCache(null,
           plan.composeTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
       } else {
         List<String> fullPath = new ArrayList<>(plan.getDetachedDevice());
