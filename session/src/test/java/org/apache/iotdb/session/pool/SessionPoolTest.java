@@ -222,7 +222,7 @@ public class SessionPoolTest {
 
   }
 
-  private void write10Data(SessionPool pool, boolean throwExceptionIfFail) {
+  private void write10Data(SessionPool pool, boolean failWhenThrowException) {
     for (int i = 0; i < 10; i++) {
       try {
         pool.insertRecord("root.sg1.d1", i, Collections.singletonList("s" + i),
@@ -230,7 +230,7 @@ public class SessionPoolTest {
             Collections.singletonList((long) i));
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         //will fail this 10 times.
-        if (throwExceptionIfFail) {
+        if (failWhenThrowException) {
           fail();
         }
       }
