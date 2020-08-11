@@ -285,7 +285,7 @@ public class StorageEngine implements IService {
   public StorageGroupProcessor getProcessor(List<String> detachedPath) throws StorageEngineException {
     StorageGroupMNode storageGroupNode;
     try {
-      storageGroupNode = IoTDB.metaManager.getStorageGroupMNode(detachedPath);
+      storageGroupNode = IoTDB.metaManager.getBelongedStorageGroupMNode(detachedPath);
       StorageGroupProcessor processor;
       processor = processorMap.get(storageGroupNode);
       if (processor == null) {

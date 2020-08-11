@@ -162,9 +162,9 @@ public class MNode implements Serializable {
   public String getFullPath() {
     if (fullPath == null) {
       fullPath = concatFullPath();
+      cachedPathPool.putIfAbsent(fullPath, fullPath);
     }
-    String cachedPath = cachedPathPool.putIfAbsent(fullPath, fullPath);
-    return cachedPath == null ? fullPath : cachedPath;
+    return fullPath;
   }
 
   String concatFullPath() {

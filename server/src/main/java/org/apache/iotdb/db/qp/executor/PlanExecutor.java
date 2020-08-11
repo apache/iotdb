@@ -72,7 +72,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetaUtils;
@@ -301,12 +300,12 @@ public class PlanExecutor implements IPlanExecutor {
     } else {
       if (plan.isSeq() == null) {
         for (Path storageGroup : plan.getPaths()) {
-          StorageEngine.getInstance().asyncCloseProcessor(mManager.getStorageGroupMNode(storageGroup.getDetachedPath()), true);
-          StorageEngine.getInstance().asyncCloseProcessor(mManager.getStorageGroupMNode(storageGroup.getDetachedPath()), false);
+          StorageEngine.getInstance().asyncCloseProcessor(mManager.getBelongedStorageGroupMNode(storageGroup.getDetachedPath()), true);
+          StorageEngine.getInstance().asyncCloseProcessor(mManager.getBelongedStorageGroupMNode(storageGroup.getDetachedPath()), false);
         }
       } else {
         for (Path storageGroup : plan.getPaths()) {
-          StorageEngine.getInstance().asyncCloseProcessor(mManager.getStorageGroupMNode(storageGroup.getDetachedPath()), plan.isSeq());
+          StorageEngine.getInstance().asyncCloseProcessor(mManager.getBelongedStorageGroupMNode(storageGroup.getDetachedPath()), plan.isSeq());
         }
       }
     }
@@ -1051,7 +1050,7 @@ public class PlanExecutor implements IPlanExecutor {
     List<List<String>> deletePathList = new ArrayList<>();
     try {
       for (Path storageGroupPath : deleteStorageGroupPlan.getPaths()) {
-        StorageEngine.getInstance().deleteStorageGroup(IoTDB.metaManager.getStorageGroupMNode(storageGroupPath.getDetachedPath()));
+        StorageEngine.getInstance().deleteStorageGroup(IoTDB.metaManager.getBelongedStorageGroupMNode(storageGroupPath.getDetachedPath()));
         deletePathList.add(storageGroupPath.getDetachedPath());
       }
       mManager.deleteStorageGroups(deletePathList);

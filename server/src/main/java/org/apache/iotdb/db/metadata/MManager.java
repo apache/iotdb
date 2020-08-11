@@ -1189,10 +1189,16 @@ public class MManager {
   }
 
   /**
-   * Get storage group node by detached path. If storage group is not set, StorageGroupNotSetException will
-   * be thrown
+   * Get the storage group node that the detached path belongs. 
+   * 
+   * E.g., root.sg is storage group,
+   * given [root, sg, device], return the MNode of root.sg
+   * 
+   * If storage group is not set, StorageGroupNotSetException will be thrown
+   *
+   * @param detachedPath a detached path that belongs to a storage group
    */
-  public StorageGroupMNode getStorageGroupMNode(List<String> detachedPath) throws MetadataException {
+  public StorageGroupMNode getBelongedStorageGroupMNode(List<String> detachedPath) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getStorageGroupMNode(detachedPath);
@@ -1202,10 +1208,17 @@ public class MManager {
   }
 
   /**
-   * Get storage group node by detached storage group. If storage group is not set, StorageGroupNotSetException will
-   * be thrown
+   * Get storage group node by detached storage group.
+   * 
+   * E.g., root.sg is storage group
+   * given [root, sg], return the MNode of root.sg
+   * given [root, sg, device], throw exception
+   *
+   * If storage group is not set, StorageGroupNotSetException will be thrown
+   *
+   * @param detachedStorageGroup the detached storage group name
    */
-  public StorageGroupMNode getStorageGroupMNodeByDetachedStorageGroup(List<String> detachedStorageGroup) throws MetadataException {
+  public StorageGroupMNode getStorageGroupMNode(List<String> detachedStorageGroup) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getStorageGroupMNodeByDetachedStorageGroup(detachedStorageGroup);
@@ -1335,7 +1348,7 @@ public class MManager {
   public void setTTL(List<String> detachedStorageGroup, long dataTTL) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      getStorageGroupMNodeByDetachedStorageGroup(detachedStorageGroup).setDataTTL(dataTTL);
+      getStorageGroupMNode(detachedStorageGroup).setDataTTL(dataTTL);
       if (!isRecovering) {
         logWriter.setTTL(MetaUtils.concatDetachedPathByDot(detachedStorageGroup), dataTTL);
       }
@@ -1839,7 +1852,7 @@ public class MManager {
     try {
       List<String> storageGroups = this.getAllDetachedStorageGroups();
       for (String storageGroup : storageGroups) {
-        long ttl = getStorageGroupMNode(MetaUtils.splitPathToDetachedPath(storageGroup)).getDataTTL();
+        long ttl = getBelongedStorageGroupMNode(MetaUtils.splitPathToDetachedPath(storageGroup)).getDataTTL();
         storageGroupsTTL.put(storageGroup, ttl);
       }
     } catch (MetadataException e) {
