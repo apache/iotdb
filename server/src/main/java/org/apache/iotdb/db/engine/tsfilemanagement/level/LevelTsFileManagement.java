@@ -367,11 +367,11 @@ public class LevelTsFileManagement extends TsFileManagement {
     forkTsFileList(forkedUnSequenceTsFileResources, unSequenceTsFileResources);
   }
 
-  private void forkTsFileList(List<List<TsFileResource>> forkedSequenceTsFileResources,
-      List<List<TsFileResource>> sequenceTsFileResources) {
-    forkedSequenceTsFileResources.clear();
+  private void forkTsFileList(List<List<TsFileResource>> forkedTsFileResources,
+      List<List<TsFileResource>> rawTsFileResources) {
+    forkedTsFileResources.clear();
     for (int i = 0; i < maxLevelNum - 1; i++) {
-      List<TsFileResource> tsFileResources = sequenceTsFileResources.get(i);
+      List<TsFileResource> tsFileResources = rawTsFileResources.get(i);
       // first level may have unclosed files, filter these files
       if (i == 0) {
         List<TsFileResource> forkedFirstLevelTsFileResources = new ArrayList<>();
@@ -382,9 +382,9 @@ public class LevelTsFileManagement extends TsFileManagement {
             break;
           }
         }
-        forkedSequenceTsFileResources.add(forkedFirstLevelTsFileResources);
+        forkedTsFileResources.add(forkedFirstLevelTsFileResources);
       } else {
-        forkedSequenceTsFileResources.add(new ArrayList<>(tsFileResources));
+        forkedTsFileResources.add(new ArrayList<>(tsFileResources));
       }
     }
   }

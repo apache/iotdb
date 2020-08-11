@@ -35,34 +35,79 @@ public abstract class TsFileManagement {
     this.storageGroupDir = storageGroupDir;
   }
 
+  /**
+   * get the TsFile list in maxLevelNum
+   */
   public abstract List<TsFileResource> getMergeTsFileList(boolean sequence);
 
+  /**
+   * get the TsFile list from 0 to maxLevelNum-1 in sequence
+   */
   public abstract List<TsFileResource> getTsFileList(boolean sequence);
 
+  /**
+   * get the TsFile list iterator from 0 to maxLevelNum-1 in sequence
+   */
   public abstract Iterator<TsFileResource> getIterator(boolean sequence);
 
+  /**
+   * remove one TsFile from list
+   */
   public abstract void remove(TsFileResource tsFileResource, boolean sequence);
 
+  /**
+   * remove some TsFiles from list
+   */
   public abstract void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence);
 
+  /**
+   * add one TsFile to list
+   */
   public abstract void add(TsFileResource tsFileResource, boolean sequence);
 
+  /**
+   * add some TsFiles to list
+   */
   public abstract void addAll(List<TsFileResource> tsFileResourceList, boolean sequence);
 
+  /**
+   * add one merged TsFile to list, may be level {maxLevelNum} in level compaction
+   */
   public abstract void addMerged(TsFileResource tsFileResource, boolean sequence);
 
+  /**
+   * add some merged TsFiles to list, may be level {maxLevelNum} in level compaction
+   */
   public abstract void addMergedAll(List<TsFileResource> tsFileResourceList, boolean sequence);
 
+  /**
+   * is one TsFile contained in list
+   */
   public abstract boolean contains(TsFileResource tsFileResource, boolean sequence);
 
+  /**
+   * clear list
+   */
   public abstract void clear();
 
+  /**
+   * is the list empty
+   */
   public abstract boolean isEmpty(boolean sequence);
 
+  /**
+   * return TsFile list size
+   */
   public abstract int size(boolean sequence);
 
+  /**
+   * recover TsFile list
+   */
   public abstract void recover();
 
+  /**
+   * call this before merge to copy current TsFile list
+   */
   public abstract void forkCurrentFileList();
 
   protected abstract void merge(ReadWriteLock hotCompactionMergeLock);

@@ -1180,7 +1180,7 @@ public class StorageGroupProcessor {
           }
         }
         while (hotCompactionMergeWorking) {
-          closeStorageGroupCondition.wait(100);
+          Thread.sleep(100);
           if (System.currentTimeMillis() - startTime > 60_000) {
             logger.warn("{} has spent {}s to wait for closing hot compaction.", this.storageGroupName,
                 (System.currentTimeMillis() - startTime) / 1000);
@@ -1383,7 +1383,6 @@ public class StorageGroupProcessor {
       }
 
       // write log to impacted working TsFileProcessors
-      logDeletion(startTime, endTime, deviceId, measurementId);
       logDeletion(startTime, endTime, deviceId, measurementId);
       // delete Last cache record if necessary
       tryToDeleteLastCache(deviceId, measurementId, startTime, endTime);

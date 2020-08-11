@@ -259,8 +259,12 @@ public class IoTDBDescriptor {
               conf.getTsFileManagementStrategy().toString())));
 
       conf.setMaxLevelNum(Integer.parseInt(properties
-          .getProperty("max_file_num_in_each_level",
+          .getProperty("max_level_num",
               Integer.toString(conf.getMaxLevelNum()))));
+
+      conf.setMaxFileNumInEachLevel(Integer.parseInt(properties
+          .getProperty("max_file_num_in_each_level",
+              Integer.toString(conf.getMaxFileNumInEachLevel()))));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
