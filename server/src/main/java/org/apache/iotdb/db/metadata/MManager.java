@@ -201,7 +201,7 @@ public class MManager {
       int lineNumber = initFromLog(logFile);
 
       if (config.isEnableParameterAdapter()) {
-        List<String> storageGroups = mtree.getAllDetachedStorageGroups();
+        List<String> storageGroups = mtree.getAllStorageGroups();
         for (String sg : storageGroups) {
           MNode node = mtree.getMNodeByDetachedPath(MetaUtils.splitPathToDetachedPath(sg));
           seriesNumberInStorageGroups.put(sg, node.getLeafCount());
@@ -835,10 +835,10 @@ public class MManager {
   /**
    * Get all storage group names
    */
-  public List<String> getAllDetachedStorageGroups() {
+  public List<String> getAllStorageGroups() {
     lock.readLock().lock();
     try {
-      return mtree.getAllDetachedStorageGroups();
+      return mtree.getAllStorageGroups();
     } finally {
       lock.readLock().unlock();
     }
@@ -1834,7 +1834,7 @@ public class MManager {
   public Map<String, Long> getStorageGroupsTTL() {
     Map<String, Long> storageGroupsTTL = new HashMap<>();
     try {
-      List<String> storageGroups = this.getAllDetachedStorageGroups();
+      List<String> storageGroups = this.getAllStorageGroups();
       for (String storageGroup : storageGroups) {
         long ttl = getBelongedStorageGroupMNode(MetaUtils.splitPathToDetachedPath(storageGroup)).getDataTTL();
         storageGroupsTTL.put(storageGroup, ttl);

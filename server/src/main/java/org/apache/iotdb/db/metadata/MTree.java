@@ -495,7 +495,7 @@ public class MTree implements Serializable {
    *
    * @return a list contains all distinct storage groups
    */
-  List<String> getAllDetachedStorageGroups() {
+  List<String> getAllStorageGroups() {
     List<String> res = new ArrayList<>();
     Deque<MNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);

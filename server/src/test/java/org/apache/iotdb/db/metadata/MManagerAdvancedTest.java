@@ -91,7 +91,7 @@ public class MManagerAdvancedTest {
 
     try {
       // test file name
-      List<String> fileNames = mmanager.getAllDetachedStorageGroups();
+      List<String> fileNames = mmanager.getAllStorageGroups();
       assertEquals(3, fileNames.size());
       if (fileNames.get(0).equals("root.vehicle.d0")) {
         assertEquals("root.vehicle.d1", fileNames.get(1));

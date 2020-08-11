@@ -489,7 +489,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<String> getAllStorageGroups() {
-    return IoTDB.metaManager.getAllDetachedStorageGroups();
+    return IoTDB.metaManager.getAllStorageGroups();
   }
 
   private QueryDataSet processShowStorageGroup() {
@@ -599,7 +599,7 @@ public class PlanExecutor implements IPlanExecutor {
         listDataSet,
         timestamp++,
         "storage group number",
-        Integer.toString(IoTDB.metaManager.getAllDetachedStorageGroups().size()));
+        Integer.toString(IoTDB.metaManager.getAllStorageGroups().size()));
     addRowRecordForShowQuery(
         listDataSet,
         timestamp++,
