@@ -203,8 +203,7 @@ public class MManager {
       if (config.isEnableParameterAdapter()) {
         List<StorageGroupMNode> storageGroups = mtree.getAllStorageGroupMNodes();
         for (MNode sg : storageGroups) {
-          MNode node = mtree.getMNodeByDetachedPath(mtree.getDetachedPathByMNode(sg));
-          seriesNumberInStorageGroups.put(sg.getFullPath(), node.getLeafCount());
+          seriesNumberInStorageGroups.put(sg.getFullPath(), sg.getLeafCount());
         }
         maxSeriesNumberAmongStorageGroup =
             seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
@@ -213,7 +212,7 @@ public class MManager {
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
       logWriter.setLineNumber(lineNumber);
       isRecovering = false;
-    } catch (IOException | MetadataException e) {
+    } catch (IOException e) {
       mtree = new MTree();
       logger.error("Cannot read MTree from file, using an empty new one", e);
     }
