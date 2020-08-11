@@ -100,6 +100,7 @@ public class MManager {
    * A thread will check whether the MTree is modified lately each such interval. Unit: second
    */
   private static final long MTREE_SNAPSHOT_THREAD_CHECK_TIME = 600L;
+  private static final int TSDATA_TYPE_NUM = TSDataType.LAST.ordinal();
 
   // the lock for read/insert
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -118,7 +119,7 @@ public class MManager {
   private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new HashMap<>();
 
   // number for 6 data types
-  private int[] schemaDataTypeNum = new int[6];
+  private int[] schemaDataTypeNum = new int[TSDATA_TYPE_NUM];
   // reported total series number
   private int reportedDataTypeTotalNum;
 
@@ -297,7 +298,7 @@ public class MManager {
         tagLogFile.close();
         tagLogFile = null;
       }
-      this.schemaDataTypeNum = new int[6];
+      this.schemaDataTypeNum = new int[TSDATA_TYPE_NUM];
       this.reportedDataTypeTotalNum = 0;
       initialized = false;
       if (timedCreateMTreeSnapshotThread != null) {

@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TVListAllocator implements TVListAllocatorMBean, IService {
 
-  private static final int TSDATA_TYPE_NUM = 6;
+  private static final int TSDATA_TYPE_NUM = TSDataType.LAST.ordinal();
 
   private Queue<TVList>[] tvListCache = new Queue[TSDATA_TYPE_NUM];
   private String mbeanName = String

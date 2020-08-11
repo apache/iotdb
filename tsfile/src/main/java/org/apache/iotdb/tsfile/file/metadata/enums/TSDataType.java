@@ -24,7 +24,11 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 public enum TSDataType {
-  BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT;
+  BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT,
+  /**
+   * LAST is used for getting the valid values num of this enum
+   */
+  LAST;
 
   /**
    * give an integer to return a data type.

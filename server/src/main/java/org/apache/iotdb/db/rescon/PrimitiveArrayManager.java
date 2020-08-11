@@ -20,6 +20,7 @@ package org.apache.iotdb.db.rescon;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -35,22 +36,22 @@ import org.slf4j.LoggerFactory;
  */
 public class PrimitiveArrayManager {
 
-  private static final int TSDATA_TYPE_NUM = 6;
+  private static final int TSDATA_TYPE_NUM = TSDataType.LAST.ordinal();
 
   /**
    * ArrayDeque list for 6 data types
    */
-  private static ArrayDeque<Object>[] bufferedArrays = new ArrayDeque[TSDATA_TYPE_NUM];
+  private static final Deque<Object>[] bufferedArrays = new ArrayDeque[TSDATA_TYPE_NUM];
 
   /**
    * current number of buffered arrays for 6 data types
    */
-  private static int[] bufferedArraysNum = new int[TSDATA_TYPE_NUM];
+  private static final int[] bufferedArraysNum = new int[TSDATA_TYPE_NUM];
 
   /**
    * ratio of data type in schema for 6 data types, which could be seen as recommended ratio
    */
-  private static double[] bufferedArraysNumRatio = new double[TSDATA_TYPE_NUM];
+  private static final double[] bufferedArraysNumRatio = new double[TSDATA_TYPE_NUM];
 
   private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
 
@@ -123,7 +124,7 @@ public class PrimitiveArrayManager {
 
     // return a buffered array
     bufferedArraysNum[dataType.ordinal()]++;
-    ArrayDeque<Object> dataListQueue = bufferedArrays[dataType.ordinal()];
+    Deque<Object> dataListQueue = bufferedArrays[dataType.ordinal()];
     if (dataListQueue == null) {
       dataListQueue = new ArrayDeque<>();
     }
@@ -364,10 +365,6 @@ public class PrimitiveArrayManager {
   }
 
   public static void close() {
-    bufferedArrays = new ArrayDeque[TSDATA_TYPE_NUM];
-    bufferedArraysNum = new int[TSDATA_TYPE_NUM];
-    bufferedArraysNumRatio = new double[TSDATA_TYPE_NUM];
-
     bufferedArraysSize.set(0);
     outOfBufferArraysSize.set(0);
     lastReportArraySize.set(0);
