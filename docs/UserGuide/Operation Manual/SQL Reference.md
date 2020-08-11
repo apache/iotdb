@@ -948,6 +948,10 @@ TRACING ON    // Open performance tracing
 TRACING OFF   // Close performance tracing
 ```
 
+## Usage of single quotes and double quotes
+
+IoTDB sql only support double quotes in path. For example, the `root.ln.d1.'t'` isn't be allowed. But you can use both single quotes and double quotes elsewhere.
+
 # Reference
 
 ## Keywords
