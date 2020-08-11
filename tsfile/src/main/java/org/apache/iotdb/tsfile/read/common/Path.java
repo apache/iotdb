@@ -75,6 +75,7 @@ public class Path implements Serializable, Comparable<Path> {
     this.device = device;
     this.measurement = measurement;
     this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    this.nodes = splitPathToDetachedPath(fullPath);
   }
 
   /**
