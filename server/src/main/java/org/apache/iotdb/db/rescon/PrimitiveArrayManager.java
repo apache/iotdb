@@ -76,13 +76,17 @@ public class PrimitiveArrayManager {
   /**
    * total size of buffered arrays
    */
-  private int bufferedArraysSize;
+  private volatile int bufferedArraysSize;
 
-  private int lastReportArraySize = 0;
+  /**
+   * last reported size of arrays
+   */
+  private volatile int lastReportArraySize = 0;
+
   /**
    * total size of out of buffer arrays
    */
-  private int outOfBufferArraysSize;
+  private volatile int outOfBufferArraysSize;
 
   static {
     bufferedArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque<>());
@@ -110,7 +114,7 @@ public class PrimitiveArrayManager {
    * @param dataType data type
    * @return an array, or null if the system module refuse to offer an out of buffer array
    */
-  public synchronized Object getDataListByType(TSDataType dataType) {
+  public Object getDataListByType(TSDataType dataType) {
     // check buffered array num
     if (bufferedArraysSize + ARRAY_SIZE * dataType.getDataTypeSize()
         > BUFFERED_ARRAY_SIZE_THRESHOLD) {
@@ -274,13 +278,12 @@ public class PrimitiveArrayManager {
       // choose one replaced array who has larger ratio than schema recommended ratio
       TSDataType replacedDataType = null;
       for (Map.Entry<TSDataType, Integer> entry : bufferedArraysNumMap.entrySet()) {
-        replacedDataType = entry.getKey();
-        if (checkBufferedDataTypeNum(replacedDataType)) {
+        if (checkBufferedDataTypeNum(entry.getKey())) {
+          replacedDataType = entry.getKey();
           // bring back the replaced array as OOB array
           bringBackOOBArray(replacedDataType, ARRAY_SIZE);
           break;
         }
-        replacedDataType = null;
       }
       if (replacedDataType != null) {
         // if we find a replaced array, bring back the original array as a buffered array

@@ -54,11 +54,11 @@ public class SystemInfo {
    * @return Return true if it's agreed when memory is enough.
    */
   public synchronized boolean applyNewOOBArray(TSDataType dataType, int size) {
-    if (rejected) {
-      logger.debug("apply OOB Array for sorting when flush memtable");
-      arrayPoolMemCost += dataType.getDataTypeSize() * size;
-      return true;
-    }
+//    if (rejected) {
+//      logger.debug("apply OOB Array for sorting when flush memtable");
+//      arrayPoolMemCost += dataType.getDataTypeSize() * size;
+//      return true;
+//    }
     // if current memory is enough
     if (arrayPoolMemCost + totalSgInfoMemCost + dataType.getDataTypeSize() * size
         < config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
@@ -84,8 +84,8 @@ public class SystemInfo {
   /**
    * Report current mem cost of storage group to system.
    *
-   * @param StorageGroupInfo
-   * @param delta
+   * @param storageGroupInfo storage group
+   * @param delta mem cost
    */
   public synchronized void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo, 
       long delta) {
@@ -136,7 +136,7 @@ public class SystemInfo {
   /**
    * Report resetting the mem cost of sg to system. It will be invoked after closing file.
    *
-   * @param processor closing processor
+   * @param storageGroupInfo storage group
    */
   public synchronized void resetStorageGroupInfoStatus(StorageGroupInfo storageGroupInfo) {
     if (reportedSgMemCostMap.containsKey(storageGroupInfo)) {
