@@ -2521,6 +2521,10 @@ public class StorageGroupProcessor {
     }
   }
 
+  public boolean isHotCompactionMergeWorking() {
+    return hotCompactionMergeWorking;
+  }
+
   @FunctionalInterface
   public interface TimePartitionFilter {
 
