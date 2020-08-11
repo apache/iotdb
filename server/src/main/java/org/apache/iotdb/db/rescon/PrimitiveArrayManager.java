@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -76,17 +77,17 @@ public class PrimitiveArrayManager {
   /**
    * total size of buffered arrays
    */
-  private volatile int bufferedArraysSize;
+  private AtomicInteger bufferedArraysSize;
 
   /**
    * last reported size of arrays
    */
-  private volatile int lastReportArraySize = 0;
+  private AtomicInteger lastReportArraySize;
 
   /**
    * total size of out of buffer arrays
    */
-  private volatile int outOfBufferArraysSize;
+  private AtomicInteger outOfBufferArraysSize;
 
   static {
     bufferedArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque<>());
@@ -104,8 +105,9 @@ public class PrimitiveArrayManager {
   private static final PrimitiveArrayManager INSTANCE = new PrimitiveArrayManager();
 
   private PrimitiveArrayManager() {
-    bufferedArraysSize = 0;
-    outOfBufferArraysSize = 0;
+    bufferedArraysSize = new AtomicInteger();
+    outOfBufferArraysSize = new AtomicInteger();
+    lastReportArraySize = new AtomicInteger();
   }
 
   /**
@@ -116,7 +118,7 @@ public class PrimitiveArrayManager {
    */
   public Object getDataListByType(TSDataType dataType) {
     // check buffered array num
-    if (bufferedArraysSize + ARRAY_SIZE * dataType.getDataTypeSize()
+    if (bufferedArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize())
         > BUFFERED_ARRAY_SIZE_THRESHOLD) {
       if (logger.isDebugEnabled()) {
         logger.debug("Apply out of buffer array from system module...");
@@ -129,7 +131,7 @@ public class PrimitiveArrayManager {
         return null;
       } else {
         // return an out of buffer array
-        outOfBufferArraysSize += ARRAY_SIZE * dataType.getDataTypeSize();
+        outOfBufferArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
         return getDataList(dataType);
       }
     }
@@ -138,11 +140,12 @@ public class PrimitiveArrayManager {
     bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
     ArrayDeque<Object> dataListQueue = bufferedArraysMap
         .computeIfAbsent(dataType, k -> new ArrayDeque<>());
-    bufferedArraysSize += ARRAY_SIZE * dataType.getDataTypeSize();
-    if (bufferedArraysSize - lastReportArraySize
+    bufferedArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
+    if (bufferedArraysSize.get() - lastReportArraySize.get()
         >= BUFFERED_ARRAY_SIZE_THRESHOLD * REPORT_BUFFERED_ARRAYS_THRESHOLD) {
       // report current buffered array size to system
-      SystemInfo.getInstance().reportIncreasingArraySize(bufferedArraysSize - lastReportArraySize);
+      SystemInfo.getInstance()
+          .reportIncreasingArraySize(bufferedArraysSize.addAndGet(-lastReportArraySize.get()));
       lastReportArraySize = bufferedArraysSize;
     }
     Object dataArray = dataListQueue.poll();
@@ -270,10 +273,10 @@ public class PrimitiveArrayManager {
     }
 
     // Check out of buffer array num
-    if (outOfBufferArraysSize > 0 && checkBufferedDataTypeNum(dataType)) {
+    if (outOfBufferArraysSize.get() > 0 && checkBufferedDataTypeNum(dataType)) {
       // bring back an out of buffer array
       bringBackOOBArray(dataType, ARRAY_SIZE);
-    } else if (outOfBufferArraysSize > 0 && !checkBufferedDataTypeNum(dataType)) {
+    } else if (outOfBufferArraysSize.get() > 0 && !checkBufferedDataTypeNum(dataType)) {
       // if the ratio of buffered arrays of this data type has not reached the schema ratio,
       // choose one replaced array who has larger ratio than schema recommended ratio
       TSDataType replacedDataType = null;
@@ -293,8 +296,8 @@ public class PrimitiveArrayManager {
               dataType, replacedDataType);
         }
         bringBackBufferedArray(dataType, dataArray);
-        bufferedArraysSize +=
-            ARRAY_SIZE * (dataType.getDataTypeSize() - replacedDataType.getDataTypeSize());
+        bufferedArraysSize.addAndGet(
+            ARRAY_SIZE * (dataType.getDataTypeSize() - replacedDataType.getDataTypeSize()));
       } else {
         // or else bring back the original array as OOB array
         bringBackOOBArray(dataType, ARRAY_SIZE);
@@ -340,7 +343,7 @@ public class PrimitiveArrayManager {
     if (logger.isDebugEnabled()) {
       logger.debug("Bring back out of buffer array of {} to system module...", dataType);
     }
-    outOfBufferArraysSize -= size * dataType.getDataTypeSize();
+    outOfBufferArraysSize.addAndGet(-size * dataType.getDataTypeSize());
     SystemInfo.getInstance().reportReleaseOOBArray(dataType, size);
   }
 
@@ -380,7 +383,8 @@ public class PrimitiveArrayManager {
     bufferedArraysNumMap.clear();
     bufferedArraysNumRatio.clear();
 
-    bufferedArraysSize = 0;
-    outOfBufferArraysSize = 0;
+    bufferedArraysSize = new AtomicInteger();
+    outOfBufferArraysSize = new AtomicInteger();
+    lastReportArraySize = new AtomicInteger();
   }
 }
