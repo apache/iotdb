@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.rescon;
 
 import java.util.ArrayDeque;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Queue;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
@@ -37,9 +39,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TVListAllocator implements TVListAllocatorMBean, IService {
 
-  private static final int TSDATA_TYPE_NUM = TSDataType.LAST.ordinal();
-
-  private Queue<TVList>[] tvListCache = new Queue[TSDATA_TYPE_NUM];
+  private Map<TSDataType, Queue<TVList>> tvListCache = new EnumMap<>(TSDataType.class);
   private String mbeanName = String
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
@@ -51,45 +51,38 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
   }
 
   public synchronized TVList allocate(TSDataType dataType) {
-    Queue<TVList> tvLists = tvListCache[dataType.ordinal()];
-    if (tvLists == null) {
-      tvLists = new ArrayDeque<>();
-    }
+    Queue<TVList> tvLists = tvListCache.computeIfAbsent(dataType,
+        k -> new ArrayDeque<>());
     TVList list = tvLists.poll();
     return list != null ? list : TVList.newList(dataType);
   }
 
   public synchronized void release(TSDataType dataType, TVList list) {
     list.clear();
-    Queue<TVList> tvLists = tvListCache[dataType.ordinal()];
-    if (tvLists == null) {
-      tvLists = new ArrayDeque<>();
-    }
-    tvLists.add(list);
+    tvListCache.get(dataType).add(list);
   }
 
   public synchronized void release(TVList list) {
-    TSDataType dataType = null;
+    list.clear();
     if (list instanceof BinaryTVList) {
-      dataType = TSDataType.TEXT;
+      tvListCache.get(TSDataType.TEXT).add(list);
     } else if (list instanceof BooleanTVList) {
-      dataType = TSDataType.BOOLEAN;
+      tvListCache.get(TSDataType.BOOLEAN).add(list);
     } else if (list instanceof DoubleTVList) {
-      dataType = TSDataType.DOUBLE;
+      tvListCache.get(TSDataType.DOUBLE).add(list);
     } else if (list instanceof FloatTVList) {
-      dataType = TSDataType.FLOAT;
+      tvListCache.get(TSDataType.FLOAT).add(list);
     } else if (list instanceof IntTVList) {
-      dataType = TSDataType.INT32;
+      tvListCache.get(TSDataType.INT32).add(list);
     } else if (list instanceof LongTVList) {
-      dataType = TSDataType.INT64;
+      tvListCache.get(TSDataType.INT64).add(list);
     }
-    release(dataType, list);
   }
 
   @Override
   public int getNumberOfTVLists() {
     int number = 0;
-    for (Queue<TVList> queue : tvListCache) {
+    for (Queue<TVList> queue : tvListCache.values()) {
       number += queue.size();
     }
     return number;
@@ -107,7 +100,7 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
   @Override
   public void stop() {
     JMXService.deregisterMBean(mbeanName);
-    tvListCache = new Queue[TSDATA_TYPE_NUM];
+    tvListCache.clear();
   }
 
   @Override

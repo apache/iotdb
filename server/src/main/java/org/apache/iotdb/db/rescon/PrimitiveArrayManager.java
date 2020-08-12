@@ -130,8 +130,6 @@ public class PrimitiveArrayManager {
     synchronized (bufferedArraysMap.get(dataType)) {
       // return a buffered array
       bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
-      ArrayDeque<Object> dataListQueue = bufferedArraysMap
-          .computeIfAbsent(dataType, k -> new ArrayDeque<>());
       bufferedArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
       if (bufferedArraysSize.get() - lastReportArraySize.get()
           >= BUFFERED_ARRAY_SIZE_THRESHOLD * REPORT_BUFFERED_ARRAYS_THRESHOLD) {
@@ -140,7 +138,7 @@ public class PrimitiveArrayManager {
             .reportIncreasingArraySize(bufferedArraysSize.addAndGet(-lastReportArraySize.get()));
         lastReportArraySize = bufferedArraysSize;
       }
-      Object dataArray = dataListQueue.poll();
+      Object dataArray = bufferedArraysMap.get(dataType).poll();
       if (dataArray != null) {
         return dataArray;
       }
@@ -246,7 +244,7 @@ public class PrimitiveArrayManager {
    *
    * @param dataArray data array
    */
-  public synchronized static void release(Object dataArray) {
+  public static void release(Object dataArray) {
     TSDataType dataType;
     if (dataArray instanceof boolean[]) {
       dataType = TSDataType.BOOLEAN;
@@ -319,9 +317,6 @@ public class PrimitiveArrayManager {
    * @param dataArray data array
    */
   private static void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
-//    if (!bufferedArraysMap.containsKey(dataType)) {
-//      bufferedArraysMap.put(dataType, new ArrayDeque<>());
-//    }
     synchronized (bufferedArraysMap.get(dataType)) {
       bufferedArraysMap.get(dataType).add(dataArray);
       bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
