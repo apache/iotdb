@@ -20,7 +20,8 @@ package org.apache.iotdb.db.rescon;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Deque;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -36,22 +37,23 @@ import org.slf4j.LoggerFactory;
  */
 public class PrimitiveArrayManager {
 
-  private static final int TSDATA_TYPE_NUM = TSDataType.LAST.ordinal();
+  /**
+   * data type -> ArrayDeque<Array>
+   */
+  private static final Map<TSDataType, ArrayDeque<Object>> bufferedArraysMap = new EnumMap<>(
+      TSDataType.class);
 
   /**
-   * ArrayDeque list for 6 data types
+   * data type -> current number of buffered arrays
    */
-  private static final Deque<Object>[] bufferedArrays = new ArrayDeque[TSDATA_TYPE_NUM];
+  private static final Map<TSDataType, Integer> bufferedArraysNumMap = new EnumMap<>(
+      TSDataType.class);
 
   /**
-   * current number of buffered arrays for 6 data types
+   * data type -> ratio of data type in schema, which could be seen as recommended ratio
    */
-  private static final int[] bufferedArraysNum = new int[TSDATA_TYPE_NUM];
-
-  /**
-   * ratio of data type in schema for 6 data types, which could be seen as recommended ratio
-   */
-  private static final double[] bufferedArraysNumRatio = new double[TSDATA_TYPE_NUM];
+  private static final Map<TSDataType, Double> bufferedArraysNumRatio = new EnumMap<>(
+      TSDataType.class);
 
   private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
 
@@ -88,9 +90,12 @@ public class PrimitiveArrayManager {
   private static AtomicInteger outOfBufferArraysSize = new AtomicInteger();
 
   static {
-    for (int i = 0; i < TSDATA_TYPE_NUM; i++) {
-      bufferedArrays[i] = new ArrayDeque<>();
-    }
+    bufferedArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque<>());
+    bufferedArraysMap.put(TSDataType.INT32, new ArrayDeque<>());
+    bufferedArraysMap.put(TSDataType.INT64, new ArrayDeque<>());
+    bufferedArraysMap.put(TSDataType.FLOAT, new ArrayDeque<>());
+    bufferedArraysMap.put(TSDataType.DOUBLE, new ArrayDeque<>());
+    bufferedArraysMap.put(TSDataType.TEXT, new ArrayDeque<>());
   }
 
   private PrimitiveArrayManager() {
@@ -122,23 +127,23 @@ public class PrimitiveArrayManager {
       }
     }
 
-    // return a buffered array
-    bufferedArraysNum[dataType.ordinal()]++;
-    Deque<Object> dataListQueue = bufferedArrays[dataType.ordinal()];
-    if (dataListQueue == null) {
-      dataListQueue = new ArrayDeque<>();
-    }
-    bufferedArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
-    if (bufferedArraysSize.get() - lastReportArraySize.get()
-        >= BUFFERED_ARRAY_SIZE_THRESHOLD * REPORT_BUFFERED_ARRAYS_THRESHOLD) {
-      // report current buffered array size to system
-      SystemInfo.getInstance()
-          .reportIncreasingArraySize(bufferedArraysSize.addAndGet(-lastReportArraySize.get()));
-      lastReportArraySize = bufferedArraysSize;
-    }
-    Object dataArray = dataListQueue.poll();
-    if (dataArray != null) {
-      return dataArray;
+    synchronized (bufferedArraysMap.get(dataType)) {
+      // return a buffered array
+      bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
+      ArrayDeque<Object> dataListQueue = bufferedArraysMap
+          .computeIfAbsent(dataType, k -> new ArrayDeque<>());
+      bufferedArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
+      if (bufferedArraysSize.get() - lastReportArraySize.get()
+          >= BUFFERED_ARRAY_SIZE_THRESHOLD * REPORT_BUFFERED_ARRAYS_THRESHOLD) {
+        // report current buffered array size to system
+        SystemInfo.getInstance()
+            .reportIncreasingArraySize(bufferedArraysSize.addAndGet(-lastReportArraySize.get()));
+        lastReportArraySize = bufferedArraysSize;
+      }
+      Object dataArray = dataListQueue.poll();
+      if (dataArray != null) {
+        return dataArray;
+      }
     }
     return getDataList(dataType);
   }
@@ -241,7 +246,7 @@ public class PrimitiveArrayManager {
    *
    * @param dataArray data array
    */
-  public static synchronized void release(Object dataArray) {
+  public synchronized static void release(Object dataArray) {
     TSDataType dataType;
     if (dataArray instanceof boolean[]) {
       dataType = TSDataType.BOOLEAN;
@@ -268,9 +273,9 @@ public class PrimitiveArrayManager {
       // if the ratio of buffered arrays of this data type has not reached the schema ratio,
       // choose one replaced array who has larger ratio than schema recommended ratio
       TSDataType replacedDataType = null;
-      for (TSDataType type : TSDataType.values()) {
-        if (checkBufferedDataTypeNum(type)) {
-          replacedDataType = type;
+      for (Map.Entry<TSDataType, Integer> entry : bufferedArraysNumMap.entrySet()) {
+        if (checkBufferedDataTypeNum(entry.getKey())) {
+          replacedDataType = entry.getKey();
           // bring back the replaced array as OOB array
           bringBackOOBArray(replacedDataType, ARRAY_SIZE);
           break;
@@ -283,7 +288,7 @@ public class PrimitiveArrayManager {
               "The ratio of {} in buffered array has not reached the schema ratio. Replaced by {}",
               dataType, replacedDataType);
         }
-        bringBackBufferedArray(dataType.ordinal(), dataArray);
+        bringBackBufferedArray(dataType, dataArray);
         bufferedArraysSize.addAndGet(
             ARRAY_SIZE * (dataType.getDataTypeSize() - replacedDataType.getDataTypeSize()));
       } else {
@@ -292,7 +297,7 @@ public class PrimitiveArrayManager {
       }
     } else {
       // if there is no out of buffer array, bring back as buffered array directly
-      bringBackBufferedArray(dataType.ordinal(), dataArray);
+      bringBackBufferedArray(dataType, dataArray);
     }
   }
 
@@ -313,12 +318,14 @@ public class PrimitiveArrayManager {
    * @param dataType data type
    * @param dataArray data array
    */
-  private static void bringBackBufferedArray(int dataType, Object dataArray) {
-    if (bufferedArrays[dataType] == null) {
-      bufferedArrays[dataType] = new ArrayDeque<>();
+  private static void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
+//    if (!bufferedArraysMap.containsKey(dataType)) {
+//      bufferedArraysMap.put(dataType, new ArrayDeque<>());
+//    }
+    synchronized (bufferedArraysMap.get(dataType)) {
+      bufferedArraysMap.get(dataType).add(dataArray);
+      bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
     }
-    bufferedArrays[dataType].add(dataArray);
-    bufferedArraysNum[dataType]++;
   }
 
   /**
@@ -335,16 +342,18 @@ public class PrimitiveArrayManager {
     SystemInfo.getInstance().reportReleaseOOBArray(dataType, size);
   }
 
-  public static void updateSchemaDataTypeNum(int[] schemaDataTypeNumMap) {
+  public static void updateSchemaDataTypeNum(Map<TSDataType, Integer> schemaDataTypeNumMap) {
     int total = 0;
-    for (int num : schemaDataTypeNumMap) {
+    for (int num : schemaDataTypeNumMap.values()) {
       total += num;
     }
     if (total == 0) {
       return;
     }
-    for (int i = 0; i < TSDATA_TYPE_NUM; i++) {
-      bufferedArraysNumRatio[i] = (double) schemaDataTypeNumMap[i] / total;
+    for (Map.Entry<TSDataType, Integer> entry : schemaDataTypeNumMap.entrySet()) {
+      TSDataType dataType = entry.getKey();
+      bufferedArraysNumRatio
+          .put(dataType, (double) schemaDataTypeNumMap.get(dataType) / total);
     }
   }
 
@@ -357,14 +366,21 @@ public class PrimitiveArrayManager {
    */
   private static boolean checkBufferedDataTypeNum(TSDataType dataType) {
     int total = 0;
-    for (int num : bufferedArraysNum) {
+    for (int num : bufferedArraysNumMap.values()) {
       total += num;
     }
-    return total != 0 && bufferedArraysNum[dataType.ordinal()] / total >
-        bufferedArraysNumRatio[dataType.ordinal()];
+    return total != 0 && bufferedArraysNumMap.getOrDefault(dataType, 0) / total >
+        bufferedArraysNumRatio.getOrDefault(dataType, 0.0);
   }
 
   public static void close() {
+    for (ArrayDeque<Object> dataListQueue : bufferedArraysMap.values()) {
+      dataListQueue.clear();
+    }
+
+    bufferedArraysNumMap.clear();
+    bufferedArraysNumRatio.clear();
+
     bufferedArraysSize.set(0);
     outOfBufferArraysSize.set(0);
     lastReportArraySize.set(0);
