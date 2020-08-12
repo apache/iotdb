@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.iterator;
 
+import java.io.IOException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public interface RowRecordIterator extends Iterator {
@@ -29,7 +30,7 @@ public interface RowRecordIterator extends Iterator {
 
   int currentRowRecordIndex();
 
-  RowRecord currentRowRecord();
+  RowRecord currentRowRecord() throws IOException;
 
-  long currentTime();
+  long currentTime() throws IOException;
 }

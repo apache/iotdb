@@ -33,6 +33,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.query.udf.manager.TemporaryQueryDataFileManager;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -105,6 +106,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
     registerManager.register(StorageEngine.getInstance());
+    registerManager.register(TemporaryQueryDataFileManager.getInstance());
 
     // When registering statMonitor, we should start recovering some statistics
     // with latest values stored

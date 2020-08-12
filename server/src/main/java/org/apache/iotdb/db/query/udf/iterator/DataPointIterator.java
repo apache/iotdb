@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.query.udf.iterator;
 
+import java.io.IOException;
+import org.apache.iotdb.tsfile.utils.Binary;
+
 public interface DataPointIterator extends Iterator {
 
   boolean hasNextPoint();
@@ -27,17 +30,19 @@ public interface DataPointIterator extends Iterator {
 
   int currentPointIndex();
 
-  long currentTime();
+  long currentTime() throws IOException;
 
-  int currentInt();
+  int currentInt() throws IOException;
 
-  long currentLong();
+  long currentLong() throws IOException;
 
-  float currentFloat();
+  float currentFloat() throws IOException;
 
-  double currentDouble();
+  double currentDouble() throws IOException;
 
-  boolean currentBoolean();
+  boolean currentBoolean() throws IOException;
 
-  String currentString();
+  Binary currentBinary() throws IOException;
+
+  String currentString() throws IOException;
 }

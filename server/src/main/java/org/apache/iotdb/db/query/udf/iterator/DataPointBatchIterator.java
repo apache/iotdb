@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.query.udf.iterator;
 
+import java.io.IOException;
+import org.apache.iotdb.tsfile.utils.Binary;
+
 public interface DataPointBatchIterator extends Iterator {
 
   boolean hasNextBatch();
 
-  void next();
+  void next() throws IOException;
 
   int currentBatchIndex();
 
@@ -31,15 +34,19 @@ public interface DataPointBatchIterator extends Iterator {
 
   int currentBatchSize();
 
-  long getTimeInCurrentBatch(int index);
+  long getTimeInCurrentBatch(int index) throws IOException;
 
-  int getIntInCurrentBatch(int index);
+  int getIntInCurrentBatch(int index) throws IOException;
 
-  long getLongInCurrentBatch(int index);
+  long getLongInCurrentBatch(int index) throws IOException;
 
-  boolean getBooleanInCurrentBatch(int index);
+  boolean getBooleanInCurrentBatch(int index) throws IOException;
 
-  float getFloatInCurrentBatch(int index);
+  float getFloatInCurrentBatch(int index) throws IOException;
 
-  double getDoubleInCurrentBatch(int index);
+  double getDoubleInCurrentBatch(int index) throws IOException;
+
+  Binary getBinaryInCurrentBatch(int index) throws IOException;
+
+  String getStringInCurrentBatch(int index) throws IOException;
 }

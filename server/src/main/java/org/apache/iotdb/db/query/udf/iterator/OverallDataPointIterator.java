@@ -19,27 +19,42 @@
 
 package org.apache.iotdb.db.query.udf.iterator;
 
-import org.apache.iotdb.db.qp.constant.DatetimeUtils.DurationUnit;
+import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public interface OverallDataPointIterator extends Iterator {
 
-  DataPointIterator getPointDataIterator();
+  DataPointIterator getDataPointIterator();
 
-  DataPointBatchIterator getSizeLimitedBatchDataIterator(int batchSize);
+  DataPointBatchIterator getSizeLimitedDataPointBatchIterator(final int batchSize)
+      throws QueryProcessException;
 
-  DataPointBatchIterator getTimeWindowBatchDataIterator(long timeWindow, DurationUnit unit);
+  DataPointBatchIterator getSizeLimitedDataPointBatchIterator(final int batchSize,
+      final long displayWindowBegin) throws QueryProcessException;
+
+  DataPointBatchIterator getTimeWindowDataPointBatchIterator(final long timeInterval,
+      final long slidingStep) throws QueryProcessException;
+
+  DataPointBatchIterator getTimeWindowDataPointBatchIterator(final long displayWindowBegin,
+      final long displayWindowEnd, final long timeInterval, final long slidingStep)
+      throws QueryProcessException;
 
   int size();
 
-  long getTime(int index);
+  long getTime(int index) throws IOException;
 
-  int getInt(int index);
+  int getInt(int index) throws IOException;
 
-  long getLong(int index);
+  long getLong(int index) throws IOException;
 
-  boolean getBoolean(int index);
+  boolean getBoolean(int index) throws IOException;
 
-  float getFloat(int index);
+  float getFloat(int index) throws IOException;
 
-  double getDouble(int index);
+  double getDouble(int index) throws IOException;
+
+  Binary getBinary(int index) throws IOException;
+
+  String getString(int index) throws IOException;
 }

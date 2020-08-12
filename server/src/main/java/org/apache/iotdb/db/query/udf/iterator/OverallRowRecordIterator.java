@@ -19,20 +19,30 @@
 
 package org.apache.iotdb.db.query.udf.iterator;
 
-import org.apache.iotdb.db.qp.constant.DatetimeUtils.DurationUnit;
+import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public interface OverallRowRecordIterator extends Iterator {
 
   RowRecordIterator getRowRecordIterator();
 
-  RowRecordBatchIterator getSizeLimitedBatchDataIterator(int batchSize);
+  RowRecordBatchIterator getSizeLimitedBatchDataIterator(final int batchSize)
+      throws QueryProcessException;
 
-  RowRecordBatchIterator getTimeWindowBatchDataIterator(long timeWindow, DurationUnit unit);
+  RowRecordBatchIterator getSizeLimitedBatchDataIterator(final int batchSize,
+      final long displayWindowBegin) throws QueryProcessException;
+
+  RowRecordBatchIterator getTimeWindowBatchDataIterator(final long timeInterval,
+      final long slidingStep) throws QueryProcessException;
+
+  RowRecordBatchIterator getTimeWindowBatchDataIterator(final long displayWindowBegin,
+      final long displayWindowEnd, final long timeInterval, final long slidingStep)
+      throws QueryProcessException;
 
   int size();
 
-  long getTime(int index);
+  long getTime(int index) throws IOException;
 
-  RowRecord getRowRecord(int index);
+  RowRecord getRowRecord(int index) throws IOException;
 }

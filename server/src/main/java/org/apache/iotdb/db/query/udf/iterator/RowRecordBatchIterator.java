@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.query.udf.iterator;
 
+import java.io.IOException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public interface RowRecordBatchIterator extends Iterator {
 
   boolean hasNextBatch();
 
-  void next();
+  void next() throws IOException;
 
   int currentBatchIndex();
 
@@ -33,7 +34,7 @@ public interface RowRecordBatchIterator extends Iterator {
 
   int currentBatchSize();
 
-  long getTimeInCurrentBatch(int index);
+  long getTimeInCurrentBatch(int index) throws IOException;
 
-  RowRecord getRowRecordInCurrentBatch(int index);
+  RowRecord getRowRecordInCurrentBatch(int index) throws IOException;
 }
