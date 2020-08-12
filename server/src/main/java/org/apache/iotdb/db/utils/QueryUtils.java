@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
@@ -136,12 +137,12 @@ public class QueryUtils {
   }
 
   public static QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList,
-      ShowTimeSeriesPlan showTimeSeriesPlan) {
+      ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context) {
     List<Path> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     constructPathAndDataTypes(paths, dataTypes, timeseriesList);
     ShowTimeseriesDataSet showTimeseriesDataSet = new ShowTimeseriesDataSet(paths, dataTypes,
-        showTimeSeriesPlan);
+        showTimeSeriesPlan, context);
 
     showTimeseriesDataSet.hasLimit = showTimeSeriesPlan.hasLimit();
 

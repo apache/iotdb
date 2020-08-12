@@ -548,7 +548,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    */
   private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
       long statementId, PhysicalPlan plan, int fetchSize, String username) throws IOException {
-    auditLogger.info("Session {} execute Query: {}", currSessionId.get(), statement);
+    auditLogger.debug("Session {} execute Query: {}", currSessionId.get(), statement);
     long startTime = System.currentTimeMillis();
     long queryId = -1;
     try {
@@ -633,6 +633,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return resp;
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      if (e instanceof NullPointerException) {
+        e.printStackTrace();
+      }
       if (queryId != -1) {
         try {
           releaseQueryResource(queryId);

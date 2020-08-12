@@ -67,7 +67,7 @@ Unlike the original data query, the alignment by device query does not concatena
 
 Therefore, the work done at this stage by device alignment only includes optimization of filter conditions in WHERE statements.
 
-The optimization of the filtering conditions mainly includes three parts: removing the negation, transforming the disjunction paradigm, and merging the same path filtering conditions.  The corresponding optimizers are: RemoveNotOptimizer, DnfFilterOptimizer, MergeSingleFilterOptimizer.  This part of the logic can refer to:[Planner](/SystemDesign/QueryEngine/Planner.html).
+The optimization of the filtering conditions mainly includes three parts: removing the negation, transforming the disjunction paradigm, and merging the same path filtering conditions.  The corresponding optimizers are: RemoveNotOptimizer, DnfFilterOptimizer, MergeSingleFilterOptimizer.  This part of the logic can refer to:[Planner](../QueryEngine/Planner.md).
 
 ### Physical plan generation
 
@@ -255,7 +255,7 @@ The specific implementation logic is as follows:
 1. First determine whether the current result set is initialized and there is a next result. If it is, it returns true directly, that is, you can call the `next()` method to get the next `RowRecord`; otherwise, the result set is not initialized and proceeds to step 2.
 2. Iterate `deviceIterator` to get the devices needed for this execution, and then find the device node from MManger by the device path to get all sensor nodes under it.
 3. Compare all measurements in the query and the sensor nodes under the current device to get the `executeColumns` which need to be queried. Then concatenate the current device name and measurements to calculate the query path, data type, and filter conditions of the current device. The corresponding fields are `executePaths`,` tsDataTypes`, and `expression`. If it is an aggregate query, you need to calculate `executeAggregations`.
-4. Determine whether the current subquery type is GroupByQuery, AggregationQuery, FillQuery or RawDataQuery. Perform the corresponding query and return the result set. The implementation logic [Raw data query](../DataQuery/RawDataQuery.html)，[Aggregate query](../DataQuery/AggregationQuery.html)，[Downsampling query](../DataQuery/GroupByQuery.html) can be referenced.
+4. Determine whether the current subquery type is GroupByQuery, AggregationQuery, FillQuery or RawDataQuery. Perform the corresponding query and return the result set. The implementation logic [Raw data query](../DataQuery/RawDataQuery.md)，[Aggregate query](../DataQuery/AggregationQuery.md)，[Downsampling query](../DataQuery/GroupByQuery.md) can be referenced.
 
 After initializing the result set through the `hasNextWithoutConstraint ()` method and ensuring that there is a next result, you can call `QueryDataSet.next ()` method to get the next `RowRecord`.
 

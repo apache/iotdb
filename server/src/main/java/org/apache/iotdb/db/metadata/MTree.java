@@ -66,7 +66,6 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -644,16 +643,13 @@ public class MTree implements Serializable {
    *
    * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
    */
-  List<String[]> getAllMeasurementSchemaByHeatOrder(ShowTimeSeriesPlan plan)
-      throws MetadataException {
+  List<String[]> getAllMeasurementSchemaByHeatOrder(ShowTimeSeriesPlan plan,
+      QueryContext queryContext) throws MetadataException {
     String[] nodes = MetaUtils.getNodeNames(plan.getPath().getFullPath());
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(plan.getPath().getFullPath());
     }
     List<String[]> allMatchedNodes = new ArrayList<>();
-
-    QueryContext queryContext = new QueryContext(
-        QueryResourceManager.getInstance().assignQueryId(true));
 
     findPath(root, nodes, 1, allMatchedNodes, false, true, queryContext);
 
@@ -1020,7 +1016,9 @@ public class MTree implements Serializable {
       jsonObject.put("DataType", leafMNode.getSchema().getType());
       jsonObject.put("Encoding", leafMNode.getSchema().getEncodingType());
       jsonObject.put("Compressor", leafMNode.getSchema().getCompressor());
-      jsonObject.put("args", leafMNode.getSchema().getProps().toString());
+      if (leafMNode.getSchema().getProps() != null) {
+        jsonObject.put("args", leafMNode.getSchema().getProps().toString());
+      }
       jsonObject.put("StorageGroup", storageGroupName);
     }
     return jsonObject;

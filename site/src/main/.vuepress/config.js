@@ -537,7 +537,8 @@ var config = {
 							['StorageEngine/FlushManager','FlushManager'],
 							['StorageEngine/MergeManager','MergeManager'],
 							['StorageEngine/DataPartition','DataPartition'],
-							['StorageEngine/DataManipulation','DataManipulation']
+							['StorageEngine/DataManipulation','DataManipulation'],
+							['StorageEngine/Recover','Recover']
 						]
 					},
 					{
@@ -1052,7 +1053,8 @@ var config = {
 							['StorageEngine/FlushManager','FlushManager'],
 							['StorageEngine/MergeManager','文件合并机制'],
 							['StorageEngine/DataPartition','数据分区'],
-							['StorageEngine/DataManipulation','数据增删改']
+							['StorageEngine/DataManipulation','数据增删改'],
+							['StorageEngine/Recover','重启恢复'],
 						]
 					},
 					{

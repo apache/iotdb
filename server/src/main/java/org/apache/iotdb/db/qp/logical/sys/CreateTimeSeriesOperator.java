@@ -33,9 +33,9 @@ public class CreateTimeSeriesOperator extends RootOperator {
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
-  private Map<String, String> props;
-  private Map<String, String> attributes;
-  private Map<String, String> tags;
+  private Map<String, String> props = null;
+  private Map<String, String> attributes = null;
+  private Map<String, String> tags = null;
   
   public CreateTimeSeriesOperator(int tokenIntType) {
     super(tokenIntType);
