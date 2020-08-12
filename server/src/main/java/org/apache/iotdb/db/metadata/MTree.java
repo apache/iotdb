@@ -343,16 +343,6 @@ public class MTree implements Serializable {
     return measurementMNode.getSchema();
   }
 
-  List<String> getDetachedPathByMNode(MNode mNode) {
-    List<String> detachedPath = new ArrayList<>();
-    detachedPath.add(mNode.getName());
-    while (mNode.getParent() != null) {
-      mNode = mNode.getParent();
-      detachedPath.add(0, mNode.getName());
-    }
-    return detachedPath;
-  }
-
 
   /**
    * Get node by path with storage group check If storage group is not set,
@@ -916,7 +906,7 @@ public class MTree implements Serializable {
       }
       String nodePath = mNode.getParent().getFullPath() + TsFileConstant.PATH_SEPARATOR + nodeName;
       detachedPath[detachedPath.length - 1] = nodeName;
-      List<String> fullPath = getDetachedPathByMNode(mNode);
+      List<String> fullPath = mNode.getDetachedPath();
       String[] tsRow = new String[8];
       tsRow[0] = nodePath;
       tsRow[1] = ((MeasurementMNode) mNode).getAlias();
@@ -1055,13 +1045,7 @@ public class MTree implements Serializable {
       return mNode.getCachedLast().getTimestamp();
     } else {
       try {
-        MNode temp = mNode;
-        List<String> detachedPath = new ArrayList<>();
-        detachedPath.add(temp.getName());
-        while (temp.getParent() != null) {
-          temp = temp.getParent();
-          detachedPath.add(0, temp.getName());
-        }
+        List<String> detachedPath = mNode.getDetachedPath();
         last = calculateLastPairForOneSeriesLocally(new Path(detachedPath),
             mNode.getSchema().getType(), queryContext, Collections.emptySet());
         return last.getTimestamp();

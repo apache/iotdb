@@ -23,7 +23,9 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.Lock;
@@ -180,6 +182,17 @@ public class MNode implements Serializable {
       builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.name);
     }
     return builder.toString();
+  }
+
+  public List<String> getDetachedPath() {
+    List<String> detachedPath = new ArrayList<>();
+    MNode temp = this;
+    detachedPath.add(temp.getName());
+    while (temp.getParent() != null) {
+      temp = temp.getParent();
+      detachedPath.add(0, temp.getName());
+    }
+    return detachedPath;
   }
 
   @Override

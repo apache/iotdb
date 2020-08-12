@@ -710,20 +710,6 @@ public class MManager {
     }
   }
 
-  /**
-   * Get detached path by give MNode
-   * @param mNode mNode
-   * @return node name
-   */
-  public List<String> getDetachedPathByMnode(MNode mNode) {
-    lock.readLock().lock();
-    try {
-      return mtree.getDetachedPathByMNode(mNode);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
 
   public MeasurementSchema[] getSchemas(List<String> detachedDevice, String[] measurements)
       throws MetadataException {
@@ -1005,7 +991,7 @@ public class MManager {
       int limit = plan.getLimit();
       int offset = plan.getOffset();
       for (MeasurementMNode leaf : allMatchedMNodes) {
-        List<String> path = mtree.getDetachedPathByMNode(leaf);
+        List<String> path = leaf.getDetachedPath();
         if (match(path, prefixNodes)) {
           if (limit != 0 || offset != 0) {
             curOffset++;

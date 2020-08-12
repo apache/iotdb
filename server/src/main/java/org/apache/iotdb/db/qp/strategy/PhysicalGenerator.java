@@ -504,7 +504,7 @@ public class PhysicalGenerator {
                 measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
               }
               // update paths
-              paths.add(new Path(IoTDB.metaManager.getDetachedPathByMnode(measurementMNodes.get(pathIdx))));
+              paths.add(new Path(measurementMNodes.get(pathIdx).getDetachedPath()));
             }
 
           } catch (MetadataException e) {
