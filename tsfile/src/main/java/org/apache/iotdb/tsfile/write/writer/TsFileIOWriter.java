@@ -221,6 +221,7 @@ public class TsFileIOWriter {
    * @throws IOException if I/O error occurs
    */
   public void endFile() throws IOException {
+    System.out.println("close writer:" + file.getPath());
     long metaOffset = out.getPosition();
 
     // serialize the SEPARATOR of MetaData
@@ -349,6 +350,7 @@ public class TsFileIOWriter {
    * Testing.
    */
   public void close() throws IOException {
+    System.out.println("close writer:" + file.getPath());
     canWrite = false;
     out.close();
   }
