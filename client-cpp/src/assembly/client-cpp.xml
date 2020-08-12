@@ -25,13 +25,6 @@
     <includeBaseDirectory>false</includeBaseDirectory>
     <fileSets>
         <fileSet>
-            <directory>${project.build.directory}/build/src</directory>
-            <includes>
-                <include>**/*.h</include>
-            </includes>
-            <outputDirectory>include</outputDirectory>
-        </fileSet>
-        <fileSet>
             <directory>${project.build.directory}/build/generated-sources-cpp</directory>
             <includes>
                 <include>**/*.h</include>
