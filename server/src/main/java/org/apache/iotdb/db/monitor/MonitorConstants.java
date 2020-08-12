@@ -32,9 +32,9 @@ public class MonitorConstants {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final String DATA_TYPE_INT64 = "INT64";
-  static final List<String> STAT_STORAGE_GROUP_PREFIX_LIST = Arrays.asList("root", "stats"); //"root.stats"
   public static final String STAT_STORAGE_GROUP_PREFIX = "root.stats";
   public static final String STATS = "stats";
+  static final List<String> STAT_STORAGE_GROUP_PREFIX_LIST = Arrays.asList("root", STATS); //"root.stats"
   static final String FILENODE_PROCESSOR_CONST = "FILENODE_PROCESSOR_CONST";
   private static final String FILENODE_MANAGER_CONST = "FILENODE_MANAGER_CONST";
   static final String FILE_SIZE_CONST = "FILE_SIZE_CONST";
