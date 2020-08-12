@@ -48,7 +48,7 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
-import org.apache.iotdb.db.engine.flush.pool.HotCompactionMergeTaskPoolManager;
+import org.apache.iotdb.db.engine.tsfilemanagement.HotCompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
@@ -1182,8 +1182,9 @@ public class StorageGroupProcessor {
         while (hotCompactionMergeWorking) {
           Thread.sleep(100);
           if (System.currentTimeMillis() - startTime > 60_000) {
-            logger.warn("{} has spent {}s to wait for closing hot compaction.", this.storageGroupName,
-                (System.currentTimeMillis() - startTime) / 1000);
+            logger
+                .warn("{} has spent {}s to wait for closing hot compaction.", this.storageGroupName,
+                    (System.currentTimeMillis() - startTime) / 1000);
           }
         }
       } catch (InterruptedException e) {
@@ -1565,7 +1566,7 @@ public class StorageGroupProcessor {
       // fork and filter current tsfile, then commit then to hot compaction merge
       tsFileManagement.forkCurrentFileList();
       HotCompactionMergeTaskPoolManager.getInstance()
-          .submit(tsFileManagement.new HotCompactionMergeTask(hotCompactionMergeLock,
+          .submitTask(tsFileManagement.new HotCompactionMergeTask(hotCompactionMergeLock,
               this::closeHotCompactionMergeCallBack));
     } else {
       logger.info("{} last hot compaction merge task is working, skip current merge",
