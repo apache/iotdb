@@ -52,7 +52,7 @@ public class NormalTsFileManagement extends TsFileManagement {
   }
 
   // ({systemTime}-{versionNum}-{mergeNum}.tsfile)
-  private int compareFileName(File o1, File o2) {
+  public static int compareFileName(File o1, File o2) {
     String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "")
         .split(FILE_NAME_SEPARATOR);
     String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "")

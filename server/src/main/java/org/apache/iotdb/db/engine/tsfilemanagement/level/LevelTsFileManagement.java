@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.tsfilemanagement.level;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.tsfilemanagement.normal.NormalTsFileManagement.compareFileName;
 import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.HOT_COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.TARGET_NAME;
@@ -29,6 +30,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -36,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -58,7 +61,7 @@ public class LevelTsFileManagement extends TsFileManagement {
 
   private static final Logger logger = LoggerFactory.getLogger(LevelTsFileManagement.class);
   private int maxLevelNum = IoTDBDescriptor.getInstance().getConfig().getMaxLevelNum();
-  private final List<List<TsFileResource>> sequenceTsFileResources = new CopyOnWriteArrayList<>();
+  private final List<TreeSet<TsFileResource>> sequenceTsFileResources = new CopyOnWriteArrayList<>();
   private final List<List<TsFileResource>> unSequenceTsFileResources = new CopyOnWriteArrayList<>();
   private final List<List<TsFileResource>> forkedSequenceTsFileResources = new ArrayList<>();
   private final List<List<TsFileResource>> forkedUnSequenceTsFileResources = new ArrayList<>();
@@ -68,7 +71,7 @@ public class LevelTsFileManagement extends TsFileManagement {
     clear();
   }
 
-  private void deleteLevelFiles(List<TsFileResource> vmMergeTsFiles) {
+  private void deleteLevelFiles(Collection<TsFileResource> vmMergeTsFiles) {
     logger.debug("{} [hot compaction] merge starts to delete file", storageGroupName);
     for (TsFileResource vmMergeTsFile : vmMergeTsFiles) {
       deleteLevelFile(vmMergeTsFile);
@@ -121,7 +124,7 @@ public class LevelTsFileManagement extends TsFileManagement {
   @Override
   public List<TsFileResource> getMergeTsFileList(boolean sequence) {
     if (sequence) {
-      return sequenceTsFileResources.get(maxLevelNum - 1);
+      return new ArrayList<>(sequenceTsFileResources.get(maxLevelNum - 1));
     } else {
       return unSequenceTsFileResources.get(maxLevelNum - 1);
     }
@@ -150,7 +153,7 @@ public class LevelTsFileManagement extends TsFileManagement {
   @Override
   public void remove(TsFileResource tsFileResource, boolean sequence) {
     if (sequence) {
-      for (List<TsFileResource> sequenceTsFileResource : sequenceTsFileResources) {
+      for (TreeSet<TsFileResource> sequenceTsFileResource : sequenceTsFileResources) {
         sequenceTsFileResource.remove(tsFileResource);
       }
     } else {
@@ -163,7 +166,7 @@ public class LevelTsFileManagement extends TsFileManagement {
   @Override
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
     if (sequence) {
-      for (List<TsFileResource> sequenceTsFileResource : sequenceTsFileResources) {
+      for (TreeSet<TsFileResource> sequenceTsFileResource : sequenceTsFileResources) {
         sequenceTsFileResource.removeAll(tsFileResourceList);
       }
     } else {
@@ -184,9 +187,9 @@ public class LevelTsFileManagement extends TsFileManagement {
       }
     } else {
       if (sequence) {
-        sequenceTsFileResources.get(maxLevelNum).add(tsFileResource);
+        sequenceTsFileResources.get(maxLevelNum - 1).add(tsFileResource);
       } else {
-        unSequenceTsFileResources.get(maxLevelNum).add(tsFileResource);
+        unSequenceTsFileResources.get(maxLevelNum - 1).add(tsFileResource);
       }
     }
   }
@@ -219,7 +222,7 @@ public class LevelTsFileManagement extends TsFileManagement {
   @Override
   public boolean contains(TsFileResource tsFileResource, boolean sequence) {
     if (sequence) {
-      for (List<TsFileResource> sequenceTsFileResource : sequenceTsFileResources) {
+      for (TreeSet<TsFileResource> sequenceTsFileResource : sequenceTsFileResources) {
         if (sequenceTsFileResource.contains(tsFileResource)) {
           return true;
         }
@@ -237,11 +240,18 @@ public class LevelTsFileManagement extends TsFileManagement {
   @Override
   public void clear() {
     sequenceTsFileResources.clear();
-    for (int i = 0; i < maxLevelNum + 1; i++) {
-      sequenceTsFileResources.add(new CopyOnWriteArrayList<>());
+    for (int i = 0; i < maxLevelNum; i++) {
+      sequenceTsFileResources.add(new TreeSet<>(
+          (o1, o2) -> {
+            int rangeCompare = Long
+                .compare(Long.parseLong(o1.getTsFile().getParentFile().getName()),
+                    Long.parseLong(o2.getTsFile().getParentFile().getName()));
+            return rangeCompare == 0 ? compareFileName(o1.getTsFile(), o2.getTsFile())
+                : rangeCompare;
+          }));
     }
     unSequenceTsFileResources.clear();
-    for (int i = 0; i < maxLevelNum + 1; i++) {
+    for (int i = 0; i < maxLevelNum; i++) {
       unSequenceTsFileResources.add(new CopyOnWriteArrayList<>());
     }
   }
@@ -249,7 +259,7 @@ public class LevelTsFileManagement extends TsFileManagement {
   @Override
   public boolean isEmpty(boolean sequence) {
     if (sequence) {
-      for (List<TsFileResource> sequenceTsFileResource : sequenceTsFileResources) {
+      for (TreeSet<TsFileResource> sequenceTsFileResource : sequenceTsFileResources) {
         if (!sequenceTsFileResource.isEmpty()) {
           return false;
         }
@@ -268,11 +278,11 @@ public class LevelTsFileManagement extends TsFileManagement {
   public int size(boolean sequence) {
     int result = 0;
     if (sequence) {
-      for (int i = sequenceTsFileResources.size() - 1; i >= 0; i--) {
+      for (int i = maxLevelNum - 1; i >= 0; i--) {
         result += sequenceTsFileResources.size();
       }
     } else {
-      for (int i = unSequenceTsFileResources.size() - 1; i >= 0; i--) {
+      for (int i = maxLevelNum - 1; i >= 0; i--) {
         result += unSequenceTsFileResources.size();
       }
     }
@@ -309,7 +319,7 @@ public class LevelTsFileManagement extends TsFileManagement {
                 .merge(new TsFileResource(targetFile), getTsFileList(isSeq), storageGroupName,
                     new HotCompactionLogger(storageGroupDir, storageGroupName), deviceSet, isSeq);
             if (isSeq) {
-              for (List<TsFileResource> currMergeFile : sequenceTsFileResources) {
+              for (TreeSet<TsFileResource> currMergeFile : sequenceTsFileResources) {
                 deleteLevelFiles(currMergeFile);
               }
             } else {
@@ -333,7 +343,7 @@ public class LevelTsFileManagement extends TsFileManagement {
               writer.close();
               if (isSeq) {
                 HotCompactionUtils
-                    .merge(targetResource, sequenceTsFileResources.get(level),
+                    .merge(targetResource, new ArrayList<>(sequenceTsFileResources.get(level)),
                         storageGroupName,
                         new HotCompactionLogger(storageGroupDir, storageGroupName), deviceSet,
                         true);
@@ -367,29 +377,41 @@ public class LevelTsFileManagement extends TsFileManagement {
 
   @Override
   public void forkCurrentFileList() {
-    forkTsFileList(forkedSequenceTsFileResources, sequenceTsFileResources);
-    forkTsFileList(forkedUnSequenceTsFileResources, unSequenceTsFileResources);
+    forkSeqTsFileList(forkedSequenceTsFileResources, sequenceTsFileResources);
+    forkUnSeqTsFileList(forkedUnSequenceTsFileResources, unSequenceTsFileResources);
   }
 
-  private void forkTsFileList(List<List<TsFileResource>> forkedTsFileResources,
+  private void forkSeqTsFileList(List<List<TsFileResource>> forkedTsFileResources,
+      List<TreeSet<TsFileResource>> rawTsFileResources) {
+    forkedTsFileResources.clear();
+    for (int i = 0; i < maxLevelNum - 1; i++) {
+      forkTsFileList(i, forkedTsFileResources, rawTsFileResources.get(i));
+    }
+  }
+
+  private void forkUnSeqTsFileList(List<List<TsFileResource>> forkedTsFileResources,
       List<List<TsFileResource>> rawTsFileResources) {
     forkedTsFileResources.clear();
     for (int i = 0; i < maxLevelNum - 1; i++) {
-      List<TsFileResource> tsFileResources = rawTsFileResources.get(i);
-      // first level may have unclosed files, filter these files
-      if (i == 0) {
-        List<TsFileResource> forkedFirstLevelTsFileResources = new ArrayList<>();
-        for (TsFileResource tsFileResource : tsFileResources) {
-          if (tsFileResource.isClosed()) {
-            forkedFirstLevelTsFileResources.add(tsFileResource);
-          } else {
-            break;
-          }
+      forkTsFileList(i, forkedTsFileResources, rawTsFileResources.get(i));
+    }
+  }
+
+  private void forkTsFileList(int level, List<List<TsFileResource>> forkedTsFileResources,
+      Collection<TsFileResource> tsFileResources) {
+    // first level may have unclosed files, filter these files
+    if (level == 0) {
+      List<TsFileResource> forkedFirstLevelTsFileResources = new ArrayList<>();
+      for (TsFileResource tsFileResource : tsFileResources) {
+        if (tsFileResource.isClosed()) {
+          forkedFirstLevelTsFileResources.add(tsFileResource);
+        } else {
+          break;
         }
-        forkedTsFileResources.add(forkedFirstLevelTsFileResources);
-      } else {
-        forkedTsFileResources.add(new ArrayList<>(tsFileResources));
       }
+      forkedTsFileResources.add(forkedFirstLevelTsFileResources);
+    } else {
+      forkedTsFileResources.add(new ArrayList<>(tsFileResources));
     }
   }
 

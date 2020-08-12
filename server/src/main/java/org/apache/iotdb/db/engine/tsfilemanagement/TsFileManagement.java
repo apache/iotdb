@@ -36,7 +36,7 @@ public abstract class TsFileManagement {
   }
 
   /**
-   * get the TsFile list in maxLevelNum
+   * get the TsFile list for other merges
    */
   public abstract List<TsFileResource> getMergeTsFileList(boolean sequence);
 
