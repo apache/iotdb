@@ -84,7 +84,14 @@ public class Path implements Serializable, Comparable<Path> {
    * @param pathSc complete path string
    */
   private void init(String pathSc) {
-    this.nodes = splitPathToDetachedPath(pathSc);
+    if(pathSc.equals("")) {
+      this.nodes = new ArrayList<>();
+      this.device = "";
+      this.fullPath = "";
+      this.measurement = "";
+    } else {
+      this.nodes = splitPathToDetachedPath(pathSc);
+    }
   }
 
   public static List<String> splitPathToDetachedPath(String path) {
@@ -113,34 +120,6 @@ public class Path implements Serializable, Comparable<Path> {
     return nodes;
   }
 
-  public static Path mergePath(Path prefix, Path suffix) {
-    if (suffix.fullPath.equals("")) {
-      return prefix;
-    } else if (prefix.fullPath.equals("")) {
-      return suffix;
-    }
-    StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
-    sc.addTail(prefix);
-    sc.addTail(suffix);
-    return new Path(sc);
-  }
-
-  /**
-   * add {@code prefix} as the prefix of {@code src}.
-   *
-   * @param src    to be added.
-   * @param prefix the newly prefix
-   * @return if this path start with prefix
-   */
-  public static Path addPrefixPath(Path src, String prefix) {
-    if (prefix.equals("")) {
-      return src;
-    }
-    StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
-    sc.addTail(prefix);
-    sc.addTail(src);
-    return new Path(sc);
-  }
 
   public static Path concatPath(Path src, Path tail) {
     if (tail.nodes.isEmpty()) {
@@ -149,17 +128,6 @@ public class Path implements Serializable, Comparable<Path> {
     List<String> srcNodes = new ArrayList<>(src.nodes);
     srcNodes.addAll(tail.nodes);
     return new Path(srcNodes);
-  }
-
-  /**
-   * add {@code prefix} as the prefix of {@code src}.
-   *
-   * @param src    to be added.
-   * @param prefix the newly prefix
-   * @return <code>Path</code>
-   */
-  public static Path addPrefixPath(Path src, Path prefix) {
-    return addPrefixPath(src, prefix.fullPath);
   }
 
   public void setDevice(String device) {
@@ -187,6 +155,9 @@ public class Path implements Serializable, Comparable<Path> {
   public String getDevice() {
     if(device != null) {
       return device;
+    } else if(nodes.size() <= 1) {
+      this.device = "";
+      return "";
     } else {
       StringBuilder s = new StringBuilder(nodes.get(0));
       for(int i = 1; i < nodes.size() - 1; i++) {
@@ -278,28 +249,6 @@ public class Path implements Serializable, Comparable<Path> {
       return new Path(nodes);
     }
     return new Path(fullPath);
-  }
-
-  /**
-   * if prefix is null, return false, else judge whether this.fullPath starts with
-   * prefix
-   *
-   * @param prefix the prefix string to be tested.
-   * @return True if fullPath starts with prefix
-   */
-  public boolean startWith(String prefix) {
-    return prefix != null && fullPath.startsWith(prefix);
-  }
-
-  /**
-   * if prefix is null, return false, else judge whether this.fullPath starts with
-   * prefix.fullPath
-   *
-   * @param prefix the prefix path to be tested.
-   * @return True if fullPath starts with prefix.fullPath
-   */
-  public boolean startWith(Path prefix) {
-    return startWith(prefix.fullPath);
   }
 
 }
