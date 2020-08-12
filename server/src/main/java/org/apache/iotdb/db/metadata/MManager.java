@@ -46,7 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeseriesCounter;
+import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -588,7 +588,7 @@ public class MManager {
     try {
       mtree.setStorageGroup(storageGroup);
       if (config.isEnableActiveTimeseriesCounter()) {
-        ActiveTimeseriesCounter.getInstance().init(storageGroup);
+        ActiveTimeSeriesCounter.getInstance().init(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, 0);
       }
       if (!isRecovering) {
@@ -624,7 +624,7 @@ public class MManager {
 
         if (config.isEnableActiveTimeseriesCounter()) {
           int size = seriesNumberInStorageGroups.get(storageGroup);
-          ActiveTimeseriesCounter.getInstance().delete(storageGroup);
+          ActiveTimeSeriesCounter.getInstance().delete(storageGroup);
           seriesNumberInStorageGroups.remove(storageGroup);
           if (size == maxSeriesNumberAmongStorageGroup) {
             maxSeriesNumberAmongStorageGroup =

@@ -26,7 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeseriesCounter;
+import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -182,7 +182,7 @@ public class RecoverResourceFromReaderTest {
 
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
         resource, false, false, Collections.singletonList(new ArrayList<>()));
-    ActiveTimeseriesCounter.getInstance()
+    ActiveTimeSeriesCounter.getInstance()
         .init(resource.getTsFile().getParentFile().getParentFile().getName());
     performer.recover().left.close();
     assertEquals(1, resource.getStartTime("root.sg.device99"));

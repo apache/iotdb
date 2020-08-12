@@ -26,9 +26,9 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ActiveTimeseriesCounter implements IActiveTimeseriesCounter {
+public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveTimeseriesCounter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveTimeSeriesCounter.class);
   /**
    * Map[StorageGroup, HyperLogLogCounter]
    */
@@ -141,10 +141,10 @@ public class ActiveTimeseriesCounter implements IActiveTimeseriesCounter {
   }
 
   private static class ActiveTimeSeriesCounterHolder {
-    private static final ActiveTimeseriesCounter INSTANCE = new ActiveTimeseriesCounter();
+    private static final ActiveTimeSeriesCounter INSTANCE = new ActiveTimeSeriesCounter();
   }
 
-  public static ActiveTimeseriesCounter getInstance() {
+  public static ActiveTimeSeriesCounter getInstance() {
     return ActiveTimeSeriesCounterHolder.INSTANCE;
   }
 
