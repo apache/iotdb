@@ -84,6 +84,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
@@ -670,7 +671,7 @@ public class StorageGroupProcessor {
           workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
           tsFileResource.setProcessor(tsFileProcessor);
         } else {
-          tsFileProcessor = new TsFileProcessor(storageGroupName,storageGroupInfo, tsFileResource,
+          tsFileProcessor = new TsFileProcessor(storageGroupName, storageGroupInfo, tsFileResource,
               vmTsFileResources, getVersionControllerByTimePartitionId(timePartitionId),
               this::closeUnsealedTsFileProcessorCallBack, this::unsequenceFlushCallback, false,
               writer, vmWriters);
@@ -689,6 +690,7 @@ public class StorageGroupProcessor {
             }
           }
         }
+        SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       }
       if (isSeq) {
         sequenceFileTreeSet.add(tsFileResource);

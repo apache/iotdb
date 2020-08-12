@@ -42,11 +42,13 @@ public class StorageGroupInfo {
     unsealedResourceMemCost = 0;
     bytesMemCost = 0;
     chunkMetadataMemCost = 0;
-    walMemCost = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
+    walMemCost = 0;
   }
 
   public void reportTsFileProcessorInfo(TsFileProcessor tsFileProcessor) {
-    reportedTsps.add(tsFileProcessor);
+    if (reportedTsps.add(tsFileProcessor)) {
+      walMemCost += IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
+    }
   }
 
   public void addUnsealedResourceMemCost(long cost) {
@@ -77,11 +79,11 @@ public class StorageGroupInfo {
     walMemCost -= cost;
   }
 
-  public boolean checkIfNeedToReportStatusToSystem(long delta) {
-    return (getStorageGroupMemCost() + delta) >= storageGroupReportThreshold;
+  public boolean checkIfNeedToReportStatusToSystem() {
+    return getSgMemCost() >= storageGroupReportThreshold;
   }
 
-  public long getStorageGroupMemCost() {
+  public long getSgMemCost() {
     return unsealedResourceMemCost + bytesMemCost + chunkMetadataMemCost + walMemCost;
   }
 

@@ -39,8 +39,8 @@ public class SystemInfo {
   private boolean rejected = false;
 
   private TreeMap<StorageGroupInfo, Long> reportedSgMemCostMap = new TreeMap<>(
-      (o1, o2) -> (int) (o2.getStorageGroupMemCost() - o1
-          .getStorageGroupMemCost()));
+      (o1, o2) -> (int) (o2.getSgMemCost() - o1
+          .getSgMemCost()));
 
   private static final double FLUSH_PROPORTION = config.getFlushProportion();
   private static final double REJECT_PROPORTION = config.getRejectProportion();
@@ -82,14 +82,12 @@ public class SystemInfo {
    * @param storageGroupInfo storage group
    * @param delta mem cost
    */
-  public synchronized void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo, 
-      long delta) {
-    long realDelta = delta + storageGroupInfo.getStorageGroupMemCost() - 
+  public synchronized void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo) {
+    long delta = storageGroupInfo.getSgMemCost() - 
         reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L);
-    this.totalSgInfoMemCost += realDelta;
-    reportedSgMemCostMap.put(storageGroupInfo,
-        reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L) + realDelta);
-    long addReportThreshold = (realDelta / config.getStorageGroupMemBlockSize() + 1)
+    this.totalSgInfoMemCost += delta;
+    reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
+    long addReportThreshold = (delta / config.getStorageGroupMemBlockSize() + 1)
         * config.getStorageGroupMemBlockSize();
     storageGroupInfo.addStorageGroupReportThreshold(addReportThreshold);
     if (this.arrayPoolMemCost + this.totalSgInfoMemCost
@@ -136,12 +134,12 @@ public class SystemInfo {
   public synchronized void resetStorageGroupInfoStatus(StorageGroupInfo storageGroupInfo) {
     if (reportedSgMemCostMap.containsKey(storageGroupInfo)) {
       this.totalSgInfoMemCost -= reportedSgMemCostMap.get(storageGroupInfo)
-          - storageGroupInfo.getStorageGroupMemCost();
+          - storageGroupInfo.getSgMemCost();
       if (this.arrayPoolMemCost + this.totalSgInfoMemCost 
           < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
         rejected = false;
       }
-      reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getStorageGroupMemCost());
+      reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
     }
   }
 
@@ -167,12 +165,19 @@ public class SystemInfo {
     return rejected;
   }
 
-  public long getTotalSgInfoMemCost() {
+  public long getTotalSgMemCost() {
     return totalSgInfoMemCost;
   }
 
   public long getArrayPoolMemCost() {
     return arrayPoolMemCost;
+  }
+
+  public void close() {
+    reportedSgMemCostMap.clear();
+    totalSgInfoMemCost = 0;
+    arrayPoolMemCost = 0;
+    rejected = false;
   }
 
   public static SystemInfo getInstance() {

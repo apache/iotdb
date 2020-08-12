@@ -52,19 +52,13 @@ public class TsFileProcessorInfo {
     storageGroupInfo.addBytesMemCost(cost);
   }
 
-  public void emptyUnsealedResourceMemCost() {
+  public void clear() {
     storageGroupInfo.resetUnsealedResourceMemCost(unsealedResourceMemCost);
-    unsealedResourceMemCost = 0;
-  }
-
-  public void emptyChunkMetadataMemCost() {
     storageGroupInfo.resetChunkMetadataMemCost(chunkMetadataMemCost);
-    chunkMetadataMemCost = 0;
-  }
-
-  public void emptyWalMemCost() {
     storageGroupInfo.resetWalMemCost(walMemCost);
     walMemCost = 0;
+    unsealedResourceMemCost = 0;
+    chunkMetadataMemCost = 0;
   }
 
   public void resetBytesMemCost(long cost) {

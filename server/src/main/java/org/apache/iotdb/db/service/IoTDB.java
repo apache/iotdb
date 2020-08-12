@@ -34,6 +34,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -171,6 +172,7 @@ public class IoTDB implements IoTDBMBean {
     TracingManager.getInstance().close();
     registerManager.shutdownAll();
     PrimitiveArrayManager.close();
+    SystemInfo.getInstance().close();
     JMXService.deregisterMBean(mbeanName);
     logger.info("IoTDB is deactivated.");
   }

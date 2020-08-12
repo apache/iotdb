@@ -43,6 +43,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -141,6 +142,9 @@ public class EnvironmentUtils {
 
     // close array manager
     PrimitiveArrayManager.close();
+
+    // clear system info
+    SystemInfo.getInstance().close();
 
     // delete all directory
     cleanAllDir();

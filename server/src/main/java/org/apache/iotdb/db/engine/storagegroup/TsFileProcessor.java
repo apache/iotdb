@@ -155,6 +155,7 @@ public class TsFileProcessor {
     this.storageGroupInfo.reportTsFileProcessorInfo(this);
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
+    SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.vmTsFileResources = new CopyOnWriteArrayList<>();
@@ -190,6 +191,7 @@ public class TsFileProcessor {
     this.storageGroupInfo.reportTsFileProcessorInfo(this);
     this.tsFileResource = tsFileResource;
     this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
+    SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
     this.vmTsFileResources = new CopyOnWriteArrayList<>();
     for (List<TsFileResource> subTsFileResourceList : vmTsFileResources) {
       this.vmTsFileResources.add(new CopyOnWriteArrayList<>(subTsFileResourceList));
@@ -403,9 +405,8 @@ public class TsFileProcessor {
     tsFileProcessorInfo.addBytesMemCost(bytesCost);
     tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
     tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
-    long delta = bytesCost + unsealedResourceCost + chunkMetadataCost;
-    if (storageGroupInfo.checkIfNeedToReportStatusToSystem(delta)) {
-      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo, delta);
+    if (storageGroupInfo.checkIfNeedToReportStatusToSystem()) {
+      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
     }
   }
 
@@ -1086,9 +1087,7 @@ public class TsFileProcessor {
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
     closeTsFileCallback.call(this);
-    tsFileProcessorInfo.emptyUnsealedResourceMemCost();
-    tsFileProcessorInfo.emptyChunkMetadataMemCost();
-    tsFileProcessorInfo.emptyWalMemCost();
+    tsFileProcessorInfo.clear();
     storageGroupInfo.closeTsFileProcessorAndReportToSystem(this);
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
