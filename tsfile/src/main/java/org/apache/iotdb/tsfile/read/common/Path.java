@@ -33,12 +33,11 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 public class Path implements Serializable, Comparable<Path> {
 
   private static final long serialVersionUID = 3405277066329298200L;
-  private String measurement = null;
+  private static final String illegalPathArgument = "Path parameter is null";
   private String alias = null;
   private String device = null;
-  private String fullPath;
+  private String fullPath = null;
   private List<String> nodes;
-  private static final String illegalPathArgument = "Path parameter is null";
 
   public Path() {}
 
@@ -73,7 +72,6 @@ public class Path implements Serializable, Comparable<Path> {
       throw new IllegalArgumentException(illegalPathArgument);
     }
     this.device = device;
-    this.measurement = measurement;
     this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
     this.nodes = splitPathToDetachedPath(fullPath);
   }
@@ -88,7 +86,6 @@ public class Path implements Serializable, Comparable<Path> {
       this.nodes = new ArrayList<>();
       this.device = "";
       this.fullPath = "";
-      this.measurement = "";
     } else {
       this.nodes = splitPathToDetachedPath(pathSc);
     }
@@ -152,6 +149,10 @@ public class Path implements Serializable, Comparable<Path> {
     }
   }
 
+  public List<String> getNodes() {
+    return nodes;
+  }
+
   public String getDevice() {
     if(device != null) {
       return device;
@@ -170,12 +171,7 @@ public class Path implements Serializable, Comparable<Path> {
   }
 
   public String getMeasurement() {
-    if(measurement != null) {
-      return measurement;
-    } else {
-      measurement = nodes.get(nodes.size() - 1);
-      return measurement;
-    }
+    return nodes.get(nodes.size() - 1);
   }
 
   public String getAlias() { return alias; }
