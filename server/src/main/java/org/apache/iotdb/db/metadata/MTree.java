@@ -402,16 +402,6 @@ public class MTree implements Serializable {
     throw new StorageGroupNotSetException(MetaUtils.concatDetachedPathByDot(detachedPath));
   }
 
-  StorageGroupMNode getgetStorageGroupMNodeByMNode(MNode mNode) throws StorageGroupNotSetException {
-    MNode temp = mNode;
-    while (temp.getParent() != null) {
-      temp = temp.getParent();
-      if(temp instanceof StorageGroupMNode) {
-        return (StorageGroupMNode) temp;
-      }
-    }
-    throw new StorageGroupNotSetException(mNode.getFullPath());
-  }
   /**
    * Get storage group node, the give path must be storage group path.
    */
