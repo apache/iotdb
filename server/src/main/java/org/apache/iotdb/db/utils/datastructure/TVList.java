@@ -24,6 +24,7 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
@@ -33,8 +34,12 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class TVList {
+
+  private static final Logger logger = LoggerFactory.getLogger(TVList.class);
 
   private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
 
@@ -250,15 +255,26 @@ public abstract class TVList {
 
   abstract void clearSortedValue();
 
-  protected void checkExpansion() throws WriteProcessException {
+  protected void checkExpansion() {
     if ((size % ARRAY_SIZE) == 0) {
-      long[] newArray = (long[]) PrimitiveArrayManager.getDataListByType(TSDataType.INT64);
-      if (newArray == null) {
-        throw new WriteProcessException("No available array.");
-      }
-      timestamps.add(newArray);
       expandValues();
+      timestamps.add((long[]) getDataListByType(TSDataType.INT64));
     }
+  }
+
+  protected Object getDataListByType(TSDataType dataType) {
+    Object newList = PrimitiveArrayManager.getDataListByType(dataType);
+    while (newList == null) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(100);
+        newList = PrimitiveArrayManager.getDataListByType(dataType);
+        logger.info("Still waiting... ");
+      } catch (InterruptedException e) {
+        logger.error("Interrupted...", e);
+        Thread.currentThread().interrupt();
+      }
+    }
+    return newList;
   }
 
   public boolean checkIfArrayIsEnough() {
@@ -325,6 +341,8 @@ public abstract class TVList {
         return new DoubleTVList();
       case BOOLEAN:
         return new BooleanTVList();
+      default:
+        break;
     }
     return null;
   }

@@ -158,7 +158,7 @@ public class FloatTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((float[]) PrimitiveArrayManager.getDataListByType(TSDataType.FLOAT));
+    values.add((float[]) getDataListByType(TSDataType.FLOAT));
   }
 
   @Override

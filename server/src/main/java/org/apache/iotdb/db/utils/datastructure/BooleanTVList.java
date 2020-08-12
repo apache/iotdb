@@ -158,7 +158,7 @@ public class BooleanTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((boolean[]) PrimitiveArrayManager.getDataListByType(TSDataType.BOOLEAN));
+    values.add((boolean[]) getDataListByType(TSDataType.BOOLEAN));
   }
 
   @Override

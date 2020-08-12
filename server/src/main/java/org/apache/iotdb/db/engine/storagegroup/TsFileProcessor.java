@@ -254,23 +254,11 @@ public class TsFileProcessor {
     else {
       try {
         logger.debug("Array in work MemTable isn't enough");
-        // it may throw an exception when apply OOB array but System refused
+        checkMemCostAndAddToTspInfo(insertRowPlan);
         workMemTable.insert(insertRowPlan);
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           getLogNode().write(insertRowPlan);
         }
-        // if get buffered or OOB array successfully, estimate the memory cost
-        long bytesCost = 0L;
-        long unsealedResourceCost = 0L;
-        long chunkMetadataCost = 0L;
-        checkMemCost(insertRowPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
-        long delta = bytesCost + unsealedResourceCost + chunkMetadataCost;
-        if (storageGroupInfo.checkIfNeedToReportStatusToSystem(delta)) {
-          SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo, delta);
-        }
-        tsFileProcessorInfo.addBytesMemCost(bytesCost);
-        tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
-        tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
         // update start time of this memtable
         tsFileResource.updateStartTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
         //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
@@ -345,33 +333,18 @@ public class TsFileProcessor {
     // from the array pool or get OOB array before inserting into the memtable
     else {
       try {
-        // it may throw an exception if apply OOB array but System refused
+        // if get buffered or OOB array successfully, estimate the memory cost
+        checkMemCostAndAddToTspInfo(insertTabletPlan);
+        for (int i = start; i < end; i++) {
+          results[i] = RpcUtils.SUCCESS_STATUS;
+        }
+        
         workMemTable.insertTablet(insertTabletPlan, start, end);
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           insertTabletPlan.setStart(start);
           insertTabletPlan.setEnd(end);
           getLogNode().write(insertTabletPlan);
         }
-        // if get buffered or OOB array successfully, estimate the memory cost
-        long bytesCost = 0L;
-        long unsealedResourceCost = 0L;
-        long chunkMetadataCost = 0L;
-        checkMemCost(insertTabletPlan, bytesCost, unsealedResourceCost, chunkMetadataCost);
-        long delta = bytesCost + unsealedResourceCost + chunkMetadataCost;
-        if (storageGroupInfo.checkIfNeedToReportStatusToSystem(delta)) {
-          SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo, delta);
-        }
-        workMemTable.addBytesMemSize(bytesCost);
-        tsFileProcessorInfo.addBytesMemCost(bytesCost);
-        tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
-        tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
-        storageGroupInfo.addBytesMemCost(bytesCost);
-        storageGroupInfo.addUnsealedResourceMemCost(unsealedResourceCost);
-        storageGroupInfo.addChunkMetadataMemCost(chunkMetadataCost);
-        for (int i = start; i < end; i++) {
-          results[i] = RpcUtils.SUCCESS_STATUS;
-        }
-
         tsFileResource
             .updateStartTime(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[start]);
 
@@ -392,8 +365,10 @@ public class TsFileProcessor {
 
   }
 
-  private void checkMemCost(InsertPlan insertPlan, long bytesCost, long unsealedResourceCost,
-      long chunkMetadataCost) {
+  private void checkMemCostAndAddToTspInfo(InsertPlan insertPlan) {
+    long bytesCost = 0L;
+    long unsealedResourceCost = 0L;
+    long chunkMetadataCost = 0L;
     if (!tsFileResource.getDeviceToIndexMap().containsKey(insertPlan.getDeviceId())) {
       unsealedResourceCost += RamUsageEstimator.sizeOf(insertPlan.getDeviceId()) + Integer.BYTES;
       // if needs to extend the startTimes and endTimes arrays
@@ -423,6 +398,14 @@ public class TsFileProcessor {
         chunkMetadataCost += ChunkMetadata.calculateRamSize(insertPlan.getMeasurements()[i],
             insertPlan.getDataTypes()[i]);
       }
+    }
+    workMemTable.addBytesMemSize(bytesCost);
+    tsFileProcessorInfo.addBytesMemCost(bytesCost);
+    tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
+    tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+    long delta = bytesCost + unsealedResourceCost + chunkMetadataCost;
+    if (storageGroupInfo.checkIfNeedToReportStatusToSystem(delta)) {
+      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo, delta);
     }
   }
 

@@ -157,7 +157,7 @@ public class IntTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((int[]) PrimitiveArrayManager.getDataListByType(TSDataType.INT32));
+    values.add((int[]) getDataListByType(TSDataType.INT32));
   }
 
   @Override

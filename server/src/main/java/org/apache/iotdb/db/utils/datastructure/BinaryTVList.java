@@ -158,7 +158,7 @@ public class BinaryTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((Binary[]) PrimitiveArrayManager.getDataListByType(TSDataType.TEXT));
+    values.add((Binary[]) getDataListByType(TSDataType.TEXT));
   }
 
   @Override

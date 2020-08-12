@@ -159,8 +159,7 @@ public class DoubleTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((double[]) PrimitiveArrayManager
-        .getDataListByType(TSDataType.DOUBLE));
+    values.add((double[]) getDataListByType(TSDataType.DOUBLE));
   }
 
   @Override
