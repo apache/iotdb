@@ -132,7 +132,7 @@ public class SchemaUtils {
     }
     List<TSDataType> dataTypes = new ArrayList<>();
     for (MeasurementMNode mNode : measurementMNodes) {
-      dataTypes.add(IoTDB.metaManager.getSeriesTypeByMNode(mNode));
+      dataTypes.add(mNode.getSchema().getType());
     }
     return dataTypes;
   }

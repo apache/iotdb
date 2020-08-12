@@ -335,13 +335,6 @@ public class MTree implements Serializable {
     return node.getSchema();
   }
 
-  /**
-   * Get measurement schema for a given measurementMNode.
-   */
-  MeasurementSchema getSchemaByMNode(MeasurementMNode measurementMNode) {
-    return measurementMNode.getSchema();
-  }
-
 
   /**
    * Get node by path with storage group check If storage group is not set,
