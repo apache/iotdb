@@ -101,7 +101,11 @@ public class LevelTsFileManagement extends TsFileManagement {
     TsFileResource sourceFile = currMergeFiles.get(0).get(0);
     File newTargetFile = createNewTsFileName(sourceFile.getTsFile(), maxLevelNum - 1);
     TsFileResource targetResource = new TsFileResource(newTargetFile);
-    HotCompactionUtils.merge(targetResource, getTsFileList(sequence),
+    List<TsFileResource> mergeFiles = new ArrayList<>();
+    for (int i = currMergeFiles.size(); i >= 0; i--) {
+      mergeFiles.addAll(sequenceTsFileResources.get(i));
+    }
+    HotCompactionUtils.merge(targetResource, mergeFiles,
         storageGroupName, hotCompactionLogger, new HashSet<>(), sequence);
     hotCompactionLogger.logFullMerge();
     hotCompactionLogger.logSequence(sequence);

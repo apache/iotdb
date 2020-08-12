@@ -1559,9 +1559,6 @@ public class StorageGroupProcessor {
       closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
     }
     logger.info("signal closing storage group condition in {}", storageGroupName);
-    synchronized (closeStorageGroupCondition) {
-      closeStorageGroupCondition.notifyAll();
-    }
     if (!hotCompactionMergeWorking) {
       hotCompactionMergeWorking = true;
       logger.info("{} submit a hot compaction merge task", storageGroupName);
@@ -1573,6 +1570,9 @@ public class StorageGroupProcessor {
     } else {
       logger.info("{} last hot compaction merge task is working, skip current merge",
           storageGroupName);
+    }
+    synchronized (closeStorageGroupCondition) {
+      closeStorageGroupCondition.notifyAll();
     }
   }
 
