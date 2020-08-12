@@ -129,6 +129,9 @@ public class HotCompactionUtils {
       TsFileSequenceReader reader = buildReaderFromTsFileResource(levelResource,
           tsFileSequenceReaderMap,
           storageGroup);
+      if (reader == null) {
+        continue;
+      }
       List<Path> allPaths = reader.getAllPaths();
       Map<String, TSDataType> allMeasurements = reader.getAllMeasurements();
       // device, measurement -> chunk metadata list
