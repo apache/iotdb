@@ -137,4 +137,20 @@ device，offset （已经合并的设备和目标文件完整的ChunkGroup的off
 
 文件格式为写入执行计划的序列化内容: InsertRowPlan、InsertTabletPlan、DeletePlan
 
+## 性能追踪目录 data/tracing
 
+* data/tracing/tracing.txt
+
+性能追踪选项默认关闭，用户可以使用 `TRACING ON/OFF` 命令开启/关闭该功能。开启后，追踪日志记录在上述目录下，其格式为：
+
+```
+QueryId - Start time
+QueryId - Query statement
+QueryId - Number of series paths
+QueryId - Number of tsfiles
+QueryId - Number of sequence files
+QueryId - Number of unsequence files
+QueryId - Number of chunks
+QueryId - Average size of chunks
+QueryId - End time
+```

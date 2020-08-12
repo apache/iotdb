@@ -71,4 +71,4 @@ After build, the IoTDB server will be at the folder "server/target/iotdb-server-
 
 ## Installation by Docker (Dockerfile)
 
-You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](../Server/Docker%20Image.html)
+You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](../Server/Docker%20Image.md)

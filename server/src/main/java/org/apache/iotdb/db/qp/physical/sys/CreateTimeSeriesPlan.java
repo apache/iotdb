@@ -40,9 +40,9 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   private TSEncoding encoding;
   private CompressionType compressor;
   private String alias;
-  private Map<String, String> props;
-  private Map<String, String> tags;
-  private Map<String, String> attributes;
+  private Map<String, String> props = null;
+  private Map<String, String> tags = null;
+  private Map<String, String> attributes = null;
 
   public CreateTimeSeriesPlan() {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);

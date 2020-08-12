@@ -67,9 +67,9 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -308,10 +308,11 @@ public class MManager {
     String[] args = cmd.trim().split(",", -1);
     switch (args[0]) {
       case MetadataOperationType.CREATE_TIMESERIES:
-        Map<String, String> props = new HashMap<>();
+        Map<String, String> props = null;
         if (!args[5].isEmpty()) {
           String[] keyValues = args[5].split("&");
           String[] kv;
+          props = new HashMap<>();
           for (String keyValue : keyValues) {
             kv = keyValue.split("=");
             props.put(kv[0], kv[1]);
@@ -369,8 +370,9 @@ public class MManager {
 
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     lock.writeLock().lock();
-    String path = plan.getPath().getFullPath();
     try {
+      String path = plan.getPath().getFullPath();
+      SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
       /*
        * get the storage group with auto create schema
        */
@@ -422,7 +424,6 @@ public class MManager {
         logWriter.createTimeseries(plan, offset);
       }
       leafMNode.setOffset(offset);
-
     } catch (IOException | ConfigAdjusterException e) {
       throw new MetadataException(e.getMessage());
     } finally {
@@ -830,8 +831,8 @@ public class MManager {
     }
   }
 
-  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
-      throws MetadataException {
+  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan,
+      QueryContext context) throws MetadataException {
     lock.readLock().lock();
     try {
       if (!tagIndex.containsKey(plan.getKey())) {
@@ -861,10 +862,8 @@ public class MManager {
 
       // if ordered by heat, we sort all the timeseries by the descending order of the last insert timestamp
       if (plan.isOrderByHeat()) {
-        QueryContext queryContext = new QueryContext(
-            QueryResourceManager.getInstance().assignQueryId(true));
         allMatchedNodes = allMatchedNodes.stream().sorted(Comparator
-            .comparingLong((MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, queryContext))
+            .comparingLong((MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
             .reversed().thenComparing(MNode::getFullPath)).collect(toList());
       } else {
         // otherwise, we just sort them by the alphabetical order
@@ -926,13 +925,13 @@ public class MManager {
     return true;
   }
 
-  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
     // show timeseries with index
     if (plan.getKey() != null && plan.getValue() != null) {
-      return showTimeseriesWithIndex(plan);
+      return showTimeseriesWithIndex(plan, context);
     } else {
-      return showTimeseriesWithoutIndex(plan);
+      return showTimeseriesWithoutIndex(plan, context);
     }
   }
 
@@ -941,13 +940,13 @@ public class MManager {
    *
    * @param plan show time series query plan
    */
-  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(ShowTimeSeriesPlan plan)
-      throws MetadataException {
+  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(ShowTimeSeriesPlan plan,
+      QueryContext context) throws MetadataException {
     lock.readLock().lock();
     List<String[]> ans;
     try {
       if (plan.isOrderByHeat()) {
-        ans = mtree.getAllMeasurementSchemaByHeatOrder(plan);
+        ans = mtree.getAllMeasurementSchemaByHeatOrder(plan, context);
       } else {
         ans = mtree.getAllMeasurementSchema(plan);
       }

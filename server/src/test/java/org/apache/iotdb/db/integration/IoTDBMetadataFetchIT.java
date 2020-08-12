@@ -394,7 +394,6 @@ public class IoTDBMetadataFetchIT {
             + "\t\t\t\t\t\t\"Encoding\":\"RLE\"\n"
             + "\t\t\t\t\t},\n"
             + "\t\t\t\t\t\"status\":{\n"
-            + "\t\t\t\t\t\t\"args\":\"{}\",\n"
             + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01.wt01\",\n"
             + "\t\t\t\t\t\t\"DataType\":\"BOOLEAN\",\n"
             + "\t\t\t\t\t\t\"Compressor\":\"SNAPPY\",\n"

@@ -120,7 +120,7 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
 
   @Override
   public double getActiveRatio(String storageGroup) {
-    lock.writeLock().lock();
+    lock.readLock().lock();
     double ratio;
     try {
       ratio = activeRatioMap.get(storageGroup);
@@ -128,7 +128,7 @@ public class ActiveTimeSeriesCounter implements IActiveTimeSeriesCounter {
       ratio = 0;
       LOGGER.error("Get active ratio failed", e);
     } finally {
-      lock.writeLock().unlock();
+      lock.readLock().unlock();
     }
     return ratio;
   }

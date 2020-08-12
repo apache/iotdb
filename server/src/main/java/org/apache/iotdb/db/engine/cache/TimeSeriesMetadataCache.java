@@ -160,7 +160,11 @@ public class TimeSeriesMetadataCache {
         }
       }
     }
-    return new TimeseriesMetadata(timeseriesMetadata);
+    if (timeseriesMetadata == null) {
+      return null;
+    } else {
+      return new TimeseriesMetadata(timeseriesMetadata);
+    }
   }
 
 
