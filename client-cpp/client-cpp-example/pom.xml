@@ -127,7 +127,6 @@
                 <artifactId>cmake-maven-plugin</artifactId>
                 <version>3.7.2-b1</version>
                 <executions>
-                    <!-- Uses a CMake generator to generate the build using the build tool of choice -->
                     <execution>
                         <id>cmake-generate</id>
                         <phase>compile</phase>
@@ -136,28 +135,12 @@
                         </goals>
                         <configuration>
                             <classifier>${os.classifier}</classifier>
-                            <!--
-                              We need to use a newer version of cmake, so disable downloading. If we do not
-                              set this to false, a cmake of version 3.7.2 will be downloaded.
-                            -->
                             <downloadBinaries>false</downloadBinaries>
-                            <!--
-                              Actually the path to the CMakeLists.txt file which then again
-                              tells to tool where to find the sources.
-                            -->
                             <sourcePath>${project.build.directory}</sourcePath>
-                            <!--
-                              Path to where the build configuration is generated
-                              (This directory is then used in the compile step to actually perform the build)
-                            -->
                             <targetPath>${project.build.directory}</targetPath>
                             <generator>${cmake.generator}</generator>
-                            <options>
-                                <option>-DWITH_PROXIES:BOOL=${option.with-proxies}</option>
-                            </options>
                         </configuration>
                     </execution>
-                    <!-- Actually executes the build -->
                     <execution>
                         <id>cmake-compile</id>
                         <phase>compile</phase>
@@ -167,10 +150,6 @@
                         <configuration>
                             <classifier>${os.classifier}</classifier>
                             <config>${cmake.build.type}</config>
-                            <!--
-                              We need to use a newer version of cmake, so disable downloading
-                              and tell the plugin where to find that version.
-                            -->
                             <downloadBinaries>false</downloadBinaries>
                             <!-- The directory where the "generate" step generated the build configuration -->
                             <projectDirectory>${project.build.directory}</projectDirectory>

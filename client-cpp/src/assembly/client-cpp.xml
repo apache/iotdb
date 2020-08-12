@@ -39,7 +39,7 @@
             <outputDirectory>include</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>tools/thrift/target/thrift-${thrift.version}/lib/cpp/src</directory>
+            <directory>${project.basedir}/../compile-tools/thrift/target/thrift-${thrift.version}/lib/cpp/src</directory>
             <includes>
                 <include>**/*.h</include>
                 <include>**/*.tcc</include>
@@ -47,7 +47,7 @@
             <outputDirectory>include</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>tools/boost/target/lib/boost/include</directory>
+            <directory>${project.basedir}/../compile-tools/boost/target/lib/boost/include</directory>
             <includes>
                 <include>**/*.h</include>
                 <include>**/*.hpp</include>
