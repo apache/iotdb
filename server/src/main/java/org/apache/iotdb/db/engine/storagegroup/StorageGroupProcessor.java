@@ -156,11 +156,7 @@ public class StorageGroupProcessor {
    * hotCompactionMergeWorking is used to wait for last hot compaction to be done.
    */
   private volatile boolean hotCompactionMergeWorking = false;
-  /**
-   * hotCompactionMergeLock is used to wait for tsfile list change in hot compaction merge
-   * processor.
-   */
-  private final ReadWriteLock hotCompactionMergeLock = new ReentrantReadWriteLock();
+
   /**
    * avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a query is executed.
    */
@@ -1237,7 +1233,7 @@ public class StorageGroupProcessor {
       QueryFileManager filePathsManager, Filter timeFilter) throws QueryProcessException {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
-    hotCompactionMergeLock.readLock().lock();
+    tsFileManagement.hotCompactionMergeLock.readLock().lock();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(
           tsFileManagement.getTsFileList(true),
@@ -1260,7 +1256,7 @@ public class StorageGroupProcessor {
     } finally {
       insertLock.readLock().unlock();
       mergeLock.readLock().unlock();
-      hotCompactionMergeLock.readLock().unlock();
+      tsFileManagement.hotCompactionMergeLock.readLock().unlock();
     }
   }
 
@@ -1566,8 +1562,8 @@ public class StorageGroupProcessor {
       // fork and filter current tsfile, then commit then to hot compaction merge
       tsFileManagement.forkCurrentFileList();
       HotCompactionMergeTaskPoolManager.getInstance()
-          .submitTask(tsFileManagement.new HotCompactionMergeTask(hotCompactionMergeLock,
-              this::closeHotCompactionMergeCallBack));
+          .submitTask(
+              tsFileManagement.new HotCompactionMergeTask(this::closeHotCompactionMergeCallBack));
     } else {
       logger.info("{} last hot compaction merge task is working, skip current merge",
           storageGroupName);

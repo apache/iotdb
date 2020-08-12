@@ -416,13 +416,12 @@ public class LevelTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  protected void merge(ReadWriteLock hotCompactionMergeLock) {
-    merge(forkedSequenceTsFileResources, true, hotCompactionMergeLock);
-    merge(forkedUnSequenceTsFileResources, false, hotCompactionMergeLock);
+  protected void merge() {
+    merge(forkedSequenceTsFileResources, true);
+    merge(forkedUnSequenceTsFileResources, false);
   }
 
-  private void merge(List<List<TsFileResource>> mergeResources, boolean sequence,
-      ReadWriteLock hotCompactionMergeLock) {
+  private void merge(List<List<TsFileResource>> mergeResources, boolean sequence) {
     long startTimeMillis = System.currentTimeMillis();
     try {
       logger.info("{} start to filter hot compaction condition", storageGroupName);

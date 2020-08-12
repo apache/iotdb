@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.tsfilemanagement;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseHotCompactionMergeCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
@@ -29,6 +30,11 @@ public abstract class TsFileManagement {
 
   protected String storageGroupName;
   protected String storageGroupDir;
+  /**
+   * hotCompactionMergeLock is used to wait for TsFile list change in hot compaction merge
+   * processor.
+   */
+  public final ReadWriteLock hotCompactionMergeLock = new ReentrantReadWriteLock();
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -110,22 +116,19 @@ public abstract class TsFileManagement {
    */
   public abstract void forkCurrentFileList();
 
-  protected abstract void merge(ReadWriteLock hotCompactionMergeLock);
+  protected abstract void merge();
 
   public class HotCompactionMergeTask implements Runnable {
 
-    private ReadWriteLock hotCompactionMergeLock;
     private CloseHotCompactionMergeCallBack closeHotCompactionMergeCallBack;
 
-    public HotCompactionMergeTask(ReadWriteLock hotCompactionMergeLock,
-        CloseHotCompactionMergeCallBack closeHotCompactionMergeCallBack) {
-      this.hotCompactionMergeLock = hotCompactionMergeLock;
+    public HotCompactionMergeTask(CloseHotCompactionMergeCallBack closeHotCompactionMergeCallBack) {
       this.closeHotCompactionMergeCallBack = closeHotCompactionMergeCallBack;
     }
 
     @Override
     public void run() {
-      merge(hotCompactionMergeLock);
+      merge();
       closeHotCompactionMergeCallBack.call();
     }
   }
