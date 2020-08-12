@@ -19,6 +19,8 @@
 
 #include "IOTDBSession.h"
 
+using namespace std;
+
 Session *session;
 
 void createTimeseries() {
