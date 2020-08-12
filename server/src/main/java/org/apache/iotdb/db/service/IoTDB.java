@@ -22,8 +22,6 @@ import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
-import org.apache.iotdb.db.conf.adapter.ManageDynamicParameters;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
@@ -102,7 +100,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(Monitor.getInstance());
     registerManager.register(StatMonitor.getInstance());
     registerManager.register(Measurement.INSTANCE);
-    registerManager.register(ManageDynamicParameters.getInstance());
     registerManager.register(TVListAllocator.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
@@ -153,7 +150,6 @@ public class IoTDB implements IoTDBMBean {
     IoTDB.metaManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
-    IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
     logger.info(
         "After initializing, tsFile threshold is {}, memtableSize is {}",
         IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),

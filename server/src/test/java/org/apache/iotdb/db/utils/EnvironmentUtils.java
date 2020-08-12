@@ -32,7 +32,6 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -150,7 +149,6 @@ public class EnvironmentUtils {
     cleanAllDir();
     config.setTsFileSizeThreshold(oldTsFileThreshold);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
-    IoTDBConfigDynamicAdapter.getInstance().reset();
   }
 
   public static void cleanAllDir() throws IOException {
@@ -203,9 +201,7 @@ public class EnvironmentUtils {
       fail(e.getMessage());
     }
 
-    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
-    IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
-
+    IoTDBDescriptor.getInstance().getConfig().setEnableActiveTimeseriesCounter(false);
     createAllDir();
     // disable the system monitor
     config.setEnableStatMonitor(false);

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.conf.adapter;
 
-public interface IActiveTimeSeriesCounter {
+public interface IActiveTimeseriesCounter {
 
   /**
    * Initialize the counter by adding a new HyperLogLog counter for the given storage group

@@ -58,7 +58,6 @@ import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
@@ -595,11 +594,6 @@ public class PlanExecutor implements IPlanExecutor {
         timestamp++,
         "storage group number",
         Integer.toString(IoTDB.metaManager.getAllStorageGroupNames().size()));
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "timeseries number",
-        Integer.toString(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries()));
     addRowRecordForShowQuery(
         listDataSet,
         timestamp,

@@ -30,9 +30,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * ActiveTimeSeriesCounter Tester.
+ * ActiveTimeseriesCounter Tester.
  */
-public class ActiveTimeSeriesCounterTest {
+public class ActiveTimeseriesCounterTest {
 
   private static final String TEST_SG_PREFIX = "root.sg_";
   private static int testStorageGroupNum = 10;
@@ -50,16 +50,16 @@ public class ActiveTimeSeriesCounterTest {
 
   @Before
   public void before() throws Exception {
-    ActiveTimeSeriesCounter.clear();
+    ActiveTimeseriesCounter.clear();
     for (String storageGroup : storageGroups) {
-      ActiveTimeSeriesCounter.getInstance().init(storageGroup);
+      ActiveTimeseriesCounter.getInstance().init(storageGroup);
     }
   }
 
   @After
   public void after() throws Exception {
     for (String storageGroup : storageGroups) {
-      ActiveTimeSeriesCounter.getInstance().delete(storageGroup);
+      ActiveTimeseriesCounter.getInstance().delete(storageGroup);
     }
   }
 
@@ -69,7 +69,7 @@ public class ActiveTimeSeriesCounterTest {
   @Test
   public void testInit() throws Exception {
     for (int i = 0; i < testStorageGroupNum; i++) {
-      assertEquals(0D, ActiveTimeSeriesCounter.getInstance().getActiveRatio(storageGroups[i]), 0.0);
+      assertEquals(0D, ActiveTimeseriesCounter.getInstance().getActiveRatio(storageGroups[i]), 0.0);
     }
   }
 
@@ -85,15 +85,15 @@ public class ActiveTimeSeriesCounterTest {
     }
     finished.await();
     for (String storageGroup : storageGroups) {
-      ActiveTimeSeriesCounter.getInstance().updateActiveRatio(storageGroup);
+      ActiveTimeseriesCounter.getInstance().updateActiveRatio(storageGroup);
       double sum = 0;
       for (String s : storageGroups) {
-        sum += ActiveTimeSeriesCounter.getInstance().getActiveRatio(s);
+        sum += ActiveTimeseriesCounter.getInstance().getActiveRatio(s);
       }
       assertEquals(1.0, sum, 0.001);
     }
     for (int i = 0; i < storageGroups.length; i++) {
-      double r = ActiveTimeSeriesCounter.getInstance().getActiveRatio(storageGroups[i]);
+      double r = ActiveTimeseriesCounter.getInstance().getActiveRatio(storageGroups[i]);
       assertEquals(measurementNum[i] / totalSeriesNum, r, 0.001);
     }
   }
@@ -113,7 +113,7 @@ public class ActiveTimeSeriesCounterTest {
     public void runMayThrow() {
       try {
         for (int j = 0; j < sensorNum; j++) {
-          ActiveTimeSeriesCounter.getInstance().offer(storageGroup, "device_0", "sensor_" + j);
+          ActiveTimeseriesCounter.getInstance().offer(storageGroup, "device_0", "sensor_" + j);
         }
       }finally {
         finished.countDown();

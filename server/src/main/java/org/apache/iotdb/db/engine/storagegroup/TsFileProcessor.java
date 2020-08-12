@@ -45,7 +45,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
@@ -468,9 +467,7 @@ public class TsFileProcessor {
   }
 
   /**
-   * <p>In the dynamic parameter adjustment module{@link IoTDBConfigDynamicAdapter}, it calculated
-   * the average size of each metatable{@link IoTDBConfigDynamicAdapter#tryToAdaptParameters()}.
-   * However, considering that the number of timeseries between storage groups may vary greatly,
+   * Considering that the number of timeseries between storage groups may vary greatly,
    * it's inappropriate to judge whether to flush the memtable according to the average memtable
    * size. We need to adjust it according to the number of timeseries in a specific storage group.
    */

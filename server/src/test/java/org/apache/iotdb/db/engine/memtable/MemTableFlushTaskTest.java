@@ -24,7 +24,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
+import org.apache.iotdb.db.conf.adapter.ActiveTimeseriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
@@ -51,7 +51,7 @@ public class MemTableFlushTaskTest {
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
-    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
+    ActiveTimeseriesCounter.getInstance().init(storageGroup);
     writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(filePath));
     memTable = new PrimitiveMemTable();
     IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);

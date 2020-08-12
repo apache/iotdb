@@ -46,11 +46,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
+import org.apache.iotdb.db.conf.adapter.ActiveTimeseriesCounter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -212,7 +210,7 @@ public class MManager {
       isRecovering = true;
       int lineNumber = initFromLog(logFile);
 
-      if (config.isEnableParameterAdapter()) {
+      if (config.isEnableActiveTimeseriesCounter()) {
         List<String> storageGroups = mtree.getAllStorageGroupNames();
         for (String sg : storageGroups) {
           MNode node = mtree.getNodeByPath(sg);
@@ -397,9 +395,6 @@ public class MManager {
         setStorageGroup(storageGroupName);
       }
 
-      // check memory
-      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
-
       TSDataType type = plan.getDataType();
       // create time series in MTree
       MeasurementMNode leafMNode = mtree
@@ -416,7 +411,7 @@ public class MManager {
       }
 
       // update statistics
-      if (config.isEnableParameterAdapter()) {
+      if (config.isEnableActiveTimeseriesCounter()) {
         int size = seriesNumberInStorageGroups.get(storageGroupName);
         seriesNumberInStorageGroups.put(storageGroupName, size + 1);
         if (size + 1 > maxSeriesNumberAmongStorageGroup) {
@@ -438,7 +433,7 @@ public class MManager {
       }
       leafMNode.setOffset(offset);
 
-    } catch (IOException | ConfigAdjusterException e) {
+    } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     } finally {
       lock.writeLock().unlock();
@@ -473,7 +468,7 @@ public class MManager {
 
     if (isStorageGroup(prefixPath)) {
 
-      if (config.isEnableParameterAdapter()) {
+      if (config.isEnableActiveTimeseriesCounter()) {
         int size = seriesNumberInStorageGroups.get(prefixPath);
         seriesNumberInStorageGroups.put(prefixPath, 0);
         if (size == maxSeriesNumberAmongStorageGroup) {
@@ -568,13 +563,7 @@ public class MManager {
 
       // TODO: delete the path node and all its ancestors
       mNodeCache.clear();
-      try {
-        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(-1);
-      } catch (ConfigAdjusterException e) {
-        throw new MetadataException(e);
-      }
-
-      if (config.isEnableParameterAdapter()) {
+      if (config.isEnableActiveTimeseriesCounter()) {
         String storageGroup = getStorageGroupName(path);
         int size = seriesNumberInStorageGroups.get(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, size - 1);
@@ -598,10 +587,8 @@ public class MManager {
     lock.writeLock().lock();
     try {
       mtree.setStorageGroup(storageGroup);
-      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-
-      if (config.isEnableParameterAdapter()) {
-        ActiveTimeSeriesCounter.getInstance().init(storageGroup);
+      if (config.isEnableActiveTimeseriesCounter()) {
+        ActiveTimeseriesCounter.getInstance().init(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, 0);
       }
       if (!isRecovering) {
@@ -609,9 +596,6 @@ public class MManager {
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
-    } catch (ConfigAdjusterException e) {
-      mtree.deleteStorageGroup(storageGroup);
-      throw new MetadataException(e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -638,11 +622,9 @@ public class MManager {
           updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
         }
 
-        if (config.isEnableParameterAdapter()) {
-          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
+        if (config.isEnableActiveTimeseriesCounter()) {
           int size = seriesNumberInStorageGroups.get(storageGroup);
-          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(size * -1);
-          ActiveTimeSeriesCounter.getInstance().delete(storageGroup);
+          ActiveTimeseriesCounter.getInstance().delete(storageGroup);
           seriesNumberInStorageGroups.remove(storageGroup);
           if (size == maxSeriesNumberAmongStorageGroup) {
             maxSeriesNumberAmongStorageGroup =
@@ -654,8 +636,6 @@ public class MManager {
           logWriter.deleteStorageGroup(storageGroup);
         }
       }
-    } catch (ConfigAdjusterException e) {
-      throw new MetadataException(e);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     } finally {
