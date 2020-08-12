@@ -683,20 +683,6 @@ public class MManager {
   }
 
   /**
-   * Get series type for given measurementMNode
-   *
-   * @param measurementMNode measurementMNode
-   */
-  public TSDataType getSeriesTypeByMNode(MeasurementMNode measurementMNode) {
-    lock.readLock().lock();
-    try {
-      return mtree.getSchemaByMNode(measurementMNode).getType();
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
    * Get node name by given MNode
    * @param mNode mNode
    * @return node name
