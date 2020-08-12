@@ -22,7 +22,7 @@
     <formats>
         <format>zip</format>
     </formats>
-    <includeBaseDirectory>true</includeBaseDirectory>
+    <includeBaseDirectory>false</includeBaseDirectory>
     <fileSets>
         <fileSet>
             <directory>${project.build.directory}/build/src</directory>

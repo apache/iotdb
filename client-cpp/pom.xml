@@ -40,6 +40,9 @@
         <cmake-version>3.17.3</cmake-version>
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
     </properties>
+    <modules>
+        <module>client-cpp-example</module>
+    </modules>
     <profiles>
         <profile>
             <id>os-unix</id>
@@ -185,7 +188,7 @@
                                     -->
                                     <downloadBinaries>false</downloadBinaries>
                                     <!--
-                                      Actually the path to the CMakeList.txt file which then again
+                                      Actually the path to the CMakeLists.txt file which then again
                                       tells to tool where to find the sources.
                                     -->
                                     <sourcePath>${project.build.directory}/build</sourcePath>
