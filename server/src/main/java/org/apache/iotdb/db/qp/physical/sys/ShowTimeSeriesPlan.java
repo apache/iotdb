@@ -21,13 +21,14 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ShowTimeSeriesPlan extends ShowPlan {
 
   // path can be root, root.*  root.*.*.a etc.. if the wildcard is not at the tail, then each
   // * wildcard can only match one level, otherwise it can match to the tail.
-  private Path path;
+  private PartialPath path;
   private boolean isContains;
   private String key;
   private String value;
@@ -38,12 +39,12 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
   private boolean hasLimit;
 
-  public ShowTimeSeriesPlan(Path path) {
+  public ShowTimeSeriesPlan(PartialPath path) {
     super(ShowContentType.TIMESERIES);
     this.path = path;
   }
 
-  public ShowTimeSeriesPlan(Path path, boolean isContains, String key, String value, int limit,
+  public ShowTimeSeriesPlan(PartialPath path, boolean isContains, String key, String value, int limit,
       int offset, boolean orderByHeat) {
     super(ShowContentType.TIMESERIES);
     this.path = path;
@@ -59,7 +60,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     super(ShowContentType.TIMESERIES);
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return this.path;
   }
 
@@ -123,7 +124,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    path = new Path(readString(buffer));
+    path = new PartialPath(readString(buffer));
     isContains = buffer.get() == 1;
     key = readString(buffer);
     value = readString(buffer);

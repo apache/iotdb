@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -29,7 +30,7 @@ import java.util.Map;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
-  protected List<Path> paths = null;
+  protected List<PartialPath> paths = null;
   private List<TSDataType> dataTypes = null;
   private boolean alignByTime = true; // for disable align sql
 
@@ -48,11 +49,11 @@ public abstract class QueryPlan extends PhysicalPlan {
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return paths;
   }
 
-  public void setPaths(List<Path> paths) {
+  public void setPaths(List<PartialPath> paths) {
     this.paths = paths;
   }
 

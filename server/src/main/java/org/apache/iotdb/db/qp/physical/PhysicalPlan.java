@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -74,7 +75,7 @@ public abstract class PhysicalPlan {
     return "abstract plan";
   }
 
-  public abstract List<Path> getPaths();
+  public abstract List<PartialPath> getPaths();
 
   public boolean isQuery() {
     return isQuery;
