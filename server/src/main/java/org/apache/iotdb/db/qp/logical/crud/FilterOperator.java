@@ -282,7 +282,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     return sc.toString();
   }
 
-  public FilterOperator copy() throws CloneNotSupportedException {
+  public FilterOperator copy() {
     FilterOperator ret = new FilterOperator(this.tokenIntType);
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;
