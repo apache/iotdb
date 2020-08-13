@@ -66,7 +66,6 @@ public class HotCompactionMergeTaskPoolManager implements IService {
           LOGGER.warn("HotCompactionManager has wait for {} seconds to stop", time / 1000);
         }
       }
-      pool = null;
       LOGGER.info("HotCompactionManager stopped");
     }
   }
@@ -84,7 +83,6 @@ public class HotCompactionMergeTaskPoolManager implements IService {
           LOGGER.warn("HotCompactionManager has wait for {} seconds to stop", time / 1000);
         }
       }
-      pool = null;
       LOGGER.info("HotCompactionManager stopped");
     }
   }
@@ -110,7 +108,9 @@ public class HotCompactionMergeTaskPoolManager implements IService {
       this.pool = IoTDBThreadPoolFactory
           .newCachedThreadPool(ThreadName.FLUSH_VM_SERVICE.getName());
     }
-    pool.submit(hotCompactionMergeTask);
+    if (!pool.isTerminated()) {
+      pool.submit(hotCompactionMergeTask);
+    }
   }
 
 }
