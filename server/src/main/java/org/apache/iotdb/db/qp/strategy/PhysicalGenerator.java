@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -100,12 +99,12 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.db.service.IoTDB;
 
 
 /**
@@ -689,11 +688,11 @@ public class PhysicalGenerator {
 
     int index = 0;
     for (Pair<Path, Integer> indexedPath : indexedPaths) {
-      String column;
-      if (indexedPath.left.getAlias() != null) {
-        column = indexedPath.left.getFullPathWithAlias();
-      } else {
-        column = indexedPath.left.toString();
+      // judge whether as clause is used or not first
+      String column = indexedPath.left.getTsAlias() != null ? indexedPath.left.getTsAlias() : null;
+      if (column == null) {
+        column = indexedPath.left.getAlias() != null ? indexedPath.left.getFullPathWithAlias()
+            : indexedPath.left.toString();
       }
       if (queryPlan instanceof AggregationPlan) {
         column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";

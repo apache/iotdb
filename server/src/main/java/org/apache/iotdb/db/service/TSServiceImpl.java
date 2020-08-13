@@ -345,9 +345,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
-          List<TSDataType> dataTypes =
-              getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null);
-          resp.setDataType(dataTypes.get(0).toString());
+          resp.setDataType(getSeriesTypesByString(req.getColumnPath()).toString());
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "ALL_COLUMNS":
@@ -761,22 +759,23 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // wide means not align by device
   private void getWideQueryHeaders(
       QueryPlan plan, List<String> respColumns, List<String> columnTypes)
-      throws TException, QueryProcessException, MetadataException {
+      throws TException, MetadataException {
     // Restore column header of aggregate to func(column_name), only
     // support single aggregate function for now
     List<Path> paths = plan.getPaths();
-    List<TSDataType> seriesTypes;
+    List<TSDataType> seriesTypes = new ArrayList<>();
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
         for (Path path : paths) {
-          if (path.getAlias() != null) {
-            respColumns.add(path.getFullPathWithAlias());
-          } else {
-            respColumns.add(path.getFullPath());
+          // judge whether as clause is used or not first
+          String column = path.getTsAlias() != null ? path.getTsAlias() : null;
+          if (column == null) {
+            column = path.getAlias() != null ? path.getFullPathWithAlias() : path.getFullPath();
           }
+          respColumns.add(column);
+          seriesTypes.add(getSeriesTypesByString(path.getFullPath()));
         }
-        seriesTypes = getSeriesTypesByString(respColumns, null);
         break;
       case AGGREGATION:
       case GROUPBYTIME:
@@ -1577,8 +1576,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
   }
 
-  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
-      throws MetadataException {
-    return SchemaUtils.getSeriesTypesByString(paths, aggregation);
+  protected TSDataType getSeriesTypesByString(String path) throws MetadataException {
+    return SchemaUtils.getSeriesTypesByString(path);
   }
 }

@@ -102,6 +102,7 @@ selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
     | lastClause #lastElement
+    | asClause (COMMA asClause)* #asElement
     ;
 
 functionCall
@@ -118,6 +119,10 @@ functionName
     | FIRST_VALUE
     | SUM
     | LAST_VALUE
+    ;
+
+asClause
+    : suffixPath (AS ID)?
     ;
 
 lastClause
@@ -1051,6 +1056,10 @@ ALIGN
 
 COMPRESSION
     : C O M P R E S S I O N
+    ;
+
+AS
+    : A S
     ;
 
 TIME

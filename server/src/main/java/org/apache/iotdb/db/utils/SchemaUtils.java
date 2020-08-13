@@ -117,6 +117,10 @@ public class SchemaUtils {
     return dataTypes;
   }
 
+  public static TSDataType getSeriesTypesByString(String pathStr) throws MetadataException {
+    return IoTDB.metaManager.getSeriesType(pathStr);
+  }
+
   public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths,
       String aggregation) throws MetadataException {
     TSDataType dataType = getAggregationType(aggregation);

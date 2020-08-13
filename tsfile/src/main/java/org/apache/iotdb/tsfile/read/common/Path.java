@@ -32,7 +32,10 @@ public class Path implements Serializable, Comparable<Path> {
 
   private static final long serialVersionUID = 3405277066329298200L;
   private String measurement = null;
+  // alias of sensor
   private String alias = null;
+  // alias of time series used in SELECT AS
+  private String tsAlias = null;
   private String device = null;
   private String fullPath;
   private static final String illegalPathArgument = "Path parameter is null";
@@ -180,6 +183,14 @@ public class Path implements Serializable, Comparable<Path> {
   public String getAlias() { return alias; }
 
   public void setAlias(String alias) { this.alias = alias; }
+
+  public String getTsAlias() {
+    return tsAlias;
+  }
+
+  public void setTsAlias(String tsAlias) {
+    this.tsAlias = tsAlias;
+  }
 
   public String getFullPathWithAlias() { return device + TsFileConstant.PATH_SEPARATOR + alias; }
 

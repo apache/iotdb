@@ -75,6 +75,8 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AliasContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlignByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AsClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AsElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
@@ -1270,6 +1272,21 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     List<SuffixPathContext> suffixPaths = lastClauseContext.suffixPath();
     for (SuffixPathContext suffixPath : suffixPaths) {
       Path path = parseSuffixPath(suffixPath);
+      selectOp.addSelectPath(path);
+    }
+    queryOp.setSelectOperator(selectOp);
+  }
+
+  @Override
+  public void enterAsElement(AsElementContext ctx) {
+    super.enterAsElement(ctx);
+    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    List<AsClauseContext> asClauseContexts = ctx.asClause();
+    for (AsClauseContext asClauseContext : asClauseContexts) {
+      Path path = parseSuffixPath(asClauseContext.suffixPath());
+      if (asClauseContext.ID() != null) {
+        path.setTsAlias(asClauseContext.ID().toString());
+      }
       selectOp.addSelectPath(path);
     }
     queryOp.setSelectOperator(selectOp);
