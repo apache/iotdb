@@ -20,8 +20,7 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertFalse;
 
 import java.io.IOException;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
@@ -68,8 +67,8 @@ public class DatasourceInfoTest {
 
     DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
       request, context, metaGroupMember, group);
-    AsyncDataClient client = sourceInfo.nextDataClient(false, Long.MIN_VALUE);
+    boolean hasClient = sourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
 
-    assertNull(client);
+    assertFalse(hasClient);
   }
 }

@@ -2322,8 +2322,8 @@ public class MetaGroupMember extends RaftMember {
     DataSourceInfo dataSourceInfo = new DataSourceInfo(partitionGroup, dataType, request,
         (RemoteQueryContext) context, this, partitionGroup);
 
-    AsyncDataClient client = dataSourceInfo.nextDataClient(true, Long.MIN_VALUE);
-    if (client != null) {
+    boolean hasClient = dataSourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
+    if (hasClient) {
       return new RemoteSeriesReaderByTimestamp(dataSourceInfo);
     } else if (dataSourceInfo.isNoData()) {
       return new EmptyReader();
@@ -2672,8 +2672,8 @@ public class MetaGroupMember extends RaftMember {
     DataSourceInfo dataSourceInfo = new DataSourceInfo(partitionGroup, dataType, request,
         (RemoteQueryContext) context, this, orderedNodes);
 
-    AsyncDataClient client = dataSourceInfo.nextDataClient(false, Long.MIN_VALUE);
-    if (client != null) {
+    boolean hasClient = dataSourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
+    if (hasClient) {
       return new RemoteSimpleSeriesReader(dataSourceInfo);
     } else if (dataSourceInfo.isNoData()) {
       // there is no satisfying data on the remote node

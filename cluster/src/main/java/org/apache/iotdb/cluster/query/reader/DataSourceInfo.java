@@ -24,7 +24,6 @@ import java.util.List;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -52,9 +51,9 @@ public class DataSourceInfo {
   private RemoteQueryContext context;
   private MetaGroupMember metaGroupMember;
   private List<Node> nodes;
-  private boolean isNoData;
   private int curPos;
-  private boolean noClient = false;
+  private boolean isNoData = false;
+  private boolean isNoClient = false;
 
   public DataSourceInfo(PartitionGroup group, TSDataType dataType,
       SingleSeriesQueryRequest request, RemoteQueryContext context,
@@ -66,16 +65,15 @@ public class DataSourceInfo {
     this.context = context;
     this.metaGroupMember = metaGroupMember;
     this.nodes = nodes;
-    this.isNoData = false;
     // set to the last node so after nextDataClient() is called it will scan from the first node
     this.curPos = nodes.size() - 1;
     this.curSource = nodes.get(curPos);
   }
 
-  public AsyncDataClient nextDataClient(boolean byTimestamp, long timestamp) {
+  public boolean hasNextDataClient(boolean byTimestamp, long timestamp) {
     if (this.nodes.isEmpty()) {
       this.isNoData = false;
-      return null;
+      return false;
     }
 
     int nextNodePos = (this.curPos + 1) % this.nodes.size();
@@ -96,14 +94,13 @@ public class DataSourceInfo {
             this.readerId = newReaderId;
             this.curSource = node;
             this.curPos = nextNodePos;
-            return this.metaGroupMember
-                .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+            return true;
           } else {
             // the id being -1 means there is no satisfying data on the remote node, create an
             // empty reader to reduce further communication
-            this.noClient = true;
+            this.isNoClient = true;
             this.isNoData = true;
-            return null;
+            return false;
           }
         }
       } catch (TException | IOException e) {
@@ -115,13 +112,13 @@ public class DataSourceInfo {
       nextNodePos = (nextNodePos + 1) % this.nodes.size();
       if (nextNodePos == this.curPos) {
         // has iterate over all nodes
-        noClient = true;
+        isNoClient = true;
         break;
       }
     }
     // all nodes are failed
     this.isNoData = false;
-    return null;
+    return false;
   }
 
   private Long applyForReaderId(AsyncDataClient client, boolean byTimestamp, long timestamp)
@@ -152,15 +149,19 @@ public class DataSourceInfo {
   }
 
   public AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
-    return noClient ? null : metaGroupMember.getAsyncDataClient(this.curSource, timeout);
+    return isNoClient ? null : metaGroupMember.getAsyncDataClient(this.curSource, timeout);
   }
 
   public SyncDataClient getCurSyncClient(int timeout) throws IOException {
-    return noClient ? null : metaGroupMember.getSyncDataClient(this.curSource, timeout);
+    return isNoClient ? null : metaGroupMember.getSyncDataClient(this.curSource, timeout);
   }
 
   public boolean isNoData() {
     return this.isNoData;
+  }
+
+  public boolean isNoClient(){
+    return this.isNoClient;
   }
 
   @Override
@@ -180,10 +181,7 @@ public class DataSourceInfo {
    * @throws IOException if all clients are unavailable.
    */
   boolean checkCurClient() throws IOException {
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()
-        && getCurAsyncClient(RaftServer.getConnectionTimeoutInMS()) == null ||
-        !ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()
-            && getCurSyncClient(RaftServer.getConnectionTimeoutInMS()) == null) {
+    if (isNoClient()) {
       if (!isNoData()) {
         throw new IOException("no available client.");
       } else {
@@ -196,9 +194,9 @@ public class DataSourceInfo {
   }
 
   boolean switchNode(boolean byTimestamp, long timeOffset) throws IOException {
-    AsyncDataClient newClient = nextDataClient(byTimestamp, timeOffset);
-    logger.info("Client failed, changed to {}", newClient);
-    if (newClient == null) {
+    boolean hasClient = hasNextDataClient(byTimestamp, timeOffset);
+    logger.info("Client failed, changed to {}", curSource);
+    if (!hasClient) {
       if (!isNoData()) {
         throw new IOException("no available client.");
       } else {

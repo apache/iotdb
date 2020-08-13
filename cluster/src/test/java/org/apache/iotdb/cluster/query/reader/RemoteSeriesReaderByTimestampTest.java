@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -41,8 +45,6 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 public class RemoteSeriesReaderByTimestampTest {
 
@@ -122,7 +124,7 @@ public class RemoteSeriesReaderByTimestampTest {
 
     DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
         request, context, metaGroupMember, group);
-    sourceInfo.nextDataClient(true, Long.MIN_VALUE);
+    sourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
 
     RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
 
@@ -146,7 +148,7 @@ public class RemoteSeriesReaderByTimestampTest {
     DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
         request, context, metaGroupMember, group);
     long startTime = System.currentTimeMillis();
-    sourceInfo.nextDataClient(true, Long.MIN_VALUE);
+    sourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
     RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
 
     long endTime = System.currentTimeMillis();

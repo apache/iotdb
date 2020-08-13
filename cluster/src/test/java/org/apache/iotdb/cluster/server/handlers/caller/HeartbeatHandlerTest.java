@@ -30,7 +30,6 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.handlers.caller.HeartbeatHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.junit.After;
 import org.junit.Before;
@@ -40,6 +39,7 @@ public class HeartbeatHandlerTest {
 
   private MetaGroupMember metaGroupMember;
   private boolean catchUpFlag;
+  private long looseInconsistentNum = 5;
 
   @Before
   public void setUp() {
@@ -70,7 +70,9 @@ public class HeartbeatHandlerTest {
     response.setLastLogTerm(-2);
     response.setFollower(new Node("192.168.0.6", 9003, 6, 40010));
     catchUpFlag = false;
-    handler.onComplete(response);
+    for (int i = 0; i < looseInconsistentNum; i++) {
+      handler.onComplete(response);
+    }
     assertTrue(catchUpFlag);
   }
 
