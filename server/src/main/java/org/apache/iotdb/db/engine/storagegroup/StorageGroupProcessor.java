@@ -1556,7 +1556,8 @@ public class StorageGroupProcessor {
       closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
     }
     logger.info("signal closing storage group condition in {}", storageGroupName);
-    if (!hotCompactionMergeWorking) {
+    if (!hotCompactionMergeWorking && !HotCompactionMergeTaskPoolManager.getInstance()
+        .isTerminated()) {
       hotCompactionMergeWorking = true;
       logger.info("{} submit a hot compaction merge task", storageGroupName);
       // fork and filter current tsfile, then commit then to hot compaction merge
