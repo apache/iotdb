@@ -119,7 +119,7 @@ public class SeriesReaderTestUtil {
   private static void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
       long valueOffset, List<MeasurementSchema> measurementSchemas, List<String> deviceIds)
       throws IOException, WriteProcessException {
-    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
+    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     Map<String, MeasurementSchema> template = new HashMap<>();
     for (MeasurementSchema measurementSchema : measurementSchemas) {
       template.put(measurementSchema.getMeasurementId(), measurementSchema);

@@ -1,4 +1,3 @@
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,6 +16,3 @@
 # under the License.
 #
 
-parser_properties_path="C:\\Users\\admin\\Desktop\\logs\\logAnalyze\\default.log.pattern"
-plans_path="C:\\Users\\admin\\Desktop\\logs\\logAnalyze\\plans"
-log_path="C:\\Users\\admin\\Desktop\\logs\\log_all.log"

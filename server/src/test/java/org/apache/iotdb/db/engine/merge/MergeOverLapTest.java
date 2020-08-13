@@ -109,7 +109,7 @@ public class MergeOverLapTest extends MergeTest {
   private void prepareUnseqFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
       long valueOffset)
       throws IOException, WriteProcessException {
-    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
+    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(

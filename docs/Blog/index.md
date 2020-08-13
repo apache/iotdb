@@ -21,4 +21,4 @@
 
 # IoTDB Blog
 
-## 16.05.2020 - [Some Notes on Release 0.9.3 and upcoming 0.10.0](Release0_93.html)(by Jialin Qiao / Julian Feinauer)
+## 16.05.2020 - [Some Notes on Release 0.9.3 and upcoming 0.10.0](Release0_93.md)(by Jialin Qiao / Julian Feinauer)

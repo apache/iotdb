@@ -127,6 +127,7 @@ public class AuthorityChecker {
       case INDEXQUERY:
       case MERGEQUERY:
       case AGGREGATION:
+      case LAST:
         return PrivilegeType.READ_TIMESERIES.ordinal();
       case DELETE:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();

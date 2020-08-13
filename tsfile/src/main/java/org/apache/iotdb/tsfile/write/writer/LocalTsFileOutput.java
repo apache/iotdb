@@ -79,8 +79,8 @@ public class LocalTsFileOutput implements TsFileOutput {
   }
 
   @Override
-  public void truncate(long position) throws IOException {
-    outputStream.getChannel().truncate(position);
+  public void truncate(long size) throws IOException {
+    outputStream.getChannel().truncate(size);
   }
 
 }

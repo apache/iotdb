@@ -47,6 +47,7 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.slf4j.Logger;
@@ -166,7 +167,7 @@ public class StorageEngine implements IService {
           logger.info("Storage Group Processor {} is recovered successfully",
             storageGroup.getFullPath());
         } catch (Exception e) {
-          logger.error("meet error when recovering storage group: {}", storageGroup, e);
+          logger.error("meet error when recovering storage group: {}", storageGroup.getFullPath(), e);
         }
         return null;
       }));
@@ -293,7 +294,8 @@ public class StorageEngine implements IService {
           }
         } else {
           // not finished recover, refuse the request
-          throw new StorageEngineException("the sg " + storageGroupName + " may not ready now, please wait and retry later");
+          throw new StorageEngineException("the sg " + storageGroupName + " may not ready now, please wait and retry later",
+              TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
       return processor;
@@ -536,7 +538,7 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws StorageEngineException, LoadFileException {
-    getProcessor(newTsFileResource.getFile().getParentFile().getName())
+    getProcessor(newTsFileResource.getTsFile().getParentFile().getName())
         .loadNewTsFileForSync(newTsFileResource);
   }
 

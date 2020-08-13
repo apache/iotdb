@@ -53,8 +53,8 @@ public class MNode implements Serializable {
    */
   protected String fullPath;
 
-  transient Map<String, MNode> children;
-  transient Map<String, MNode> aliasChildren;
+  transient Map<String, MNode> children = null;
+  transient Map<String, MNode> aliasChildren = null;
 
   protected transient ReadWriteLock lock = new ReentrantReadWriteLock();
 

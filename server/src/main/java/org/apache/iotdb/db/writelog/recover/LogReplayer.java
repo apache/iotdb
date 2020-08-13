@@ -62,22 +62,22 @@ public class LogReplayer {
   private TsFileResource currentTsFileResource;
   private IMemTable recoverMemTable;
 
-  // unsequence file tolerates duplicated data
-  private boolean acceptDuplication;
+  // only unsequence file tolerates duplicated data
+  private boolean sequence;
 
   private Map<String, Long> tempStartTimeMap = new HashMap<>();
   private Map<String, Long> tempEndTimeMap = new HashMap<>();
 
   public LogReplayer(String logNodePrefix, String insertFilePath, ModificationFile modFile,
       VersionController versionController, TsFileResource currentTsFileResource,
-      IMemTable memTable, boolean acceptDuplication) {
+      IMemTable memTable, boolean sequence) {
     this.logNodePrefix = logNodePrefix;
     this.insertFilePath = insertFilePath;
     this.modFile = modFile;
     this.versionController = versionController;
     this.currentTsFileResource = currentTsFileResource;
     this.recoverMemTable = memTable;
-    this.acceptDuplication = acceptDuplication;
+    this.sequence = sequence;
   }
 
   /**
@@ -144,7 +144,7 @@ public class LogReplayer {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       long lastEndTime = currentTsFileResource.getEndTime(plan.getDeviceId());
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime &&
-          !acceptDuplication) {
+          sequence) {
         return;
       }
       Long startTime = tempStartTimeMap.get(plan.getDeviceId());

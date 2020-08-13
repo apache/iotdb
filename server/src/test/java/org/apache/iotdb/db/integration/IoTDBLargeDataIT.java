@@ -295,7 +295,7 @@ Statement statement = connection.createStatement()) {
           String ans =
               resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(
                   TestConstant.d0s0);
-          // System.out.println(ans);
+//           System.out.println(ans);
           cnt++;
         }
 

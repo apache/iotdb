@@ -1,6 +1,0 @@
-#
-#Tue Sep 03 09:20:46 CST 2019
-legends=Wait Time
-name=memTableWait
-content_pattern=org.apache.iotdb.db.engine.storagegroup.TsFileProcessor@.* has waited for a memtable for (.*)ms
-measurement_positions=1

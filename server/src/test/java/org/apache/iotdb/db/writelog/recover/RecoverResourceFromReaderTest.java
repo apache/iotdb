@@ -21,10 +21,10 @@ package org.apache.iotdb.db.writelog.recover;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -173,23 +173,23 @@ public class RecoverResourceFromReaderTest {
   public void testResourceRecovery() throws StorageGroupProcessorException, IOException {
     // write a broken resourceFile
     File resourceFile = FSFactoryProducer.getFSFactory()
-        .getFile(resource.getFile() + TsFileResource.RESOURCE_SUFFIX);
+        .getFile(resource.getTsFile() + TsFileResource.RESOURCE_SUFFIX);
     FileUtils.deleteQuietly(resourceFile);
     try (OutputStream outputStream = FSFactoryProducer.getFSFactory()
         .getBufferedOutputStream(resourceFile.getPath())) {
       ReadWriteIOUtils.write(123, outputStream);
     }
 
-    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
-        versionController, resource, true, false);
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
+        resource, false, false, Collections.singletonList(new ArrayList<>()));
     ActiveTimeSeriesCounter.getInstance()
-        .init(resource.getFile().getParentFile().getParentFile().getName());
-    performer.recover();
-    assertEquals(1, (long) resource.getStartTime("root.sg.device99"));
-    assertEquals(300, (long) resource.getEndTime("root.sg.device99"));
+        .init(resource.getTsFile().getParentFile().getParentFile().getName());
+    performer.recover().left.close();
+    assertEquals(1, resource.getStartTime("root.sg.device99"));
+    assertEquals(300, resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
-      assertEquals(0, (long) resource.getStartTime("root.sg.device" + i));
-      assertEquals(9, (long) resource.getEndTime("root.sg.device" + i));
+      assertEquals(0, resource.getStartTime("root.sg.device" + i));
+      assertEquals(9, resource.getEndTime("root.sg.device" + i));
     }
   }
 }

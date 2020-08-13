@@ -82,6 +82,7 @@ pipeline {
             }
             steps {
                 echo 'Building'
+                sh 'mvn clean'
                 // We'll deploy to a relative directory so we can
                 // deploy new versions only if the entrie build succeeds
                 sh 'mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir clean deploy'
