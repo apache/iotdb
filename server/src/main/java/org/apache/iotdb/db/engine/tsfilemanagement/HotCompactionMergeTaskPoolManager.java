@@ -23,10 +23,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagement.HotCompactionMergeTask;
 import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,9 +38,6 @@ public class HotCompactionMergeTaskPoolManager implements IService {
   private static final Logger LOGGER = LoggerFactory
       .getLogger(HotCompactionMergeTaskPoolManager.class);
   private static final HotCompactionMergeTaskPoolManager INSTANCE = new HotCompactionMergeTaskPoolManager();
-  private final String mbeanName = String
-      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
-          getID().getJmxName());
   private ExecutorService pool;
 
   public static HotCompactionMergeTaskPoolManager getInstance() {
@@ -51,7 +46,6 @@ public class HotCompactionMergeTaskPoolManager implements IService {
 
   @Override
   public void start() {
-    JMXService.registerMBean(this, mbeanName);
     if (pool == null) {
       this.pool = IoTDBThreadPoolFactory
           .newCachedThreadPool(ThreadName.FLUSH_VM_SERVICE.getName());
@@ -75,7 +69,6 @@ public class HotCompactionMergeTaskPoolManager implements IService {
       pool = null;
       LOGGER.info("HotCompactionManager stopped");
     }
-    JMXService.deregisterMBean(mbeanName);
   }
 
   @Override
@@ -113,6 +106,10 @@ public class HotCompactionMergeTaskPoolManager implements IService {
   }
 
   public void submitTask(HotCompactionMergeTask hotCompactionMergeTask) {
+    if (pool == null) {
+      this.pool = IoTDBThreadPoolFactory
+          .newCachedThreadPool(ThreadName.FLUSH_VM_SERVICE.getName());
+    }
     pool.submit(hotCompactionMergeTask);
   }
 
