@@ -223,7 +223,7 @@ public class CatchUpTask implements Runnable {
           logger.debug("{}: Logs are empty when catching up {}, it may have been caught up",
               raftMember.getName(), node);
         }
-
+        peer.resetInconsistentHeartbeatNum();
       }
 
     } catch (LeaderUnknownException e) {

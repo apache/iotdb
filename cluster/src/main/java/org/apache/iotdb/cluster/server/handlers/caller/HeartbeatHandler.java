@@ -76,9 +76,14 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
             lastLogIdx, lastLogTerm,
             localLastLogIdx, localLastLogTerm,
             peer.getNextIndex(), peer.getMatchIndex());
-        localMember.catchUp(follower);
+
+        int inconsistentNum = peer.incInconsistentHeartbeatNum();
+        if (inconsistentNum >= 5) {
+          localMember.catchUp(follower);
+        }
       } else {
         peer.setMatchIndex(Math.max(peer.getMatchIndex(), lastLogIdx));
+        peer.resetInconsistentHeartbeatNum();
       }
     } else {
       // current leadership is invalid because the follower has a larger term

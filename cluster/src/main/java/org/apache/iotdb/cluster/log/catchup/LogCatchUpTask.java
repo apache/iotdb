@@ -201,7 +201,6 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
   void doLogCatchUpInBatch() throws TException, InterruptedException {
 
-
     List<ByteBuffer> logList = new ArrayList<>();
     long totalLogSize = 0;
     int firstLogPos = 0;

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cluster.server;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class Peer {
 
   private long nextIndex;
@@ -26,6 +28,7 @@ public class Peer {
   // only this field will be updated in different thread, as it's value is true or false,
   // so just adding a volatile is enough to face the concurrency problem
   private volatile boolean isCatchUp;
+  private AtomicInteger inconsistentHeartbeatNum = new AtomicInteger();
 
   public Peer(long nextIndex) {
     this.nextIndex = nextIndex;
@@ -57,5 +60,13 @@ public class Peer {
 
   public void setCatchUp(boolean catchUp) {
     isCatchUp = catchUp;
+  }
+
+  public int incInconsistentHeartbeatNum() {
+    return inconsistentHeartbeatNum.incrementAndGet();
+  }
+
+  public void resetInconsistentHeartbeatNum() {
+    inconsistentHeartbeatNum.set(0);
   }
 }

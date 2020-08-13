@@ -284,7 +284,7 @@ public abstract class RaftLogManager {
       long newLastIndex = lastIndex + 1;
       if (entry.getCurrLogIndex() <= commitIndex) {
         logger
-            .error("{}: entry {} conflict with committed entry [commitIndex({})]",
+            .debug("{}: entry {} conflict with committed entry [commitIndex({})]",
                 name, entry.getCurrLogIndex(),
                 commitIndex);
       } else {
