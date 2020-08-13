@@ -90,6 +90,11 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
       public long currentTime() throws IOException {
         return getRowRecord(currentRowRecordIndex).getTimestamp();
       }
+
+      @Override
+      public void reset() {
+        currentRowRecordIndex = -1;
+      }
     };
   }
 
@@ -179,6 +184,13 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
     public RowRecord getRowRecordInCurrentBatch(int index) throws IOException {
       return getRowRecord(minIndexInCurrentBatch + index);
     }
+
+    @Override
+    public void reset() {
+      currentBatchIndex = -1;
+      currentBatchSize = 0;
+      minIndexInCurrentBatch = initialIndex - batchSize;
+    }
   }
 
   private RowRecordIterator getRowRecordIteratorInBatch(int currentBatchSize,
@@ -211,6 +223,11 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
       @Override
       public long currentTime() throws IOException {
         return getTime(minIndexInCurrentBatch + currentRowRecordIndex);
+      }
+
+      @Override
+      public void reset() {
+        currentRowRecordIndex = -1;
       }
     };
   }
@@ -246,62 +263,74 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
       throw new QueryProcessException("Time sliding step should be larger than 0.");
     }
 
+    int initialIndex;
     try {
-      return new RowRecordBatchIterator() {
-
-        private int currentBatchIndex = -1;
-        private int minIndexInCurrentBatch = -1;
-        private int currentBatchSize = 0;
-
-        private long minTimeInNextBatch = displayWindowBegin;
-        private int minIndexInNextBatch = findIndexByTimestamp(displayWindowBegin);
-
-        @Override
-        public boolean hasNextBatch() {
-          return minTimeInNextBatch < displayWindowEnd;
-        }
-
-        @Override
-        public void next() throws IOException {
-          ++currentBatchIndex;
-          long minTimeInCurrentBatch = minTimeInNextBatch;
-          minIndexInCurrentBatch = minIndexInNextBatch;
-          long maxTimeInCurrentBatch = minTimeInCurrentBatch + timeInterval;
-          int maxIndexInCurrentBatch = findIndexByTimestamp(maxTimeInCurrentBatch);
-          currentBatchSize = maxIndexInCurrentBatch - minIndexInCurrentBatch;
-
-          minTimeInNextBatch = minTimeInCurrentBatch + slidingStep;
-          minIndexInNextBatch = findIndexByTimestamp(minTimeInNextBatch, minIndexInCurrentBatch);
-        }
-
-        @Override
-        public int currentBatchIndex() {
-          return currentBatchIndex;
-        }
-
-        @Override
-        public RowRecordIterator currentBatch() {
-          return getRowRecordIteratorInBatch(currentBatchSize, minIndexInCurrentBatch);
-        }
-
-        @Override
-        public int currentBatchSize() {
-          return currentBatchSize;
-        }
-
-        @Override
-        public long getTimeInCurrentBatch(int index) throws IOException {
-          return getTime(minIndexInCurrentBatch + index);
-        }
-
-        @Override
-        public RowRecord getRowRecordInCurrentBatch(int index) throws IOException {
-          return getRowRecord(minIndexInCurrentBatch + index);
-        }
-      };
+      initialIndex = findIndexByTimestamp(displayWindowBegin);
     } catch (IOException e) {
       throw new QueryProcessException(e.toString());
     }
+    return new RowRecordBatchIterator() {
+
+      private int currentBatchIndex = -1;
+      private int minIndexInCurrentBatch = -1;
+      private int currentBatchSize = 0;
+
+      private long minTimeInNextBatch = displayWindowBegin;
+      private int minIndexInNextBatch = initialIndex;
+
+      @Override
+      public boolean hasNextBatch() {
+        return minTimeInNextBatch < displayWindowEnd;
+      }
+
+      @Override
+      public void next() throws IOException {
+        ++currentBatchIndex;
+        long minTimeInCurrentBatch = minTimeInNextBatch;
+        minIndexInCurrentBatch = minIndexInNextBatch;
+        long maxTimeInCurrentBatch = minTimeInCurrentBatch + timeInterval;
+        int maxIndexInCurrentBatch = findIndexByTimestamp(maxTimeInCurrentBatch);
+        currentBatchSize = maxIndexInCurrentBatch - minIndexInCurrentBatch;
+
+        minTimeInNextBatch = minTimeInCurrentBatch + slidingStep;
+        minIndexInNextBatch = findIndexByTimestamp(minTimeInNextBatch, minIndexInCurrentBatch);
+      }
+
+      @Override
+      public int currentBatchIndex() {
+        return currentBatchIndex;
+      }
+
+      @Override
+      public RowRecordIterator currentBatch() {
+        return getRowRecordIteratorInBatch(currentBatchSize, minIndexInCurrentBatch);
+      }
+
+      @Override
+      public int currentBatchSize() {
+        return currentBatchSize;
+      }
+
+      @Override
+      public long getTimeInCurrentBatch(int index) throws IOException {
+        return getTime(minIndexInCurrentBatch + index);
+      }
+
+      @Override
+      public RowRecord getRowRecordInCurrentBatch(int index) throws IOException {
+        return getRowRecord(minIndexInCurrentBatch + index);
+      }
+
+      @Override
+      public void reset() {
+        currentBatchIndex = -1;
+        minIndexInCurrentBatch = -1;
+        currentBatchSize = 0;
+
+        minTimeInNextBatch = displayWindowBegin;
+        minIndexInNextBatch = initialIndex;
+      }
+    };
   }
 
   public OverallRowRecordIterator getOverallRowRecordIterator() {

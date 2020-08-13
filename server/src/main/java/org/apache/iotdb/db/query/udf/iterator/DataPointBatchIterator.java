@@ -49,4 +49,6 @@ public interface DataPointBatchIterator extends Iterator {
   Binary getBinaryInCurrentBatch(int index) throws IOException;
 
   String getStringInCurrentBatch(int index) throws IOException;
+
+  void reset();
 }

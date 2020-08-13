@@ -37,4 +37,6 @@ public interface RowRecordBatchIterator extends Iterator {
   long getTimeInCurrentBatch(int index) throws IOException;
 
   RowRecord getRowRecordInCurrentBatch(int index) throws IOException;
+
+  void reset();
 }

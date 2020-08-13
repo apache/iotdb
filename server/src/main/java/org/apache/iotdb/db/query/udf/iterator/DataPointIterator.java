@@ -45,4 +45,6 @@ public interface DataPointIterator extends Iterator {
   Binary currentBinary() throws IOException;
 
   String currentString() throws IOException;
+
+  void reset();
 }

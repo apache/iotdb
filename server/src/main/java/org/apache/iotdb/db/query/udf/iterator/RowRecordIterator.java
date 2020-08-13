@@ -33,4 +33,6 @@ public interface RowRecordIterator extends Iterator {
   RowRecord currentRowRecord() throws IOException;
 
   long currentTime() throws IOException;
+
+  void reset();
 }

@@ -261,6 +261,11 @@ public class ElasticSerializableTVList implements OverallDataPointIterator {
       public String currentString() throws IOException {
         return getString(currentPointIndex);
       }
+
+      @Override
+      public void reset() {
+        currentPointIndex = -1;
+      }
     };
   }
 
@@ -381,6 +386,13 @@ public class ElasticSerializableTVList implements OverallDataPointIterator {
     public String getStringInCurrentBatch(int index) throws IOException {
       return getString(minIndexInCurrentBatch + index);
     }
+
+    @Override
+    public void reset() {
+      currentBatchIndex = -1;
+      currentBatchSize = 0;
+      minIndexInCurrentBatch = initialIndex - batchSize;
+    }
   }
 
   @Override
@@ -415,92 +427,104 @@ public class ElasticSerializableTVList implements OverallDataPointIterator {
       throw new QueryProcessException("Time sliding step should be larger than 0.");
     }
 
+    int initialIndex;
     try {
-      return new DataPointBatchIterator() {
-
-        private int currentBatchIndex = -1;
-        private int minIndexInCurrentBatch = -1;
-        private int currentBatchSize = 0;
-
-        private long minTimeInNextBatch = displayWindowBegin;
-        private int minIndexInNextBatch = findIndexByTimestamp(displayWindowBegin);
-
-        @Override
-        public boolean hasNextBatch() {
-          return minTimeInNextBatch < displayWindowEnd;
-        }
-
-        @Override
-        public void next() throws IOException {
-          ++currentBatchIndex;
-          long minTimeInCurrentBatch = minTimeInNextBatch;
-          minIndexInCurrentBatch = minIndexInNextBatch;
-          long maxTimeInCurrentBatch = minTimeInCurrentBatch + timeInterval;
-          int maxIndexInCurrentBatch = findIndexByTimestamp(maxTimeInCurrentBatch);
-          currentBatchSize = maxIndexInCurrentBatch - minIndexInCurrentBatch;
-
-          minTimeInNextBatch = minTimeInCurrentBatch + slidingStep;
-          minIndexInNextBatch = findIndexByTimestamp(minTimeInNextBatch, minIndexInCurrentBatch);
-        }
-
-        @Override
-        public int currentBatchIndex() {
-          return currentBatchIndex;
-        }
-
-        @Override
-        public DataPointIterator currentBatch() {
-          return getDataPointIteratorInBatch(currentBatchSize, minIndexInCurrentBatch);
-        }
-
-        @Override
-        public int currentBatchSize() {
-          return currentBatchSize;
-        }
-
-        @Override
-        public long getTimeInCurrentBatch(int index) throws IOException {
-          return getTime(minIndexInCurrentBatch + index);
-        }
-
-        @Override
-        public int getIntInCurrentBatch(int index) throws IOException {
-          return getInt(minIndexInCurrentBatch + index);
-        }
-
-        @Override
-        public long getLongInCurrentBatch(int index) throws IOException {
-          return getLong(minIndexInCurrentBatch + index);
-        }
-
-        @Override
-        public boolean getBooleanInCurrentBatch(int index) throws IOException {
-          return getBoolean(minIndexInCurrentBatch + index);
-        }
-
-        @Override
-        public float getFloatInCurrentBatch(int index) throws IOException {
-          return getFloat(minIndexInCurrentBatch + index);
-        }
-
-        @Override
-        public double getDoubleInCurrentBatch(int index) throws IOException {
-          return getDouble(minIndexInCurrentBatch + index);
-        }
-
-        @Override
-        public Binary getBinaryInCurrentBatch(int index) throws IOException {
-          return getBinary(minIndexInCurrentBatch + index);
-        }
-
-        @Override
-        public String getStringInCurrentBatch(int index) throws IOException {
-          return getString(minIndexInCurrentBatch + index);
-        }
-      };
+      initialIndex = findIndexByTimestamp(displayWindowBegin);
     } catch (IOException e) {
       throw new QueryProcessException(e.toString());
     }
+    return new DataPointBatchIterator() {
+
+      private int currentBatchIndex = -1;
+      private int minIndexInCurrentBatch = -1;
+      private int currentBatchSize = 0;
+
+      private long minTimeInNextBatch = displayWindowBegin;
+      private int minIndexInNextBatch = initialIndex;
+
+      @Override
+      public boolean hasNextBatch() {
+        return minTimeInNextBatch < displayWindowEnd;
+      }
+
+      @Override
+      public void next() throws IOException {
+        ++currentBatchIndex;
+        long minTimeInCurrentBatch = minTimeInNextBatch;
+        minIndexInCurrentBatch = minIndexInNextBatch;
+        long maxTimeInCurrentBatch = minTimeInCurrentBatch + timeInterval;
+        int maxIndexInCurrentBatch = findIndexByTimestamp(maxTimeInCurrentBatch);
+        currentBatchSize = maxIndexInCurrentBatch - minIndexInCurrentBatch;
+
+        minTimeInNextBatch = minTimeInCurrentBatch + slidingStep;
+        minIndexInNextBatch = findIndexByTimestamp(minTimeInNextBatch, minIndexInCurrentBatch);
+      }
+
+      @Override
+      public int currentBatchIndex() {
+        return currentBatchIndex;
+      }
+
+      @Override
+      public DataPointIterator currentBatch() {
+        return getDataPointIteratorInBatch(currentBatchSize, minIndexInCurrentBatch);
+      }
+
+      @Override
+      public int currentBatchSize() {
+        return currentBatchSize;
+      }
+
+      @Override
+      public long getTimeInCurrentBatch(int index) throws IOException {
+        return getTime(minIndexInCurrentBatch + index);
+      }
+
+      @Override
+      public int getIntInCurrentBatch(int index) throws IOException {
+        return getInt(minIndexInCurrentBatch + index);
+      }
+
+      @Override
+      public long getLongInCurrentBatch(int index) throws IOException {
+        return getLong(minIndexInCurrentBatch + index);
+      }
+
+      @Override
+      public boolean getBooleanInCurrentBatch(int index) throws IOException {
+        return getBoolean(minIndexInCurrentBatch + index);
+      }
+
+      @Override
+      public float getFloatInCurrentBatch(int index) throws IOException {
+        return getFloat(minIndexInCurrentBatch + index);
+      }
+
+      @Override
+      public double getDoubleInCurrentBatch(int index) throws IOException {
+        return getDouble(minIndexInCurrentBatch + index);
+      }
+
+      @Override
+      public Binary getBinaryInCurrentBatch(int index) throws IOException {
+        return getBinary(minIndexInCurrentBatch + index);
+      }
+
+      @Override
+      public String getStringInCurrentBatch(int index) throws IOException {
+        return getString(minIndexInCurrentBatch + index);
+      }
+
+      @Override
+      public void reset() {
+        currentBatchIndex = -1;
+        minIndexInCurrentBatch = -1;
+        currentBatchSize = 0;
+
+        minTimeInNextBatch = displayWindowBegin;
+        minIndexInNextBatch = initialIndex;
+      }
+    };
   }
 
   private DataPointIterator getDataPointIteratorInBatch(int currentBatchSize,
@@ -563,6 +587,11 @@ public class ElasticSerializableTVList implements OverallDataPointIterator {
       @Override
       public String currentString() throws IOException {
         return getString(minIndexInCurrentBatch + currentPointIndex);
+      }
+
+      @Override
+      public void reset() {
+        currentPointIndex = -1;
       }
     };
   }
