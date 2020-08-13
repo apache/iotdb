@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -81,51 +80,51 @@ public abstract class TVList {
     return timestamps.get(arrayIndex)[elementIndex];
   }
 
-  public void putLong(long time, long value) throws WriteProcessException {
+  public void putLong(long time, long value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putInt(long time, int value) throws WriteProcessException {
+  public void putInt(long time, int value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putFloat(long time, float value) throws WriteProcessException {
+  public void putFloat(long time, float value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putDouble(long time, double value) throws WriteProcessException {
+  public void putDouble(long time, double value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putBinary(long time, Binary value) throws WriteProcessException {
+  public void putBinary(long time, Binary value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putBoolean(long time, boolean value) throws WriteProcessException {
+  public void putBoolean(long time, boolean value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putLongs(long[] time, long[] value, int start, int end) throws WriteProcessException {
+  public void putLongs(long[] time, long[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putInts(long[] time, int[] value, int start, int end) throws WriteProcessException {
+  public void putInts(long[] time, int[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putFloats(long[] time, float[] value, int start, int end) throws WriteProcessException {
+  public void putFloats(long[] time, float[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putDoubles(long[] time, double[] value, int start, int end) throws WriteProcessException {
+  public void putDoubles(long[] time, double[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putBinaries(long[] time, Binary[] value, int start, int end) throws WriteProcessException {
+  public void putBinaries(long[] time, Binary[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public void putBooleans(long[] time, boolean[] value, int start, int end) throws WriteProcessException {
+  public void putBooleans(long[] time, boolean[] value, int start, int end) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

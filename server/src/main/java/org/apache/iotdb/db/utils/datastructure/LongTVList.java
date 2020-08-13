@@ -22,7 +22,6 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -43,7 +42,7 @@ public class LongTVList extends TVList {
   }
 
   @Override
-  public void putLong(long timestamp, long value) throws WriteProcessException {
+  public void putLong(long timestamp, long value) {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
@@ -189,7 +188,7 @@ public class LongTVList extends TVList {
   }
 
   @Override
-  public void putLongs(long[] time, long[] value, int start, int end) throws WriteProcessException {
+  public void putLongs(long[] time, long[] value, int start, int end) {
     checkExpansion();
     int idx = start;
 

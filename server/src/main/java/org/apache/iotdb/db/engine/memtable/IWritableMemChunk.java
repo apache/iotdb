@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -26,38 +25,37 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public interface IWritableMemChunk {
 
-  void putLong(long t, long v) throws WriteProcessException;
+  void putLong(long t, long v);
 
-  void putInt(long t, int v) throws WriteProcessException;
+  void putInt(long t, int v);
 
-  void putFloat(long t, float v) throws WriteProcessException;
+  void putFloat(long t, float v);
 
-  void putDouble(long t, double v) throws WriteProcessException;
+  void putDouble(long t, double v);
 
-  void putBinary(long t, Binary v) throws WriteProcessException;
+  void putBinary(long t, Binary v);
 
-  void putBoolean(long t, boolean v) throws WriteProcessException;
+  void putBoolean(long t, boolean v);
 
-  void putLongs(long[] t, long[] v, int start, int end) throws WriteProcessException;
+  void putLongs(long[] t, long[] v, int start, int end);
 
-  void putInts(long[] t, int[] v, int start, int end) throws WriteProcessException;
+  void putInts(long[] t, int[] v, int start, int end);
 
-  void putFloats(long[] t, float[] v, int start, int end) throws WriteProcessException;
+  void putFloats(long[] t, float[] v, int start, int end);
 
-  void putDoubles(long[] t, double[] v, int start, int end) throws WriteProcessException;
+  void putDoubles(long[] t, double[] v, int start, int end);
 
-  void putBinaries(long[] t, Binary[] v, int start, int end) throws WriteProcessException;
+  void putBinaries(long[] t, Binary[] v, int start, int end);
 
-  void putBooleans(long[] t, boolean[] v, int start, int end) throws WriteProcessException;
+  void putBooleans(long[] t, boolean[] v, int start, int end);
 
 
-  void write(long insertTime, Object objectValue) throws WriteProcessException;
+  void write(long insertTime, Object objectValue);
 
   /**
    * [start, end)
-   * @throws WriteProcessException 
    */
-  void write(long[] times, Object valueList, TSDataType dataType, int start, int end) throws WriteProcessException;
+  void write(long[] times, Object valueList, TSDataType dataType, int start, int end);
 
   long count();
 

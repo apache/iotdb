@@ -22,7 +22,6 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -43,7 +42,7 @@ public class BooleanTVList extends TVList {
   }
 
   @Override
-  public void putBoolean(long timestamp, boolean value) throws WriteProcessException {
+  public void putBoolean(long timestamp, boolean value) {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
@@ -191,8 +190,7 @@ public class BooleanTVList extends TVList {
   }
 
   @Override
-  public void putBooleans(long[] time, boolean[] value, int start, int end)
-      throws WriteProcessException {
+  public void putBooleans(long[] time, boolean[] value, int start, int end) {
     checkExpansion();
     int idx = start;
 
