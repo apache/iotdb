@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
@@ -48,7 +49,6 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
-import org.apache.iotdb.db.engine.tsfilemanagement.HotCompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
@@ -61,6 +61,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.tsfilemanagement.HotCompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagement;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
@@ -1562,9 +1563,14 @@ public class StorageGroupProcessor {
       logger.info("{} submit a hot compaction merge task", storageGroupName);
       // fork and filter current tsfile, then commit then to hot compaction merge
       tsFileManagement.forkCurrentFileList();
-      HotCompactionMergeTaskPoolManager.getInstance()
-          .submitTask(
-              tsFileManagement.new HotCompactionMergeTask(this::closeHotCompactionMergeCallBack));
+      try {
+        HotCompactionMergeTaskPoolManager.getInstance()
+            .submitTask(
+                tsFileManagement.new HotCompactionMergeTask(this::closeHotCompactionMergeCallBack));
+      } catch (RejectedExecutionException e) {
+        this.closeHotCompactionMergeCallBack();
+        logger.error("{} hot compaction submit task failed", storageGroupName);
+      }
     } else {
       logger.info("{} last hot compaction merge task is working, skip current merge",
           storageGroupName);
