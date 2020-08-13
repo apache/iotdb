@@ -221,7 +221,6 @@ public class HotCompactionUtils {
     targetResource.setHistoricalVersions(historicalVersions);
     targetResource.serialize();
     writer.endFile();
-    targetResource.cleanCloseFlag();
     targetResource.close();
   }
 

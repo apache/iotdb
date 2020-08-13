@@ -48,7 +48,7 @@ public class HotCompactionMergeTaskPoolManager implements IService {
   public void start() {
     if (pool == null) {
       this.pool = IoTDBThreadPoolFactory
-          .newCachedThreadPool(ThreadName.FLUSH_VM_SERVICE.getName());
+          .newCachedThreadPool(ThreadName.HOT_COMPACTION_SERVICE.getName());
     }
     LOGGER.info("Hot compaction merge task manager started.");
   }
