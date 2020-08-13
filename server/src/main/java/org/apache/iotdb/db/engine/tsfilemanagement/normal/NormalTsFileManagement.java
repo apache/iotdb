@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
-import java.util.concurrent.locks.ReadWriteLock;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagement;
 import org.slf4j.Logger;
@@ -176,7 +175,7 @@ public class NormalTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  protected void merge(ReadWriteLock hotCompactionMergeLock) {
+  protected void merge() {
     logger.info("{} no merge logic", storageGroupName);
   }
 }
