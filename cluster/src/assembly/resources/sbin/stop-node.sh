@@ -19,7 +19,7 @@
 #
 
 
-PIDS=$(ps ax | grep -i 'IoTDB' | grep java | grep -v grep | awk '{print $1}')
+PIDS=$(ps ax | grep -i 'ClusterMain' | grep java | grep -v grep | awk '{print $1}')
 
 if [ -z "$PIDS" ]; then
   echo "No IoTDB server to stop"
