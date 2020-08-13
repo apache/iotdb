@@ -27,21 +27,21 @@ public class MetaUtilsTest {
 
   @Test
   public void testSplitPathToNodes() throws IllegalPathException {
-    Assert.assertEquals(Arrays.asList("root", "sg", "d1", "s1"),
+    Assert.assertEquals(Arrays.asList("root", "sg", "d1", "s1").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.s1"));
 
-    Assert.assertEquals(Arrays.asList("root", "sg", "d1", "\"s.1\""),
+    Assert.assertEquals(Arrays.asList("root", "sg", "d1", "\"s.1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.\"s.1\""));
 
-    Assert.assertEquals(Arrays.asList("root", "\"s g\"", "d1", "\"s.1\""),
+    Assert.assertEquals(Arrays.asList("root", "\"s g\"", "d1", "\"s.1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.\"s g\".d1.\"s.1\""));
 
-    Assert.assertEquals(Arrays.asList("root", "\"s g\"", "\"d_.1\"", "\"s.1.1\""),
+    Assert.assertEquals(Arrays.asList("root", "\"s g\"", "\"d_.1\"", "\"s.1.1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.\"s g\".\"d_.1\".\"s.1.1\""));
 
-    Assert.assertEquals(Arrays.asList("root", "1"), MetaUtils.splitPathToDetachedPath("root.1"));
+    Assert.assertEquals(Arrays.asList("root", "1").toArray(), MetaUtils.splitPathToDetachedPath("root.1"));
 
-    Assert.assertEquals(Arrays.asList("root", "sg", "d1", "s", "1"),
+    Assert.assertEquals(Arrays.asList("root", "sg", "d1", "s", "1").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.s.1"));
 
     try {

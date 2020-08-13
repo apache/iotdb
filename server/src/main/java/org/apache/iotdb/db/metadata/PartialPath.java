@@ -21,14 +21,14 @@ package org.apache.iotdb.db.metadata;
 import java.util.Arrays;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
+/**
+ * A prefix path, suffix path or fullPath generated from SQL
+ */
 public class PartialPath {
 
   private String[] nodes;
   private String path;
 
-//  public PartialPath(String partialPath) throws IllegalPathException {
-//    nodes = MetaUtils.splitPathToDetachedPath(partialPath);
-//  }
 
   public PartialPath(String[] partialNodes) {
     nodes = partialNodes;
@@ -49,7 +49,6 @@ public class PartialPath {
     return new PartialPath(nodes);
   }
 
-  @Override
   public String toString() {
     if (path != null) {
       return path;

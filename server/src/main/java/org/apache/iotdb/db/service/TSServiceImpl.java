@@ -56,6 +56,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MetaUtils;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -1482,7 +1483,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return status;
     }
 
-    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(seriesNodes),
+    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(seriesNodes),
         TSDataType.values()[req.dataType], TSEncoding.values()[req.encoding],
         CompressionType.values()[req.compressor], req.props, req.tags, req.attributes,
         req.measurementAlias);

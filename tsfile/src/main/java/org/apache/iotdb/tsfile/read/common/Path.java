@@ -29,15 +29,18 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
  * AndExpression in batch read, this definition is also used in query
  * processing. Note that, Path is unmodified after a new object has been
  * created.
+ *
+ * Only used in TsFile module
  */
 public class Path implements Serializable, Comparable<Path> {
 
   private static final long serialVersionUID = 3405277066329298200L;
   private static final String illegalPathArgument = "Path parameter is null";
-  private String alias = null;
+//  private String alias = null;
   private String device = null;
-  private String fullPath = null;
-  private List<String> nodes;
+  private String measurement = null;
+//  private String fullPath = null;
+//  private List<String> nodes;
 
   public Path() {}
 

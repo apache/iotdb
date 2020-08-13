@@ -48,7 +48,7 @@ public class MetaUtils {
     return detachedDevicePath;
   }
 
-  public static List<String> splitPathToDetachedPath(String path) throws IllegalPathException {
+  public static String[] splitPathToDetachedPath(String path) throws IllegalPathException {
     List<String> nodes = new ArrayList<>();
     int startIndex = 0;
     for (int i = 0; i < path.length(); i++) {
@@ -71,7 +71,7 @@ public class MetaUtils {
     if (startIndex <= path.length() - 1) {
       nodes.add(path.substring(startIndex));
     }
-    return nodes;
+    return nodes.toArray(new String[0]);
   }
 
   /**
