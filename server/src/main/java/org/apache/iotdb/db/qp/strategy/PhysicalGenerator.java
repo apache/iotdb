@@ -199,10 +199,10 @@ public class PhysicalGenerator {
         switch (operator.getTokenIntType()) {
           case SQLConstant.TOK_SET:
             SetTTLOperator setTTLOperator = (SetTTLOperator) operator;
-            return new SetTTLPlan(setTTLOperator.getDetachedStorageGroup(), setTTLOperator.getDataTTL());
+            return new SetTTLPlan(setTTLOperator.getStorageGroup(), setTTLOperator.getDataTTL());
           case SQLConstant.TOK_UNSET:
             SetTTLOperator unsetTTLOperator = (SetTTLOperator) operator;
-            return new SetTTLPlan(unsetTTLOperator.getDetachedStorageGroup());
+            return new SetTTLPlan(unsetTTLOperator.getStorageGroup());
           case SQLConstant.TOK_SHOW:
             ShowTTLOperator showTTLOperator = (ShowTTLOperator) operator;
             return new ShowTTLPlan(showTTLOperator.getStorageGroups());
@@ -271,7 +271,7 @@ public class PhysicalGenerator {
         return new ShowMergeStatusPlan();
       case DELETE_PARTITION:
         DeletePartitionOperator op = (DeletePartitionOperator) operator;
-        return new DeletePartitionPlan(op.getStorageGroupNameNodes(), op.getPartitionId());
+        return new DeletePartitionPlan(op.getStorageGroup(), op.getPartitionId());
       case CREATE_SCHEMA_SNAPSHOT:
         return new CreateSnapshotPlan();
       default:

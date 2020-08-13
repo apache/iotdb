@@ -18,26 +18,49 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import java.util.List;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import java.util.Arrays;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 public class PartialPath {
 
   private String[] nodes;
+  private String path;
 
-  public PartialPath(String partialPath) throws IllegalPathException {
+//  public PartialPath(String partialPath) throws IllegalPathException {
 //    nodes = MetaUtils.splitPathToDetachedPath(partialPath);
-  }
+//  }
 
   public PartialPath(String[] partialNodes) {
     nodes = partialNodes;
   }
 
   public void concatPath(PartialPath partialPath) {
-//    nodes.addAll(partialPath.getNodes());
+    int len = nodes.length;
+    this.nodes = Arrays.copyOf(nodes, nodes.length + partialPath.nodes.length);
+    System.arraycopy(partialPath.nodes, 0, nodes, len, partialPath.nodes.length);
   }
 
   public String[] getNodes() {
     return nodes;
+  }
+
+  @Override
+  public PartialPath clone() {
+    return new PartialPath(nodes);
+  }
+
+  @Override
+  public String toString() {
+    if (path != null) {
+      return path;
+    } else {
+      StringBuilder s = new StringBuilder(nodes[0]);
+      for (int i = 1; i < nodes.length; i++) {
+        s.append(TsFileConstant.PATH_SEPARATOR);
+        s.append(nodes[i]);
+      }
+      path = s.toString();
+      return path;
+    }
   }
 }

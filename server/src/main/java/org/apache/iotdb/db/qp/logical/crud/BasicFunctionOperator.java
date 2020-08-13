@@ -23,10 +23,10 @@ import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -51,7 +51,7 @@ public class BasicFunctionOperator extends FunctionOperator {
    * @param value value
    * @throws LogicalOperatorException Logical Operator Exception
    */
-  public BasicFunctionOperator(int tokenIntType, Path path, String value)
+  public BasicFunctionOperator(int tokenIntType, PartialPath path, String value)
       throws SQLParserException {
     super(tokenIntType);
     operatorType = Operator.OperatorType.BASIC_FUNC;
@@ -75,12 +75,12 @@ public class BasicFunctionOperator extends FunctionOperator {
 
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
-      Map<Path, TSDataType> pathTSDataTypeHashMap)
+      Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
       throws LogicalOperatorException, MetadataException {
     TSDataType type = pathTSDataTypeHashMap.get(singlePath);
     if (type == null) {
       throw new MetadataException(
-          "given seriesPath:{" + singlePath.getFullPath() + "} don't exist in metadata");
+          "given seriesPath:{" + singlePath.toString() + "} don't exist in metadata");
     }
     IUnaryExpression ret;
 
@@ -110,7 +110,7 @@ public class BasicFunctionOperator extends FunctionOperator {
         throw new LogicalOperatorException(type.toString(), "");
     }
 
-    return new Pair<>(ret, singlePath.getFullPath());
+    return new Pair<>(ret, singlePath.toString());
   }
 
   @Override
@@ -141,7 +141,7 @@ public class BasicFunctionOperator extends FunctionOperator {
 
   @Override
   public String toString() {
-    return "[" + singlePath.getFullPath() + tokenSymbol + value + "]";
+    return "[" + singlePath.toString() + tokenSymbol + value + "]";
   }
 
   @Override

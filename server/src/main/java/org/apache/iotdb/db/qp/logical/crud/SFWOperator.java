@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.tsfile.read.common.Path;
 
@@ -77,8 +78,8 @@ public abstract class SFWOperator extends RootOperator {
    *
    * @return - a list of seriesPath
    */
-  public List<Path> getSelectedPaths() {
-    List<Path> suffixPaths = null;
+  public List<PartialPath> getSelectedPaths() {
+    List<PartialPath> suffixPaths = null;
     if (selectOperator != null) {
       suffixPaths = selectOperator.getSuffixPaths();
     }

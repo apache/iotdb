@@ -705,7 +705,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterSetTTLStatement(SetTTLStatementContext ctx) {
     super.enterSetTTLStatement(ctx);
     SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_SET);
-    operator.setDetachedStorageGroup(parsePrefixPathNodes(ctx.prefixPath()));
+    operator.setStorageGroup(parsePrefixPathNodes(ctx.prefixPath()));
     operator.setDataTTL(Long.parseLong(ctx.INT().getText()));
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_SET;
@@ -715,7 +715,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterUnsetTTLStatement(UnsetTTLStatementContext ctx) {
     super.enterUnsetTTLStatement(ctx);
     SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_UNSET);
-    operator.setDetachedStorageGroup(parsePrefixPathNodes(ctx.prefixPath()));
+    operator.setStorageGroup(parsePrefixPathNodes(ctx.prefixPath()));
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_UNSET;
   }
@@ -1625,7 +1625,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterDeletePartition(ctx);
     DeletePartitionOperator deletePartitionOperator = new DeletePartitionOperator(
         SQLConstant.TOK_DELETE_PARTITION);
-    deletePartitionOperator.setStorageGroupNameNodes(parsePrefixPathNodes(ctx.prefixPath()));
+    deletePartitionOperator.setStorageGroup(parsePrefixPathNodes(ctx.prefixPath()));
     Set<Long> idSet = new HashSet<>();
     for (TerminalNode terminalNode : ctx.INT()) {
       idSet.add(Long.parseLong(terminalNode.getText()));

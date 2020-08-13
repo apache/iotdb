@@ -21,11 +21,12 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 
 public class SetTTLOperator extends RootOperator {
 
-  private List<String> detachedStorageGroup;
+  private PartialPath storageGroup;
   private long dataTTL;
 
   public SetTTLOperator(int tokenIntType) {
@@ -33,12 +34,12 @@ public class SetTTLOperator extends RootOperator {
     this.operatorType = OperatorType.TTL;
   }
 
-  public List<String> getDetachedStorageGroup() {
-    return detachedStorageGroup;
+  public PartialPath getStorageGroup() {
+    return storageGroup;
   }
 
-  public void setDetachedStorageGroup(List<String> detachedStorageGroup) {
-    this.detachedStorageGroup = detachedStorageGroup;
+  public void setStorageGroup(PartialPath storageGroup) {
+    this.storageGroup = storageGroup;
   }
 
   public long getDataTTL() {

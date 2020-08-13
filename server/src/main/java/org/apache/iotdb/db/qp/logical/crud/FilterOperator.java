@@ -28,6 +28,7 @@ import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -56,9 +57,9 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
   // isSingle being true means all recursive children of this filter belong to one seriesPath.
   boolean isSingle = false;
   // if isSingle = false, singlePath must be null
-  Path singlePath = null;
+  PartialPath singlePath = null;
   // all paths involved in this filter
-  Set<Path> pathSet;
+  Set<PartialPath> pathSet;
 
   public FilterOperator(int tokenType) {
     super(tokenType);
@@ -97,11 +98,11 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     this.isSingle = b;
   }
 
-  public Path getSinglePath() {
+  public PartialPath getSinglePath() {
     return singlePath;
   }
 
-  public void setSinglePath(Path singlePath) {
+  public void setSinglePath(PartialPath singlePath) {
     this.singlePath = singlePath;
   }
 
@@ -110,11 +111,11 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     return true;
   }
 
-  public void setPathSet(Set<Path> pathSet) {
+  public void setPathSet(Set<PartialPath> pathSet) {
     this.pathSet = pathSet;
   }
 
-  public Set<Path> getPathSet() {
+  public Set<PartialPath> getPathSet() {
     return pathSet;
   }
 
@@ -126,7 +127,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    * @param pathTSDataTypeHashMap
    */
   public IExpression transformToExpression(
-      Map<Path, TSDataType> pathTSDataTypeHashMap) throws QueryProcessException {
+      Map<PartialPath, TSDataType> pathTSDataTypeHashMap) throws QueryProcessException {
     if (isSingle) {
       Pair<IUnaryExpression, String> ret;
       try {
@@ -169,7 +170,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    * @param pathTSDataTypeHashMap
    */
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
-      Map<Path, TSDataType> pathTSDataTypeHashMap)
+      Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
       throws LogicalOperatorException, MetadataException {
     if (childOperators.isEmpty()) {
       throw new LogicalOperatorException(String.valueOf(tokenIntType),
@@ -281,7 +282,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     return sc.toString();
   }
 
-  public FilterOperator copy() {
+  public FilterOperator copy() throws CloneNotSupportedException {
     FilterOperator ret = new FilterOperator(this.tokenIntType);
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;

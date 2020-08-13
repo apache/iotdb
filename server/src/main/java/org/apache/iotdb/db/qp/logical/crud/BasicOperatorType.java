@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
@@ -35,11 +36,11 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 public enum BasicOperatorType {
   EQ {
     @Override
-    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(PartialPath path, T value) {
       if (path.equals("time")) {
         return new GlobalTimeExpression(TimeFilter.eq((Long) value));
       } else {
-        return new SingleSeriesExpression(path, ValueFilter.eq(value));
+        return new SingleSeriesExpression(new Path(path.toString()), ValueFilter.eq(value));
       }
     }
 
@@ -55,11 +56,11 @@ public enum BasicOperatorType {
   },
   LTEQ {
     @Override
-    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(PartialPath path, T value) {
       if (path.equals("time")) {
         return new GlobalTimeExpression(TimeFilter.ltEq((Long) value));
       } else {
-        return new SingleSeriesExpression(path, ValueFilter.ltEq(value));
+        return new SingleSeriesExpression(new Path(path.toString()), ValueFilter.ltEq(value));
       }
     }
 
@@ -75,11 +76,11 @@ public enum BasicOperatorType {
   },
   LT {
     @Override
-    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(PartialPath path, T value) {
       if (path.equals("time")) {
         return new GlobalTimeExpression(TimeFilter.lt((Long) value));
       } else {
-        return new SingleSeriesExpression(path, ValueFilter.lt(value));
+        return new SingleSeriesExpression(new Path(path.toString()), ValueFilter.lt(value));
       }
     }
 
@@ -95,11 +96,11 @@ public enum BasicOperatorType {
   },
   GTEQ {
     @Override
-    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(PartialPath path, T value) {
       if (path.equals("time")) {
         return new GlobalTimeExpression(TimeFilter.gtEq((Long) value));
       } else {
-        return new SingleSeriesExpression(path, ValueFilter.gtEq(value));
+        return new SingleSeriesExpression(new Path(path.toString()), ValueFilter.gtEq(value));
       }
     }
 
@@ -115,11 +116,11 @@ public enum BasicOperatorType {
   },
   GT {
     @Override
-    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(PartialPath path, T value) {
       if (path.equals("time")) {
         return new GlobalTimeExpression(TimeFilter.gt((Long) value));
       } else {
-        return new SingleSeriesExpression(path, ValueFilter.gt(value));
+        return new SingleSeriesExpression(new Path(path.toString()), ValueFilter.gt(value));
       }
     }
 
@@ -135,11 +136,11 @@ public enum BasicOperatorType {
   },
   NOTEQUAL {
     @Override
-    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(PartialPath path, T value) {
       if (path.equals("time")) {
         return new GlobalTimeExpression(TimeFilter.notEq((Long) value));
       } else {
-        return new SingleSeriesExpression(path, ValueFilter.notEq(value));
+        return new SingleSeriesExpression(new Path(path.toString()), ValueFilter.notEq(value));
       }
     }
 
@@ -182,7 +183,7 @@ public enum BasicOperatorType {
     }
   }
 
-  public abstract <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value);
+  public abstract <T extends Comparable<T>> IUnaryExpression getUnaryExpression(PartialPath path, T value);
 
   public abstract <T extends Comparable<T>> Filter getValueFilter(T tsPrimitiveType);
 
