@@ -101,7 +101,6 @@ statement
 selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
-    | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
     | lastClause #lastElement
     ;
 
