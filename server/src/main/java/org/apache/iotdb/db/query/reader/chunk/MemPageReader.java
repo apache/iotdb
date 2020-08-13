@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.chunk;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
@@ -35,18 +36,19 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
-  public BatchData getAllSatisfiedPageData() {
+  public BatchData getAllSatisfiedPageData(boolean ascending) {
     if (valueFilter == null) {
       return batchData;
     }
-    BatchData filteredBatchData = new BatchData(batchData.getDataType());
+    BatchData filteredBatchData = BatchDataFactory
+        .createBatchData(batchData.getDataType(), ascending);
     while (batchData.hasCurrent()) {
       if (valueFilter.satisfy(batchData.currentTime(), batchData.currentValue())) {
         filteredBatchData.putAnObject(batchData.currentTime(), batchData.currentValue());
       }
       batchData.next();
     }
-    return filteredBatchData;
+    return filteredBatchData.flip();
   }
 
   @Override

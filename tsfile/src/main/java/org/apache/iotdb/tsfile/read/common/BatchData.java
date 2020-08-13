@@ -53,19 +53,19 @@ public class BatchData implements Serializable {
 
   private static final long serialVersionUID = -4620310601188394839L;
   private static final int capacityThreshold = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
-  private int capacity = 16;
+  protected int capacity = 16;
 
   private TSDataType dataType;
 
   // outer list index for read
-  private int readCurListIndex;
+  protected int readCurListIndex;
   // inner array index for read
-  private int readCurArrayIndex;
+  protected int readCurArrayIndex;
 
   // outer list index for write
-  private int writeCurListIndex;
+  protected int writeCurListIndex;
   // inner array index for write
-  private int writeCurArrayIndex;
+  protected int writeCurArrayIndex;
 
   // the insert timestamp number of timeRet
   private int count;
@@ -592,5 +592,9 @@ public class BatchData implements Serializable {
 
   public int getReadCurArrayIndex() {
     return readCurArrayIndex;
+  }
+
+  public BatchData flip() {
+    return this;
   }
 }

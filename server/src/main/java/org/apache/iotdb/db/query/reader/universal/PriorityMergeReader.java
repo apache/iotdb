@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.universal;
 
+import java.util.Comparator;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import java.io.IOException;
@@ -30,15 +31,16 @@ import java.util.PriorityQueue;
 public class PriorityMergeReader implements IPointReader {
 
   // largest end time of all added readers
-  private long currentLargestEndTime;
+  protected long currentReadStopTime;
 
-  PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
-    int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
-        o2.timeValuePair.getTimestamp());
-    return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
-  });
+  protected PriorityQueue<Element> heap;
 
   public PriorityMergeReader() {
+    heap = new PriorityQueue<>((o1, o2) -> {
+      int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
+          o2.timeValuePair.getTimestamp());
+      return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
+    });
   }
 
   public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority)
@@ -59,14 +61,14 @@ public class PriorityMergeReader implements IPointReader {
   public void addReader(IPointReader reader, long priority, long endTime) throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
-      currentLargestEndTime = Math.max(currentLargestEndTime, endTime);
+      currentReadStopTime = Math.max(currentReadStopTime, endTime);
     } else {
       reader.close();
     }
   }
 
-  public long getCurrentLargestEndTime() {
-    return currentLargestEndTime;
+  public long getCurrentReadStopTime() {
+    return currentReadStopTime;
   }
 
   @Override

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -51,7 +52,7 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
 public class SeriesReader {
 
-  interface TimeOrderUtils {
+  public interface TimeOrderUtils {
 
     long getOrderTime(Statistics statistics);
 
@@ -70,6 +71,8 @@ public class SeriesReader {
     <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor);
 
     boolean isExcessEndpoint(long time, long endpointTime);
+
+    boolean getAscending();
   }
 
 
@@ -126,6 +129,11 @@ public class SeriesReader {
     public boolean isExcessEndpoint(long time, long endpointTime) {
       return time < endpointTime;
     }
+
+    @Override
+    public boolean getAscending() {
+      return false;
+    }
   }
 
 
@@ -181,6 +189,11 @@ public class SeriesReader {
     public boolean isExcessEndpoint(long time, long endpointTime) {
       return time > endpointTime;
     }
+
+    @Override
+    public boolean getAscending() {
+      return true;
+    }
   }
 
 
@@ -230,7 +243,7 @@ public class SeriesReader {
   /*
    * point cache
    */
-  private PriorityMergeReader mergeReader = new PriorityMergeReader();
+  private PriorityMergeReader mergeReader;
 
   /*
    * result cache
@@ -251,8 +264,10 @@ public class SeriesReader {
     this.valueFilter = valueFilter;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
+      mergeReader = new PriorityMergeReader();
     } else {
       this.orderUtils = new DescTimeOrderUtils();
+      mergeReader = new DescPriorityMergeReader();
     }
 
     this.seqFileResource = new LinkedList<>(dataSource.getSeqResources());
@@ -277,8 +292,10 @@ public class SeriesReader {
     this.valueFilter = valueFilter;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
+      mergeReader = new PriorityMergeReader();
     } else {
       this.orderUtils = new DescTimeOrderUtils();
+      mergeReader = new DescPriorityMergeReader();
     }
 
     this.seqFileResource = new LinkedList<>(seqFileResource);
@@ -639,7 +656,7 @@ public class SeriesReader {
       if (valueFilter != null) {
         firstPageReader.setFilter(valueFilter);
       }
-      BatchData batchData = firstPageReader.getAllSatisfiedPageData();
+      BatchData batchData = firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending());
       firstPageReader = null;
 
       return batchData;
@@ -663,7 +680,7 @@ public class SeriesReader {
       if (mergeReader.hasNextTimeValuePair()) {
 
         cachedBatchData = new BatchData(dataType);
-        long currentPageEndPointTime = mergeReader.getCurrentLargestEndTime();
+        long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
 
         while (mergeReader.hasNextTimeValuePair()) {
 
@@ -725,7 +742,7 @@ public class SeriesReader {
 
     long currentPageEndpointTime;
     if (mergeReader.hasNextTimeValuePair()) {
-      currentPageEndpointTime = mergeReader.getCurrentLargestEndTime();
+      currentPageEndpointTime = mergeReader.getCurrentReadStopTime();
     } else {
       currentPageEndpointTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
     }
@@ -751,7 +768,7 @@ public class SeriesReader {
 
   private void putPageReaderToMergeReader(VersionPageReader pageReader) throws IOException {
     mergeReader.addReader(
-        pageReader.getAllSatisfiedPageData().getBatchDataIterator(),
+        pageReader.getAllSatisfiedPageData(orderUtils.getAscending()).getBatchDataIterator(),
         pageReader.version,
         orderUtils.getOverlapCheckTime(pageReader.getStatistics()));
   }
@@ -904,8 +921,8 @@ public class SeriesReader {
       return data.getStatistics();
     }
 
-    BatchData getAllSatisfiedPageData() throws IOException {
-      return data.getAllSatisfiedPageData();
+    BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
+      return data.getAllSatisfiedPageData(ascending);
     }
 
     void setFilter(Filter filter) {
