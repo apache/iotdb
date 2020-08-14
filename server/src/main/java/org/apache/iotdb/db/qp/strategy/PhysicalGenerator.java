@@ -433,9 +433,6 @@ public class PhysicalGenerator {
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix in SELECT
         Path suffixPath = suffixPaths.get(i);
 
-        if (suffixPath.getTsAlias() != null) {
-          measurementAliasMap.put(suffixPath.getMeasurement(), suffixPath.getTsAlias());
-        }
         // to record measurements in the loop of a suffix path
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
 
@@ -451,6 +448,10 @@ public class PhysicalGenerator {
           try {
             // remove stars in SELECT to get actual paths
             List<String> actualPaths = getMatchedTimeseries(fullPath.getFullPath());
+            if (suffixPath.getTsAlias() != null && actualPaths.size() >= 2) {
+              throw new QueryProcessException(
+                  "alias '" + suffixPath.getTsAlias() + "' can only be matched with one time series");
+            }
             // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
               String nonExistMeasurement = fullPath.getMeasurement();
@@ -504,6 +505,11 @@ public class PhysicalGenerator {
               if (measurementSetOfGivenSuffix.add(measurementChecked)
                   || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
                 measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
+              }
+
+              // It will be optimized after PR# 1496
+              if (suffixPath.getTsAlias() != null) {
+                measurementAliasMap.put(measurementChecked, suffixPath.getTsAlias());
               }
               // update paths
               paths.add(path);
@@ -698,9 +704,9 @@ public class PhysicalGenerator {
       if (column == null) {
         column = indexedPath.left.getAlias() != null ? indexedPath.left.getFullPathWithAlias()
             : indexedPath.left.toString();
-      }
-      if (queryPlan instanceof AggregationPlan) {
-        column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";
+        if (queryPlan instanceof AggregationPlan) {
+          column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";
+        }
       }
       if (!columnSet.contains(column)) {
         TSDataType seriesType = dataTypes.get(indexedPath.right);

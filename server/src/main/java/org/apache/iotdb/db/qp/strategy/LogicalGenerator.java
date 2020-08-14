@@ -98,6 +98,8 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FlushContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FromClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FullMergeContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FullPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionAsClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionAsElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionCallContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleContext;
@@ -1288,6 +1290,22 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         path.setTsAlias(asClauseContext.ID().toString());
       }
       selectOp.addSelectPath(path);
+    }
+    queryOp.setSelectOperator(selectOp);
+  }
+
+  @Override
+  public void enterFunctionAsElement(FunctionAsElementContext ctx) {
+    super.enterFunctionAsElement(ctx);
+    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    List<FunctionAsClauseContext> functionAsClauseContexts = ctx.functionAsClause();
+    for (FunctionAsClauseContext functionAsClauseContext : functionAsClauseContexts) {
+      FunctionCallContext functionCallContext = functionAsClauseContext.functionCall();
+      Path path = parseSuffixPath(functionCallContext.suffixPath());
+      if (functionAsClauseContext.ID() != null) {
+        path.setTsAlias(functionAsClauseContext.ID().toString());
+      }
+      selectOp.addClusterPath(path, functionCallContext.functionName().getText());
     }
     queryOp.setSelectOperator(selectOp);
   }

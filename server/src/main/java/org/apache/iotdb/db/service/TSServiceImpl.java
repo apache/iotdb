@@ -787,11 +787,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
         }
         for (int i = 0; i < paths.size(); i++) {
-          if (paths.get(i).getAlias() != null) {
-            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")");
-          } else {
-            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+          Path path = paths.get(i);
+          // judge whether as clause is used or not first
+          String column = path.getTsAlias() != null ? path.getTsAlias() : null;
+          if (column == null) {
+            column = path.getAlias() != null
+                ? aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")"
+                : aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")";
           }
+          respColumns.add(column);
         }
         seriesTypes = getSeriesTypesByPath(paths, aggregations);
         break;

@@ -173,7 +173,7 @@ public class IoTDBAsIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
-      boolean hasResultSet = statement.execute("select s1 as speed from root.sg.*");
+      statement.execute("select s1 as speed from root.sg.*");
       fail();
     } catch (Exception e) {
       Assert.assertTrue(
@@ -224,7 +224,104 @@ public class IoTDBAsIT {
   }
 
   @Test
-  public void selectWithAsAlignByDeviceTest() throws ClassNotFoundException {
+  public void aggregationWithAsTest() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "4,28.3,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement
+          .execute("select count(s1) as s1_num, max_value(s2) as s2_max from root.sg.d1");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        assertEquals("s1_num,s2_max,", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void aggregationWithAsFailTest() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
+      statement.execute("select count(s1) as s1_num from root.sg.*");
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage().contains("alias 's1_num' can only be matched with one time series"));
+    }
+  }
+
+  @Test
+  public void groupByWithAsTest() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "100,1,",
+        "180,1,",
+        "260,1,",
+        "340,1,",
+        "420,0,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement
+          .execute("select count(s1) as s1_num from root.sg.d1 group by ([100,500), 80ms)");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        assertEquals("Time,s1_num,", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void alignByDeviceWithAsTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "100,root.sg.d1,10.1,20.7,",
         "200,root.sg.d1,15.2,22.9,",
@@ -266,7 +363,7 @@ public class IoTDBAsIT {
   }
 
   @Test
-  public void selectWithAsMixedAlignByDeviceTest() throws ClassNotFoundException {
+  public void alignByDeviceWithAsMixedTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "100,root.sg.d1,10.1,20.7,",
         "200,root.sg.d1,15.2,22.9,",
@@ -312,7 +409,22 @@ public class IoTDBAsIT {
   }
 
   @Test
-  public void selectWithAsDuplicatedAlignByDeviceTest() throws ClassNotFoundException {
+  public void alignByDeviceWithAsFailTest() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
+      statement.execute("select * as speed from root.sg.d1 align by device");
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage().contains("alias 'speed' can only be matched with one time series"));
+    }
+  }
+
+  @Test
+  public void alignByDeviceWithAsDuplicatedTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "100,root.sg.d1,10.1,10.1,",
         "200,root.sg.d1,15.2,15.2,",
@@ -335,6 +447,45 @@ public class IoTDBAsIT {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
         assertEquals("Time,Device,speed,speed,", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void AlignByDeviceWithAsAggregationTest() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "root.sg.d2,4,4,4,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement
+          .execute("select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg.d2 align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        assertEquals("Device,s1_num,count(s2),s3_num,", header.toString());
 
         int cnt = 0;
         while (resultSet.next()) {

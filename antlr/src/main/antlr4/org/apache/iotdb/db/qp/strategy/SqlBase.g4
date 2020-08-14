@@ -103,6 +103,7 @@ selectElements
     | suffixPath (COMMA suffixPath)* #selectElement
     | lastClause #lastElement
     | asClause (COMMA asClause)* #asElement
+    | functionAsClause (COMMA functionAsClause)* #functionAsElement
     ;
 
 functionCall
@@ -123,6 +124,10 @@ functionName
 
 asClause
     : suffixPath (AS ID)?
+    ;
+
+functionAsClause
+    : functionCall (AS ID)?
     ;
 
 lastClause
