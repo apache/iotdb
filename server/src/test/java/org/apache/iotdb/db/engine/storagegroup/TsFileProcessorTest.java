@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
@@ -74,14 +73,12 @@ public class TsFileProcessorTest {
     MetadataManagerHelper.initMetadata();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
-    IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
-    IoTDBDescriptor.getInstance().getConfig().setEnableVm(true);
   }
 
   @Test

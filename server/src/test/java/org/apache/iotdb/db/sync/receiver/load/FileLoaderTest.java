@@ -18,6 +18,20 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Random;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -37,13 +51,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-
-import static org.junit.Assert.*;
 
 public class FileLoaderTest {
 
@@ -310,7 +317,7 @@ public class FileLoaderTest {
     assertEquals(loadedFileMap.size(), correctLoadedFileMap.size());
     for (Entry<String, Set<String>> entry : correctLoadedFileMap.entrySet()) {
       String sg = entry.getKey();
-      assertEquals(entry.getValue().size(), loadedFileMap.get(sg).size());
+      assertEquals(10, loadedFileMap.get(sg).size());
       assertTrue(entry.getValue().containsAll(loadedFileMap.get(sg)));
     }
   }

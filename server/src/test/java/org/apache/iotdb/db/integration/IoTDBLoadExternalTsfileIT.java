@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -112,6 +114,8 @@ public class IoTDBLoadExternalTsfileIT {
 
   @Before
   public void setUp() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig()
+        .setTsFileManagementStrategy(TsFileManagementStrategy.NormalStrategy);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -121,6 +125,8 @@ public class IoTDBLoadExternalTsfileIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig()
+        .setTsFileManagementStrategy(TsFileManagementStrategy.LevelStrategy);
   }
 
   @Test

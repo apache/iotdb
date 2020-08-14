@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -84,6 +85,8 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setGroupSizeInByte(1024 * 1024 * 150);
     prevChunkMergePointThreshold = IoTDBDescriptor.getInstance().getConfig()
         .getChunkMergePointThreshold();
+    IoTDBDescriptor.getInstance().getConfig()
+        .setTsFileManagementStrategy(TsFileManagementStrategy.NormalStrategy);
     IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
 
@@ -108,6 +111,8 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
 
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig()
+        .setTsFileManagementStrategy(TsFileManagementStrategy.LevelStrategy);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance().getConfig()

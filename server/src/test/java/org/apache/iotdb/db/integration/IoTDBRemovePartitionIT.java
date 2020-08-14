@@ -29,7 +29,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -47,6 +49,8 @@ public class IoTDBRemovePartitionIT {
     EnvironmentUtils.envSetUp();
     StorageEngine.setEnablePartition(true);
     StorageEngine.setTimePartitionInterval(partitionInterval);
+    IoTDBDescriptor.getInstance().getConfig()
+        .setTsFileManagementStrategy(TsFileManagementStrategy.NormalStrategy);
     insertData();
   }
 
@@ -55,6 +59,8 @@ public class IoTDBRemovePartitionIT {
     EnvironmentUtils.cleanEnv();
     StorageEngine.setEnablePartition(false);
     StorageEngine.setTimePartitionInterval(-1);
+    IoTDBDescriptor.getInstance().getConfig()
+        .setTsFileManagementStrategy(TsFileManagementStrategy.LevelStrategy);
   }
 
   @Test
@@ -70,7 +76,7 @@ public class IoTDBRemovePartitionIT {
         while (resultSet.next()) {
           assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(1));
           assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(2));
-          count ++;
+          count++;
         }
         assertEquals(20, count);
       }
@@ -94,7 +100,7 @@ public class IoTDBRemovePartitionIT {
         while (resultSet.next()) {
           assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(1));
           assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(2));
-          count ++;
+          count++;
         }
         assertEquals(10, count);
       }
@@ -104,7 +110,7 @@ public class IoTDBRemovePartitionIT {
         while (resultSet.next()) {
           assertEquals(count / 2 * 100 + count % 2 * 50 + 500, resultSet.getLong(1));
           assertEquals(count / 2 * 100 + count % 2 * 50 + 500, resultSet.getLong(2));
-          count ++;
+          count++;
         }
         assertEquals(10, count);
       }
@@ -140,7 +146,7 @@ public class IoTDBRemovePartitionIT {
         while (resultSet.next()) {
           assertEquals(count / 2 * 100 + count % 2 * 50 + 500, resultSet.getLong(1));
           assertEquals(count / 2 * 100 + count % 2 * 50 + 500, resultSet.getLong(2));
-          count ++;
+          count++;
         }
         assertEquals(10, count);
       }
@@ -177,7 +183,6 @@ public class IoTDBRemovePartitionIT {
         sqls.add("FLUSH");
       }
     }
-    sqls.add("MERGE");
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
