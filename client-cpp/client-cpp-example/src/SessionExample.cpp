@@ -274,14 +274,13 @@ int main() {
 
     createMultiTimeseries();
 
-/*
     insertRecord();
 
     insertTablet();
 
-    insertTablets();
-
     insertRecords();
+
+    insertTablets();
 
     nonQuery();
 
@@ -290,7 +289,6 @@ int main() {
     deleteData();
 
     deleteTimeseries();
-    */
 
     session->close();
     
