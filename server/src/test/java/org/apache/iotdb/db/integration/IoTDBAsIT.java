@@ -466,7 +466,7 @@ public class IoTDBAsIT {
   }
 
   @Test
-  public void AlignByDeviceWithAsAggregationTest() throws ClassNotFoundException {
+  public void alignByDeviceWithAsAggregationTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "root.sg.d2,4,4,4,",
     };
@@ -503,4 +503,101 @@ public class IoTDBAsIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void lastWithAsTest() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "400,speed,50.4,",
+        "400,root.sg.d1.s2,28.3,"
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement
+          .execute("select last s1 as speed, s2 from root.sg.d1");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        assertEquals("Time,timeseries,value,", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void lastWithAsDuplicatedTest() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "400,speed,50.4,",
+        "400,root.sg.d1.s1,50.4,",
+        "400,temperature,28.3,"
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement
+          .execute("select last s1 as speed, s1, s2 as temperature from root.sg.d1");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        assertEquals("Time,timeseries,value,", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void lastWithAsFailTest() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
+      statement.execute("select last s1 as speed from root.sg.*");
+      fail();
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage().contains("alias 'speed' can only be matched with one time series"));
+    }
+  }
+
 }

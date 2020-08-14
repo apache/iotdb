@@ -122,16 +122,17 @@ functionName
     | LAST_VALUE
     ;
 
-asClause
-    : suffixPath (AS ID)?
-    ;
-
 functionAsClause
     : functionCall (AS ID)?
     ;
 
 lastClause
     : LAST suffixPath (COMMA suffixPath)*
+    | LAST asClause (COMMA asClause)*
+    ;
+
+asClause
+    : suffixPath (AS ID)?
     ;
 
 alias

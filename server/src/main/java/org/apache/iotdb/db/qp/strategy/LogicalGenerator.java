@@ -1271,10 +1271,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     selectOp.setLastQuery();
     LastClauseContext lastClauseContext = ctx.lastClause();
-    List<SuffixPathContext> suffixPaths = lastClauseContext.suffixPath();
-    for (SuffixPathContext suffixPath : suffixPaths) {
-      Path path = parseSuffixPath(suffixPath);
-      selectOp.addSelectPath(path);
+    if (lastClauseContext.asClause().size() != 0) {
+      parseAsClause(lastClauseContext.asClause());
+    } else {
+      List<SuffixPathContext> suffixPaths = lastClauseContext.suffixPath();
+      for (SuffixPathContext suffixPath : suffixPaths) {
+        Path path = parseSuffixPath(suffixPath);
+        selectOp.addSelectPath(path);
+      }
     }
     queryOp.setSelectOperator(selectOp);
   }
@@ -1283,7 +1287,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterAsElement(AsElementContext ctx) {
     super.enterAsElement(ctx);
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    List<AsClauseContext> asClauseContexts = ctx.asClause();
+    parseAsClause(ctx.asClause());
+    queryOp.setSelectOperator(selectOp);
+  }
+
+  public void parseAsClause(List<AsClauseContext> asClauseContexts) {
     for (AsClauseContext asClauseContext : asClauseContexts) {
       Path path = parseSuffixPath(asClauseContext.suffixPath());
       if (asClauseContext.ID() != null) {
@@ -1291,7 +1299,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       }
       selectOp.addSelectPath(path);
     }
-    queryOp.setSelectOperator(selectOp);
   }
 
   @Override

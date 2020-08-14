@@ -674,11 +674,9 @@ public class PhysicalGenerator {
     if (queryPlan instanceof LastQueryPlan) {
       for (int i = 0; i < paths.size(); i++) {
         Path path = paths.get(i);
-        String column;
-        if (path.getAlias() != null) {
-          column = path.getFullPathWithAlias();
-        } else {
-          column = path.toString();
+        String column = path.getTsAlias() != null ? path.getTsAlias() : null;
+        if (column == null) {
+          column = path.getAlias() != null ? path.getFullPathWithAlias() : path.toString();
         }
         if (!columnSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
