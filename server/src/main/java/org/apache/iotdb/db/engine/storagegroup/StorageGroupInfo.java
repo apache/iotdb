@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.util.TreeSet;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.SystemInfo;
@@ -32,9 +33,7 @@ public class StorageGroupInfo {
   private long chunkMetadataMemCost;
   private long walMemCost;
   
-  private TreeSet<TsFileProcessor> reportedTsps = new TreeSet<>(
-      (o1, o2) -> (int) (o2.getTsFileProcessorInfo().getTsFileProcessorMemCost() - o1
-          .getTsFileProcessorInfo().getTsFileProcessorMemCost()));
+  private List<TsFileProcessor> reportedTsps = new ArrayList<>();
 
   public StorageGroupInfo() {
     storageGroupReportThreshold = IoTDBDescriptor.getInstance().getConfig()
@@ -91,8 +90,8 @@ public class StorageGroupInfo {
     storageGroupReportThreshold += value;
   }
 
-  public TsFileProcessor getLargestTsFileProcessor() {
-    return reportedTsps.first();
+  public TsFileProcessor getNewestTsFileProcessor() {
+    return reportedTsps.get(reportedTsps.size() - 1);
   }
 
   public void closeTsFileProcessorAndReportToSystem(TsFileProcessor tsFileProcessor) {

@@ -154,7 +154,7 @@ public class SystemInfo {
 
     // get the first processor which has the max mem cost
     StorageGroupInfo storageGroupInfo = reportedSgMemCostMap.firstKey();
-    TsFileProcessor flushedProcessor = storageGroupInfo.getLargestTsFileProcessor();
+    TsFileProcessor flushedProcessor = storageGroupInfo.getNewestTsFileProcessor();
 
     if (flushedProcessor != null) {
       flushedProcessor.asyncFlush();
