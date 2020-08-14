@@ -123,7 +123,7 @@ public class RemoteSimpleSeriesReaderTest {
 
     DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
         request, context, metaGroupMember, group);
-    sourceInfo.nextDataClient(false, Long.MIN_VALUE);
+    sourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
 
     reader = new RemoteSimpleSeriesReader(sourceInfo);
 
@@ -153,7 +153,7 @@ public class RemoteSimpleSeriesReaderTest {
 
     DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
         request, context, metaGroupMember, group);
-    sourceInfo.nextDataClient(false, Long.MIN_VALUE);
+    sourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
     reader = new RemoteSimpleSeriesReader(sourceInfo);
 
     // normal read
