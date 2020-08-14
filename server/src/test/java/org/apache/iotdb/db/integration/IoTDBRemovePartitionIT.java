@@ -141,11 +141,6 @@ public class IoTDBRemovePartitionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("DELETE PARTITION root.test2 0,1,2,3,4");
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.test2")) {
         int count = 0;
         while (resultSet.next()) {
@@ -187,12 +182,6 @@ public class IoTDBRemovePartitionIT {
       if (i < 9) {
         sqls.add("FLUSH");
       }
-    }
-    sqls.add("MERGE");
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
     }
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
