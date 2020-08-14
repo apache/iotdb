@@ -819,6 +819,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     // build column header with constant and non exist column and deduplication
     List<String> measurements = plan.getMeasurements();
+    Map<String, String> measurementAliasMap = plan.getMeasurementAliasMap();
     Map<String, MeasurementType> measurementTypeMap = plan.getMeasurementTypeMap();
     for (String measurement : measurements) {
       TSDataType type = null;
@@ -830,7 +831,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case Constant:
           type = TSDataType.TEXT;
       }
-      respColumns.add(measurement);
+      respColumns.add(measurementAliasMap.getOrDefault(measurement, measurement));
       columnTypes.add(type.toString());
 
       if (!deduplicatedMeasurements.contains(measurement)) {

@@ -420,6 +420,7 @@ public class PhysicalGenerator {
 
       // to record result measurement columns
       List<String> measurements = new ArrayList<>();
+      Map<String, String> measurementAliasMap = new HashMap<>();
       // to check the same measurement of different devices having the same datatype
       // record the data type of each column of result set
       Map<String, TSDataType> columnDataTypeMap = new HashMap<>();
@@ -432,6 +433,9 @@ public class PhysicalGenerator {
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix in SELECT
         Path suffixPath = suffixPaths.get(i);
 
+        if (suffixPath.getTsAlias() != null) {
+          measurementAliasMap.put(suffixPath.getMeasurement(), suffixPath.getTsAlias());
+        }
         // to record measurements in the loop of a suffix path
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
 
@@ -532,6 +536,7 @@ public class PhysicalGenerator {
 
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
+      alignByDevicePlan.setMeasurementAliasMap(measurementAliasMap);
       alignByDevicePlan.setDevices(devices);
       alignByDevicePlan.setColumnDataTypeMap(columnDataTypeMap);
       alignByDevicePlan.setMeasurementTypeMap(measurementTypeMap);

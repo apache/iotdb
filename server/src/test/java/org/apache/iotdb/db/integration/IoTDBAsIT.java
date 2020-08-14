@@ -96,7 +96,8 @@ public class IoTDBAsIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select s1 as speed, s2 as temperature from root.sg.d1");
+      boolean hasResultSet = statement
+          .execute("select s1 as speed, s2 as temperature from root.sg.d1");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -175,7 +176,8 @@ public class IoTDBAsIT {
       boolean hasResultSet = statement.execute("select s1 as speed from root.sg.*");
       fail();
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("alias 'speed' can only be matched with one time series"));
+      Assert.assertTrue(
+          e.getMessage().contains("alias 'speed' can only be matched with one time series"));
     }
   }
 
@@ -203,6 +205,136 @@ public class IoTDBAsIT {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
         assertEquals("Time,power,", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectWithAsAlignByDeviceTest() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "100,root.sg.d1,10.1,20.7,",
+        "200,root.sg.d1,15.2,22.9,",
+        "300,root.sg.d1,30.3,25.1,",
+        "400,root.sg.d1,50.4,28.3,"
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement
+          .execute("select s1 as speed, s2 as temperature from root.sg.d1 align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        assertEquals("Time,Device,speed,temperature,", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectWithAsMixedAlignByDeviceTest() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "100,root.sg.d1,10.1,20.7,",
+        "200,root.sg.d1,15.2,22.9,",
+        "300,root.sg.d1,30.3,25.1,",
+        "400,root.sg.d1,50.4,28.3,",
+        "100,root.sg.d2,11.1,20.2,",
+        "200,root.sg.d2,20.2,21.8,",
+        "300,root.sg.d2,45.3,23.4,",
+        "400,root.sg.d2,73.4,26.3,"
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement
+          .execute("select s1 as speed, s2 from root.sg.* align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        assertEquals("Time,Device,speed,s2,", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectWithAsDuplicatedAlignByDeviceTest() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "100,root.sg.d1,10.1,10.1,",
+        "200,root.sg.d1,15.2,15.2,",
+        "300,root.sg.d1,30.3,30.3,",
+        "400,root.sg.d1,50.4,50.4,"
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement
+          .execute("select s1 as speed, s1 from root.sg.d1 align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        assertEquals("Time,Device,speed,speed,", header.toString());
 
         int cnt = 0;
         while (resultSet.next()) {
