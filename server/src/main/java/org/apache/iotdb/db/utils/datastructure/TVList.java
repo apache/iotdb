@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -265,9 +266,10 @@ public abstract class TVList {
     Object newList = PrimitiveArrayManager.getDataListByType(dataType);
     while (newList == null) {
       try {
-        TimeUnit.MILLISECONDS.sleep(100);
+        TimeUnit.MILLISECONDS.sleep(1000);
         newList = PrimitiveArrayManager.getDataListByType(dataType);
-        logger.info("Still waiting... ");
+        logger.info("Still waiting for memory releasing... Total mem cost {}",
+            SystemInfo.getInstance().getTotalMemCost());
       } catch (InterruptedException e) {
         logger.error("Interrupted...", e);
         Thread.currentThread().interrupt();

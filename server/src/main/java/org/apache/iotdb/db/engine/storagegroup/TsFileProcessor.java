@@ -218,7 +218,7 @@ public class TsFileProcessor {
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
-        logger.info("Still waiting for memory... ");
+        logger.info("System rejected, waiting for memory releasing... ");
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
         Thread.currentThread().interrupt();
@@ -289,7 +289,7 @@ public class TsFileProcessor {
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
-        logger.info("Still waiting for memory... ");
+        logger.info("System rejected, waiting for memory releasing... ");
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
         Thread.currentThread().interrupt();
@@ -449,12 +449,6 @@ public class TsFileProcessor {
   boolean shouldFlush() {
     if (workMemTable == null) {
       return false;
-    }
-
-    if (workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
-      logger.info("The memtable size {} of tsfile {} reaches the threshold",
-          workMemTable.memSize(), tsFileResource.getTsFile().getAbsolutePath());
-      return true;
     }
 
     if (workMemTable.reachTotalPointNumThreshold()) {
@@ -648,7 +642,7 @@ public class TsFileProcessor {
       }
       addAMemtableIntoFlushingList(workMemTable);
     } catch (Exception e) {
-      logger.error("{}: {} add a memtable into flushing listfailed", storageGroupName,
+      logger.error("{}: {} add a memtable into flushing list failed", storageGroupName,
           tsFileResource.getTsFile().getName(), e);
     } finally {
       flushQueryLock.writeLock().unlock();

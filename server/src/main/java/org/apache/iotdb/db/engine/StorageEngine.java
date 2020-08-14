@@ -609,15 +609,6 @@ public class StorageEngine implements IService {
     return processor != null && processor.isFileAlreadyExist(tsFileResource, partitionNum);
   }
 
-  public int countTsFileProcessors() {
-    int count = 0;
-    for (StorageGroupProcessor sgProcessor : processorMap.values()) {
-      count += sgProcessor.getWorkSequenceTsFileProcessors().size();
-      count += sgProcessor.getWorkUnsequenceTsFileProcessors().size();
-    }
-    return count;
-  }
-
   public static long getTimePartitionInterval() {
     if (timePartitionInterval == -1) {
       initTimePartition();
