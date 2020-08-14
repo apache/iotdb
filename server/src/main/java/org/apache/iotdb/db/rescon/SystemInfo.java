@@ -145,7 +145,7 @@ public class SystemInfo {
           - storageGroupInfo.getSgMemCost();
       if (this.arrayPoolMemCost + this.totalSgInfoMemCost 
           < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
-        logger.info("Some sg memery costs {} released, change system to normal status.", 
+        logger.info("Some sg memery costs {} released, set system to normal status.", 
             reportedSgMemCostMap.get(storageGroupInfo) - storageGroupInfo.getSgMemCost());
         rejected = false;
       }

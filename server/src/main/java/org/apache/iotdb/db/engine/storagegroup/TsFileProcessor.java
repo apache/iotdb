@@ -712,10 +712,12 @@ public class TsFileProcessor {
             memTable.isSignalMemTable(), flushingMemTables.size());
       }
       memTable.release();
-      // For text type data, reset the mem cost in tsFileProcessorInfo
-      tsFileProcessorInfo.resetBytesMemCost(memTable.getBytesMemSize());
-      // report to System
-      SystemInfo.getInstance().resetStorageGroupInfoStatus(storageGroupInfo);
+      if (memTable.getBytesMemSize() > 0) {
+        // For text type data, reset the mem cost in tsFileProcessorInfo
+        tsFileProcessorInfo.resetBytesMemCost(memTable.getBytesMemSize());
+        // report to System
+        SystemInfo.getInstance().resetStorageGroupInfoStatus(storageGroupInfo);
+      }
       memTable = null;
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} flush finished, remove a memtable from flushing list, "
