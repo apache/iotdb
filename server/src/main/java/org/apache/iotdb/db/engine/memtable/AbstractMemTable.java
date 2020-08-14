@@ -230,6 +230,9 @@ public abstract class AbstractMemTable implements IMemTable {
       if (chunk == null) {
         return;
       }
+      if (timestamp == Long.MAX_VALUE) {
+        deviceMap.remove(measurementId);
+      }
       int deletedPointsNumber = chunk.delete(timestamp);
       totalPointsNum -= deletedPointsNumber;
     }
