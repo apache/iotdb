@@ -431,8 +431,15 @@ public class LevelTsFileManagement extends TsFileManagement {
       for (int i = 0; i < maxLevelNum - 1; i++) {
         List<TsFileResource> tsFileResources = mergeResources.get(i);
         for (TsFileResource tsFileResource : tsFileResources) {
-          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
-              tsFileResource.getTsFile());
+          RestorableTsFileIOWriter writer;
+          try {
+            writer = new RestorableTsFileIOWriter(
+                tsFileResource.getTsFile());
+          } catch (Exception e) {
+            logger.error("[Hot Compaction] {} open writer failed",
+                tsFileResource.getTsFile().getPath(), e);
+            continue;
+          }
           Map<String, Map<String, List<ChunkMetadata>>> schemaMap = writer
               .getMetadatasForQuery();
           for (Entry<String, Map<String, List<ChunkMetadata>>> schemaMapEntry : schemaMap
