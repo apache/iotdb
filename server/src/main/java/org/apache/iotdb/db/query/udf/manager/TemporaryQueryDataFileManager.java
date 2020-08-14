@@ -32,9 +32,12 @@ import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.query.udf.datastructure.SerializableList.SerializationRecorder;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TemporaryQueryDataFileManager implements IService {
+
+  private static final Logger logger = LoggerFactory.getLogger(TemporaryQueryDataFileManager.class);
 
   private final Map<Long, Map<String, SerializationRecorder>> recorders;
   private final String temporaryFileDir;
@@ -42,18 +45,15 @@ public class TemporaryQueryDataFileManager implements IService {
   private TemporaryQueryDataFileManager() {
     recorders = new ConcurrentHashMap<>();
     temporaryFileDir =
-        IoTDBDescriptor.getInstance().getConfig().getQueryDir() + File.separator + "udf"
-            + File.separator;
-    try {
-      FileUtils.forceMkdir(new File(temporaryFileDir));
-    } catch (IOException e) {
-      throw new StorageEngineFailureException(e);
-    }
+        IoTDBDescriptor.getInstance().getConfig().getQueryDir()
+            + File.separator + "udf" + File.separator + "tmp" + File.separator;
+    makeDirIfNecessary(temporaryFileDir);
   }
 
-  public RandomAccessFile register(SerializationRecorder recorder)
-      throws FileNotFoundException {
-    String fileName = getFileName(recorder.getQueryId(), recorder.getDataId(), recorder.getIndex());
+  public RandomAccessFile register(SerializationRecorder recorder) throws FileNotFoundException {
+    String dirName = getDirName(recorder.getQueryId(), recorder.getDataId());
+    makeDirIfNecessary(dirName);
+    String fileName = getFileName(dirName, recorder.getIndex());
     recorders.putIfAbsent(recorder.getQueryId(), new ConcurrentHashMap<>())
         .putIfAbsent(fileName, recorder);
     return new RandomAccessFile(new File(fileName), "rw");
@@ -67,31 +67,32 @@ public class TemporaryQueryDataFileManager implements IService {
     for (SerializationRecorder recorder : dataId2Recorders.values()) {
       try {
         recorder.closeFile();
-      } catch (IOException ignored) {
+      } catch (IOException e) {
+        logger.warn(String.format("Failed to close file in method deregister(%d), because %s",
+            queryId, e.toString()));
       }
     }
   }
 
-  private String getFileName(long queryId, Path path, int index) {
-    return getFileName(queryId, path.toString(), index);
-  }
-
-  private String getFileName(long queryId, String dataId, int index) {
-    String dir = getDirName(queryId, dataId);
-    makeDirIfNecessary(dir);
-    return dir + index;
+  private void makeDirIfNecessary(String dir) {
+    File file = new File(dir);
+    if (file.exists() && file.isDirectory()) {
+      return;
+    }
+    try {
+      FileUtils.forceMkdir(file);
+    } catch (IOException e) {
+      logger.error(String.format("Failed to make dir %s, because %s", dir, e.toString()));
+      throw new StorageEngineFailureException(e);
+    }
   }
 
   private String getDirName(long queryId, String dataId) {
     return temporaryFileDir + File.separator + queryId + File.separator + dataId + File.separator;
   }
 
-  private void makeDirIfNecessary(String dir) {
-    try {
-      FileUtils.forceMkdir(new File(dir));
-    } catch (IOException e) {
-      throw new StorageEngineFailureException(e);
-    }
+  private String getFileName(String dir, int index) {
+    return dir + index;
   }
 
   @Override
@@ -105,7 +106,7 @@ public class TemporaryQueryDataFileManager implements IService {
       for (Long queryId : recorders.keySet()) {
         deregister(queryId);
       }
-      FileUtils.deleteDirectory(new File(temporaryFileDir));
+      FileUtils.cleanDirectory(new File(temporaryFileDir));
     } catch (IOException ignored) {
     }
   }
