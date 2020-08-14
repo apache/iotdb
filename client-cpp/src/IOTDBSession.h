@@ -42,6 +42,7 @@ using ::apache::thrift::transport::TSocket;
 using ::apache::thrift::transport::TTransport;
 using ::apache::thrift::transport::TTransportException;
 using ::apache::thrift::transport::TBufferedTransport;
+using ::apache::thrift::transport::TFramedTransport;
 using ::apache::thrift::TException;
 
 class IoTDBConnectionException : public std::exception
@@ -129,6 +130,7 @@ namespace TSStatusCode {
         TSFILE_PROCESSOR_ERROR = 314,
         PATH_ILLEGAL = 315,
         LOAD_FILE_ERROR = 316,
+        STORAGE_GROUP_NOT_READY = 317,
 
         EXECUTE_STATEMENT_ERROR = 400,
         SQL_PARSE_ERROR = 401,
@@ -149,10 +151,17 @@ namespace TSStatusCode {
         READ_ONLY_SYSTEM_ERROR = 502,
         DISK_SPACE_INSUFFICIENT_ERROR = 503,
         START_UP_ERROR = 504,
+        SHUT_DOWN_ERROR = 505,
+        MULTIPLE_ERROR = 506,
         WRONG_LOGIN_PASSWORD_ERROR = 600,
         NOT_LOGIN_ERROR = 601,
         NO_PERMISSION_ERROR = 602,
         UNINITIALIZED_AUTH_ERROR = 603,
+        PARTITION_NOT_READY = 700,
+        TIME_OUT = 701,
+        NO_LEADER = 702,
+        UNSUPPORTED_OPERATION = 703,
+        NODE_READ_ONLY= 704,
         INCOMPATIBLE_VERSION = 203,
     };
 }
@@ -563,9 +572,6 @@ class Session
         int64_t statementId;
         std::string zoneId;
         int fetchSize;
-
-        //  mutex to solve synchronization problem
-        std::mutex sessionMutex;
         
         bool checkSorted(Tablet& tablet);
         void sortTablet(Tablet& tablet);
