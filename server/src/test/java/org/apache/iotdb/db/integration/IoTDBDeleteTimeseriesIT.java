@@ -47,8 +47,8 @@ public class IoTDBDeleteTimeseriesIT {
   public void testDeleteTimeseries() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String[] retArray = new String[]{
-        "1,2,3,",
-        "1,2.1,3,"
+        "1,2,",
+        "1,2.1,"
     };
     int cnt = 0;
 
@@ -60,7 +60,7 @@ public class IoTDBDeleteTimeseriesIT {
       statement.execute(
           "create timeseries root.turbine1.d1.s3 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
       statement.execute("INSERT INTO root.turbine1.d1(timestamp,s2,s3) VALUES(1,2,3)");
-      boolean hasResult = statement.execute("SELECT s1 FROM root.turbine.d1");
+      boolean hasResult = statement.execute("SELECT s2 FROM root.turbine1.d1");
       Assert.assertTrue(hasResult);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -77,7 +77,7 @@ public class IoTDBDeleteTimeseriesIT {
       statement.execute(
           "create timeseries root.turbine1.d1.s2 with datatype=FLOAT, encoding=PLAIN, compression=SNAPPY");
       statement.execute("INSERT INTO root.turbine1.d1(timestamp,s2,s3) VALUES(1,2.1,3)");
-      hasResult = statement.execute("SELECT s1 FROM root.turbine.d1");
+      hasResult = statement.execute("SELECT s2 FROM root.turbine1.d1");
       Assert.assertTrue(hasResult);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
