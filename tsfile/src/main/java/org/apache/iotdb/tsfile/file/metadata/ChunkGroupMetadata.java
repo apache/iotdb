@@ -41,4 +41,9 @@ public class ChunkGroupMetadata {
   public List<ChunkMetadata> getChunkMetadataList() {
     return chunkMetadataList;
   }
+
+  public void setChunkMetadataList(
+      List<ChunkMetadata> chunkMetadataList) {
+    this.chunkMetadataList = chunkMetadataList;
+  }
 }

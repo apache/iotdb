@@ -244,6 +244,13 @@ public class TsFileProcessor {
         workMemTable
             .delete(deletion.getDevice(), deletion.getMeasurement(), deletion.getTimestamp());
       }
+
+      // clear ChunkMetaData of the deleted timeseries
+      if (deletion.getTimestamp() == Long.MAX_VALUE) {
+        writer.deleteMeasurementFromChunkGroupMetadataList(deletion.getDevice(),
+            deletion.getMeasurement());
+      }
+
       // flushing memTables are immutable, only record this deletion in these memTables for query
       for (IMemTable memTable : flushingMemTables) {
         memTable.delete(deletion);
