@@ -1245,7 +1245,7 @@ public class PlanExecutor implements IPlanExecutor {
    * @param pathList deleted paths
    */
   private void deleteDataOfTimeSeries(List<Path> pathList)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, StorageEngineException {
     for (Path path : pathList) {
       try {
         if (!mManager.isPathExist(path.getFullPath())) {
