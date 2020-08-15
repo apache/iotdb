@@ -1246,11 +1246,17 @@ public class PlanExecutor implements IPlanExecutor {
    */
   private void deleteDataOfTimeSeries(List<Path> pathList)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    for (Path p : pathList) {
-      DeletePlan deletePlan = new DeletePlan();
-      deletePlan.addPath(p);
-      deletePlan.setDeleteTime(Long.MAX_VALUE);
-      processNonQuery(deletePlan);
+    for (Path path : pathList) {
+      try {
+        if (!mManager.isPathExist(path.getFullPath())) {
+          throw new QueryProcessException(
+              String.format("Time series %s does not exist.", path.getFullPath()));
+        }
+        mManager.getStorageGroupName(path.getFullPath());
+        StorageEngine.getInstance().deleteTimeseries(path.getDevice(), path.getMeasurement());
+      } catch (MetadataException | StorageEngineException e) {
+        throw new QueryProcessException(e);
+      }
     }
   }
 
