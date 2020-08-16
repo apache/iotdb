@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -92,7 +91,7 @@ public interface SerializableList {
       return serializedElementSize;
     }
 
-    public RandomAccessFile getFile() throws FileNotFoundException {
+    public RandomAccessFile getFile() throws IOException {
       if (file == null) {
         file = TemporaryQueryDataFileService.getInstance().register(this);
       }
@@ -108,7 +107,7 @@ public interface SerializableList {
       file = null;
     }
 
-    public FileChannel getFileChannel() throws FileNotFoundException {
+    public FileChannel getFileChannel() throws IOException {
       if (fileChannel == null) {
         fileChannel = getFile().getChannel();
       }
