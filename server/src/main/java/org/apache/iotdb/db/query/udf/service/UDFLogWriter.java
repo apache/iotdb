@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.manager;
+package org.apache.iotdb.db.query.udf.service;
 
 import java.io.BufferedWriter;
 import java.io.File;

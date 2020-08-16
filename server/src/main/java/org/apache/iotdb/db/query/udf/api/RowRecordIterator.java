@@ -17,8 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.iterator;
+package org.apache.iotdb.db.query.udf.api;
 
-public interface Iterator {
+import java.io.IOException;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
+public interface RowRecordIterator extends Iterator {
+
+  boolean hasNextRowRecord();
+
+  void next();
+
+  int currentRowRecordIndex();
+
+  RowRecord currentRowRecord() throws IOException;
+
+  long currentTime() throws IOException;
+
+  void reset();
 }

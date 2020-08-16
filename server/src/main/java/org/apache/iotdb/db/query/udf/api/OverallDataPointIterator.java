@@ -17,26 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.iterator;
+package org.apache.iotdb.db.query.udf.api;
 
 import java.io.IOException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Binary;
 
-public interface OverallRowRecordIterator extends Iterator {
+public interface OverallDataPointIterator extends Iterator {
 
-  RowRecordIterator getRowRecordIterator();
+  DataPointIterator getDataPointIterator();
 
-  RowRecordBatchIterator getSizeLimitedBatchDataIterator(final int batchSize)
+  DataPointBatchIterator getSizeLimitedDataPointBatchIterator(final int batchSize)
       throws QueryProcessException;
 
-  RowRecordBatchIterator getSizeLimitedBatchDataIterator(final int batchSize,
+  DataPointBatchIterator getSizeLimitedDataPointBatchIterator(final int batchSize,
       final long displayWindowBegin) throws QueryProcessException;
 
-  RowRecordBatchIterator getTimeWindowBatchDataIterator(final long timeInterval,
+  DataPointBatchIterator getTimeWindowDataPointBatchIterator(final long timeInterval,
       final long slidingStep) throws QueryProcessException;
 
-  RowRecordBatchIterator getTimeWindowBatchDataIterator(final long displayWindowBegin,
+  DataPointBatchIterator getTimeWindowDataPointBatchIterator(final long displayWindowBegin,
       final long displayWindowEnd, final long timeInterval, final long slidingStep)
       throws QueryProcessException;
 
@@ -44,5 +44,17 @@ public interface OverallRowRecordIterator extends Iterator {
 
   long getTime(int index) throws IOException;
 
-  RowRecord getRowRecord(int index) throws IOException;
+  int getInt(int index) throws IOException;
+
+  long getLong(int index) throws IOException;
+
+  boolean getBoolean(int index) throws IOException;
+
+  float getFloat(int index) throws IOException;
+
+  double getDouble(int index) throws IOException;
+
+  Binary getBinary(int index) throws IOException;
+
+  String getString(int index) throws IOException;
 }

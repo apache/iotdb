@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import org.apache.iotdb.db.query.udf.manager.TemporaryQueryDataFileManager;
+import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -94,7 +94,7 @@ public interface SerializableList {
 
     public RandomAccessFile getFile() throws FileNotFoundException {
       if (file == null) {
-        file = TemporaryQueryDataFileManager.getInstance().register(this);
+        file = TemporaryQueryDataFileService.getInstance().register(this);
       }
       return file;
     }

@@ -24,9 +24,9 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.iterator.OverallRowRecordIterator;
-import org.apache.iotdb.db.query.udf.iterator.RowRecordBatchIterator;
-import org.apache.iotdb.db.query.udf.iterator.RowRecordIterator;
+import org.apache.iotdb.db.query.udf.api.OverallRowRecordIterator;
+import org.apache.iotdb.db.query.udf.api.RowRecordBatchIterator;
+import org.apache.iotdb.db.query.udf.api.RowRecordIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 

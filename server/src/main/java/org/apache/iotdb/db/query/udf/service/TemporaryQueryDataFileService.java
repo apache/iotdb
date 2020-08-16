@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.manager;
+package org.apache.iotdb.db.query.udf.service;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,9 +34,9 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TemporaryQueryDataFileManager implements IService {
+public class TemporaryQueryDataFileService implements IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(TemporaryQueryDataFileManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(TemporaryQueryDataFileService.class);
 
   private static final String temporaryFileDir =
       IoTDBDescriptor.getInstance().getConfig().getQueryDir()
@@ -44,7 +44,7 @@ public class TemporaryQueryDataFileManager implements IService {
 
   private final Map<Long, Map<String, SerializationRecorder>> recorders;
 
-  private TemporaryQueryDataFileManager() {
+  private TemporaryQueryDataFileService() {
     recorders = new ConcurrentHashMap<>();
   }
 
@@ -113,15 +113,15 @@ public class TemporaryQueryDataFileManager implements IService {
     return ServiceType.TEMPORARY_QUERY_DATA_FILE_SERVICE;
   }
 
-  public static TemporaryQueryDataFileManager getInstance() {
-    return TemporaryQueryDataFileManagerHelper.INSTANCE;
+  public static TemporaryQueryDataFileService getInstance() {
+    return TemporaryQueryDataFileServiceHelper.INSTANCE;
   }
 
-  private static class TemporaryQueryDataFileManagerHelper {
+  private static class TemporaryQueryDataFileServiceHelper {
 
-    private static final TemporaryQueryDataFileManager INSTANCE = new TemporaryQueryDataFileManager();
+    private static final TemporaryQueryDataFileService INSTANCE = new TemporaryQueryDataFileService();
 
-    private TemporaryQueryDataFileManagerHelper() {
+    private TemporaryQueryDataFileServiceHelper() {
     }
   }
 }

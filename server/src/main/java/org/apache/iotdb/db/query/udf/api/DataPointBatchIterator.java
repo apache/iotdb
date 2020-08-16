@@ -17,34 +17,38 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.iterator;
+package org.apache.iotdb.db.query.udf.api;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-public interface DataPointIterator extends Iterator {
+public interface DataPointBatchIterator extends Iterator {
 
-  boolean hasNextPoint();
+  boolean hasNextBatch();
 
-  void next();
+  void next() throws IOException;
 
-  int currentPointIndex();
+  int currentBatchIndex();
 
-  long currentTime() throws IOException;
+  DataPointIterator currentBatch();
 
-  int currentInt() throws IOException;
+  int currentBatchSize();
 
-  long currentLong() throws IOException;
+  long getTimeInCurrentBatch(int index) throws IOException;
 
-  float currentFloat() throws IOException;
+  int getIntInCurrentBatch(int index) throws IOException;
 
-  double currentDouble() throws IOException;
+  long getLongInCurrentBatch(int index) throws IOException;
 
-  boolean currentBoolean() throws IOException;
+  boolean getBooleanInCurrentBatch(int index) throws IOException;
 
-  Binary currentBinary() throws IOException;
+  float getFloatInCurrentBatch(int index) throws IOException;
 
-  String currentString() throws IOException;
+  double getDoubleInCurrentBatch(int index) throws IOException;
+
+  Binary getBinaryInCurrentBatch(int index) throws IOException;
+
+  String getStringInCurrentBatch(int index) throws IOException;
 
   void reset();
 }

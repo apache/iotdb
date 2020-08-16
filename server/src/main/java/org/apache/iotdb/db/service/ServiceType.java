@@ -40,7 +40,8 @@ public enum ServiceType {
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE", "PERFORMANCE_STATISTIC_SERVICE"),
   MANAGE_DYNAMIC_PARAMETERS_SERVICE("Manage Dynamic Parameters", "Manage Dynamic Parameters"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
-  TEMPORARY_QUERY_DATA_FILE_SERVICE("Temporary Query Data File Manager", ""),
+  UDF_REGISTRATION_SERVICE("UDF Registration Service", ""),
+  TEMPORARY_QUERY_DATA_FILE_SERVICE("Temporary Query Data File Service", ""),
   CACHE_HIT_RATIO_DISPLAY_SERVICE("CACHE_HIT_RATIO_DISPLAY_SERVICE",
       generateJmxName(IoTDBConstant.IOTDB_PACKAGE, "Cache Hit Ratio")),
 
