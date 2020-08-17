@@ -723,11 +723,11 @@ public class MManager {
    * @param nodeLevel  the level can not be smaller than the level of the prefixPath
    * @return A List instance which stores all node at given level
    */
-  public List<String> getNodesList(String prefixPath, int nodeLevel) throws MetadataException {
+  public List<PartialPath> getNodesList(PartialPath prefixPath, int nodeLevel) throws MetadataException {
     return getNodesList(prefixPath, nodeLevel, null);
   }
 
-  public List<String> getNodesList(String prefixPath, int nodeLevel, StorageGroupFilter filter)
+  public List<PartialPath> getNodesList(PartialPath prefixPath, int nodeLevel, StorageGroupFilter filter)
       throws MetadataException {
     lock.readLock().lock();
     try {
@@ -809,7 +809,7 @@ public class MManager {
   /**
    * To calculate the count of timeseries for given prefix path.
    */
-  public int getAllTimeseriesCount(String prefixPath) throws MetadataException {
+  public int getAllTimeseriesCount(PartialPath prefixPath) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesCount(prefixPath);

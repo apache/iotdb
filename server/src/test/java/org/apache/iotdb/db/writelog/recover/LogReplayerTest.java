@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -88,12 +89,12 @@ public class LogReplayerTest {
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
 
-    IoTDB.metaManager.setStorageGroup("root.sg");
+    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
     try {
       for (int i = 0; i < 5; i++) {
         for (int j = 0; j < 5; j++) {
           IoTDB.metaManager
-              .createTimeseries("root.sg.device" + i + ".sensor" + j, TSDataType.INT64,
+              .createTimeseries(new PartialPath("root.sg.device" + i + ".sensor" + j), TSDataType.INT64,
                   TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(),
                   Collections.emptyMap());
         }
@@ -105,15 +106,15 @@ public class LogReplayerTest {
       WriteLogNode node =
           MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsFile.getName());
       node.write(
-          new InsertRowPlan("root.sg.device0", 100, "sensor0", TSDataType.INT64,
+          new InsertRowPlan(new PartialPath("root.sg.device0"), 100, "sensor0", TSDataType.INT64,
               String.valueOf(0)));
       node.write(
-          new InsertRowPlan("root.sg.device0", 2, "sensor1", TSDataType.INT64, String.valueOf(0)));
+          new InsertRowPlan(new PartialPath("root.sg.device0"), 2, "sensor1", TSDataType.INT64, String.valueOf(0)));
       for (int i = 1; i < 5; i++) {
-        node.write(new InsertRowPlan("root.sg.device" + i, i, "sensor" + i, TSDataType.INT64,
+        node.write(new InsertRowPlan(new PartialPath("root.sg.device" + i), i, "sensor" + i, TSDataType.INT64,
             String.valueOf(i)));
       }
-      DeletePlan deletePlan = new DeletePlan(0, 200, new Path("root.sg.device0", "sensor0"));
+      DeletePlan deletePlan = new DeletePlan(0, 200, new PartialPath("root.sg.device0").concatNode("sensor0"));
       node.write(deletePlan);
       node.close();
 

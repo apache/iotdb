@@ -27,8 +27,10 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -65,9 +67,9 @@ public class FileLoaderTest {
   private void initMetadata() throws MetadataException {
     MManager mmanager = IoTDB.metaManager;
     mmanager.init();
-    mmanager.setStorageGroup("root.sg0");
-    mmanager.setStorageGroup("root.sg1");
-    mmanager.setStorageGroup("root.sg2");
+    mmanager.setStorageGroup(new PartialPath("root.sg0"));
+    mmanager.setStorageGroup(new PartialPath("root.sg1"));
+    mmanager.setStorageGroup(new PartialPath("root.sg2"));
   }
 
   @After
@@ -76,7 +78,7 @@ public class FileLoaderTest {
   }
 
   @Test
-  public void loadNewTsfiles() throws IOException, StorageEngineException {
+  public void loadNewTsfiles() throws IOException, StorageEngineException, IllegalPathException {
     fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
     Map<String, List<File>> allFileList = new HashMap<>();
     Map<String, Set<String>> correctSequenceLoadedFileMap = new HashMap<>();
@@ -122,7 +124,7 @@ public class FileLoaderTest {
     }
 
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       assertTrue(processor.getSequenceFileTreeSet().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
@@ -152,7 +154,7 @@ public class FileLoaderTest {
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
     Map<String, Set<String>> sequenceLoadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       sequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
       assertEquals(10, processor.getSequenceFileTreeSet().size());
       for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
@@ -170,7 +172,7 @@ public class FileLoaderTest {
 
   @Test
   public void loadDeletedFileName()
-      throws IOException, StorageEngineException, InterruptedException {
+      throws IOException, StorageEngineException, InterruptedException, IllegalPathException {
     fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
     Map<String, List<File>> allFileList = new HashMap<>();
     Map<String, Set<String>> correctLoadedFileMap = new HashMap<>();
@@ -217,7 +219,7 @@ public class FileLoaderTest {
     }
 
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       assertTrue(processor.getSequenceFileTreeSet().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
@@ -247,7 +249,7 @@ public class FileLoaderTest {
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
     Map<String, Set<String>> loadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
       assertEquals(25, processor.getSequenceFileTreeSet().size());
       for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
@@ -299,7 +301,7 @@ public class FileLoaderTest {
 
     loadedFileMap.clear();
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
       for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
         loadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());

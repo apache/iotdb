@@ -401,15 +401,15 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan) throws MetadataException {
     // get the nodes that need to group by first
-    List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
+    List<PartialPath> nodes = getNodesList(countPlan.getPath(), countPlan.getLevel());
     ListDataSet listDataSet =
         new ListDataSet(
             Arrays.asList(new Path(COLUMN_COLUMN), new Path(COLUMN_COUNT)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
-    for (String columnPath : nodes) {
+    for (PartialPath columnPath : nodes) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
-      field.setBinaryV(new Binary(columnPath));
+      field.setBinaryV(new Binary(columnPath.toString()));
       Field field1 = new Field(TSDataType.TEXT);
       // get the count of every group
       field1.setBinaryV(new Binary(Integer.toString(getPathsNum(columnPath))));
@@ -420,7 +420,7 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected int getPathsNum(String path) throws MetadataException {
+  protected int getPathsNum(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesCount(path);
   }
 
@@ -432,12 +432,12 @@ public class PlanExecutor implements IPlanExecutor {
     return IoTDB.metaManager.getAllTimeseriesName(path);
   }
 
-  protected List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
+  protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level) throws MetadataException {
     return IoTDB.metaManager.getNodesList(schemaPattern, level);
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
-    int num = getPathsNum(countPlan.getPath().toString());
+    int num = getPathsNum(countPlan.getPath());
     SingleDataSet singleDataSet =
         new SingleDataSet(
             Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),

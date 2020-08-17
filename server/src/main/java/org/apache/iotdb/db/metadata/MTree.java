@@ -567,10 +567,10 @@ public class MTree implements Serializable {
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
    */
-  int getAllTimeseriesCount(String prefixPath) throws MetadataException {
-    String[] nodes = MetaUtils.getNodeNames(prefixPath);
+  int getAllTimeseriesCount(PartialPath prefixPath) throws MetadataException {
+    String[] nodes = prefixPath.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
-      throw new IllegalPathException(prefixPath);
+      throw new IllegalPathException(prefixPath.toString());
     }
     return getCount(root, nodes, 1);
   }
@@ -879,20 +879,20 @@ public class MTree implements Serializable {
   /**
    * Get all paths from root to the given level.
    */
-  List<String> getNodesList(String path, int nodeLevel) throws MetadataException {
+  List<PartialPath> getNodesList(PartialPath path, int nodeLevel) throws MetadataException {
     return getNodesList(path, nodeLevel, null);
   }
 
   /**
    * Get all paths from root to the given level
    */
-  List<String> getNodesList(String path, int nodeLevel, StorageGroupFilter filter)
+  List<PartialPath> getNodesList(PartialPath path, int nodeLevel, StorageGroupFilter filter)
       throws MetadataException {
-    String[] nodes = MetaUtils.getNodeNames(path);
+    String[] nodes = path.getNodes();
     if (!nodes[0].equals(root.getName())) {
-      throw new IllegalPathException(path);
+      throw new IllegalPathException(path.toString());
     }
-    List<String> res = new ArrayList<>();
+    List<PartialPath> res = new ArrayList<>();
     MNode node = root;
     for (int i = 1; i < nodes.length; i++) {
       if (node.getChild(nodes[i]) != null) {
@@ -914,7 +914,7 @@ public class MTree implements Serializable {
    *
    * @param targetLevel Record the distance to the target level, 0 means the target level.
    */
-  private void findNodes(MNode node, String path, List<String> res, int targetLevel,
+  private void findNodes(MNode node, PartialPath path, List<PartialPath> res, int targetLevel,
       StorageGroupFilter filter) {
     if (node == null || node instanceof StorageGroupMNode && filter != null && !filter
         .satisfy(node.getFullPath())) {
@@ -925,7 +925,7 @@ public class MTree implements Serializable {
       return;
     }
     for (MNode child : node.getChildren().values()) {
-      findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1, filter);
+      findNodes(child, path.concatNode(child.toString()), res, targetLevel - 1, filter);
     }
   }
 
