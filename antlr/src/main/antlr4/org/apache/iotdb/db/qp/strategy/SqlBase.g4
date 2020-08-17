@@ -84,6 +84,9 @@ statement
     | MOVE STRING_LITERAL STRING_LITERAL #moveFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
+    | CREATE TEMPORARY? FUNCTION udfName=ID AS className=STRING_LITERAL #createFunction
+    | DROP TEMPORARY? FUNCTION udfName=ID #dropFunction
+    | SHOW TEMPORARY? FUNCTIONS #showFunctions
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
@@ -99,13 +102,35 @@ statement
     ;
 
 selectElements
-    : functionCall (COMMA functionCall)* #functionElement
-    | suffixPath (COMMA suffixPath)* #selectElement
+    : aggregationCall (COMMA aggregationCall)* #aggregationElement
+    | suffixPathOrUdtfCall (COMMA suffixPathOrUdtfCall)* #tableElement
     | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
     | lastClause #lastElement
     ;
 
-functionCall
+aggregationCall
+    : builtInFunctionCall
+    | udfCall
+    ;
+
+suffixPathOrUdtfCall
+    : suffixPath
+    | udfCall
+    ;
+
+udfCall
+    : udfName=ID LR_BRACKET udfSuffixPaths udfAttribute* RR_BRACKET
+    ;
+
+udfSuffixPaths
+    : suffixPath (COMMA suffixPath)*
+    ;
+
+udfAttribute
+    : COMMA udfAttributeKey=STRING_LITERAL OPERATOR_EQ udfAttributeValue=STRING_LITERAL
+    ;
+
+builtInFunctionCall
     : functionName LR_BRACKET suffixPath RR_BRACKET
     ;
 
@@ -949,6 +974,22 @@ FOR
 
 SCHEMA
     : S C H E M A
+    ;
+
+TEMPORARY
+    : T E M P O R A R Y
+    ;
+
+FUNCTION
+    : F U N C T I O N
+    ;
+
+FUNCTIONS
+    : F U N C T I O N S
+    ;
+
+AS
+    : A S
     ;
 
 //============================
