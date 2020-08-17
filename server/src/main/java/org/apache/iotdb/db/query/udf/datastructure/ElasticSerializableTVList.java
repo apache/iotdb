@@ -25,6 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.DataPointBatchIterator;
+import org.apache.iotdb.db.query.udf.api.DataPointCollector;
 import org.apache.iotdb.db.query.udf.api.DataPointIterator;
 import org.apache.iotdb.db.query.udf.api.OverallDataPointIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,7 +33,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-public class ElasticSerializableTVList implements OverallDataPointIterator {
+public class ElasticSerializableTVList implements OverallDataPointIterator, DataPointCollector {
 
   protected TSDataType dataType;
   protected long queryId;
@@ -113,39 +114,52 @@ public class ElasticSerializableTVList implements OverallDataPointIterator {
         .getBinaryByIndex(index % internalTVListCapacity).getStringValue();
   }
 
+  @Override
   public void putInt(long timestamp, int value) throws IOException {
     checkExpansion(timestamp);
     cache.get(size / internalTVListCapacity).putInt(timestamp, value);
     ++size;
   }
 
+  @Override
   public void putLong(long timestamp, long value) throws IOException {
     checkExpansion(timestamp);
     cache.get(size / internalTVListCapacity).putLong(timestamp, value);
     ++size;
   }
 
+  @Override
   public void putFloat(long timestamp, float value) throws IOException {
     checkExpansion(timestamp);
     cache.get(size / internalTVListCapacity).putFloat(timestamp, value);
     ++size;
   }
 
+  @Override
   public void putDouble(long timestamp, double value) throws IOException {
     checkExpansion(timestamp);
     cache.get(size / internalTVListCapacity).putDouble(timestamp, value);
     ++size;
   }
 
+  @Override
   public void putBoolean(long timestamp, boolean value) throws IOException {
     checkExpansion(timestamp);
     cache.get(size / internalTVListCapacity).putBoolean(timestamp, value);
     ++size;
   }
 
+  @Override
   public void putBinary(long timestamp, Binary value) throws IOException {
     checkExpansion(timestamp);
     cache.get(size / internalTVListCapacity).putBinary(timestamp, value);
+    ++size;
+  }
+
+  @Override
+  public void putString(long timestamp, String value) throws IOException {
+    checkExpansion(timestamp);
+    cache.get(size / internalTVListCapacity).putBinary(timestamp, Binary.valueOf(value));
     ++size;
   }
 
@@ -596,7 +610,11 @@ public class ElasticSerializableTVList implements OverallDataPointIterator {
     };
   }
 
-  public OverallDataPointIterator getOverallDataPointIterator() {
+  public OverallDataPointIterator asOverallDataPointIterator() {
+    return this;
+  }
+
+  public DataPointCollector asDataPointCollector() {
     return this;
   }
 

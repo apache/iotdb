@@ -333,7 +333,7 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
     };
   }
 
-  public OverallRowRecordIterator getOverallRowRecordIterator() {
+  public OverallRowRecordIterator asOverallRowRecordIterator() {
     return this;
   }
 
