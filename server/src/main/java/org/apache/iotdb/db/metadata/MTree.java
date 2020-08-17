@@ -50,7 +50,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-import javax.servlet.http.Part;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -72,7 +71,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -578,10 +576,10 @@ public class MTree implements Serializable {
   /**
    * Get the count of nodes in the given level under the given prefix path.
    */
-  int getNodesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
-    String[] nodes = MetaUtils.getNodeNames(prefixPath);
+  int getNodesCountInGivenLevel(PartialPath prefixPath, int level) throws MetadataException {
+    String[] nodes = prefixPath.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
-      throw new IllegalPathException(prefixPath);
+      throw new IllegalPathException(prefixPath.toString());
     }
     MNode node = root;
     for (int i = 1; i < nodes.length; i++) {
@@ -776,10 +774,10 @@ public class MTree implements Serializable {
    *
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
-    String[] nodes = MetaUtils.getNodeNames(path);
+  Set<String> getChildNodePathInNextLevel(PartialPath path) throws MetadataException {
+    String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
-      throw new IllegalPathException(path);
+      throw new IllegalPathException(path.toString());
     }
     Set<String> childNodePaths = new TreeSet<>();
     findChildNodePathInNextLevel(root, nodes, 1, "", childNodePaths, nodes.length + 1);
@@ -1061,11 +1059,11 @@ public class MTree implements Serializable {
     return res;
   }
 
-  Map<String, String> determineStorageGroup(String path) throws IllegalPathException {
+  Map<String, String> determineStorageGroup(PartialPath path) throws IllegalPathException {
     Map<String, String> paths = new HashMap<>();
-    String[] nodes = MetaUtils.getNodeNames(path);
+    String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
-      throw new IllegalPathException(path);
+      throw new IllegalPathException(path.toString());
     }
 
     Deque<MNode> nodeStack = new ArrayDeque<>();

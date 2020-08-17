@@ -24,6 +24,8 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -64,13 +66,19 @@ public class FilePathUtils {
    * @param pathIndex
    * @return
    */
-  public static Map<String, Long> getPathByLevel(List<Path> rawPaths, int level, Map<Integer, String> pathIndex) {
+  public static Map<String, Long> getPathByLevel(List<Path> rawPaths, int level, Map<Integer, String> pathIndex)
+      throws QueryProcessException {
     // pathGroupByLevel -> count
     Map<String, Long> finalPaths = new TreeMap<>();
 
     int i = 0;
     for (Path value : rawPaths) {
-      String[] tmpPath = MetaUtils.getNodeNames(value.getFullPath());
+      String[] tmpPath = new String[0];
+      try {
+        tmpPath = MetaUtils.splitPathToDetachedPath(value.getFullPath());
+      } catch (IllegalPathException e) {
+        throw new QueryProcessException(e.getMessage());
+      }
 
       String key;
       if (tmpPath.length <= level) {

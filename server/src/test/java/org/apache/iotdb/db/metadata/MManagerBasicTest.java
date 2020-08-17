@@ -396,14 +396,14 @@ public class MManagerBasicTest {
       manager.createTimeseries(new PartialPath("root.vehicle.b2.d0.s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
 
-      assertEquals(res[0], manager.getChildNodePathInNextLevel("root").toString());
-      assertEquals(res[1], manager.getChildNodePathInNextLevel("root.laptop").toString());
-      assertEquals(res[2], manager.getChildNodePathInNextLevel("root.laptop.b1").toString());
-      assertEquals(res[3], manager.getChildNodePathInNextLevel("root.*").toString());
-      assertEquals(res[4], manager.getChildNodePathInNextLevel("root.*.b1").toString());
-      assertEquals(res[5], manager.getChildNodePathInNextLevel("root.l*.b1").toString());
-      assertEquals(res[6], manager.getChildNodePathInNextLevel("root.v*.*").toString());
-      assertEquals(res[7], manager.getChildNodePathInNextLevel("root.l*.b*.*").toString());
+      assertEquals(res[0], manager.getChildNodePathInNextLevel(new PartialPath("root")).toString());
+      assertEquals(res[1], manager.getChildNodePathInNextLevel(new PartialPath("root.laptop")).toString());
+      assertEquals(res[2], manager.getChildNodePathInNextLevel(new PartialPath("root.laptop.b1")).toString());
+      assertEquals(res[3], manager.getChildNodePathInNextLevel(new PartialPath("root.*")).toString());
+      assertEquals(res[4], manager.getChildNodePathInNextLevel(new PartialPath("root.*.b1")).toString());
+      assertEquals(res[5], manager.getChildNodePathInNextLevel(new PartialPath("root.l*.b1")).toString());
+      assertEquals(res[6], manager.getChildNodePathInNextLevel(new PartialPath("root.v*.*")).toString());
+      assertEquals(res[7], manager.getChildNodePathInNextLevel(new PartialPath("root.l*.b*.*")).toString());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

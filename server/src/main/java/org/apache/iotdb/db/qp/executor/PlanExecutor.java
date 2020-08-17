@@ -386,7 +386,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
-    int num = getNodesNumInGivenLevel(countPlan.getPath().toString(), countPlan.getLevel());
+    int num = getNodesNumInGivenLevel(countPlan.getPath(), countPlan.getLevel());
     SingleDataSet singleDataSet =
         new SingleDataSet(
             Collections.singletonList(new Path(COLUMN_COUNT)),
@@ -424,7 +424,7 @@ public class PlanExecutor implements IPlanExecutor {
     return IoTDB.metaManager.getAllTimeseriesCount(path);
   }
 
-  protected int getNodesNumInGivenLevel(String path, int level) throws MetadataException {
+  protected int getNodesNumInGivenLevel(PartialPath path, int level) throws MetadataException {
     return IoTDB.metaManager.getNodesCountInGivenLevel(path, level);
   }
 
@@ -473,7 +473,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
       throws MetadataException {
-    Set<String> childPathsList = getPathNextChildren(showChildPathsPlan.getPath().toString());
+    Set<String> childPathsList = getPathNextChildren(showChildPathsPlan.getPath());
     ListDataSet listDataSet =
         new ListDataSet(
             Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
@@ -488,7 +488,7 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected Set<String> getPathNextChildren(String path) throws MetadataException {
+  protected Set<String> getPathNextChildren(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getChildNodePathInNextLevel(path);
   }
 

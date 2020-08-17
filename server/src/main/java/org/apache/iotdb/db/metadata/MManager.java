@@ -78,7 +78,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -824,7 +823,7 @@ public class MManager {
    * @param prefixPath a prefix path or a full path, can not contain '*'
    * @param level      the level can not be smaller than the level of the prefixPath
    */
-  public int getNodesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
+  public int getNodesCountInGivenLevel(PartialPath prefixPath, int level) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getNodesCountInGivenLevel(prefixPath, level);
@@ -880,7 +879,7 @@ public class MManager {
       int limit = plan.getLimit();
       int offset = plan.getOffset();
       for (MeasurementMNode leaf : allMatchedNodes) {
-        if (match(leaf.getFullPath(), prefixNodes)) {
+        if (match(leaf.getPartialPath(), prefixNodes)) {
           if (limit != 0 || offset != 0) {
             curOffset++;
             if (curOffset < offset || count == limit) {
@@ -914,8 +913,8 @@ public class MManager {
   /**
    * whether the full path has the prefixNodes
    */
-  private boolean match(String fullPath, String[] prefixNodes) {
-    String[] nodes = MetaUtils.getNodeNames(fullPath);
+  private boolean match(PartialPath fullPath, String[] prefixNodes) {
+    String[] nodes = fullPath.getNodes();
     if (nodes.length < prefixNodes.length) {
       return false;
     }
@@ -1005,7 +1004,7 @@ public class MManager {
    *
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodePathInNextLevel(String path) throws MetadataException {
+  public Set<String> getChildNodePathInNextLevel(PartialPath path) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getChildNodePathInNextLevel(path);
@@ -1764,7 +1763,7 @@ public class MManager {
    * @param path can be a prefix or a full path.
    * @return StorageGroupName-FullPath pairs
    */
-  public Map<String, String> determineStorageGroup(String path) throws IllegalPathException {
+  public Map<String, String> determineStorageGroup(PartialPath path) throws IllegalPathException {
     lock.readLock().lock();
     try {
       return mtree.determineStorageGroup(path);

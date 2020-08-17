@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
@@ -50,7 +51,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
   private QueryContext context;
 
   public GroupByTimeDataSet(QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
-    throws QueryProcessException, StorageEngineException, IOException {
+    throws QueryProcessException, IOException {
     this.queryId = context.getQueryId();
     this.paths = plan.getDeduplicatedPaths();
     this.dataTypes = plan.getDeduplicatedDataTypes();

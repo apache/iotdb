@@ -319,7 +319,8 @@ public class AggregationExecutor {
    *
    * @param aggregateResultList aggregate result list
    */
-  private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList, RawDataQueryPlan plan) {
+  private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList, RawDataQueryPlan plan)
+      throws QueryProcessException {
     RowRecord record = new RowRecord(0);
     for (AggregateResult resultData : aggregateResultList) {
       TSDataType dataType = resultData.getResultDataType();
