@@ -1445,7 +1445,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       }
 
-      auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
+      if (auditLogger.isDebugEnabled()) {
+        auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
+      }
       TSStatus status = checkPathValidity(req.path);
       if (status != null) {
         return status;
@@ -1473,8 +1475,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       }
-      auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
-          req.getPaths().size(), req.getPaths().get(0));
+      if (auditLogger.isDebugEnabled()) {
+        auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
+            req.getPaths().size(), req.getPaths().get(0));
+      }
       List<TSStatus> statusList = new ArrayList<>(req.paths.size());
       for (int i = 0; i < req.paths.size(); i++) {
         CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(req.getPaths().get(i)),

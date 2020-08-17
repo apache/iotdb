@@ -1299,11 +1299,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   private PartialPath parsePrefixPath(PrefixPathContext ctx) {
     List<NodeNameContext> nodeNames = ctx.nodeName();
     String[] path = new String[nodeNames.size() + 1];
-    int i = 0;
-    path[i] = ctx.ROOT().getText();
-    for (NodeNameContext nodeName : nodeNames) {
-      i++;
-      path[i] = nodeName.getText();
+    path[0] = ctx.ROOT().getText();
+    for (int i = 1; i < nodeNames.size(); i++) {
+      path[i] = nodeNames.get(i).getText();
     }
     return new PartialPath(path);
   }
@@ -1497,10 +1495,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   private PartialPath parseSuffixPath(SuffixPathContext ctx) {
     List<NodeNameContext> nodeNames = ctx.nodeName();
     String[] path = new String[nodeNames.size()];
-    int i = 0;
-    for (NodeNameContext nodeName : nodeNames) {
-      path[i] = nodeName.getText();
-      i++;
+    for (int i = 0; i < nodeNames.size(); i++) {
+      path[i] = nodeNames.get(i).getText();
     }
     return new PartialPath(path);
   }
