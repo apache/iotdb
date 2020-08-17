@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.rescon.CachedStringPool;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -55,6 +56,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TsFileResource {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileResource.class);
+  private static Map<String, String> cachedDevicePool = CachedStringPool.getInstance().getCachedStringPool();
 
   // tsfile
   private File file;
@@ -287,10 +289,14 @@ public class TsFileResource {
       for (int i = 0; i < size; i++) {
         String path = ReadWriteIOUtils.readString(inputStream);
         long time = ReadWriteIOUtils.readLong(inputStream);
-        // To reduce the String number in memory, 
-        // use the deviceId from MManager instead of the deviceId read from disk
-        path = IoTDB.metaManager.getDeviceId(new PartialPath(path));
-        deviceMap.put(path, i);
+        // To reduce the String number in memory,
+        // use the deviceId from memory instead of the deviceId read from disk
+        String cachedPath = cachedDevicePool.get(path);
+        if (cachedPath == null) {
+          cachedDevicePool.put(path, path);
+          cachedPath = path;
+        }
+        deviceMap.put(cachedPath, i);
         startTimesArray[i] = time;
       }
       size = ReadWriteIOUtils.readInt(inputStream);
