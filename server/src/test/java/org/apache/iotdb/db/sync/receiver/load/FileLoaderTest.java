@@ -18,6 +18,20 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Random;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -38,13 +52,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-
-import static org.junit.Assert.*;
-
 public class FileLoaderTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileLoaderTest.class);
@@ -55,6 +62,7 @@ public class FileLoaderTest {
   @Before
   public void setUp()
       throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException, MetadataException {
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
@@ -72,6 +80,7 @@ public class FileLoaderTest {
 
   @After
   public void tearDown() throws InterruptedException, IOException, StorageEngineException {
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     EnvironmentUtils.cleanEnv();
   }
 
