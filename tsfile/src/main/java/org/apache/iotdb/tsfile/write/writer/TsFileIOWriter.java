@@ -87,7 +87,7 @@ public class TsFileIOWriter {
   private String currentChunkGroupDeviceId;
   private long currentChunkGroupStartOffset;
   protected List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-  
+
   // for upgrade tool
   Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
@@ -335,13 +335,15 @@ public class TsFileIOWriter {
     return deviceChunkMetadataMap;
   }
 
-  public void deleteMeasurementFromChunkGroupMetadataList(String deviceId, String measurementId) {
+  public void deleteMeasurementFromChunkGroupMetadataList(String deviceId, String measurementId,
+      TSDataType type) {
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       VersionUtils.applyVersion(chunkGroupMetadata.getChunkMetadataList(), versionInfo);
       if (chunkGroupMetadata.getDevice().equals(deviceId)) {
         List<ChunkMetadata> filteredChunkMetadataList = new ArrayList<>();
         for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
-          if (!chunkMetadata.getMeasurementUid().equals(measurementId)) {
+          if (chunkMetadata.getDataType().equals(type) || !chunkMetadata.getMeasurementUid()
+              .equals(measurementId)) {
             filteredChunkMetadataList.add(chunkMetadata);
           }
         }

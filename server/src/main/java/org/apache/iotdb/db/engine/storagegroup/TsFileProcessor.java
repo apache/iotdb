@@ -248,7 +248,7 @@ public class TsFileProcessor {
       // clear ChunkMetaData of the deleted timeseries
       if (deletion.getTimestamp() == Long.MAX_VALUE) {
         writer.deleteMeasurementFromChunkGroupMetadataList(deletion.getDevice(),
-            deletion.getMeasurement());
+            deletion.getMeasurement(), null);
       }
 
       // flushing memTables are immutable, only record this deletion in these memTables for query

@@ -33,14 +33,19 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -126,7 +131,7 @@ public class TsFileRecoverPerformer {
     } else {
       // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
       // map must be updated first to avoid duplicated insertion
-      recoverResourceFromWriter(restorableTsFileIOWriter);
+      recoverResourceFromWriter(restorableTsFileIOWriter, resource.getModFile());
 
       // redo logs
       redoLogs(restorableTsFileIOWriter);
@@ -171,7 +176,21 @@ public class TsFileRecoverPerformer {
   }
 
 
-  private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter) {
+  private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter,
+      ModificationFile modFile) {
+    for (Modification modification : modFile.getModifications()) {
+      String deviceId = modification.getDevice();
+      String measurementId = modification.getMeasurement();
+      TSDataType type = null;
+      try {
+        type = MManager.getInstance().getSeriesSchema(deviceId, measurementId).getType();
+      } catch (MetadataException e) {
+        logger.error("Meet error when recovering resource from writer. ", e);
+      }
+      restorableTsFileIOWriter
+          .deleteMeasurementFromChunkGroupMetadataList(deviceId, measurementId, type);
+    }
+
     Map<String, List<ChunkMetadata>> deviceChunkMetaDataMap =
         restorableTsFileIOWriter.getDeviceChunkMetadataMap();
     for (Map.Entry<String, List<ChunkMetadata>> entry : deviceChunkMetaDataMap.entrySet()) {
