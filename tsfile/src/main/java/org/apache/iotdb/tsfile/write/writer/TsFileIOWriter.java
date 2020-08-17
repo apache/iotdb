@@ -339,14 +339,11 @@ public class TsFileIOWriter {
       TSDataType type) {
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       if (chunkGroupMetadata.getDevice().equals(deviceId)) {
-        List<ChunkMetadata> filteredChunkMetadataList = new ArrayList<>();
-        for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
-          if (chunkMetadata.getDataType().equals(type) || !chunkMetadata.getMeasurementUid()
-              .equals(measurementId)) {
-            filteredChunkMetadataList.add(chunkMetadata);
-          }
-        }
-        chunkGroupMetadata.setChunkMetadataList(filteredChunkMetadataList);
+        List<ChunkMetadata> metadataList = chunkGroupMetadata.getChunkMetadataList();
+        metadataList.removeIf(
+            metadata -> metadata.getMeasurementUid().equals(measurementId) && !metadata
+                .getDataType().equals(type));
+        chunkGroupMetadata.setChunkMetadataList(metadataList);
       }
     }
   }
