@@ -86,10 +86,13 @@ public class SystemInfo {
     long delta = storageGroupInfo.getSgMemCost() - 
         reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L);
     this.totalSgInfoMemCost += delta;
+    logger.info("Report Storage Group Status to system. "
+        + "Current array pool mem cost is {}, sg mem cost is {}.", arrayPoolMemCost,
+        totalSgInfoMemCost);
     reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
     long addReportThreshold = (delta / config.getStorageGroupMemBlockSize() + 1)
         * config.getStorageGroupMemBlockSize();
-    storageGroupInfo.addStorageGroupReportThreshold(addReportThreshold);
+    //storageGroupInfo.addStorageGroupReportThreshold(addReportThreshold);
     if (this.arrayPoolMemCost + this.totalSgInfoMemCost
         >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       logger.info("The total storage group mem costs are too large, call for flushing.");
@@ -110,7 +113,8 @@ public class SystemInfo {
   public synchronized void reportIncreasingArraySize(int increasingArraySize) {
     this.arrayPoolMemCost += increasingArraySize;
     logger.info("Report Array Pool size to system. "
-        + "Current total mem cost is {}", (arrayPoolMemCost + totalSgInfoMemCost));
+        + "Current total array pool mem cost is {}, sg mem cost is {}.",
+        arrayPoolMemCost, totalSgInfoMemCost);
   }
 
   /**

@@ -78,6 +78,7 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -386,11 +387,12 @@ public class TsFileProcessor {
       // String array cost
       if (insertPlan.getDataTypes()[i] == TSDataType.TEXT) {
         if (insertPlan instanceof InsertRowPlan) {
-          bytesCost += ((Binary) ((InsertRowPlan) insertPlan).getValues()[i]).getLength();
+          bytesCost += ((Binary) ((InsertRowPlan) insertPlan).getValues()[i]).getLength()
+              * TSFileConfig.BYTE_SIZE_PER_CHAR;
         }
         else {
           for (Binary bytes : (Binary[]) ((InsertTabletPlan) insertPlan).getColumns()[i]) {
-            bytesCost += bytes.getLength();
+            bytesCost += bytes.getLength() * TSFileConfig.BYTE_SIZE_PER_CHAR;
           }
         }
       }
