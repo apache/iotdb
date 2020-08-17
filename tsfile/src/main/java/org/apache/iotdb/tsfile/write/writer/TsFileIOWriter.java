@@ -338,7 +338,6 @@ public class TsFileIOWriter {
   public void deleteMeasurementFromChunkGroupMetadataList(String deviceId, String measurementId,
       TSDataType type) {
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-      VersionUtils.applyVersion(chunkGroupMetadata.getChunkMetadataList(), versionInfo);
       if (chunkGroupMetadata.getDevice().equals(deviceId)) {
         List<ChunkMetadata> filteredChunkMetadataList = new ArrayList<>();
         for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
