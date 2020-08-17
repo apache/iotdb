@@ -41,15 +41,15 @@ import org.apache.iotdb.db.engine.merge.selector.IMergePathSelector;
 import org.apache.iotdb.db.engine.merge.selector.NaivePathSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -65,7 +65,7 @@ public class MergeMultiChunkTask {
       .getChunkMergePointThreshold();
 
   private MergeLogger mergeLogger;
-  private List<Path> unmergedSeries;
+  private List<PartialPath> unmergedSeries;
 
   private String taskName;
   private MergeResource resource;
@@ -80,12 +80,12 @@ public class MergeMultiChunkTask {
   private double progress;
 
   private int concurrentMergeSeriesNum;
-  private List<Path> currMergingPaths = new ArrayList<>();
+  private List<PartialPath> currMergingPaths = new ArrayList<>();
 
   private String storageGroupName;
 
   public MergeMultiChunkTask(MergeContext context, String taskName, MergeLogger mergeLogger,
-      MergeResource mergeResource, boolean fullMerge, List<Path> unmergedSeries,
+      MergeResource mergeResource, boolean fullMerge, List<PartialPath> unmergedSeries,
       int concurrentMergeSeriesNum, String storageGroupName) {
     this.mergeContext = context;
     this.taskName = taskName;
@@ -106,8 +106,8 @@ public class MergeMultiChunkTask {
       mergeContext.getUnmergedChunkStartTimes().put(seqFile, new HashMap<>());
     }
     // merge each series and write data into each seqFile's corresponding temp merge file
-    List<List<Path>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
-    for (List<Path> pathList : devicePaths) {
+    List<List<PartialPath>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
+    for (List<PartialPath> pathList : devicePaths) {
       // TODO: use statistics of queries to better rearrange series
       IMergePathSelector pathSelector = new NaivePathSelector(pathList, concurrentMergeSeriesNum);
       while (pathSelector.hasNext()) {
@@ -169,14 +169,14 @@ public class MergeMultiChunkTask {
   private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders)
       throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
-    String deviceId = currMergingPaths.get(0).getDevice();
+    String deviceId = currMergingPaths.get(0).getLastNode();
     long currDeviceMinTime = currTsFile.getStartTime(deviceId);
     // all paths in one call are from the same device
     if (currDeviceMinTime == Long.MAX_VALUE) {
       return;
     }
 
-    for (Path path : currMergingPaths) {
+    for (PartialPath path : currMergingPaths) {
       mergeContext.getUnmergedChunkStartTimes().get(currTsFile).put(path, new ArrayList<>());
     }
 
@@ -209,9 +209,9 @@ public class MergeMultiChunkTask {
     }
 
     RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(currTsFile);
-    for (Path path : currMergingPaths) {
+    for (PartialPath path : currMergingPaths) {
       MeasurementSchema schema = resource.getSchema(path);
-      mergeFileWriter.addSchema(path, schema);
+      mergeFileWriter.addSchema(path.toTSFilePath(), schema);
     }
     // merge unseq data with seq data in this file or small chunks in this file into a larger chunk
     mergeFileWriter.startChunkGroup(deviceId);
@@ -469,7 +469,7 @@ public class MergeMultiChunkTask {
     private void mergeChunkHeap() throws IOException {
       while (!chunkIdxHeap.isEmpty()) {
         int pathIdx = chunkIdxHeap.poll();
-        Path path = currMergingPaths.get(pathIdx);
+        PartialPath path = currMergingPaths.get(pathIdx);
         MeasurementSchema measurementSchema = resource.getSchema(path);
         IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
         if (Thread.interrupted()) {

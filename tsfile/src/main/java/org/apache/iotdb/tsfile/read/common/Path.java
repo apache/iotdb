@@ -41,7 +41,7 @@ public class Path implements Serializable, Comparable<Path> {
     if (pathSc == null) {
       throw new IllegalArgumentException(illegalPathArgument);
     }
-    init(pathSc);
+    fullPath = pathSc;
   }
 
   /**

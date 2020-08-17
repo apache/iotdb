@@ -106,7 +106,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
     ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(reader);
     for (String deviceId : deviceIds) {
       List<Path> paths = measurementIds.stream()
-          .map(measurementId -> new Path(deviceId + TsFileConstant.PATH_SEPARATOR + measurementId))
+          .map(measurementId -> new Path(deviceId, measurementId))
           .collect(toList());
       QueryExpression queryExpression = QueryExpression.create(paths, null);
       QueryDataSet dataSet = queryEngine.query(queryExpression,

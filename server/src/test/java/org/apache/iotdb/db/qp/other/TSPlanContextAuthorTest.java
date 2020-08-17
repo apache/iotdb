@@ -39,7 +39,7 @@ import org.junit.runners.Parameterized.Parameters;
 public class TSPlanContextAuthorTest {
 
   private static Path[] emptyPaths = new Path[]{};
-  private static Path[] testPaths = new Path[]{new Path("root.node1.a.b")};
+  private static Path[] testPaths = new Path[]{new Path("root.node1.a", "b")};
 
   private String inputSQL;
   private Path[] paths;

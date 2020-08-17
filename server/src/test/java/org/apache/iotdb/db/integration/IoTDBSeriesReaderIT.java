@@ -253,21 +253,21 @@ public class IoTDBSeriesReaderIT {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new Path(TestConstant.d0s0));
+    pathList.add(new Path(TestConstant.d0, TestConstant.s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d0s1));
+    pathList.add(new Path(TestConstant.d0, TestConstant.s1));
     dataTypes.add(TSDataType.INT64);
-    pathList.add(new Path(TestConstant.d0s2));
+    pathList.add(new Path(TestConstant.d0, TestConstant.s2));
     dataTypes.add(TSDataType.FLOAT);
-    pathList.add(new Path(TestConstant.d0s3));
+    pathList.add(new Path(TestConstant.d0, TestConstant.s3));
     dataTypes.add(TSDataType.TEXT);
-    pathList.add(new Path(TestConstant.d0s4));
+    pathList.add(new Path(TestConstant.d0, TestConstant.s4));
     dataTypes.add(TSDataType.BOOLEAN);
-    pathList.add(new Path(TestConstant.d0s5));
+    pathList.add(new Path(TestConstant.d0, TestConstant.s5));
     dataTypes.add(TSDataType.DOUBLE);
-    pathList.add(new Path(TestConstant.d1s0));
+    pathList.add(new Path(TestConstant.d1, TestConstant.s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s1));
+    pathList.add(new Path(TestConstant.d1, TestConstant.s1));
     dataTypes.add(TSDataType.INT64);
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
@@ -294,7 +294,7 @@ public class IoTDBSeriesReaderIT {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    Path p = new Path(TestConstant.d0s0);
+    Path p = new Path(TestConstant.d0, TestConstant.s0);
     pathList.add(p);
     dataTypes.add(TSDataType.INT32);
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(p,
@@ -323,7 +323,7 @@ public class IoTDBSeriesReaderIT {
   public void seriesTimeDigestReadTest()
       throws IOException, StorageEngineException, QueryProcessException {
     QueryRouter queryRouter = new QueryRouter();
-    Path path = new Path(TestConstant.d0s0);
+    Path path = new Path(TestConstant.d0, TestConstant.s0);
     List<TSDataType> dataTypes = Collections.singletonList(TSDataType.INT32);
     SingleSeriesExpression expression = new SingleSeriesExpression(path, TimeFilter.gt(22987L));
 
@@ -350,8 +350,8 @@ public class IoTDBSeriesReaderIT {
   public void crossSeriesReadUpdateTest()
       throws IOException, StorageEngineException, QueryProcessException {
     QueryRouter queryRouter = new QueryRouter();
-    Path path1 = new Path(TestConstant.d0s0);
-    Path path2 = new Path(TestConstant.d0s1);
+    Path path1 = new Path(TestConstant.d0, TestConstant.s0);
+    Path path2 = new Path(TestConstant.d0, TestConstant.s1);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
 

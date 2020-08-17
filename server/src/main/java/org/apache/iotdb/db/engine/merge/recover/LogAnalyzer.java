@@ -19,25 +19,35 @@
 
 package org.apache.iotdb.db.engine.merge.recover;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_ALL_TS_END;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_END;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_END;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_START;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_START;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_TIMESERIES;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FILES;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
-
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.*;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * LogAnalyzer scans the "merge.log" file and recovers information such as files of last merge,
@@ -71,8 +81,8 @@ public class LogAnalyzer {
   private Map<File, Long> fileLastPositions = new HashMap<>();
   private Map<File, Long> tempFileLastPositions = new HashMap<>();
 
-  private List<Path> mergedPaths = new ArrayList<>();
-  private List<Path> unmergedPaths;
+  private List<PartialPath> mergedPaths = new ArrayList<>();
+  private List<PartialPath> unmergedPaths;
   private List<TsFileResource> unmergedFiles;
   private String currLine;
 
@@ -102,9 +112,7 @@ public class LogAnalyzer {
 
         List<PartialPath> storageGroupPaths = IoTDB.metaManager.getAllTimeseriesName(new PartialPath(storageGroupName + ".*"));
         unmergedPaths = new ArrayList<>();
-        for (PartialPath path : storageGroupPaths) {
-          unmergedPaths.add(path.toTSFilePath());
-        }
+        unmergedPaths.addAll(storageGroupPaths);
 
         analyzeMergedSeries(bufferedReader, unmergedPaths);
 
@@ -170,7 +178,7 @@ public class LogAnalyzer {
     resource.setUnseqFiles(mergeUnseqFiles);
   }
 
-  private void analyzeMergedSeries(BufferedReader bufferedReader, List<Path> unmergedPaths) throws IOException {
+  private void analyzeMergedSeries(BufferedReader bufferedReader, List<PartialPath> unmergedPaths) throws IOException {
     if (!STR_MERGE_START.equals(currLine)) {
       return;
     }
@@ -181,7 +189,7 @@ public class LogAnalyzer {
       fileLastPositions.put(mergeFile, 0L);
     }
 
-    List<Path> currTSList = new ArrayList<>();
+    List<PartialPath> currTSList = new ArrayList<>();
     long startTime = System.currentTimeMillis();
     while ((currLine = bufferedReader.readLine()) != null) {
       if (STR_ALL_TS_END.equals(currLine)) {
@@ -191,7 +199,11 @@ public class LogAnalyzer {
         // a TS starts to merge
         String[] splits = currLine.split(" ");
         for (int i = 1; i < splits.length; i ++) {
-          currTSList.add(new Path(splits[i]));
+          try {
+            currTSList.add(new PartialPath(splits[i]));
+          } catch (IllegalPathException e) {
+            throw new IOException(e.getMessage());
+          }
         }
         tempFileLastPositions.clear();
       } else if (!currLine.contains(STR_END)) {
@@ -257,11 +269,11 @@ public class LogAnalyzer {
     }
   }
 
-  public List<Path> getUnmergedPaths() {
+  public List<PartialPath> getUnmergedPaths() {
     return unmergedPaths;
   }
 
-  public void setUnmergedPaths(List<Path> unmergedPaths) {
+  public void setUnmergedPaths(List<PartialPath> unmergedPaths) {
     this.unmergedPaths = unmergedPaths;
   }
 
@@ -274,11 +286,11 @@ public class LogAnalyzer {
     this.unmergedFiles = unmergedFiles;
   }
 
-  public List<Path> getMergedPaths() {
+  public List<PartialPath> getMergedPaths() {
     return mergedPaths;
   }
 
-  public void setMergedPaths(List<Path> mergedPaths) {
+  public void setMergedPaths(List<PartialPath> mergedPaths) {
     this.mergedPaths = mergedPaths;
   }
 

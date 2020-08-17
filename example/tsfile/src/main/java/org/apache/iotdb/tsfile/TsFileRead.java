@@ -58,9 +58,9 @@ public class TsFileRead {
     ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
     // use these paths(all measurements) for all the queries
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("device_1.sensor_1"));
-    paths.add(new Path("device_1.sensor_2"));
-    paths.add(new Path("device_1.sensor_3"));
+    paths.add(new Path("device_1", "sensor_1"));
+    paths.add(new Path("device_1", "sensor_2"));
+    paths.add(new Path("device_1", "sensor_3"));
 
     // no filter, should select 1 2 3 4 6 7 8
     queryAndPrint(paths, readTsFile, null);
@@ -71,14 +71,14 @@ public class TsFileRead {
     queryAndPrint(paths, readTsFile, timeFilter);
 
     // value filter : device_1.sensor_2 <= 20, should select 1 2 4 6 7
-    IExpression valueFilter = new SingleSeriesExpression(new Path("device_1.sensor_2"),
+    IExpression valueFilter = new SingleSeriesExpression(new Path("device_1", "sensor_2"),
             ValueFilter.ltEq(20L));
     queryAndPrint(paths, readTsFile, valueFilter);
 
     // time filter : 4 <= time <= 10, value filter : device_1.sensor_3 >= 20, should select 4 7 8
     timeFilter = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(4L)),
             new GlobalTimeExpression(TimeFilter.ltEq(10L)));
-    valueFilter = new SingleSeriesExpression(new Path("device_1.sensor_3"), ValueFilter.gtEq(20L));
+    valueFilter = new SingleSeriesExpression(new Path("device_1", "sensor_3"), ValueFilter.gtEq(20L));
     IExpression finalFilter = BinaryExpression.and(timeFilter, valueFilter);
     queryAndPrint(paths, readTsFile, finalFilter);
 
