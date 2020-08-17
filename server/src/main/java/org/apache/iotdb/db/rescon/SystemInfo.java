@@ -124,13 +124,13 @@ public class SystemInfo {
     this.arrayPoolMemCost -= dataType.getDataTypeSize() * size;
     if (this.arrayPoolMemCost + this.totalSgInfoMemCost 
         < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
-      logger.debug("OOB array costs {} released, change system to normal status.",
-          dataType.getDataTypeSize() * size);
+      logger.debug("OOB array costs {} released, change system to normal status. Current array cost {}.",
+          dataType.getDataTypeSize() * size, arrayPoolMemCost);
       this.rejected = false;
     }
     else {
-      logger.debug("OOB array costs {} released, but system is still rejected status.",
-          dataType.getDataTypeSize() * size);
+      logger.debug("OOB array costs {} released, but system is still rejected status. Current array cost {}.",
+          dataType.getDataTypeSize() * size, arrayPoolMemCost);
     }
   }
 

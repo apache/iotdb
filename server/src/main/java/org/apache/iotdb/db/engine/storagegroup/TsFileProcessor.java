@@ -446,7 +446,7 @@ public class TsFileProcessor {
   }
 
 
-  boolean shouldFlush() {
+  public boolean shouldFlush() {
     if (workMemTable == null) {
       return false;
     }

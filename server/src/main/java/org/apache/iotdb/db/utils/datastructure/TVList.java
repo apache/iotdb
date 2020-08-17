@@ -268,8 +268,8 @@ public abstract class TVList {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
         newList = PrimitiveArrayManager.getDataListByType(dataType);
-        logger.info("Still waiting for memory releasing... Total mem cost {}",
-            SystemInfo.getInstance().getTotalMemCost());
+        logger.info("Still waiting for memory releasing... Array Pool mem cost {}, sg mem cost {}.",
+            SystemInfo.getInstance().getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
       } catch (InterruptedException e) {
         logger.error("Interrupted...", e);
         Thread.currentThread().interrupt();
