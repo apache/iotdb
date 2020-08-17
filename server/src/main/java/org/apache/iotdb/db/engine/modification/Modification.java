@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.modification;
 
 import java.util.Objects;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
@@ -28,32 +29,32 @@ import org.apache.iotdb.tsfile.read.common.Path;
 public abstract class Modification {
 
   protected Type type;
-  protected Path path;
+  protected PartialPath path;
   protected long versionNum;
 
-  Modification(Type type, Path path, long versionNum) {
+  Modification(Type type, PartialPath path, long versionNum) {
     this.type = type;
     this.path = path;
     this.versionNum = versionNum;
   }
 
   public String getPathString() {
-    return path.getFullPath();
+    return path.toString();
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
 
   public String getDevice() {
-    return path.getDevice();
+    return path.getPathWithoutLastNode();
   }
 
   public String getMeasurement() {
-    return path.getMeasurement();
+    return path.getLastNode();
   }
 
-  public void setPath(Path path) {
+  public void setPath(PartialPath path) {
     this.path = path;
   }
 

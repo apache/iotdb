@@ -19,18 +19,19 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ShowDevicesOperator extends ShowOperator {
 
-  private Path path;
+  private PartialPath path;
 
-  public ShowDevicesOperator(int tokenIntType, Path path) {
+  public ShowDevicesOperator(int tokenIntType, PartialPath path) {
     super(tokenIntType);
     this.path = path;
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
 }

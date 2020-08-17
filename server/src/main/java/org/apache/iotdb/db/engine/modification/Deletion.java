@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.modification;
 
 import java.util.Objects;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
@@ -38,7 +39,7 @@ public class Deletion extends Modification {
    * @param endTime end time of delete interval
    * @param path time series path
    */
-  public Deletion(Path path, long versionNum, long endTime) {
+  public Deletion(PartialPath path, long versionNum, long endTime) {
     super(Type.DELETION, path, versionNum);
     this.startTime = Long.MIN_VALUE;
     this.endTime = endTime;
@@ -50,7 +51,7 @@ public class Deletion extends Modification {
    * @param endTime end time of delete interval
    * @param path time series path
    */
-  public Deletion(Path path, long versionNum, long startTime, long endTime) {
+  public Deletion(PartialPath path, long versionNum, long startTime, long endTime) {
     super(Type.DELETION, path, versionNum);
     this.startTime = startTime;
     this.endTime = endTime;

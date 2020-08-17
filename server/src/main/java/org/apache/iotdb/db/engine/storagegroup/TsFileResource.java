@@ -25,6 +25,8 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -275,7 +277,7 @@ public class TsFileResource {
     fsFactory.moveFile(src, dest);
   }
 
-  public void deserialize() throws IOException {
+  public void deserialize() throws IOException, IllegalPathException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(
         file + RESOURCE_SUFFIX)) {
       int size = ReadWriteIOUtils.readInt(inputStream);
@@ -287,7 +289,7 @@ public class TsFileResource {
         long time = ReadWriteIOUtils.readLong(inputStream);
         // To reduce the String number in memory, 
         // use the deviceId from MManager instead of the deviceId read from disk
-        path = IoTDB.metaManager.getDeviceId(path);
+        path = IoTDB.metaManager.getDeviceId(new PartialPath(path));
         deviceMap.put(path, i);
         startTimesArray[i] = time;
       }

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.engine.modification.io;
 
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
@@ -150,10 +152,10 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
         startTimestamp = Long.parseLong(fields[3]);
         endTimestamp = Long.parseLong(fields[4]);
       }
-    } catch (NumberFormatException e) {
+      return new Deletion(new PartialPath(path), versionNum, startTimestamp, endTimestamp);
+    } catch (NumberFormatException | IllegalPathException e) {
       throw new IOException("Invalid timestamp: " + e.getMessage());
     }
 
-    return new Deletion(new Path(path), versionNum, startTimestamp, endTimestamp);
   }
 }

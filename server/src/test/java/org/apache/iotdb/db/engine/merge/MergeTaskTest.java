@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -217,8 +218,9 @@ public class MergeTaskTest extends MergeTest {
   @Test
   public void mergeWithDeletionTest() throws Exception {
     try {
-      seqResources.get(0).getModFile().write(new Deletion(new Path(deviceIds[0],
-          measurementSchemas[0].getMeasurementId()), 10000, 0, 49));
+      PartialPath fullPath = new PartialPath(deviceIds[0]);
+      fullPath.concatNode(measurementSchemas[0].getMeasurementId());
+      seqResources.get(0).getModFile().write(new Deletion(fullPath, 10000, 0, 49));
     } finally {
       seqResources.get(0).getModFile().close();
     }

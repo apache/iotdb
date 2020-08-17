@@ -27,6 +27,8 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.metadata.MetaUtils;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -55,7 +57,7 @@ public class InOperator extends FunctionOperator {
    * @param path path
    * @param values values
    */
-  public InOperator(int tokenIntType, Path path, boolean not, Set<String> values) {
+  public InOperator(int tokenIntType, PartialPath path, boolean not, Set<String> values) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.IN;
     this.singlePath = path;
@@ -76,12 +78,12 @@ public class InOperator extends FunctionOperator {
 
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
-      Map<Path, TSDataType> pathTSDataTypeHashMap)
+      Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
       throws LogicalOperatorException, MetadataException {
     TSDataType type = pathTSDataTypeHashMap.get(singlePath);
     if (type == null) {
       throw new MetadataException(
-          "given seriesPath:{" + singlePath.getFullPath() + "} don't exist in metadata");
+          "given seriesPath:{" + singlePath.toString() + "} don't exist in metadata");
     }
     IUnaryExpression ret;
 
@@ -91,35 +93,35 @@ public class InOperator extends FunctionOperator {
         for (String val : values) {
           integerValues.add(Integer.valueOf(val));
         }
-        ret = In.getUnaryExpression(singlePath, integerValues, not);
+        ret = In.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), integerValues, not);
         break;
       case INT64:
         Set<Long> longValues = new HashSet<>();
         for (String val : values) {
           longValues.add(Long.valueOf(val));
         }
-        ret = In.getUnaryExpression(singlePath, longValues, not);
+        ret = In.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), longValues, not);
         break;
       case BOOLEAN:
         Set<Boolean> booleanValues = new HashSet<>();
         for (String val : values) {
           booleanValues.add(Boolean.valueOf(val));
         }
-        ret = In.getUnaryExpression(singlePath, booleanValues, not);
+        ret = In.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), booleanValues, not);
         break;
       case FLOAT:
         Set<Float> floatValues = new HashSet<>();
         for (String val : values) {
           floatValues.add(Float.parseFloat(val));
         }
-        ret = In.getUnaryExpression(singlePath, floatValues, not);
+        ret = In.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), floatValues, not);
         break;
       case DOUBLE:
         Set<Double> doubleValues = new HashSet<>();
         for (String val : values) {
           doubleValues.add(Double.parseDouble(val));
         }
-        ret = In.getUnaryExpression(singlePath, doubleValues, not);
+        ret = In.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), doubleValues, not);
         break;
       case TEXT:
         Set<Binary> binaryValues = new HashSet<>();
@@ -129,13 +131,13 @@ public class InOperator extends FunctionOperator {
                   .endsWith("\"")) ? new Binary(val.substring(1, val.length() - 1))
                   : new Binary(val));
         }
-        ret = In.getUnaryExpression(singlePath, binaryValues, not);
+        ret = In.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), binaryValues, not);
         break;
       default:
         throw new LogicalOperatorException(type.toString(), "");
     }
 
-    return new Pair<>(ret, singlePath.getFullPath());
+    return new Pair<>(ret, singlePath.toString());
   }
 
   @Override
@@ -163,7 +165,7 @@ public class InOperator extends FunctionOperator {
   public String toString() {
     List<String> valuesList = new ArrayList<>(values);
     Collections.sort(valuesList);
-    return "[" + singlePath.getFullPath() + tokenSymbol + not + valuesList + "]";
+    return "[" + singlePath.toString() + tokenSymbol + not + valuesList + "]";
   }
 
   @Override

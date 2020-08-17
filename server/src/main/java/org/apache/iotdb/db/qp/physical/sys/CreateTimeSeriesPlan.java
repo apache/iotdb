@@ -25,6 +25,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -35,7 +37,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class CreateTimeSeriesPlan extends PhysicalPlan {
 
-  private Path path;
+  private PartialPath path;
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
@@ -49,7 +51,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     canBeSplit = false;
   }
 
-  public CreateTimeSeriesPlan(Path path, TSDataType dataType, TSEncoding encoding,
+  public CreateTimeSeriesPlan(PartialPath path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props, Map<String, String> tags,
       Map<String, String> attributes, String alias) {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
@@ -64,11 +66,11 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     canBeSplit = false;
   }
   
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
 
-  public void setPath(Path path) {
+  public void setPath(PartialPath path) {
     this.path = path;
   }
   
@@ -135,14 +137,14 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   }
   
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.singletonList(path);
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeByte((byte) PhysicalPlanType.CREATE_TIMESERIES.ordinal());
-    byte[] bytes = path.getFullPath().getBytes();
+    byte[] bytes = path.toString().getBytes();
     stream.writeInt(bytes.length);
     stream.write(bytes);
     stream.write(dataType.ordinal());
@@ -183,11 +185,11 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     int length = buffer.getInt();
     byte[] bytes = new byte[length];
     buffer.get(bytes);
-    path = new Path(new String(bytes));
+    path = new PartialPath(new String(bytes));
     dataType = TSDataType.values()[buffer.get()];
     encoding = TSEncoding.values()[buffer.get()];
     compressor = CompressionType.values()[buffer.get()];

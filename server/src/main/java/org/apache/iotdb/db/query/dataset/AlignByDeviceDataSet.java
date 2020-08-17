@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
@@ -56,7 +57,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private IExpression expression;
 
   private List<String> measurements;
-  private List<String> devices;
+  private List<PartialPath> devices;
   private Map<String, IExpression> deviceToFilterMap;
   private Map<String, MeasurementType> measurementTypeMap;
   // record the real type of the corresponding measurement
@@ -68,9 +69,9 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private RawDataQueryPlan rawDataQueryPlan;
 
   private boolean curDataSetInitialized;
-  private String currentDevice;
+  private PartialPath currentDevice;
   private QueryDataSet currentDataSet;
-  private Iterator<String> deviceIterator;
+  private Iterator<PartialPath> deviceIterator;
   private List<String> executeColumns;
   private int pathsNum = 0;
 
@@ -140,14 +141,14 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         }
         if (measurementOfGivenDevice.contains(measurement)) {
           executeColumns.add(column);
-          executePaths.add(new Path(currentDevice, measurement));
+          executePaths.add(new Path(currentDevice.toString(), measurement));
           tsDataTypes.add(measurementDataTypeMap.get(column));
         }
       }
 
       // get filter to execute for the current device
       if (deviceToFilterMap != null) {
-        this.expression = deviceToFilterMap.get(currentDevice);
+        this.expression = deviceToFilterMap.get(currentDevice.toString());
       }
 
       if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
@@ -195,7 +196,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     return false;
   }
 
-  protected Set<String> getDeviceMeasurements(String device) throws IOException {
+  protected Set<String> getDeviceMeasurements(PartialPath device) throws IOException {
     try {
       MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       return deviceNode.getChildren().keySet();
@@ -210,7 +211,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     RowRecord rowRecord = new RowRecord(originRowRecord.getTimestamp());
 
     Field deviceField = new Field(TSDataType.TEXT);
-    deviceField.setBinaryV(new Binary(currentDevice));
+    deviceField.setBinaryV(new Binary(currentDevice.toString()));
     rowRecord.addField(deviceField);
 
     List<Field> measurementFields = originRowRecord.getFields();

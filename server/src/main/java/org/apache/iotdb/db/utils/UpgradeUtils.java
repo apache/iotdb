@@ -30,6 +30,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -80,12 +81,12 @@ public class UpgradeUtils {
    * Since one old TsFile may be upgraded to multiple upgraded files, 
    * this method is for getting the name of one of the upgraded file. 
    * 
-   * @param old TsFile resource to be upgraded
+   * @param upgradeResource TsFile resource to be upgraded
    * @return name of upgraded file
    * 
    */
   public static String getOneUpgradedFileName(TsFileResource upgradeResource)
-      throws IOException {
+      throws IOException, IllegalPathException {
     upgradeResource.deserialize();
     long firstPartitionId = upgradeResource.getTimePartition();
     File oldTsFile = upgradeResource.getTsFile();
@@ -158,7 +159,7 @@ public class UpgradeUtils {
             }
           }
         }
-      } catch (IOException e) {
+      } catch (IOException | IllegalPathException e) {
         logger.error("meet error when recover upgrade process, file path:{}",
             UpgradeLog.getUpgradeLogPath(), e);
       } finally {

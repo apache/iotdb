@@ -23,7 +23,9 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.Lock;
@@ -32,6 +34,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.PartialPath;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -162,6 +165,17 @@ public class MNode implements Serializable {
     }
     fullPath = concatFullPath();
     return fullPath;
+  }
+
+  public PartialPath getPartialPath() {
+    List<String> detachedPath = new ArrayList<>();
+    MNode temp = this;
+    detachedPath.add(temp.getName());
+    while (temp.getParent() != null) {
+      temp = temp.getParent();
+      detachedPath.add(0, temp.getName());
+    }
+    return new PartialPath(detachedPath.toArray(new String[0]));
   }
 
   String concatFullPath() {

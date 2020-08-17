@@ -23,6 +23,7 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.LINE_FEED_SIGNAL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -33,7 +34,7 @@ public class UpdatePlan extends PhysicalPlan {
 
   private List<Pair<Long, Long>> intervals = new ArrayList<>();
   private String value;
-  private Path path;
+  private PartialPath path;
 
   public UpdatePlan() {
     super(false, Operator.OperatorType.UPDATE);
@@ -47,7 +48,7 @@ public class UpdatePlan extends PhysicalPlan {
    * @param value -value
    * @param path -path
    */
-  public UpdatePlan(long startTime, long endTime, String value, Path path) {
+  public UpdatePlan(long startTime, long endTime, String value, PartialPath path) {
     super(false, Operator.OperatorType.UPDATE);
     setValue(value);
     setPath(path);
@@ -61,7 +62,7 @@ public class UpdatePlan extends PhysicalPlan {
    * @param value -value
    * @param path -path
    */
-  public UpdatePlan(List<Pair<Long, Long>> list, String value, Path path) {
+  public UpdatePlan(List<Pair<Long, Long>> list, String value, PartialPath path) {
     super(false, Operator.OperatorType.UPDATE);
     setValue(value);
     setPath(path);
@@ -88,17 +89,17 @@ public class UpdatePlan extends PhysicalPlan {
     this.value = value;
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
 
-  public void setPath(Path path) {
+  public void setPath(PartialPath path) {
     this.path = path;
   }
 
   @Override
-  public List<Path> getPaths() {
-    List<Path> ret = new ArrayList<>();
+  public List<PartialPath> getPaths() {
+    List<PartialPath> ret = new ArrayList<>();
     if (path != null) {
       ret.add(path);
     }

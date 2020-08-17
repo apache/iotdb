@@ -20,7 +20,9 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
@@ -90,9 +92,14 @@ public class GroupByFillDataSet extends QueryDataSet {
     lastTimeArray = new long[paths.size()];
     Arrays.fill(lastTimeArray, Long.MAX_VALUE);
     for (int i = 0; i < paths.size(); i++) {
-      TimeValuePair lastTimeValuePair = LastQueryExecutor.calculateLastPairForOneSeriesLocally(
-          paths.get(i), dataTypes.get(i), context,
-          groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
+      TimeValuePair lastTimeValuePair;
+      try {
+        lastTimeValuePair = LastQueryExecutor.calculateLastPairForOneSeriesLocally(
+            new PartialPath(paths.get(i).getFullPath()), dataTypes.get(i), context,
+            groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
+      } catch (IllegalPathException e) {
+        throw new QueryProcessException(e.getMessage());
+      }
       if (lastTimeValuePair.getValue() != null) {
         lastTimeArray[i] = lastTimeValuePair.getTimestamp();
       }

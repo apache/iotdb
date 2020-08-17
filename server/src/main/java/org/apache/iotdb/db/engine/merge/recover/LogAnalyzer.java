@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
@@ -99,10 +100,10 @@ public class LogAnalyzer {
 
         analyzeUnseqFiles(bufferedReader);
 
-        List<String> storageGroupPaths = IoTDB.metaManager.getAllTimeseriesName(storageGroupName + ".*");
+        List<PartialPath> storageGroupPaths = IoTDB.metaManager.getAllTimeseriesName(new PartialPath(storageGroupName + ".*"));
         unmergedPaths = new ArrayList<>();
-        for (String path : storageGroupPaths) {
-          unmergedPaths.add(new Path(path));
+        for (PartialPath path : storageGroupPaths) {
+          unmergedPaths.add(path.toTSFilePath());
         }
 
         analyzeMergedSeries(bufferedReader, unmergedPaths);

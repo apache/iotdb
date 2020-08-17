@@ -22,6 +22,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
@@ -30,7 +31,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class AlterTimeSeriesPlan extends PhysicalPlan {
 
-  private final Path path;
+  private final PartialPath path;
 
   private final AlterTimeSeriesOperator.AlterType alterType;
 
@@ -46,7 +47,7 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
   private final Map<String, String> tagsMap;
   private final Map<String, String> attributesMap;
 
-  public AlterTimeSeriesPlan(Path path, AlterType alterType, Map<String, String> alterMap,
+  public AlterTimeSeriesPlan(PartialPath path, AlterType alterType, Map<String, String> alterMap,
       String alias, Map<String, String> tagsMap, Map<String, String> attributesMap) {
     super(false, Operator.OperatorType.ALTER_TIMESERIES);
     this.path = path;
@@ -57,7 +58,7 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     this.attributesMap = attributesMap;
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
 
@@ -82,7 +83,7 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.singletonList(path);
   }
 }

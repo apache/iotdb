@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -36,7 +37,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 public class TsFileResourcePrinter {
 
   @SuppressWarnings("squid:S106")
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws IOException, IllegalPathException {
 
     String folder = "test";
     if (args.length >= 1) {
@@ -61,7 +62,7 @@ public class TsFileResourcePrinter {
   }
 
   @SuppressWarnings("squid:S106")
-  public static void printResource(String filename) throws IOException {
+  public static void printResource(String filename) throws IOException, IllegalPathException {
     filename = filename.substring(0, filename.length() - 9);
     TsFileResource resource = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filename));
     System.out.println(String.format("Analyzing %s ...", filename));

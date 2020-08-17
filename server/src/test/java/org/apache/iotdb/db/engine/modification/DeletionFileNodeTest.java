@@ -25,8 +25,10 @@ import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -34,6 +36,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -78,10 +81,10 @@ public class DeletionFileNodeTest {
     EnvironmentUtils.envSetUp();
 
     deviceMNode = new MNode(null, processorName);
-    IoTDB.metaManager.setStorageGroup(processorName);
+    IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
       deviceMNode.addChild(measurements[i], new MeasurementMNode(null, null, null, null));
-      IoTDB.metaManager.createTimeseries(processorName + "." + measurements[i], dataType,
+      IoTDB.metaManager.createTimeseries(new PartialPath(processorName + "." + measurements[i]), dataType,
           encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     }
   }
@@ -91,7 +94,8 @@ public class DeletionFileNodeTest {
     EnvironmentUtils.cleanEnv();
   }
 
-  private void insertToStorageEngine(TSRecord record) throws StorageEngineException {
+  private void insertToStorageEngine(TSRecord record)
+      throws StorageEngineException, IllegalPathException {
     InsertRowPlan insertRowPlan = new InsertRowPlan(record);
     insertRowPlan.setDeviceMNode(deviceMNode);
     StorageEngine.getInstance().insert(insertRowPlan);
@@ -99,7 +103,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInBufferWriteCache() throws
-      StorageEngineException, QueryProcessException, IOException {
+      StorageEngineException, QueryProcessException, IOException, IllegalPathException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -109,10 +113,10 @@ public class DeletionFileNodeTest {
       insertToStorageEngine(record);
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[3], 0, 50);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[4], 0, 50);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[5], 0, 30);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[5], 30, 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
@@ -134,7 +138,8 @@ public class DeletionFileNodeTest {
   }
 
   @Test
-  public void testDeleteInBufferWriteFile() throws StorageEngineException, IOException {
+  public void testDeleteInBufferWriteFile()
+      throws StorageEngineException, IOException, IllegalPathException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -144,14 +149,14 @@ public class DeletionFileNodeTest {
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 40);
-    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 30);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[5], 0, 50);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[4], 0, 40);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[3], 0, 30);
 
     Modification[] realModifications = new Modification[]{
-        new Deletion(new Path(processorName, measurements[5]), 201, 50),
-        new Deletion(new Path(processorName, measurements[4]), 202, 40),
-        new Deletion(new Path(processorName, measurements[3]), 203, 30),
+        new Deletion(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]), 201, 50),
+        new Deletion(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]), 202, 40),
+        new Deletion(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]), 203, 30),
     };
 
     File fileNodeDir = new File(DirectoryManager.getInstance().getSequenceFileFolder(0),
@@ -188,7 +193,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInOverflowCache()
-      throws StorageEngineException, QueryProcessException, IOException {
+      throws StorageEngineException, QueryProcessException, IOException, IllegalPathException {
     // insert sequence data
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -208,10 +213,10 @@ public class DeletionFileNodeTest {
       insertToStorageEngine(record);
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[3], 0, 50);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[4], 0, 50);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[5], 0, 30);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[5], 30, 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
@@ -236,7 +241,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInOverflowFile()
-      throws StorageEngineException, QueryProcessException {
+      throws StorageEngineException, QueryProcessException, IllegalPathException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -257,14 +262,14 @@ public class DeletionFileNodeTest {
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 40);
-    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 30);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[5], 0, 50);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[4], 0, 40);
+    StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[3], 0, 30);
 
     Modification[] realModifications = new Modification[]{
-        new Deletion(new Path(processorName, measurements[5]), 301, 50),
-        new Deletion(new Path(processorName, measurements[4]), 302, 40),
-        new Deletion(new Path(processorName, measurements[3]), 303, 30),
+        new Deletion(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]), 301, 50),
+        new Deletion(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]), 302, 40),
+        new Deletion(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]), 303, 30),
     };
 
     File fileNodeDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),

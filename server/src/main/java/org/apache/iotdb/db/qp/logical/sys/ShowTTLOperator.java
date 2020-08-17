@@ -21,19 +21,19 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
 
 public class ShowTTLOperator extends ShowOperator {
 
-  private List<String> storageGroups;
+  private List<PartialPath> storageGroups;
 
-  public ShowTTLOperator(List<String> storageGroups) {
+  public ShowTTLOperator(List<PartialPath> storageGroups) {
     super(SQLConstant.TOK_SHOW, OperatorType.TTL);
     this.storageGroups = storageGroups;
   }
 
-  public List<String> getStorageGroups() {
+  public List<PartialPath> getStorageGroups() {
     return storageGroups;
   }
 }

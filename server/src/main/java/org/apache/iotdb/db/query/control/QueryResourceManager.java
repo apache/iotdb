@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
@@ -118,8 +119,13 @@ public class QueryResourceManager {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath,
         filter);
-    QueryDataSource queryDataSource = StorageEngine.getInstance()
-        .query(singleSeriesExpression, context, filePathsManager);
+    QueryDataSource queryDataSource = null;
+    try {
+      queryDataSource = StorageEngine.getInstance()
+          .query(singleSeriesExpression, context, filePathsManager);
+    } catch (IllegalPathException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
     // calculate the distinct number of seq and unseq tsfiles
     if (config.isEnablePerformanceTracing()) {
       seqFileNumMap.computeIfAbsent(context.getQueryId(), k -> new HashSet<>())

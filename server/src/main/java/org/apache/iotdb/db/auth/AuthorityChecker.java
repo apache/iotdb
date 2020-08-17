@@ -23,8 +23,8 @@ import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +47,7 @@ public class AuthorityChecker {
    * @return if permission-check is passed
    * @throws AuthException Authentication Exception
    */
-  public static boolean check(String username, List<Path> paths, Operator.OperatorType type,
+  public static boolean check(String username, List<PartialPath> paths, Operator.OperatorType type,
       String targetUser)
       throws AuthException {
     if (SUPER_USER.equals(username)) {
@@ -63,7 +63,7 @@ public class AuthorityChecker {
       return true;
     }
     if (!paths.isEmpty()) {
-      for (Path path : paths) {
+      for (PartialPath path : paths) {
         if (!checkOnePath(username, path, permission)) {
           return false;
         }
@@ -74,11 +74,11 @@ public class AuthorityChecker {
     return true;
   }
 
-  private static boolean checkOnePath(String username, Path path, int permission)
+  private static boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
     IAuthorizer authorizer = BasicAuthorizer.getInstance();
     try {
-      String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
+      String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.toString();
       if (authorizer.checkUserPrivileges(username, fullPath, permission)) {
         return true;
       }

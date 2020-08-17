@@ -19,20 +19,21 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ShowChildPathsPlan extends ShowPlan {
 
   // the path could be a prefix path with wildcard
-  private Path prefixPath;
+  private PartialPath prefixPath;
 
-  public ShowChildPathsPlan(ShowContentType showContentType, Path prefixPath) {
+  public ShowChildPathsPlan(ShowContentType showContentType, PartialPath prefixPath) {
     super(showContentType);
     this.prefixPath = prefixPath;
     canBeSplit = false;
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return this.prefixPath;
   }
 }

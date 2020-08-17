@@ -29,12 +29,13 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 public class IoTDBDataDirViewer {
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws IOException, IllegalPathException {
     String[] data_dir;
     String outFile = "IoTDB_data_dir_overview.txt";
     if (args.length == 0) {
@@ -80,7 +81,7 @@ public class IoTDBDataDirViewer {
   }
 
   private static void printFilesInSeqOrUnseqDir(File seqOrUnseqDir, PrintWriter pw)
-      throws IOException {
+      throws IOException, IllegalPathException {
     File[] storageGroupDirs = seqOrUnseqDir.listFiles();
     if (storageGroupDirs == null) {
       throw new IOException(
@@ -96,7 +97,7 @@ public class IoTDBDataDirViewer {
   }
 
   private static void printFilesInStorageGroupDir(File storageGroup, PrintWriter pw)
-      throws IOException {
+      throws IOException, IllegalPathException {
     File[] files = storageGroup.listFiles();
     if (files == null) {
       throw new IOException(
@@ -112,7 +113,7 @@ public class IoTDBDataDirViewer {
   }
 
   private static void printFilesInTimeInterval(File timeInterval, PrintWriter pw)
-      throws IOException {
+      throws IOException, IllegalPathException {
     File[] files = timeInterval.listFiles();
     if (files == null) {
       throw new IOException(
@@ -131,7 +132,8 @@ public class IoTDBDataDirViewer {
     }
   }
 
-  private static void printResource(String filename, PrintWriter pw) throws IOException {
+  private static void printResource(String filename, PrintWriter pw)
+      throws IOException, IllegalPathException {
     filename = filename.substring(0, filename.length() - 9);
     TsFileResource resource = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filename));
     resource.deserialize();

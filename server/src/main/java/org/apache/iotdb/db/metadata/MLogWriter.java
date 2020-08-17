@@ -60,7 +60,7 @@ public class MLogWriter {
 
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws IOException {
     writer.write(String.format("%s,%s,%s,%s,%s", MetadataOperationType.CREATE_TIMESERIES,
-        plan.getPath().getFullPath(), plan.getDataType().serialize(),
+        plan.getPath().toString(), plan.getDataType().serialize(),
         plan.getEncoding().serialize(), plan.getCompressor().serialize()));
 
     writer.write(",");
