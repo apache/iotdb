@@ -37,26 +37,11 @@ public class Path implements Serializable, Comparable<Path> {
   private String fullPath;
   private static final String illegalPathArgument = "Path parameter is null";
 
-  public Path(StringContainer pathSc) {
-    if (pathSc == null) {
-      throw new IllegalArgumentException("input pathSc is null!");
-    }
-
-    init(pathSc.toString());
-  }
-
   public Path(String pathSc) {
     if (pathSc == null) {
       throw new IllegalArgumentException(illegalPathArgument);
     }
     init(pathSc);
-  }
-
-  public Path(String[] pathSc) {
-    if (pathSc == null) {
-      throw new IllegalArgumentException(illegalPathArgument);
-    }
-    init(new StringContainer(pathSc, TsFileConstant.PATH_SEPARATOR).toString());
   }
 
   /**
@@ -125,46 +110,6 @@ public class Path implements Serializable, Comparable<Path> {
     }
   }
 
-  public static Path mergePath(Path prefix, Path suffix) {
-    if (suffix.fullPath.equals("")) {
-      return prefix;
-    } else if (prefix.fullPath.equals("")) {
-      return suffix;
-    }
-    StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
-    sc.addTail(prefix);
-    sc.addTail(suffix);
-    return new Path(sc);
-  }
-
-  /**
-   * add {@code prefix} as the prefix of {@code src}.
-   *
-   * @param src    to be added.
-   * @param prefix the newly prefix
-   * @return if this path start with prefix
-   */
-  public static Path addPrefixPath(Path src, String prefix) {
-    if (prefix.equals("")) {
-      return src;
-    }
-    StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
-    sc.addTail(prefix);
-    sc.addTail(src);
-    return new Path(sc);
-  }
-
-  /**
-   * add {@code prefix} as the prefix of {@code src}.
-   *
-   * @param src    to be added.
-   * @param prefix the newly prefix
-   * @return <code>Path</code>
-   */
-  public static Path addPrefixPath(Path src, Path prefix) {
-    return addPrefixPath(src, prefix.fullPath);
-  }
-
   public String getFullPath() {
     return fullPath;
   }
@@ -210,28 +155,6 @@ public class Path implements Serializable, Comparable<Path> {
   @Override
   public Path clone() {
     return new Path(fullPath);
-  }
-
-  /**
-   * if prefix is null, return false, else judge whether this.fullPath starts with
-   * prefix
-   *
-   * @param prefix the prefix string to be tested.
-   * @return True if fullPath starts with prefix
-   */
-  public boolean startWith(String prefix) {
-    return prefix != null && fullPath.startsWith(prefix);
-  }
-
-  /**
-   * if prefix is null, return false, else judge whether this.fullPath starts with
-   * prefix.fullPath
-   *
-   * @param prefix the prefix path to be tested.
-   * @return True if fullPath starts with prefix.fullPath
-   */
-  public boolean startWith(Path prefix) {
-    return startWith(prefix.fullPath);
   }
 
 }
