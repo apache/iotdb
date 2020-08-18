@@ -17,7 +17,6 @@
 @REM under the License.
 @REM
 
-
 @echo off
 
 pushd..
