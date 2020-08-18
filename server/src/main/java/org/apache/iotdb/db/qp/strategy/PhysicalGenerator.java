@@ -645,7 +645,7 @@ public class PhysicalGenerator {
       return;
     }
 
-    PartialPath concatPath = filterPath.concatPath(prefix);
+    PartialPath concatPath = prefix.concatPath(filterPath);
     filterPaths.add(concatPath);
     basicOperator.setSinglePath(concatPath);
   }

@@ -164,7 +164,11 @@ public class PartialPath implements Comparable<PartialPath> {
   }
 
   public Path toTSFilePath() {
-    return new Path(getPathWithoutLastNode(), getLastNode());
+    Path newPath = new Path(getPathWithoutLastNode(), getLastNode());
+    if(alias != null) {
+      newPath.setAlias(alias);
+    }
+    return newPath;
   }
 
   @Override

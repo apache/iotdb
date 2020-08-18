@@ -365,7 +365,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void asyncCloseProcessor(String storageGroupName, boolean isSeq)
+  public void asyncCloseProcessor(PartialPath storageGroupName, boolean isSeq)
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupName);
     if (processor != null) {
@@ -390,7 +390,7 @@ public class StorageEngine implements IService {
         processor.writeUnlock();
       }
     } else {
-      throw new StorageGroupNotSetException(storageGroupName);
+      throw new StorageGroupNotSetException(storageGroupName.toString());
     }
   }
 
