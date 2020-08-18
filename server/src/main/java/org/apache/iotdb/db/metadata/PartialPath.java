@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import java.util.Arrays;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -143,7 +144,7 @@ public class PartialPath implements Comparable<PartialPath> {
   }
 
   public String getPathWithoutLastNodeWithAlias() {
-    return getPathWithoutLastNode() + alias;
+    return getPathWithoutLastNode() + IoTDBConstant.PATH_SEPARATOR + alias;
   }
 
   public String getAlias() {

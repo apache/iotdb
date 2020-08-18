@@ -72,7 +72,7 @@ abstract class MergeTest {
   private int prevMergeChunkThreshold;
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException, MetadataException {
+  public void setUp() throws IOException, WriteProcessException, MetadataException {
     IoTDB.metaManager.init();
     prevMergeChunkThreshold =
         IoTDBDescriptor.getInstance().getConfig().getChunkMergePointThreshold();
@@ -107,10 +107,9 @@ abstract class MergeTest {
     IoTDB.metaManager.setStorageGroup(new PartialPath(MERGE_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
-        PartialPath fullPath = new PartialPath(device);
-        fullPath.concatNode(measurementSchema.getMeasurementId());
+        PartialPath devicePath = new PartialPath(device);
         IoTDB.metaManager.createTimeseries(
-            fullPath, measurementSchema
+            devicePath.concatNode(measurementSchema.getMeasurementId()), measurementSchema
                 .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());
       }

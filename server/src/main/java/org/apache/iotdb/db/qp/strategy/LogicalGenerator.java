@@ -1300,8 +1300,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     List<NodeNameContext> nodeNames = ctx.nodeName();
     String[] path = new String[nodeNames.size() + 1];
     path[0] = ctx.ROOT().getText();
-    for (int i = 1; i < nodeNames.size(); i++) {
-      path[i] = nodeNames.get(i).getText();
+    for (int i = 0; i < nodeNames.size(); i++) {
+      path[i + 1] = nodeNames.get(i).getText();
     }
     return new PartialPath(path);
   }

@@ -218,9 +218,8 @@ public class MergeTaskTest extends MergeTest {
   @Test
   public void mergeWithDeletionTest() throws Exception {
     try {
-      PartialPath fullPath = new PartialPath(deviceIds[0]);
-      fullPath.concatNode(measurementSchemas[0].getMeasurementId());
-      seqResources.get(0).getModFile().write(new Deletion(fullPath, 10000, 0, 49));
+      PartialPath device = new PartialPath(deviceIds[0]);
+      seqResources.get(0).getModFile().write(new Deletion(device.concatNode(measurementSchemas[0].getMeasurementId()), 10000, 0, 49));
     } finally {
       seqResources.get(0).getModFile().close();
     }

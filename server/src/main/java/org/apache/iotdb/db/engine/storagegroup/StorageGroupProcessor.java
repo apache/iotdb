@@ -738,7 +738,7 @@ public class StorageGroupProcessor {
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertRowPlan,
           insertRowPlan.getTime() > partitionLatestFlushedTimeForEachDevice.get(timePartitionId)
-              .getOrDefault(insertRowPlan.getDeviceId(), Long.MIN_VALUE));
+              .getOrDefault(insertRowPlan.getDeviceId().toString(), Long.MIN_VALUE));
 
     } finally {
       writeUnlock();

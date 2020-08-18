@@ -200,7 +200,6 @@ public class InsertRowPlan extends InsertPlan {
     List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
       PartialPath fullPath = deviceId.concatNode(m);
-      fullPath.concatPath(fullPath);
       ret.add(fullPath);
     }
     return ret;

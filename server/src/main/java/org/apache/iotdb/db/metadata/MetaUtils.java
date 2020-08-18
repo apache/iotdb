@@ -80,8 +80,8 @@ public class MetaUtils {
     if (nodeNames.length <= level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(path.toString());
     }
-    String[] storageGroupNodes = new String[level];
-    System.arraycopy(nodeNames, 0, storageGroupNodes, 0, level);
+    String[] storageGroupNodes = new String[level + 1];
+    System.arraycopy(nodeNames, 0, storageGroupNodes, 0, level + 1);
     return new PartialPath(storageGroupNodes);
   }
 }

@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -340,7 +341,7 @@ public class TTLTest {
     sgs.add("root.sg3");
     plan = (ShowTTLPlan) planner
         .parseSQLToPhysicalPlan("SHOW TTL ON root.sg1,root.sg2,root.sg3");
-    assertEquals(sgs, plan.getStorageGroups());
+    assertEquals(sgs, plan.getStorageGroups().stream().map(PartialPath::toString).collect(Collectors.toList()));
   }
 
   @Test

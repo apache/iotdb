@@ -350,7 +350,8 @@ public class MManagerBasicTest {
           CompressionType.GZIP, null);
       devices.add("root.vehicle.d1");
       // prefix with *
-      assertEquals(devices, manager.getDevices(new PartialPath("root.*")));
+      assertEquals(devices, manager.getDevices(new PartialPath("root.*")).stream().map(PartialPath::toString).collect(
+          Collectors.toSet()));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
