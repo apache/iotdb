@@ -23,7 +23,6 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -45,7 +44,7 @@ public class FloatTVList extends TVList {
   }
 
   @Override
-  public void putFloat(long timestamp, float value) throws WriteProcessException {
+  public void putFloat(long timestamp, float value) {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
@@ -194,7 +193,7 @@ public class FloatTVList extends TVList {
   }
 
   @Override
-  public void putFloats(long[] time, float[] value, int start, int end) throws WriteProcessException {
+  public void putFloats(long[] time, float[] value, int start, int end) {
     checkExpansion();
     int idx = start;
 

@@ -217,7 +217,7 @@ public class TsFileProcessor {
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
-        logger.info("Still waiting for memory... ");
+        logger.info("System rejected, waiting for memory releasing... ");
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
         Thread.currentThread().interrupt();
@@ -288,7 +288,7 @@ public class TsFileProcessor {
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
-        logger.info("Still waiting for memory... ");
+        logger.info("System rejected, waiting for memory releasing... ");
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
         Thread.currentThread().interrupt();
@@ -373,6 +373,7 @@ public class TsFileProcessor {
     if (!tsFileResource.getDeviceToIndexMap().containsKey(insertPlan.getDeviceId())) {
       unsealedResourceCost += RamUsageEstimator.sizeOf(insertPlan.getDeviceId()) + Integer.BYTES;
       // if needs to extend the startTimes and endTimes arrays
+      // FIXME: not accurate, needs to be fixed
       if (tsFileResource.getDeviceToIndexMap().size() >= tsFileResource.getStartTimes().length) {
         unsealedResourceCost += tsFileResource.getDeviceToIndexMap().size() * Long.BYTES;
       }
@@ -383,13 +384,14 @@ public class TsFileProcessor {
         continue;
       }
       // String array cost
+      // FIXME: This '* 50' comes from experiment but I don't know why...
       if (insertPlan.getDataTypes()[i] == TSDataType.TEXT) {
         if (insertPlan instanceof InsertRowPlan) {
-          bytesCost += ((Binary) ((InsertRowPlan) insertPlan).getValues()[i]).getLength();
+          bytesCost += RamUsageEstimator.sizeOf((Binary) ((InsertRowPlan) insertPlan).getValues()[i]) * 50;
         }
         else {
           for (Binary bytes : (Binary[]) ((InsertTabletPlan) insertPlan).getColumns()[i]) {
-            bytesCost += bytes.getLength();
+            bytesCost += RamUsageEstimator.sizeOf(bytes) * 50;
           }
         }
       }
@@ -445,15 +447,9 @@ public class TsFileProcessor {
   }
 
 
-  boolean shouldFlush() {
+  public boolean shouldFlush() {
     if (workMemTable == null) {
       return false;
-    }
-
-    if (workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
-      logger.info("The memtable size {} of tsfile {} reaches the threshold",
-          workMemTable.memSize(), tsFileResource.getTsFile().getAbsolutePath());
-      return true;
     }
 
     if (workMemTable.reachTotalPointNumThreshold()) {
@@ -464,15 +460,6 @@ public class TsFileProcessor {
     }
 
     return false;
-  }
-
-  /**
-   * Considering that the number of timeseries between storage groups may vary greatly,
-   * it's inappropriate to judge whether to flush the memtable according to the average memtable
-   * size. We need to adjust it according to the number of timeseries in a specific storage group.
-   */
-  private long getMemtableSizeThresholdBasedOnSeriesNum() {
-    return config.getMemtableSizeThreshold();
   }
 
   public boolean shouldClose() {
@@ -645,7 +632,7 @@ public class TsFileProcessor {
       }
       addAMemtableIntoFlushingList(workMemTable);
     } catch (Exception e) {
-      logger.error("{}: {} add a memtable into flushing listfailed", storageGroupName,
+      logger.error("{}: {} add a memtable into flushing list failed", storageGroupName,
           tsFileResource.getTsFile().getName(), e);
     } finally {
       flushQueryLock.writeLock().unlock();
@@ -715,10 +702,12 @@ public class TsFileProcessor {
             memTable.isSignalMemTable(), flushingMemTables.size());
       }
       memTable.release();
-      // For text type data, reset the mem cost in tsFileProcessorInfo
-      tsFileProcessorInfo.resetBytesMemCost(memTable.getBytesMemSize());
-      // report to System
-      SystemInfo.getInstance().resetStorageGroupInfoStatus(storageGroupInfo);
+      if (memTable.getBytesMemSize() > 0) {
+        // For text type data, reset the mem cost in tsFileProcessorInfo
+        tsFileProcessorInfo.resetBytesMemCost(memTable.getBytesMemSize());
+        // report to System
+        SystemInfo.getInstance().resetStorageGroupInfoStatus(storageGroupInfo);
+      }
       memTable = null;
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} flush finished, remove a memtable from flushing list, "

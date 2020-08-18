@@ -109,7 +109,7 @@ public class PrimitiveArrayManager {
    */
   public static Object getDataListByType(TSDataType dataType) {
     // check buffered array num
-    if (bufferedArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize())
+    if (bufferedArraysSize.get() + ARRAY_SIZE * dataType.getDataTypeSize()
         > BUFFERED_ARRAY_SIZE_THRESHOLD) {
       if (logger.isDebugEnabled()) {
         logger.debug("Apply out of buffer array from system module...");
@@ -135,8 +135,8 @@ public class PrimitiveArrayManager {
           >= BUFFERED_ARRAY_SIZE_THRESHOLD * REPORT_BUFFERED_ARRAYS_THRESHOLD) {
         // report current buffered array size to system
         SystemInfo.getInstance()
-            .reportIncreasingArraySize(bufferedArraysSize.addAndGet(-lastReportArraySize.get()));
-        lastReportArraySize = bufferedArraysSize;
+            .reportIncreasingArraySize(bufferedArraysSize.get() - lastReportArraySize.get());
+        lastReportArraySize.set(bufferedArraysSize.get());
       }
       Object dataArray = bufferedArraysMap.get(dataType).poll();
       if (dataArray != null) {

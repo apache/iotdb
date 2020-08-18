@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -42,13 +41,11 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -303,76 +300,6 @@ public class StorageGroupProcessorTest {
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
-  }
-
-  //@Test
-  public void testMemCostRecovery() throws Exception {
-    for (int j = 1; j <= 45000; j++) {
-      TSRecord record = new TSRecord(j, deviceId);
-      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
-    }
-    long sgMemCost = processor.getStorageGroupInfo().getSgMemCost();
-    long totalSgMemCost = SystemInfo.getInstance().getTotalSgMemCost();
-    long arrayPoolMemCost = SystemInfo.getInstance().getArrayPoolMemCost();
-    //Assert.assertTrue(arrayPoolMemCost > 0);
-    EnvironmentUtils.shutdownDaemon();
-    System.out.println(processor.getStorageGroupInfo().getSgMemCost());
-    EnvironmentUtils.reactiveDaemon();
-    System.out.println(sgMemCost);
-    System.out.println(totalSgMemCost);
-    Assert.assertEquals(sgMemCost, processor.getStorageGroupInfo().getSgMemCost());
-    Assert.assertEquals(totalSgMemCost, SystemInfo.getInstance().getTotalSgMemCost());
-    Assert.assertEquals(arrayPoolMemCost, SystemInfo.getInstance().getArrayPoolMemCost());
-    processor.syncCloseAllWorkingTsFileProcessors();
-  }
-
-  //@Test
-  public void testInsertTabletMemCostRecovery() throws Exception {
-    String[] measurements = new String[2];
-    measurements[0] = "s0";
-    measurements[1] = "s1";
-    List<Integer> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.INT32.ordinal());
-    dataTypes.add(TSDataType.TEXT.ordinal());
-
-    MeasurementSchema[] schemas = new MeasurementSchema[2];
-    schemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
-    schemas[1] = new MeasurementSchema("s1", TSDataType.TEXT, TSEncoding.PLAIN);
-
-    MNode deviceMNode = new MNode(null, deviceId);
-    deviceMNode.addChild("s0", new MeasurementMNode(null, null, null, null));
-    deviceMNode.addChild("s1", new MeasurementMNode(null, null, null, null));
-
-    InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan("root.vehicle.d0", measurements,
-        dataTypes);
-    insertTabletPlan1.setSchemas(schemas);
-
-    long[] times = new long[1000];
-    Object[] columns = new Object[2];
-    columns[0] = new int[1000];
-    columns[1] = new Binary[1000];
-
-    Random random = new Random();
-    for (int r = 0; r < 1000; r++) {
-      times[r] = r;
-      ((int[]) columns[0])[r] = random.nextInt(1000);
-      ((Binary[]) columns[1])[r] = Binary.valueOf(random.nextInt(1000) + "");
-    }
-    insertTabletPlan1.setTimes(times);
-    insertTabletPlan1.setColumns(columns);
-    insertTabletPlan1.setRowCount(times.length);
-    insertTabletPlan1.setDeviceMNode(deviceMNode);
-
-    processor.insertTablet(insertTabletPlan1);
-    long sgMemCost = processor.getStorageGroupInfo().getSgMemCost();
-    long totalSgMemCost = SystemInfo.getInstance().getTotalSgMemCost();
-    long arrayPoolMemCost = SystemInfo.getInstance().getArrayPoolMemCost();
-    EnvironmentUtils.restartDaemon();
-    Assert.assertEquals(sgMemCost, processor.getStorageGroupInfo().getSgMemCost());
-    Assert.assertEquals(totalSgMemCost, SystemInfo.getInstance().getTotalSgMemCost());
-    Assert.assertEquals(arrayPoolMemCost, SystemInfo.getInstance().getArrayPoolMemCost());
-    processor.syncCloseAllWorkingTsFileProcessors();
   }
 
   class DummySGP extends StorageGroupProcessor {

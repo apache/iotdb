@@ -44,7 +44,7 @@ public interface TsFileFlushPolicy {
         storageGroupProcessor.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
         logger.info("Async close tsfile: {}",
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
-      } else {
+      } else if (tsFileProcessor.shouldFlush()) {
         tsFileProcessor.asyncFlush();
         logger.info("Async flush a memtable to tsfile: {}",
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());

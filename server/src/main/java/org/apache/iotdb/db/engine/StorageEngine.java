@@ -47,6 +47,7 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.slf4j.Logger;
@@ -293,7 +294,8 @@ public class StorageEngine implements IService {
           }
         } else {
           // not finished recover, refuse the request
-          throw new StorageEngineException("the sg " + storageGroupName + " may not ready now, please wait and retry later");
+          throw new StorageEngineException("the sg " + storageGroupName + " may not ready now, please wait and retry later",
+              TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
       return processor;
@@ -605,15 +607,6 @@ public class StorageEngine implements IService {
       long partitionNum) {
     StorageGroupProcessor processor = processorMap.get(storageGroup);
     return processor != null && processor.isFileAlreadyExist(tsFileResource, partitionNum);
-  }
-
-  public int countTsFileProcessors() {
-    int count = 0;
-    for (StorageGroupProcessor sgProcessor : processorMap.values()) {
-      count += sgProcessor.getWorkSequenceTsFileProcessors().size();
-      count += sgProcessor.getWorkUnsequenceTsFileProcessors().size();
-    }
-    return count;
   }
 
   public static long getTimePartitionInterval() {

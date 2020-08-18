@@ -69,6 +69,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -378,8 +379,9 @@ public class MManager {
 
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     lock.writeLock().lock();
-    String path = plan.getPath().getFullPath();
     try {
+      String path = plan.getPath().getFullPath();
+      SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
       /*
        * get the storage group with auto create schema
        */

@@ -140,12 +140,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PlanExecutor implements IPlanExecutor {
 
-  private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
   // for data query
   protected IQueryRouter queryRouter;
   // for system schema
