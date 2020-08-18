@@ -45,7 +45,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
@@ -78,7 +77,6 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -375,6 +373,7 @@ public class TsFileProcessor {
     if (!tsFileResource.getDeviceToIndexMap().containsKey(insertPlan.getDeviceId())) {
       unsealedResourceCost += RamUsageEstimator.sizeOf(insertPlan.getDeviceId()) + Integer.BYTES;
       // if needs to extend the startTimes and endTimes arrays
+      // FIXME: not accurate, needs to be fixed
       if (tsFileResource.getDeviceToIndexMap().size() >= tsFileResource.getStartTimes().length) {
         unsealedResourceCost += tsFileResource.getDeviceToIndexMap().size() * Long.BYTES;
       }
@@ -385,14 +384,14 @@ public class TsFileProcessor {
         continue;
       }
       // String array cost
+      // FIXME: This '* 50' comes from experiment but I don't know why...
       if (insertPlan.getDataTypes()[i] == TSDataType.TEXT) {
         if (insertPlan instanceof InsertRowPlan) {
-          bytesCost += ((Binary) ((InsertRowPlan) insertPlan).getValues()[i]).getLength()
-              * TSFileConfig.BYTE_SIZE_PER_CHAR;
+          bytesCost += RamUsageEstimator.sizeOf((Binary) ((InsertRowPlan) insertPlan).getValues()[i]) * 50;
         }
         else {
           for (Binary bytes : (Binary[]) ((InsertTabletPlan) insertPlan).getColumns()[i]) {
-            bytesCost += bytes.getLength() * TSFileConfig.BYTE_SIZE_PER_CHAR;
+            bytesCost += RamUsageEstimator.sizeOf(bytes) * 50;
           }
         }
       }
@@ -461,17 +460,6 @@ public class TsFileProcessor {
     }
 
     return false;
-  }
-
-  /**
-   * <p>In the dynamic parameter adjustment module{@link IoTDBConfigDynamicAdapter}, it calculated
-   * the average size of each metatable{@link IoTDBConfigDynamicAdapter#tryToAdaptParameters()}.
-   * However, considering that the number of timeseries between storage groups may vary greatly,
-   * it's inappropriate to judge whether to flush the memtable according to the average memtable
-   * size. We need to adjust it according to the number of timeseries in a specific storage group.
-   */
-  private long getMemtableSizeThresholdBasedOnSeriesNum() {
-    return config.getMemtableSizeThreshold();
   }
 
   public boolean shouldClose() {
