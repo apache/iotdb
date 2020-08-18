@@ -68,7 +68,6 @@ public class MTreeTest {
       root.createTimeseries(new PartialPath("root.laptop.d1.s2"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(),
           "status");
-      fail();
     } catch (MetadataException e) {
       assertTrue(e instanceof AliasAlreadyExistException);
     }

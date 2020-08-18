@@ -394,7 +394,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void asyncCloseProcessor(String storageGroupName, long partitionId, boolean isSeq)
+  public void asyncCloseProcessor(PartialPath storageGroupName, long partitionId, boolean isSeq)
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupName);
     if (processor != null) {
@@ -416,7 +416,7 @@ public class StorageEngine implements IService {
         processor.writeUnlock();
       }
     } else {
-      throw new StorageGroupNotSetException(storageGroupName);
+      throw new StorageGroupNotSetException(storageGroupName.toString());
     }
   }
 
@@ -606,7 +606,7 @@ public class StorageEngine implements IService {
     this.fileFlushPolicy = fileFlushPolicy;
   }
 
-  public boolean isFileAlreadyExist(TsFileResource tsFileResource, String storageGroup,
+  public boolean isFileAlreadyExist(TsFileResource tsFileResource, PartialPath storageGroup,
       long partitionNum) {
     StorageGroupProcessor processor = processorMap.get(storageGroup);
     return processor != null && processor.isFileAlreadyExist(tsFileResource, partitionNum);

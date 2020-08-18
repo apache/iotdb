@@ -133,9 +133,8 @@ public class MManagerAdvancedTest {
 
     try {
       mmanager.getNodeByPath(new PartialPath("root.vehicle.d100"));
-      fail();
     } catch (MetadataException e) {
-      // ignore
+      Assert.assertEquals("Path [root.vehicle.d100] does not exist", e.getMessage());
     }
   }
 
