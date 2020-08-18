@@ -17,7 +17,12 @@
 @REM under the License.
 @REM
 
+
 @echo off
 
-wmic process where (commandline like "%%iotdb.ClusterMain%%" and not name="wmic.exe") delete
-rem ps ax | grep -i 'iotdb.ClusterMain' | grep -v grep | awk '{print $1}' | xargs kill -SIGTERM
+pushd..
+set exec_dir=%cd%
+popd
+set exec_dir=%exec_dir:\=\\%
+wmic process where (commandline like "%%iotdb.ClusterMain%%" and not name="wmic.exe" and  commandline  like "%%%exec_dir%%%") delete
+

@@ -57,31 +57,11 @@ popd
 set IOTDB_CONF=%IOTDB_HOME%\conf
 set IOTDB_LOGS=%IOTDB_HOME%\logs
 
-
 IF EXIST "%IOTDB_CONF%\cluster-env.bat" (
-    IF "%1" == "printgc" (
-      CALL "%IOTDB_CONF%\cluster-env.bat" printgc
-      SHIFT
+    CALL "%IOTDB_CONF%\cluster-env.bat"
     ) ELSE (
-      CALL "%IOTDB_CONF%\cluster-env.bat"
-    )
-) ELSE (
     echo "can't find %IOTDB_CONF%\cluster-env.bat"
-)
-
-@setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
-set CONF_PARAMS=-s
-set is_conf_path=false
-for %%i in (%*) do (
-	IF "%%i" == "-c" (
-		set is_conf_path=true
-	) ELSE IF "!is_conf_path!" == "true" (
-		set is_conf_path=false
-		set IOTDB_CONF=%%i
-	) ELSE (
-		set CONF_PARAMS=!CONF_PARAMS! %%i
-	)
-)
+    )
 
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cluster.ClusterMain
 if NOT DEFINED JAVA_HOME goto :err
@@ -92,7 +72,6 @@ set JAVA_OPTS=-ea^
  -Dlogback.configurationFile="%IOTDB_CONF%\logback.xml"^
  -DIOTDB_HOME="%IOTDB_HOME%"^
  -DTSFILE_HOME="%IOTDB_HOME%"^
- -DCLUSTER_CONF="%IOTDB_CONF%"^
  -DIOTDB_CONF="%IOTDB_CONF%"
 
 @REM ***** CLASSPATH library setting *****
@@ -101,7 +80,7 @@ set CLASSPATH="%IOTDB_HOME%\lib"
 
 @REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
 set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*"
-set CLASSPATH=%CLASSPATH%;iotdb.ClusterMain
+set CLASSPATH=%CLASSPATH%;iotdb.IoTDB
 goto okClasspath
 
 :append
@@ -113,7 +92,7 @@ goto :eof
 
 rem echo CLASSPATH: %CLASSPATH%
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% -r
 goto finally
 
 :err

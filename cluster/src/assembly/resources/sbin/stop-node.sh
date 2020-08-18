@@ -20,11 +20,21 @@
 
 
 PIDS=$(ps ax | grep -i 'ClusterMain' | grep java | grep -v grep | awk '{print $1}')
-
-if [ -z "$PIDS" ]; then
-  echo "No IoTDB server to stop"
-  exit 1
-else 
-  kill -s TERM $PIDS
-  echo "close IoTDB"
+sig=0
+for evry_pid in ${PIDS}
+do
+cwd_path=$(ls -l /proc/$evry_pid | grep "cwd ->" | grep -v grep | awk '{print $NF}')
+pwd_path=$(/bin/pwd)
+if [[ $pwd_path =~ $cwd_path ]]
+then
+kill -s TERM $evry_pid
+echo "close IoTDB"
+sig=1
 fi
+done
+if [ $sig -eq 0 ]
+then
+echo "No IoTDB server to stop"
+exit 1
+fi
+
