@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.merge.selector;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * IMergePathSelector select paths to be merged at a time if all paths of a device cannot be

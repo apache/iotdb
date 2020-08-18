@@ -41,7 +41,6 @@ import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
@@ -257,7 +256,7 @@ public class TsFileRecoverPerformer {
   private void recoverResourceFromFile(TsFileResource tsFileResource) throws IOException {
     try {
       tsFileResource.deserialize();
-    } catch (IOException | IllegalPathException e) {
+    } catch (IOException e) {
       logger.warn("Cannot deserialize TsFileResource {}, construct it using "
           + "TsFileSequenceReader", tsFileResource.getTsFile(), e);
       recoverResourceFromReader(tsFileResource);

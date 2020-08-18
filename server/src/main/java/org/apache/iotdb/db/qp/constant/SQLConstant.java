@@ -33,8 +33,8 @@ public class SQLConstant {
     // forbidding instantiation
   }
 
-  protected static final String[] SINGLE_ROOT_ARRAY = new String[1];
-  protected static final String[] SINGLE_TIME_ARRAY = new String[1];
+  public static final String[] SINGLE_ROOT_ARRAY = new String[1];
+  public static final String[] SINGLE_TIME_ARRAY = new String[1];
   public static final PartialPath TIME_PATH = new PartialPath(SINGLE_TIME_ARRAY);
   public static final String ALIGNBY_DEVICE_COLUMN_NAME = "Device";
   public static final String RESERVED_TIME = "time";
@@ -158,9 +158,9 @@ public class SQLConstant {
   public static final int TOK_CREATE_SCHEMA_SNAPSHOT = 89;
   public static final int TOK_TRACING = 91;
 
-  protected static final Map<Integer, String> tokenSymbol = new HashMap<>();
-  protected static final Map<Integer, String> tokenNames = new HashMap<>();
-  protected static final Map<Integer, Integer> reverseWords = new HashMap<>();
+  public static final Map<Integer, String> tokenSymbol = new HashMap<>();
+  public static final Map<Integer, String> tokenNames = new HashMap<>();
+  public static final Map<Integer, Integer> reverseWords = new HashMap<>();
 
   static {
     SINGLE_ROOT_ARRAY[0] = ROOT;

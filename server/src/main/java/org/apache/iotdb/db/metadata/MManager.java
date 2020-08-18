@@ -1895,10 +1895,8 @@ public class MManager {
           // create it
 
           TSDataType dataType = getTypeInLoc(plan, i);
-          PartialPath path = deviceId.clone();
-          path.concatPath(new String[]{measurementList[i]});
           createTimeseries(
-              path,
+              deviceId.concatNode(measurementList[i]),
               dataType,
               getDefaultEncoding(dataType),
               TSFileDescriptor.getInstance().getConfig().getCompressor(),

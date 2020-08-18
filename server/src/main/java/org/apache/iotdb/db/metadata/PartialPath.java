@@ -75,11 +75,6 @@ public class PartialPath implements Comparable<PartialPath> {
     return nodes;
   }
 
-  @Override
-  public PartialPath clone() {
-    return new PartialPath(nodes.clone());
-  }
-
   public String toString() {
     if (path != null) {
       return path;

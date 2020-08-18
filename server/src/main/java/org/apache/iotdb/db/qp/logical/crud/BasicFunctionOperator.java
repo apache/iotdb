@@ -128,7 +128,7 @@ public class BasicFunctionOperator extends FunctionOperator {
   public BasicFunctionOperator copy() {
     BasicFunctionOperator ret;
     try {
-      ret = new BasicFunctionOperator(this.tokenIntType, singlePath.clone(), value);
+      ret = new BasicFunctionOperator(this.tokenIntType, new PartialPath(singlePath.getNodes().clone()), value);
     } catch (SQLParserException e) {
       logger.error("error copy:", e);
       return null;

@@ -27,7 +27,6 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -153,7 +152,7 @@ public class InOperator extends FunctionOperator {
   @Override
   public InOperator copy() {
     InOperator ret;
-    ret = new InOperator(this.tokenIntType, singlePath.clone(), not, new HashSet<>(values));
+    ret = new InOperator(this.tokenIntType, new PartialPath(singlePath.getNodes().clone()), not, new HashSet<>(values));
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
