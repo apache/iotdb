@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.io.Serializable;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
  * This class define an Object named Path to represent a series in IoTDB.
@@ -31,17 +30,65 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 public class Path implements Serializable, Comparable<Path> {
 
   private static final long serialVersionUID = 3405277066329298200L;
-  private String measurement = null;
+  private String measurement;
   private String alias = null;
-  private String device = null;
+  private String device;
   private String fullPath;
   private static final String illegalPathArgument = "Path parameter is null";
 
+  /**
+   * this constructor doesn't split the path, only useful for table header.
+   * @param pathSc a path that wouldn't  be split.
+   */
+  @Deprecated
   public Path(String pathSc) {
     if (pathSc == null) {
       throw new IllegalArgumentException(illegalPathArgument);
     }
     fullPath = pathSc;
+    device = "";
+    measurement = pathSc;
+  }
+
+  /**
+   * @param pathSc path
+   * @param needSplit whether need to be split to device and measurement, doesn't support escape character yet.
+   */
+  public Path(String pathSc, boolean needSplit) {
+    if(!needSplit) {
+      fullPath = pathSc;
+      device = "";
+      measurement = pathSc;
+    } else {
+      if (pathSc.length() > 0) {
+        if (pathSc.charAt(pathSc.length() - 1) == TsFileConstant.DOUBLE_QUOTE) {
+          int endIndex = pathSc.lastIndexOf('"', pathSc.length() - 2);
+          if (endIndex != -1 && (endIndex == 0 || pathSc.charAt(endIndex - 1) == '.')) {
+            device = pathSc.substring(0, endIndex - 1);
+            measurement = pathSc.substring(endIndex);
+          } else {
+            throw new IllegalArgumentException(illegalPathArgument);
+          }
+        } else if (pathSc.charAt(pathSc.length() - 1) != TsFileConstant.DOUBLE_QUOTE
+            && pathSc.charAt(pathSc.length() - 1) != TsFileConstant.PATH_SEPARATOR_CHAR) {
+          int endIndex = pathSc.lastIndexOf(TsFileConstant.PATH_SEPARATOR_CHAR);
+          if (endIndex < 0) {
+            fullPath = pathSc;
+            device = "";
+            measurement = pathSc;
+          } else {
+            device = pathSc.substring(0, endIndex);
+            measurement = pathSc.substring(endIndex + 1);
+          }
+        } else {
+          throw new IllegalArgumentException(illegalPathArgument);
+        }
+      } else {
+        fullPath = pathSc;
+        device = "";
+        measurement = pathSc;
+      }
+    }
   }
 
   /**
@@ -59,55 +106,6 @@ public class Path implements Serializable, Comparable<Path> {
     this.measurement = measurement;
     this.fullPath = device + TsFileConstant.PATH_SEPARATOR
         + (measurement.contains(TsFileConstant.PATH_SEPARATOR) ? "\"" + measurement + "\"" : measurement);
-  }
-
-  /**
-   * extract device and measurement info from complete path string
-   *
-   * @param pathSc complete path string
-   */
-  private void init(String pathSc) {
-    int i = 0;
-    int j = 0;
-    for (char c : pathSc.toCharArray()) {
-      if (c == '\"') {
-        i++;
-      } else if (c == '\'') {
-        j++;
-      }
-    }
-    if ((i != 2 && i != 0) || (j != 2 && j != 0)) {
-      throw new IllegalArgumentException("input pathSc single/double quotes error, not in pair or more than one pair!");
-    }
-    if ((i == 2 && pathSc.length() - 1 != pathSc.lastIndexOf("\""))
-        || (j == 2 && pathSc.length() - 1 != pathSc.lastIndexOf("\'"))) {
-      throw new IllegalArgumentException("input pathSc contains quoted string in the middle!");
-    }
-    String[] subStrs;
-    if (i != 0 || j != 0) {
-      if (i == 2) {
-        subStrs = pathSc.split("\"");
-      } else {
-        subStrs = pathSc.split("\'");
-      }
-      device = subStrs[0];
-      if (!device.equals("")) {
-        device = device.substring(0, subStrs[0].length() - 1);
-      }
-      measurement = subStrs[1];
-      fullPath = pathSc;
-    } else {
-      StringContainer sc = new StringContainer(pathSc.split(TsFileConstant.PATH_SEPARATER_NO_REGEX),
-          TsFileConstant.PATH_SEPARATOR);
-      if (sc.size() <= 1) {
-        device = "";
-        fullPath = measurement = sc.toString();
-      } else {
-        device = sc.getSubStringContainer(0, -2).toString();
-        measurement = sc.getSubString(-1);
-        fullPath = sc.toString();
-      }
-    }
   }
 
   public String getFullPath() {

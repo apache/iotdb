@@ -37,8 +37,7 @@ public class MetaUtils {
   }
 
   /**
-   *
-   * @param path the path will split. ex, root.ln
+   * @param path the path will split. ex, root.ln. note: doesn't support escape character
    * @return string array. ex, [root, ln]
    * @throws IllegalPathException if path isn't correct, the exception will throw
    */
