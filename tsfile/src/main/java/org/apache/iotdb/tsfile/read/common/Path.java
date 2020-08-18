@@ -64,6 +64,7 @@ public class Path implements Serializable, Comparable<Path> {
         if (pathSc.charAt(pathSc.length() - 1) == TsFileConstant.DOUBLE_QUOTE) {
           int endIndex = pathSc.lastIndexOf('"', pathSc.length() - 2);
           if (endIndex != -1 && (endIndex == 0 || pathSc.charAt(endIndex - 1) == '.')) {
+            fullPath = pathSc;
             device = pathSc.substring(0, endIndex - 1);
             measurement = pathSc.substring(endIndex);
           } else {
@@ -77,6 +78,7 @@ public class Path implements Serializable, Comparable<Path> {
             device = "";
             measurement = pathSc;
           } else {
+            fullPath = pathSc;
             device = pathSc.substring(0, endIndex);
             measurement = pathSc.substring(endIndex + 1);
           }
@@ -104,8 +106,7 @@ public class Path implements Serializable, Comparable<Path> {
     }
     this.device = device;
     this.measurement = measurement;
-    this.fullPath = device + TsFileConstant.PATH_SEPARATOR
-        + (measurement.contains(TsFileConstant.PATH_SEPARATOR) ? "\"" + measurement + "\"" : measurement);
+    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
   }
 
   public String getFullPath() {
