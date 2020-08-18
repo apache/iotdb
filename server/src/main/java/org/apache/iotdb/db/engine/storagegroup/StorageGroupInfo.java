@@ -25,15 +25,40 @@ import java.util.TreeSet;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.SystemInfo;
 
+/**
+ * The storageGroupInfo records the total memory cost of the Storage Group.
+ */
 public class StorageGroupInfo {
 
+  /**
+   * Report the SG memory cost to SystemInfo if the memory cost increasing more
+   * than this threshold.
+   */
   private long storageGroupReportThreshold;
 
+  /**
+   * The total memory cost of the unsealed TsFileResources in this SG
+   */
   private long unsealedResourceMemCost;
+
+  /**
+   * The total memory cost of TEXT data in this SG
+   */
   private long bytesMemCost;
+
+  /**
+   * The total memory cost of ChunkMetadata in this SG
+   */
   private long chunkMetadataMemCost;
+
+  /**
+   * The total memory cost of WALs in this SG
+   */
   private long walMemCost;
-  
+
+  /**
+   * A set of all unclosed TsFileProcessors in this SG
+   */
   private Set<TsFileProcessor> reportedTsps = new HashSet<>();
 
   public StorageGroupInfo() {
@@ -45,6 +70,9 @@ public class StorageGroupInfo {
     walMemCost = 0;
   }
 
+  /**
+   * When create a new TsFileProcessor, call this method to report it
+   */
   public void reportTsFileProcessorInfo(TsFileProcessor tsFileProcessor) {
     if (reportedTsps.add(tsFileProcessor)) {
       walMemCost += IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
@@ -63,18 +91,30 @@ public class StorageGroupInfo {
     bytesMemCost += cost;
   }
 
+  /**
+   * called by TSPInfo when closing a TSP
+   */
   public void resetUnsealedResourceMemCost(long cost) {
     unsealedResourceMemCost -= cost;
   }
 
+  /**
+   * called by TSPInfo when closing a TSP
+   */
   public void resetChunkMetadataMemCost(long cost) {
     chunkMetadataMemCost -= cost;
   }
 
+  /**
+   * called by TSPInfo when a memTable contains TEXT data flushed
+   */
   public void resetBytesMemCost(long cost) {
     bytesMemCost -= cost;
   }
 
+  /**
+   * called by TSPInfo when closing a TSP
+   */
   public void resetWalMemCost(long cost) {
     walMemCost -= cost;
   }
@@ -101,6 +141,12 @@ public class StorageGroupInfo {
     return tsps.first();
   }
 
+  /**
+   * When a TsFileProcessor is closing, remove it from reportedTsps, and report to systemInfo
+   * to update SG cost.
+   * 
+   * @param tsFileProcessor
+   */
   public void closeTsFileProcessorAndReportToSystem(TsFileProcessor tsFileProcessor) {
     reportedTsps.remove(tsFileProcessor);
     SystemInfo.getInstance().resetStorageGroupInfoStatus(this);

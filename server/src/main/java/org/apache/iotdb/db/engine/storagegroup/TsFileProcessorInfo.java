@@ -20,13 +20,34 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+/**
+ * The TsFileProcessorInfo records the memory cost of this TsFileProcessor.
+ */
 public class TsFileProcessorInfo {
 
+  /**
+   * Once tspInfo updated, report to storageGroupInfo that this TSP belongs to.
+   */
   private StorageGroupInfo storageGroupInfo;
 
+  /**
+   * The memory cost of the unsealed TsFileResources of this TSP
+   */
   private long unsealedResourceMemCost;
+  
+  /**
+   * The memory cost of TEXT data of this TSP
+   */
   private long bytesMemCost;
+
+  /**
+   * The memory cost of ChunkMetadata of this TSP
+   */
   private long chunkMetadataMemCost;
+
+  /**
+   * The memory cost of WAL of this TSP
+   */
   private long walMemCost;
 
   public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
@@ -52,6 +73,9 @@ public class TsFileProcessorInfo {
     storageGroupInfo.addBytesMemCost(cost);
   }
 
+  /**
+   * call this method when closing TSP
+   */
   public void clear() {
     storageGroupInfo.resetUnsealedResourceMemCost(unsealedResourceMemCost);
     storageGroupInfo.resetChunkMetadataMemCost(chunkMetadataMemCost);
@@ -61,6 +85,9 @@ public class TsFileProcessorInfo {
     chunkMetadataMemCost = 0;
   }
 
+  /**
+   * call this method when a memTable contains TEXT data flushed
+   */
   public void resetBytesMemCost(long cost) {
     storageGroupInfo.resetBytesMemCost(cost);
     bytesMemCost -= cost;
