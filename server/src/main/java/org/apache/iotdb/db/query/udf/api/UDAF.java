@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.db.query.udf.api;
 
-import org.apache.iotdb.db.query.udf.customizer.UDFParameters;
-import org.apache.iotdb.db.query.udf.customizer.UDTFConfigurations;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public interface UDF {
+public abstract class UDAF extends AggregateResult implements UDF {
 
-  void initializeUDF(UDFParameters parameters, UDTFConfigurations configurations);
+  public UDAF() {
+    super(null, AggregationType.UDF);
+  }
 
-  void finalizeUDF();
+  public void setResultDataType(TSDataType resultDataType) {
+    this.resultDataType = resultDataType;
+  }
 }

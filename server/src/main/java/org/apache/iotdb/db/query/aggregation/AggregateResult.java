@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 public abstract class AggregateResult {
 
   private final AggregationType aggregationType;
-  private TSDataType resultDataType;
+  protected TSDataType resultDataType;
 
   private boolean booleanValue;
   private int intValue;
