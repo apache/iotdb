@@ -519,7 +519,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20.5E-3";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle,d1", "s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(20.5e-3));
     assertEquals(expect.toString(), queryFilter.toString());
   }

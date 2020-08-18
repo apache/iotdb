@@ -106,7 +106,11 @@ public class Path implements Serializable, Comparable<Path> {
     }
     this.device = device;
     this.measurement = measurement;
-    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    if(!device.equals("")) {
+      this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    } else {
+      fullPath = measurement;
+    }
   }
 
   public String getFullPath() {

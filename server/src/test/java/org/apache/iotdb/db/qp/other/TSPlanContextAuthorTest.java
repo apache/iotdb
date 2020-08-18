@@ -23,7 +23,10 @@ import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -72,7 +75,7 @@ public class TSPlanContextAuthorTest {
     if (author == null) {
       fail();
     }
-    assertArrayEquals(paths, author.getPaths().toArray());
+    assertArrayEquals(paths, author.getPaths().stream().map(PartialPath::toTSFilePath).toArray());
   }
 
 }

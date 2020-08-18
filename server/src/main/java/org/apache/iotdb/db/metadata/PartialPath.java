@@ -129,6 +129,9 @@ public class PartialPath implements Comparable<PartialPath> {
     if (pathWithoutLastNode != null) {
       return pathWithoutLastNode;
     } else {
+      if(nodes.length == 1) {
+        return "";
+      }
       StringBuilder s = new StringBuilder(nodes[0]);
       for (int i = 1; i < nodes.length - 1; i++) {
         s.append(TsFileConstant.PATH_SEPARATOR);
