@@ -819,11 +819,7 @@ public class MTree implements Serializable {
         }
       } else if (idx == length) {
         String nodeName;
-        if (node.getName().contains(TsFileConstant.PATH_SEPARATOR)) {
-          nodeName = "\"" + node + "\"";
-        } else {
-          nodeName = node.getName();
-        }
+        nodeName = node.getName();
         res.add(parent + nodeName);
       }
     }
