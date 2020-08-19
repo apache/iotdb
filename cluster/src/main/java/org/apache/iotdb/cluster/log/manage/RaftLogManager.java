@@ -115,7 +115,7 @@ public abstract class RaftLogManager {
     } catch (TruncateCommittedEntryException e) {
       logger.error("{}: Unexpected error:", name, e);
     }
-    long first = getCommittedEntryManager().getFirstIndex() - 1;
+    long first = getCommittedEntryManager().getFirstIndex();
     long last = getCommittedEntryManager().getLastIndex();
     this.setUnCommittedEntryManager(new UnCommittedEntryManager(last + 1));
 
@@ -128,7 +128,7 @@ public abstract class RaftLogManager {
      * due to the log operation is idempotent, so we can just reapply the log from the
      * first index of committed logs
      */
-    this.maxHaveAppliedCommitIndex = first;
+    this.maxHaveAppliedCommitIndex = first - 1;
 
     deleteLogExecutorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
