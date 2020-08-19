@@ -65,7 +65,7 @@ launch_service()
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
 	ip=`sed '/^cluster_rpc_ip=/!d;s/.*=//' $IOTDB_CONF/iotdb-cluster.properties`
         meta_port=`sed '/^internal_meta_port=/!d;s/.*=//' $IOTDB_CONF/iotdb-cluster.properties`
-	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS $iotdb_parms -cp "$CLASSPATH"  "$class" -r $ip $meta_port
+    	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS $iotdb_parms -cp "$CLASSPATH"  "$class" -r $ip $meta_port
 	return $?
 }
 
