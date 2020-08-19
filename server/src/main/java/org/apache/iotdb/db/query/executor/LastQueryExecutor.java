@@ -125,7 +125,7 @@ public class LastQueryExecutor {
    */
   public static TimeValuePair calculateLastPairForOneSeriesLocally(
       PartialPath seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
-      throws IOException, QueryProcessException, StorageEngineException, IllegalPathException {
+      throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode
     MeasurementMNode node = null;

@@ -23,10 +23,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class CachedStringPool {
 
-  private Map<String, String> cachedStringPool = new ConcurrentHashMap<>();
+  private Map<String, String> cachedPool = new ConcurrentHashMap<>();
 
-  public Map<String, String> getCachedStringPool() {
-    return cachedStringPool;
+  public Map<String, String> getCachedPool() {
+    return cachedPool;
   }
 
   public static CachedStringPool getInstance() {

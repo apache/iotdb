@@ -52,7 +52,7 @@ public class MNode implements Serializable {
 
   protected MNode parent;
 
-  private static Map<String, String> cachedPathPool = CachedStringPool.getInstance().getCachedStringPool();
+  private static Map<String, String> cachedPathPool = CachedStringPool.getInstance().getCachedPool();
 
   /**
    * from root to this node, only be set when used once for InternalMNode

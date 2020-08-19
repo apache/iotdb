@@ -117,19 +117,6 @@ public class SchemaUtils {
     return dataTypes;
   }
 
-  public static List<TSDataType> getSeriesTypesByPath(Collection<PartialPath> paths,
-      String aggregation) throws MetadataException {
-    TSDataType dataType = getAggregationType(aggregation);
-    if (dataType != null) {
-      return Collections.nCopies(paths.size(), dataType);
-    }
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (PartialPath path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path));
-    }
-    return dataTypes;
-  }
-
   public static List<TSDataType> getSeriesTypesByPath(List<PartialPath> paths,
       List<String> aggregations) throws MetadataException {
     List<TSDataType> tsDataTypes = new ArrayList<>();

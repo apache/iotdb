@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ShowTimeSeriesOperator extends ShowOperator {
 

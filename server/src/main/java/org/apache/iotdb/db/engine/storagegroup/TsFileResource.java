@@ -61,7 +61,7 @@ import org.slf4j.LoggerFactory;
 public class TsFileResource {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileResource.class);
-  private static Map<String, String> cachedDevicePool = CachedStringPool.getInstance().getCachedStringPool();
+  private static Map<String, String> cachedDevicePool = CachedStringPool.getInstance().getCachedPool();
 
   // tsfile
   private File file;
