@@ -217,7 +217,9 @@ public class TsFileProcessor {
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
-        logger.info("System rejected, waiting for memory releasing... ");
+        logger.info("System rejected, waiting for memory releasing... "
+            + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
+            .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
         Thread.currentThread().interrupt();
@@ -231,8 +233,9 @@ public class TsFileProcessor {
     // the work memtable directly
     if (workMemTable.checkIfArrayIsEnough(insertRowPlan)) {
       logger.debug("Array in work MemTable is enough");
+      checkMemCostAndAddToTspInfo(insertRowPlan);
       workMemTable.insert(insertRowPlan);
-  
+
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         try {
           getLogNode().write(insertRowPlan);
@@ -288,7 +291,9 @@ public class TsFileProcessor {
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
-        logger.info("System rejected, waiting for memory releasing... ");
+        logger.info("System rejected, waiting for memory releasing... "
+            + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
+            .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
         Thread.currentThread().interrupt();
@@ -303,6 +308,7 @@ public class TsFileProcessor {
     if (workMemTable.checkIfArrayIsEnough(insertTabletPlan)) {
       // insert insertRowPlan to the work memtable
       try {
+        checkMemCostAndAddToTspInfo(insertTabletPlan);
         workMemTable.insertTablet(insertTabletPlan, start, end);
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           insertTabletPlan.setStart(start);
@@ -363,7 +369,6 @@ public class TsFileProcessor {
         throw new WriteProcessException(e);
       }
     }
-
   }
 
   private void checkMemCostAndAddToTspInfo(InsertPlan insertPlan) {
@@ -384,14 +389,13 @@ public class TsFileProcessor {
         continue;
       }
       // String array cost
-      // FIXME: This '* 50' comes from experiment but I don't know why...
       if (insertPlan.getDataTypes()[i] == TSDataType.TEXT) {
         if (insertPlan instanceof InsertRowPlan) {
-          bytesCost += RamUsageEstimator.sizeOf((Binary) ((InsertRowPlan) insertPlan).getValues()[i]) * 50;
+          bytesCost += RamUsageEstimator.sizeOf((Binary) ((InsertRowPlan) insertPlan).getValues()[i]);
         }
         else {
           for (Binary bytes : (Binary[]) ((InsertTabletPlan) insertPlan).getColumns()[i]) {
-            bytesCost += RamUsageEstimator.sizeOf(bytes) * 50;
+            bytesCost += RamUsageEstimator.sizeOf(bytes);
           }
         }
       }

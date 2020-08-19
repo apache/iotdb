@@ -127,8 +127,8 @@ public class StorageGroupInfo {
     return unsealedResourceMemCost + bytesMemCost + chunkMetadataMemCost + walMemCost;
   }
 
-  public void addStorageGroupReportThreshold(long value) {
-    storageGroupReportThreshold += value;
+  public void setStorageGroupReportThreshold(long value) {
+    storageGroupReportThreshold = value;
   }
 
   public TsFileProcessor getLargestTsFileProcessor() {
