@@ -101,7 +101,7 @@ set CLASSPATH="%IOTDB_HOME%\lib"
 
 @REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
 set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*"
-set CLASSPATH=%CLASSPATH%;iotdb.IoTDB
+set CLASSPATH=%CLASSPATH%;iotdb.ClusterMain
 goto okClasspath
 
 :append
