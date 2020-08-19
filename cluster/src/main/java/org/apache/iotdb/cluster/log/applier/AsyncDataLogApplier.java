@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -32,6 +37,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,20 +46,18 @@ public class AsyncDataLogApplier implements LogApplier {
   private static final Logger logger = LoggerFactory.getLogger(AsyncDataLogApplier.class);
   private static final int CONCURRENT_CONSUMER_NUM = 64;
   private LogApplier embeddedApplier;
-  private DataLogConsumer[] consumers;
+  private Map<String, DataLogConsumer> consumerMap;
+  private ExecutorService consumerPool = new ThreadPoolExecutor(CONCURRENT_CONSUMER_NUM,
+      Integer.MAX_VALUE, 0, TimeUnit.SECONDS, new SynchronousQueue<>(),
+      new ThreadFactoryBuilder().setNameFormat("ApplierThread%d").build());
 
   public AsyncDataLogApplier(LogApplier embeddedApplier) {
     this.embeddedApplier = embeddedApplier;
-    this.consumers = new DataLogConsumer[CONCURRENT_CONSUMER_NUM];
-    ExecutorService consumerPool = Executors.newFixedThreadPool(CONCURRENT_CONSUMER_NUM);
-    for (int i = 0; i < consumers.length; i++) {
-      consumers[i] = new DataLogConsumer();
-      consumerPool.submit(consumers[i]);
-    }
+    consumerMap = new ConcurrentHashMap<>();
   }
 
   @Override
-  public void apply(Log log) {
+  public void apply(Log log) throws StorageGroupNotSetException {
     // we can only apply insertions in parallel, for other logs, we must wait until all previous
     // logs are applied, or the order of deletions and insertions may get wrong
     if (log instanceof PhysicalPlanLog) {
@@ -63,7 +67,11 @@ public class AsyncDataLogApplier implements LogApplier {
         // decide the consumer by deviceId
         InsertPlan insertPlan = (InsertPlan) plan;
         String deviceId = insertPlan.getDeviceId();
-        consumers[Math.abs(deviceId.hashCode() % consumers.length)].accept(log);
+        consumerMap.computeIfAbsent(IoTDB.metaManager.getStorageGroupName(deviceId), d -> {
+          DataLogConsumer dataLogConsumer = new DataLogConsumer();
+          consumerPool.submit(dataLogConsumer);
+          return dataLogConsumer;
+        }).accept(log);
         return;
       }
     }
@@ -78,7 +86,7 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   private boolean allConsumersEmpty() {
-    for (DataLogConsumer consumer : consumers) {
+    for (DataLogConsumer consumer : consumerMap.values()) {
       if (!consumer.isEmpty()) {
         return false;
       }

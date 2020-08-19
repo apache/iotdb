@@ -71,7 +71,7 @@ abstract class BaseApplier implements LogApplier {
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if (plan instanceof InsertPlan) {
       processPlanWithTolerance((InsertPlan) plan, dataGroupMember);
-    } else if (!plan.isQuery()) {
+    } else if (plan!= null && !plan.isQuery()) {
       try {
         getQueryExecutor().processNonQuery(plan);
       } catch (QueryProcessException e) {

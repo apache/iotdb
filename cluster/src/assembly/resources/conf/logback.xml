@@ -219,7 +219,7 @@
         <includeCallerData>true</includeCallerData>
         <appender-ref ref="FILE_STDOUT"/>
     </appender>
-    <root level="debug">
+    <root level="info">
         <appender-ref ref="ASYNC_FILE_TRACE"/>
         <appender-ref ref="ASYNC_FILE_DEBUG"/>
         <appender-ref ref="ASYNC_FILE_INFO"/>
@@ -230,9 +230,6 @@
     </root>
     <logger level="info" name="org.apache.iotdb.db.cost.statistic">
         <appender-ref ref="FILE_COST_MEASURE"/>
-    </logger>
-    <logger level="debug" name="org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter">
-        <appender-ref ref="FILE_DYNAMIC_PARAMETER"/>
     </logger>
     <logger level="info" name="org.apache.iotdb.cluster.server.heartbeat"/>
     <logger level="error" name="org.apache.thrift.server.AbstractNonblockingServer"/>

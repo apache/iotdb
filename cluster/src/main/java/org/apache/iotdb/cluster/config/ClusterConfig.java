@@ -50,7 +50,7 @@ public class ClusterConfig {
   @ClusterConsistent
   private boolean useAsyncServer = true;
 
-  private boolean useAsyncApplier = false;
+  private boolean useAsyncApplier = true;
 
   private int connectionTimeoutInMS = 20 * 1000;
   /**
