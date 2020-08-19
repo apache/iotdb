@@ -16,27 +16,26 @@
 # under the License.
 #
 
-PROJECT(iotdb_session)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
-
-# this file is supposed to be copied to ./target/build
 SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
-SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -Wall")
-SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../../compile-tools")
+SET(TARGET_NAME tests)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall")
+SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../../../compile-tools")
+ENABLE_TESTING()
+
 IF(MSVC)
-    SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/Release/thriftmd.lib")
     INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include/boost-1_72)
 ELSE()
-    SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/libthrift.a")
     INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include)
 ENDIF()
 
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/generated-sources-cpp)
 INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src)
-ADD_SUBDIRECTORY(generated-sources-cpp)
+LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main)
 
-AUX_SOURCE_DIRECTORY(./generated-sources-cpp SESSION_SRCS)
+ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
+TARGET_LINK_LIBRARIES(${TARGET_NAME} PUBLIC iotdb_session)
+TARGET_INCLUDE_DIRECTORIES(${TARGET_NAME} PUBLIC ./catch2/)
 
-ADD_LIBRARY(iotdb_session SHARED ${SESSION_SRCS})
-TARGET_LINK_LIBRARIES(iotdb_session ${THRIFT_STATIC_LIB})
+ADD_TEST(NAME test1 COMMAND ${TARGET_NAME})

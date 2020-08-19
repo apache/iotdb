@@ -116,10 +116,6 @@
                                             <sourceFile>../thrift/src/main/thrift/rpc.thrift</sourceFile>
                                             <destinationFile>${project.build.directory}/thrift/rpc.thrift</destinationFile>
                                         </fileSet>
-                                        <fileSet>
-                                            <sourceFile>${project.basedir}/CMakeLists.txt</sourceFile>
-                                            <destinationFile>${project.build.directory}/build/CMakeLists.txt</destinationFile>
-                                        </fileSet>
                                     </fileSets>
                                 </configuration>
                             </execution>
@@ -132,16 +128,16 @@
                                 <configuration>
                                     <fileSets>
                                         <fileSet>
-                                            <sourceFile>${project.basedir}/src/CMakeLists.txt</sourceFile>
-                                            <destinationFile>${project.build.directory}/build/generated-sources-cpp/CMakeLists.txt</destinationFile>
+                                            <sourceFile>${project.basedir}/src/main/CMakeLists.txt</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/main/CMakeLists.txt</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>${project.basedir}/src/IOTDBSession.h</sourceFile>
-                                            <destinationFile>${project.build.directory}/build/generated-sources-cpp/IOTDBSession.h</destinationFile>
+                                            <sourceFile>${project.basedir}/src/main/IOTDBSession.h</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/IOTDBSession.h</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>${project.basedir}/src/IOTDBSession.cpp</sourceFile>
-                                            <destinationFile>${project.build.directory}/build/generated-sources-cpp/IOTDBSession.cpp</destinationFile>
+                                            <sourceFile>${project.basedir}/src/main/IOTDBSession.cpp</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/IOTDBSession.cpp</destinationFile>
                                         </fileSet>
                                     </fileSets>
                                 </configuration>
@@ -163,7 +159,7 @@
                                     <generator>cpp:no_skeleton</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${project.build.directory}/thrift</thriftSourceRoot>
-                                    <outputDirectory>${project.build.directory}/build/generated-sources-cpp</outputDirectory>
+                                    <outputDirectory>${project.build.directory}/build/main/generated-sources-cpp</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
@@ -187,16 +183,12 @@
                                       set this to false, a cmake of version 3.7.2 will be downloaded.
                                     -->
                                     <downloadBinaries>false</downloadBinaries>
-                                    <!--
-                                      Actually the path to the CMakeLists.txt file which then again
-                                      tells to tool where to find the sources.
-                                    -->
-                                    <sourcePath>${project.build.directory}/build</sourcePath>
+                                    <sourcePath>${project.build.directory}/build/main</sourcePath>
                                     <!--
                                       Path to where the build configuration is generated
                                       (This directory is then used in the compile step to actually perform the build)
                                     -->
-                                    <targetPath>${project.build.directory}/build</targetPath>
+                                    <targetPath>${project.build.directory}/build/main</targetPath>
                                     <generator>${cmake.generator}</generator>
                                     <options>
                                         <option>-DWITH_PROXIES:BOOL=${option.with-proxies}</option>
@@ -219,7 +211,34 @@
                                     -->
                                     <downloadBinaries>false</downloadBinaries>
                                     <!-- The directory where the "generate" step generated the build configuration -->
-                                    <projectDirectory>${project.build.directory}/build</projectDirectory>
+                                    <projectDirectory>${project.build.directory}/build/main</projectDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>cmake-generate-test</id>
+                                <phase>test-compile</phase>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>${os.classifier}</classifier>
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <sourcePath>${project.build.directory}/build/test</sourcePath>
+                                    <targetPath>${project.build.directory}/build/test</targetPath>
+                                    <generator>${cmake.generator}</generator>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>cmake-compile-test</id>
+                                <phase>test-compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>${os.classifier}</classifier>
+                                    <config>${cmake.build.type}</config>
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <projectDirectory>${project.build.directory}/build/test</projectDirectory>
                                 </configuration>
                             </execution>
                         </executions>
@@ -240,6 +259,28 @@
                                     <descriptors>
                                         <descriptor>src/assembly/client-cpp.xml</descriptor>
                                     </descriptors>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>2.6</version>
+                        <executions>
+                            <execution>
+                                <id>copy-test-resources</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/build/test</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/src/test</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                    </resources>
                                 </configuration>
                             </execution>
                         </executions>

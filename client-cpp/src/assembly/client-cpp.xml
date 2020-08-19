@@ -25,7 +25,7 @@
     <includeBaseDirectory>false</includeBaseDirectory>
     <fileSets>
         <fileSet>
-            <directory>${project.build.directory}/build/generated-sources-cpp</directory>
+            <directory>${project.build.directory}/build/main/generated-sources-cpp</directory>
             <includes>
                 <include>**/*.h</include>
             </includes>
@@ -48,7 +48,7 @@
             <outputDirectory>include</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>${project.build.directory}/build</directory>
+            <directory>${project.build.directory}/build/main</directory>
             <includes>
                 <include>*.so</include>
                 <include>*.dylib</include>
