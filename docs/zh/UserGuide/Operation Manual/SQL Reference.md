@@ -766,7 +766,7 @@ Eg: IoTDB > LIST ALL USER OF ROLE roleuser;
 ALTER USER <username> SET PASSWORD <password>;
 roleName:=identifier
 password:=string
-Eg: IoTDB > ALTER USER tempuser SET PASSWORD newpwd;
+Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 ```
 
 ## 功能
