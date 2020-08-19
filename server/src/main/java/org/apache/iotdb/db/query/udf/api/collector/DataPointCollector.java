@@ -17,24 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.customizer;
+package org.apache.iotdb.db.query.udf.api.collector;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import java.io.IOException;
+import org.apache.iotdb.tsfile.utils.Binary;
 
-public class UDAFConfigurations extends UDFConfigurations {
+public interface DataPointCollector {
 
-  public UDAFConfigurations setColumnHeader(String columnHeader) {
-    this.columnHeader = columnHeader;
-    return this;
-  }
+  void putInt(long timestamp, int value) throws IOException;
 
-  public UDAFConfigurations setOutputDataType(TSDataType outputDataType) {
-    this.outputDataType = outputDataType;
-    return this;
-  }
+  void putLong(long timestamp, long value) throws IOException;
 
-  @Override
-  public void check() {
+  void putFloat(long timestamp, float value) throws IOException;
 
-  }
+  void putDouble(long timestamp, double value) throws IOException;
+
+  void putBoolean(long timestamp, boolean value) throws IOException;
+
+  void putBinary(long timestamp, Binary value) throws IOException;
+
+  void putString(long timestamp, String value) throws IOException;
 }

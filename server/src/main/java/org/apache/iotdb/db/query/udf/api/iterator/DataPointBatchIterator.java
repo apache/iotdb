@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api;
+package org.apache.iotdb.db.query.udf.api.iterator;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.utils.Binary;

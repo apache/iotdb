@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.customizer;
+package org.apache.iotdb.db.query.udf.api.customizer;
 
 import java.util.HashMap;
 import java.util.List;

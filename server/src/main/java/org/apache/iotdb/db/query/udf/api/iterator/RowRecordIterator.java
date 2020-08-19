@@ -17,34 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api;
+package org.apache.iotdb.db.query.udf.api.iterator;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-public interface DataPointIterator extends Iterator {
+public interface RowRecordIterator extends Iterator {
 
-  boolean hasNextPoint();
+  boolean hasNextRowRecord();
 
   void next();
 
-  int currentPointIndex();
+  int currentRowRecordIndex();
+
+  RowRecord currentRowRecord() throws IOException;
 
   long currentTime() throws IOException;
-
-  int currentInt() throws IOException;
-
-  long currentLong() throws IOException;
-
-  float currentFloat() throws IOException;
-
-  double currentDouble() throws IOException;
-
-  boolean currentBoolean() throws IOException;
-
-  Binary currentBinary() throws IOException;
-
-  String currentString() throws IOException;
 
   void reset();
 }

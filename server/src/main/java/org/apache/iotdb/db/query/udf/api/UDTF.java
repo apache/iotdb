@@ -21,6 +21,8 @@ package org.apache.iotdb.db.query.udf.api;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.query.udf.api.iterator.Iterator;
+import org.apache.iotdb.db.query.udf.api.collector.DataPointCollector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 

@@ -17,26 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api;
+package org.apache.iotdb.db.query.udf.api.customizer;
 
-import java.io.IOException;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public interface RowRecordBatchIterator extends Iterator {
+public abstract class UDFConfigurations {
 
-  boolean hasNextBatch();
+  /**
+   *
+   */
+  protected String columnHeader;
 
-  void next() throws IOException;
+  /**
+   *
+   */
+  protected TSDataType outputDataType;
 
-  int currentBatchIndex();
+  public String getColumnHeader() {
+    return columnHeader;
+  }
 
-  RowRecordIterator currentBatch();
+  public TSDataType getOutputDataType() {
+    return outputDataType;
+  }
 
-  int currentBatchSize();
-
-  long getTimeInCurrentBatch(int index) throws IOException;
-
-  RowRecord getRowRecordInCurrentBatch(int index) throws IOException;
-
-  void reset();
+  /**
+   *
+   */
+  public abstract void check() throws QueryProcessException;
 }

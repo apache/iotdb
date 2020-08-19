@@ -17,33 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.customizer;
+package org.apache.iotdb.db.query.udf.api.customizer;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public abstract class UDFConfigurations {
+public class UDAFConfigurations extends UDFConfigurations {
 
-  /**
-   *
-   */
-  protected String columnHeader;
-
-  /**
-   *
-   */
-  protected TSDataType outputDataType;
-
-  public String getColumnHeader() {
-    return columnHeader;
+  public UDAFConfigurations setColumnHeader(String columnHeader) {
+    this.columnHeader = columnHeader;
+    return this;
   }
 
-  public TSDataType getOutputDataType() {
-    return outputDataType;
+  public UDAFConfigurations setOutputDataType(TSDataType outputDataType) {
+    this.outputDataType = outputDataType;
+    return this;
   }
 
-  /**
-   *
-   */
-  public abstract void check() throws QueryProcessException;
+  @Override
+  public void check() {
+
+  }
 }
