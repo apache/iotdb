@@ -42,6 +42,7 @@ import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -62,6 +63,7 @@ public class ClusterPlanRouter {
     return partitionTable.getMManager();
   }
 
+  @TestOnly
   public PartitionGroup routePlan(PhysicalPlan plan)
       throws UnsupportedPlanException, MetadataException {
     if (plan instanceof InsertRowPlan) {

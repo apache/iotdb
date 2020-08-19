@@ -34,9 +34,11 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
+import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -106,7 +108,9 @@ public class PartitionUtils {
     return
         // because deletePlan has an infinite time range.
         plan instanceof DeletePlan
-            || plan instanceof DeleteTimeSeriesPlan;
+            || plan instanceof DeleteTimeSeriesPlan
+            || plan instanceof MergePlan
+            || plan instanceof FlushPlan;
   }
 
   public static int calculateStorageGroupSlotByTime(String storageGroupName, long timestamp,
