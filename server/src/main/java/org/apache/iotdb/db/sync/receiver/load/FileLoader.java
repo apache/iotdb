@@ -114,11 +114,7 @@ public class FileLoader implements IFileLoader {
   public void handleLoadTask(LoadTask task) throws IOException {
     switch (task.type) {
       case ADD:
-        try {
-          loadNewTsfile(task.file);
-        } catch (IllegalPathException e) {
-          throw new IOException(e.getMessage());
-        }
+        loadNewTsfile(task.file);
         break;
       case DELETE:
         loadDeletedFile(task.file);
@@ -128,7 +124,7 @@ public class FileLoader implements IFileLoader {
     }
   }
 
-  private void loadNewTsfile(File newTsFile) throws IOException, IllegalPathException {
+  private void loadNewTsfile(File newTsFile) throws IOException {
     if (curType != LoadType.ADD) {
       loadLog.startLoadTsFiles();
       curType = LoadType.ADD;
