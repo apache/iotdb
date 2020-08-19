@@ -38,7 +38,7 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RpcConfig;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.*;
@@ -77,7 +77,7 @@ public class IoTDBConnection implements Connection {
     params = Utils.parseUrl(url, info);
 
     openTransport();
-    if(Config.rpcThriftCompressionEnable) {
+    if(RpcConfig.rpcThriftCompressionEnable) {
       setClient(new TSIService.Client(new TCompactProtocol(transport)));
     }
     else {
@@ -247,7 +247,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public int getNetworkTimeout() {
-    return Config.connectionTimeoutInMs;
+    return RpcConfig.connectionTimeoutInMs;
   }
 
   @Override
@@ -407,7 +407,7 @@ public class IoTDBConnection implements Connection {
 
   private void openTransport() throws TTransportException {
     transport = new TFastFramedTransport(new TSocket(params.getHost(), params.getPort(),
-        Config.connectionTimeoutInMs));
+            RpcConfig.connectionTimeoutInMs));
     if (!transport.isOpen()) {
       transport.open();
     }
@@ -462,12 +462,12 @@ public class IoTDBConnection implements Connection {
 
   boolean reconnect() {
     boolean flag = false;
-    for (int i = 1; i <= Config.RETRY_NUM; i++) {
+    for (int i = 1; i <= RpcConfig.RETRY_NUM; i++) {
       try {
         if (transport != null) {
           transport.close();
           openTransport();
-          if(Config.rpcThriftCompressionEnable) {
+          if(RpcConfig.rpcThriftCompressionEnable) {
             setClient(new TSIService.Client(new TCompactProtocol(transport)));
           }
           else {
@@ -480,7 +480,7 @@ public class IoTDBConnection implements Connection {
         }
       } catch (Exception e) {
         try {
-          Thread.sleep(Config.RETRY_INTERVAL);
+          Thread.sleep(RpcConfig.RETRY_INTERVAL);
         } catch (InterruptedException e1) {
           logger.error("reconnect is interrupted.", e1);
         }

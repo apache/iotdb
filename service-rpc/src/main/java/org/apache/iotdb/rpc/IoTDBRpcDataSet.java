@@ -391,7 +391,12 @@ public class IoTDBRpcDataSet {
   public String getString(int index, TSDataType tsDataType, byte[][] values) {
     switch (tsDataType) {
       case BOOLEAN:
-        return String.valueOf(BytesUtils.bytesToBool(values[index]));
+        boolean result = BytesUtils.bytesToBool(values[index]);
+        if (RpcConfig.boolFormat== RpcConfig.Constant.BOOLEAN){
+          return String.valueOf(result);
+        }else{
+          return String.valueOf(result?1:0);
+        }
       case INT32:
         return String.valueOf(BytesUtils.bytesToInt(values[index]));
       case INT64:

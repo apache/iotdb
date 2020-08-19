@@ -64,6 +64,11 @@ public abstract class AbstractCli {
   static final String USERNAME_ARGS = "u";
   static final String USERNAME_NAME = "username";
 
+  static final String BOOL_FORMAT_ARGS = "bf";
+  static final String BOOL_FORMAT_NAME = "boolformat";
+  static final String BOOL = "bool";
+  static final String NUMBER = "number";
+
   private static final String EXECUTE_ARGS = "e";
   private static final String EXECUTE_NAME = "execute";
   private static final String NULL = "null";
@@ -108,6 +113,7 @@ public abstract class AbstractCli {
   static String port = "6667";
   static String username;
   static String password;
+  static String boolFormat = BOOL;
   static String execute;
   static boolean hasExecuteSQL = false;
 
@@ -124,6 +130,7 @@ public abstract class AbstractCli {
     keywordSet.add("-" + PORT_ARGS);
     keywordSet.add("-" + PASSWORD_ARGS);
     keywordSet.add("-" + USERNAME_ARGS);
+    keywordSet.add("-" + BOOL_FORMAT_ARGS);
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + MAX_PRINT_ROW_COUNT_ARGS);
@@ -171,6 +178,11 @@ public abstract class AbstractCli {
         .desc("password (optional)")
         .build();
     options.addOption(password);
+
+    Option boolFormat = Option.builder(BOOL_FORMAT_ARGS).argName(BOOL_FORMAT_NAME).hasArg()
+            .desc("boolFormat (optional)")
+            .build();
+    options.addOption(boolFormat);
 
     Option execute = Option.builder(EXECUTE_ARGS).argName(EXECUTE_NAME).hasArg()
         .desc("execute statement (optional)")
