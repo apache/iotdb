@@ -97,7 +97,7 @@ public class IoTDBDataDirViewer {
   }
 
   private static void printFilesInStorageGroupDir(File storageGroup, PrintWriter pw)
-      throws IOException, IllegalPathException {
+      throws IOException {
     File[] files = storageGroup.listFiles();
     if (files == null) {
       throw new IOException(

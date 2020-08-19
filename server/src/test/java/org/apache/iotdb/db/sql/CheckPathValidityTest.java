@@ -37,7 +37,7 @@ public class CheckPathValidityTest {
     assertTrue(IoTDBConfig.PATH_PATTERN.matcher("root.1_2").matches());
     assertTrue(IoTDBConfig.PATH_PATTERN.matcher("root.vehicle.1245.1.2.3").matches());
     assertTrue(IoTDBConfig.PATH_PATTERN.matcher("root.vehicle.1245.\"1.2.3\"").matches());
-    assertTrue(IoTDBConfig.PATH_PATTERN.matcher("root.vehicle.1245.\'1.2.3\'").matches());
+    assertTrue(IoTDBConfig.PATH_PATTERN.matcher("root.vehicle.1245.\"1.2.3\"").matches());
 
     assertFalse(IoTDBConfig.PATH_PATTERN.matcher("vehicle").matches());
     assertFalse(IoTDBConfig.PATH_PATTERN.matcher("root.\tvehicle").matches());
