@@ -211,6 +211,10 @@ public class ClusterMain {
     String ip = args[1];
     int metaPort = Integer.parseInt(args[2]);
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+    if(config.getReplicationNum()==1||config.getReplicationNum()==2) {
+      logger.error("When default_ replica_ When num = 1 or 2, the node cannot be removed temporarily, because in the current implementation, datagroup cannot achieve majority agreement");
+      return;
+    }
     TProtocolFactory factory = config
         .isRpcThriftCompressionEnabled() ? new TCompactProtocol.Factory() : new Factory();
     Node nodeToRemove = new Node();
