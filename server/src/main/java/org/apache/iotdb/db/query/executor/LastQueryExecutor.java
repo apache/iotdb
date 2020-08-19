@@ -112,7 +112,7 @@ public class LastQueryExecutor {
 
   protected TimeValuePair calculateLastPairForOneSeries(
       PartialPath seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
-      throws IOException, QueryProcessException, StorageEngineException, IllegalPathException {
+      throws IOException, QueryProcessException, StorageEngineException {
     return calculateLastPairForOneSeriesLocally(seriesPath, tsDataType, context,
         deviceMeasurements);
   }

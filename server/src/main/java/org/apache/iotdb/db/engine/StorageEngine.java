@@ -566,7 +566,7 @@ public class StorageEngine implements IService {
   }
 
   public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
-      throws StorageEngineException, IOException, IllegalPathException {
+      throws StorageEngineException, IllegalPathException {
     return getProcessor(new PartialPath(getSgByEngineFile(tsfileToBeMoved))).moveTsfile(tsfileToBeMoved, targetDir);
   }
 

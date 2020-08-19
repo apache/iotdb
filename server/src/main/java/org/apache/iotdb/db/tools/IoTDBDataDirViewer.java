@@ -113,7 +113,7 @@ public class IoTDBDataDirViewer {
   }
 
   private static void printFilesInTimeInterval(File timeInterval, PrintWriter pw)
-      throws IOException, IllegalPathException {
+      throws IOException {
     File[] files = timeInterval.listFiles();
     if (files == null) {
       throw new IOException(

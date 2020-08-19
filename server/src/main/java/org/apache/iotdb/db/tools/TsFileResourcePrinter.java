@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 public class TsFileResourcePrinter {
 
   @SuppressWarnings("squid:S106")
-  public static void main(String[] args) throws IOException, IllegalPathException {
+  public static void main(String[] args) throws IOException {
 
     String folder = "test";
     if (args.length >= 1) {

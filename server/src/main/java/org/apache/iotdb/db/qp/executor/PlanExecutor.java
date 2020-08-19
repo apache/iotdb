@@ -79,7 +79,6 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -814,7 +813,7 @@ public class PlanExecutor implements IPlanExecutor {
         throw new QueryProcessException(
             String.format("File %s doesn't exist.", plan.getFile().getName()));
       }
-    } catch (StorageEngineException | IOException | IllegalPathException e) {
+    } catch (StorageEngineException | IllegalPathException e) {
       throw new QueryProcessException(
           String.format(
               "Cannot move file %s to target directory %s because %s",
