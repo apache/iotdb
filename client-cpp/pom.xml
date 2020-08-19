@@ -38,6 +38,7 @@
         <boost.version.underline-short>1_72</boost.version.underline-short>
         <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
         <cmake-version>3.17.3</cmake-version>
+        <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
     </properties>
     <modules>
@@ -239,6 +240,17 @@
                                     <config>${cmake.build.type}</config>
                                     <downloadBinaries>false</downloadBinaries>
                                     <projectDirectory>${project.build.directory}/build/test</projectDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>cmake-run-test</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                                <configuration>
+                                    <buildDirectory>${project.build.directory}/build/test</buildDirectory>
+                                    <downloadBinaries>false</downloadBinaries>
                                 </configuration>
                             </execution>
                         </executions>
