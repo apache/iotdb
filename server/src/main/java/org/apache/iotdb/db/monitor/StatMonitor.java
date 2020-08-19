@@ -87,7 +87,7 @@ public class StatMonitor implements IService {
     backLoopPeriod = config.getBackLoopPeriodSec();
     if (config.isEnableStatMonitor()) {
       try {
-        PartialPath prefix = new PartialPath(MonitorConstants.STAT_STORAGE_GROUP_PREFIX_ARRAY);
+        PartialPath prefix = new PartialPath(MonitorConstants.getStatStorageGroupPrefixArray());
         if (!mmanager.isPathExist(prefix)) {
           mmanager.setStorageGroup(prefix);
         }
@@ -143,7 +143,7 @@ public class StatMonitor implements IService {
 
   void registerStatStorageGroup() {
     MManager mManager = IoTDB.metaManager;
-    PartialPath prefix = new PartialPath(MonitorConstants.STAT_STORAGE_GROUP_PREFIX_ARRAY);
+    PartialPath prefix = new PartialPath(MonitorConstants.getStatStorageGroupPrefixArray());
     try {
       if (!mManager.isPathExist(prefix)) {
         mManager.setStorageGroup(prefix);

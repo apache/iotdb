@@ -146,11 +146,11 @@ public class LogReplayer {
           sequence) {
         return;
       }
-      Long startTime = tempStartTimeMap.get(plan.getDeviceId());
+      Long startTime = tempStartTimeMap.get(plan.getDeviceId().toString());
       if (startTime == null || startTime > minTime) {
         tempStartTimeMap.put(plan.getDeviceId().toString(), minTime);
       }
-      Long endTime = tempEndTimeMap.get(plan.getDeviceId());
+      Long endTime = tempEndTimeMap.get(plan.getDeviceId().toString());
       if (endTime == null || endTime < maxTime) {
         tempEndTimeMap.put(plan.getDeviceId().toString(), maxTime);
       }

@@ -73,7 +73,6 @@ import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -442,7 +441,7 @@ public class StorageGroupProcessor {
   }
 
   private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
-      throws IOException, IllegalPathException {
+      throws IOException {
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
@@ -825,7 +824,7 @@ public class StorageGroupProcessor {
             results, beforeTimePartition) && noFailure;
       }
       long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
-          insertTabletPlan.getDeviceId(), Long.MIN_VALUE);
+          insertTabletPlan.getDeviceId().toString(), Long.MIN_VALUE);
       tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
       if (!noFailure) {
@@ -881,7 +880,7 @@ public class StorageGroupProcessor {
     latestTimeForEachDevice.computeIfAbsent(timePartitionId, t -> new HashMap<>());
     // try to update the latest time of the device of this tsRecord
     if (sequence && latestTimeForEachDevice.get(timePartitionId)
-        .getOrDefault(insertTabletPlan.getDeviceId(), Long.MIN_VALUE)
+        .getOrDefault(insertTabletPlan.getDeviceId().toString(), Long.MIN_VALUE)
         < insertTabletPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice.get(timePartitionId)
           .put(insertTabletPlan.getDeviceId().toString(), insertTabletPlan.getTimes()[end - 1]);
@@ -2428,7 +2427,7 @@ public class StorageGroupProcessor {
    * @return whether the file to be moved exists.
    * @UsedBy load external tsfile module.
    */
-  public boolean moveTsfile(File fileToBeMoved, File targetDir) throws IOException {
+  public boolean moveTsfile(File fileToBeMoved, File targetDir) {
     writeLock();
     mergeLock.writeLock().lock();
     TsFileResource tsFileResourceToBeMoved = null;

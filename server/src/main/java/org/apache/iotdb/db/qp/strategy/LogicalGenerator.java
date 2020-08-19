@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
-import static org.apache.iotdb.db.qp.constant.SQLConstant.SINGLE_ROOT_ARRAY;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.SINGLE_TIME_ARRAY;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 
 import java.io.File;
@@ -208,7 +206,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCountTimeseries(CountTimeseriesContext ctx) {
     super.enterCountTimeseries(ctx);
     PrefixPathContext pathContext = ctx.prefixPath();
-    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext) : new PartialPath(SINGLE_ROOT_ARRAY));
+    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext) : new PartialPath(SQLConstant.getSingleRootArray()));
     if (ctx.INT() != null) {
       initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODE_TIMESERIES,
           path, Integer.parseInt(ctx.INT().getText()));
@@ -281,7 +279,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
           parsePrefixPath(ctx.prefixPath()));
     } else {
       initializedOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES,
-          new PartialPath(SINGLE_ROOT_ARRAY));
+          new PartialPath(SQLConstant.getSingleRootArray()));
     }
   }
 
@@ -293,7 +291,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
           parsePrefixPath(ctx.prefixPath()));
     } else {
       initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS,
-          new PartialPath(SINGLE_ROOT_ARRAY));
+          new PartialPath(SQLConstant.getSingleRootArray()));
     }
   }
 
@@ -381,7 +379,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES,
           parsePrefixPath(ctx.prefixPath()), orderByHeat);
     } else {
-      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES, new PartialPath(SINGLE_ROOT_ARRAY),
+      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES, new PartialPath(SQLConstant.getSingleRootArray()),
           orderByHeat);
     }
   }
@@ -1442,7 +1440,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     } else {
       PartialPath path = null;
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
-        path = new PartialPath(SINGLE_TIME_ARRAY);
+        path = new PartialPath(SQLConstant.getSingleTimeArray());
       }
       if (ctx.fullPath() != null) {
         path = parseFullPath(ctx.fullPath());

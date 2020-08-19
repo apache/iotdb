@@ -33,8 +33,8 @@ public class SQLConstant {
     // forbidding instantiation
   }
 
-  public static final String[] SINGLE_ROOT_ARRAY = new String[1];
-  public static final String[] SINGLE_TIME_ARRAY = new String[1];
+  private static final String[] SINGLE_ROOT_ARRAY = new String[1];
+  private static final String[] SINGLE_TIME_ARRAY = new String[1];
   public static final PartialPath TIME_PATH = new PartialPath(SINGLE_TIME_ARRAY);
   public static final String ALIGNBY_DEVICE_COLUMN_NAME = "Device";
   public static final String RESERVED_TIME = "time";
@@ -162,6 +162,14 @@ public class SQLConstant {
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();
 
+  public static String[] getSingleRootArray() {
+    return SINGLE_ROOT_ARRAY;
+  }
+
+  public static String[] getSingleTimeArray() {
+    return SINGLE_TIME_ARRAY;
+  }
+
   static {
     SINGLE_ROOT_ARRAY[0] = ROOT;
     SINGLE_TIME_ARRAY[0] = RESERVED_TIME;
@@ -247,6 +255,6 @@ public class SQLConstant {
 
   public static boolean isReservedPath(PartialPath pathStr) {
     return pathStr.equals(TIME_PATH);
-
   }
+
 }
