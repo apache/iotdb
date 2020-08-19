@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * MergeContext records the shared information between merge sub-tasks.

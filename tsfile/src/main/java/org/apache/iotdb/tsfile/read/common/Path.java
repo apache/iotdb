@@ -34,16 +34,16 @@ public class Path implements Serializable, Comparable<Path> {
   private String alias = null;
   private String device;
   private String fullPath;
-  private static final String illegalPathArgument = "Path parameter is null";
+  private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
 
   /**
    * this constructor doesn't split the path, only useful for table header.
-   * @param pathSc a path that wouldn't  be split.
+   * @param pathSc the path that wouldn't  be split.
    */
-  @Deprecated
+  @SuppressWarnings("the path that wouldn't be split")
   public Path(String pathSc) {
     if (pathSc == null) {
-      throw new IllegalArgumentException(illegalPathArgument);
+      throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
     }
     fullPath = pathSc;
     device = "";
@@ -68,7 +68,7 @@ public class Path implements Serializable, Comparable<Path> {
             device = pathSc.substring(0, endIndex - 1);
             measurement = pathSc.substring(endIndex);
           } else {
-            throw new IllegalArgumentException(illegalPathArgument);
+            throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
           }
         } else if (pathSc.charAt(pathSc.length() - 1) != TsFileConstant.DOUBLE_QUOTE
             && pathSc.charAt(pathSc.length() - 1) != TsFileConstant.PATH_SEPARATOR_CHAR) {
@@ -83,7 +83,7 @@ public class Path implements Serializable, Comparable<Path> {
             measurement = pathSc.substring(endIndex + 1);
           }
         } else {
-          throw new IllegalArgumentException(illegalPathArgument);
+          throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
         }
       } else {
         fullPath = pathSc;
@@ -102,7 +102,7 @@ public class Path implements Serializable, Comparable<Path> {
    */
   public Path(String device, String measurement) {
     if (device == null || measurement == null) {
-      throw new IllegalArgumentException(illegalPathArgument);
+      throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
     }
     this.device = device;
     this.measurement = measurement;

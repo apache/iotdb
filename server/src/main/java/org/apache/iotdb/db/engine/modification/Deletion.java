@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.modification;
 
 import java.util.Objects;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * Deletion is a delete operation on a timeseries.

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp;
 
+import java.time.ZoneId;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -35,10 +37,6 @@ import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.read.common.Path;
-
-import java.time.ZoneId;
-import java.util.Set;
 
 /**
  * provide a integration method for other user.
