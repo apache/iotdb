@@ -24,18 +24,18 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 public class IoTDBDataDirViewer {
 
-  public static void main(String[] args) throws IOException, IllegalPathException {
+  public static void main(String[] args) throws IOException {
     String[] data_dir;
     String outFile = "IoTDB_data_dir_overview.txt";
     if (args.length == 0) {
@@ -61,7 +61,7 @@ public class IoTDBDataDirViewer {
                   + "under the data directory " + dirFile.getName());
         }
         List<File> fileList = Arrays.asList(seqAndUnseqDirs);
-        fileList.sort(((o1, o2) -> o1.getName().compareTo(o2.getName())));
+        fileList.sort((Comparator.comparing(File::getName)));
         if (!seqAndUnseqDirs[0].getName().equals("sequence") || !seqAndUnseqDirs[1].getName()
             .equals("unsequence")) {
           throw new IOException(
@@ -81,7 +81,7 @@ public class IoTDBDataDirViewer {
   }
 
   private static void printFilesInSeqOrUnseqDir(File seqOrUnseqDir, PrintWriter pw)
-      throws IOException, IllegalPathException {
+      throws IOException {
     File[] storageGroupDirs = seqOrUnseqDir.listFiles();
     if (storageGroupDirs == null) {
       throw new IOException(
@@ -89,7 +89,7 @@ public class IoTDBDataDirViewer {
               + "the sequence/unsequence directory " + seqOrUnseqDir.getName());
     }
     List<File> fileList = Arrays.asList(storageGroupDirs);
-    fileList.sort(((o1, o2) -> o1.getName().compareTo(o2.getName())));
+    fileList.sort((Comparator.comparing(File::getName)));
     for (File storageGroup : storageGroupDirs) {
       printlnBoth(pw, "|  |--" + storageGroup.getName());
       printFilesInStorageGroupDir(storageGroup, pw);
@@ -105,7 +105,7 @@ public class IoTDBDataDirViewer {
               + "the storage group directory " + storageGroup.getName());
     }
     List<File> fileList = Arrays.asList(files);
-    fileList.sort(((o1, o2) -> o1.getName().compareTo(o2.getName())));
+    fileList.sort((Comparator.comparing(File::getName)));
     for (File file : files) {
       printlnBoth(pw, "|  |  |--" + file.getName());
       printFilesInTimeInterval(file, pw);
@@ -121,7 +121,7 @@ public class IoTDBDataDirViewer {
               + "the timeInterval directories directory " + timeInterval.getName());
     }
     List<File> fileList = Arrays.asList(files);
-    fileList.sort(((o1, o2) -> o1.getName().compareTo(o2.getName())));
+    fileList.sort((Comparator.comparing(File::getName)));
     for (File file : files) {
       printlnBoth(pw, "|  |  |  |--" + file.getName());
 
