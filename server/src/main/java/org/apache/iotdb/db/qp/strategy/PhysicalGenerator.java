@@ -355,7 +355,6 @@ public class PhysicalGenerator {
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
 
       ((GroupByTimePlan) queryPlan).setLevel(queryOperator.getLevel());
-
       if (queryOperator.getLevel() >= 0) {
         for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
           if (!SQLConstant.COUNT
