@@ -154,7 +154,7 @@ class MergeFileTask {
       // filter the chunks that have been merged
       oldFileWriter.filterChunks(
           context.getUnmergedChunkStartTimes().get(seqFile).entrySet().stream()
-              .collect(Collectors.toMap(e -> e.getKey(), Map.Entry::getValue))
+              .collect(Collectors.toMap(Entry::getKey, Map.Entry::getValue))
       );
 
       RestorableTsFileIOWriter newFileWriter = resource.getMergeFileWriter(seqFile);

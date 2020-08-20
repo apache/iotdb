@@ -116,6 +116,7 @@ public class PartialPath extends Path implements Comparable<Path> {
     return this.getFullPath().hashCode();
   }
 
+  @Override
   public String getMeasurement() {
     measurement = nodes[nodes.length - 1];
     return nodes[nodes.length - 1];

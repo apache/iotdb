@@ -190,7 +190,7 @@ public class QueryRouter implements IQueryRouter {
 
   protected GroupByTimeDataSet groupByLevelWithoutTimeIntervalDataSet(QueryContext context, GroupByTimePlan plan,
       GroupByEngineDataSet dataSet)
-      throws StorageEngineException, QueryProcessException, IOException {
+      throws QueryProcessException, IOException {
     return new GroupByTimeDataSet(context, plan, dataSet);
   }
 

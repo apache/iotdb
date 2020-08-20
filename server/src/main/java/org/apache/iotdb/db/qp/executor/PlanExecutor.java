@@ -348,7 +348,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
-      QueryContext context, IQueryRouter router) throws MetadataException {
+      QueryContext context, IQueryRouter router) {
     return new AlignByDeviceDataSet(plan, context, router);
   }
 
