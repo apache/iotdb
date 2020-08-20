@@ -31,6 +31,8 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -120,6 +122,12 @@ public class DataLogApplierTest extends IoTDBTest {
         public void getAllPaths(Node header, List<String> path,
             AsyncMethodCallback<List<String>> resultHandler) {
           new Thread(() -> new DataAsyncService(testDataGroupMember).getAllPaths(header, path, resultHandler)).start();
+        }
+
+        @Override
+        public void pullTimeSeriesSchema(PullSchemaRequest request,
+            AsyncMethodCallback<PullSchemaResp> resultHandler) {
+          new Thread(() -> new DataAsyncService(testDataGroupMember).pullTimeSeriesSchema(request, resultHandler)).start();
         }
       };
     }

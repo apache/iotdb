@@ -49,6 +49,7 @@ public class TestLogApplier implements LogApplier {
         throw new QueryProcessException(e);
       }
     }
+    log.setApplied(true);
   }
 
   public PlanExecutor getPlanExecutor() throws QueryProcessException {

@@ -81,6 +81,7 @@ public class DataLogApplier extends BaseApplier {
     } else {
       logger.error("Unsupported log: {}", log);
     }
+    log.setApplied(true);
   }
 
   private void applyInsert(PhysicalPlan plan)
