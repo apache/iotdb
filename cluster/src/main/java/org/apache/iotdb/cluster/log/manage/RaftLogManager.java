@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.log.manage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -46,20 +47,43 @@ public abstract class RaftLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftLogManager.class);
 
-  // manage uncommitted entries
+  /**
+   * manage uncommitted entries
+   */
   private UnCommittedEntryManager unCommittedEntryManager;
-  // manage committed entries in memory as a cache
+
+  /**
+   * manage committed entries in memory as a cache
+   */
   private CommittedEntryManager committedEntryManager;
-  // manage committed entries in disk for safety
+
+  /**
+   * manage committed entries in disk for safety
+   */
   private StableEntryManager stableEntryManager;
 
   private long commitIndex;
+
+  /**
+   * The max committed log index whose log index smaller than this are all have been applied, for
+   * example, suppose there are 5 committed log, whose log index is 1,2,3,4,5; if the applied
+   * sequence is 1,3,2,5,4, then the maxHaveAppliedCommitIndex according is 1,1,3,3,5. This
+   * attributed is only used for asyncLogApplier
+   */
+  private volatile long maxHaveAppliedCommitIndex;
+
   private LogApplier logApplier;
-  // to distinguish managers of different members
+
+  /**
+   * to distinguish managers of different members
+   */
   private String name;
 
   private ScheduledExecutorService deleteLogExecutorService;
   private ScheduledFuture<?> deleteLogFuture;
+
+  private ScheduledExecutorService checkLogAppliedExecutorService;
+  private Future<?> checkLogAppliedFuture;
 
   private ScheduledExecutorService flushLogExecutorService;
 
@@ -75,6 +99,11 @@ public abstract class RaftLogManager {
   private int maxNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig()
       .getMaxNumOfLogsInMem();
 
+  protected int LOG_APPLIER_WAIT_TIME_MS = 10_000;
+
+  protected IOException logApplierWaitTimeOutException = new IOException(
+      "wait all log applied time out");
+
 
   public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
@@ -86,13 +115,27 @@ public abstract class RaftLogManager {
     } catch (TruncateCommittedEntryException e) {
       logger.error("{}: Unexpected error:", name, e);
     }
+    long first = getCommittedEntryManager().getFirstIndex() - 1;
     long last = getCommittedEntryManager().getLastIndex();
     this.setUnCommittedEntryManager(new UnCommittedEntryManager(last + 1));
-    // must have applied entry [compactIndex,last] to state machine
-    this.commitIndex = last;
+
+    /**
+     * must have applied entry [compactIndex,last] to state machine
+     */
+    this.commitIndex = first;
+
+    /**
+     * due to the log operation is idempotent, so we can just reapply the log from the
+     * first index of committed logs
+     */
+    this.maxHaveAppliedCommitIndex = first;
 
     deleteLogExecutorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
+            .build());
+
+    checkLogAppliedExecutorService = new ScheduledThreadPoolExecutor(1,
+        new BasicThreadFactory.Builder().namingPattern("check-log-apply-%d").daemon(true)
             .build());
     /**
      * deletion check period of the submitted log
@@ -104,6 +147,8 @@ public abstract class RaftLogManager {
         .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
             logDeleteCheckIntervalSecond,
             TimeUnit.SECONDS);
+
+    checkLogAppliedFuture = checkLogAppliedExecutorService.submit(this::checkAppliedLogIndex);
 
     /**
      * flush log to file periodically
@@ -119,12 +164,31 @@ public abstract class RaftLogManager {
       flushLogExecutorService
           .scheduleAtFixedRate(this::flushLogPeriodically, logFlushTimeIntervalMS,
               logFlushTimeIntervalMS, TimeUnit.MILLISECONDS);
+
+      applyAllCommittedLogWhenStartUp();
     }
   }
 
   public abstract Snapshot getSnapshot();
 
-  public abstract void takeSnapshot() throws IOException;
+  /**
+   * IMPORTANT!!!
+   * <p>
+   * The subclass's takeSnapshot() must call this method to insure that all logs have been applied
+   * before take snapshot
+   *
+   * @throws IOException timeout exception
+   */
+  public void takeSnapshot() throws IOException {
+    long startTime = System.currentTimeMillis();
+    while (commitIndex != maxHaveAppliedCommitIndex) {
+      long waitTime = System.currentTimeMillis() - startTime;
+      if (waitTime > LOG_APPLIER_WAIT_TIME_MS) {
+        logger.error("wait all log applied time out, time cost={}", waitTime);
+        throw logApplierWaitTimeOutException;
+      }
+    }
+  }
 
   /**
    * Update the raftNode's hardState(currentTerm,voteFor) and flush to disk.
@@ -572,9 +636,20 @@ public abstract class RaftLogManager {
         deleteLogExecutorService.awaitTermination(20, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.warn("Close check log thread interrupted");
+        logger.warn("Close delete log thread interrupted");
       }
       deleteLogExecutorService = null;
+    }
+    if (checkLogAppliedExecutorService != null) {
+      checkLogAppliedExecutorService.shutdownNow();
+      checkLogAppliedFuture.cancel(true);
+      try {
+        checkLogAppliedExecutorService.awaitTermination(20, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Close check log applier app interrupted");
+      }
+      checkLogAppliedExecutorService = null;
     }
     if (flushLogExecutorService != null) {
       flushLogExecutorService.shutdown();
@@ -614,6 +689,9 @@ public abstract class RaftLogManager {
     this.stableEntryManager = stableEntryManager;
   }
 
+  public long getMaxHaveAppliedCommitIndex() {
+    return maxHaveAppliedCommitIndex;
+  }
 
   /**
    * check whether delete the committed log
@@ -634,7 +712,16 @@ public abstract class RaftLogManager {
   }
 
   private void innerDeleteLog() {
-    long removeSize = committedEntryManager.getTotalSize() - minNumOfLogsInMem;
+    long totalSize = committedEntryManager.getTotalSize();
+    long removeSize = Math.min(totalSize, maxHaveAppliedCommitIndex) - minNumOfLogsInMem;
+
+    // this should not happen
+    if (removeSize < 0) {
+      logger.error(
+          "unknown error occurred when delete log, totalSize={},maxHaveAppliedCommitIndex={},commitIndex={}",
+          totalSize, maxHaveAppliedCommitIndex, commitIndex);
+      return;
+    }
     long compactIndex = committedEntryManager.getDummyIndex() + removeSize;
     try {
       logger.info(
@@ -651,4 +738,39 @@ public abstract class RaftLogManager {
       logger.error("{}: regular compact log entries failed, error={}", name, e.getMessage());
     }
   }
+
+  private void applyAllCommittedLogWhenStartUp() {
+    long lo = commitIndex;
+    long hi = getCommittedEntryManager().getLastIndex();
+    List<Log> entries = null;
+    try {
+      entries = new ArrayList<>(getCommittedEntryManager().getEntries(lo, hi));
+    } catch (EntryCompactedException e) {
+      logger.error("apply all committed log failed when get entries", e);
+      return;
+    }
+    try {
+      applyEntries(entries, true);
+    } catch (LogExecutionException e) {
+      logger.error("apply all committed log failed", e);
+    }
+  }
+
+  private void checkAppliedLogIndex() {
+    while (true) {
+      try {
+        long nextToCheckIndex = maxHaveAppliedCommitIndex + 1;
+        if (nextToCheckIndex > getCommittedEntryManager().getLastIndex()) {
+          continue;
+        }
+        Log log = getCommittedEntryManager().getEntry(nextToCheckIndex);
+        if (log.isApplied()) {
+          maxHaveAppliedCommitIndex = nextToCheckIndex;
+        }
+      } catch (EntryCompactedException e) {
+        continue;
+      }
+    }
+  }
+
 }
