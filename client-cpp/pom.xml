@@ -40,6 +40,7 @@
         <cmake-version>3.17.3</cmake-version>
         <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
+        <catch2.url>https://raw.githubusercontent.com/catchorg/Catch2/master/single_include/catch2/catch.hpp</catch2.url>
     </properties>
     <modules>
         <module>client-cpp-example</module>
@@ -293,6 +294,26 @@
                                             <filtering>true</filtering>
                                         </resource>
                                     </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.googlecode.maven-download-plugin</groupId>
+                        <artifactId>download-maven-plugin</artifactId>
+                        <executions>
+                            <!-- Download the Catch2 header file. -->
+                            <execution>
+                                <id>get-catch2</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>wget</goal>
+                                </goals>
+                                <configuration>
+                                    <url>${catch2.url}</url>
+                                    <unpack>false</unpack>
+                                    <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
+                                    <overwrite>true</overwrite>
                                 </configuration>
                             </execution>
                         </executions>
