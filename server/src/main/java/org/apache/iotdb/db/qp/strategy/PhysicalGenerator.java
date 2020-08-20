@@ -436,9 +436,9 @@ public class PhysicalGenerator {
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
 
         // if const measurement
-        if (suffixPath.getLastNode().startsWith("'") || suffixPath.getLastNode().startsWith("\"")) {
-          measurements.add(suffixPath.getLastNode());
-          measurementTypeMap.put(suffixPath.getLastNode(), MeasurementType.Constant);
+        if (suffixPath.getMeasurement().startsWith("'") || suffixPath.getMeasurement().startsWith("\"")) {
+          measurements.add(suffixPath.getMeasurement());
+          measurementTypeMap.put(suffixPath.getMeasurement(), MeasurementType.Constant);
           continue;
         }
 
@@ -451,11 +451,11 @@ public class PhysicalGenerator {
             // for actual non exist path
             if (originAggregations != null && actualPaths.isEmpty() && originAggregations
                 .isEmpty()) {
-              String nonExistMeasurement = fullPath.getLastNode();
+              String nonExistMeasurement = fullPath.getMeasurement();
               if (measurementSetOfGivenSuffix.add(nonExistMeasurement)
                   && measurementTypeMap.get(nonExistMeasurement) != MeasurementType.Exist) {
                 measurementTypeMap
-                    .put(fullPath.getLastNode(), MeasurementType.NonExist);
+                    .put(fullPath.getMeasurement(), MeasurementType.NonExist);
               }
             }
 
@@ -480,9 +480,9 @@ public class PhysicalGenerator {
               // while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
               String measurementChecked;
               if (originAggregations != null && !originAggregations.isEmpty()) {
-                measurementChecked = originAggregations.get(i) + "(" + path.getLastNode() + ")";
+                measurementChecked = originAggregations.get(i) + "(" + path.getMeasurement() + ")";
               } else {
-                measurementChecked = path.getLastNode();
+                measurementChecked = path.getMeasurement();
               }
               TSDataType columnDataType = columnDataTypes.get(pathIdx);
               if (columnDataTypeMap.containsKey(measurementChecked)) {
@@ -511,7 +511,7 @@ public class PhysicalGenerator {
           } catch (MetadataException e) {
             throw new LogicalOptimizeException(
                 String.format(
-                    "Error when getting all paths of a full path: %s", fullPath.toString())
+                    "Error when getting all paths of a full path: %s", fullPath.getFullPath())
                     + e.getMessage());
           }
         }
@@ -562,7 +562,7 @@ public class PhysicalGenerator {
           List<TSDataType> seriesTypes = getSeriesTypes(filterPaths);
           HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
           for (int i = 0; i < filterPaths.size(); i++) {
-            ((RawDataQueryPlan) queryPlan).addFilterPathInDeviceToMeasurements(filterPaths.get(i).toTSFilePath());
+            ((RawDataQueryPlan) queryPlan).addFilterPathInDeviceToMeasurements(filterPaths.get(i));
             pathTSDataTypeHashMap.put(filterPaths.get(i), seriesTypes.get(i));
           }
           IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
@@ -602,7 +602,7 @@ public class PhysicalGenerator {
         for (int i = 0; i < filterPathList.size(); i++) {
           pathTSDataTypeHashMap.put(filterPathList.get(i), seriesTypes.get(i));
         }
-        deviceToFilterMap.put(device.toString(), newOperator.transformToExpression(pathTSDataTypeHashMap));
+        deviceToFilterMap.put(device.getFullPath(), newOperator.transformToExpression(pathTSDataTypeHashMap));
         filterPaths.clear();
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
@@ -668,13 +668,13 @@ public class PhysicalGenerator {
         PartialPath path = paths.get(i);
         String column;
         if (path.getAlias() != null) {
-          column = path.getPathWithoutLastNodeWithAlias();
+          column = path.getFullPathWithAlias();
         } else {
-          column = path.toString();
+          column = path.getFullPath();
         }
         if (!columnSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
-          rawDataQueryPlan.addDeduplicatedPaths(path.toTSFilePath());
+          rawDataQueryPlan.addDeduplicatedPaths(path);
           rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
           columnSet.add(column);
         }
@@ -693,16 +693,16 @@ public class PhysicalGenerator {
     for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
       String column;
       if (indexedPath.left.getAlias() != null) {
-        column = indexedPath.left.getPathWithoutLastNodeWithAlias();
+        column = indexedPath.left.getFullPathWithAlias();
       } else {
-        column = indexedPath.left.toString();
+        column = indexedPath.left.getFullPath();
       }
       if (queryPlan instanceof AggregationPlan) {
         column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";
       }
       if (!columnSet.contains(column)) {
         TSDataType seriesType = dataTypes.get(indexedPath.right);
-        rawDataQueryPlan.addDeduplicatedPaths(indexedPath.left.toTSFilePath());
+        rawDataQueryPlan.addDeduplicatedPaths(indexedPath.left);
         rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
         columnSet.add(column);
         rawDataQueryPlan.addPathToIndex(column, index++);

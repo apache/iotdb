@@ -216,11 +216,11 @@ public class TsFileProcessor {
     }
 
     // update start time of this memtable
-    tsFileResource.updateStartTime(insertRowPlan.getDeviceId().toString(), insertRowPlan.getTime());
+    tsFileResource.updateStartTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
-      tsFileResource.updateEndTime(insertRowPlan.getDeviceId().toString(), insertRowPlan.getTime());
+      tsFileResource.updateEndTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
   }
 
@@ -260,14 +260,14 @@ public class TsFileProcessor {
     }
 
     tsFileResource
-        .updateStartTime(insertTabletPlan.getDeviceId().toString(), insertTabletPlan.getTimes()[start]);
+        .updateStartTime(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[start]);
 
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource
           .updateEndTime(
-              insertTabletPlan.getDeviceId().toString(), insertTabletPlan.getTimes()[end - 1]);
+              insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
   }
 

@@ -95,7 +95,6 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -737,7 +736,7 @@ public class StorageGroupProcessor {
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertRowPlan,
           insertRowPlan.getTime() > partitionLatestFlushedTimeForEachDevice.get(timePartitionId)
-              .getOrDefault(insertRowPlan.getDeviceId().toString(), Long.MIN_VALUE));
+              .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE));
 
     } finally {
       writeUnlock();
@@ -784,7 +783,7 @@ public class StorageGroupProcessor {
       // init map
       long lastFlushTime = partitionLatestFlushedTimeForEachDevice.
           computeIfAbsent(beforeTimePartition, id -> new HashMap<>()).
-          computeIfAbsent(insertTabletPlan.getDeviceId().toString(), id -> Long.MIN_VALUE);
+          computeIfAbsent(insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
       // if is sequence
       boolean isSequence = false;
       while (loc < insertTabletPlan.getRowCount()) {
@@ -801,7 +800,7 @@ public class StorageGroupProcessor {
           beforeTimePartition = curTimePartition;
           lastFlushTime = partitionLatestFlushedTimeForEachDevice.
               computeIfAbsent(beforeTimePartition, id -> new HashMap<>()).
-              computeIfAbsent(insertTabletPlan.getDeviceId().toString(), id -> Long.MIN_VALUE);
+              computeIfAbsent(insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
           isSequence = false;
         }
         // still in this partition
@@ -824,7 +823,7 @@ public class StorageGroupProcessor {
             results, beforeTimePartition) && noFailure;
       }
       long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
-          insertTabletPlan.getDeviceId().toString(), Long.MIN_VALUE);
+          insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
       tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
       if (!noFailure) {
@@ -880,10 +879,10 @@ public class StorageGroupProcessor {
     latestTimeForEachDevice.computeIfAbsent(timePartitionId, t -> new HashMap<>());
     // try to update the latest time of the device of this tsRecord
     if (sequence && latestTimeForEachDevice.get(timePartitionId)
-        .getOrDefault(insertTabletPlan.getDeviceId().toString(), Long.MIN_VALUE)
+        .getOrDefault(insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE)
         < insertTabletPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice.get(timePartitionId)
-          .put(insertTabletPlan.getDeviceId().toString(), insertTabletPlan.getTimes()[end - 1]);
+          .put(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
 
     // check memtable size and may async try to flush the work memtable
@@ -935,13 +934,13 @@ public class StorageGroupProcessor {
 
     // try to update the latest time of the device of this tsRecord
     if (latestTimeForEachDevice.get(timePartitionId)
-        .getOrDefault(insertRowPlan.getDeviceId().toString(), Long.MIN_VALUE) < insertRowPlan.getTime()) {
+        .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE) < insertRowPlan.getTime()) {
       latestTimeForEachDevice.get(timePartitionId)
-          .put(insertRowPlan.getDeviceId().toString(), insertRowPlan.getTime());
+          .put(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
 
     long globalLatestFlushTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
-        insertRowPlan.getDeviceId().toString(), Long.MIN_VALUE);
+        insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
 
     tryToUpdateInsertLastCache(insertRowPlan, globalLatestFlushTime);
 
@@ -1348,7 +1347,7 @@ public class StorageGroupProcessor {
           upgradeSeqFileList, deviceId, measurementId, context, timeFilter, true);
       List<TsFileResource> unseqResources = getFileResourceListForQuery(unSequenceFileList,
           upgradeUnseqFileList, deviceId, measurementId, context, timeFilter, false);
-      QueryDataSource dataSource = new QueryDataSource(new Path(deviceId.toString(), measurementId),
+      QueryDataSource dataSource = new QueryDataSource(deviceId,
           seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
@@ -1392,7 +1391,7 @@ public class StorageGroupProcessor {
     context.setQueryTimeLowerBound(timeLowerBound);
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!isTsFileResourceSatisfied(tsFileResource, deviceId.toString(), timeFilter, isSeq)) {
+      if (!isTsFileResourceSatisfied(tsFileResource, deviceId.getFullPath(), timeFilter, isSeq)) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1402,7 +1401,7 @@ public class StorageGroupProcessor {
         } else {
 
           tsFileResource.getUnsealedFileProcessor()
-              .query(deviceId.toString(), measurementId, schema.getType(), schema.getEncodingType(),
+              .query(deviceId.getFullPath(), measurementId, schema.getType(), schema.getEncodingType(),
                   schema.getProps(), context, tsfileResourcesForQuery);
         }
       } catch (IOException e) {
@@ -1413,7 +1412,7 @@ public class StorageGroupProcessor {
     }
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!isTsFileResourceSatisfied(tsFileResource, deviceId.toString(), timeFilter, isSeq)) {
+      if (!isTsFileResourceSatisfied(tsFileResource, deviceId.getFullPath(), timeFilter, isSeq)) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1474,7 +1473,7 @@ public class StorageGroupProcessor {
     try {
       Long lastUpdateTime = null;
       for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
-        Long curTime = latestTimeMap.get(deviceId.toString());
+        Long curTime = latestTimeMap.get(deviceId.getFullPath());
         if (curTime != null && (lastUpdateTime == null || lastUpdateTime < curTime)) {
           lastUpdateTime = curTime;
         }

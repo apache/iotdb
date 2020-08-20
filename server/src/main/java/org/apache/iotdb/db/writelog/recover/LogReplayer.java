@@ -121,7 +121,7 @@ public class LogReplayer {
     List<PartialPath> paths = deletePlan.getPaths();
     for (PartialPath path : paths) {
       recoverMemTable
-          .delete(path.getPathWithoutLastNode(), path.getLastNode(), deletePlan.getDeleteStartTime(),
+          .delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteStartTime(),
               deletePlan.getDeleteEndTime());
       modFile
           .write(
@@ -141,18 +141,18 @@ public class LogReplayer {
         maxTime = ((InsertTabletPlan) plan).getMaxTime();
       }
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      long lastEndTime = currentTsFileResource.getEndTime(plan.getDeviceId().toString());
+      long lastEndTime = currentTsFileResource.getEndTime(plan.getDeviceId().getFullPath());
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime &&
           sequence) {
         return;
       }
-      Long startTime = tempStartTimeMap.get(plan.getDeviceId().toString());
+      Long startTime = tempStartTimeMap.get(plan.getDeviceId().getFullPath());
       if (startTime == null || startTime > minTime) {
-        tempStartTimeMap.put(plan.getDeviceId().toString(), minTime);
+        tempStartTimeMap.put(plan.getDeviceId().getFullPath(), minTime);
       }
-      Long endTime = tempEndTimeMap.get(plan.getDeviceId().toString());
+      Long endTime = tempEndTimeMap.get(plan.getDeviceId().getFullPath());
       if (endTime == null || endTime < maxTime) {
-        tempEndTimeMap.put(plan.getDeviceId().toString(), maxTime);
+        tempEndTimeMap.put(plan.getDeviceId().getFullPath(), maxTime);
       }
     }
     MeasurementSchema[] schemas;

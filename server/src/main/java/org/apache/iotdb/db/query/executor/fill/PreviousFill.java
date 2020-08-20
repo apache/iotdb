@@ -18,24 +18,23 @@
  */
 package org.apache.iotdb.db.query.executor.fill;
 
+import java.io.IOException;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
-import java.io.IOException;
-import java.util.*;
-
 public class PreviousFill extends IFill {
 
-  private Path seriesPath;
+  private PartialPath seriesPath;
   private QueryContext context;
   private long beforeRange;
   private Set<String> allSensors;
@@ -83,7 +82,7 @@ public class PreviousFill extends IFill {
 
   @Override
   public void configureFill(
-      Path path, TSDataType dataType, long queryTime, Set<String> sensors, QueryContext context) {
+      PartialPath path, TSDataType dataType, long queryTime, Set<String> sensors, QueryContext context) {
     this.seriesPath = path;
     this.dataType = dataType;
     this.context = context;

@@ -21,26 +21,29 @@ package org.apache.iotdb.db.metadata;
 import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * A prefix path, suffix path or fullPath generated from SQL
  */
-public class PartialPath implements Comparable<PartialPath> {
+public class PartialPath extends Path implements Comparable<Path> {
 
   private String[] nodes;
-  private String path;
-  private String pathWithoutLastNode;
   private String alias;
 
   public PartialPath(String path) throws IllegalPathException {
     this.nodes = MetaUtils.splitPathToDetachedPath(path);
-    this.path = path;
+    this.fullPath = path;
   }
 
   public PartialPath(String[] partialNodes) {
     nodes = partialNodes;
+  }
+
+  public PartialPath(String path, boolean needSplit) {
+    super(path, needSplit);
   }
 
   /**
@@ -59,7 +62,7 @@ public class PartialPath implements Comparable<PartialPath> {
    * It will change nodes in this partial path
    * @param otherNodes nodes
    */
-  public void concatPath(String[] otherNodes) {
+  void concatPath(String[] otherNodes) {
     int len = nodes.length;
     this.nodes = Arrays.copyOf(nodes, nodes.length + otherNodes.length);
     System.arraycopy(otherNodes, 0, nodes, len, otherNodes.length);
@@ -75,17 +78,18 @@ public class PartialPath implements Comparable<PartialPath> {
     return nodes;
   }
 
-  public String toString() {
-    if (path != null) {
-      return path;
+  @Override
+  public String getFullPath() {
+    if (fullPath != null) {
+      return fullPath;
     } else {
       StringBuilder s = new StringBuilder(nodes[0]);
       for (int i = 1; i < nodes.length; i++) {
         s.append(TsFileConstant.PATH_SEPARATOR);
         s.append(nodes[i]);
       }
-      path = s.toString();
-      return path;
+      fullPath = s.toString();
+      return fullPath;
     }
   }
 
@@ -109,10 +113,11 @@ public class PartialPath implements Comparable<PartialPath> {
 
   @Override
   public int hashCode() {
-    return this.toString().hashCode();
+    return this.getFullPath().hashCode();
   }
 
-  public String getLastNode() {
+  public String getMeasurement() {
+    measurement = nodes[nodes.length - 1];
     return nodes[nodes.length - 1];
   }
 
@@ -120,9 +125,10 @@ public class PartialPath implements Comparable<PartialPath> {
     return nodes[0];
   }
 
-  public String getPathWithoutLastNode() {
-    if (pathWithoutLastNode != null) {
-      return pathWithoutLastNode;
+  @Override
+  public String getDevice() {
+    if (device != null) {
+      return device;
     } else {
       if(nodes.length == 1) {
         return "";
@@ -132,8 +138,8 @@ public class PartialPath implements Comparable<PartialPath> {
         s.append(TsFileConstant.PATH_SEPARATOR);
         s.append(nodes[i]);
       }
-      pathWithoutLastNode = s.toString();
-      return pathWithoutLastNode;
+      device = s.toString();
+      return device;
     }
   }
 
@@ -141,8 +147,15 @@ public class PartialPath implements Comparable<PartialPath> {
     this.alias = alias;
   }
 
-  public String getPathWithoutLastNodeWithAlias() {
-    return getPathWithoutLastNode() + IoTDBConstant.PATH_SEPARATOR + alias;
+  @Override
+  public String getFullPathWithAlias() {
+    return getDevice() + IoTDBConstant.PATH_SEPARATOR + alias;
+  }
+
+  @Override
+  public int compareTo(Path path) {
+    PartialPath partialPath = (PartialPath) path;
+    return this.getFullPath().compareTo(partialPath.getFullPath());
   }
 
   public String getAlias() {
@@ -158,16 +171,17 @@ public class PartialPath implements Comparable<PartialPath> {
     return true;
   }
 
-  public Path toTSFilePath() {
-    Path newPath = new Path(getPathWithoutLastNode(), getLastNode());
-    if(alias != null) {
-      newPath.setAlias(alias);
-    }
-    return newPath;
+  @Override
+  public String toString() {
+    return getFullPath();
   }
 
-  @Override
-  public int compareTo(PartialPath o) {
-    return this.toString().compareTo(o.toString());
+  public PartialPath getDevicePath() {
+    return new PartialPath(Arrays.copyOf(nodes, nodes.length - 1));
+  }
+
+  @TestOnly
+  public Path toTSFilePath() {
+    return new Path(getDevice(), getMeasurement());
   }
 }

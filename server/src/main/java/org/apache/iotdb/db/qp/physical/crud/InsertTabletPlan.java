@@ -116,7 +116,7 @@ public class InsertTabletPlan extends InsertPlan {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     stream.writeByte((byte) type);
 
-    putString(stream, deviceId.toString());
+    putString(stream, deviceId.getFullPath());
 
     stream.writeInt(
         measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
@@ -158,7 +158,7 @@ public class InsertTabletPlan extends InsertPlan {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     buffer.put((byte) type);
 
-    putString(buffer, deviceId.toString());
+    putString(buffer, deviceId.getFullPath());
 
     buffer
         .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));

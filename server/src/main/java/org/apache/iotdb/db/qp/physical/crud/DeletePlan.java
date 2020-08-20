@@ -126,7 +126,7 @@ public class DeletePlan extends PhysicalPlan {
     stream.writeLong(deleteEndTime);
     stream.writeInt(paths.size());
     for (PartialPath path : paths) {
-      putString(stream, path.toString());
+      putString(stream, path.getFullPath());
     }
   }
 
@@ -138,7 +138,7 @@ public class DeletePlan extends PhysicalPlan {
     buffer.putLong(deleteEndTime);
     buffer.putInt(paths.size());
     for (PartialPath path : paths) {
-      putString(buffer, path.toString());
+      putString(buffer, path.getFullPath());
     }
   }
 

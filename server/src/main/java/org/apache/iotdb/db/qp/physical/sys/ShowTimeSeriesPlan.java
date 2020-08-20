@@ -112,7 +112,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   public void serialize(DataOutputStream outputStream) throws IOException {
     outputStream.write(PhysicalPlanType.SHOW_TIMESERIES.ordinal());
 
-    putString(outputStream, path.toString());
+    putString(outputStream, path.getFullPath());
     outputStream.writeBoolean(isContains);
     putString(outputStream, key);
     putString(outputStream, value);

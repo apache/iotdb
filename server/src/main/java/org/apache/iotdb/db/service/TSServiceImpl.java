@@ -352,7 +352,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "ALL_COLUMNS":
-          resp.setColumnsList(getPaths(new PartialPath(req.getColumnPath())).stream().map(PartialPath::toString).collect(
+          resp.setColumnsList(getPaths(new PartialPath(req.getColumnPath())).stream().map(PartialPath::getFullPath).collect(
               Collectors.toList()));
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
@@ -773,9 +773,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       case FILL:
         for (PartialPath path : paths) {
           if (path.getAlias() != null) {
-            respColumns.add(path.getPathWithoutLastNodeWithAlias());
+            respColumns.add(path.getFullPathWithAlias());
           } else {
-            respColumns.add(path.toString());
+            respColumns.add(path.getFullPath());
           }
         }
         seriesTypes = getSeriesTypesByString(paths, null);
@@ -791,9 +791,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
         for (int i = 0; i < paths.size(); i++) {
           if (paths.get(i).getAlias() != null) {
-            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getPathWithoutLastNodeWithAlias() + ")");
+            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")");
           } else {
-            respColumns.add(aggregations.get(i) + "(" + paths.get(i).toString() + ")");
+            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
           }
         }
         seriesTypes = getSeriesTypesByPath(paths, aggregations);

@@ -802,10 +802,10 @@ public class PhysicalPlanTest {
     Path path1 = new Path("root.vehicle.d1", "s1");
     Path path2 = new Path("root.vehicle.d2", "s1");
     assertEquals(1, plan1.getPaths().size());
-    assertEquals(path1.toString(), plan1.getPaths().get(0).toString());
+    assertEquals(path1.toString(), plan1.getPaths().get(0).getFullPath());
     assertEquals(2, plan2.getPaths().size());
-    assertEquals(path1.toString(), plan2.getPaths().get(0).toString());
-    assertEquals(path2.toString(), plan2.getPaths().get(1).toString());
+    assertEquals(path1.toString(), plan2.getPaths().get(0).getFullPath());
+    assertEquals(path2.toString(), plan2.getPaths().get(1).getFullPath());
   }
 
   @Test

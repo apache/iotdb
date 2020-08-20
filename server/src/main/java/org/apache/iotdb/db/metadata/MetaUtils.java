@@ -78,7 +78,7 @@ public class MetaUtils {
   static PartialPath getStorageGroupNameByLevel(PartialPath path, int level) throws MetadataException {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
-      throw new IllegalPathException(path.toString());
+      throw new IllegalPathException(path.getFullPath());
     }
     String[] storageGroupNodes = new String[level + 1];
     System.arraycopy(nodeNames, 0, storageGroupNodes, 0, level + 1);

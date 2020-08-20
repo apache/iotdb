@@ -61,7 +61,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.write((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
-    byte[] fullPathBytes = path.toString().getBytes();
+    byte[] fullPathBytes = path.getFullPath().getBytes();
     stream.writeInt(fullPathBytes.length);
     stream.write(fullPathBytes);
   }

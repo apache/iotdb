@@ -38,7 +38,7 @@ public abstract class Modification {
   }
 
   public String getPathString() {
-    return path.toString();
+    return path.getFullPath();
   }
 
   public PartialPath getPath() {
@@ -46,11 +46,11 @@ public abstract class Modification {
   }
 
   public String getDevice() {
-    return path.getPathWithoutLastNode();
+    return path.getDevice();
   }
 
   public String getMeasurement() {
-    return path.getLastNode();
+    return path.getMeasurement();
   }
 
   public void setPath(PartialPath path) {

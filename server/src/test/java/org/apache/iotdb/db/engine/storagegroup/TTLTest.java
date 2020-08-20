@@ -64,7 +64,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -221,7 +220,7 @@ public class TTLTest {
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
-    Path path = new Path(sg1, s1);
+    PartialPath path = new PartialPath(sg1 + "." + s1);
     Set<String> allSensors = new HashSet<>();
     allSensors.add(s1);
     IBatchReader reader = new SeriesRawDataBatchReader(path, allSensors, TSDataType.INT64,
@@ -321,11 +320,11 @@ public class TTLTest {
     Planner planner = new Planner();
     SetTTLPlan plan = (SetTTLPlan) planner
         .parseSQLToPhysicalPlan("SET TTL TO " + sg1 + " 10000");
-    assertEquals(sg1, plan.getStorageGroup().toString());
+    assertEquals(sg1, plan.getStorageGroup().getFullPath());
     assertEquals(10000, plan.getDataTTL());
 
     plan = (SetTTLPlan) planner.parseSQLToPhysicalPlan("UNSET TTL TO " + sg2);
-    assertEquals(sg2, plan.getStorageGroup().toString());
+    assertEquals(sg2, plan.getStorageGroup().getFullPath());
     assertEquals(Long.MAX_VALUE, plan.getDataTTL());
   }
 
@@ -341,7 +340,7 @@ public class TTLTest {
     sgs.add("root.sg3");
     plan = (ShowTTLPlan) planner
         .parseSQLToPhysicalPlan("SHOW TTL ON root.sg1,root.sg2,root.sg3");
-    assertEquals(sgs, plan.getStorageGroups().stream().map(PartialPath::toString).collect(Collectors.toList()));
+    assertEquals(sgs, plan.getStorageGroups().stream().map(PartialPath::getFullPath).collect(Collectors.toList()));
   }
 
   @Test

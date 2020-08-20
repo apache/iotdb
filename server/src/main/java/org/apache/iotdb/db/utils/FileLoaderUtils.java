@@ -25,6 +25,7 @@ import java.util.Set;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
@@ -84,7 +85,7 @@ public class FileLoaderUtils {
    * @param allSensors measurements queried at the same time of this device
    * @param filter any filter, only used to check time range
    */
-  public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath,
+  public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, PartialPath seriesPath,
       QueryContext context, Filter filter, Set<String> allSensors) throws IOException {
     TimeseriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {

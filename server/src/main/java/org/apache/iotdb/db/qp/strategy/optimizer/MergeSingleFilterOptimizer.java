@@ -22,7 +22,6 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -81,7 +80,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     // sort paths of BasicFunction by their single seriesPath. We don't sort children on non-leaf
     // layer.
     if (!children.isEmpty() && allIsBasic(children)) {
-      children.sort(Comparator.comparing(o -> o.getSinglePath().toString()));
+      children.sort(Comparator.comparing(o -> o.getSinglePath().getFullPath()));
     }
     List<FilterOperator> ret = new ArrayList<>();
     int firstNonSingleIndex = mergeSingleFilters(ret, filter);

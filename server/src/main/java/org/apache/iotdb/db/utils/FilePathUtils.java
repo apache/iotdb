@@ -26,9 +26,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetaUtils;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public class FilePathUtils {
@@ -64,14 +64,14 @@ public class FilePathUtils {
    * @param pathIndex
    * @return
    */
-  public static Map<String, Long> getPathByLevel(List<Path> rawPaths, int level, Map<Integer, String> pathIndex)
+  public static Map<String, Long> getPathByLevel(List<PartialPath> rawPaths, int level, Map<Integer, String> pathIndex)
       throws QueryProcessException {
     // pathGroupByLevel -> count
     Map<String, Long> finalPaths = new TreeMap<>();
 
     int i = 0;
-    for (Path value : rawPaths) {
-      String[] tmpPath = new String[0];
+    for (PartialPath value : rawPaths) {
+      String[] tmpPath;
       try {
         tmpPath = MetaUtils.splitPathToDetachedPath(value.getFullPath());
       } catch (IllegalPathException e) {

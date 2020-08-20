@@ -304,7 +304,7 @@ public class MManagerBasicTest {
 
     try {
       assertEquals("root.laptop",
-          MetaUtils.getStorageGroupNameByLevel(new PartialPath("root.laptop.d1.s1"), level).toString());
+          MetaUtils.getStorageGroupNameByLevel(new PartialPath("root.laptop.d1.s1"), level).getFullPath());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -343,14 +343,14 @@ public class MManagerBasicTest {
       devices.add("root.laptop.d1");
       devices.add("root.laptop.d2");
       // usual condition
-      assertEquals(devices, manager.getDevices(new PartialPath("root.laptop")).stream().map(PartialPath::toString).collect(
+      assertEquals(devices, manager.getDevices(new PartialPath("root.laptop")).stream().map(PartialPath::getFullPath).collect(
           Collectors.toSet()));
       manager.setStorageGroup(new PartialPath("root.vehicle"));
       manager.createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
       devices.add("root.vehicle.d1");
       // prefix with *
-      assertEquals(devices, manager.getDevices(new PartialPath("root.*")).stream().map(PartialPath::toString).collect(
+      assertEquals(devices, manager.getDevices(new PartialPath("root.*")).stream().map(PartialPath::getFullPath).collect(
           Collectors.toSet()));
     } catch (MetadataException e) {
       e.printStackTrace();

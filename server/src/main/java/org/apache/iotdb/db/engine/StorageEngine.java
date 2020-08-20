@@ -286,7 +286,7 @@ public class StorageEngine implements IService {
             if (processor == null) {
               logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                 storageGroup, Thread.currentThread().getId());
-              processor = new StorageGroupProcessor(systemDir, storageGroup.toString(), fileFlushPolicy);
+              processor = new StorageGroupProcessor(systemDir, storageGroup.getFullPath(), fileFlushPolicy);
               StorageGroupMNode storageGroupMNode = IoTDB.metaManager
                 .getStorageGroupNode(storageGroup);
               processor.setDataTTL(storageGroupMNode.getDataTTL());
@@ -390,7 +390,7 @@ public class StorageEngine implements IService {
         processor.writeUnlock();
       }
     } else {
-      throw new StorageGroupNotSetException(storageGroupName.toString());
+      throw new StorageGroupNotSetException(storageGroupName.getFullPath());
     }
   }
 
@@ -416,7 +416,7 @@ public class StorageEngine implements IService {
         processor.writeUnlock();
       }
     } else {
-      throw new StorageGroupNotSetException(storageGroupName.toString());
+      throw new StorageGroupNotSetException(storageGroupName.getFullPath());
     }
   }
 
@@ -446,8 +446,9 @@ public class StorageEngine implements IService {
    */
   public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,
       QueryFileManager filePathsManager)
-      throws StorageEngineException, QueryProcessException, IllegalPathException {
-    PartialPath deviceId = new PartialPath(seriesExpression.getSeriesPath().getDevice());
+      throws StorageEngineException, QueryProcessException {
+    PartialPath fullPath = (PartialPath) seriesExpression.getSeriesPath();
+    PartialPath deviceId = fullPath.getDevicePath();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     return storageGroupProcessor

@@ -260,7 +260,7 @@ public class PlanExecutor implements IPlanExecutor {
         DeletePartitionPlan p = (DeletePartitionPlan) plan;
         TimePartitionFilter filter =
             (storageGroupName, partitionId) ->
-                storageGroupName.equals(((DeletePartitionPlan) plan).getStorageGroupName().toString())
+                storageGroupName.equals(((DeletePartitionPlan) plan).getStorageGroupName().getFullPath())
                     && p.getPartitionId().contains(partitionId);
         StorageEngine.getInstance()
             .removePartitions(((DeletePartitionPlan) plan).getStorageGroupName(), filter);
@@ -388,7 +388,7 @@ public class PlanExecutor implements IPlanExecutor {
     int num = getNodesNumInGivenLevel(countPlan.getPath(), countPlan.getLevel());
     SingleDataSet singleDataSet =
         new SingleDataSet(
-            Collections.singletonList(new Path(COLUMN_COUNT)),
+            Collections.singletonList(new PartialPath(COLUMN_COUNT, false)),
             Collections.singletonList(TSDataType.INT32));
     Field field = new Field(TSDataType.INT32);
     field.setIntV(num);
@@ -403,12 +403,12 @@ public class PlanExecutor implements IPlanExecutor {
     List<PartialPath> nodes = getNodesList(countPlan.getPath(), countPlan.getLevel());
     ListDataSet listDataSet =
         new ListDataSet(
-            Arrays.asList(new Path(COLUMN_COLUMN), new Path(COLUMN_COUNT)),
+            Arrays.asList(new PartialPath(COLUMN_COLUMN, false), new PartialPath(COLUMN_COUNT, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
     for (PartialPath columnPath : nodes) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
-      field.setBinaryV(new Binary(columnPath.toString()));
+      field.setBinaryV(new Binary(columnPath.getFullPath()));
       Field field1 = new Field(TSDataType.TEXT);
       // get the count of every group
       field1.setBinaryV(new Binary(Integer.toString(getPathsNum(columnPath))));
@@ -439,7 +439,7 @@ public class PlanExecutor implements IPlanExecutor {
     int num = getPathsNum(countPlan.getPath());
     SingleDataSet singleDataSet =
         new SingleDataSet(
-            Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
+            Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
             Collections.singletonList(TSDataType.INT32));
     Field field = new Field(TSDataType.INT32);
     field.setIntV(num);
@@ -453,13 +453,13 @@ public class PlanExecutor implements IPlanExecutor {
       throws MetadataException {
     ListDataSet listDataSet =
         new ListDataSet(
-            Collections.singletonList(new Path(COLUMN_DEVICES)),
+            Collections.singletonList(new PartialPath(COLUMN_DEVICES, false)),
             Collections.singletonList(TSDataType.TEXT));
     Set<PartialPath> devices = getDevices(showDevicesPlan.getPath());
     for (PartialPath s : devices) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
-      field.setBinaryV(new Binary(s.toString()));
+      field.setBinaryV(new Binary(s.getFullPath()));
       record.addField(field);
       listDataSet.putRecord(record);
     }
@@ -475,7 +475,7 @@ public class PlanExecutor implements IPlanExecutor {
     Set<String> childPathsList = getPathNextChildren(showChildPathsPlan.getPath());
     ListDataSet listDataSet =
         new ListDataSet(
-            Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
+            Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
             Collections.singletonList(TSDataType.TEXT));
     for (String s : childPathsList) {
       RowRecord record = new RowRecord(0);
@@ -498,13 +498,13 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowStorageGroup() {
     ListDataSet listDataSet =
         new ListDataSet(
-            Collections.singletonList(new Path(COLUMN_STORAGE_GROUP)),
+            Collections.singletonList(new PartialPath(COLUMN_STORAGE_GROUP, false)),
             Collections.singletonList(TSDataType.TEXT));
     List<PartialPath> storageGroupList = getAllStorageGroupNames();
     for (PartialPath s : storageGroupList) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
-      field.setBinaryV(new Binary(s.toString()));
+      field.setBinaryV(new Binary(s.getFullPath()));
       record.addField(field);
       listDataSet.putRecord(record);
     }
@@ -529,7 +529,7 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
     ListDataSet listDataSet =
         new ListDataSet(
-            Arrays.asList(new Path(COLUMN_STORAGE_GROUP), new Path(COLUMN_TTL)),
+            Arrays.asList(new PartialPath(COLUMN_STORAGE_GROUP, false), new PartialPath(COLUMN_TTL, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
     List<PartialPath> selectedSgs = showTTLPlan.getStorageGroups();
 
@@ -543,7 +543,7 @@ public class PlanExecutor implements IPlanExecutor {
       RowRecord rowRecord = new RowRecord(timestamp++);
       Field sg = new Field(TSDataType.TEXT);
       Field ttl;
-      sg.setBinaryV(new Binary(sgName.toString()));
+      sg.setBinaryV(new Binary(sgName.getFullPath()));
       if (mNode.getDataTTL() != Long.MAX_VALUE) {
         ttl = new Field(TSDataType.INT64);
         ttl.setLongV(mNode.getDataTTL());
@@ -561,7 +561,7 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowVersion() {
     SingleDataSet singleDataSet =
         new SingleDataSet(
-            Collections.singletonList(new Path(IoTDBConstant.COLUMN_VERSION)),
+            Collections.singletonList(new PartialPath(IoTDBConstant.COLUMN_VERSION, false)),
             Collections.singletonList(TSDataType.TEXT));
     Field field = new Field(TSDataType.TEXT);
     field.setBinaryV(new Binary(IoTDBConstant.VERSION));
@@ -574,7 +574,7 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowDynamicParameterQuery() {
     ListDataSet listDataSet =
         new ListDataSet(
-            Arrays.asList(new Path(COLUMN_PARAMETER), new Path(COLUMN_VALUE)),
+            Arrays.asList(new PartialPath(COLUMN_PARAMETER, false), new PartialPath(COLUMN_VALUE, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     int timestamp = 0;
@@ -619,7 +619,7 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowFlushTaskInfo() {
     ListDataSet listDataSet =
         new ListDataSet(
-            Arrays.asList(new Path(COLUMN_ITEM), new Path(COLUMN_VALUE)),
+            Arrays.asList(new PartialPath(COLUMN_ITEM, false), new PartialPath(COLUMN_VALUE, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     int timestamp = 0;
@@ -762,7 +762,7 @@ public class PlanExecutor implements IPlanExecutor {
           PartialPath series = new PartialPath(chunkGroupMetadata.getDevice() + TsFileConstant.PATH_SEPARATOR + chunkMetadata.getMeasurementUid());
           if (!registeredSeries.contains(series)) {
             registeredSeries.add(series);
-            MeasurementSchema schema = knownSchemas.get(new Path(series.getPathWithoutLastNode(), series.getLastNode()));
+            MeasurementSchema schema = knownSchemas.get(new Path(series.getDevice(), series.getMeasurement()));
             if (schema == null) {
               throw new MetadataException(
                   String.format(
@@ -840,11 +840,11 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void delete(PartialPath path, long startTime, long endTime) throws QueryProcessException {
     PartialPath deviceId = new PartialPath(Arrays.copyOf(path.getNodes(), path.getNodes().length-1));
-    String measurementId = path.getLastNode();
+    String measurementId = path.getMeasurement();
     try {
       if (!mManager.isPathExist(path)) {
         throw new QueryProcessException(
-            String.format("Time series %s does not exist.", path.toString()));
+            String.format("Time series %s does not exist.", path.getFullPath()));
       }
       StorageEngine.getInstance().delete(deviceId, measurementId, startTime, endTime);
     } catch (StorageEngineException e) {
@@ -920,12 +920,12 @@ public class PlanExecutor implements IPlanExecutor {
           break;
         case GRANT_ROLE:
           for (int i : permissions) {
-            authorizer.grantPrivilegeToRole(roleName, nodeName.toString(), i);
+            authorizer.grantPrivilegeToRole(roleName, nodeName.getFullPath(), i);
           }
           break;
         case GRANT_USER:
           for (int i : permissions) {
-            authorizer.grantPrivilegeToUser(userName, nodeName.toString(), i);
+            authorizer.grantPrivilegeToUser(userName, nodeName.getFullPath(), i);
           }
           break;
         case GRANT_ROLE_TO_USER:
@@ -933,12 +933,12 @@ public class PlanExecutor implements IPlanExecutor {
           break;
         case REVOKE_USER:
           for (int i : permissions) {
-            authorizer.revokePrivilegeFromUser(userName, nodeName.toString(), i);
+            authorizer.revokePrivilegeFromUser(userName, nodeName.getFullPath(), i);
           }
           break;
         case REVOKE_ROLE:
           for (int i : permissions) {
-            authorizer.revokePrivilegeFromRole(roleName, nodeName.toString(), i);
+            authorizer.revokePrivilegeFromRole(roleName, nodeName.getFullPath(), i);
           }
           break;
         case REVOKE_ROLE_FROM_USER:
@@ -1030,7 +1030,7 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (IOException e) {
       throw new QueryProcessException(String
           .format("Something went wrong while read/write the [%s]'s tag/attribute info.",
-              path.toString()));
+              path.getFullPath()));
     }
     return true;
   }
@@ -1117,9 +1117,9 @@ public class PlanExecutor implements IPlanExecutor {
 
   private ListDataSet executeListRole() {
     int index = 0;
-    List<Path> headerList = new ArrayList<>();
+    List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(COLUMN_ROLE));
+    headerList.add(new PartialPath(COLUMN_ROLE, false));
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
     List<String> roleList = authorizer.listAllRoles();
@@ -1135,9 +1135,9 @@ public class PlanExecutor implements IPlanExecutor {
 
   private ListDataSet executeListUser() {
     List<String> userList = authorizer.listAllUsers();
-    List<Path> headerList = new ArrayList<>();
+    List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(COLUMN_USER));
+    headerList.add(new PartialPath(COLUMN_USER, false));
     typeList.add(TSDataType.TEXT);
     int index = 0;
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
@@ -1156,9 +1156,9 @@ public class PlanExecutor implements IPlanExecutor {
     if (role == null) {
       throw new AuthException("No such role : " + roleName);
     }
-    List<Path> headerList = new ArrayList<>();
+    List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(COLUMN_USER));
+    headerList.add(new PartialPath(COLUMN_USER, false));
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
     List<String> userList = authorizer.listAllUsers();
@@ -1179,9 +1179,9 @@ public class PlanExecutor implements IPlanExecutor {
   private ListDataSet executeListUserRoles(String userName) throws AuthException {
     User user = authorizer.getUser(userName);
     if (user != null) {
-      List<Path> headerList = new ArrayList<>();
+      List<PartialPath> headerList = new ArrayList<>();
       List<TSDataType> typeList = new ArrayList<>();
-      headerList.add(new Path(COLUMN_ROLE));
+      headerList.add(new PartialPath(COLUMN_ROLE, false));
       typeList.add(TSDataType.TEXT);
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
@@ -1201,14 +1201,14 @@ public class PlanExecutor implements IPlanExecutor {
   private ListDataSet executeListRolePrivileges(String roleName, PartialPath path) throws AuthException {
     Role role = authorizer.getRole(roleName);
     if (role != null) {
-      List<Path> headerList = new ArrayList<>();
+      List<PartialPath> headerList = new ArrayList<>();
       List<TSDataType> typeList = new ArrayList<>();
-      headerList.add(new Path(COLUMN_PRIVILEGE));
+      headerList.add(new PartialPath(COLUMN_PRIVILEGE, false));
       typeList.add(TSDataType.TEXT);
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-        if (path == null || AuthUtils.pathBelongsTo(path.toString(), pathPrivilege.getPath())) {
+        if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
           RowRecord record = new RowRecord(index++);
           Field field = new Field(TSDataType.TEXT);
           field.setBinaryV(new Binary(pathPrivilege.toString()));
@@ -1227,16 +1227,16 @@ public class PlanExecutor implements IPlanExecutor {
     if (user == null) {
       throw new AuthException("No such user : " + userName);
     }
-    List<Path> headerList = new ArrayList<>();
+    List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(COLUMN_ROLE));
-    headerList.add(new Path(COLUMN_PRIVILEGE));
+    headerList.add(new PartialPath(COLUMN_ROLE, false));
+    headerList.add(new PartialPath(COLUMN_PRIVILEGE, false));
     typeList.add(TSDataType.TEXT);
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
     int index = 0;
     for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-      if (path == null || AuthUtils.pathBelongsTo(path.toString(), pathPrivilege.getPath())) {
+      if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
         RowRecord record = new RowRecord(index++);
         Field roleF = new Field(TSDataType.TEXT);
         roleF.setBinaryV(new Binary(""));
@@ -1253,7 +1253,7 @@ public class PlanExecutor implements IPlanExecutor {
         continue;
       }
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-        if (path == null || AuthUtils.pathBelongsTo(path.toString(), pathPrivilege.getPath())) {
+        if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
           RowRecord record = new RowRecord(index++);
           Field roleF = new Field(TSDataType.TEXT);
           roleF.setBinaryV(new Binary(roleN));
@@ -1278,14 +1278,14 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowMergeStatus() {
-    List<Path> headerList = new ArrayList<>();
+    List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
-    headerList.add(new Path(COLUMN_STORAGE_GROUP));
-    headerList.add(new Path(COLUMN_TASK_NAME));
-    headerList.add(new Path(COLUMN_CREATED_TIME));
-    headerList.add(new Path(COLUMN_PROGRESS));
-    headerList.add(new Path(COLUMN_CANCELLED));
-    headerList.add(new Path(COLUMN_DONE));
+    headerList.add(new PartialPath(COLUMN_STORAGE_GROUP, false));
+    headerList.add(new PartialPath(COLUMN_TASK_NAME, false));
+    headerList.add(new PartialPath(COLUMN_CREATED_TIME, false));
+    headerList.add(new PartialPath(COLUMN_PROGRESS, false));
+    headerList.add(new PartialPath(COLUMN_CANCELLED, false));
+    headerList.add(new PartialPath(COLUMN_DONE, false));
 
     typeList.add(TSDataType.TEXT);
     typeList.add(TSDataType.TEXT);

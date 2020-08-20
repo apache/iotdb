@@ -1465,7 +1465,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     for (ConstantContext constant : ctx.constant()) {
       if (constant.dateExpression() != null) {
         if (!path.equals(TIME_PATH)) {
-          throw new SQLParserException(path.toString(), "Date can only be used to time");
+          throw new SQLParserException(path.getFullPath(), "Date can only be used to time");
         }
         values.add(Long.toString(parseDateExpression(constant.dateExpression())));
       } else {
@@ -1479,7 +1479,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     BasicFunctionOperator basic;
     if (ctx.constant().dateExpression() != null) {
       if (!path.equals(TIME_PATH)) {
-        throw new SQLParserException(path.toString(), "Date can only be used to time");
+        throw new SQLParserException(path.getFullPath(), "Date can only be used to time");
       }
       basic = new BasicFunctionOperator(ctx.comparisonOperator().type.getType(), path,
           Long.toString(parseDateExpression(ctx.constant().dateExpression())));

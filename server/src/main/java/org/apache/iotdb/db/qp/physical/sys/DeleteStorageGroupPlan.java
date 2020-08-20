@@ -52,7 +52,7 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
     stream.writeByte((byte) type);
     stream.writeInt(this.getPaths().size());
     for (PartialPath path : this.getPaths()) {
-      putString(stream, path.toString());
+      putString(stream, path.getFullPath());
     }
   }
 
@@ -62,7 +62,7 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
     buffer.put((byte) type);
     buffer.putInt(this.getPaths().size());
     for (PartialPath path : this.getPaths()) {
-      putString(buffer, path.toString());
+      putString(buffer, path.getFullPath());
     }
   }
 

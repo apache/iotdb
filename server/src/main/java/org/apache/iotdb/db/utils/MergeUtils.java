@@ -184,7 +184,7 @@ public class MergeUtils {
       throws IOException {
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = paths.get(i);
-      List<ChunkMetadata> metaDataList = tsFileReader.getChunkMetadataList(path.toTSFilePath());
+      List<ChunkMetadata> metaDataList = tsFileReader.getChunkMetadataList(path);
       if (metaDataList.isEmpty()) {
         continue;
       }
@@ -231,21 +231,21 @@ public class MergeUtils {
     if (paths.isEmpty()) {
       return Collections.emptyList();
     }
-    paths.sort(Comparator.comparing(PartialPath::getPathWithoutLastNode));
+    paths.sort(Comparator.comparing(PartialPath::getDevice));
 
     String currDevice = null;
     List<PartialPath> currList = null;
     List<List<PartialPath>> ret = new ArrayList<>();
     for (PartialPath path : paths) {
       if (currDevice == null) {
-        currDevice = path.getPathWithoutLastNode();
+        currDevice = path.getDevice();
         currList = new ArrayList<>();
         currList.add(path);
-      } else if (path.getPathWithoutLastNode().equals(currDevice)) {
+      } else if (path.getDevice().equals(currDevice)) {
         currList.add(path);
       } else {
         ret.add(currList);
-        currDevice = path.getPathWithoutLastNode();
+        currDevice = path.getDevice();
         currList = new ArrayList<>();
         currList.add(path);
       }

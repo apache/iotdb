@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -33,14 +37,9 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -89,7 +88,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     this.allDataReaderList = new ArrayList<>();
     this.groupByTimePlan = groupByTimePlan;
     for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
+      PartialPath path = (PartialPath) paths.get(i);
       allDataReaderList.add(getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
     }
   }
@@ -99,7 +98,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     return new ServerTimeGenerator(expression, context, queryPlan);
   }
 
-  protected IReaderByTimestamp getReaderByTime(Path path, RawDataQueryPlan queryPlan,
+  protected IReaderByTimestamp getReaderByTime(PartialPath path, RawDataQueryPlan queryPlan,
       TSDataType dataType, QueryContext context, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
     return new SeriesReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,

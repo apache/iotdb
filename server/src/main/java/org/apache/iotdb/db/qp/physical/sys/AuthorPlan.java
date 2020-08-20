@@ -301,7 +301,7 @@ public class AuthorPlan extends PhysicalPlan {
     if (nodeName == null) {
       putString(stream, null);
     } else {
-      putString(stream, nodeName.toString());
+      putString(stream, nodeName.getFullPath());
     }
   }
 
@@ -327,7 +327,7 @@ public class AuthorPlan extends PhysicalPlan {
     if (nodeName == null) {
       putString(buffer, null);
     } else {
-      putString(buffer, nodeName.toString());
+      putString(buffer, nodeName.getFullPath());
     }
   }
 

@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -31,14 +36,8 @@ import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 
 public class GroupByFillDataSet extends QueryDataSet {
 
@@ -49,11 +48,11 @@ public class GroupByFillDataSet extends QueryDataSet {
   // last timestamp for each time series
   private long[] lastTimeArray;
 
-  public GroupByFillDataSet(List<Path> paths, List<TSDataType> dataTypes,
+  public GroupByFillDataSet(List<PartialPath> paths, List<TSDataType> dataTypes,
       GroupByEngineDataSet groupByEngineDataSet,
       Map<TSDataType, IFill> fillTypes, QueryContext context, GroupByTimeFillPlan groupByFillPlan)
       throws StorageEngineException, IOException, QueryProcessException {
-    super(paths, dataTypes);
+    super(new ArrayList<>(paths), dataTypes);
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.fillTypes = fillTypes;
     initPreviousParis(context, groupByFillPlan);
@@ -64,7 +63,7 @@ public class GroupByFillDataSet extends QueryDataSet {
           throws StorageEngineException, IOException, QueryProcessException {
     previousValue = new Object[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
+      PartialPath path = (PartialPath) paths.get(i);
       TSDataType dataType = dataTypes.get(i);
       IFill fill;
       if (fillTypes.containsKey(dataType)) {

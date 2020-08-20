@@ -82,7 +82,7 @@ public class InOperator extends FunctionOperator {
     TSDataType type = pathTSDataTypeHashMap.get(singlePath);
     if (type == null) {
       throw new MetadataException(
-          "given seriesPath:{" + singlePath.toString() + "} don't exist in metadata");
+          "given seriesPath:{" + singlePath.getFullPath() + "} don't exist in metadata");
     }
     IUnaryExpression ret;
 
@@ -92,35 +92,35 @@ public class InOperator extends FunctionOperator {
         for (String val : values) {
           integerValues.add(Integer.valueOf(val));
         }
-        ret = In.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), integerValues, not);
+        ret = In.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), integerValues, not);
         break;
       case INT64:
         Set<Long> longValues = new HashSet<>();
         for (String val : values) {
           longValues.add(Long.valueOf(val));
         }
-        ret = In.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), longValues, not);
+        ret = In.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), longValues, not);
         break;
       case BOOLEAN:
         Set<Boolean> booleanValues = new HashSet<>();
         for (String val : values) {
           booleanValues.add(Boolean.valueOf(val));
         }
-        ret = In.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), booleanValues, not);
+        ret = In.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), booleanValues, not);
         break;
       case FLOAT:
         Set<Float> floatValues = new HashSet<>();
         for (String val : values) {
           floatValues.add(Float.parseFloat(val));
         }
-        ret = In.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), floatValues, not);
+        ret = In.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), floatValues, not);
         break;
       case DOUBLE:
         Set<Double> doubleValues = new HashSet<>();
         for (String val : values) {
           doubleValues.add(Double.parseDouble(val));
         }
-        ret = In.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), doubleValues, not);
+        ret = In.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), doubleValues, not);
         break;
       case TEXT:
         Set<Binary> binaryValues = new HashSet<>();
@@ -130,13 +130,13 @@ public class InOperator extends FunctionOperator {
                   .endsWith("\"")) ? new Binary(val.substring(1, val.length() - 1))
                   : new Binary(val));
         }
-        ret = In.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), binaryValues, not);
+        ret = In.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), binaryValues, not);
         break;
       default:
         throw new LogicalOperatorException(type.toString(), "");
     }
 
-    return new Pair<>(ret, singlePath.toString());
+    return new Pair<>(ret, singlePath.getFullPath());
   }
 
   @Override
@@ -145,7 +145,7 @@ public class InOperator extends FunctionOperator {
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(singlePath.toString(), this.tokenSymbol, not, values, ", single\n");
+    sc.addTail(singlePath.getFullPath(), this.tokenSymbol, not, values, ", single\n");
     return sc.toString();
   }
 
@@ -164,7 +164,7 @@ public class InOperator extends FunctionOperator {
   public String toString() {
     List<String> valuesList = new ArrayList<>(values);
     Collections.sort(valuesList);
-    return "[" + singlePath.toString() + tokenSymbol + not + valuesList + "]";
+    return "[" + singlePath.getFullPath() + tokenSymbol + not + valuesList + "]";
   }
 
   @Override

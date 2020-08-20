@@ -20,6 +20,13 @@
 package org.apache.iotdb.db.query.executor;
 
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -40,22 +47,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
-
 public class LastQueryExecutor {
-  private List<Path> selectedSeries;
+  private List<PartialPath> selectedSeries;
   private List<TSDataType> dataTypes;
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
@@ -63,7 +61,7 @@ public class LastQueryExecutor {
     this.dataTypes = lastQueryPlan.getDeduplicatedDataTypes();
   }
 
-  public LastQueryExecutor(List<Path> selectedSeries, List<TSDataType> dataTypes) {
+  public LastQueryExecutor(List<PartialPath> selectedSeries, List<TSDataType> dataTypes) {
     this.selectedSeries = selectedSeries;
     this.dataTypes = dataTypes;
   }
@@ -77,7 +75,7 @@ public class LastQueryExecutor {
       throws StorageEngineException, IOException, QueryProcessException {
 
     ListDataSet dataSet = new ListDataSet(
-        Arrays.asList(new Path(COLUMN_TIMESERIES), new Path(COLUMN_VALUE)),
+        Arrays.asList(new PartialPath(COLUMN_TIMESERIES, false), new PartialPath(COLUMN_VALUE, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     for (int i = 0; i < selectedSeries.size(); i++) {
@@ -143,7 +141,7 @@ public class LastQueryExecutor {
     }
 
     QueryDataSource dataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(seriesPath.toTSFilePath(), context, null);
+        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, null);
 
     List<TsFileResource> seqFileResources = dataSource.getSeqResources();
     List<TsFileResource> unseqFileResources = dataSource.getUnseqResources();
@@ -153,7 +151,7 @@ public class LastQueryExecutor {
     if (!seqFileResources.isEmpty()) {
       for (int i = seqFileResources.size() - 1; i >= 0; i--) {
         TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
-                seqFileResources.get(i), seriesPath.toTSFilePath(), context, null, deviceMeasurements);
+                seqFileResources.get(i), seriesPath, context, null, deviceMeasurements);
         if (timeseriesMetadata != null) {
           if (!timeseriesMetadata.isModified()) {
             Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
@@ -179,11 +177,11 @@ public class LastQueryExecutor {
 
     long version = 0;
     for (TsFileResource resource : unseqFileResources) {
-      if (resource.getEndTime(seriesPath.getPathWithoutLastNode()) < resultPair.getTimestamp()) {
+      if (resource.getEndTime(seriesPath.getDevice()) < resultPair.getTimestamp()) {
         continue;
       }
       TimeseriesMetadata timeseriesMetadata =
-          FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath.toTSFilePath(), context, null, deviceMeasurements);
+          FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, deviceMeasurements);
       if (timeseriesMetadata != null) {
         for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
           if (chunkMetaData.getEndTime() > resultPair.getTimestamp()

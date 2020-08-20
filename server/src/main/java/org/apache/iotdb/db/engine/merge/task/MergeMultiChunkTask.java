@@ -169,7 +169,7 @@ public class MergeMultiChunkTask {
   private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders)
       throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
-    String deviceId = currMergingPaths.get(0).getPathWithoutLastNode();
+    String deviceId = currMergingPaths.get(0).getDevice();
     long currDeviceMinTime = currTsFile.getStartTime(deviceId);
     // all paths in one call are from the same device
     if (currDeviceMinTime == Long.MAX_VALUE) {
@@ -211,7 +211,7 @@ public class MergeMultiChunkTask {
     RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(currTsFile);
     for (PartialPath path : currMergingPaths) {
       MeasurementSchema schema = resource.getSchema(path);
-      mergeFileWriter.addSchema(path.toTSFilePath(), schema);
+      mergeFileWriter.addSchema(path, schema);
     }
     // merge unseq data with seq data in this file or small chunks in this file into a larger chunk
     mergeFileWriter.startChunkGroup(deviceId);

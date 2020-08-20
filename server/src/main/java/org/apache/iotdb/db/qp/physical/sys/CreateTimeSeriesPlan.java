@@ -143,7 +143,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeByte((byte) PhysicalPlanType.CREATE_TIMESERIES.ordinal());
-    byte[] bytes = path.toString().getBytes();
+    byte[] bytes = path.getFullPath().getBytes();
     stream.writeInt(bytes.length);
     stream.write(bytes);
     stream.write(dataType.ordinal());

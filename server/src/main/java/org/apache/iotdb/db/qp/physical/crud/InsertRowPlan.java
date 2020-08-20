@@ -166,7 +166,7 @@ public class InsertRowPlan extends InsertPlan {
             markFailedMeasurementInsertion(i);
           } else {
             throw new QueryProcessException(new PathNotExistException(
-                deviceId.toString() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
+                deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
           }
           continue;
         }
@@ -236,7 +236,7 @@ public class InsertRowPlan extends InsertPlan {
     stream.writeByte((byte) type);
     stream.writeLong(time);
 
-    putString(stream, deviceId.toString());
+    putString(stream, deviceId.getFullPath());
 
     stream.writeInt(
         measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
@@ -374,7 +374,7 @@ public class InsertRowPlan extends InsertPlan {
     buffer.put((byte) type);
     buffer.putLong(time);
 
-    putString(buffer, deviceId.toString());
+    putString(buffer, deviceId.getFullPath());
 
     buffer
         .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));

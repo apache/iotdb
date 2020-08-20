@@ -52,7 +52,7 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
     stream.writeByte((byte) type);
     stream.writeInt(deletePathList.size());
     for (PartialPath path : deletePathList) {
-      putString(stream, path.toString());
+      putString(stream, path.getFullPath());
     }
   }
 
@@ -62,7 +62,7 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
     buffer.put((byte) type);
     buffer.putInt(deletePathList.size());
     for (PartialPath path : deletePathList) {
-      putString(buffer, path.toString());
+      putString(buffer, path.getFullPath());
     }
   }
 

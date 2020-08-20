@@ -60,7 +60,7 @@ public class SetTTLPlan extends PhysicalPlan {
     int type = PhysicalPlanType.TTL.ordinal();
     stream.writeByte((byte) type);
     stream.writeLong(dataTTL);
-    putString(stream, storageGroup.toString());
+    putString(stream, storageGroup.getFullPath());
   }
 
   @Override
@@ -68,7 +68,7 @@ public class SetTTLPlan extends PhysicalPlan {
     int type = PhysicalPlanType.TTL.ordinal();
     buffer.put((byte) type);
     buffer.putLong(dataTTL);
-    putString(buffer, storageGroup.toString());
+    putString(buffer, storageGroup.getFullPath());
   }
 
   @Override

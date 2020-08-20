@@ -24,9 +24,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -51,7 +49,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
   public GroupByTimeDataSet(QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
     throws QueryProcessException, IOException {
     this.queryId = context.getQueryId();
-    this.paths = plan.getDeduplicatedPaths();
+    this.paths = new ArrayList<>(plan.getDeduplicatedPaths());
     this.dataTypes = plan.getDeduplicatedDataTypes();
     this.groupByTimePlan = plan;
     this.context = context;
@@ -61,8 +59,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
     }
 
     Map<Integer, String> pathIndex = new HashMap<>();
-    Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan.getPaths().stream().map(
-        PartialPath::toTSFilePath).collect(Collectors.toList()), plan.getLevel(), pathIndex);
+    Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan.getPaths(), plan.getLevel(), pathIndex);
 
     // get all records from GroupByDataSet, then we merge every record
     if (logger.isDebugEnabled()) {

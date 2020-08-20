@@ -219,7 +219,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     if (fil.singlePath == null) {
       return -1;
     }
-    return fil.singlePath.toString().compareTo(singlePath.toString());
+    return fil.singlePath.getFullPath().compareTo(singlePath.getFullPath());
   }
 
   @Override
@@ -257,7 +257,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     }
     sc.addTail(this.tokenName);
     if (isSingle) {
-      sc.addTail("[single:", getSinglePath().toString(), "]");
+      sc.addTail("[single:", getSinglePath().getFullPath(), "]");
     }
     sc.addTail("\n");
     for (FilterOperator filter : childOperators) {
@@ -271,7 +271,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     StringContainer sc = new StringContainer();
     sc.addTail("[", this.tokenName);
     if (isSingle) {
-      sc.addTail("[single:", getSinglePath().toString(), "]");
+      sc.addTail("[single:", getSinglePath().getFullPath(), "]");
     }
     sc.addTail(" ");
     for (FilterOperator filter : childOperators) {

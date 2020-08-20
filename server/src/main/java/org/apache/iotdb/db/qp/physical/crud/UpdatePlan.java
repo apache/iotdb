@@ -110,7 +110,7 @@ public class UpdatePlan extends PhysicalPlan {
     StringContainer sc = new StringContainer();
     String preSpace = "  ";
     sc.addTail("UpdatePlan:");
-    sc.addTail(preSpace, "paths:  ", path.toString(), LINE_FEED_SIGNAL);
+    sc.addTail(preSpace, "paths:  ", path.getFullPath(), LINE_FEED_SIGNAL);
     sc.addTail(preSpace, "value:", value, LINE_FEED_SIGNAL);
     sc.addTail(preSpace, "filter: ", LINE_FEED_SIGNAL);
     intervals.forEach(p -> sc.addTail(preSpace, preSpace, p.left, p.right, LINE_FEED_SIGNAL));

@@ -30,11 +30,13 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 public class Path implements Serializable, Comparable<Path> {
 
   private static final long serialVersionUID = 3405277066329298200L;
-  private String measurement;
-  private String alias = null;
-  private String device;
-  private String fullPath;
+  protected String measurement;
+  protected String device;
+  protected String fullPath;
   private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
+
+
+  public Path() {}
 
   /**
    * this constructor doesn't split the path, only useful for table header.
@@ -125,11 +127,7 @@ public class Path implements Serializable, Comparable<Path> {
     return measurement;
   }
 
-  public String getAlias() { return alias; }
-
-  public void setAlias(String alias) { this.alias = alias; }
-
-  public String getFullPathWithAlias() { return device + TsFileConstant.PATH_SEPARATOR + alias; }
+  public String getFullPathWithAlias() { throw new IllegalArgumentException("doesn't alias in TSFile Path"); }
 
   @Override
   public int hashCode() {

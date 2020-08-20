@@ -78,7 +78,7 @@ public class AuthorityChecker {
       throws AuthException {
     IAuthorizer authorizer = BasicAuthorizer.getInstance();
     try {
-      String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.toString();
+      String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
       if (authorizer.checkUserPrivileges(username, fullPath, permission)) {
         return true;
       }

@@ -36,11 +36,10 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
@@ -114,18 +113,14 @@ public class QueryResourceManager {
     externalSortFileMap.computeIfAbsent(queryId, x -> new ArrayList<>()).add(deserializer);
   }
 
-  public QueryDataSource getQueryDataSource(Path selectedPath,
+  public QueryDataSource getQueryDataSource(PartialPath selectedPath,
       QueryContext context, Filter filter) throws StorageEngineException, QueryProcessException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath,
         filter);
-    QueryDataSource queryDataSource = null;
-    try {
-      queryDataSource = StorageEngine.getInstance()
-          .query(singleSeriesExpression, context, filePathsManager);
-    } catch (IllegalPathException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
+    QueryDataSource queryDataSource;
+    queryDataSource = StorageEngine.getInstance()
+        .query(singleSeriesExpression, context, filePathsManager);
     // calculate the distinct number of seq and unseq tsfiles
     if (config.isEnablePerformanceTracing()) {
       seqFileNumMap.computeIfAbsent(context.getQueryId(), k -> new HashSet<>())

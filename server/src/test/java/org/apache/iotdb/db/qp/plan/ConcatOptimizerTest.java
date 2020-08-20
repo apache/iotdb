@@ -80,16 +80,16 @@ public class ConcatOptimizerTest {
   public void testConcat1() throws QueryProcessException, RecognitionException {
     String inputSQL = "select s1 from root.laptop.d1";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
-    assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).toString());
+    assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).getFullPath());
   }
 
   @Test
   public void testConcat2() throws QueryProcessException, RecognitionException {
     String inputSQL = "select s1 from root.laptop.*";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
-    assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).toString());
-    assertEquals("root.laptop.d2.s1", plan.getPaths().get(1).toString());
-    assertEquals("root.laptop.d3.s1", plan.getPaths().get(2).toString());
+    assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).getFullPath());
+    assertEquals("root.laptop.d2.s1", plan.getPaths().get(1).getFullPath());
+    assertEquals("root.laptop.d3.s1", plan.getPaths().get(2).getFullPath());
   }
 
   @Test

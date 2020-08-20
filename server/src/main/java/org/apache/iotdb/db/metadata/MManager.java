@@ -207,7 +207,7 @@ public class MManager {
         List<PartialPath> storageGroups = mtree.getAllStorageGroupNames();
         for (PartialPath sg : storageGroups) {
           MNode node = mtree.getNodeByPath(sg);
-          seriesNumberInStorageGroups.put(sg.toString(), node.getLeafCount());
+          seriesNumberInStorageGroups.put(sg.getFullPath(), node.getLeafCount());
         }
         maxSeriesNumberAmongStorageGroup =
             seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
@@ -408,8 +408,8 @@ public class MManager {
 
       // update statistics
       if (config.isEnableParameterAdapter()) {
-        int size = seriesNumberInStorageGroups.get(storageGroupName.toString());
-        seriesNumberInStorageGroups.put(storageGroupName.toString(), size + 1);
+        int size = seriesNumberInStorageGroups.get(storageGroupName.getFullPath());
+        seriesNumberInStorageGroups.put(storageGroupName.getFullPath(), size + 1);
         if (size + 1 > maxSeriesNumberAmongStorageGroup) {
           maxSeriesNumberAmongStorageGroup = size + 1;
         }
@@ -461,8 +461,8 @@ public class MManager {
     if (isStorageGroup(prefixPath)) {
 
       if (config.isEnableParameterAdapter()) {
-        int size = seriesNumberInStorageGroups.get(prefixPath.toString());
-        seriesNumberInStorageGroups.put(prefixPath.toString(), 0);
+        int size = seriesNumberInStorageGroups.get(prefixPath.getFullPath());
+        seriesNumberInStorageGroups.put(prefixPath.getFullPath(), 0);
         if (size == maxSeriesNumberAmongStorageGroup) {
           seriesNumberInStorageGroups.values().stream()
               .max(Integer::compareTo)
@@ -485,7 +485,7 @@ public class MManager {
             if (emptyStorageGroup != null) {
               StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
             }
-            logWriter.deleteTimeseries(p.toString());
+            logWriter.deleteTimeseries(p.getFullPath());
           }
         } catch (DeleteFailedException e) {
           failedNames.add(e.getName());
@@ -560,8 +560,8 @@ public class MManager {
 
       if (config.isEnableParameterAdapter()) {
         PartialPath storageGroup = getStorageGroupName(path);
-        int size = seriesNumberInStorageGroups.get(storageGroup.toString());
-        seriesNumberInStorageGroups.put(storageGroup.toString(), size - 1);
+        int size = seriesNumberInStorageGroups.get(storageGroup.getFullPath());
+        seriesNumberInStorageGroups.put(storageGroup.getFullPath(), size - 1);
         if (size == maxSeriesNumberAmongStorageGroup) {
           seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
               .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
@@ -585,11 +585,11 @@ public class MManager {
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
 
       if (config.isEnableParameterAdapter()) {
-        ActiveTimeSeriesCounter.getInstance().init(storageGroup.toString());
-        seriesNumberInStorageGroups.put(storageGroup.toString(), 0);
+        ActiveTimeSeriesCounter.getInstance().init(storageGroup.getFullPath());
+        seriesNumberInStorageGroups.put(storageGroup.getFullPath(), 0);
       }
       if (!isRecovering) {
-        logWriter.setStorageGroup(storageGroup.toString());
+        logWriter.setStorageGroup(storageGroup.getFullPath());
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
@@ -622,10 +622,10 @@ public class MManager {
 
         if (config.isEnableParameterAdapter()) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
-          int size = seriesNumberInStorageGroups.get(storageGroup.toString());
+          int size = seriesNumberInStorageGroups.get(storageGroup.getFullPath());
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(size * -1);
-          ActiveTimeSeriesCounter.getInstance().delete(storageGroup.toString());
-          seriesNumberInStorageGroups.remove(storageGroup.toString());
+          ActiveTimeSeriesCounter.getInstance().delete(storageGroup.getFullPath());
+          seriesNumberInStorageGroups.remove(storageGroup.getFullPath());
           if (size == maxSeriesNumberAmongStorageGroup) {
             maxSeriesNumberAmongStorageGroup =
                 seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
@@ -633,7 +633,7 @@ public class MManager {
         }
         // if success
         if (!isRecovering) {
-          logWriter.deleteStorageGroup(storageGroup.toString());
+          logWriter.deleteStorageGroup(storageGroup.getFullPath());
         }
       }
     } catch (ConfigAdjusterException e) {
@@ -892,7 +892,7 @@ public class MManager {
             pair.left.putAll(pair.right);
             MeasurementSchema measurementSchema = leaf.getSchema();
             res.add(new ShowTimeSeriesResult(leaf.getFullPath(), leaf.getAlias(),
-                getStorageGroupName(leaf.getPartialPath()).toString(), measurementSchema.getType().toString(),
+                getStorageGroupName(leaf.getPartialPath()).getFullPath(), measurementSchema.getType().toString(),
                 measurementSchema.getEncodingType().toString(),
                 measurementSchema.getCompressor().toString(), pair.left));
             if (limit != 0) {
@@ -957,19 +957,19 @@ public class MManager {
         try {
           if (tagFileOffset < 0) {
             // no tags/attributes
-            res.add(new ShowTimeSeriesResult(ansString.left.toString(), ansString.right[0], ansString.right[1], ansString.right[2],
+            res.add(new ShowTimeSeriesResult(ansString.left.getFullPath(), ansString.right[0], ansString.right[1], ansString.right[2],
                 ansString.right[3], ansString.right[4], Collections.emptyMap()));
           } else {
             // has tags/attributes
             Pair<Map<String, String>, Map<String, String>> pair =
                 tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
             pair.left.putAll(pair.right);
-            res.add(new ShowTimeSeriesResult(ansString.left.toString(), ansString.right[0], ansString.right[1], ansString.right[2],
+            res.add(new ShowTimeSeriesResult(ansString.left.getFullPath(), ansString.right[0], ansString.right[1], ansString.right[2],
                 ansString.right[3], ansString.right[4], pair.left));
           }
         } catch (IOException e) {
           throw new MetadataException(
-              "Something went wrong while deserialize tag info of " + ansString.left.toString(), e);
+              "Something went wrong while deserialize tag info of " + ansString.left.getFullPath(), e);
         }
       }
       return res;
@@ -1070,7 +1070,7 @@ public class MManager {
       return node;
     } catch (CacheException e) {
       if (!autoCreateSchema) {
-        throw new PathNotExistException(path.toString());
+        throw new PathNotExistException(path.getFullPath());
       }
     } finally {
       if (node != null) {
@@ -1121,7 +1121,7 @@ public class MManager {
       node = mNodeCache.get(path);
       return node;
     } catch (CacheException e) {
-      throw new PathNotExistException(path.toString());
+      throw new PathNotExistException(path.getFullPath());
     } finally {
       lock.readLock().unlock();
     }
@@ -1181,7 +1181,7 @@ public class MManager {
     try {
       getStorageGroupNode(storageGroup).setDataTTL(dataTTL);
       if (!isRecovering) {
-        logWriter.setTTL(storageGroup.toString(), dataTTL);
+        logWriter.setTTL(storageGroup.getFullPath(), dataTTL);
       }
     } finally {
       lock.writeLock().unlock();
@@ -1252,7 +1252,7 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath.toString());
+        throw new PathNotExistException(fullPath.getFullPath());
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // upsert alias
@@ -1267,7 +1267,7 @@ public class MManager {
         leafMNode.getParent().addAlias(alias, leafMNode);
         leafMNode.setAlias(alias);
         // persist to WAL
-        logWriter.changeAlias(fullPath.toString(), alias);
+        logWriter.changeAlias(fullPath.getFullPath(), alias);
       }
 
       if (tagsMap == null && attributesMap == null) {
@@ -1276,7 +1276,7 @@ public class MManager {
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, attributesMap);
-        logWriter.changeOffset(fullPath.toString(), offset);
+        logWriter.changeOffset(fullPath.getFullPath(), offset);
         leafMNode.setOffset(offset);
         // update inverted Index map
         if (tagsMap != null) {
@@ -1355,13 +1355,13 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath.toString());
+        throw new PathNotExistException(fullPath.getFullPath());
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(Collections.emptyMap(), attributesMap);
-        logWriter.changeOffset(fullPath.toString(), offset);
+        logWriter.changeOffset(fullPath.getFullPath(), offset);
         leafMNode.setOffset(offset);
         return;
       }
@@ -1398,13 +1398,13 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath.toString());
+        throw new PathNotExistException(fullPath.getFullPath());
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
-        logWriter.changeOffset(fullPath.toString(), offset);
+        logWriter.changeOffset(fullPath.getFullPath(), offset);
         leafMNode.setOffset(offset);
         // update inverted Index map
         for (Entry<String, String> entry : tagsMap.entrySet()) {
@@ -1451,7 +1451,7 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath.toString());
+        throw new PathNotExistException(fullPath.getFullPath());
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // no tag or attribute, just do nothing.
@@ -1522,7 +1522,7 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath.toString());
+        throw new PathNotExistException(fullPath.getFullPath());
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       if (leafMNode.getOffset() < 0) {
@@ -1601,7 +1601,7 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath.toString());
+        throw new PathNotExistException(fullPath.getFullPath());
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       if (leafMNode.getOffset() < 0) {

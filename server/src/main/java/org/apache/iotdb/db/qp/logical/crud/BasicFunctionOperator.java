@@ -81,28 +81,28 @@ public class BasicFunctionOperator extends FunctionOperator {
     TSDataType type = pathTSDataTypeHashMap.get(singlePath);
     if (type == null) {
       throw new MetadataException(
-          "given seriesPath:{" + singlePath.toString() + "} don't exist in metadata");
+          "given seriesPath:{" + singlePath.getFullPath() + "} don't exist in metadata");
     }
     IUnaryExpression ret;
 
     switch (type) {
       case INT32:
-        ret = funcToken.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), Integer.valueOf(value));
+        ret = funcToken.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), Integer.valueOf(value));
         break;
       case INT64:
-        ret = funcToken.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), Long.valueOf(value));
+        ret = funcToken.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), Long.valueOf(value));
         break;
       case BOOLEAN:
-        ret = funcToken.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), Boolean.valueOf(value));
+        ret = funcToken.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), Boolean.valueOf(value));
         break;
       case FLOAT:
-        ret = funcToken.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), Float.valueOf(value));
+        ret = funcToken.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), Float.valueOf(value));
         break;
       case DOUBLE:
-        ret = funcToken.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()), Double.valueOf(value));
+        ret = funcToken.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), Double.valueOf(value));
         break;
       case TEXT:
-        ret = funcToken.getUnaryExpression(new Path(singlePath.getPathWithoutLastNode(), singlePath.getLastNode()),
+        ret = funcToken.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()),
             (value.startsWith("'") && value.endsWith("'")) || (value.startsWith("\"") && value
                 .endsWith("\""))
                 ? new Binary(value.substring(1, value.length() - 1)) : new Binary(value));
@@ -111,7 +111,7 @@ public class BasicFunctionOperator extends FunctionOperator {
         throw new LogicalOperatorException(type.toString(), "");
     }
 
-    return new Pair<>(ret, singlePath.toString());
+    return new Pair<>(ret, singlePath.getFullPath());
   }
 
   @Override
@@ -120,7 +120,7 @@ public class BasicFunctionOperator extends FunctionOperator {
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(singlePath.toString(), this.tokenSymbol, value, ", single\n");
+    sc.addTail(singlePath.getFullPath(), this.tokenSymbol, value, ", single\n");
     return sc.toString();
   }
 
@@ -142,7 +142,7 @@ public class BasicFunctionOperator extends FunctionOperator {
 
   @Override
   public String toString() {
-    return "[" + singlePath.toString() + tokenSymbol + value + "]";
+    return "[" + singlePath.getFullPath() + tokenSymbol + value + "]";
   }
 
   @Override
