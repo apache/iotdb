@@ -375,10 +375,10 @@ public class TsFileProcessor {
     long bytesCost = 0L;
     long unsealedResourceCost = 0L;
     long chunkMetadataCost = 0L;
-    if (!tsFileResource.getDeviceToIndexMap().containsKey(insertPlan.getDeviceId())) {
+    if (!tsFileResource.containsDevice(insertPlan.getDeviceId())) {
+      // FIXME: not accurate, needs to be fixed
       unsealedResourceCost += RamUsageEstimator.sizeOf(insertPlan.getDeviceId()) + Integer.BYTES;
       // if needs to extend the startTimes and endTimes arrays
-      // FIXME: not accurate, needs to be fixed
       if (tsFileResource.getDeviceToIndexMap().size() >= tsFileResource.getStartTimes().length) {
         unsealedResourceCost += tsFileResource.getDeviceToIndexMap().size() * Long.BYTES;
       }
