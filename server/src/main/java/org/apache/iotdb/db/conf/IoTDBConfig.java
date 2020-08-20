@@ -133,7 +133,7 @@ public class IoTDBConfig {
    * the default value of this parameter should be kept true in iotdb-engine.properties, we set it
    * as false here for convenient testing.
    */
-  private boolean enableParameterAdapter = false;
+  private boolean enableParameterAdapter = true;
 
   /**
    * Is the write ahead log enable.
@@ -242,12 +242,12 @@ public class IoTDBConfig {
   /**
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
    */
-  private long memtableSizeThreshold = 128 * 1024 * 1024L;
+  private long memtableSizeThreshold = 1024 * 1024 * 1024L;
 
   /**
    * When average series point number reaches this, flush the memtable to disk
    */
-  private int avgSeriesPointNumberThreshold = 500000;
+  private int avgSeriesPointNumberThreshold = 100000;
 
   /**
    * When merge point number reaches this, merge the vmfile to the tsfile.
@@ -262,12 +262,12 @@ public class IoTDBConfig {
   /**
    * The max vm num of each memtable. When vm num exceeds this, the vm files will merge to one.
    */
-  private int maxVmNum = 5;
+  private int maxVmNum = 10;
 
   /**
    * When vmfiles merge times exceeds this, merge the vmfile to the tsfile.
    */
-  private int maxMergeChunkNumInTsFile = 25;
+  private int maxMergeChunkNumInTsFile = 100;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -277,17 +277,17 @@ public class IoTDBConfig {
   /**
    * Memory allocated for timeSeriesMetaData cache in read process
    */
-  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 10 / 39;
+  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead / 10;
 
   /**
    * Memory allocated for chunkMetaData cache in read process
    */
-  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 5 / 39;
+  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead / 10;
 
   /**
    * Memory allocated for chunk cache in read process
    */
-  private long allocateMemoryForChunkCache = allocateMemoryForRead * 5 / 39;
+  private long allocateMemoryForChunkCache = allocateMemoryForRead / 10;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -311,7 +311,7 @@ public class IoTDBConfig {
   /**
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
    */
-  private int mManagerCacheSize = 400000;
+  private int mManagerCacheSize = 300000;
 
   /**
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
@@ -327,12 +327,12 @@ public class IoTDBConfig {
    * The threshold of items in external sort. If the number of chunks participating in sorting
    * exceeds this threshold, external sorting is enabled, otherwise memory sorting is used.
    */
-  private int externalSortThreshold = 60;
+  private int externalSortThreshold = 1000;
 
   /**
    * Is this IoTDB instance a receiver of sync or not.
    */
-  private boolean isSyncEnable = true;
+  private boolean isSyncEnable = false;
   /**
    * If this IoTDB instance is a receiver of sync, set the server port.
    */
@@ -385,17 +385,17 @@ public class IoTDBConfig {
   /**
    * Secret key for watermark
    */
-  private String watermarkSecretKey = "QWERTYUIOP*&=";
+  private String watermarkSecretKey = "IoTDB*2019@Beijing";
 
   /**
    * Bit string of watermark
    */
-  private String watermarkBitString = "11001010010101";
+  private String watermarkBitString = "100101110100";
 
   /**
    * Watermark method and parameters
    */
-  private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=5,embed_lsb_num=5)";
+  private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5)";
 
   /**
    * Switch of creating schema automatically
@@ -489,13 +489,13 @@ public class IoTDBConfig {
    * be continued, otherwise, the unfinished parts of such merges will not be continued while the
    * finished parts still remain as they are.
    */
-  private boolean continueMergeAfterReboot = true;
+  private boolean continueMergeAfterReboot = false;
 
   /**
    * A global merge will be performed each such interval, that is, each storage group will be merged
    * (if proper merge candidates can be found). Unit: second.
    */
-  private long mergeIntervalSec = 2 * 3600L;
+  private long mergeIntervalSec = 0L;
 
   /**
    * When set to true, all merges becomes full merge (the whole SeqFiles are re-written despite how
@@ -598,7 +598,7 @@ public class IoTDBConfig {
   /**
    * The default value of primitive array size in array pool
    */
-  private int primitiveArraySize = 64;
+  private int primitiveArraySize = 128;
 
   /**
    * whether enable data partition. If disabled, all data belongs to partition 0
