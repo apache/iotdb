@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -179,6 +180,9 @@ public class TsFileRecoverPerformer {
   private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter,
       ModificationFile modFile) {
     for (Modification modification : modFile.getModifications()) {
+      if (((Deletion) modification).getTimestamp() != Long.MAX_VALUE){
+        continue;
+      }
       String deviceId = modification.getDevice();
       String measurementId = modification.getMeasurement();
       TSDataType type = null;
