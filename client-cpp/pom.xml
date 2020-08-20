@@ -40,6 +40,7 @@
         <cmake-version>3.17.3</cmake-version>
         <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
+        <cmake.build.type>Release</cmake.build.type>
         <catch2.url>https://raw.githubusercontent.com/catchorg/Catch2/master/single_include/catch2/catch.hpp</catch2.url>
     </properties>
     <modules>
@@ -59,6 +60,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
+                <iotdb.server.script>start-server.sh</iotdb.server.script>
+                <dev.null.path>/dev/null</dev.null.path>
             </properties>
         </profile>
         <profile>
@@ -74,6 +77,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
+                <iotdb.server.script>start-server.sh</iotdb.server.script>
+                <dev.null.path>/dev/null</dev.null.path>
             </properties>
         </profile>
         <profile>
@@ -86,11 +91,11 @@
             <properties>
                 <os.suffix>win</os.suffix>
                 <os.classifier>windows-x86_64</os.classifier>
-                <!-- TODO: put this setting into a -D property, let users choose which generator to use. -->
                 <cmake.generator>Visual Studio 16 2019</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
-                <cmake.build.type>Release</cmake.build.type>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
+                <iotdb.server.script>start-server.bat</iotdb.server.script>
+                <dev.null.path>NUL</dev.null.path>
             </properties>
         </profile>
         <profile>
@@ -192,9 +197,6 @@
                                     -->
                                     <targetPath>${project.build.directory}/build/main</targetPath>
                                     <generator>${cmake.generator}</generator>
-                                    <options>
-                                        <option>-DWITH_PROXIES:BOOL=${option.with-proxies}</option>
-                                    </options>
                                 </configuration>
                             </execution>
                             <!-- Actually executes the build -->
@@ -276,6 +278,7 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <!-- Build and do session integration test -->
                     <plugin>
                         <artifactId>maven-resources-plugin</artifactId>
                         <version>2.6</version>
@@ -334,10 +337,10 @@
                                     <waitForInterrupt>false</waitForInterrupt>
                                     <!-- Maximum time in seconds to wait after launching IoTDB -->
                                     <waitAfterLaunch>1</waitAfterLaunch>
+                                    <!-- Redirect IoTDB server log to /dev/null -->
+                                    <processLogFile>${dev.null.path}</processLogFile>
                                     <arguments>
-                                        <argument>bash</argument>
-                                        <argument>-c</argument>
-                                        <argument>../../server/target/iotdb-server-0.11.0-SNAPSHOT/sbin/start-server.sh</argument>
+                                        <argument>../../server/target/iotdb-server-${project.version}/sbin/${iotdb.server.script}</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
