@@ -99,7 +99,6 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -144,12 +143,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PlanExecutor implements IPlanExecutor {
 
-  private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
   // for data query
   protected IQueryRouter queryRouter;
   // for system schema
@@ -254,7 +250,7 @@ public class PlanExecutor implements IPlanExecutor {
         operateTracing((TracingPlan) plan);
         return true;
       case CLEAR_CACHE:
-        operateClearCache((ClearCachePlan) plan);
+        operateClearCache();
         return true;
       case DELETE_PARTITION:
         DeletePartitionPlan p = (DeletePartitionPlan) plan;
@@ -283,7 +279,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void operateClearCache(ClearCachePlan plan) {
+  private void operateClearCache() {
     ChunkCache.getInstance().clear();
     ChunkMetadataCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
@@ -316,7 +312,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-      IOException, MetadataException {
+      IOException {
     QueryDataSet queryDataSet;
     if (queryPlan instanceof AlignByDevicePlan) {
       queryDataSet = getAlignByDeviceDataSet((AlignByDevicePlan) queryPlan, context, queryRouter);
