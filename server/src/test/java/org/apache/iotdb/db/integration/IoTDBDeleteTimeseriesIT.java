@@ -35,18 +35,22 @@ import org.junit.Test;
 public class IoTDBDeleteTimeseriesIT {
 
   private long memtableSizeThreshold;
+  private boolean enableVm;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     memtableSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
+    enableVm = IoTDBDescriptor.getInstance().getConfig().isEnableVm();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(16);
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);
   }
 
   @After
   public void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(enableVm);
     EnvironmentUtils.cleanEnv();
   }
 
