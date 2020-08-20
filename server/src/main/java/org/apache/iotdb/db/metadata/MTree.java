@@ -835,7 +835,7 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    Set<PartialPath> devices = new HashSet<>();
+    Set<PartialPath> devices = new TreeSet<>();
     findDevices(root, nodes, 1, devices);
     return devices;
   }
