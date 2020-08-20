@@ -141,8 +141,7 @@ public class FileLoader implements IFileLoader {
     } catch (SyncDeviceOwnerConflictException e) {
       LOGGER.error("Device owner has conflicts, so skip the loading file", e);
     } catch (LoadFileException | StorageEngineException | IllegalPathException e) {
-      LOGGER.error("Can not load new tsfile {}", newTsFile.getAbsolutePath(), e);
-      throw new IOException(e);
+      throw new IOException(String.format("Can not load new tsfile %s", newTsFile.getAbsolutePath()), e);
     }
     loadLog.finishLoadTsfile(newTsFile);
   }
@@ -157,8 +156,7 @@ public class FileLoader implements IFileLoader {
         LOGGER.info("The file {} to be deleted doesn't exist.", deletedTsFile.getAbsolutePath());
       }
     } catch (StorageEngineException | IllegalPathException e) {
-      LOGGER.error("Can not load deleted tsfile {}", deletedTsFile.getAbsolutePath(), e);
-      throw new IOException(e);
+      throw new IOException(String.format("Can not load deleted tsfile %s", deletedTsFile.getAbsolutePath()), e);
     }
     loadLog.finishLoadDeletedFile(deletedTsFile);
   }
