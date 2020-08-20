@@ -77,3 +77,49 @@ TEST_CASE( "Test insertRecord by string", "[testInsertRecord]") {
     REQUIRE( count == 101 );
     clearTimeseries();
 }
+
+TEST_CASE( "Test insertRecords ", "[testInsertRecords]") {
+    string deviceId = "root.sg1.d2";
+    vector<string> measurements;
+    measurements.push_back("s1");
+    measurements.push_back("s2");
+    measurements.push_back("s3");
+    vector<string> deviceIds;
+    vector<vector<string>> measurementsList;
+    vector<vector<string>> valuesList;
+    vector<int64_t> timestamps;
+
+    for (int64_t time = 0; time < 500; time++) {
+        vector<string> values;
+        values.push_back("1");
+        values.push_back("2");
+        values.push_back("3");
+
+        deviceIds.push_back(deviceId);
+        measurementsList.push_back(measurements);
+        valuesList.push_back(values);
+        timestamps.push_back(time);
+        if (time != 0 && time % 100 == 0) {
+            session->insertRecords(deviceIds, timestamps, measurementsList, valuesList);
+            deviceIds.clear();
+            measurementsList.clear();
+            valuesList.clear();
+            timestamps.clear();
+        }
+    }
+
+    session->insertRecords(deviceIds, timestamps, measurementsList, valuesList);
+
+    SessionDataSet *sessionDataSet = session->executeQueryStatement("select * from root.sg1.d2");
+    sessionDataSet->setBatchSize(1024);
+    int count = 0;
+    while (sessionDataSet->hasNext()) {
+        long index = 1;
+        count++;
+        for (Field *f : sessionDataSet->next()->fields) {
+            REQUIRE( f->longV == index );
+            index++;
+        }
+    }
+    REQUIRE( count == 500 );
+}
