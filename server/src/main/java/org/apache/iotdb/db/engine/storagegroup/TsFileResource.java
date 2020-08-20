@@ -811,4 +811,25 @@ public class TsFileResource {
         RamUsageEstimator.sizeOf(endTimes);
   }
 
+  /**
+   * Calculate the resource ram increment when insert data in TsFileProcessor
+   * 
+   * @return ramIncrement
+   */
+  public long estimateRamIncrement(String deviceToBeChecked) {
+    long ramIncrement = 0L;
+    if (!containsDevice(deviceToBeChecked)) {
+      // 80 is the Map.Entry header ram size
+      if (deviceToIndex.isEmpty()) {
+        ramIncrement += 80;
+      }
+      // 16 is the Integer ram size
+      ramIncrement += RamUsageEstimator.sizeOf(deviceToBeChecked) + 16;
+      // if needs to extend the startTimes and endTimes arrays
+      if (deviceToIndex.size() >= startTimes.length) {
+        ramIncrement += startTimes.length * Long.BYTES;
+      }
+    }
+    return ramIncrement;
+  }
 }

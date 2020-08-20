@@ -234,8 +234,10 @@ public class TsFileProcessor {
     if (workMemTable.checkIfArrayIsEnough(insertRowPlan)) {
       logger.debug("Array in work MemTable is enough");
       checkMemCostAndAddToTspInfo(insertRowPlan);
+      if (workMemTable == null) {
+        workMemTable = new PrimitiveMemTable();
+      }
       workMemTable.insert(insertRowPlan);
-
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         try {
           getLogNode().write(insertRowPlan);
@@ -375,14 +377,7 @@ public class TsFileProcessor {
     long bytesCost = 0L;
     long unsealedResourceCost = 0L;
     long chunkMetadataCost = 0L;
-    if (!tsFileResource.containsDevice(insertPlan.getDeviceId())) {
-      // FIXME: not accurate, needs to be fixed
-      unsealedResourceCost += RamUsageEstimator.sizeOf(insertPlan.getDeviceId()) + Integer.BYTES;
-      // if needs to extend the startTimes and endTimes arrays
-      if (tsFileResource.getDeviceToIndexMap().size() >= tsFileResource.getStartTimes().length) {
-        unsealedResourceCost += tsFileResource.getDeviceToIndexMap().size() * Long.BYTES;
-      }
-    }
+    unsealedResourceCost = tsFileResource.estimateRamIncrement(insertPlan.getDeviceId());
     for (int i = 0; i < insertPlan.getDataTypes().length; i++) {
       // skip failed Measurements
       if (insertPlan.getDataTypes()[i] == null) {
