@@ -1065,13 +1065,18 @@ public class PlanExecutor implements IPlanExecutor {
    * @param pathList deleted paths
    */
   protected void deleteDataOfTimeSeries(List<Path> pathList)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    for (Path p : pathList) {
-      DeletePlan deletePlan = new DeletePlan();
-      deletePlan.addPath(p);
-      deletePlan.setDeleteStartTime(Long.MIN_VALUE);
-      deletePlan.setDeleteEndTime(Long.MAX_VALUE);
-      processNonQuery(deletePlan);
+      throws QueryProcessException, StorageEngineException {
+    for (Path path : pathList) {
+      try {
+        if (!mManager.isPathExist(path.getFullPath())) {
+          throw new QueryProcessException(
+              String.format("Time series %s does not exist.", path.getFullPath()));
+        }
+        mManager.getStorageGroupName(path.getFullPath());
+        StorageEngine.getInstance().deleteTimeseries(path.getDevice(), path.getMeasurement());
+      } catch (MetadataException | StorageEngineException e) {
+        throw new QueryProcessException(e);
+      }
     }
   }
 

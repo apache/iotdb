@@ -237,6 +237,8 @@ public abstract class AbstractMemTable implements IMemTable {
       if (chunk == null) {
         return;
       }
+      // If startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE,
+      // it means that the whole timeseries is deleted
       if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
         deviceMap.remove(measurementId);
       }
