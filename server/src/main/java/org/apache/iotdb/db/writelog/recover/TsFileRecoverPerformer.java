@@ -132,7 +132,7 @@ public class TsFileRecoverPerformer {
     } else {
       // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
       // map must be updated first to avoid duplicated insertion
-      recoverResourceFromWriter(restorableTsFileIOWriter, resource.getModFile());
+      recoverResourceFromWriter(restorableTsFileIOWriter);
 
       // redo logs
       redoLogs(restorableTsFileIOWriter);
@@ -177,30 +177,17 @@ public class TsFileRecoverPerformer {
   }
 
 
-  private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter,
-      ModificationFile modFile) {
-    for (Modification modification : modFile.getModifications()) {
-      if (((Deletion) modification).getTimestamp() != Long.MAX_VALUE){
-        continue;
-      }
-      String deviceId = modification.getDevice();
-      String measurementId = modification.getMeasurement();
-      TSDataType type = null;
-      try {
-        type = MManager.getInstance().getSeriesSchema(deviceId, measurementId).getType();
-      } catch (MetadataException e) {
-        logger.error("Meet error when recovering resource from writer. ", e);
-      }
-      restorableTsFileIOWriter
-          .deleteMeasurementFromChunkGroupMetadataList(deviceId, measurementId, type);
-    }
-
+  private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter) {
     Map<String, List<ChunkMetadata>> deviceChunkMetaDataMap =
         restorableTsFileIOWriter.getDeviceChunkMetadataMap();
     for (Map.Entry<String, List<ChunkMetadata>> entry : deviceChunkMetaDataMap.entrySet()) {
       String deviceId = entry.getKey();
       List<ChunkMetadata> chunkMetadataList = entry.getValue();
+      TSDataType dataType = entry.getValue().get(entry.getValue().size() - 1).getDataType();
       for (ChunkMetadata chunkMetaData : chunkMetadataList) {
+        if (!chunkMetaData.getDataType().equals(dataType)) {
+          continue;
+        }
         resource.updateStartTime(deviceId, chunkMetaData.getStartTime());
         resource.updateEndTime(deviceId, chunkMetaData.getEndTime());
       }

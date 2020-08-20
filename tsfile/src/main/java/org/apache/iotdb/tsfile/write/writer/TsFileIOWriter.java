@@ -339,19 +339,6 @@ public class TsFileIOWriter {
     return deviceChunkMetadataMap;
   }
 
-  public void deleteMeasurementFromChunkGroupMetadataList(String deviceId, String measurementId,
-      TSDataType type) {
-    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-      if (chunkGroupMetadata.getDevice().equals(deviceId)) {
-        List<ChunkMetadata> metadataList = chunkGroupMetadata.getChunkMetadataList();
-        metadataList.removeIf(
-            metadata -> metadata.getMeasurementUid().equals(measurementId) && !metadata
-                .getDataType().equals(type));
-        chunkGroupMetadata.setChunkMetadataList(metadataList);
-      }
-    }
-  }
-
   public boolean canWrite() {
     return canWrite;
   }
