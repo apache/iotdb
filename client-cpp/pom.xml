@@ -319,22 +319,33 @@
                         </executions>
                     </plugin>
                     <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
+                        <groupId>com.bazaarvoice.maven.plugins</groupId>
+                        <artifactId>process-exec-maven-plugin</artifactId>
+                        <version>0.7</version>
                         <executions>
                             <execution>
-                                <id>start-iotdb-server</id>
-                                <phase>initialize</phase>
-                                <configuration>
-                                    <target>
-                                        <exec executable="bash" dir="../server/target/iotdb-server-0.11.0-SNAPSHOT/sbin" spawn="true">
-                                            <arg value="-c"/>
-                                            <arg value="./start-server.sh"/>
-                                        </exec>
-                                    </target>
-                                </configuration>
+                                <id>iotdb-process</id>
+                                <phase>generate-test-resources</phase>
                                 <goals>
-                                    <goal>run</goal>
+                                    <goal>start</goal>
+                                </goals>
+                                <configuration>
+                                    <name>start-iotdb</name>
+                                    <waitForInterrupt>false</waitForInterrupt>
+                                    <!-- Maximum time in seconds to wait after launching IoTDB -->
+                                    <waitAfterLaunch>1</waitAfterLaunch>
+                                    <arguments>
+                                        <argument>bash</argument>
+                                        <argument>-c</argument>
+                                        <argument>../../server/target/iotdb-server-0.11.0-SNAPSHOT/sbin/start-server.sh</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>stop-all</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop-all</goal>
                                 </goals>
                             </execution>
                         </executions>
