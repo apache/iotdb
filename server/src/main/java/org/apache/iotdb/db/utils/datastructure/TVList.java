@@ -222,7 +222,7 @@ public abstract class TVList {
   public void clear() {
     size = 0;
     sorted = true;
-    minTime = Long.MIN_VALUE;
+    minTime = Long.MAX_VALUE;
     clearTime();
     clearSortedTime();
 
