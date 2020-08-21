@@ -44,6 +44,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
+import org.apache.iotdb.rpc.Config;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
 import org.apache.thrift.TException;
@@ -66,8 +67,8 @@ public abstract class AbstractCli {
 
   static final String BOOL_FORMAT_ARGS = "bf";
   static final String BOOL_FORMAT_NAME = "boolformat";
-  static final String BOOL = "bool";
-  static final String NUMBER = "number";
+  static final String BOOL = Config.Constant.BOOLEAN.getType();
+  static final String NUMBER = Config.Constant.NUMBER.getType();
 
   private static final String EXECUTE_ARGS = "e";
   private static final String EXECUTE_NAME = "execute";

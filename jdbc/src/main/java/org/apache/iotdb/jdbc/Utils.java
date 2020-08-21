@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.jdbc;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,7 +30,8 @@ import java.util.regex.Pattern;
 public class Utils {
 
   static final Pattern URL_PATTERN = Pattern.compile("([^:]+):([0-9]{1,5})/?");
-
+  static final String PARAMS_SEPARATION = "?";
+  static final String PARAMS_ASSIGNMENT = "=";
   /**
    * Parse JDBC connection URL The only supported format of the URL is:
    * jdbc:iotdb://localhost:6667/.
@@ -43,6 +46,19 @@ public class Utils {
     Matcher matcher = null;
     if (url.startsWith(Config.IOTDB_URL_PREFIX)) {
       String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
+      Map<String,String> paramKV = new HashMap<>();
+      if (subURL.contains(PARAMS_SEPARATION)){
+        String[] parameters = subURL.split("["+PARAMS_SEPARATION+"]");
+        subURL = parameters[0];
+        for (int i=1; i<parameters.length; i++){
+          String[] kv = parameters[i].split(PARAMS_ASSIGNMENT);
+          if (kv.length<2){
+            continue;
+          }
+          paramKV.put(kv[0],kv[1]);
+        }
+      }
+      params.setParams(paramKV);
       matcher = URL_PATTERN.matcher(subURL);
       if (matcher.matches()) {
         isUrlLegal = true;
@@ -63,5 +79,5 @@ public class Utils {
 
     return params;
   }
-  
+
 }

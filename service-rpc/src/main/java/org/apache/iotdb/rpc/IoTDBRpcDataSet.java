@@ -392,7 +392,7 @@ public class IoTDBRpcDataSet {
     switch (tsDataType) {
       case BOOLEAN:
         boolean result = BytesUtils.bytesToBool(values[index]);
-        if (RpcConfig.boolFormat== RpcConfig.Constant.BOOLEAN){
+        if (Config.boolFormat== Config.Constant.BOOLEAN){
           return String.valueOf(result);
         }else{
           return String.valueOf(result?1:0);

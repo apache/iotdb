@@ -31,7 +31,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
-import org.apache.iotdb.rpc.RpcConfig;
 import org.apache.thrift.TException;
 
 /**
@@ -93,7 +92,7 @@ public class WinCli extends AbstractCli {
         return false;
       }
       if (commandLine.hasOption(RPC_COMPRESS_ARGS)) {
-        RpcConfig.rpcThriftCompressionEnable = true;
+        org.apache.iotdb.rpc.Config.rpcThriftCompressionEnable = true;
       }
       if (commandLine.hasOption(ISO8601_ARGS)) {
         setTimeFormat("long");
@@ -124,7 +123,7 @@ public class WinCli extends AbstractCli {
 
       boolFormat = checkRequiredArg(BOOL_FORMAT_ARGS,BOOL_FORMAT_ARGS,commandLine,false, boolFormat);
       if (NUMBER.equals(boolFormat)){
-        RpcConfig.setBoolFormat(RpcConfig.Constant.NUMBER);
+        org.apache.iotdb.rpc.Config.setBoolFormat(org.apache.iotdb.rpc.Config.Constant.NUMBER);
       }
 
       password = commandLine.getOptionValue(PASSWORD_ARGS);

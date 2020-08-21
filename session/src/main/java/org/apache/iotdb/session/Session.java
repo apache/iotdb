@@ -20,15 +20,9 @@ package org.apache.iotdb.session;
 
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import org.apache.iotdb.rpc.BatchExecutionException;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.StatementExecutionException;
+import java.util.*;
+
+import org.apache.iotdb.rpc.*;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
@@ -82,13 +76,21 @@ public class Session {
   private ZoneId zoneId;
   private long statementId;
   private int fetchSize;
+  private Map<String,String> params;
 
   public Session(String host, int port) {
     this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
   }
 
+  public Session(String host, int port, Map<String,String> params) {
+    this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, params);
+  }
+
   public Session(String host, String port, String username, String password) {
     this(host, Integer.parseInt(port), username, password);
+  }
+  public Session(String host, String port, String username, String password, Map<String,String> params) {
+    this(host, Integer.parseInt(port), username, password, params);
   }
 
   public Session(String host, int port, String username, String password) {
@@ -97,6 +99,15 @@ public class Session {
     this.username = username;
     this.password = password;
     this.fetchSize = Config.DEFAULT_FETCH_SIZE;
+    this.params = new HashMap<>();
+  }
+
+  public Session(String host, int port, String username, String password, Map<String,String> params) {
+    this.host = host;
+    this.port = port;
+    this.username = username;
+    this.password = password;
+    this.params = params;
   }
 
   public Session(String host, int port, String username, String password, int fetchSize) {
@@ -105,6 +116,16 @@ public class Session {
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
+    this.params = new HashMap<>();
+  }
+
+  public Session(String host, int port, String username, String password, int fetchSize, Map<String,String> params) {
+    this.host = host;
+    this.port = port;
+    this.username = username;
+    this.password = password;
+    this.fetchSize = fetchSize;
+    this.params = params;
   }
 
   public synchronized void open() throws IoTDBConnectionException {
@@ -172,7 +193,12 @@ public class Session {
     }
     isClosed = false;
 
+    String boolFormat = params.get(Config.PARAMS_BOOL_FORMAT);
+    if (org.apache.iotdb.rpc.Config.Constant.NUMBER.getType().equals(boolFormat)){
+      org.apache.iotdb.rpc.Config.setBoolFormat(org.apache.iotdb.rpc.Config.Constant.NUMBER);
+    }
     client = RpcUtils.newSynchronizedClient(client);
+
 
   }
 

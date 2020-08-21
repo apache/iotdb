@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.jdbc;
 
+import java.util.Map;
+
 public class IoTDBConnectionParams {
 
   private String host = Config.IOTDB_DEFAULT_HOST;
@@ -26,6 +28,15 @@ public class IoTDBConnectionParams {
   private String seriesName = Config.DEFAULT_SERIES_NAME;
   private String username = Config.DEFAULT_USER;
   private String password = Config.DEFALUT_PASSWORD;
+  private Map<String,String> params;
+
+  public Map<String, String> getParams() {
+    return params;
+  }
+
+  public void setParams(Map<String, String> params) {
+    this.params = params;
+  }
 
   public IoTDBConnectionParams(String url) {
     this.jdbcUriString = url;

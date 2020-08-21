@@ -8,14 +8,27 @@ package org.apache.iotdb.rpc;
  * @Description TODO
  * @createTime 2020年08月19日 22:26:00
  */
-public class RpcConfig {
+public class Config {
     public enum Constant {
-        NUMBER, BOOLEAN
+        NUMBER("number"), BOOLEAN("bool");
+
+        Constant(String type) {
+            this.type = type;
+        }
+        private String type;
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
     }
 
-    private RpcConfig(){}
+    private Config(){}
 
-    static Constant boolFormat = Constant.BOOLEAN;
+    public static Constant boolFormat = Constant.BOOLEAN;
     public static boolean rpcThriftCompressionEnable = false;
     public static int connectionTimeoutInMs = 0;
     public static final int RETRY_NUM = 3;
@@ -23,7 +36,7 @@ public class RpcConfig {
     public static int fetchSize = 10000;
 
     public static void setBoolFormat(Constant boolFormat) {
-        RpcConfig.boolFormat = boolFormat;
+        Config.boolFormat = boolFormat;
     }
 
 }

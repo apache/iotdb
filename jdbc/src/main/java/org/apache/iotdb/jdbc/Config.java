@@ -44,14 +44,10 @@ public class Config {
   static final String AUTH_PASSWORD = "password";
   static final String DEFALUT_PASSWORD = "password";
 
-  //static final int RETRY_NUM = 3;
-  //static final long RETRY_INTERVAL = 1000;
-
-  //static int fetchSize = 10000;
-  //static int connectionTimeoutInMs = 0;
-
   public static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
 
-  //public static boolean rpcThriftCompressionEnable = false;
-
+  /**
+   * other parameter names
+   */
+  public static final String PARAMS_BOOL_FORMAT = "boolFormat";
 }

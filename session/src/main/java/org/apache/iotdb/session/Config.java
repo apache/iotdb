@@ -25,4 +25,8 @@ public class Config {
   public static final int DEFAULT_FETCH_SIZE = 10000;
   public static final int DEFAULT_TIMEOUT_MS = 0;
 
+  /**
+   * other parameter names
+   */
+  public static final String PARAMS_BOOL_FORMAT = "boolFormat";
 }
