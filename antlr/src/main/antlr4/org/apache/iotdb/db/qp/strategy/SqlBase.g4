@@ -102,7 +102,7 @@ selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
     | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
-    | lastClause #lastElement
+    | lastClause orderByTimeClause?  #lastElement
     ;
 
 functionCall
@@ -207,12 +207,12 @@ fromClause
 
 specialClause
     : specialLimit
-    | groupByTimeClause specialLimit?
-    | groupByFillClause specialLimit?
+    | groupByTimeClause specialLimit? orderByTimeClause ?
+    | groupByFillClause specialLimit? orderByTimeClause ?
     | orderByTimeClause ?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
-    | groupByLevelClause specialLimit?
+    | groupByLevelClause specialLimit? orderByTimeClause ?
     ;
 
 specialLimit
@@ -254,8 +254,8 @@ disableAlign
     ;
 
 alignByDeviceClauseOrDisableAlign
-    : alignByDeviceClause
-    | disableAlign
+    : alignByDeviceClause orderByTimeClause ?
+    | disableAlign orderByTimeClause ?
     ;
 
 fillClause
