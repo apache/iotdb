@@ -65,7 +65,7 @@ public abstract class TVList {
   public TVList() {
     timestamps = new ArrayList<>();
     size = 0;
-    minTime = Long.MIN_VALUE;
+    minTime = Long.MAX_VALUE;
   }
 
   public int size() {
