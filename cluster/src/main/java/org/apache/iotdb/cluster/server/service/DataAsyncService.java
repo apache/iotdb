@@ -122,6 +122,31 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       } catch (TException e1) {
         resultHandler.onError(e1);
       }
+    } catch (MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void pullMeasurementSchema(PullSchemaRequest request,
+      AsyncMethodCallback<PullSchemaResp> resultHandler) throws TException {
+    try {
+      resultHandler.onComplete(dataGroupMember.pullMeasurementSchema(request));
+    } catch (CheckConsistencyException e) {
+      // if this node cannot synchronize with the leader with in a given time, forward the
+      // request to the leader
+      dataGroupMember.waitLeader();
+      AsyncDataClient client =
+          (AsyncDataClient) dataGroupMember.getAsyncClient(dataGroupMember.getLeader());
+      if (client == null) {
+        resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+        return;
+      }
+      try {
+        client.pullTimeSeriesSchema(request, resultHandler);
+      } catch (TException e1) {
+        resultHandler.onError(e1);
+      }
     }
   }
 

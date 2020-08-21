@@ -76,8 +76,8 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.PullMeasurementSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -105,6 +105,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
@@ -536,9 +537,9 @@ public class DataGroupMemberTest extends MemberTest {
       PullSchemaRequest request = new PullSchemaRequest();
       request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
       AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
-      PullTimeseriesSchemaHandler handler = new PullTimeseriesSchemaHandler(TestUtils.getNode(1),
+      PullMeasurementSchemaHandler handler = new PullMeasurementSchemaHandler(TestUtils.getNode(1),
           request.getPrefixPaths(), result);
-      new DataAsyncService(dataGroupMember).pullTimeSeriesSchema(request, handler);
+      new DataAsyncService(dataGroupMember).pullMeasurementSchema(request, handler);
       for (int i = 0; i < 10; i++) {
         assertTrue(result.get().contains(TestUtils.getTestMeasurementSchema(i)));
       }
@@ -546,12 +547,14 @@ public class DataGroupMemberTest extends MemberTest {
       // the member is a leader itself
       dataGroupMember.setCharacter(NodeCharacter.LEADER);
       result.set(null);
-      handler = new PullTimeseriesSchemaHandler(TestUtils.getNode(1),
+      handler = new PullMeasurementSchemaHandler(TestUtils.getNode(1),
           request.getPrefixPaths(), result);
-      new DataAsyncService(dataGroupMember).pullTimeSeriesSchema(request, handler);
+      new DataAsyncService(dataGroupMember).pullMeasurementSchema(request, handler);
       for (int i = 0; i < 10; i++) {
         assertTrue(result.get().contains(TestUtils.getTestMeasurementSchema(i)));
       }
+    } catch (TException e) {
+      e.printStackTrace();
     } finally {
       RaftServer.setConnectionTimeoutInMS(prevTimeOut);
       RaftServer.setSyncLeaderMaxWaitMs(prevMaxWait);

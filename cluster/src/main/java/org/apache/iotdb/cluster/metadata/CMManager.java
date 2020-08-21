@@ -111,7 +111,7 @@ public class CMManager extends MManager {
     } catch (PathNotExistException e) {
       // pull from remote node
       List<MeasurementSchema> schemas = metaPuller
-          .pullTimeSeriesSchemas(Collections.singletonList(path));
+          .pullMeasurementSchemas(Collections.singletonList(path));
       if (!schemas.isEmpty()) {
         cacheMeta(path, new MeasurementMeta(schemas.get(0)));
         return schemas.get(0).getType();
@@ -184,7 +184,7 @@ public class CMManager extends MManager {
     for (String s : measurementList) {
       schemasToPull.add(deviceId + IoTDBConstant.PATH_SEPARATOR + s);
     }
-    List<MeasurementSchema> schemas = metaPuller.pullTimeSeriesSchemas(schemasToPull);
+    List<MeasurementSchema> schemas = metaPuller.pullMeasurementSchemas(schemasToPull);
     for (MeasurementSchema schema : schemas) {
       cacheMeta(deviceId + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), new MeasurementMeta(schema));
     }

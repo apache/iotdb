@@ -46,6 +46,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -55,6 +56,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
@@ -85,20 +87,19 @@ public class DataLogApplierTest extends IoTDBTest {
     }
 
     @Override
-    public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths,
+    public void pullTimeSeriesSchemas(List<String> prefixPaths,
         Node ignoredGroup)
       throws StorageGroupNotSetException {
-      List<MeasurementSchema> ret = new ArrayList<>();
       for (String prefixPath : prefixPaths) {
         if (prefixPath.startsWith(TestUtils.getTestSg(4))) {
           for (int i = 0; i < 10; i++) {
-            ret.add(TestUtils.getTestMeasurementSchema(i));
+            IoTDB.metaManager.cacheMeta(prefixPath,
+                new MeasurementMeta(TestUtils.getTestMeasurementSchema(i)));
           }
         } else if (!prefixPath.startsWith(TestUtils.getTestSg(5))) {
           throw new StorageGroupNotSetException(prefixPath);
         }
       }
-      return ret;
     }
 
     @Override
@@ -128,6 +129,19 @@ public class DataLogApplierTest extends IoTDBTest {
         public void pullTimeSeriesSchema(PullSchemaRequest request,
             AsyncMethodCallback<PullSchemaResp> resultHandler) {
           new Thread(() -> new DataAsyncService(testDataGroupMember).pullTimeSeriesSchema(request, resultHandler)).start();
+        }
+
+        @Override
+        public void pullMeasurementSchema(PullSchemaRequest request,
+            AsyncMethodCallback<PullSchemaResp> resultHandler) {
+          new Thread(() -> {
+            try {
+              new DataAsyncService(testDataGroupMember).pullMeasurementSchema(request,
+                  resultHandler);
+            } catch (TException e) {
+              e.printStackTrace();
+            }
+          }).start();
         }
       };
     }

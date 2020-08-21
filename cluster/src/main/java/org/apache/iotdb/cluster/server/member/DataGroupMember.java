@@ -1066,7 +1066,7 @@ public class DataGroupMember extends RaftMember {
    * @param request
    */
   public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request)
-      throws CheckConsistencyException {
+      throws CheckConsistencyException, MetadataException {
     // try to synchronize with the leader first in case that some schema logs are accepted but
     // not committed yet
     syncLeaderWithConsistencyCheck();
@@ -1074,9 +1074,9 @@ public class DataGroupMember extends RaftMember {
     // collect local timeseries schemas and send to the requester
     // the measurements in them are the full paths.
     List<String> prefixPaths = request.getPrefixPaths();
-    List<MeasurementSchema> timeseriesSchemas = new ArrayList<>();
+    List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
     for (String prefixPath : prefixPaths) {
-      IoTDB.metaManager.collectSeries(prefixPath, timeseriesSchemas);
+      IoTDB.metaManager.collectTimeseriesSchema(prefixPath, timeseriesSchemas);
     }
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Collected {} schemas for {} and other {} paths", name,
@@ -1089,7 +1089,48 @@ public class DataGroupMember extends RaftMember {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
       dataOutputStream.writeInt(timeseriesSchemas.size());
-      for (MeasurementSchema timeseriesSchema : timeseriesSchemas) {
+      for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
+        timeseriesSchema.serializeTo(dataOutputStream);
+      }
+    } catch (IOException ignored) {
+      // unreachable for we are using a ByteArrayOutputStream
+    }
+    resp.setSchemaBytes(byteArrayOutputStream.toByteArray());
+    return resp;
+  }
+
+  /**
+   * Send the timeseries schemas of some prefix paths to the requestor. The schemas will be sent in
+   * the form of a list of MeasurementSchema, but notice the measurements in them are the full
+   * paths.
+   *
+   * @param request
+   */
+  public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request)
+      throws CheckConsistencyException {
+    // try to synchronize with the leader first in case that some schema logs are accepted but
+    // not committed yet
+    syncLeaderWithConsistencyCheck();
+
+    // collect local timeseries schemas and send to the requester
+    // the measurements in them are the full paths.
+    List<String> prefixPaths = request.getPrefixPaths();
+    List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+    for (String prefixPath : prefixPaths) {
+      IoTDB.metaManager.collectSeries(prefixPath, measurementSchemas);
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Collected {} schemas for {} and other {} paths", name,
+          measurementSchemas.size(), prefixPaths.get(0), prefixPaths.size() - 1);
+    }
+
+    PullSchemaResp resp = new PullSchemaResp();
+    // serialize the schemas
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      dataOutputStream.writeInt(measurementSchemas.size());
+      for (MeasurementSchema timeseriesSchema : measurementSchemas) {
         timeseriesSchema.serializeTo(dataOutputStream);
       }
     } catch (IOException ignored) {

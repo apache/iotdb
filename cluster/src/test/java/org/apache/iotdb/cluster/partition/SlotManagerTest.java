@@ -42,9 +42,16 @@ import org.junit.Test;
 public class SlotManagerTest {
 
   private SlotManager slotManager;
+  private boolean prevEnableLogPersistence;
+  private int prevReplicaNum;
 
   @Before
   public void setUp() {
+    prevEnableLogPersistence =
+        ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence();
+    prevReplicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    ClusterDescriptor.getInstance().getConfig().setEnableRaftLogPersistence(true);
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(2);
     int testSlotNum = 100;
     slotManager = new SlotManager(testSlotNum, null);
   }
@@ -62,6 +69,8 @@ public class SlotManagerTest {
       }
     }).start();
     slotManager.waitSlot(0);
+    ClusterDescriptor.getInstance().getConfig().setEnableRaftLogPersistence(prevEnableLogPersistence);
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicaNum);
   }
 
   @Test

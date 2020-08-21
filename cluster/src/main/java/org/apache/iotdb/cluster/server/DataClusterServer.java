@@ -378,6 +378,14 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
+  public void pullMeasurementSchema(PullSchemaRequest request,
+      AsyncMethodCallback<PullSchemaResp> resultHandler) throws TException {
+    DataAsyncService service = getDataAsyncService(request.getHeader(), resultHandler,
+        "Pull measurement schema");
+    service.pullMeasurementSchema(request, resultHandler);
+  }
+
+  @Override
   public void getAllDevices(Node header, List<String> paths,
       AsyncMethodCallback<Set<String>> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, resultHandler, "Get all devices");
@@ -727,6 +735,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request) throws TException {
     return getDataSyncService(request.getHeader()).pullTimeSeriesSchema(request);
+  }
+
+  @Override
+  public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request) throws TException {
+    return getDataSyncService(request.getHeader()).pullMeasurementSchema(request);
   }
 
   @Override

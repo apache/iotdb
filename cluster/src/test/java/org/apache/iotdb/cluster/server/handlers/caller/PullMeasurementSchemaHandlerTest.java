@@ -33,11 +33,10 @@ import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
-public class PullTimeseriesSchemaHandlerTest {
+public class PullMeasurementSchemaHandlerTest {
 
   @Test
   public void testComplete() throws InterruptedException {
@@ -49,7 +48,7 @@ public class PullTimeseriesSchemaHandlerTest {
       measurementSchemas.add(TestUtils.getTestMeasurementSchema(i));
     }
 
-    PullTimeseriesSchemaHandler handler = new PullTimeseriesSchemaHandler(owner,
+    PullMeasurementSchemaHandler handler = new PullMeasurementSchemaHandler(owner,
         Collections.singletonList(prefixPath),
         result);
     synchronized (result) {
@@ -79,7 +78,7 @@ public class PullTimeseriesSchemaHandlerTest {
     String prefixPath = "root";
     AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
 
-    PullTimeseriesSchemaHandler handler = new PullTimeseriesSchemaHandler(owner,
+    PullMeasurementSchemaHandler handler = new PullMeasurementSchemaHandler(owner,
         Collections.singletonList(prefixPath), result);
     synchronized (result) {
       new Thread(() -> handler.onError(new TestException())).start();

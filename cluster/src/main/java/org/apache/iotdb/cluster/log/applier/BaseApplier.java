@@ -37,7 +37,9 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -139,13 +141,8 @@ abstract class BaseApplier implements LogApplier {
   private void pullTimeseriesSchema(InsertPlan plan, Node ignoredGroup) throws QueryProcessException {
     try {
       String path = plan.getDeviceId();
-      List<MeasurementSchema> schemas = metaGroupMember
+      metaGroupMember
           .pullTimeSeriesSchemas(Collections.singletonList(path), ignoredGroup);
-      for (MeasurementSchema schema : schemas) {
-        registerMeasurement(
-            path + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(),
-            schema);
-      }
     } catch (MetadataException e1) {
       throw new QueryProcessException(e1);
     }

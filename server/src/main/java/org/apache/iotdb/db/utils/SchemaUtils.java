@@ -30,12 +30,14 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,7 +92,16 @@ SchemaUtils {
       logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(),
           e);
     }
+  }
 
+  public static void cacheTimeseriesSchema(TimeseriesSchema schema) {
+    Path path = new Path(schema.getFullPath());
+    TSDataType dataType = schema.getType();
+    TSEncoding encoding = schema.getEncodingType();
+    CompressionType compressionType = schema.getCompressor();
+    IoTDB.metaManager.cacheMeta(path.getFullPath(),
+        new MeasurementMeta(new MeasurementSchema(path.getMeasurement(),
+        dataType, encoding, compressionType)));
   }
 
   public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths)

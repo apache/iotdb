@@ -20,28 +20,26 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import java.nio.ByteBuffer;
-import java.sql.Time;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PullTimeseriesSchemaHandler implements AsyncMethodCallback<PullSchemaResp> {
+public class PullMeasurementSchemaHandler implements AsyncMethodCallback<PullSchemaResp> {
 
-  private static final Logger logger = LoggerFactory.getLogger(PullTimeseriesSchemaHandler.class);
+  private static final Logger logger = LoggerFactory.getLogger(PullMeasurementSchemaHandler.class);
 
   private Node owner;
   private List<String> prefixPaths;
-  private AtomicReference<List<TimeseriesSchema>> timeseriesSchemas;
+  private AtomicReference<List<MeasurementSchema>> timeseriesSchemas;
 
-  public PullTimeseriesSchemaHandler(Node owner, List<String> prefixPaths,
-      AtomicReference<List<TimeseriesSchema>> timeseriesSchemas) {
+  public PullMeasurementSchemaHandler(Node owner, List<String> prefixPaths,
+      AtomicReference<List<MeasurementSchema>> timeseriesSchemas) {
     this.owner = owner;
     this.prefixPaths = prefixPaths;
     this.timeseriesSchemas = timeseriesSchemas;
@@ -51,9 +49,9 @@ public class PullTimeseriesSchemaHandler implements AsyncMethodCallback<PullSche
   public void onComplete(PullSchemaResp response) {
     ByteBuffer buffer = response.schemaBytes;
     int size = buffer.getInt();
-    List<TimeseriesSchema> schemas = new ArrayList<>(size);
+    List<MeasurementSchema> schemas = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      schemas.add(TimeseriesSchema.deserializeFrom(buffer));
+      schemas.add(MeasurementSchema.deserializeFrom(buffer));
     }
     synchronized (timeseriesSchemas) {
       timeseriesSchemas.set(schemas);

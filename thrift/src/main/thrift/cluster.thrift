@@ -376,6 +376,11 @@ service TSDataService extends RaftService {
   PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
 
   /**
+  * Pull all measurement schemas prefixed by a given path.
+  **/
+  PullSchemaResp pullMeasurementSchema(1: PullSchemaRequest request)
+
+  /**
   * Perform a previous fill and return the timevalue pair in binary.
   * @return a binary TimeValuePair
   **/

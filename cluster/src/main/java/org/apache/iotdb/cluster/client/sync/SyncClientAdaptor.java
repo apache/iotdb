@@ -52,6 +52,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.PullMeasurementSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -66,6 +67,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
 
 /**
@@ -218,9 +220,21 @@ public class SyncClientAdaptor {
     return response.get();
   }
 
-  public static List<MeasurementSchema> pullTimeSeriesSchema(AsyncDataClient client,
+  public static List<MeasurementSchema> pullMeasurementSchema(AsyncDataClient client,
       PullSchemaRequest pullSchemaRequest) throws TException, InterruptedException {
     AtomicReference<List<MeasurementSchema>> timeseriesSchemas = new AtomicReference<>();
+    synchronized (timeseriesSchemas) {
+      client.pullMeasurementSchema(pullSchemaRequest,
+          new PullMeasurementSchemaHandler(client.getNode(), pullSchemaRequest.getPrefixPaths(),
+              timeseriesSchemas));
+      timeseriesSchemas.wait(RaftServer.getReadOperationTimeoutMS());
+    }
+    return timeseriesSchemas.get();
+  }
+
+  public static List<TimeseriesSchema> pullTimeseriesSchema(AsyncDataClient client,
+      PullSchemaRequest pullSchemaRequest) throws TException, InterruptedException {
+    AtomicReference<List<TimeseriesSchema>> timeseriesSchemas = new AtomicReference<>();
     synchronized (timeseriesSchemas) {
       client.pullTimeSeriesSchema(pullSchemaRequest,
           new PullTimeseriesSchemaHandler(client.getNode(), pullSchemaRequest.getPrefixPaths(),

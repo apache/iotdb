@@ -1708,6 +1708,11 @@ public class MManager {
     }
   }
 
+  public void collectTimeseriesSchema(String prefixPath,
+      Collection<TimeseriesSchema> timeseriesSchemas) throws MetadataException {
+    collectTimeseriesSchema(getNodeByPath(prefixPath), timeseriesSchemas);
+  }
+
   public void collectMeasurementSchema(MNode startingNode,
       Collection<MeasurementSchema> timeseriesSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();

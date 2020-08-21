@@ -113,6 +113,27 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       PullSchemaResp pullSchemaResp = client.pullTimeSeriesSchema(request);
       putBackSyncClient(client);
       return pullSchemaResp;
+    } catch (MetadataException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request) throws TException {
+    try {
+      return dataGroupMember.pullMeasurementSchema(request);
+    } catch (CheckConsistencyException e) {
+      // if this node cannot synchronize with the leader with in a given time, forward the
+      // request to the leader
+      dataGroupMember.waitLeader();
+      SyncDataClient client =
+          (SyncDataClient) dataGroupMember.getSyncClient(dataGroupMember.getLeader());
+      if (client == null) {
+        throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+      }
+      PullSchemaResp pullSchemaResp = client.pullTimeSeriesSchema(request);
+      putBackSyncClient(client);
+      return pullSchemaResp;
     }
   }
 

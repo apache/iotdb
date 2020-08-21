@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.server.member;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_SEC;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -159,6 +158,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -194,7 +194,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -1959,23 +1959,24 @@ public class MetaGroupMember extends RaftMember {
 
   /**
    * Pull the all timeseries schemas of given prefixPaths from remote nodes. All prefixPaths must
-   * contain the storage group.
+   * contain a storage group.
    *
    * @param ignoredGroup do not pull schema from the group to avoid backward dependency
    */
-  public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths,
+  public void pullTimeSeriesSchemas(List<String> prefixPaths,
       Node ignoredGroup)
       throws MetadataException {
     logger.debug("{}: Pulling timeseries schemas of {}", name, prefixPaths);
     // split the paths by the data groups that will hold them
     Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
     for (String prefixPath : prefixPaths) {
+      if (SQLConstant.RESERVED_TIME.equalsIgnoreCase(prefixPath)) {
+        continue;
+      }
       PartitionGroup partitionGroup;
       try {
         partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
-        if (partitionGroup.getHeader().equals(ignoredGroup)) {
-          continue;
-        }
+
       } catch (StorageGroupNotSetException e) {
         // the storage group is not found locally, but may be found in the leader, retry after
         // synchronizing with the leader
@@ -1988,10 +1989,11 @@ public class MetaGroupMember extends RaftMember {
         partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
 
       }
-      partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>()).add(prefixPath);
+      if (!partitionGroup.getHeader().equals(ignoredGroup)) {
+        partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>()).add(prefixPath);
+      }
     }
 
-    List<MeasurementSchema> schemas = new ArrayList<>();
     // pull timeseries schema from every group involved
     if (logger.isDebugEnabled()) {
       logger.debug("{}: pulling schemas of {} and other {} paths from {} groups", name,
@@ -2002,13 +2004,9 @@ public class MetaGroupMember extends RaftMember {
         .entrySet()) {
       PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
       List<String> paths = partitionGroupListEntry.getValue();
-      pullTimeSeriesSchemas(partitionGroup, paths, schemas);
+      pullTimeSeriesSchemas(partitionGroup, paths);
     }
-    if (logger.isDebugEnabled()) {
-      logger.debug("{}: pulled {} schemas for {} and other {} paths", name, schemas.size(),
-          prefixPaths.get(0), prefixPaths.size() - 1);
-    }
-    return schemas;
+
   }
 
   /**
@@ -2018,22 +2016,13 @@ public class MetaGroupMember extends RaftMember {
    *
    * @param partitionGroup
    * @param prefixPaths
-   * @param results
    */
   public void pullTimeSeriesSchemas(PartitionGroup partitionGroup,
-      List<String> prefixPaths, List<MeasurementSchema> results) {
+      List<String> prefixPaths) {
     if (partitionGroup.contains(thisNode)) {
       // the node is in the target group, synchronize with leader should be enough
       getLocalDataMember(partitionGroup.getHeader(), null,
           "Pull timeseries of " + prefixPaths).syncLeader();
-      int preSize = results.size();
-      for (String prefixPath : prefixPaths) {
-        IoTDB.metaManager.collectSeries(prefixPath, results);
-      }
-      if (logger.isDebugEnabled()) {
-        logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from local", name,
-            results.size() - preSize, prefixPaths.get(0), prefixPaths.size() - 1);
-      }
       return;
     }
 
@@ -2043,20 +2032,19 @@ public class MetaGroupMember extends RaftMember {
     pullSchemaRequest.setPrefixPaths(prefixPaths);
 
     for (Node node : partitionGroup) {
-      if (pullTimeSeriesSchemas(node, pullSchemaRequest, results)) {
+      if (tryPullTimeSeriesSchemas(node, pullSchemaRequest)) {
         break;
       }
     }
   }
 
-  private boolean pullTimeSeriesSchemas(Node node,
-      PullSchemaRequest request, List<MeasurementSchema> results) {
+  private boolean tryPullTimeSeriesSchemas(Node node, PullSchemaRequest request) {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Pulling timeseries schemas of {} and other {} paths from {}", name,
           request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node);
     }
 
-    List<MeasurementSchema> schemas = null;
+    List<TimeseriesSchema> schemas = null;
     try {
       schemas = pullTimeSeriesSchemas(node, request);
     } catch (IOException | TException e) {
@@ -2076,18 +2064,20 @@ public class MetaGroupMember extends RaftMember {
             name, schemas.size(), request.getPrefixPaths().get(0),
             request.getPrefixPaths().size() - 1, node, request.getHeader());
       }
-      results.addAll(schemas);
+      for (TimeseriesSchema schema : schemas) {
+        SchemaUtils.cacheTimeseriesSchema(schema);
+      }
       return true;
     }
     return false;
   }
 
-  private List<MeasurementSchema> pullTimeSeriesSchemas(Node node,
+  private List<TimeseriesSchema> pullTimeSeriesSchemas(Node node,
       PullSchemaRequest request) throws TException, InterruptedException, IOException {
-    List<MeasurementSchema> schemas;
+    List<TimeseriesSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      schemas = SyncClientAdaptor.pullTimeSeriesSchema(client, request);
+      schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
     } else {
       SyncDataClient syncDataClient = getSyncDataClient(node,
           RaftServer.getReadOperationTimeoutMS());
@@ -2096,7 +2086,7 @@ public class MetaGroupMember extends RaftMember {
       int size = buffer.getInt();
       schemas = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
-        schemas.add(MeasurementSchema.deserializeFrom(buffer));
+        schemas.add(TimeseriesSchema.deserializeFrom(buffer));
       }
     }
 
@@ -2119,12 +2109,8 @@ public class MetaGroupMember extends RaftMember {
     try {
       return getSeriesTypesByPathLocally(paths, aggregations);
     } catch (PathNotExistException e) {
-      Pair<List<TSDataType>, List<TSDataType>> types = getSeriesTypesByPathRemotely(
+      return getSeriesTypesByPathRemotely(
           paths, aggregations);
-      if (types == null) {
-        throw e;
-      }
-      return types;
     }
   }
 
@@ -2151,33 +2137,10 @@ public class MetaGroupMember extends RaftMember {
     for (Path path : paths) {
       pathStr.add(path.getFullPath());
     }
-    // pull schemas remotely
-    List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStr, null);
-    if (schemas.isEmpty()) {
-      // if timeseries cannot be found remotely, too, it does not exist
-      return null;
-    }
+    // pull schemas remotely and cache them
+    pullTimeSeriesSchemas(pathStr, null);
 
-    // consider the aggregations to get the real data type
-    List<TSDataType> columnType = new ArrayList<>();
-    List<TSDataType> measurementType = new ArrayList<>();
-    for (int i = 0; i < schemas.size(); i++) {
-      TSDataType dataType = null;
-      if (aggregations != null) {
-        String aggregation = aggregations.get(i);
-        // aggregations like first/last value does not have fixed data types and will return a
-        // null
-        dataType = getAggregationType(aggregation);
-      }
-      if (dataType == null) {
-        MeasurementSchema schema = schemas.get(i);
-        columnType.add(schema.getType());
-      } else {
-        columnType.add(dataType);
-      }
-      measurementType.add(schemas.get(i).getType());
-    }
-    return new Pair<>(columnType, measurementType);
+    return getSeriesTypesByPathLocally(paths, aggregations);
   }
 
   /**
@@ -2208,26 +2171,21 @@ public class MetaGroupMember extends RaftMember {
         return new Pair<>(columnDataTypes, measurementDataTypes);
       }
     } catch (PathNotExistException e) {
-      // pull schemas remotely
-      List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStrs, null);
-      if (schemas.isEmpty()) {
-        // if one timeseries cannot be found remotely, too, it does not exist
-        throw e;
-      }
+      // pull schemas remotely and cache them
+      pullTimeSeriesSchemas(pathStrs, null);
 
-      // consider the aggregations to get the real data type
-      List<TSDataType> columnType = new ArrayList<>();
-      List<TSDataType> measurementType = new ArrayList<>();
-      // aggregations like first/last value does not have fixed data types and will return a null
-      TSDataType aggregationType = getAggregationType(aggregation);
-      for (MeasurementSchema schema : schemas) {
-        if (aggregationType == null) {
-          columnType.add(schema.getType());
-        } else {
-          columnType.add(aggregationType);
-        }
+      List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByString(pathStrs, null);
+      // if the aggregation function is null, the type of column in result set
+      // is equal to the real type of the measurement
+      if (aggregation == null) {
+        return new Pair<>(measurementDataTypes, measurementDataTypes);
+      } else {
+        // if the aggregation function is not null,
+        // we should recalculate the type of column in result set
+        List<TSDataType> columnDataTypes = SchemaUtils
+            .getSeriesTypesByString(pathStrs, aggregation);
+        return new Pair<>(columnDataTypes, measurementDataTypes);
       }
-      return new Pair<>(columnType, measurementType);
     }
   }
 

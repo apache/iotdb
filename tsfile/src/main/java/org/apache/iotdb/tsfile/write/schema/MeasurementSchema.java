@@ -44,6 +44,11 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
  */
 public class MeasurementSchema implements Comparable<MeasurementSchema>, Serializable {
 
+  public static final MeasurementSchema TIME_SCHEMA = new MeasurementSchema("time",
+      TSDataType.INT64,
+      TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+      TSFileDescriptor.getInstance().getConfig().getCompressor());
+
   private String measurementId;
   private TSDataType type;
   private TSEncoding encoding;

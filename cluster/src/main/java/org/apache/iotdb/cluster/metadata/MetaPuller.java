@@ -77,7 +77,7 @@ public class MetaPuller {
    * <p>
    * Attention!!!  Just copy from metaGroupMember now, will refactor later.
    */
-  public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths)
+  public List<MeasurementSchema> pullMeasurementSchemas(List<String> prefixPaths)
       throws MetadataException {
     logger.debug("{}: Pulling timeseries schemas of {}", metaGroupMember.getName(), prefixPaths);
     // split the paths by the data groups that will hold them
@@ -112,7 +112,7 @@ public class MetaPuller {
         .entrySet()) {
       PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
       List<String> paths = partitionGroupListEntry.getValue();
-      pullTimeSeriesSchemas(partitionGroup, paths, schemas);
+      pullMeasurementSchemas(partitionGroup, paths, schemas);
     }
     if (logger.isDebugEnabled()) {
       logger.debug("{}: pulled {} schemas for {} and other {} paths", metaGroupMember.getName(),
@@ -130,7 +130,7 @@ public class MetaPuller {
    * @param prefixPaths
    * @param results
    */
-  public void pullTimeSeriesSchemas(PartitionGroup partitionGroup,
+  public void pullMeasurementSchemas(PartitionGroup partitionGroup,
       List<String> prefixPaths, List<MeasurementSchema> results) {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the node is in the target group, synchronize with leader should be enough
@@ -154,13 +154,13 @@ public class MetaPuller {
     pullSchemaRequest.setPrefixPaths(prefixPaths);
 
     for (Node node : partitionGroup) {
-      if (pullTimeSeriesSchemas(node, pullSchemaRequest, results)) {
+      if (pullMeasurementSchemas(node, pullSchemaRequest, results)) {
         break;
       }
     }
   }
 
-  private boolean pullTimeSeriesSchemas(Node node,
+  private boolean pullMeasurementSchemas(Node node,
       PullSchemaRequest request, List<MeasurementSchema> results) {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Pulling timeseries schemas of {} and other {} paths from {}",
@@ -170,7 +170,7 @@ public class MetaPuller {
 
     List<MeasurementSchema> schemas = null;
     try {
-      schemas = pullTimeSeriesSchemas(node, request);
+      schemas = pullMeasurementSchemas(node, request);
     } catch (IOException | TException e) {
       logger
           .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
@@ -196,13 +196,13 @@ public class MetaPuller {
     return false;
   }
 
-  private List<MeasurementSchema> pullTimeSeriesSchemas(Node node,
+  private List<MeasurementSchema> pullMeasurementSchemas(Node node,
       PullSchemaRequest request) throws TException, InterruptedException, IOException {
     List<MeasurementSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client = metaGroupMember
           .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      schemas = SyncClientAdaptor.pullTimeSeriesSchema(client, request);
+      schemas = SyncClientAdaptor.pullMeasurementSchema(client, request);
     } else {
       SyncDataClient syncDataClient = metaGroupMember
           .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());

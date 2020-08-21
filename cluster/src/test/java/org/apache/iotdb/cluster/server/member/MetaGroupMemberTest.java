@@ -54,6 +54,7 @@ import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
@@ -227,7 +228,6 @@ public class MetaGroupMemberTest extends MemberTest {
               resultHandler.onComplete(response);
             }).start();
           }
-
         };
       }
 
@@ -236,6 +236,10 @@ public class MetaGroupMemberTest extends MemberTest {
         return mockedPullTimeSeriesSchema(request);
       }
 
+      @Override
+      public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request) {
+        return mockedPullTimeSeriesSchema(request);
+      }
     };
     dataGroupMember.setLogManager(new TestPartitionedLogManager(null,
         partitionTable, group.getHeader(), TestSnapshot::new));
@@ -717,12 +721,10 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testPullTimeseriesSchema() throws MetadataException {
     System.out.println("Start testPullTimeseriesSchema()");
     for (int i = 0; i < 10; i++) {
-      List<MeasurementSchema> schemas =
-          testMetaMember.pullTimeSeriesSchemas(Collections.singletonList(TestUtils.getTestSg(i)),
-              null);
-      assertEquals(20, schemas.size());
+      testMetaMember.pullTimeSeriesSchemas(Collections.singletonList(TestUtils.getTestSg(i)),
+          null);
       for (int j = 0; j < 10; j++) {
-        assertTrue(schemas.contains(TestUtils.getTestMeasurementSchema(j)));
+        assertTrue(IoTDB.metaManager.isPathExist(TestUtils.getTestSeries(i, j)));
       }
     }
   }

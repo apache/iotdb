@@ -79,8 +79,12 @@ public class RaftLogManagerTest {
   };
   private int testIdentifier = 1;
 
+  private boolean prevLogPersistence;
+
   @Before
   public void setUp() {
+    prevLogPersistence = ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence();
+    ClusterDescriptor.getInstance().getConfig().setEnableRaftLogPersistence(true);
     appliedLogs = new HashSet<>();
   }
 
@@ -91,6 +95,7 @@ public class RaftLogManagerTest {
       file.delete();
     }
     dir.delete();
+    ClusterDescriptor.getInstance().getConfig().setEnableRaftLogPersistence(prevLogPersistence);
   }
 
   @Test
