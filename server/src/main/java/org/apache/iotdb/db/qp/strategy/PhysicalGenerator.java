@@ -731,7 +731,7 @@ public class PhysicalGenerator {
   }
 
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesName(path);
+    return IoTDB.metaManager.getAllTimeseriesPath(path);
   }
 
   protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {

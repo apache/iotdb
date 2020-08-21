@@ -51,13 +51,13 @@ public class IoTDBConfig {
   private static final String ID_MATCHER = "([a-zA-Z0-9/@#$%&{}\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
 
   // e.g.,  .s1
-  private static final String NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
+  private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
 
   // for path like: root.sg1.d1."1.2.3", root."sg.1".d1."1.2.3"
-  private static final String NODE_WITH_QUOTATION_MARK_MATCHER =
-      "[" + PATH_SEPARATOR + "]([\"])?" + ID_MATCHER + "(" + NODE_MATCHER + ")*([\"])?";
+  private static final String NODE_MATCHER =
+      "[" + PATH_SEPARATOR + "]([\"])?" + ID_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*([\"])?";
   public static final Pattern PATH_PATTERN = Pattern
-      .compile(PATH_ROOT + "(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
+      .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_MATCHER + ")?");
 
   /**
    * Port which the metrics service listens to.

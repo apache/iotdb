@@ -127,12 +127,12 @@ public class MTreeTest {
     }
 
     try {
-      List<PartialPath> result = root.getAllTimeseriesName(new PartialPath("root.a.*.s0"));
+      List<PartialPath> result = root.getAllTimeseriesPath(new PartialPath("root.a.*.s0"));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
 
-      result = root.getAllTimeseriesName(new PartialPath("root.a.*.*.s0"));
+      result = root.getAllTimeseriesPath(new PartialPath("root.a.*.*.s0"));
       assertEquals("root.a.b.d0.s0", result.get(0).getFullPath());
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -173,24 +173,24 @@ public class MTreeTest {
     }
 
     try {
-      List<PartialPath> result = root.getAllTimeseriesName(new PartialPath("root.a.*.s0"));
+      List<PartialPath> result = root.getAllTimeseriesPath(new PartialPath("root.a.*.s0"));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
 
-      result = root.getAllTimeseriesName(new PartialPath("root.a.*.temperature"));
+      result = root.getAllTimeseriesPath(new PartialPath("root.a.*.temperature"));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
 
-      List<PartialPath> result2 = root.getAllTimeseriesPath(new PartialPath("root.a.*.s0"));
+      List<PartialPath> result2 = root.getAllTimeseriesPathWithAlias(new PartialPath("root.a.*.s0"));
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.s0", result2.get(0).getFullPath());
       assertNull(result2.get(0).getAlias());
       assertEquals("root.a.d1.s0", result2.get(1).getFullPath());
       assertNull(result2.get(1).getAlias());
 
-      result2 = root.getAllTimeseriesPath(new PartialPath("root.a.*.temperature"));
+      result2 = root.getAllTimeseriesPathWithAlias(new PartialPath("root.a.*.temperature"));
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.temperature", result2.get(0).getFullPathWithAlias());
       assertEquals("root.a.d1.temperature", result2.get(1).getFullPathWithAlias());
@@ -261,10 +261,10 @@ public class MTreeTest {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isPathExist(new PartialPath("root.laptop.d1")));
       assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1")));
-      assertEquals("root.laptop.d1", root.getStorageGroupName(new PartialPath("root.laptop.d1")).getFullPath());
+      assertEquals("root.laptop.d1", root.getStorageGroupPath(new PartialPath("root.laptop.d1")).getFullPath());
       assertFalse(root.isPathExist(new PartialPath("root.laptop.d1.s1")));
       assertTrue(root.checkStorageGroupByPath(new PartialPath("root.laptop.d1.s1")));
-      assertEquals("root.laptop.d1", root.getStorageGroupName(new PartialPath("root.laptop.d1.s1")).getFullPath());
+      assertEquals("root.laptop.d1", root.getStorageGroupPath(new PartialPath("root.laptop.d1.s1")).getFullPath());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -288,16 +288,16 @@ public class MTreeTest {
     assertFalse(root.isPathExist(new PartialPath("root.laptop.d2.s1")));
 
     try {
-      assertEquals("root.laptop.d1", root.getStorageGroupName(new PartialPath("root.laptop.d1.s0")).getFullPath());
+      assertEquals("root.laptop.d1", root.getStorageGroupPath(new PartialPath("root.laptop.d1.s0")).getFullPath());
       root.createTimeseries(new PartialPath("root.laptop.d1.s0"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
-      assertEquals("root.laptop.d1", root.getStorageGroupName(new PartialPath("root.laptop.d1.s1")).getFullPath());
+      assertEquals("root.laptop.d1", root.getStorageGroupPath(new PartialPath("root.laptop.d1.s1")).getFullPath());
       root.createTimeseries(new PartialPath("root.laptop.d1.s1"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
-      assertEquals("root.laptop.d2", root.getStorageGroupName(new PartialPath("root.laptop.d2.s0")).getFullPath());
+      assertEquals("root.laptop.d2", root.getStorageGroupPath(new PartialPath("root.laptop.d2.s0")).getFullPath());
       root.createTimeseries(new PartialPath("root.laptop.d2.s0"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
-      assertEquals("root.laptop.d2", root.getStorageGroupName(new PartialPath("root.laptop.d2.s1")).getFullPath());
+      assertEquals("root.laptop.d2", root.getStorageGroupPath(new PartialPath("root.laptop.d2.s1")).getFullPath());
       root.createTimeseries(new PartialPath("root.laptop.d2.s1"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
     } catch (MetadataException e) {
@@ -444,7 +444,7 @@ public class MTreeTest {
 
     assertEquals(2, root.getDevices(new PartialPath("root")).size());
     assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root")));
-    assertEquals(2, root.getAllTimeseriesName(new PartialPath("root")).size());
     assertEquals(2, root.getAllTimeseriesPath(new PartialPath("root")).size());
+    assertEquals(2, root.getAllTimeseriesPathWithAlias(new PartialPath("root")).size());
   }
 }

@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
 public class MetaUtils {
 
@@ -68,14 +68,14 @@ public class MetaUtils {
   }
 
   /**
-   * Get storage group name when creating schema automatically is enable
+   * Get storage group path when creating schema automatically is enable
    *
    * e.g., path = root.a.b.c and level = 1, return root.a
    *
    * @param path path
    * @param level level
    */
-  static PartialPath getStorageGroupNameByLevel(PartialPath path, int level) throws MetadataException {
+  static PartialPath getStorageGroupPathByLevel(PartialPath path, int level) throws MetadataException {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(path.getFullPath());

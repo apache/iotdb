@@ -312,6 +312,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   }
 
   protected List<PartialPath> removeWildcard(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPath(path);
+    return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path);
   }
 }

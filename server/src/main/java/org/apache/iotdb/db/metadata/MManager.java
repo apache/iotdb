@@ -204,7 +204,7 @@ public class MManager {
       int lineNumber = initFromLog(logFile);
 
       if (config.isEnableParameterAdapter()) {
-        List<PartialPath> storageGroups = mtree.getAllStorageGroupNames();
+        List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
         for (PartialPath sg : storageGroups) {
           MNode node = mtree.getNodeByPath(sg);
           seriesNumberInStorageGroups.put(sg.getFullPath(), node.getLeafCount());
@@ -377,16 +377,16 @@ public class MManager {
       /*
        * get the storage group with auto create schema
        */
-      PartialPath storageGroupName;
+      PartialPath storageGroupPath;
       try {
-        storageGroupName = mtree.getStorageGroupName(path);
+        storageGroupPath = mtree.getStorageGroupPath(path);
       } catch (StorageGroupNotSetException e) {
         if (!config.isAutoCreateSchemaEnabled()) {
           throw e;
         }
-        storageGroupName =
-            MetaUtils.getStorageGroupNameByLevel(path, config.getDefaultStorageGroupLevel());
-        setStorageGroup(storageGroupName);
+        storageGroupPath =
+            MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
+        setStorageGroup(storageGroupPath);
       }
 
       // check memory
@@ -408,8 +408,8 @@ public class MManager {
 
       // update statistics
       if (config.isEnableParameterAdapter()) {
-        int size = seriesNumberInStorageGroups.get(storageGroupName.getFullPath());
-        seriesNumberInStorageGroups.put(storageGroupName.getFullPath(), size + 1);
+        int size = seriesNumberInStorageGroups.get(storageGroupPath.getFullPath());
+        seriesNumberInStorageGroups.put(storageGroupPath.getFullPath(), size + 1);
         if (size + 1 > maxSeriesNumberAmongStorageGroup) {
           maxSeriesNumberAmongStorageGroup = size + 1;
         }
@@ -473,7 +473,7 @@ public class MManager {
       mNodeCache.clear();
     }
     try {
-      List<PartialPath> allTimeseries = mtree.getAllTimeseriesName(prefixPath);
+      List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.getStatStorageGroupPrefixArray()));
 
@@ -540,7 +540,7 @@ public class MManager {
 
   /**
    * @param path full path from root to leaf node
-   * @return after delete if the storage group is empty, return its name, otherwise return null
+   * @return after delete if the storage group is empty, return its path, otherwise return null
    */
   private PartialPath deleteOneTimeseriesAndUpdateStatistics(PartialPath path)
       throws MetadataException, IOException {
@@ -548,7 +548,7 @@ public class MManager {
     try {
       Pair<PartialPath, MeasurementMNode> pair = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
       removeFromTagInvertedIndex(pair.right);
-      PartialPath storageGroupName = pair.left;
+      PartialPath storageGroupPath = pair.left;
 
       // TODO: delete the path node and all its ancestors
       mNodeCache.clear();
@@ -559,7 +559,7 @@ public class MManager {
       }
 
       if (config.isEnableParameterAdapter()) {
-        PartialPath storageGroup = getStorageGroupName(path);
+        PartialPath storageGroup = getStorageGroupPath(path);
         int size = seriesNumberInStorageGroups.get(storageGroup.getFullPath());
         seriesNumberInStorageGroups.put(storageGroup.getFullPath(), size - 1);
         if (size == maxSeriesNumberAmongStorageGroup) {
@@ -567,7 +567,7 @@ public class MManager {
               .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
         }
       }
-      return storageGroupName;
+      return storageGroupPath;
     } finally {
       lock.writeLock().unlock();
     }
@@ -702,7 +702,7 @@ public class MManager {
    *
    * @param prefixPath a prefix of a full path. if the wildcard is not at the tail, then each
    *                   wildcard can only match one level, otherwise it can match to the tail.
-   * @return A HashSet instance which stores devices names with given prefixPath.
+   * @return A HashSet instance which stores devices paths with given prefixPath.
    */
   public Set<PartialPath> getDevices(PartialPath prefixPath) throws MetadataException {
     lock.readLock().lock();
@@ -743,22 +743,22 @@ public class MManager {
    *
    * @return storage group in the given path
    */
-  public PartialPath getStorageGroupName(PartialPath path) throws StorageGroupNotSetException {
+  public PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
     lock.readLock().lock();
     try {
-      return mtree.getStorageGroupName(path);
+      return mtree.getStorageGroupPath(path);
     } finally {
       lock.readLock().unlock();
     }
   }
 
   /**
-   * Get all storage group names
+   * Get all storage group paths
    */
-  public List<PartialPath> getAllStorageGroupNames() {
+  public List<PartialPath> getAllStorageGroupPaths() {
     lock.readLock().lock();
     try {
-      return mtree.getAllStorageGroupNames();
+      return mtree.getAllStorageGroupPaths();
     } finally {
       lock.readLock().unlock();
     }
@@ -783,23 +783,23 @@ public class MManager {
    * @param prefixPath can be a prefix or a full path. if the wildcard is not at the tail, then each
    *                   wildcard can only match one level, otherwise it can match to the tail.
    */
-  public List<PartialPath> getAllTimeseriesName(PartialPath prefixPath) throws MetadataException {
+  public List<PartialPath> getAllTimeseriesPath(PartialPath prefixPath) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getAllTimeseriesName(prefixPath);
+      return mtree.getAllTimeseriesPath(prefixPath);
     } finally {
       lock.readLock().unlock();
     }
   }
 
   /**
-   * Similar to method getAllTimeseriesName(), but return Path instead of String in order to include
+   * Similar to method getAllTimeseriesPath(), but return Path with alias
    * alias.
    */
-  public List<PartialPath> getAllTimeseriesPath(PartialPath prefixPath) throws MetadataException {
+  public List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getAllTimeseriesPath(prefixPath);
+      return mtree.getAllTimeseriesPathWithAlias(prefixPath);
     } finally {
       lock.readLock().unlock();
     }
@@ -892,7 +892,7 @@ public class MManager {
             pair.left.putAll(pair.right);
             MeasurementSchema measurementSchema = leaf.getSchema();
             res.add(new ShowTimeSeriesResult(leaf.getFullPath(), leaf.getAlias(),
-                getStorageGroupName(leaf.getPartialPath()).getFullPath(), measurementSchema.getType().toString(),
+                getStorageGroupPath(leaf.getPartialPath()).getFullPath(), measurementSchema.getType().toString(),
                 measurementSchema.getEncodingType().toString(),
                 measurementSchema.getCompressor().toString(), pair.left));
             if (limit != 0) {
@@ -1089,8 +1089,8 @@ public class MManager {
       }
 
       if (shouldSetStorageGroup) {
-        PartialPath storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
-        setStorageGroup(storageGroupName);
+        PartialPath storageGroupPath = MetaUtils.getStorageGroupPathByLevel(path, sgLevel);
+        setStorageGroup(storageGroupPath);
       }
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
       return node;
@@ -1191,12 +1191,12 @@ public class MManager {
   /**
    * get all storageGroups ttl
    *
-   * @return key-> storageGroupName, value->ttl
+   * @return key-> storageGroupPath, value->ttl
    */
   public Map<PartialPath, Long> getStorageGroupsTTL() {
     Map<PartialPath, Long> storageGroupsTTL = new HashMap<>();
     try {
-      List<PartialPath> storageGroups = this.getAllStorageGroupNames();
+      List<PartialPath> storageGroups = this.getAllStorageGroupPaths();
       for (PartialPath storageGroup : storageGroups) {
         long ttl = getStorageGroupNode(storageGroup).getDataTTL();
         storageGroupsTTL.put(storageGroup, ttl);

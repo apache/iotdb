@@ -424,7 +424,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<PartialPath> getPathsName(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesName(path);
+    return IoTDB.metaManager.getAllTimeseriesPath(path);
   }
 
   protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level) throws MetadataException {
@@ -488,7 +488,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<PartialPath> getAllStorageGroupNames() {
-    return IoTDB.metaManager.getAllStorageGroupNames();
+    return IoTDB.metaManager.getAllStorageGroupPaths();
   }
 
   private QueryDataSet processShowStorageGroup() {
@@ -598,7 +598,7 @@ public class PlanExecutor implements IPlanExecutor {
         listDataSet,
         timestamp++,
         "storage group number",
-        Integer.toString(IoTDB.metaManager.getAllStorageGroupNames().size()));
+        Integer.toString(IoTDB.metaManager.getAllStorageGroupPaths().size()));
     addRowRecordForShowQuery(
         listDataSet,
         timestamp++,

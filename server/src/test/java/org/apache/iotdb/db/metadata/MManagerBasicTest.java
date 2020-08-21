@@ -252,7 +252,7 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
 
     try {
-      assertTrue(manager.getAllTimeseriesName(new PartialPath("root")).isEmpty());
+      assertTrue(manager.getAllTimeseriesPath(new PartialPath("root")).isEmpty());
       assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle")).isEmpty());
       assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle.device")).isEmpty());
       assertTrue(manager.getStorageGroupByPath(new PartialPath("root.vehicle.device.sensor")).isEmpty());
@@ -304,7 +304,7 @@ public class MManagerBasicTest {
 
     try {
       assertEquals("root.laptop",
-          MetaUtils.getStorageGroupNameByLevel(new PartialPath("root.laptop.d1.s1"), level).getFullPath());
+          MetaUtils.getStorageGroupPathByLevel(new PartialPath("root.laptop.d1.s1"), level).getFullPath());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -312,7 +312,7 @@ public class MManagerBasicTest {
 
     caughtException = false;
     try {
-      MetaUtils.getStorageGroupNameByLevel(new PartialPath("root1.laptop.d1.s1"), level);
+      MetaUtils.getStorageGroupPathByLevel(new PartialPath("root1.laptop.d1.s1"), level);
     } catch (MetadataException e) {
       caughtException = true;
       assertEquals("root1.laptop.d1.s1 is not a legal path", e.getMessage());
@@ -321,7 +321,7 @@ public class MManagerBasicTest {
 
     caughtException = false;
     try {
-      MetaUtils.getStorageGroupNameByLevel(new PartialPath("root"), level);
+      MetaUtils.getStorageGroupPathByLevel(new PartialPath("root"), level);
     } catch (MetadataException e) {
       caughtException = true;
       assertEquals("root is not a legal path", e.getMessage());

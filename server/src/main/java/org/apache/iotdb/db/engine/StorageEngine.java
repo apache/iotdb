@@ -275,7 +275,7 @@ public class StorageEngine implements IService {
   public StorageGroupProcessor getProcessor(PartialPath path) throws StorageEngineException {
     PartialPath storageGroup;
     try {
-      storageGroup = IoTDB.metaManager.getStorageGroupName(path);
+      storageGroup = IoTDB.metaManager.getStorageGroupPath(path);
       StorageGroupProcessor processor;
       processor = processorMap.get(storageGroup);
       if (processor == null) {
@@ -365,11 +365,11 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void asyncCloseProcessor(PartialPath storageGroupName, boolean isSeq)
+  public void asyncCloseProcessor(PartialPath storageGroupPath, boolean isSeq)
       throws StorageGroupNotSetException {
-    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+    StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor != null) {
-      logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupName,
+      logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupPath,
           isSeq);
       processor.writeLock();
       try {
@@ -390,16 +390,16 @@ public class StorageEngine implements IService {
         processor.writeUnlock();
       }
     } else {
-      throw new StorageGroupNotSetException(storageGroupName.getFullPath());
+      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
     }
   }
 
-  public void asyncCloseProcessor(PartialPath storageGroupName, long partitionId, boolean isSeq)
+  public void asyncCloseProcessor(PartialPath storageGroupPath, long partitionId, boolean isSeq)
       throws StorageGroupNotSetException {
-    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+    StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor != null) {
       logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
-          storageGroupName, isSeq, partitionId);
+          storageGroupPath, isSeq, partitionId);
       processor.writeLock();
       // to avoid concurrent modification problem, we need a new array list
       List<TsFileProcessor> processors = isSeq ?
@@ -416,7 +416,7 @@ public class StorageEngine implements IService {
         processor.writeUnlock();
       }
     } else {
-      throw new StorageGroupNotSetException(storageGroupName.getFullPath());
+      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
     }
   }
 
@@ -501,15 +501,15 @@ public class StorageEngine implements IService {
    * delete all data files (both memory data and file on disk) in a storage group. It is used when
    * there is no timeseries (which are all deleted) in this storage group)
    */
-  public void deleteAllDataFilesInOneStorageGroup(PartialPath storageGroupName) {
-    if (processorMap.containsKey(storageGroupName)) {
-      syncDeleteDataFiles(storageGroupName);
+  public void deleteAllDataFilesInOneStorageGroup(PartialPath storageGroupPath) {
+    if (processorMap.containsKey(storageGroupPath)) {
+      syncDeleteDataFiles(storageGroupPath);
     }
   }
 
-  private void syncDeleteDataFiles(PartialPath storageGroupName) {
-    logger.info("Force to delete the data in storage group processor {}", storageGroupName);
-    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+  private void syncDeleteDataFiles(PartialPath storageGroupPath) {
+    logger.info("Force to delete the data in storage group processor {}", storageGroupPath);
+    StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     processor.syncDeleteDataFiles();
   }
 
@@ -519,7 +519,7 @@ public class StorageEngine implements IService {
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
-    for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupNames()) {
+    for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
     return true;
@@ -530,9 +530,9 @@ public class StorageEngine implements IService {
     storageGroupProcessor.setDataTTL(dataTTL);
   }
 
-  public void deleteStorageGroup(PartialPath storageGroupName) {
-    deleteAllDataFilesInOneStorageGroup(storageGroupName);
-    StorageGroupProcessor processor = processorMap.remove(storageGroupName);
+  public void deleteStorageGroup(PartialPath storageGroupPath) {
+    deleteAllDataFilesInOneStorageGroup(storageGroupPath);
+    StorageGroupProcessor processor = processorMap.remove(storageGroupPath);
     if (processor != null) {
       processor.deleteFolder(systemDir);
     }
@@ -552,8 +552,8 @@ public class StorageEngine implements IService {
     }
     String device = deviceMap.keySet().iterator().next();
     PartialPath devicePath = new PartialPath(device);
-    PartialPath storageGroupName = IoTDB.metaManager.getStorageGroupName(devicePath);
-    getProcessor(storageGroupName).loadNewTsFile(newTsFileResource);
+    PartialPath storageGroupPath = IoTDB.metaManager.getStorageGroupPath(devicePath);
+    getProcessor(storageGroupPath).loadNewTsFile(newTsFileResource);
   }
 
   public boolean deleteTsfileForSync(File deletedTsfile)
@@ -641,9 +641,9 @@ public class StorageEngine implements IService {
   }
 
 
-  public void removePartitions(PartialPath storageGroupName, TimePartitionFilter filter)
+  public void removePartitions(PartialPath storageGroupPath, TimePartitionFilter filter)
       throws StorageEngineException {
-    getProcessor(storageGroupName).removePartitions(filter);
+    getProcessor(storageGroupPath).removePartitions(filter);
   }
 
   @TestOnly

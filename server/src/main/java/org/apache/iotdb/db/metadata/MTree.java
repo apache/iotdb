@@ -455,7 +455,7 @@ public class MTree implements Serializable {
    *
    * @return a list contains all distinct storage groups
    */
-  List<PartialPath> getAllStorageGroupNames() {
+  List<PartialPath> getAllStorageGroupPaths() {
     List<PartialPath> res = new ArrayList<>();
     Deque<MNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);
@@ -489,13 +489,13 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get storage group name by path
+   * Get storage group path by path
    *
    * <p>e.g., root.sg1 is storage group, path is root.sg1.d1, return root.sg1
    *
    * @return storage group in the given path
    */
-  PartialPath getStorageGroupName(PartialPath path) throws StorageGroupNotSetException {
+  PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
     String[] nodes = path.getNodes();
     MNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
@@ -531,7 +531,7 @@ public class MTree implements Serializable {
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
    */
-  List<PartialPath> getAllTimeseriesName(PartialPath prefixPath) throws MetadataException {
+  List<PartialPath> getAllTimeseriesPath(PartialPath prefixPath) throws MetadataException {
     ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(prefixPath);
     List<Pair<PartialPath, String[]>> res = getAllMeasurementSchema(plan);
     List<PartialPath> paths = new ArrayList<>();
@@ -546,7 +546,7 @@ public class MTree implements Serializable {
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
    */
-  List<PartialPath> getAllTimeseriesPath(PartialPath prefixPath) throws MetadataException {
+  List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath) throws MetadataException {
     PartialPath prePath = new PartialPath(prefixPath.getNodes());
     ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(prefixPath);
     List<Pair<PartialPath, String[]>> res = getAllMeasurementSchema(plan);
@@ -714,7 +714,7 @@ public class MTree implements Serializable {
       String[] tsRow = new String[7];
       tsRow[0] = ((MeasurementMNode) node).getAlias();
       MeasurementSchema measurementSchema = ((MeasurementMNode) node).getSchema();
-      tsRow[1] = getStorageGroupName(nodePath).getFullPath();
+      tsRow[1] = getStorageGroupPath(nodePath).getFullPath();
       tsRow[2] = measurementSchema.getType().toString();
       tsRow[3] = measurementSchema.getEncodingType().toString();
       tsRow[4] = measurementSchema.getCompressor().toString();

@@ -90,7 +90,7 @@ public class MManagerAdvancedTest {
 
     try {
       // test file name
-      List<PartialPath> fileNames = mmanager.getAllStorageGroupNames();
+      List<PartialPath> fileNames = mmanager.getAllStorageGroupPaths();
       assertEquals(3, fileNames.size());
       if (fileNames.get(0).equals(new PartialPath("root.vehicle.d0"))) {
         assertEquals(new PartialPath("root.vehicle.d1"), fileNames.get(1));
@@ -98,18 +98,18 @@ public class MManagerAdvancedTest {
         assertEquals(new PartialPath("root.vehicle.d0"), fileNames.get(1));
       }
       // test filename by seriesPath
-      assertEquals(new PartialPath("root.vehicle.d0"), mmanager.getStorageGroupName(new PartialPath("root.vehicle.d0.s1")));
-      List<PartialPath> pathList = mmanager.getAllTimeseriesName(new PartialPath("root.vehicle.d1.*"));
+      assertEquals(new PartialPath("root.vehicle.d0"), mmanager.getStorageGroupPath(new PartialPath("root.vehicle.d0.s1")));
+      List<PartialPath> pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d1.*"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getAllTimeseriesName(new PartialPath("root.vehicle.d0"));
+      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d0"));
       assertEquals(6, pathList.size());
-      pathList = mmanager.getAllTimeseriesName(new PartialPath("root.vehicle.d*"));
+      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d*"));
       assertEquals(12, pathList.size());
-      pathList = mmanager.getAllTimeseriesName(new PartialPath("root.ve*.*"));
+      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.ve*.*"));
       assertEquals(12, pathList.size());
-      pathList = mmanager.getAllTimeseriesName(new PartialPath("root.vehicle*.d*.s1"));
+      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle*.d*.s1"));
       assertEquals(2, pathList.size());
-      pathList = mmanager.getAllTimeseriesName(new PartialPath("root.vehicle.d2"));
+      pathList = mmanager.getAllTimeseriesPath(new PartialPath("root.vehicle.d2"));
       assertEquals(0, pathList.size());
     } catch (MetadataException e) {
       e.printStackTrace();

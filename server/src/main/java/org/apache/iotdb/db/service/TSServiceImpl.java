@@ -381,7 +381,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   protected List<PartialPath> getPaths(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesName(path);
+    return IoTDB.metaManager.getAllTimeseriesPath(path);
   }
 
   @Override
