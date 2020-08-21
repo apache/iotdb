@@ -48,6 +48,7 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   /**
    * it will return a new partial path
+   *
    * @param partialPath the path you want to concat
    * @return new partial path
    */
@@ -60,6 +61,7 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   /**
    * It will change nodes in this partial path
+   *
    * @param otherNodes nodes
    */
   void concatPath(String[] otherNodes) {
@@ -85,8 +87,7 @@ public class PartialPath extends Path implements Comparable<Path> {
     } else {
       StringBuilder s = new StringBuilder(nodes[0]);
       for (int i = 1; i < nodes.length; i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(nodes[i]);
+        s.append(TsFileConstant.PATH_SEPARATOR).append(nodes[i]);
       }
       fullPath = s.toString();
       return fullPath;
@@ -95,19 +96,19 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   @Override
   public boolean equals(Object obj) {
-    if(!(obj instanceof PartialPath)) {
+    if (!(obj instanceof PartialPath)) {
       return false;
     }
     String[] otherNodes = ((PartialPath) obj).getNodes();
-    if( this.nodes.length != otherNodes.length) {
+    if (this.nodes.length != otherNodes.length) {
       return false;
     } else {
-      for(int i = 0; i < this.nodes.length; i++) {
-        if(!nodes[i].equals(otherNodes[i])) {
+      for (int i = 0; i < this.nodes.length; i++) {
+        if (!nodes[i].equals(otherNodes[i])) {
           return false;
         }
       }
-     }
+    }
     return true;
   }
 
@@ -131,7 +132,7 @@ public class PartialPath extends Path implements Comparable<Path> {
     if (device != null) {
       return device;
     } else {
-      if(nodes.length == 1) {
+      if (nodes.length == 1) {
         return "";
       }
       StringBuilder s = new StringBuilder(nodes[0]);
@@ -164,8 +165,8 @@ public class PartialPath extends Path implements Comparable<Path> {
   }
 
   public boolean startsWith(String[] otherNodes) {
-    for(int i = 0; i < otherNodes.length; i++) {
-      if(!nodes[i].equals(otherNodes[i])) {
+    for (int i = 0; i < otherNodes.length; i++) {
+      if (!nodes[i].equals(otherNodes[i])) {
         return false;
       }
     }

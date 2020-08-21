@@ -44,12 +44,7 @@ public class Path implements Serializable, Comparable<Path> {
    */
   @SuppressWarnings("the path that wouldn't be split")
   public Path(String pathSc) {
-    if (pathSc == null) {
-      throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
-    }
-    fullPath = pathSc;
-    device = "";
-    measurement = pathSc;
+    this(pathSc, false);
   }
 
   /**
@@ -57,6 +52,9 @@ public class Path implements Serializable, Comparable<Path> {
    * @param needSplit whether need to be split to device and measurement, doesn't support escape character yet.
    */
   public Path(String pathSc, boolean needSplit) {
+    if (pathSc == null) {
+      throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
+    }
     if(!needSplit) {
       fullPath = pathSc;
       device = "";
