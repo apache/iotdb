@@ -835,7 +835,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void delete(PartialPath path, long startTime, long endTime) throws QueryProcessException {
-    PartialPath deviceId = new PartialPath(Arrays.copyOf(path.getNodes(), path.getNodes().length-1));
+    PartialPath deviceId = path.getDevicePath();
     String measurementId = path.getMeasurement();
     try {
       if (!mManager.isPathExist(path)) {
