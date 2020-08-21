@@ -32,6 +32,7 @@ public class Utils {
   static final Pattern URL_PATTERN = Pattern.compile("([^:]+):([0-9]{1,5})/?");
   static final String PARAMS_SEPARATION = "?";
   static final String PARAMS_ASSIGNMENT = "=";
+  static final String PARAMS_JOIN = "&&";
   /**
    * Parse JDBC connection URL The only supported format of the URL is:
    * jdbc:iotdb://localhost:6667/.
@@ -48,9 +49,10 @@ public class Utils {
       String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
       Map<String,String> paramKV = new HashMap<>();
       if (subURL.contains(PARAMS_SEPARATION)){
-        String[] parameters = subURL.split("["+PARAMS_SEPARATION+"]");
-        subURL = parameters[0];
-        for (int i=1; i<parameters.length; i++){
+        int separationIndex = subURL.indexOf(PARAMS_SEPARATION);
+        String[] parameters = subURL.substring(separationIndex+1).split(PARAMS_JOIN);
+        subURL = subURL.substring(0, separationIndex);
+        for (int i=0; i<parameters.length; i++){
           String[] kv = parameters[i].split(PARAMS_ASSIGNMENT);
           if (kv.length<2){
             continue;
