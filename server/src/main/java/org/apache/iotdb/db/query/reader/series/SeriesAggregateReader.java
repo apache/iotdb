@@ -36,11 +36,11 @@ public class SeriesAggregateReader implements IAggregateReader {
 
   private final SeriesReader seriesReader;
 
-  public SeriesAggregateReader(Path seriesPath, Set<String> allSensors,  TSDataType dataType,
+  public SeriesAggregateReader(Path seriesPath, Set<String> allSensors, TSDataType dataType,
       QueryContext context, QueryDataSource dataSource, Filter timeFilter, Filter valueFilter,
-      TsFileFilter fileFilter) {
+      TsFileFilter fileFilter, boolean ascending) {
     this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, dataSource,
-        timeFilter, valueFilter, fileFilter, true);
+        timeFilter, valueFilter, fileFilter, ascending);
   }
 
   @Override

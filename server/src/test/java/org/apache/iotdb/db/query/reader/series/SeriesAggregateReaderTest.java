@@ -74,8 +74,9 @@ public class SeriesAggregateReaderTest {
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
       QueryDataSource queryDataSource = new QueryDataSource(path, seqResources, unseqResources);
-      SeriesAggregateReader seriesReader = new SeriesAggregateReader(path, allSensors, TSDataType.INT32,
-          new QueryContext(), queryDataSource, null, null, null);
+      SeriesAggregateReader seriesReader = new SeriesAggregateReader(path, allSensors,
+          TSDataType.INT32,
+          new QueryContext(), queryDataSource, null, null, null, true);
       AggregateResult aggregateResult = AggregateResultFactory
           .getAggrResultByName("count", TSDataType.INT32);
       int loopTime = 0;

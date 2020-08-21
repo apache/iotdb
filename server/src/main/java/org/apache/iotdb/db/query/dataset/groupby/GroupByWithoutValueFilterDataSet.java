@@ -42,20 +42,18 @@ import java.util.Map.Entry;
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   private static final Logger logger = LoggerFactory
-          .getLogger(GroupByWithoutValueFilterDataSet.class);
+      .getLogger(GroupByWithoutValueFilterDataSet.class);
 
   private Map<Path, GroupByExecutor> pathExecutors = new HashMap<>();
 
   /**
    * path -> result index for each aggregation
-   *
+   * <p>
    * e.g.,
-   *
-   * deduplicated paths : s1, s2, s1
-   * deduplicated aggregations : count, count, sum
-   *
-   * s1 -> 0, 2
-   * s2 -> 1
+   * <p>
+   * deduplicated paths : s1, s2, s1 deduplicated aggregations : count, count, sum
+   * <p>
+   * s1 -> 0, 2 s2 -> 1
    */
   private Map<Path, List<Integer>> resultIndexes = new HashMap<>();
 
@@ -66,14 +64,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * constructor.
    */
   public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
-          throws StorageEngineException, QueryProcessException {
+      throws StorageEngineException, QueryProcessException {
     super(context, groupByTimePlan);
 
     initGroupBy(context, groupByTimePlan);
   }
 
   protected void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
-          throws StorageEngineException, QueryProcessException {
+      throws StorageEngineException, QueryProcessException {
     IExpression expression = groupByTimePlan.getExpression();
 
     Filter timeFilter = null;
@@ -87,12 +85,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       if (!pathExecutors.containsKey(path)) {
         //init GroupByExecutor
         pathExecutors.put(path,
-                getGroupByExecutor(path, groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()), dataTypes.get(i), context, timeFilter, null));
+            getGroupByExecutor(path, groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
+                dataTypes.get(i), context, timeFilter, null, groupByTimePlan.isAlignByTime()));
         resultIndexes.put(path, new ArrayList<>());
       }
       resultIndexes.get(path).add(i);
       AggregateResult aggrResult = AggregateResultFactory
-              .getAggrResultByName(groupByTimePlan.getDeduplicatedAggregations().get(i), dataTypes.get(i));
+          .getAggrResultByName(groupByTimePlan.getDeduplicatedAggregations().get(i),
+              dataTypes.get(i));
       pathExecutors.get(path).addAggregateResult(aggrResult);
     }
   }
@@ -101,14 +101,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   protected RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next() "
-              + "in GroupByWithoutValueFilterDataSet.");
+          + "in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
     RowRecord record;
     if (leftCRightO) {
       record = new RowRecord(curStartTime);
     } else {
-      record = new RowRecord(curEndTime-1);
+      record = new RowRecord(curEndTime - 1);
     }
 
     AggregateResult[] fields = new AggregateResult[paths.size()];
@@ -137,9 +137,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     return record;
   }
 
-  protected GroupByExecutor getGroupByExecutor(Path path, Set<String> allSensors, TSDataType dataType,
-                                               QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
-          throws StorageEngineException, QueryProcessException {
-    return new LocalGroupByExecutor(path, allSensors, dataType, context, timeFilter, fileFilter);
+  protected GroupByExecutor getGroupByExecutor(Path path, Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context, Filter timeFilter, TsFileFilter fileFilter, boolean ascending)
+      throws StorageEngineException, QueryProcessException {
+    return new LocalGroupByExecutor(path, allSensors, dataType, context, timeFilter, fileFilter,
+        ascending);
   }
 }

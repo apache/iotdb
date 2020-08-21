@@ -53,6 +53,10 @@ public class QueryOperator extends SFWOperator {
   private boolean isAlignByDevice = false;
   private boolean isAlignByTime = true;
 
+  private String column;
+
+  private boolean ascending;
+
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.QUERY;
@@ -192,5 +196,21 @@ public class QueryOperator extends SFWOperator {
 
   public void setGroupByTime(boolean groupByTime) {
     isGroupByTime = groupByTime;
+  }
+
+  public String getColumn() {
+    return column;
+  }
+
+  public void setColumn(String column) {
+    this.column = column;
+  }
+
+  public boolean isAscending() {
+    return ascending;
+  }
+
+  public void setAscending(boolean ascending) {
+    this.ascending = ascending;
   }
 }
