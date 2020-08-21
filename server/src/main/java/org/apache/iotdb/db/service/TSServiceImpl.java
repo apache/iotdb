@@ -789,7 +789,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (int i = 0; i < paths.size(); i++) {
           Path path = paths.get(i);
           // judge whether as clause is used or not first
-          String column = path.getTsAlias() != null ? path.getTsAlias() : null;
+          String column = path.getTsAlias();
           if (column == null) {
             column = path.getAlias() != null
                 ? aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")"

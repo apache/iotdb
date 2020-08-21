@@ -674,7 +674,7 @@ public class PhysicalGenerator {
     if (queryPlan instanceof LastQueryPlan) {
       for (int i = 0; i < paths.size(); i++) {
         Path path = paths.get(i);
-        String column = path.getTsAlias() != null ? path.getTsAlias() : null;
+        String column = path.getTsAlias();
         if (column == null) {
           column = path.getAlias() != null ? path.getFullPathWithAlias() : path.toString();
         }
@@ -698,7 +698,7 @@ public class PhysicalGenerator {
     int index = 0;
     for (Pair<Path, Integer> indexedPath : indexedPaths) {
       // judge whether as clause is used or not first
-      String column = indexedPath.left.getTsAlias() != null ? indexedPath.left.getTsAlias() : null;
+      String column = indexedPath.left.getTsAlias();
       if (column == null) {
         column = indexedPath.left.getAlias() != null ? indexedPath.left.getFullPathWithAlias()
             : indexedPath.left.toString();
