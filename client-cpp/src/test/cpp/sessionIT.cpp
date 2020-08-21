@@ -79,7 +79,8 @@ TEST_CASE( "Test insertRecord by string", "[testInsertRecord]") {
 }
 
 TEST_CASE( "Test insertRecords ", "[testInsertRecords]") {
-    string deviceId = "root.sg1.d2";
+    prepareTimeseries();
+    string deviceId = "root.sg1.d1";
     vector<string> measurements;
     measurements.push_back("s1");
     measurements.push_back("s2");
@@ -122,4 +123,35 @@ TEST_CASE( "Test insertRecords ", "[testInsertRecords]") {
         }
     }
     REQUIRE( count == 500 );
+    clearTimeseries();
+}
+
+TEST_CASE( "Test insertTablet ", "[testInsertTablet]") {
+    vector<MeasurementSchema> schemaList;
+    schemaList.push_back(new MeasurementSchema("s1", TSDataType::INT64, TSEncoding::RLE));
+    schemaList.push_back(new MeasurementSchema("s2", TSDataType::INT64, TSEncoding::RLE));
+    schemaList.push_back(new MeasurementSchema("s3", TSDataType::INT64, TSEncoding::RLE));
+
+    Tablet *tablet = new Tablet(deviceId, schemaList, 100);
+
+    int64_t *timestamps = tablet->timestamps;
+    vector<vector<string>> values = tablet->values;
+
+    for (int64_t time = 0; time < 100; time++) {
+        int row = tablet->rowSize++;f
+        timestamps[row] = time;
+        for (int i = 0; i < 3; i++) {
+            long[] sensor = (long[]) values[i];
+            sensor[row] = i;
+        }
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+            session.insertTablet(tablet);
+            tablet.reset();
+        }
+    }
+
+    if (tablet.rowSize != 0) {
+        session.insertTablet(tablet);
+        tablet.reset();
+    }
 }

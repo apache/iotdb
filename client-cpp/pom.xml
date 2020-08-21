@@ -336,7 +336,7 @@
                                     <name>start-iotdb</name>
                                     <waitForInterrupt>false</waitForInterrupt>
                                     <!-- Maximum time in seconds to wait after launching IoTDB -->
-                                    <waitAfterLaunch>1</waitAfterLaunch>
+                                    <waitAfterLaunch>5</waitAfterLaunch>
                                     <!-- Redirect IoTDB server log to /dev/null -->
                                     <processLogFile>${dev.null.path}</processLogFile>
                                     <arguments>
