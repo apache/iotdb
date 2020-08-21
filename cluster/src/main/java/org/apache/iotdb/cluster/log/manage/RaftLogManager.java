@@ -122,13 +122,13 @@ public abstract class RaftLogManager {
     /**
      * must have applied entry [compactIndex,last] to state machine
      */
-    this.commitIndex = first;
+    this.commitIndex = last;
 
     /**
      * due to the log operation is idempotent, so we can just reapply the log from the
      * first index of committed logs
      */
-    this.maxHaveAppliedCommitIndex = first - 1;
+    this.maxHaveAppliedCommitIndex = first;
 
     deleteLogExecutorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
@@ -176,11 +176,15 @@ public abstract class RaftLogManager {
    * <p>
    * The subclass's takeSnapshot() must call this method to insure that all logs have been applied
    * before take snapshot
+   * <p>
    *
    * @throws IOException timeout exception
    */
   public void takeSnapshot() throws IOException {
     long startTime = System.currentTimeMillis();
+    if (commitIndex <= 0) {
+      return;
+    }
     while (commitIndex != maxHaveAppliedCommitIndex) {
       long waitTime = System.currentTimeMillis() - startTime;
       if (waitTime > LOG_APPLIER_WAIT_TIME_MS) {
@@ -272,7 +276,8 @@ public abstract class RaftLogManager {
     try {
       term = getTerm(getLastLogIndex());
     } catch (Exception e) {
-      logger.error("{}: unexpected error when getting the last term : {}", name, e.getMessage());
+      logger
+          .error("{}: unexpected error when getting the last term : {}", name, e.getMessage());
     }
     return term;
   }
@@ -287,7 +292,8 @@ public abstract class RaftLogManager {
     try {
       term = getTerm(getCommitLogIndex());
     } catch (Exception e) {
-      logger.error("{}: unexpected error when getting the last term : {}", name, e.getMessage());
+      logger
+          .error("{}: unexpected error when getting the last term : {}", name, e.getMessage());
     }
     return term;
   }
@@ -617,14 +623,21 @@ public abstract class RaftLogManager {
     this.setCommittedEntryManager(committedEntryManager);
     this.setStableEntryManager(stableEntryManager);
     this.logApplier = applier;
+    long first = committedEntryManager.getFirstIndex();
     long last = committedEntryManager.getLastIndex();
     this.setUnCommittedEntryManager(new UnCommittedEntryManager(last + 1));
     this.commitIndex = last;
+    this.maxHaveAppliedCommitIndex = first;
   }
 
   @TestOnly
   void setMinNumOfLogsInMem(int minNumOfLogsInMem) {
     this.minNumOfLogsInMem = minNumOfLogsInMem;
+  }
+
+  @TestOnly
+  public void setMaxHaveAppliedCommitIndex(long maxHaveAppliedCommitIndex) {
+    this.maxHaveAppliedCommitIndex = maxHaveAppliedCommitIndex;
   }
 
   public void close() {
@@ -712,17 +725,9 @@ public abstract class RaftLogManager {
   }
 
   private void innerDeleteLog() {
-    long totalSize = committedEntryManager.getTotalSize();
-    long removeSize = Math.min(totalSize, maxHaveAppliedCommitIndex) - minNumOfLogsInMem;
-
-    // this should not happen
-    if (removeSize < 0) {
-      logger.error(
-          "unknown error occurred when delete log, totalSize={},maxHaveAppliedCommitIndex={},commitIndex={}",
-          totalSize, maxHaveAppliedCommitIndex, commitIndex);
-      return;
-    }
-    long compactIndex = committedEntryManager.getDummyIndex() + removeSize;
+    long removeSize = committedEntryManager.getTotalSize() - minNumOfLogsInMem;
+    long compactIndex = Math
+        .min(committedEntryManager.getDummyIndex() + removeSize, maxHaveAppliedCommitIndex - 1);
     try {
       logger.info(
           "{}: Before compaction index {}-{}, compactIndex {}, removeSize {}, committedLogSize {}",
@@ -739,9 +744,15 @@ public abstract class RaftLogManager {
     }
   }
 
-  private void applyAllCommittedLogWhenStartUp() {
-    long lo = commitIndex;
-    long hi = getCommittedEntryManager().getLastIndex();
+  public void applyAllCommittedLogWhenStartUp() {
+    long lo = maxHaveAppliedCommitIndex;
+    long hi = getCommittedEntryManager().getLastIndex() + 1;
+    if (lo >= hi) {
+      logger.info("the maxHaveAppliedCommitIndex={}, lastIndex={}, no need to reapply",
+          maxHaveAppliedCommitIndex, hi);
+      return;
+    }
+
     List<Log> entries = null;
     try {
       entries = new ArrayList<>(getCommittedEntryManager().getEntries(lo, hi));
@@ -756,20 +767,37 @@ public abstract class RaftLogManager {
     }
   }
 
-  private void checkAppliedLogIndex() {
-    while (true) {
-      try {
-        long nextToCheckIndex = maxHaveAppliedCommitIndex + 1;
-        if (nextToCheckIndex > getCommittedEntryManager().getLastIndex()) {
-          continue;
-        }
-        Log log = getCommittedEntryManager().getEntry(nextToCheckIndex);
-        if (log.isApplied()) {
-          maxHaveAppliedCommitIndex = nextToCheckIndex;
-        }
-      } catch (EntryCompactedException e) {
-        continue;
+
+  public void checkAppliedLogIndex() {
+    new Thread(() -> {
+      while (true) {
+        doCheckAppliedLogIndex();
       }
+    }).start();
+  }
+
+  public void doCheckAppliedLogIndex() {
+    try {
+      long nextToCheckIndex = maxHaveAppliedCommitIndex + 1;
+      if (nextToCheckIndex > getCommittedEntryManager().getLastIndex()) {
+        return;
+      }
+      Log log = getCommittedEntryManager().getEntry(nextToCheckIndex);
+      synchronized (log) {
+        while (!log.isApplied()) {
+          // wait until the log is applied
+          try {
+            log.wait();
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("do check applied log index is interrupt");
+          }
+        }
+        maxHaveAppliedCommitIndex = nextToCheckIndex;
+      }
+    } catch (EntryCompactedException e) {
+      // ignore
+      return;
     }
   }
 

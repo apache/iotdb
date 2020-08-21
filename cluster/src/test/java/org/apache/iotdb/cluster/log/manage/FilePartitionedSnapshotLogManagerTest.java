@@ -35,8 +35,6 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.junit.After;
 import org.junit.Test;
 
@@ -59,6 +57,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
       List<Log> logs = TestUtils.prepareTestLogs(10);
       manager.append(logs);
       manager.commitTo(10, false);
+      manager.setMaxHaveAppliedCommitIndex(manager.getCommitLogIndex());
 
       // create files for sgs
       for (int i = 1; i < 4; i++) {

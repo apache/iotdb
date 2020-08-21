@@ -130,7 +130,7 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < ClusterConstant.SLOT_NUM; i++) {
       FileSnapshot fileSnapshot = new FileSnapshot();
       fileSnapshot.setTimeseriesSchemas(Collections.singleton(TestUtils.getTestTimeSeriesSchema(0
-          ,i)));
+          , i)));
       snapshotMap.put(i, fileSnapshot);
     }
     pulledSnapshots = new ConcurrentSkipListSet<>();
@@ -432,7 +432,8 @@ public class DataGroupMemberTest extends MemberTest {
     insertPlan.setNeedInferType(true);
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     insertPlan.setValues(new Object[]{"1.0"});
-    insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+    insertPlan
+        .setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
     processor.insert(insertPlan);
     processor.syncCloseAllWorkingTsFileProcessors();
 
@@ -570,7 +571,8 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+      insertPlan.setSchemasAndTransferType(
+          new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -599,7 +601,8 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
-    new DataAsyncService(dataGroupMember).fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
+    new DataAsyncService(dataGroupMember)
+        .fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
     ByteBuffer dataBuffer = dataResult.get();
     BatchData batchData = SerializeUtils.deserializeBatchData(dataBuffer);
     for (int i = 5; i < 10; i++) {
@@ -626,7 +629,8 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+      insertPlan.setSchemasAndTransferType(
+          new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -655,7 +659,8 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
-    new DataAsyncService(dataGroupMember).fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
+    new DataAsyncService(dataGroupMember)
+        .fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
     ByteBuffer dataBuffer = dataResult.get();
     BatchData batchData = SerializeUtils.deserializeBatchData(dataBuffer);
     for (int i = 5; i < 9; i++) {
@@ -682,7 +687,8 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+      insertPlan.setSchemasAndTransferType(
+          new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -713,8 +719,9 @@ public class DataGroupMemberTest extends MemberTest {
         dataResult);
 
     for (int i = 5; i < 10; i++) {
-      new DataAsyncService(dataGroupMember).fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
-          dataHandler);
+      new DataAsyncService(dataGroupMember)
+          .fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
+              dataHandler);
       Object value = SerializeUtils.deserializeObject(dataResult.get());
       assertEquals(i * 1.0, (Double) value, 0.00001);
     }
@@ -735,7 +742,8 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+      insertPlan.setSchemasAndTransferType(
+          new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -765,8 +773,9 @@ public class DataGroupMemberTest extends MemberTest {
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
     for (int i = 5; i < 9; i++) {
-      new DataAsyncService(dataGroupMember).fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
-          dataHandler);
+      new DataAsyncService(dataGroupMember)
+          .fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
+              dataHandler);
       Object value = SerializeUtils.deserializeObject(dataResult.get());
       assertEquals(i * 1.0, (Double) value, 0.00001);
     }
@@ -781,7 +790,8 @@ public class DataGroupMemberTest extends MemberTest {
     String path = TestUtils.getTestSg(0);
     AtomicReference<List<String>> pathResult = new AtomicReference<>();
     GenericHandler<List<String>> handler = new GenericHandler<>(TestUtils.getNode(0), pathResult);
-    new DataAsyncService(dataGroupMember).getAllPaths(TestUtils.getNode(0), Collections.singletonList(path), handler);
+    new DataAsyncService(dataGroupMember)
+        .getAllPaths(TestUtils.getNode(0), Collections.singletonList(path), handler);
     List<String> result = pathResult.get();
     assertEquals(20, result.size());
     for (int i = 0; i < 10; i++) {
@@ -943,7 +953,8 @@ public class DataGroupMemberTest extends MemberTest {
       // fetch result
       aggrResultRef = new AtomicReference<>();
       aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
-      new DataAsyncService(dataGroupMember).getGroupByResult(TestUtils.getNode(10), executorId, 0, 20, aggrResultHandler);
+      new DataAsyncService(dataGroupMember)
+          .getGroupByResult(TestUtils.getNode(10), executorId, 0, 20, aggrResultHandler);
 
       byteBuffers = aggrResultRef.get();
       assertNotNull(byteBuffers);
@@ -971,7 +982,8 @@ public class DataGroupMemberTest extends MemberTest {
       // fetch result
       aggrResultRef = new AtomicReference<>();
       aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
-      new DataAsyncService(dataGroupMember).getGroupByResult(TestUtils.getNode(30), executorId, 0, 20, aggrResultHandler);
+      new DataAsyncService(dataGroupMember)
+          .getGroupByResult(TestUtils.getNode(30), executorId, 0, 20, aggrResultHandler);
 
       byteBuffers = aggrResultRef.get();
       assertNull(byteBuffers);
