@@ -646,7 +646,7 @@ public class IoTDBDescriptor {
       conf.setZoneID(
           ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
 
-      // dynamic parameters
+      // mem control
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());

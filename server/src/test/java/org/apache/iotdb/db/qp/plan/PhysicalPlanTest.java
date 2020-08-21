@@ -704,14 +704,6 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testShowDynamicParameter() throws QueryProcessException {
-    String metadata = "show dynamic parameter";
-    Planner processor = new Planner();
-    ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals("SHOW DYNAMIC_PARAMETER", plan.toString());
-  }
-
-  @Test
   public void testShowFlushInfo() throws QueryProcessException {
     String metadata = "show flush task info";
     Planner processor = new Planner();

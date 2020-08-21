@@ -66,10 +66,6 @@ class StaticResps {
       Arrays.asList(COLUMN_ITEM, COLUMN_VALUE),
       Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
 
-  static final TSExecuteStatementResp DYNAMIC_PARAMETER_RESP = getNoTimeExecuteResp(
-      Arrays.asList(COLUMN_PARAMETER, COLUMN_VALUE),
-      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
-
   static final TSExecuteStatementResp SHOW_VERSION_RESP = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_VERSION),
       Collections.singletonList(TSDataType.TEXT.toString()));

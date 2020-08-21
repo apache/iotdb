@@ -67,7 +67,6 @@ statement
     | SHOW TTL ON prefixPath (COMMA prefixPath)* #showTTLStatement
     | SHOW ALL TTL #showAllTTLStatement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
-    | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP #showStorageGroup
@@ -443,8 +442,6 @@ nodeName
     | FLUSH
     | TASK
     | INFO
-    | DYNAMIC
-    | PARAMETER
     | VERSION
     | REMOVE
     | MOVE
@@ -553,8 +550,6 @@ nodeNameWithoutStar
     | FLUSH
     | TASK
     | INFO
-    | DYNAMIC
-    | PARAMETER
     | VERSION
     | REMOVE
     | MOVE
@@ -961,15 +956,6 @@ TASK
 INFO
     : I N F O
     ;
-
-DYNAMIC
-    : D Y N A M I C
-    ;
-
-PARAMETER
-    : P A R A M E T E R
-    ;
-
 
 VERSION
     : V E R S I O N

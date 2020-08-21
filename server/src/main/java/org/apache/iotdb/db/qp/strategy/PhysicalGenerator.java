@@ -215,8 +215,6 @@ public class PhysicalGenerator {
         return generateLoadConfigurationPlan(type);
       case SHOW:
         switch (operator.getTokenIntType()) {
-          case SQLConstant.TOK_DYNAMIC_PARAMETER:
-            return new ShowPlan(ShowContentType.DYNAMIC_PARAMETER);
           case SQLConstant.TOK_FLUSH_TASK_INFO:
             return new ShowPlan(ShowContentType.FLUSH_TASK_INFO);
           case SQLConstant.TOK_VERSION:
