@@ -52,6 +52,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   // used for resetting the batch data to the last index
   private int lastReadCurArrayIndex;
   private int lastReadCurListIndex;
+  private boolean ascending;
 
   private QueryDataSource queryDataSource;
 
@@ -68,6 +69,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
     lastReadCurArrayIndex = 0;
     lastReadCurListIndex = 0;
+    this.ascending = ascending;
   }
 
   public boolean isEmpty() {
@@ -110,18 +112,25 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       }
       // lazy reset batch data for calculation
       batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
-      // skip points that cannot be calculated
-      while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
-        batchData.next();
+      if (ascending) {
+        // skip points that cannot be calculated
+        while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
+          batchData.next();
+        }
+      } else {
+        while (batchData.hasCurrent() && batchData.currentTime() > curEndTime) {
+          batchData.next();
+        }
       }
+
       if (batchData.hasCurrent()) {
-        result.updateResultFromPageData(batchData, curEndTime);
+        result.updateResultFromPageData(batchData, curStartTime, curEndTime);
       }
     }
     lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
     lastReadCurListIndex = batchData.getReadCurListIndex();
     // can calc for next interval
-    if (batchData.getMaxTimestamp() >= curEndTime) {
+    if (batchData.hasCurrent()) {
       preCachedData = batchData;
     }
   }
@@ -236,9 +245,9 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         return true;
       }
 
-      // reset the last position to zero
-      lastReadCurArrayIndex = 0;
-      lastReadCurListIndex = 0;
+      // reset the last position to current Index
+      lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
+      lastReadCurListIndex = batchData.getReadCurListIndex();
       calcFromBatch(batchData, curStartTime, curEndTime);
 
       // judge whether the calculation finished

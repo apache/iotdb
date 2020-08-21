@@ -78,10 +78,11 @@ public abstract class AggregateResult {
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
    * @param dataInThisPage the data in Page
-   * @param bound          calculate points whose time < bound
+   * @param minBound       calculate points whose time > bound
+   * @param maxBound       calculate points whose time < bound
    */
-  public abstract void updateResultFromPageData(BatchData dataInThisPage, long bound)
-      throws IOException;
+  public abstract void updateResultFromPageData(BatchData dataInThisPage, long minBound,
+      long maxBound) throws IOException;
 
   /**
    * <p> This method calculates the aggregation using common timestamps of the cross series

@@ -54,11 +54,13 @@ public class RawDataQueryExecutor {
   protected List<Path> deduplicatedPaths;
   protected List<TSDataType> deduplicatedDataTypes;
   protected IExpression optimizedExpression;
+  protected boolean ascending;
 
   public RawDataQueryExecutor(RawDataQueryPlan queryPlan) {
     this.deduplicatedPaths = queryPlan.getDeduplicatedPaths();
     this.deduplicatedDataTypes = queryPlan.getDeduplicatedDataTypes();
     this.optimizedExpression = queryPlan.getExpression();
+    this.ascending = queryPlan.isAscending();
   }
 
   /**
@@ -86,7 +88,8 @@ public class RawDataQueryExecutor {
         readersOfSelectedSeries);
   }
 
-  protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context, RawDataQueryPlan queryPlan)
+  protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context,
+      RawDataQueryPlan queryPlan)
       throws StorageEngineException, QueryProcessException {
     Filter timeFilter = null;
     if (optimizedExpression != null) {
@@ -102,8 +105,9 @@ public class RawDataQueryExecutor {
           .getQueryDataSource(path, context, timeFilter);
       timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
-      ManagedSeriesReader reader = new SeriesRawDataBatchReader(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
-          queryDataSource, timeFilter, null, null);
+      ManagedSeriesReader reader = new SeriesRawDataBatchReader(path,
+          queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
+          queryDataSource, timeFilter, null, null, ascending);
       readersOfSelectedSeries.add(reader);
     }
     return readersOfSelectedSeries;
@@ -120,7 +124,8 @@ public class RawDataQueryExecutor {
 
     TimeGenerator timestampGenerator = getTimeGenerator(
         optimizedExpression, context, queryPlan);
-    List<Boolean> cached = markFilterdPaths(optimizedExpression, deduplicatedPaths, timestampGenerator.hasOrNode());
+    List<Boolean> cached = markFilterdPaths(optimizedExpression, deduplicatedPaths,
+        timestampGenerator.hasOrNode());
 
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
@@ -129,7 +134,8 @@ public class RawDataQueryExecutor {
         continue;
       }
       Path path = deduplicatedPaths.get(i);
-      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTimestamp(path,
+          queryPlan.getAllMeasurementsInDevice(path.getDevice()),
           deduplicatedDataTypes.get(i), context);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
@@ -137,7 +143,8 @@ public class RawDataQueryExecutor {
         timestampGenerator, readersOfSelectedSeries, cached);
   }
 
-  protected IReaderByTimestamp getReaderByTimestamp(Path path, Set<String> allSensors, TSDataType dataType,
+  protected IReaderByTimestamp getReaderByTimestamp(Path path, Set<String> allSensors,
+      TSDataType dataType,
       QueryContext context) throws StorageEngineException, QueryProcessException {
     return new SeriesReaderByTimestamp(path, allSensors,
         dataType, context,

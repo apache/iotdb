@@ -55,7 +55,7 @@ public class QueryOperator extends SFWOperator {
 
   private String column;
 
-  private boolean ascending;
+  private boolean ascending = true;
 
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);

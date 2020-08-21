@@ -51,7 +51,8 @@ public class ServerTimeGenerator extends TimeGenerator {
   /**
    * Constructor of EngineTimeGenerator.
    */
-  public ServerTimeGenerator(IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
+  public ServerTimeGenerator(IExpression expression, QueryContext context,
+      RawDataQueryPlan queryPlan)
       throws StorageEngineException {
     this.context = context;
     this.queryPlan = queryPlan;
@@ -71,13 +72,16 @@ public class ServerTimeGenerator extends TimeGenerator {
     QueryDataSource queryDataSource;
     try {
       dataType = IoTDB.metaManager.getSeriesType(path.getFullPath());
-      queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, filter);
+      queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSource(path, context, filter);
       // update filter by TTL
       filter = queryDataSource.updateFilterUsingTTL(filter);
     } catch (Exception e) {
       throw new IOException(e);
     }
 
-    return new SeriesRawDataBatchReader(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource, null, filter, null);
+    return new SeriesRawDataBatchReader(path,
+        queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource,
+        null, filter, null, true);
   }
 }

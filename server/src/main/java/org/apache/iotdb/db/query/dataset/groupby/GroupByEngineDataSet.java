@@ -43,6 +43,9 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected boolean leftCRightO;
 
+  protected boolean ascending;
+  protected long curSteps;
+
   public GroupByEngineDataSet() {
   }
 
@@ -50,7 +53,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
    * groupBy query.
    */
   public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
-    super(groupByTimePlan.getDeduplicatedPaths(), groupByTimePlan.getDeduplicatedDataTypes());
+    super(groupByTimePlan.getDeduplicatedPaths(), groupByTimePlan.getDeduplicatedDataTypes(),
+        groupByTimePlan.isAscending());
     this.queryId = context.getQueryId();
     this.interval = groupByTimePlan.getInterval();
     this.slidingStep = groupByTimePlan.getSlidingStep();
@@ -59,8 +63,15 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.leftCRightO = groupByTimePlan.isLeftCRightO();
     // init group by time partition
     this.hasCachedTimeInterval = false;
+    this.ascending = groupByTimePlan.isAscending();
     this.curStartTime = this.startTime - slidingStep;
     this.curEndTime = -1;
+    if (!groupByTimePlan.isAscending()) {
+      this.curSteps = this.endTime / slidingStep;
+      this.curStartTime = curSteps * slidingStep - 1;
+      this.curEndTime = Math.min(curStartTime + interval, this.endTime);
+      hasCachedTimeInterval = true;
+    }
   }
 
   @Override
@@ -71,14 +82,23 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     }
 
     curStartTime += slidingStep;
-    //This is an open interval , [0-100)
-    if (curStartTime < endTime) {
-      hasCachedTimeInterval = true;
-      curEndTime = Math.min(curStartTime + interval, endTime);
-      return true;
-    } else {
+    if (ascending) {
+      //This is an open interval , [0-100)
+      if (curStartTime < endTime) {
+        hasCachedTimeInterval = true;
+        curEndTime = Math.min(curStartTime + interval, endTime);
+        return true;
+      }
       return false;
     }
+
+    curSteps--;
+    if (curSteps > 0) {
+      hasCachedTimeInterval = true;
+      curStartTime = slidingStep * curSteps - 1;
+      curEndTime = curStartTime + interval;
+    }
+    return false;
   }
 
   @Override

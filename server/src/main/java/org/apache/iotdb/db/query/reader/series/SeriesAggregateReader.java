@@ -114,7 +114,7 @@ public class SeriesAggregateReader implements IAggregateReader {
 
   @Override
   public BatchData nextPage() throws IOException {
-    return seriesReader.nextPage();
+    return seriesReader.nextPage().flip();
   }
 
   private boolean containedByTimeFilter(Statistics statistics) {

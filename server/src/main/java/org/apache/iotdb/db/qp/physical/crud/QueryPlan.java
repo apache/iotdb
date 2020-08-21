@@ -36,7 +36,7 @@ public abstract class QueryPlan extends PhysicalPlan {
   private int rowLimit = 0;
   private int rowOffset = 0;
 
-  private boolean ascending;
+  private boolean ascending = true;
 
   private Map<String, Integer> pathToIndex = new HashMap<>();
 

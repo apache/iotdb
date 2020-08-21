@@ -86,7 +86,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         //init GroupByExecutor
         pathExecutors.put(path,
             getGroupByExecutor(path, groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
-                dataTypes.get(i), context, timeFilter, null, groupByTimePlan.isAlignByTime()));
+                dataTypes.get(i), context, timeFilter, null, groupByTimePlan.isAscending()));
         resultIndexes.put(path, new ArrayList<>());
       }
       resultIndexes.get(path).add(i);

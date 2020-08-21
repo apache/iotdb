@@ -59,15 +59,18 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) {
-    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
+  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
+      throws IOException {
     long time = Long.MIN_VALUE;
     Object lastVal = null;
-    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+    while (dataInThisPage.hasCurrent()
+        && dataInThisPage.currentTime() < maxBound
+        && dataInThisPage.currentTime() >= minBound) {
       time = dataInThisPage.currentTime();
       lastVal = dataInThisPage.currentValue();
       dataInThisPage.next();
@@ -106,8 +109,8 @@ public class LastValueAggrResult extends AggregateResult {
   @Override
   public void merge(AggregateResult another) {
     LastValueAggrResult anotherLast = (LastValueAggrResult) another;
-    if(this.getValue() == null || this.timestamp < anotherLast.timestamp){
-      this.setValue( anotherLast.getValue() );
+    if (this.getValue() == null || this.timestamp < anotherLast.timestamp) {
+      this.setValue(anotherLast.getValue());
       this.timestamp = anotherLast.timestamp;
     }
   }

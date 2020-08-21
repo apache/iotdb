@@ -75,11 +75,14 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
+      throws IOException {
     if (hasResult()) {
       return;
     }
-    if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+    if (dataInThisPage.hasCurrent()
+        && dataInThisPage.currentTime() < maxBound
+        && dataInThisPage.currentTime() >= minBound) {
       setValue(dataInThisPage.currentValue());
       timestamp = dataInThisPage.currentTime();
       dataInThisPage.next();
@@ -111,7 +114,7 @@ public class FirstValueAggrResult extends AggregateResult {
   @Override
   public void merge(AggregateResult another) {
     FirstValueAggrResult anotherFirst = (FirstValueAggrResult) another;
-    if(this.getValue() == null || this.timestamp > anotherFirst.timestamp){
+    if (this.getValue() == null || this.timestamp > anotherFirst.timestamp) {
       setValue(anotherFirst.getValue());
       timestamp = anotherFirst.timestamp;
     }

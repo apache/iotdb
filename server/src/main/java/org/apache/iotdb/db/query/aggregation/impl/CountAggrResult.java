@@ -58,9 +58,10 @@ public class CountAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
+      throws IOException {
     while (dataInThisPage.hasCurrent()) {
-      if (dataInThisPage.currentTime() >= bound) {
+      if (dataInThisPage.currentTime() >= maxBound || dataInThisPage.currentTime() < minBound) {
         break;
       }
       long preValue = getLongValue();
