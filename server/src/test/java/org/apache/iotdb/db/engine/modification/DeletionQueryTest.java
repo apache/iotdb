@@ -107,9 +107,9 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[5], 30, 50);
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName).concatNode(measurements[3]));
-    pathList.add(new PartialPath(processorName).concatNode(measurements[4]));
-    pathList.add(new PartialPath(processorName).concatNode(measurements[5]));
+    pathList.add(new PartialPath(processorName + "." + measurements[3]));
+    pathList.add(new PartialPath(processorName + "." + measurements[4]));
+    pathList.add(new PartialPath(processorName + "." + measurements[5]));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(dataType);
     dataTypes.add(dataType);
@@ -145,9 +145,9 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[3], 0, 30);
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName).concatNode(measurements[3]));
-    pathList.add(new PartialPath(processorName).concatNode(measurements[4]));
-    pathList.add(new PartialPath(processorName).concatNode(measurements[5]));
+    pathList.add(new PartialPath(processorName + "." + measurements[3]));
+    pathList.add(new PartialPath(processorName + "." + measurements[4]));
+    pathList.add(new PartialPath(processorName + "." + measurements[5]));
 
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(dataType);
@@ -195,9 +195,9 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[5], 30, 50);
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName).concatNode(measurements[3]));
-    pathList.add(new PartialPath(processorName).concatNode(measurements[4]));
-    pathList.add(new PartialPath(processorName).concatNode(measurements[5]));
+    pathList.add(new PartialPath(processorName + "." + measurements[3]));
+    pathList.add(new PartialPath(processorName + "." + measurements[4]));
+    pathList.add(new PartialPath(processorName + "." + measurements[5]));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(dataType);
     dataTypes.add(dataType);
@@ -244,9 +244,9 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[3], 0, 30);
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName).concatNode(measurements[3]));
-    pathList.add(new PartialPath(processorName).concatNode(measurements[4]));
-    pathList.add(new PartialPath(processorName).concatNode(measurements[5]));
+    pathList.add(new PartialPath(processorName + "." + measurements[3]));
+    pathList.add(new PartialPath(processorName + "." + measurements[4]));
+    pathList.add(new PartialPath(processorName + "." + measurements[5]));
 
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(dataType);
@@ -315,9 +315,9 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().syncCloseAllProcessor();
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName).concatNode(measurements[3]));
-    pathList.add(new PartialPath(processorName).concatNode(measurements[4]));
-    pathList.add(new PartialPath(processorName).concatNode(measurements[5]));
+    pathList.add(new PartialPath(processorName + "." + measurements[3]));
+    pathList.add(new PartialPath(processorName + "." + measurements[4]));
+    pathList.add(new PartialPath(processorName + "." + measurements[5]));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(dataType);
     dataTypes.add(dataType);

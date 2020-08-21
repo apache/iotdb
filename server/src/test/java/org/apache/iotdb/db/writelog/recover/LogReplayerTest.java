@@ -50,7 +50,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.junit.After;
 import org.junit.Before;
@@ -114,7 +113,7 @@ public class LogReplayerTest {
         node.write(new InsertRowPlan(new PartialPath("root.sg.device" + i), i, "sensor" + i, TSDataType.INT64,
             String.valueOf(i)));
       }
-      DeletePlan deletePlan = new DeletePlan(0, 200, new PartialPath("root.sg.device0").concatNode("sensor0"));
+      DeletePlan deletePlan = new DeletePlan(0, 200, new PartialPath("root.sg.device0.sensor0"));
       node.write(deletePlan);
       node.close();
 

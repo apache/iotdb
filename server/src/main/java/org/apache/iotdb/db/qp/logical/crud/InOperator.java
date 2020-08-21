@@ -92,35 +92,35 @@ public class InOperator extends FunctionOperator {
         for (String val : values) {
           integerValues.add(Integer.valueOf(val));
         }
-        ret = In.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), integerValues, not);
+        ret = In.getUnaryExpression(singlePath, integerValues, not);
         break;
       case INT64:
         Set<Long> longValues = new HashSet<>();
         for (String val : values) {
           longValues.add(Long.valueOf(val));
         }
-        ret = In.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), longValues, not);
+        ret = In.getUnaryExpression(singlePath, longValues, not);
         break;
       case BOOLEAN:
         Set<Boolean> booleanValues = new HashSet<>();
         for (String val : values) {
           booleanValues.add(Boolean.valueOf(val));
         }
-        ret = In.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), booleanValues, not);
+        ret = In.getUnaryExpression(singlePath, booleanValues, not);
         break;
       case FLOAT:
         Set<Float> floatValues = new HashSet<>();
         for (String val : values) {
           floatValues.add(Float.parseFloat(val));
         }
-        ret = In.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), floatValues, not);
+        ret = In.getUnaryExpression(singlePath, floatValues, not);
         break;
       case DOUBLE:
         Set<Double> doubleValues = new HashSet<>();
         for (String val : values) {
           doubleValues.add(Double.parseDouble(val));
         }
-        ret = In.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), doubleValues, not);
+        ret = In.getUnaryExpression(singlePath, doubleValues, not);
         break;
       case TEXT:
         Set<Binary> binaryValues = new HashSet<>();
@@ -130,7 +130,7 @@ public class InOperator extends FunctionOperator {
                   .endsWith("\"")) ? new Binary(val.substring(1, val.length() - 1))
                   : new Binary(val));
         }
-        ret = In.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), binaryValues, not);
+        ret = In.getUnaryExpression(singlePath, binaryValues, not);
         break;
       default:
         throw new LogicalOperatorException(type.toString(), "");

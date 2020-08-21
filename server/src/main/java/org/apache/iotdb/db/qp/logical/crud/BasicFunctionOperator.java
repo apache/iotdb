@@ -27,7 +27,6 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -87,22 +86,22 @@ public class BasicFunctionOperator extends FunctionOperator {
 
     switch (type) {
       case INT32:
-        ret = funcToken.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), Integer.valueOf(value));
+        ret = funcToken.getUnaryExpression(singlePath, Integer.valueOf(value));
         break;
       case INT64:
-        ret = funcToken.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), Long.valueOf(value));
+        ret = funcToken.getUnaryExpression(singlePath, Long.valueOf(value));
         break;
       case BOOLEAN:
-        ret = funcToken.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), Boolean.valueOf(value));
+        ret = funcToken.getUnaryExpression(singlePath, Boolean.valueOf(value));
         break;
       case FLOAT:
-        ret = funcToken.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), Float.valueOf(value));
+        ret = funcToken.getUnaryExpression(singlePath, Float.valueOf(value));
         break;
       case DOUBLE:
-        ret = funcToken.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()), Double.valueOf(value));
+        ret = funcToken.getUnaryExpression(singlePath, Double.valueOf(value));
         break;
       case TEXT:
-        ret = funcToken.getUnaryExpression(new Path(singlePath.getDevice(), singlePath.getMeasurement()),
+        ret = funcToken.getUnaryExpression(singlePath,
             (value.startsWith("'") && value.endsWith("'")) || (value.startsWith("\"") && value
                 .endsWith("\""))
                 ? new Binary(value.substring(1, value.length() - 1)) : new Binary(value));
