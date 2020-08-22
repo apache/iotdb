@@ -18,7 +18,21 @@
  */
 package org.apache.iotdb.db.sync.receiver.recover;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -43,14 +57,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.*;
-
-import static org.junit.Assert.*;
-
 public class SyncReceiverLogAnalyzerTest {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileLoaderTest.class);
@@ -63,6 +69,7 @@ public class SyncReceiverLogAnalyzerTest {
   @Before
   public void setUp()
       throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException, MetadataException {
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
@@ -81,6 +88,7 @@ public class SyncReceiverLogAnalyzerTest {
 
   @After
   public void tearDown() throws InterruptedException, IOException, StorageEngineException {
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     EnvironmentUtils.cleanEnv();
   }
 

@@ -442,6 +442,19 @@ public class StorageEngine implements IService {
   }
 
   /**
+   * delete data of timeseries "{deviceId}.{measurementId}"
+   */
+  public void deleteTimeseries(String deviceId, String measurementId)
+      throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
+    try {
+      storageGroupProcessor.delete(deviceId, measurementId, Long.MIN_VALUE, Long.MAX_VALUE);
+    } catch (IOException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+  }
+
+  /**
    * query data.
    */
   public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context,

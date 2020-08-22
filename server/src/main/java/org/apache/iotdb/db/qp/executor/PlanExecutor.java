@@ -975,9 +975,9 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     List<PartialPath> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
-      deleteDataOfTimeSeries(deletePathList);
       List<String> failedNames = new LinkedList<>();
       for (PartialPath path : deletePathList) {
+        StorageEngine.getInstance().deleteTimeseries(path, path.getMeasurement());
         String failedTimeseries = mManager.deleteTimeseries(path);
         if (!failedTimeseries.isEmpty()) {
           failedNames.add(failedTimeseries);
@@ -1056,23 +1056,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     return true;
   }
-
-  /**
-   * Delete all data of time series in pathList.
-   *
-   * @param pathList deleted paths
-   */
-  protected void deleteDataOfTimeSeries(List<PartialPath> pathList)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    for (PartialPath p : pathList) {
-      DeletePlan deletePlan = new DeletePlan();
-      deletePlan.addPath(p);
-      deletePlan.setDeleteStartTime(Long.MIN_VALUE);
-      deletePlan.setDeleteEndTime(Long.MAX_VALUE);
-      processNonQuery(deletePlan);
-    }
-  }
-
+  
   protected QueryDataSet processAuthorQuery(AuthorPlan plan)
       throws QueryProcessException {
     AuthorType authorType = plan.getAuthorType();
