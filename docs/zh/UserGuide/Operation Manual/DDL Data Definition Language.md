@@ -55,8 +55,8 @@ IoTDB> show storage group
 用户使用[DELETE STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句可以删除指定的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
 
 ```
-IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
-IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
+IoTDB > DELETE STORAGE GROUP root.ln
+IoTDB > DELETE STORAGE GROUP root.sgcc
 ```
 
 ## 创建时间序列

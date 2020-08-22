@@ -55,8 +55,8 @@ The result is as follows:
 User can delete a specified storage group by using [DELETE STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md). Please note the data in the storage group will also be deleted. 
 
 ```
-IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
-IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
+IoTDB > DELETE STORAGE GROUP root.ln
+IoTDB > DELETE STORAGE GROUP root.sgcc
 ```
 
 ## Create Timeseries
