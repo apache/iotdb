@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.log.manage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -82,9 +81,6 @@ public abstract class RaftLogManager {
   private ScheduledExecutorService deleteLogExecutorService;
   private ScheduledFuture<?> deleteLogFuture;
 
-  private ScheduledExecutorService checkLogAppliedExecutorService;
-  private Future<?> checkLogAppliedFuture;
-
   private ScheduledExecutorService flushLogExecutorService;
 
   /**
@@ -133,10 +129,6 @@ public abstract class RaftLogManager {
     deleteLogExecutorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
             .build());
-
-    checkLogAppliedExecutorService = new ScheduledThreadPoolExecutor(1,
-        new BasicThreadFactory.Builder().namingPattern("check-log-apply-%d").daemon(true)
-            .build());
     /**
      * deletion check period of the submitted log
      */
@@ -147,8 +139,6 @@ public abstract class RaftLogManager {
         .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
             logDeleteCheckIntervalSecond,
             TimeUnit.SECONDS);
-
-    checkLogAppliedFuture = checkLogAppliedExecutorService.submit(this::checkAppliedLogIndex);
 
     /**
      * flush log to file periodically
@@ -166,6 +156,8 @@ public abstract class RaftLogManager {
               logFlushTimeIntervalMS, TimeUnit.MILLISECONDS);
 
       applyAllCommittedLogWhenStartUp();
+
+      checkAppliedLogIndex();
     }
   }
 
@@ -181,10 +173,10 @@ public abstract class RaftLogManager {
    * @throws IOException timeout exception
    */
   public void takeSnapshot() throws IOException {
-    long startTime = System.currentTimeMillis();
     if (commitIndex <= 0) {
       return;
     }
+    long startTime = System.currentTimeMillis();
     while (commitIndex != maxHaveAppliedCommitIndex) {
       long waitTime = System.currentTimeMillis() - startTime;
       if (waitTime > LOG_APPLIER_WAIT_TIME_MS) {
@@ -653,17 +645,7 @@ public abstract class RaftLogManager {
       }
       deleteLogExecutorService = null;
     }
-    if (checkLogAppliedExecutorService != null) {
-      checkLogAppliedExecutorService.shutdownNow();
-      checkLogAppliedFuture.cancel(true);
-      try {
-        checkLogAppliedExecutorService.awaitTermination(20, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.warn("Close check log applier app interrupted");
-      }
-      checkLogAppliedExecutorService = null;
-    }
+
     if (flushLogExecutorService != null) {
       flushLogExecutorService.shutdown();
       try {
