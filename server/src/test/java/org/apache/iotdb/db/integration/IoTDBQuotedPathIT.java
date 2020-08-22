@@ -104,6 +104,8 @@ public class IoTDBQuotedPathIT {
       }
       statement.execute("DELETE FROM root.\"ln.sg\".wf01.wt01.\"status.2.3\" WHERE time < 1509465600001");
       statement.execute("DELETE TIMESERIES root.\"ln.sg\".wf01.wt01.\"status.2.3\"");
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 }
