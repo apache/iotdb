@@ -291,13 +291,16 @@ public class TsFileIOWriter {
       String device = path.getDevice();
 
       // create TimeseriesMetaData
-      TSDataType dataType = entry.getValue().get(0).getDataType();
+      TSDataType dataType = entry.getValue().get(entry.getValue().size() - 1).getDataType();
       long offsetOfChunkMetadataList = out.getPosition();
       Statistics seriesStatistics = Statistics.getStatsByType(dataType);
 
       int chunkMetadataListLength = 0;
       // flush chunkMetadataList one by one
       for (ChunkMetadata chunkMetadata : entry.getValue()) {
+        if (!chunkMetadata.getDataType().equals(dataType)) {
+          continue;
+        }
         chunkMetadataListLength += chunkMetadata.serializeTo(out.wrapAsStream());
         seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
       }
