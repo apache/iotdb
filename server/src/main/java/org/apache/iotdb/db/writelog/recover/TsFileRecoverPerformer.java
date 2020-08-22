@@ -41,6 +41,7 @@ import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -177,7 +178,11 @@ public class TsFileRecoverPerformer {
     for (Map.Entry<String, List<ChunkMetadata>> entry : deviceChunkMetaDataMap.entrySet()) {
       String deviceId = entry.getKey();
       List<ChunkMetadata> chunkMetadataList = entry.getValue();
+      TSDataType dataType = entry.getValue().get(entry.getValue().size() - 1).getDataType();
       for (ChunkMetadata chunkMetaData : chunkMetadataList) {
+        if (!chunkMetaData.getDataType().equals(dataType)) {
+          continue;
+        }
         resource.updateStartTime(deviceId, chunkMetaData.getStartTime());
         resource.updateEndTime(deviceId, chunkMetaData.getEndTime());
       }

@@ -87,7 +87,7 @@ public class TsFileIOWriter {
   private String currentChunkGroupDeviceId;
   private long currentChunkGroupStartOffset;
   protected List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-  
+
   // for upgrade tool
   Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
@@ -289,10 +289,11 @@ public class TsFileIOWriter {
     for (Map.Entry<Path, List<ChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
       Path path = entry.getKey();
       String device = path.getDevice();
+
       // create TimeseriesMetaData
       TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
       timeseriesMetaData.setMeasurementId(path.getMeasurement());
-      TSDataType dataType = entry.getValue().get(0).getDataType();
+      TSDataType dataType = entry.getValue().get(entry.getValue().size() - 1).getDataType();
       timeseriesMetaData.setTSDataType(dataType);
       timeseriesMetaData.setOffsetOfChunkMetaDataList(out.getPosition());
 
@@ -300,6 +301,9 @@ public class TsFileIOWriter {
       int chunkMetadataListLength = 0;
       // flush chunkMetadataList one by one
       for (ChunkMetadata chunkMetadata : entry.getValue()) {
+        if (!chunkMetadata.getDataType().equals(dataType)) {
+          continue;
+        }
         chunkMetadataListLength += chunkMetadata.serializeTo(out.wrapAsStream());
         seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
       }
