@@ -444,7 +444,7 @@ public class StorageEngine implements IService {
   /**
    * delete data of timeseries "{deviceId}.{measurementId}"
    */
-  public void deleteTimeseries(String deviceId, String measurementId)
+  public void deleteTimeseries(PartialPath deviceId, String measurementId)
       throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     try {
