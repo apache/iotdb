@@ -18,25 +18,18 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Arrays;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.sql.*;
+import java.util.ArrayList;
+
+import static org.apache.iotdb.db.constant.TestConstant.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class IoTDBQuotedPathIT {
 
@@ -109,46 +102,10 @@ public class IoTDBQuotedPathIT {
       for (int i = 0; i < exp.length; i++) {
         assertEquals(exp[i], ans.get(i));
       }
-      System.out.println(Arrays.toString(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
-      for(String s: IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
-        printFile(s);
-      }
-      for(String s: DirectoryManager.getInstance().getAllUnSequenceFileFolders()) {
-        printFile(s);
-      }
-      for(String s: DirectoryManager.getInstance().getAllSequenceFileFolders()) {
-        printFile(s);
-      }
       statement.execute("DELETE FROM root.\"ln.sg\".wf01.wt01.\"status.2.3\" WHERE time < 1509465600001");
       statement.execute("DELETE TIMESERIES root.\"ln.sg\".wf01.wt01.\"status.2.3\"");
     } catch (Exception e) {
-      System.out.println(Arrays.toString(IoTDBDescriptor.getInstance().getConfig().getDataDirs()));
-      for(String s: IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
-        printFile(s);
-      }
-      for(String s: DirectoryManager.getInstance().getAllUnSequenceFileFolders()) {
-        printFile(s);
-      }
-      for(String s: DirectoryManager.getInstance().getAllSequenceFileFolders()) {
-        printFile(s);
-      }
       e.printStackTrace();
-    }
-  }
-
-  private void printFile(String path) {
-    File folder = new File(path);
-    File[] listOfFiles = folder.listFiles();
-
-    if (listOfFiles != null) {
-      for (File listOfFile : listOfFiles) {
-        if (listOfFile.isFile()) {
-          System.out.println("File " + listOfFile.getName());
-        } else if (listOfFile.isDirectory()) {
-          System.out.println("Directory " + listOfFile.getName());
-          printFile(listOfFile.getPath());
-        }
-      }
     }
   }
 }
