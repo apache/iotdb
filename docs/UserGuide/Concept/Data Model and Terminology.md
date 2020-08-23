@@ -76,7 +76,9 @@ We call the middle part of a path between two "." as a layer, and thus `root.A.B
 
 It is worth noting that in the path, root is a reserved character, which is only allowed to appear at the beginning of the time series mentioned below. If root appears in other layers, it cannot be parsed and an error is reported.
 
-Single quotes are not allowed in the path. If you want to use special characters such as "." in LayerName, use double quotes. For example, `root."sg.1"."d.1"."s.1"`.
+Single quotes are not allowed in the path. If you want to use special characters such as "." in LayerName, use double quotes. For example, `root.sg."d.1"."s.1"`. 
+
+> Note: the LayerName of storage group can only be characters, numbers and underscores.
 
 * Timeseries Path
 

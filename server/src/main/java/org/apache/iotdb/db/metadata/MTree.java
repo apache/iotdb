@@ -50,6 +50,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -207,6 +208,7 @@ public class MTree implements Serializable {
    */
   void setStorageGroup(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
+    checkStorageGroup(path.getFullPath());
     MNode cur = root;
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
@@ -232,6 +234,12 @@ public class MTree implements Serializable {
           new StorageGroupMNode(
               cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
       cur.addChild(nodeNames[i], storageGroupMNode);
+    }
+  }
+
+  private void checkStorageGroup(String storageGroup) throws IllegalPathException{
+    if(!IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(storageGroup).matches()) {
+      throw new IllegalPathException(String.format("The storage group name can only be characters, numbers and underscores. %s", storageGroup));
     }
   }
 

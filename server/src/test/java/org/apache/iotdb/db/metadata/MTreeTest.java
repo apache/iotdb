@@ -447,4 +447,15 @@ public class MTreeTest {
     assertEquals(2, root.getAllTimeseriesPath(new PartialPath("root")).size());
     assertEquals(2, root.getAllTimeseriesPathWithAlias(new PartialPath("root")).size());
   }
+
+  @Test
+  public void testIllegalStorageGroup() {
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup(new PartialPath("root.\"sg.ln\""));
+    } catch (MetadataException e) {
+      Assert.assertEquals("The storage group name can only be characters, numbers and underscores. root.\"sg.ln\" is not a legal path",
+          e.getMessage());
+    }
+  }
 }
