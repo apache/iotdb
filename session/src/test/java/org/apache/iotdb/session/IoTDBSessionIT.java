@@ -49,7 +49,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -1035,10 +1034,10 @@ public class IoTDBSessionIT {
     checkSetSG(session, "root..vehicle", false);
     checkSetSG(session, "root.1234a4", true);
     checkSetSG(session, "root.1_2", true);
-    checkSetSG(session, "root.%12345", true);
-    checkSetSG(session, "root.+12345", true);
-    checkSetSG(session, "root.-12345", true);
-    checkSetSG(session, "root.a{12345}", true);
+    checkSetSG(session, "root.%12345", false);
+    checkSetSG(session, "root.+12345", false);
+    checkSetSG(session, "root.-12345", false);
+    checkSetSG(session, "root.a{12345}", false);
 
     //test create timeseries
     checkCreateTimeseries(session, "root.vehicle.d0.s0", true);
