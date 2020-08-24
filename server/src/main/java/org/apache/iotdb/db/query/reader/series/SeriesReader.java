@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
@@ -679,7 +680,7 @@ public class SeriesReader {
 
       if (mergeReader.hasNextTimeValuePair()) {
 
-        cachedBatchData = new BatchData(dataType);
+        cachedBatchData = BatchDataFactory.createBatchData(dataType, orderUtils.getAscending());
         long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
 
         while (mergeReader.hasNextTimeValuePair()) {

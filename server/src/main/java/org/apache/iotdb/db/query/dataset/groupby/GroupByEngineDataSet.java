@@ -67,8 +67,9 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.curStartTime = this.startTime - slidingStep;
     this.curEndTime = -1;
     if (!groupByTimePlan.isAscending()) {
-      this.curSteps = this.endTime / slidingStep;
-      this.curStartTime = curSteps * slidingStep - 1;
+      long number = endTime - startTime;
+      this.curSteps = number % slidingStep == 0 ? number / slidingStep : number / slidingStep + 1;
+      this.curStartTime = slidingStep * (curSteps - 1) + startTime;
       this.curEndTime = Math.min(curStartTime + interval, this.endTime);
       hasCachedTimeInterval = true;
     }
@@ -81,8 +82,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       return true;
     }
 
-    curStartTime += slidingStep;
     if (ascending) {
+      curStartTime += slidingStep;
       //This is an open interval , [0-100)
       if (curStartTime < endTime) {
         hasCachedTimeInterval = true;
@@ -95,8 +96,9 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     curSteps--;
     if (curSteps > 0) {
       hasCachedTimeInterval = true;
-      curStartTime = slidingStep * curSteps - 1;
+      curStartTime = slidingStep * (curSteps - 1) + startTime;
       curEndTime = curStartTime + interval;
+      return true;
     }
     return false;
   }

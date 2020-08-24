@@ -37,13 +37,14 @@ public class MemPageReader implements IPageReader {
 
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) {
-    if (valueFilter == null) {
+    if (valueFilter == null && ascending) {
       return batchData;
     }
     BatchData filteredBatchData = BatchDataFactory
         .createBatchData(batchData.getDataType(), ascending);
     while (batchData.hasCurrent()) {
-      if (valueFilter.satisfy(batchData.currentTime(), batchData.currentValue())) {
+      if (valueFilter == null
+          || valueFilter.satisfy(batchData.currentTime(), batchData.currentValue())) {
         filteredBatchData.putAnObject(batchData.currentTime(), batchData.currentValue());
       }
       batchData.next();

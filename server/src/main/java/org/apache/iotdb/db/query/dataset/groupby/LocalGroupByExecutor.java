@@ -100,8 +100,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private void calcFromBatch(BatchData batchData, long curStartTime, long curEndTime)
       throws IOException {
     // is error data
-    if (batchData == null || !batchData.hasCurrent() || batchData.getMaxTimestamp() < curStartTime
-        || batchData.currentTime() >= curEndTime) {
+    if (isErrorData(batchData, curStartTime, curEndTime)) {
       return;
     }
 
@@ -133,6 +132,22 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     if (batchData.hasCurrent()) {
       preCachedData = batchData;
     }
+  }
+
+  private boolean isErrorData(BatchData batchData, long curStartTime, long curEndTime) {
+    if (batchData == null || !batchData.hasCurrent()) {
+      return true;
+    }
+
+    if (ascending && (batchData.getMaxTimestamp() < curStartTime
+        || batchData.currentTime() >= curEndTime)) {
+      return true;
+    }
+    if (!ascending && (batchData.getTimeByIndex(0) > curEndTime
+        || batchData.currentTime() < curStartTime)) {
+      return true;
+    }
+    return false;
   }
 
   private void calcFromStatistics(Statistics pageStatistics) throws QueryProcessException {
@@ -240,7 +255,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         continue;
       }
       // stop calc and cached current batchData
-      if (batchData.currentTime() >= curEndTime) {
+      if (ascending && batchData.currentTime() >= curEndTime) {
         preCachedData = batchData;
         return true;
       }
