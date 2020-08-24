@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -89,6 +91,9 @@ public abstract class RaftLogManager {
   private ScheduledExecutorService deleteLogExecutorService;
   private ScheduledFuture<?> deleteLogFuture;
 
+  private ExecutorService checkLogApplierExecutorService;
+  private Future<?> checkLogApplierFuture;
+
   private ScheduledExecutorService flushLogExecutorService;
 
   /**
@@ -142,6 +147,10 @@ public abstract class RaftLogManager {
     deleteLogExecutorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
             .build());
+
+    checkLogApplierExecutorService = new ScheduledThreadPoolExecutor(1,
+        new BasicThreadFactory.Builder().namingPattern("check-log-applier-%d").daemon(true)
+            .build());
     /**
      * deletion check period of the submitted log
      */
@@ -152,6 +161,8 @@ public abstract class RaftLogManager {
         .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
             logDeleteCheckIntervalSecond,
             TimeUnit.SECONDS);
+
+    checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
 
     /**
      * flush log to file periodically
@@ -668,6 +679,18 @@ public abstract class RaftLogManager {
       deleteLogExecutorService = null;
     }
 
+    if (checkLogApplierExecutorService != null) {
+      checkLogApplierExecutorService.shutdownNow();
+      checkLogApplierFuture.cancel(true);
+      try {
+        checkLogApplierExecutorService.awaitTermination(20, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Close check log applier thread interrupted");
+      }
+      checkLogApplierExecutorService = null;
+    }
+
     if (flushLogExecutorService != null) {
       flushLogExecutorService.shutdown();
       try {
@@ -772,11 +795,9 @@ public abstract class RaftLogManager {
   }
 
   public void checkAppliedLogIndex() {
-    new Thread(() -> {
-      while (true) {
-        doCheckAppliedLogIndex();
-      }
-    }).start();
+    while (true) {
+      doCheckAppliedLogIndex();
+    }
   }
 
   public void doCheckAppliedLogIndex() {
@@ -794,10 +815,14 @@ public abstract class RaftLogManager {
             log.wait();
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            logger.error("do check applied log index is interrupt");
+            logger.error("{}: do check applied log index is interrupt", name);
           }
+          return;
         }
         maxHaveAppliedCommitIndex = nextToCheckIndex;
+        logger.debug(
+            "{}: log={} is applied, nextToCheckIndex={}, commitIndex={}, maxHaveAppliedCommitIndex={}",
+            name, log, nextToCheckIndex, commitIndex, maxHaveAppliedCommitIndex);
       }
     } catch (EntryCompactedException e) {
       // ignore

@@ -50,7 +50,7 @@ public class DataGroupMemberFlushPlanPolicy implements TsFileFlushPolicy {
     FlushPlan plan = new FlushPlan(null, true, storeGroups);
     boolean result = dataGroupMember.flushFileWhenDoSnapshot(plan);
     if (!result) {
-      logger.error("flush file when do snapshot failed");
+      logger.error("{}, flush file when do snapshot failed", dataGroupMember.getName());
     }
   }
 }
