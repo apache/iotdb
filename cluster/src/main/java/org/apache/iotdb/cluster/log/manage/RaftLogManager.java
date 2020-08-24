@@ -65,16 +65,16 @@ public abstract class RaftLogManager {
   private long commitIndex;
 
   /**
-   * The max committed log index whose log index smaller than this are all have been applied, for
-   * example, suppose there are 5 committed log, whose log index is 1,2,3,4,5; if the applied
-   * sequence is 1,3,2,5,4, then the maxHaveAppliedCommitIndex according is 1,1,3,3,5. This
-   * attributed is only used for asyncLogApplier
+   * The committed logs whose index is smaller than this are all have been applied, for example,
+   * suppose there are 5 committed logs, whose log index is 1,2,3,4,5; if the applied sequence is
+   * 1,3,2,5,4, then the maxHaveAppliedCommitIndex according is 1,1,3,3,5. This attributed is only
+   * used for asyncLogApplier
    */
   private volatile long maxHaveAppliedCommitIndex;
 
   /**
-   * if the committed index which is larger than it will be blocked. if < 0(default is -1), will not
-   * block
+   * The committed log whose index is larger than blockAppliedCommitIndex will be blocked. if
+   * blockAppliedCommitIndex < 0(default is -1), will not block any operation.
    */
   private volatile long blockAppliedCommitIndex = -1;
 
@@ -109,9 +109,6 @@ public abstract class RaftLogManager {
       "wait all log applied time out");
 
   private List<Log> blockedUnappliedLogList;
-
-  private Object reapplyBlockedLogListLock = new Object();
-
 
   public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
@@ -174,8 +171,6 @@ public abstract class RaftLogManager {
       applyAllCommittedLogWhenStartUp();
 
       checkAppliedLogIndex();
-
-
     }
   }
 
@@ -776,7 +771,6 @@ public abstract class RaftLogManager {
     }
   }
 
-
   public void checkAppliedLogIndex() {
     new Thread(() -> {
       while (true) {
@@ -818,11 +812,11 @@ public abstract class RaftLogManager {
   public void setBlockAppliedCommitIndex(long blockAppliedCommitIndex) {
     this.blockAppliedCommitIndex = blockAppliedCommitIndex;
     if (blockAppliedCommitIndex < 0) {
-      this.reApplyBlockedLog();
+      this.reapplyBlockedLogs();
     }
   }
 
-  private void reApplyBlockedLog() {
+  private void reapplyBlockedLogs() {
     try {
       applyEntries(blockedUnappliedLogList, false);
     } catch (LogExecutionException e) {

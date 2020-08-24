@@ -387,7 +387,7 @@ public class StorageEngine implements IService {
    * send FlushPlan to all nodes in one dataGroup, only used in cluster
    */
   public void syncFlushAllProcessor() {
-    logger.info("Start flush all storage group processor");
+    logger.info("Start flush all storage group processor in one data group");
     List<Path> storageGroups = new ArrayList<>();
     for (StorageGroupProcessor processor : processorMap.values()) {
       Path path = new Path(processor.getStorageGroupName());
@@ -430,7 +430,6 @@ public class StorageEngine implements IService {
             } else {
               processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
             }
-
           }
         }
       } finally {

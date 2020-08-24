@@ -57,18 +57,6 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
     FilePartitionedSnapshotLogManager manager = new FilePartitionedSnapshotLogManager(applier,
         partitionTable, TestUtils.getNode(0), TestUtils.getNode(0));
 
-//    DataGroupMember dataGroupMember = new DataGroupMember();
-//    StorageEngine.getInstance().setFileFlushPlanPolicy(new ClusterFlushPlanPolicy(dataGroupMember));
-//    List<Node> nodes = new ArrayList<>();
-//    for (int i = 0; i < 3; i++) {
-//      nodes.add(TestUtils.getNode(i));
-//    }
-//    dataGroupMember.setAllNodes(nodes);
-//    dataGroupMember.setCharacter(NodeCharacter.LEADER);
-//    dataGroupMember.setLeader(dataGroupMember.getThisNode());
-//    dataGroupMember.setLogManager(manager);
-//    dataGroupMember.start();
-
     try {
       List<Log> logs = TestUtils.prepareTestLogs(10);
       manager.append(logs);
@@ -92,8 +80,6 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
       FlushPlan plan = new FlushPlan(null, true, storageGroups);
       PlanExecutor executor = new PlanExecutor();
       executor.processNonQuery(plan);
-
-      Thread.sleep(1000);
 
       manager.takeSnapshot();
       PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();
