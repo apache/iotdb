@@ -404,6 +404,10 @@ public class TsFileProcessor {
     tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
     if (bytesCost != 0 && storageGroupInfo.checkIfNeedToReportStatusToSystem()) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+      // If invoke flush here, workMemTable will be null
+      if (workMemTable == null) {
+        workMemTable = new PrimitiveMemTable();
+      }
     }
   }
 
@@ -546,14 +550,7 @@ public class TsFileProcessor {
 
       // we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
-      /*
-      IMemTable tmpMemTable = workMemTable == null || workMemTable.memSize() == 0
-          ? new NotifyFlushMemTable()
-          : workMemTable;
-      */
-
       try {
-        //addAMemtableIntoFlushingList(tmpMemTable);
         shouldClose = true;
         tsFileResource.setCloseFlag();
       } catch (Exception e) {
@@ -1006,6 +1003,9 @@ public class TsFileProcessor {
           logger.error("{}: {} update compression ratio failed", storageGroupName,
               tsFileResource.getTsFile().getName(), e);
         }
+        logger
+        .info("{}: {} flushingMemtables is empty and will close the file", storageGroupName,
+            tsFileResource.getTsFile().getName());
         if (logger.isDebugEnabled()) {
           logger
               .debug("{}: {} flushingMemtables is empty and will close the file", storageGroupName,
