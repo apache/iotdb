@@ -125,7 +125,7 @@ public class IoTDBConfig {
   /**
    * Memory allocated for the read process
    */
-  private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
+  private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 2 / 10;
 
   /**
    * Is dynamic parameter adapter enable.
@@ -137,7 +137,7 @@ public class IoTDBConfig {
   /**
    * Ratio of memory allocated for buffered arrays
    */
-  private double bufferedArraysMemoryProportion = 0.6;
+  private double bufferedArraysMemoryProportion = 0.4;
 
   /**
    * Flush proportion for system
@@ -251,7 +251,7 @@ public class IoTDBConfig {
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
    */
-  private long tsFileSizeThreshold = 512 * 1024 * 1024L;
+  private long tsFileSizeThreshold = 200 * 1024 * 1024L;
 
   /**
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.

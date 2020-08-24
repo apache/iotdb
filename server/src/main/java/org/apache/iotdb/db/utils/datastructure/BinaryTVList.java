@@ -109,9 +109,6 @@ public class BinaryTVList extends TVList {
   @Override
   void clearValue() {
     if (values != null) {
-      for (Binary[] dataArray : values) {
-        PrimitiveArrayManager.release(dataArray);
-      }
       values.clear();
     }
   }
@@ -119,9 +116,6 @@ public class BinaryTVList extends TVList {
   @Override
   void clearSortedValue() {
     if (sortedValues != null) {
-      for (Binary[] dataArray : sortedValues) {
-        PrimitiveArrayManager.release(dataArray);
-      }
       sortedValues = null;
     }
   }

@@ -119,9 +119,6 @@ public class FloatTVList extends TVList {
   @Override
   void clearSortedValue() {
     if (sortedValues != null) {
-      for (float[] dataArray : sortedValues) {
-        PrimitiveArrayManager.release(dataArray);
-      }
       sortedValues = null;
     }
   }

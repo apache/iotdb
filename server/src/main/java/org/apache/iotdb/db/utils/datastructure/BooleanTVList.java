@@ -119,9 +119,6 @@ public class BooleanTVList extends TVList {
   @Override
   void clearSortedValue() {
     if (sortedValues != null) {
-      for (boolean[] dataArray : sortedValues) {
-        PrimitiveArrayManager.release(dataArray);
-      }
       sortedValues = null;
     }
   }

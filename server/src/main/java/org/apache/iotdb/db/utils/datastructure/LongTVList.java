@@ -118,9 +118,6 @@ public class LongTVList extends TVList {
   @Override
   void clearSortedValue() {
     if (sortedValues != null) {
-      for (long[] dataArray : sortedValues) {
-        PrimitiveArrayManager.release(dataArray);
-      }
       sortedValues = null;
     }
   }

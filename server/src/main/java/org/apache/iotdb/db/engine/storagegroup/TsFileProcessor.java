@@ -234,9 +234,6 @@ public class TsFileProcessor {
     if (workMemTable.checkIfArrayIsEnough(insertRowPlan)) {
       logger.debug("Array in work MemTable is enough");
       checkMemCostAndAddToTspInfo(insertRowPlan);
-      if (workMemTable == null) {
-        workMemTable = new PrimitiveMemTable();
-      }
       workMemTable.insert(insertRowPlan);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         try {
@@ -405,7 +402,7 @@ public class TsFileProcessor {
     tsFileProcessorInfo.addBytesMemCost(bytesCost);
     tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
     tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
-    if (storageGroupInfo.checkIfNeedToReportStatusToSystem()) {
+    if (bytesCost != 0 && storageGroupInfo.checkIfNeedToReportStatusToSystem()) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
     }
   }
@@ -547,14 +544,16 @@ public class TsFileProcessor {
       // is set true, we need to generate a NotifyFlushMemTable as a signal task and submit it to
       // the FlushManager.
 
-      //we have to add the memtable into flushingList first and then set the shouldClose tag.
+      // we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
+      /*
       IMemTable tmpMemTable = workMemTable == null || workMemTable.memSize() == 0
           ? new NotifyFlushMemTable()
           : workMemTable;
+      */
 
       try {
-        addAMemtableIntoFlushingList(tmpMemTable);
+        //addAMemtableIntoFlushingList(tmpMemTable);
         shouldClose = true;
         tsFileResource.setCloseFlag();
       } catch (Exception e) {
@@ -626,7 +625,7 @@ public class TsFileProcessor {
           .debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
-      if (workMemTable == null) {
+      if (workMemTable == null || workMemTable.size() == 0) {
         return;
       }
       addAMemtableIntoFlushingList(workMemTable);

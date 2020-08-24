@@ -244,9 +244,6 @@ public abstract class TVList {
 
   protected void clearSortedTime() {
     if (sortedTimestamps != null) {
-      for (long[] dataArray : sortedTimestamps) {
-        PrimitiveArrayManager.release(dataArray);
-      }
       sortedTimestamps = null;
     }
   }
