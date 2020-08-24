@@ -45,6 +45,11 @@ public class PriorityMergeReader implements IPointReader {
 
   public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority)
       throws IOException {
+    heap = new PriorityQueue<>((o1, o2) -> {
+      int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
+          o2.timeValuePair.getTimestamp());
+      return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
+    });
     for (IPointReader reader : prioritySeriesReaders) {
       addReader(reader, startPriority++);
     }
