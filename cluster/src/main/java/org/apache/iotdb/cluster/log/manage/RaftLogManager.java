@@ -795,7 +795,7 @@ public abstract class RaftLogManager {
   }
 
   public void checkAppliedLogIndex() {
-    while (true) {
+    while (!Thread.interrupted()) {
       doCheckAppliedLogIndex();
     }
   }
