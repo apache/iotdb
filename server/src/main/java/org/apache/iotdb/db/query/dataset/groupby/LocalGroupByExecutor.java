@@ -145,6 +145,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     }
     if (!ascending && (batchData.getTimeByIndex(0) > curEndTime
         || batchData.currentTime() < curStartTime)) {
+      preCachedData = batchData;
       return true;
     }
     return false;
