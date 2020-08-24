@@ -1,4 +1,3 @@
-package org.apache.iotdb.cluster;
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -17,6 +16,8 @@ package org.apache.iotdb.cluster;
  * specific language governing permissions and limitations
  * under the License.
  */
+
+package org.apache.iotdb.cluster;
 
 import java.util.List;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
