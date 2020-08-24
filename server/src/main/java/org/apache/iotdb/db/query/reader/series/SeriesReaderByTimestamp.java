@@ -37,9 +37,10 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
   public SeriesReaderByTimestamp(Path seriesPath, Set<String> allSensors, TSDataType dataType,
       QueryContext context,
-      QueryDataSource dataSource, TsFileFilter fileFilter) {
+      QueryDataSource dataSource, TsFileFilter fileFilter, boolean ascending) {
     seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
-        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter, true);
+        dataSource, ascending ? TimeFilter.gtEq(Long.MIN_VALUE) : TimeFilter.ltEq(Long.MAX_VALUE),
+        null, fileFilter, ascending);
   }
 
   public SeriesReaderByTimestamp(SeriesReader seriesReader) {

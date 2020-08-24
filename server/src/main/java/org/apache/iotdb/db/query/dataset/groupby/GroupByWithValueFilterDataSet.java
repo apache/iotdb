@@ -85,16 +85,19 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    */
   protected void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
-    this.timestampGenerator = getTimeGenerator(groupByTimePlan.getExpression(), context, groupByTimePlan);
+    this.timestampGenerator = getTimeGenerator(groupByTimePlan.getExpression(), context,
+        groupByTimePlan);
     this.allDataReaderList = new ArrayList<>();
     this.groupByTimePlan = groupByTimePlan;
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      allDataReaderList.add(getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
+      allDataReaderList
+          .add(getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
     }
   }
 
-  protected TimeGenerator getTimeGenerator(IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
+  protected TimeGenerator getTimeGenerator(IExpression expression, QueryContext context,
+      RawDataQueryPlan queryPlan)
       throws StorageEngineException {
     return new ServerTimeGenerator(expression, context, queryPlan);
   }
@@ -102,8 +105,10 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   protected IReaderByTimestamp getReaderByTime(Path path, RawDataQueryPlan queryPlan,
       TSDataType dataType, QueryContext context, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
-    return new SeriesReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
+    return new SeriesReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+        dataType, context,
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter,
+        super.ascending);
   }
 
   @Override
@@ -186,7 +191,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     if (leftCRightO) {
       record = new RowRecord(curStartTime);
     } else {
-      record = new RowRecord(curEndTime-1);
+      record = new RowRecord(curEndTime - 1);
     }
     for (int i = 0; i < paths.size(); i++) {
       AggregateResult aggregateResult = aggregateResultList.get(i);

@@ -95,13 +95,14 @@ public class EngineDataSetWithValueFilterTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-   }
+  }
 
   @Test
   public void testHasNextAndNext() throws Exception {
     QueryPlan queryPlan = (QueryPlan) processor
         .parseSQLToPhysicalPlan("select test.d0.s1 from root where root.vehicle.d0.s0 > 100");
-    QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    QueryDataSet dataSet = queryExecutor
+        .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     assertTrue(dataSet.hasNext());
     assertEquals("16\t109", dataSet.next().toString());
     assertTrue(dataSet.hasNext());
@@ -125,5 +126,25 @@ public class EngineDataSetWithValueFilterTest {
     assertFalse(dataSet.hasNext());
     assertNull(dataSet.next());
 
+  }
+
+  @Test
+  public void testOrderByTimeDesc() throws Exception {
+    QueryPlan queryPlan = (QueryPlan) processor
+        .parseSQLToPhysicalPlan("select vehicle.d0.s1 from root where root.vehicle.d0.s0 > 100 order by time desc");
+    QueryDataSet dataSet = queryExecutor
+        .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+
+    assertTrue(dataSet.hasNext());
+    assertEquals("206\t132", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("38\t122", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("22\t1002", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("18\t198", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("12\t102", dataSet.next().toString());
+    assertFalse(dataSet.hasNext());
   }
 }

@@ -63,15 +63,15 @@ public class SeriesReaderByTimestampTest {
   @Test
   public void test() throws IOException {
     QueryDataSource dataSource = new QueryDataSource(
-      new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
-      seqResources, unseqResources);
+        new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
+        seqResources, unseqResources);
 
     Set<String> allSensors = new HashSet<>();
     allSensors.add("sensor0");
 
     SeriesReaderByTimestamp seriesReader = new SeriesReaderByTimestamp(
-      new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"), allSensors,
-      TSDataType.INT32, new QueryContext(), dataSource, null);
+        new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"), allSensors,
+        TSDataType.INT32, new QueryContext(), dataSource, null, true);
 
     for (int time = 0; time < 500; time++) {
       Integer value = (Integer) seriesReader.getValueInTimestamp(time);

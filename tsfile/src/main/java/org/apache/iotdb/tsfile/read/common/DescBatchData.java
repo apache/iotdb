@@ -34,4 +34,20 @@ public class DescBatchData extends BatchData {
     super.readCurListIndex = writeCurListIndex;
     return this;
   }
+
+  @Override
+  public Object getValueInTimestamp(long time) {
+    while (hasCurrent()) {
+      if (currentTime() > time) {
+        next();
+      } else if (currentTime() == time) {
+        Object value = currentValue();
+        next();
+        return value;
+      } else {
+        return null;
+      }
+    }
+    return null;
+  }
 }

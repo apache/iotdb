@@ -82,6 +82,6 @@ public class ServerTimeGenerator extends TimeGenerator {
 
     return new SeriesRawDataBatchReader(path,
         queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource,
-        null, filter, null, true);
+        null, filter, null, queryPlan.isAscending());
   }
 }

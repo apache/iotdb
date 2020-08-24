@@ -58,6 +58,7 @@ public class AggregationExecutor {
   protected List<TSDataType> dataTypes;
   protected List<String> aggregations;
   protected IExpression expression;
+  protected final boolean ascending;
 
   /**
    * aggregation batch calculation size.
@@ -70,6 +71,7 @@ public class AggregationExecutor {
     this.aggregations = aggregationPlan.getDeduplicatedAggregations();
     this.expression = aggregationPlan.getExpression();
     this.aggregateFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
+    this.ascending = aggregationPlan.isAscending();
   }
 
   /**
@@ -296,7 +298,8 @@ public class AggregationExecutor {
       QueryContext context) throws StorageEngineException, QueryProcessException {
     return new SeriesReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()),
         dataType, context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null,
+        ascending);
   }
 
   /**

@@ -144,11 +144,12 @@ public class RawDataQueryExecutor {
   }
 
   protected IReaderByTimestamp getReaderByTimestamp(Path path, Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context) throws StorageEngineException, QueryProcessException {
+      TSDataType dataType, QueryContext context)
+      throws StorageEngineException, QueryProcessException {
     return new SeriesReaderByTimestamp(path, allSensors,
         dataType, context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null,
+        ascending);
   }
 
   protected TimeGenerator getTimeGenerator(IExpression expression,
