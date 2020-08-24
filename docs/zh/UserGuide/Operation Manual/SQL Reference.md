@@ -690,7 +690,7 @@ Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
 REVOKE <roleName> FROM <userName>;
 roleName:=identifier
 userName:=identifier
-Eg: IoTDB > REVOKE temproleFROM tempuser;
+Eg: IoTDB > REVOKE temprole FROM tempuser;
 ```
 
 * 列出用户
@@ -713,7 +713,7 @@ Eg: IoTDB > LIST ROLE
 LIST PRIVILEGES USER  <username> ON <path>;    
 username:=identifier    
 path=‘root’ (DOT identifier)*
-Eg: IoTDB > LIST PRIVIEGES USER sgcc_wirte_user ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;
 ```
 
 * 列出角色权限
@@ -722,7 +722,7 @@ Eg: IoTDB > LIST PRIVIEGES USER sgcc_wirte_user ON root.sgcc;
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
 roleName:=identifier  
 path=‘root’ (DOT identifier)*
-Eg: IoTDB > LIST PRIVIEGES ROLE wirte_role ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES ROLE wirte_role ON root.sgcc;
 ```
 
 * 列出用户权限
@@ -730,7 +730,7 @@ Eg: IoTDB > LIST PRIVIEGES ROLE wirte_role ON root.sgcc;
 ```
 LIST USER PRIVILEGES <username> ;   
 username:=identifier  
-Eg: IoTDB > LIST USER PRIVIEGES tempuser;
+Eg: IoTDB > LIST USER PRIVILEGES tempuser;
 ```
 
 * 列出角色权限
@@ -738,7 +738,7 @@ Eg: IoTDB > LIST USER PRIVIEGES tempuser;
 ```
 LIST ROLE PRIVILEGES <roleName>
 roleName:=identifier
-Eg: IoTDB > LIST ROLE PRIVIEGES actor;
+Eg: IoTDB > LIST ROLE PRIVILEGES actor;
 ```
 
 * 列出用户角色 
@@ -763,7 +763,7 @@ Eg: IoTDB > LIST ALL USER OF ROLE roleuser;
 ALTER USER <username> SET PASSWORD <password>;
 roleName:=identifier
 password:=string
-Eg: IoTDB > ALTER USER tempuser SET PASSWORD newpwd;
+Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 ```
 
 ## 功能
