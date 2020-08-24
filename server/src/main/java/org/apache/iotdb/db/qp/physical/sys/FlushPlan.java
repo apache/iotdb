@@ -35,6 +35,13 @@ public class FlushPlan extends PhysicalPlan {
 
   private boolean isSync;
 
+  /**
+   * only for deserialize
+   */
+  public FlushPlan() {
+    super(false, OperatorType.FLUSH);
+  }
+
   public FlushPlan(Boolean isSeq, List<Path> storageGroups) {
     super(false, OperatorType.FLUSH);
     this.storageGroups = storageGroups;

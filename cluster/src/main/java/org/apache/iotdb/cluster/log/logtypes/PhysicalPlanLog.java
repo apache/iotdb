@@ -65,7 +65,6 @@ public class PhysicalPlanLog extends Log {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
 

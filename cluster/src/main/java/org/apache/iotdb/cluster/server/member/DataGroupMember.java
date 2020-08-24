@@ -219,7 +219,8 @@ public class DataGroupMember extends RaftMember {
     initPeerMap();
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
-    StorageEngine.getInstance().setDataGroupMemberFlushPlanPolicy(new DataGroupMemberFlushPlanPolicy(this));
+    StorageEngine.getInstance()
+        .setDataGroupMemberFlushPlanPolicy(new DataGroupMemberFlushPlanPolicy(this));
   }
 
   /**
@@ -1047,9 +1048,13 @@ public class DataGroupMember extends RaftMember {
       logManager.setBlockAppliedCommitIndex(blockIndex);
     }
     try {
-      return appendLogInGroup(log);
+      boolean result = appendLogInGroup(log);
+      if (!result) {
+        logger.error("{}: append log in group failed when do snapshot", name);
+      }
+      return result;
     } catch (LogExecutionException e) {
-      logger.error("flush file failed when do snapshot", e);
+      logger.error("{}, flush file failed when do snapshot", name, e);
       return false;
     }
   }
