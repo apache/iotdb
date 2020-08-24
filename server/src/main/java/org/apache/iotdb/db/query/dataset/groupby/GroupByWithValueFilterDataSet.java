@@ -165,6 +165,12 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     return constructRowRecord(aggregateResultList);
   }
 
+  @Override
+  public Object peekNextNotNullValue(Path path, int i) throws IOException {
+//    return allDataReaderList.get(i).;
+    return null;
+  }
+
   /**
    * construct an array of timestamps for one batch of a group by partition calculating.
    *

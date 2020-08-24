@@ -94,7 +94,8 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private boolean calcFromCacheData(long curStartTime, long curEndTime) throws IOException {
     calcFromBatch(preCachedData, curStartTime, curEndTime);
     // The result is calculated from the cache
-    return (preCachedData != null && preCachedData.getMaxTimestamp() >= curEndTime) || isEndCalc();
+    return (preCachedData != null && (ascending ? preCachedData.getMaxTimestamp() >= curEndTime
+        : preCachedData.getTimeByIndex(0) <= curStartTime)) || isEndCalc();
   }
 
   private void calcFromBatch(BatchData batchData, long curStartTime, long curEndTime)
@@ -208,6 +209,61 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     return results;
   }
 
+  @Override
+  public Object peekNextNotNullValue() throws IOException {
+    if (preCachedData != null && preCachedData.hasCurrent()) {
+      int readCurArrayIndex = preCachedData.getReadCurArrayIndex();
+      int readCurListIndex = preCachedData.getReadCurListIndex();
+
+      while (preCachedData.hasCurrent()) {
+        if (preCachedData.currentValue() != null) {
+          Object peekData = preCachedData.currentValue();
+          preCachedData.resetBatchData(readCurArrayIndex, readCurListIndex);
+          return peekData;
+        }
+        preCachedData.next();
+      }
+    }
+    if (reader.hasNextPage()) {
+      preCachedData = reader.nextPage();
+      while (preCachedData.hasCurrent()) {
+        if (preCachedData.currentValue() != null) {
+          Object peekData = preCachedData.currentValue();
+          preCachedData.resetBatchData();
+          return peekData;
+        }
+        preCachedData.next();
+      }
+    } else if (reader.hasNextChunk()) {
+      if (reader.hasNextPage()) {
+        preCachedData = reader.nextPage();
+        while (preCachedData.hasCurrent()) {
+          if (preCachedData.currentValue() != null) {
+            Object peekData = preCachedData.currentValue();
+            preCachedData.resetBatchData();
+            return peekData;
+          }
+          preCachedData.next();
+        }
+      }
+    } else if (reader.hasNextFile()) {
+      if (reader.hasNextChunk()) {
+        if (reader.hasNextPage()) {
+          preCachedData = reader.nextPage();
+          while (preCachedData.hasCurrent()) {
+            if (preCachedData.currentValue() != null) {
+              Object peekData = preCachedData.currentValue();
+              preCachedData.resetBatchData();
+              return peekData;
+            }
+            preCachedData.next();
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   private boolean readAndCalcFromChunk(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
     while (reader.hasNextChunk()) {
@@ -267,7 +323,8 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       calcFromBatch(batchData, curStartTime, curEndTime);
 
       // judge whether the calculation finished
-      if (isEndCalc() || (batchData.hasCurrent() && batchData.currentTime() >= curEndTime)) {
+      if (isEndCalc() || (batchData.hasCurrent() && (ascending ?
+          batchData.currentTime() >= curEndTime : batchData.currentTime() <= curStartTime))) {
         return true;
       }
     }

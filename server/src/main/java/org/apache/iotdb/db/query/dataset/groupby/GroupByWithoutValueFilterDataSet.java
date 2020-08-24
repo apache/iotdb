@@ -137,6 +137,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     return record;
   }
 
+  @Override
+  public Object peekNextNotNullValue(Path path, int i) throws IOException {
+    return pathExecutors.get(path).peekNextNotNullValue();
+  }
+
   protected GroupByExecutor getGroupByExecutor(Path path, Set<String> allSensors,
       TSDataType dataType,
       QueryContext context, Filter timeFilter, TsFileFilter fileFilter, boolean ascending)

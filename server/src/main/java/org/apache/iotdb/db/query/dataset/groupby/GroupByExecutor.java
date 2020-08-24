@@ -40,4 +40,6 @@ public interface GroupByExecutor {
    * calculate result in [curStartTime, curEndTime)
    */
   List<AggregateResult> calcResult(long curStartTime, long curEndTime) throws IOException, QueryProcessException;
+
+  Object peekNextNotNullValue() throws IOException;
 }

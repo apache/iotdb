@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -115,4 +116,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     hasCachedTimeInterval = false;
     return new Pair<>(curStartTime, curEndTime);
   }
+
+  public abstract Object peekNextNotNullValue(Path path, int i) throws IOException;
 }

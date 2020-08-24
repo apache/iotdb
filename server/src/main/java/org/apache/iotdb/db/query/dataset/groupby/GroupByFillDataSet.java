@@ -51,7 +51,7 @@ public class GroupByFillDataSet extends QueryDataSet {
       GroupByEngineDataSet groupByEngineDataSet,
       Map<TSDataType, IFill> fillTypes, QueryContext context, GroupByTimeFillPlan groupByFillPlan)
       throws StorageEngineException, IOException, QueryProcessException {
-    super(paths, dataTypes);
+    super(paths, dataTypes, groupByFillPlan.isAscending());
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.fillTypes = fillTypes;
     initPreviousParis(context, groupByFillPlan);
@@ -59,7 +59,7 @@ public class GroupByFillDataSet extends QueryDataSet {
   }
 
   private void initPreviousParis(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
-          throws StorageEngineException, IOException, QueryProcessException {
+      throws StorageEngineException, IOException, QueryProcessException {
     previousValue = new Object[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
@@ -124,8 +124,12 @@ public class GroupByFillDataSet extends QueryDataSet {
                 || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange()
                 >= groupByEngineDataSet.interval)) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
+        } else if (!ascending) {
+          rowRecord.getFields().set(i,
+              Field.getField(groupByEngineDataSet.peekNextNotNullValue(paths.get(i), i),
+                  dataTypes.get(i)));
         }
-      } else {
+      } else if (ascending) {
         // use now value update previous value
         previousValue[i] = field.getObjectValue(field.getDataType());
       }
