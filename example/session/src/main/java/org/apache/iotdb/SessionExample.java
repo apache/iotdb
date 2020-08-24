@@ -60,8 +60,8 @@ public class SessionExample {
     nonQuery();
     query();
     queryByIterator();
-    deleteData();
-    deleteTimeseries();
+//    deleteData();
+//    deleteTimeseries();
     session.close();
   }
 
