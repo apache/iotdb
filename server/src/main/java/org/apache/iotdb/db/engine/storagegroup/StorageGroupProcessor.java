@@ -1106,6 +1106,11 @@ public class StorageGroupProcessor {
         + FILE_NAME_SEPARATOR + mergeCnt + TSFILE_SUFFIX;
   }
 
+  public void syncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
+    synchronized (closeStorageGroupCondition) {
+      asyncCloseOneTsFileProcessor(sequence, tsFileProcessor);
+    }
+  }
 
   /**
    * thread-safety should be ensured by caller

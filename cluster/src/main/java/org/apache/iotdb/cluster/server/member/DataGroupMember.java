@@ -43,6 +43,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.apache.iotdb.cluster.DataGroupMemberFlushPlanPolicy;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
@@ -63,6 +64,7 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.AsyncDataLogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
+import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
@@ -108,6 +110,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -216,6 +219,7 @@ public class DataGroupMember extends RaftMember {
     initPeerMap();
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
+    StorageEngine.getInstance().setDataGroupMemberFlushPlanPolicy(new DataGroupMemberFlushPlanPolicy(this));
   }
 
   /**
@@ -1026,6 +1030,30 @@ public class DataGroupMember extends RaftMember {
       logger.error("Cannot close partition {}#{} seq:{}", storageGroupName, partitionId, isSeq, e);
     }
   }
+
+  public boolean flushFileWhenDoSnapshot(FlushPlan plan) {
+    if (character != NodeCharacter.LEADER) {
+      return false;
+    }
+    PhysicalPlanLog log = new PhysicalPlanLog();
+    // assign term and index to the new log and append it
+    synchronized (logManager) {
+      log.setCurrLogTerm(getTerm().get());
+      long blockIndex = logManager.getLastLogIndex() + 1;
+      log.setCurrLogIndex(blockIndex);
+
+      log.setPlan(plan);
+      logManager.append(log);
+      logManager.setBlockAppliedCommitIndex(blockIndex);
+    }
+    try {
+      return appendLogInGroup(log);
+    } catch (LogExecutionException e) {
+      logger.error("flush file failed when do snapshot", e);
+      return false;
+    }
+  }
+
 
   /**
    * Execute a non-query plan. If the member is a leader, a log for the plan will be created and

@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.log.manage;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestLogApplier;
@@ -35,6 +36,9 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Test;
 
@@ -53,23 +57,43 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
     FilePartitionedSnapshotLogManager manager = new FilePartitionedSnapshotLogManager(applier,
         partitionTable, TestUtils.getNode(0), TestUtils.getNode(0));
 
+//    DataGroupMember dataGroupMember = new DataGroupMember();
+//    StorageEngine.getInstance().setFileFlushPlanPolicy(new ClusterFlushPlanPolicy(dataGroupMember));
+//    List<Node> nodes = new ArrayList<>();
+//    for (int i = 0; i < 3; i++) {
+//      nodes.add(TestUtils.getNode(i));
+//    }
+//    dataGroupMember.setAllNodes(nodes);
+//    dataGroupMember.setCharacter(NodeCharacter.LEADER);
+//    dataGroupMember.setLeader(dataGroupMember.getThisNode());
+//    dataGroupMember.setLogManager(manager);
+//    dataGroupMember.start();
+
     try {
       List<Log> logs = TestUtils.prepareTestLogs(10);
       manager.append(logs);
       manager.commitTo(10, false);
       manager.setMaxHaveAppliedCommitIndex(manager.getCommitLogIndex());
 
+      List<Path> storageGroups = new ArrayList<>();
       // create files for sgs
       for (int i = 1; i < 4; i++) {
         String sg = TestUtils.getTestSg(i);
+        storageGroups.add(new Path(sg));
         for (int j = 0; j < 4; j++) {
           // closed files
           prepareData(i, j * 10, 10);
-          StorageEngine.getInstance().asyncCloseProcessor(sg, true);
+          StorageEngine.getInstance().closeProcessor(sg, true, true);
         }
         // un closed files
         prepareData(i, 40, 10);
       }
+
+      FlushPlan plan = new FlushPlan(null, true, storageGroups);
+      PlanExecutor executor = new PlanExecutor();
+      executor.processNonQuery(plan);
+
+      Thread.sleep(1000);
 
       manager.takeSnapshot();
       PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();

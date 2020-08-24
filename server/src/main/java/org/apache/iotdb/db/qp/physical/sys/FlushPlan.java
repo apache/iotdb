@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -25,31 +28,89 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class FlushPlan extends PhysicalPlan {
-  private List<Path> storeGroups;
+
+  private List<Path> storageGroups;
+
+  private Boolean isSeq;
+
+  private boolean isSync;
+
+  public FlushPlan(Boolean isSeq, List<Path> storageGroups) {
+    super(false, OperatorType.FLUSH);
+    this.storageGroups = storageGroups;
+    this.isSeq = isSeq;
+    this.isSync = false;
+  }
+
+  public FlushPlan(Boolean isSeq, boolean isSync, List<Path> storageGroups) {
+    super(false, OperatorType.FLUSH);
+    this.storageGroups = storageGroups;
+    this.isSeq = isSeq;
+    this.isSync = isSync;
+  }
 
   public Boolean isSeq() {
     return isSeq;
   }
 
-  private Boolean isSeq;
-
-  public FlushPlan(Boolean isSeq, List<Path> storeGroups) {
-    super(false, OperatorType.FLUSH);
-    this.storeGroups = storeGroups;
-    this.isSeq = isSeq;
+  public boolean isSync() {
+    return isSync;
   }
 
   @Override
   public List<Path> getPaths() {
-    return storeGroups;
+    return storageGroups;
   }
 
   @Override
   public List<String> getPathsStrings() {
     List<String> ret = new ArrayList<>();
-    for (Path path : storeGroups) {
+    for (Path path : storageGroups) {
       ret.add(path.getFullPath());
     }
     return ret;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    int type = PhysicalPlanType.FLUSH.ordinal();
+    stream.writeByte(type);
+    stream.writeByte((isSeq == null || !isSeq) ? 0 : 1);
+    stream.writeByte(isSync ? 0 : 1);
+    stream.writeLong(storageGroups.size());
+    for (Path storageGroup : storageGroups) {
+      putString(stream, storageGroup.getFullPath());
+    }
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    int type = PhysicalPlanType.FLUSH.ordinal();
+    buffer.put((byte) type);
+    buffer.put((byte) ((isSeq == null || !isSeq) ? 0 : 1));
+    buffer.put((byte) (isSync ? 0 : 1));
+    buffer.putInt(storageGroups.size());
+    for (Path storageGroup : storageGroups) {
+      putString(buffer, storageGroup.getFullPath());
+    }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    this.isSeq = (buffer.get() == 1) ? true : null;
+    this.isSync = buffer.get() == 1;
+    int storageGroupsSize = buffer.getInt();
+    this.storageGroups = new ArrayList<>(storageGroupsSize);
+    for (int i = 0; i > storageGroupsSize; i++) {
+      storageGroups.add(new Path(readString(buffer)));
+    }
+  }
+
+  @Override
+  public String toString() {
+    return "FlushPlan{"
+        + " storageGroups=" + storageGroups
+        + ", isSeq=" + isSeq
+        + "}";
   }
 }

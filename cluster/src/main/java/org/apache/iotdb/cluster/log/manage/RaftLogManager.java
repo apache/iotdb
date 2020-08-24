@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.log.manage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -71,6 +72,13 @@ public abstract class RaftLogManager {
    */
   private volatile long maxHaveAppliedCommitIndex;
 
+  /**
+   * if the committed index which is larger than it will be blocked. if < 0(default is -1), will not
+   * block
+   */
+  private volatile long blockAppliedCommitIndex = -1;
+
+
   private LogApplier logApplier;
 
   /**
@@ -100,6 +108,10 @@ public abstract class RaftLogManager {
   protected IOException logApplierWaitTimeOutException = new IOException(
       "wait all log applied time out");
 
+  private List<Log> blockedUnappliedLogList;
+
+  private Object reapplyBlockedLogListLock = new Object();
+
 
   public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
@@ -125,6 +137,10 @@ public abstract class RaftLogManager {
      * first index of committed logs
      */
     this.maxHaveAppliedCommitIndex = first;
+
+    this.blockAppliedCommitIndex = -1;
+
+    this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
 
     deleteLogExecutorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
@@ -158,6 +174,8 @@ public abstract class RaftLogManager {
       applyAllCommittedLogWhenStartUp();
 
       checkAppliedLogIndex();
+
+
     }
   }
 
@@ -177,7 +195,10 @@ public abstract class RaftLogManager {
       return;
     }
     long startTime = System.currentTimeMillis();
-    while (commitIndex != maxHaveAppliedCommitIndex) {
+    if (blockAppliedCommitIndex < 0) {
+      return;
+    }
+    while (blockAppliedCommitIndex != maxHaveAppliedCommitIndex) {
       long waitTime = System.currentTimeMillis() - startTime;
       if (waitTime > LOG_APPLIER_WAIT_TIME_MS) {
         logger.error("wait all log applied time out, time cost={}", waitTime);
@@ -548,6 +569,10 @@ public abstract class RaftLogManager {
   void applyEntries(List<Log> entries, boolean ignoreExecutionException)
       throws LogExecutionException {
     for (Log entry : entries) {
+      if (blockAppliedCommitIndex > 0 && entry.getCurrLogIndex() > blockAppliedCommitIndex) {
+        blockedUnappliedLogList.add(entry);
+        continue;
+      }
       try {
         logApplier.apply(entry);
       } catch (Exception e) {
@@ -620,6 +645,8 @@ public abstract class RaftLogManager {
     this.setUnCommittedEntryManager(new UnCommittedEntryManager(last + 1));
     this.commitIndex = last;
     this.maxHaveAppliedCommitIndex = first;
+    this.blockAppliedCommitIndex = -1;
+    this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
   }
 
   @TestOnly
@@ -761,7 +788,8 @@ public abstract class RaftLogManager {
   public void doCheckAppliedLogIndex() {
     try {
       long nextToCheckIndex = maxHaveAppliedCommitIndex + 1;
-      if (nextToCheckIndex > getCommittedEntryManager().getLastIndex()) {
+      if (nextToCheckIndex > commitIndex || nextToCheckIndex > getCommittedEntryManager()
+          .getLastIndex()) {
         return;
       }
       Log log = getCommittedEntryManager().getEntry(nextToCheckIndex);
@@ -783,4 +811,24 @@ public abstract class RaftLogManager {
     }
   }
 
+  public long getBlockAppliedCommitIndex() {
+    return blockAppliedCommitIndex;
+  }
+
+  public void setBlockAppliedCommitIndex(long blockAppliedCommitIndex) {
+    this.blockAppliedCommitIndex = blockAppliedCommitIndex;
+    if (blockAppliedCommitIndex < 0) {
+      this.reApplyBlockedLog();
+    }
+  }
+
+  private void reApplyBlockedLog() {
+    try {
+      applyEntries(blockedUnappliedLogList, false);
+    } catch (LogExecutionException e) {
+      logger.error("reapply blocked log list failed", e);
+    } finally {
+      blockedUnappliedLogList.clear();
+    }
+  }
 }

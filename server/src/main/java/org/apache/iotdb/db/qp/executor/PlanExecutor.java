@@ -297,12 +297,13 @@ public class PlanExecutor implements IPlanExecutor {
     } else {
       if (plan.isSeq() == null) {
         for (Path storageGroup : plan.getPaths()) {
-          StorageEngine.getInstance().asyncCloseProcessor(storageGroup.toString(), true);
-          StorageEngine.getInstance().asyncCloseProcessor(storageGroup.toString(), false);
+          StorageEngine.getInstance().closeProcessor(storageGroup.toString(), true, plan.isSync());
+          StorageEngine.getInstance().closeProcessor(storageGroup.toString(), false, plan.isSync());
         }
       } else {
         for (Path storageGroup : plan.getPaths()) {
-          StorageEngine.getInstance().asyncCloseProcessor(storageGroup.toString(), plan.isSeq());
+          StorageEngine.getInstance()
+              .closeProcessor(storageGroup.toString(), plan.isSeq(), plan.isSync());
         }
       }
     }
