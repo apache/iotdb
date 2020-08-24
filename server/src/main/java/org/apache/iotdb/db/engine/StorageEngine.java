@@ -273,29 +273,28 @@ public class StorageEngine implements IService {
   }
 
   public StorageGroupProcessor getProcessor(PartialPath path) throws StorageEngineException {
-    PartialPath storageGroup;
+    PartialPath storageGroupPath;
     try {
-      storageGroup = IoTDB.metaManager.getStorageGroupPath(path);
+      StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNode(path);
+      storageGroupPath = storageGroupMNode.getPartialPath();
       StorageGroupProcessor processor;
-      processor = processorMap.get(storageGroup);
+      processor = processorMap.get(storageGroupPath);
       if (processor == null) {
         // if finish recover
         if (isAllSgReady.get()) {
-          synchronized (storageGroup) {
-            processor = processorMap.get(storageGroup);
+          synchronized (storageGroupMNode) {
+            processor = processorMap.get(storageGroupPath);
             if (processor == null) {
               logger.info("construct a processor instance, the storage group is {}, Thread is {}",
-                storageGroup, Thread.currentThread().getId());
-              processor = new StorageGroupProcessor(systemDir, storageGroup.getFullPath(), fileFlushPolicy);
-              StorageGroupMNode storageGroupMNode = IoTDB.metaManager
-                .getStorageGroupNode(storageGroup);
+                storageGroupPath, Thread.currentThread().getId());
+              processor = new StorageGroupProcessor(systemDir, storageGroupPath.getFullPath(), fileFlushPolicy);
               processor.setDataTTL(storageGroupMNode.getDataTTL());
-              processorMap.put(storageGroup, processor);
+              processorMap.put(storageGroupPath, processor);
             }
           }
         } else {
           // not finished recover, refuse the request
-          throw new StorageEngineException("the sg " + storageGroup + " may not ready now, please wait and retry later",
+          throw new StorageEngineException("the sg " + storageGroupPath + " may not ready now, please wait and retry later",
               TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
