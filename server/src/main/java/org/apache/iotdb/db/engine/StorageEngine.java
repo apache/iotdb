@@ -397,7 +397,7 @@ public class StorageEngine implements IService {
   }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
-    logger.info("Start closing all storage group processor");
+    logger.info("Start force closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
       processor.forceCloseAllWorkingTsFileProcessors();
     }
