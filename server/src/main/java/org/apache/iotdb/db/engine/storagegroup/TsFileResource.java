@@ -46,6 +46,7 @@ import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.timeIndex.device.DeviceTimeIndexer;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -154,6 +155,9 @@ public class TsFileResource {
    */
   private TsFileResource originTsFileResource;
 
+  private DeviceTimeIndexer deviceTimeIndexer;
+  private String storageGroupName;
+
   public TsFileResource() {
   }
 
@@ -173,6 +177,7 @@ public class TsFileResource {
     this.tsFileLock = other.tsFileLock;
     this.fsFactory = other.fsFactory;
     this.historicalVersions = other.historicalVersions;
+    this.storageGroupName = other.storageGroupName;
   }
 
   /**
@@ -198,6 +203,7 @@ public class TsFileResource {
     initTimes(startTimes, Long.MAX_VALUE);
     initTimes(endTimes, Long.MIN_VALUE);
     this.processor = processor;
+    this.storageGroupName = processor.getStorageGroupName();
   }
 
   /**
@@ -215,6 +221,7 @@ public class TsFileResource {
     this.readOnlyMemChunk = readOnlyMemChunk;
     this.originTsFileResource = originTsFileResource;
     generateTimeSeriesMetadata();
+    this.storageGroupName = originTsFileResource.getStorageGroupName();
   }
 
   private void generateTimeSeriesMetadata() throws IOException {
@@ -493,6 +500,9 @@ public class TsFileResource {
   }
 
   public void close() throws IOException {
+    //TODO update index
+
+
     closed = true;
     if (modFile != null) {
       modFile.close();
@@ -819,7 +829,11 @@ public class TsFileResource {
     if (file.exists()) {
       Files.delete(file.toPath());
       Files.delete(FSFactoryProducer.getFSFactory()
-          .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+        .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
     }
+  }
+
+  public String getStorageGroupName() {
+    return storageGroupName;
   }
 }
