@@ -64,8 +64,11 @@ public class RestorableTsFileIOWriterTest {
   public void testBadHeadMagic() throws Exception {
     File file = fsFactory.getFile(FILE_NAME);
     FileWriter fWriter = new FileWriter(file);
-    fWriter.write("Tsfile");
-    fWriter.close();
+    try {
+      fWriter.write("Tsfile");
+    } finally {
+      fWriter.close();
+    }
     try {
       new RestorableTsFileIOWriter(file);
     } finally {

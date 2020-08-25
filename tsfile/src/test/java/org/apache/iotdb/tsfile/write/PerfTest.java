@@ -74,36 +74,39 @@ public class PerfTest {
 
     long startTime = System.currentTimeMillis();
     startTime = startTime - startTime % 1000;
-    for (int i = 0; i < ROW_COUNT; i++) {
-      String string4 = ",s4," + (char) (97 + i % 26);
-      // write d1
-      String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2) + string4;
-      if (rm.nextInt(1000) < 100) {
-        // LOG.info("write null to d1:" + (startTime + i));
-        d1 = "d1," + (startTime + i) + ",s1,,s2," + (i * 10 + 2) + string4;
-      }
-      if (i % 5 == 0) {
-        d1 += ",s3," + (i * 10 + 3);
-      }
-      fw.write(d1 + "\r\n");
+    try {
+      for (int i = 0; i < ROW_COUNT; i++) {
+        String string4 = ",s4," + (char) (97 + i % 26);
+        // write d1
+        String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2) + string4;
+        if (rm.nextInt(1000) < 100) {
+          // LOG.info("write null to d1:" + (startTime + i));
+          d1 = "d1," + (startTime + i) + ",s1,,s2," + (i * 10 + 2) + string4;
+        }
+        if (i % 5 == 0) {
+          d1 += ",s3," + (i * 10 + 3);
+        }
+        fw.write(d1 + "\r\n");
 
-      // write d2
-      String d2 = "d2," + (startTime + i) + ",s2," + (i * 10 + 2) + ",s3," + (i * 10 + 3) + string4;
-      if (rm.nextInt(1000) < 100) {
-        // LOG.info("write null to d2:" + (startTime + i));
-        d2 = "d2," + (startTime + i) + ",s2,,s3," + (i * 10 + 3) + string4;
+        // write d2
+        String d2 = "d2," + (startTime + i) + ",s2," + (i * 10 + 2) + ",s3," + (i * 10 + 3) + string4;
+        if (rm.nextInt(1000) < 100) {
+          // LOG.info("write null to d2:" + (startTime + i));
+          d2 = "d2," + (startTime + i) + ",s2,,s3," + (i * 10 + 3) + string4;
+        }
+        if (i % 5 == 0) {
+          d2 += ",s1," + (i * 10 + 1);
+        }
+        fw.write(d2 + "\r\n");
       }
-      if (i % 5 == 0) {
-        d2 += ",s1," + (i * 10 + 1);
-      }
-      fw.write(d2 + "\r\n");
+      // write error
+      String d = "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10 + 3);
+      fw.write(d + "\r\n");
+      d = "d2," + (startTime + ROW_COUNT + 1) + ",2,s-1," + (ROW_COUNT * 10 + 2);
+      fw.write(d + "\r\n");
+    } finally {
+      fw.close();
     }
-    // write error
-    String d = "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10 + 3);
-    fw.write(d + "\r\n");
-    d = "d2," + (startTime + ROW_COUNT + 1) + ",2,s-1," + (ROW_COUNT * 10 + 2);
-    fw.write(d + "\r\n");
-    fw.close();
   }
 
   static private void write() throws IOException, InterruptedException, WriteProcessException {

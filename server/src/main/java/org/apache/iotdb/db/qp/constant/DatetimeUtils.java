@@ -510,25 +510,25 @@ public class DatetimeUtils {
     }
 
     if (timestampPrecision.equals("us")) {
-      if (unit.equals(DurationUnit.ns)) {
+      if (unit.equals(DurationUnit.ns.toString())) {
         return value / 1000;
-      } else if (unit.equals(DurationUnit.us)) {
+      } else if (unit.equals(DurationUnit.us.toString())) {
         return value;
       } else {
         return res * 1000;
       }
     } else if (timestampPrecision.equals("ns")) {
-      if (unit.equals(DurationUnit.ns)) {
+      if (unit.equals(DurationUnit.ns.toString())) {
         return value;
-      } else if (unit.equals(DurationUnit.us)) {
+      } else if (unit.equals(DurationUnit.us.toString())) {
         return value * 1000;
       } else {
         return res * 1000_000;
       }
     } else {
-      if (unit.equals(DurationUnit.ns)) {
+      if (unit.equals(DurationUnit.ns.toString())) {
         return value / 1000_000;
-      } else if (unit.equals(DurationUnit.us)) {
+      } else if (unit.equals(DurationUnit.us.toString())) {
         return value / 1000;
       } else {
         return res;

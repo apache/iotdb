@@ -67,9 +67,13 @@ public class IoTDBMultiOverlappedChunkInUnseqIT {
          Statement statement = connection.createStatement()) {
       String sql = "select count(s0) from root.vehicle.d0 where time < 1000000";
       ResultSet resultSet = statement.executeQuery(sql);
-      while (resultSet.next()) {
-        String ans = resultSet.getString(count("root.vehicle.d0.s0"));
-        assertEquals("1000", ans);
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(count("root.vehicle.d0.s0"));
+          assertEquals("1000", ans);
+        }
+      } finally {
+        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();

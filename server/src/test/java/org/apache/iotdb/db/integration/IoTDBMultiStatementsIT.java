@@ -137,15 +137,19 @@ public class IoTDBMultiStatementsIT {
       Assert.assertTrue(hasResultSet1);
       ResultSet resultSet1 = statement1.getResultSet();
       int cnt1 = 0;
-      while (resultSet1.next() && cnt1 < 5) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
-                .append(",")
-                .append(resultSet1.getString("root.fans.d0.s0"))
-                .append(",")
-                .append(resultSet1.getString("root.fans.d0.s1"));
-        Assert.assertEquals(retArray[cnt1], builder.toString());
-        cnt1++;
+      try {
+        while (resultSet1.next() && cnt1 < 5) {
+          StringBuilder builder = new StringBuilder();
+          builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
+                  .append(",")
+                  .append(resultSet1.getString("root.fans.d0.s0"))
+                  .append(",")
+                  .append(resultSet1.getString("root.fans.d0.s1"));
+          Assert.assertEquals(retArray[cnt1], builder.toString());
+          cnt1++;
+        }
+      } finally {
+        resultSet1.close();
       }
 
       statement2.setFetchSize(10);
@@ -153,15 +157,19 @@ public class IoTDBMultiStatementsIT {
       Assert.assertTrue(hasResultSet2);
       ResultSet resultSet2 = statement2.getResultSet();
       int cnt2 = 0;
-      while (resultSet2.next()) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(resultSet2.getString(TestConstant.TIMESTAMP_STR))
-                .append(",")
-                .append(resultSet2.getString("root.fans.d0.s0"))
-                .append(",")
-                .append(resultSet2.getString("root.fans.d0.s1"));
-        Assert.assertEquals(retArray[cnt2], builder.toString());
-        cnt2++;
+      try {
+        while (resultSet2.next()) {
+          StringBuilder builder = new StringBuilder();
+          builder.append(resultSet2.getString(TestConstant.TIMESTAMP_STR))
+                  .append(",")
+                  .append(resultSet2.getString("root.fans.d0.s0"))
+                  .append(",")
+                  .append(resultSet2.getString("root.fans.d0.s1"));
+          Assert.assertEquals(retArray[cnt2], builder.toString());
+          cnt2++;
+        }
+      } finally {
+        resultSet2.close();
       }
       Assert.assertEquals(9, cnt2);
 

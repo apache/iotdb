@@ -106,46 +106,49 @@ public class TsFileGeneratorForTest {
     FileWriter fw = new FileWriter(file);
 
     long startTime = START_TIMESTAMP;
-    for (int i = 0; i < maxRowCount; i++) {
-      // write d1
-      String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2);
-      if (i % 5 == 0) {
-        d1 += ",s3," + (i * 10 + 3);
-      }
-      if (i % 8 == 0) {
-        d1 += ",s4," + "dog" + i;
-      }
-      if (i % 9 == 0) {
-        d1 += ",s5," + "false";
-      }
-      if (i % 10 == 0 && i < minRowCount) {
-        d1 += ",s6," + ((int) (i / 9.0) * 100) / 100.0;
-      }
-      if (i % 11 == 0) {
-        d1 += ",s7," + ((int) (i / 10.0) * 100) / 100.0;
-      }
-      fw.write(d1 + "\r\n");
+    try {
+      for (int i = 0; i < maxRowCount; i++) {
+        // write d1
+        String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2);
+        if (i % 5 == 0) {
+          d1 += ",s3," + (i * 10 + 3);
+        }
+        if (i % 8 == 0) {
+          d1 += ",s4," + "dog" + i;
+        }
+        if (i % 9 == 0) {
+          d1 += ",s5," + "false";
+        }
+        if (i % 10 == 0 && i < minRowCount) {
+          d1 += ",s6," + ((int) (i / 9.0) * 100) / 100.0;
+        }
+        if (i % 11 == 0) {
+          d1 += ",s7," + ((int) (i / 10.0) * 100) / 100.0;
+        }
+        fw.write(d1 + "\r\n");
 
-      // write d2
-      String d2 = "d2," + (startTime + i) + ",s2," + (i * 10 + 2) + ",s3," + (i * 10 + 3);
-      if (i % 20 < 5) {
-        // LOG.info("write null to d2:" + (startTime + i));
-        d2 = "d2," + (startTime + i) + ",s2,,s3," + (i * 10 + 3);
+        // write d2
+        String d2 = "d2," + (startTime + i) + ",s2," + (i * 10 + 2) + ",s3," + (i * 10 + 3);
+        if (i % 20 < 5) {
+          // LOG.info("write null to d2:" + (startTime + i));
+          d2 = "d2," + (startTime + i) + ",s2,,s3," + (i * 10 + 3);
+        }
+        if (i % 5 == 0) {
+          d2 += ",s1," + (i * 10 + 1);
+        }
+        if (i % 8 == 0) {
+          d2 += ",s4," + "dog" + i % 4;
+        }
+        fw.write(d2 + "\r\n");
       }
-      if (i % 5 == 0) {
-        d2 += ",s1," + (i * 10 + 1);
-      }
-      if (i % 8 == 0) {
-        d2 += ",s4," + "dog" + i % 4;
-      }
-      fw.write(d2 + "\r\n");
+      // write error
+      String d = "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3," + (rowCount * 10 + 3);
+      fw.write(d + "\r\n");
+      d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
+      fw.write(d + "\r\n");
+    } finally {
+      fw.close();
     }
-    // write error
-    String d = "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3," + (rowCount * 10 + 3);
-    fw.write(d + "\r\n");
-    d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
-    fw.write(d + "\r\n");
-    fw.close();
   }
 
   static public void write() throws IOException {

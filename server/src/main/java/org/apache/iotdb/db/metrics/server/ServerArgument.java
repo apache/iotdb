@@ -297,22 +297,25 @@ public class ServerArgument {
     long totalCpuTime = 0;
     buffer = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/stat")));
     String line = null;
-    while ((line = buffer.readLine()) != null) {
-      if (line.startsWith("cpu")) {
-        StringTokenizer tokenizer = new StringTokenizer(line);
-        List<String> temp = new ArrayList<String>();
-        while (tokenizer.hasMoreElements()) {
-          temp.add(tokenizer.nextToken());
+    try {
+      while ((line = buffer.readLine()) != null) {
+        if (line.startsWith("cpu")) {
+          StringTokenizer tokenizer = new StringTokenizer(line);
+          List<String> temp = new ArrayList<String>();
+          while (tokenizer.hasMoreElements()) {
+            temp.add(tokenizer.nextToken());
+          }
+          idleCpuTime = Long.parseLong(temp.get(4));
+          totalCpuTime = Long.parseLong(temp.get(1)) + Long.parseLong(temp.get(2))
+                  + Long.parseLong(temp.get(3)) + Long.parseLong(temp.get(4));
+          break;
         }
-        idleCpuTime = Long.parseLong(temp.get(4));
-        totalCpuTime = Long.parseLong(temp.get(1)) + Long.parseLong(temp.get(2))
-            + Long.parseLong(temp.get(3)) + Long.parseLong(temp.get(4));
-        break;
       }
+      retn[0] = idleCpuTime;
+      retn[1] = totalCpuTime;
+    } finally {
+      buffer.close();
     }
-    retn[0] = idleCpuTime;
-    retn[1] = totalCpuTime;
-    buffer.close();
     return retn;
   }
 
