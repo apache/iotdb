@@ -852,4 +852,8 @@ public abstract class RaftLogManager {
       blockedUnappliedLogList.clear();
     }
   }
+
+  public String getName() {
+    return name;
+  }
 }

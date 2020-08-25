@@ -95,7 +95,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
       Collection<TimeseriesSchema> schemas = slotTimeseries.computeIfAbsent(slot,
           s -> new HashSet<>());
       IoTDB.metaManager.collectTimeseriesSchema(sgNode, schemas);
-      logger.debug("{} timeseries are snapshot in slot {}", schemas.size(), slot);
+      logger.debug("{}: {} timeseries are snapshot in slot {}", getName(), schemas.size(), slot);
     }
   }
 }

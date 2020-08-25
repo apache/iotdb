@@ -60,9 +60,13 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
    * send FlushPlan to all nodes in one dataGroup
    */
   public void syncFlushAllProcessor() {
-    logger.info("Start flush all storage group processor in one data group");
+    logger.info("{}: Start flush all storage group processor in one data group", getName());
     ConcurrentHashMap<String, StorageGroupProcessor> processorMap = StorageEngine.getInstance()
         .getProcessorMap();
+    if (processorMap.size() == 0) {
+      logger.info("{}: no need to flush processor", getName());
+      return;
+    }
     List<Path> storageGroups = new ArrayList<>();
     for (Map.Entry<String, StorageGroupProcessor> entry : processorMap.entrySet()) {
       Path path = new Path(entry.getKey());
@@ -76,16 +80,16 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   public void takeSnapshot() throws IOException {
     // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
     synchronized (this) {
-      logger.info("Taking snapshots, flushing IoTDB");
+      logger.info("{}: Taking snapshots, flushing IoTDB", getName());
       syncFlushAllProcessor();
-      logger.info("Taking snapshots, IoTDB is flushed");
+      logger.info("{}: Taking snapshots, IoTDB is flushed", getName());
 
       super.takeSnapshot();
       collectTimeseriesSchemas();
       snapshotLastLogIndex = getCommitLogIndex();
       snapshotLastLogTerm = getCommitLogTerm();
       collectTsFilesAndFillTimeseriesSchemas();
-      logger.info("Snapshot is taken");
+      logger.info("{}: Snapshot is taken", getName());
     }
     super.setBlockAppliedCommitIndex(-1);
   }
@@ -162,7 +166,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
         return false;
       }
       createdHardlinks.add(hardlink);
-      logger.debug("File {} is put into snapshot #{}", tsFileResource, slotNum);
+      logger.debug("{}: File {} is put into snapshot #{}", getName(), tsFileResource, slotNum);
       snapshot.addFile(hardlink, thisNode);
     }
     return true;
