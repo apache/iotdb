@@ -55,10 +55,9 @@ public class FlinkIoTDBSink {
 
     private static class SensorSource implements SourceFunction<Map<String,String>> {
         boolean running = true;
-
+        Random random = new Random();
         @Override
         public void run(SourceContext context) throws Exception {
-            Random random = new Random();
             while (running) {
                 Map<String,String> tuple = new HashMap();
                 tuple.put("device", "root.sg.d1");
