@@ -88,12 +88,16 @@ public class TsFileProcessorInfo {
   /**
    * call this method when a memTable contains TEXT data flushed
    */
-  public void resetBytesMemCost(long cost) {
-    storageGroupInfo.resetBytesMemCost(cost);
-    bytesMemCost -= cost;
+  public void clearBytesMemCost() {
+    storageGroupInfo.resetBytesMemCost(bytesMemCost);
+    bytesMemCost = 0;
   }
 
   public long getTsFileProcessorMemCost() {
     return unsealedResourceMemCost + bytesMemCost + chunkMetadataMemCost + walMemCost;
+  }
+
+  public long getBytesMemCost() {
+    return bytesMemCost;
   }
 }
