@@ -68,6 +68,7 @@ import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -81,6 +82,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.timeIndex.IndexerManager;
+import org.apache.iotdb.db.timeIndex.device.DeviceTimeIndexer;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -243,6 +246,7 @@ public class StorageGroupProcessor {
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
 
   /**
+
    * value of root.stats."root.sg".TOTAL_POINTS
    */
   private long monitorSeriesValue;
@@ -260,6 +264,14 @@ public class StorageGroupProcessor {
 
   private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
   private List<FlushListener> customFlushListeners = Collections.emptyList();
+
+  /*
+   * seqDeviceTimeIndexer manage the device Index of seq tsfiles
+   * unseqDeviceTimeIndexer manage the device Index of unseq tsfiles
+   *
+   */
+  private DeviceTimeIndexer seqDeviceTimeIndexer;
+  private DeviceTimeIndexer unseqDeviceTimeIndexer;
 
   public StorageGroupProcessor(String systemDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
@@ -371,6 +383,16 @@ public class StorageGroupProcessor {
           .computeIfAbsent(timePartitionId, id -> new HashMap<>())
           .putAll(endTimeMap);
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
+    }
+
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+      // init TimeIndexer
+      seqDeviceTimeIndexer = IndexerManager.getInstance().getSeqIndexer(storageGroupName);
+      unseqDeviceTimeIndexer = IndexerManager.getInstance().getUnseqIndexer(storageGroupName);
+      if (seqDeviceTimeIndexer != null) {
+        seqDeviceTimeIndexer.init();
+        unseqDeviceTimeIndexer.init();
+      }
     }
 
   }
@@ -898,8 +920,7 @@ public class StorageGroupProcessor {
 
     // try to update the latest time of the device of this tsRecord
     if (latestTimeForEachDevice.get(timePartitionId)
-        .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE) < insertRowPlan
-        .getTime()) {
+        .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE) < insertRowPlan.getTime()) {
       latestTimeForEachDevice.get(timePartitionId)
           .put(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
@@ -1277,6 +1298,23 @@ public class StorageGroupProcessor {
                 new Date(timeLowerBound), dataTTL);
           }
           tsFileManagement.remove(resource, isSeq);
+          if (isSeq) {
+            if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+              DeviceTimeIndexer deviceTimeIndexer = IndexerManager.getInstance().getSeqIndexer(resource.getStorageGroupName());
+              if (deviceTimeIndexer != null) {
+                deviceTimeIndexer.deleteIndexForDevices(resource.getDeviceToIndexMap(), resource.getStartTimes(),
+                    resource.getEndTimes(), resource.getTsFilePath());
+              }
+            }
+          } else {
+            if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+              DeviceTimeIndexer deviceTimeIndexer = IndexerManager.getInstance().getUnseqIndexer(resource.getStorageGroupName());
+              if (deviceTimeIndexer != null) {
+                deviceTimeIndexer.deleteIndexForDevices(resource.getDeviceToIndexMap(), resource.getStartTimes(),
+                    resource.getEndTimes(), resource.getTsFilePath());
+              }
+            }
+          }
         } finally {
           resource.writeUnlock();
         }
@@ -1360,15 +1398,28 @@ public class StorageGroupProcessor {
   public QueryDataSource query(PartialPath deviceId, String measurementId, QueryContext context,
       QueryFileManager filePathsManager, Filter timeFilter) throws QueryProcessException {
     insertLock.readLock().lock();
+    List<TsFileResource> seqResources;
+    List<TsFileResource> unseqResources;
     try {
-      List<TsFileResource> seqResources = getFileResourceListForQuery(
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+        seqResources = seqDeviceTimeIndexer.filterByOneDevice(deviceId, timeFilter);
+        unseqResources = unseqDeviceTimeIndexer.filterByOneDevice(deviceId, timeFilter);
+        List<TsFileResource> unsealedSeqFiles = getUnSealedListResourceForQuery(
           tsFileManagement.getTsFileList(true),
-          upgradeSeqFileList, deviceId, measurementId, context, timeFilter, true);
-      List<TsFileResource> unseqResources = getFileResourceListForQuery(
+          deviceId, measurementId, context, timeFilter, true);
+        List<TsFileResource> unsealedUnseqFiles = getUnSealedListResourceForQuery(
           tsFileManagement.getTsFileList(false),
+          deviceId, measurementId, context, timeFilter, false);
+        seqResources.addAll(unsealedSeqFiles);
+        unsealedSeqFiles.addAll(unsealedUnseqFiles);
+      } else {
+        seqResources = getFileResourceListForQuery(tsFileManagement.getTsFileList(true),
+            upgradeSeqFileList, deviceId, measurementId, context, timeFilter, true);
+        unseqResources = getFileResourceListForQuery(tsFileManagement.getTsFileList(false),
           upgradeUnseqFileList, deviceId, measurementId, context, timeFilter, false);
+      }
       QueryDataSource dataSource = new QueryDataSource(deviceId,
-          seqResources, unseqResources);
+        seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
       // is null only in tests
@@ -1842,6 +1893,16 @@ public class StorageGroupProcessor {
           newFilePartitionId)) {
         updateLatestTimeMap(newTsFileResource);
       }
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+        DeviceTimeIndexer deviceTimeIndexer = null;
+        if (newTsFileResource.isSeq()) {
+          deviceTimeIndexer = IndexerManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
+        } else {
+          deviceTimeIndexer = IndexerManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
+        }
+        deviceTimeIndexer.addIndexForDevices(newTsFileResource.getDeviceToIndexMap(), newTsFileResource.getStartTimes(),
+          newTsFileResource.getEndTimes(), newTsFileResource.getTsFilePath());
+      }
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
@@ -1900,6 +1961,17 @@ public class StorageGroupProcessor {
         }
         loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
             newFilePartitionId);
+      }
+
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+        DeviceTimeIndexer deviceTimeIndexer = null;
+        if (newTsFileResource.isSeq()) {
+          deviceTimeIndexer = IndexerManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
+        } else {
+          deviceTimeIndexer = IndexerManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
+        }
+        deviceTimeIndexer.addIndexForDevices(newTsFileResource.getDeviceToIndexMap(), newTsFileResource.getStartTimes(),
+          newTsFileResource.getEndTimes(), newTsFileResource.getTsFilePath());
       }
 
       // update latest time map
@@ -2302,6 +2374,19 @@ public class StorageGroupProcessor {
     tsFileResourceToBeDeleted.writeLock();
     try {
       tsFileResourceToBeDeleted.remove();
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+          DeviceTimeIndexer deviceTimeIndexer = null;
+          if (tsFileResourceToBeDeleted.isSeq()) {
+            deviceTimeIndexer = IndexerManager.getInstance().getSeqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
+          } else {
+            deviceTimeIndexer = IndexerManager.getInstance().getUnseqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
+          }
+          if (deviceTimeIndexer != null) {
+            deviceTimeIndexer.deleteIndexForDevices(tsFileResourceToBeDeleted.getDeviceToIndexMap(),
+                tsFileResourceToBeDeleted.getStartTimes(), tsFileResourceToBeDeleted.getEndTimes(),
+                tsFileResourceToBeDeleted.getTsFilePath());
+          }
+      }
       logger.info("Delete tsfile {} successfully.", tsFileResourceToBeDeleted.getTsFile());
     } finally {
       tsFileResourceToBeDeleted.writeUnlock();
@@ -2531,5 +2616,35 @@ public class StorageGroupProcessor {
   public void setCustomFlushListeners(
       List<FlushListener> customFlushListeners) {
     this.customFlushListeners = customFlushListeners;
+  }
+
+  public List<TsFileResource> getUnSealedListResourceForQuery(
+    Collection<TsFileResource> tsFileResources, PartialPath deviceId, String measurementId,
+    QueryContext context, Filter timeFilter, boolean isSeq) throws MetadataException {
+    MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(deviceId, measurementId);
+
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+    long timeLowerBound = dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long
+      .MIN_VALUE;
+    context.setQueryTimeLowerBound(timeLowerBound);
+
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (!isTsFileResourceSatisfied(tsFileResource, deviceId.getFullPath(), timeFilter, isSeq)) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        if (!tsFileResource.isClosed()) {
+          tsFileResource.getUnsealedFileProcessor()
+            .query(deviceId.getFullPath(), measurementId, schema.getType(), schema.getEncodingType(),
+              schema.getProps(), context, tsfileResourcesForQuery);
+        }
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+    return tsfileResourcesForQuery;
   }
 }

@@ -782,6 +782,10 @@ public class IoTDBConfig {
    */
   private boolean debugState = false;
 
+  // enable new indexer
+  private boolean enableDeviceIndexer = false;
+  private int deviceIndexerType = 0;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2092,5 +2096,21 @@ public class IoTDBConfig {
 
   public void setDefaultIndexWindowRange(int defaultIndexWindowRange) {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
+  }
+
+  public boolean isEnableDeviceIndexer() {
+    return enableDeviceIndexer;
+  }
+
+  public void setEnableDeviceIndexer(boolean enableDeviceIndexer) {
+    this.enableDeviceIndexer = enableDeviceIndexer;
+  }
+
+  public int getDeviceIndexerType() {
+    return deviceIndexerType;
+  }
+
+  public void setDeviceIndexerType(int deviceIndexerType) {
+    this.deviceIndexerType = deviceIndexerType;
   }
 }

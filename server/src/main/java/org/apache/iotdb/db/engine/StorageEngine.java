@@ -78,6 +78,7 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.timeIndex.IndexerManager;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -627,6 +628,10 @@ public class StorageEngine implements IService {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
     for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+        IndexerManager.getInstance().deleteSeqIndexer(storageGroup);
+        IndexerManager.getInstance().deleteUnseqIndexer(storageGroup);
+      }
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
     return true;
@@ -640,6 +645,10 @@ public class StorageEngine implements IService {
   public void deleteStorageGroup(PartialPath storageGroupPath) {
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     StorageGroupProcessor processor = processorMap.remove(storageGroupPath);
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+      IndexerManager.getInstance().deleteSeqIndexer(storageGroupPath);
+      IndexerManager.getInstance().deleteUnseqIndexer(storageGroupPath);
+    }
     if (processor != null) {
       processor.deleteFolder(systemDir);
     }

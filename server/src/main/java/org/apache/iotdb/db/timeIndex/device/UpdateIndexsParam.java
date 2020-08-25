@@ -16,31 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.timeIndex;
+package org.apache.iotdb.db.timeIndex.device;
 
-public class IndexConstants {
-  /**
-   * Indexer type
-   */
-  public enum IndexType {
-    // DeviceIndexer, query by device
-    DEVICE
+/**
+ * to atomic update indexs for device
+ */
+public class UpdateIndexsParam {
+  private DeviceIndex[] oldIndexs;
+  private DeviceIndex newIndex;
+
+  public DeviceIndex[] getOldIndexs() {
+    return oldIndexs;
   }
 
-  /**
-   * the sub type of Indexer, we may has different implement of Indexer
-   */
-  public enum IndexSubType {
-
-    /**
-     * sub type of device Indexer
-     */
-    // load all file
-    LOADALL,
-    // use rocksdb to store the index
-    ROCKSDB
+  public void setOldIndexs(DeviceIndex[] oldIndexs) {
+    this.oldIndexs = oldIndexs;
   }
 
-  public static final String INDEXER_FILE = "indexer.snapshot";
+  public DeviceIndex getNewIndex() {
+    return newIndex;
+  }
 
+  public void setNewIndex(DeviceIndex newIndex) {
+    this.newIndex = newIndex;
+  }
 }

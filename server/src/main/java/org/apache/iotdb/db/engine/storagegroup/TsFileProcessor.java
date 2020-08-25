@@ -59,6 +59,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.timeIndex.device.DeviceTimeIndexer;
+import org.apache.iotdb.db.timeIndex.IndexerManager;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.writelog.WALFlushListener;
@@ -812,6 +814,16 @@ public class TsFileProcessor {
 
   private void endFile() throws IOException, TsFileProcessorException {
     long closeStartTime = System.currentTimeMillis();
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+      // update device index
+      if (sequence) {
+        DeviceTimeIndexer seqIndexer = IndexerManager.getInstance().getSeqIndexer(storageGroupName);
+        seqIndexer.addIndexForDevices(tsFileResource.deviceToIndex, tsFileResource.startTimes, tsFileResource.endTimes, tsFileResource.getTsFilePath());
+      } else {
+        DeviceTimeIndexer unseqIndexer = IndexerManager.getInstance().getUnseqIndexer(storageGroupName);
+        unseqIndexer.addIndexForDevices(tsFileResource.deviceToIndex, tsFileResource.startTimes, tsFileResource.endTimes, tsFileResource.getTsFilePath());
+      }
+    }
     tsFileResource.serialize();
     writer.endFile();
     tsFileResource.cleanCloseFlag();
