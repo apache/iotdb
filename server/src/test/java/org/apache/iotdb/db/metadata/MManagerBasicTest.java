@@ -38,19 +38,19 @@ import static org.junit.Assert.*;
 public class MManagerBasicTest {
 
   private CompressionType compressionType;
-  private boolean canAdjust = IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter();
+  private boolean canAdjust = IoTDBDescriptor.getInstance().getConfig().isEnableActiveTimeseriesCounter();
 
   @Before
   public void setUp() throws Exception {
-    canAdjust = IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter();
+    canAdjust = IoTDBDescriptor.getInstance().getConfig().isEnableActiveTimeseriesCounter();
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableActiveTimeseriesCounter(true);
   }
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(canAdjust);
+    IoTDBDescriptor.getInstance().getConfig().setEnableActiveTimeseriesCounter(canAdjust);
     EnvironmentUtils.cleanEnv();
   }
 

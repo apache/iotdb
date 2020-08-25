@@ -179,9 +179,9 @@ public class IoTDBDescriptor {
       conf.setTimestampPrecision(properties.getProperty("timestamp_precision",
           conf.getTimestampPrecision()));
 
-      conf.setEnableParameterAdapter(
-          Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
-              Boolean.toString(conf.isEnableParameterAdapter()))));
+      conf.setEnableActiveTimeseriesCounter(
+          Boolean.parseBoolean(properties.getProperty("enable_active_timeseries_counter",
+              Boolean.toString(conf.isEnableActiveTimeseriesCounter()))));
 
       conf.setBufferedArraysMemoryProportion(
           Double.parseDouble(properties.getProperty("buffered_arrays_memory_proportion",
@@ -646,18 +646,18 @@ public class IoTDBDescriptor {
       conf.setZoneID(
           ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
 
-      // dynamic parameters
+      // mem control
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());
-      if (tsfileSizeThreshold >= 0 && !conf.isEnableParameterAdapter()) {
+      if (tsfileSizeThreshold >= 0 && !conf.isEnableActiveTimeseriesCounter()) {
         conf.setTsFileSizeThreshold(tsfileSizeThreshold);
       }
 
       long memTableSizeThreshold = Long.parseLong(properties
           .getProperty("memtable_size_threshold",
               Long.toString(conf.getMemtableSizeThreshold())).trim());
-      if (memTableSizeThreshold > 0 && !conf.isEnableParameterAdapter()) {
+      if (memTableSizeThreshold > 0 && !conf.isEnableActiveTimeseriesCounter()) {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
 

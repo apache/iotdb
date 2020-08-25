@@ -128,11 +128,9 @@ public class IoTDBConfig {
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 2 / 10;
 
   /**
-   * Is dynamic parameter adapter enable.
+   * Is active timeseries counter enable.
    */
-  //the default value of this parameter should be kept true in iotdb-engine.properties,
-  //we set it as false here for convenient testing.
-  private boolean enableParameterAdapter = false;
+  private boolean enableActiveTimeseriesCounter = false;
 
   /**
    * Ratio of memory allocated for buffered arrays
@@ -1129,12 +1127,12 @@ public class IoTDBConfig {
     this.mergeIntervalSec = mergeIntervalSec;
   }
 
-  public boolean isEnableParameterAdapter() {
-    return enableParameterAdapter;
+  public boolean isEnableActiveTimeseriesCounter() {
+    return enableActiveTimeseriesCounter;
   }
 
-  public void setEnableParameterAdapter(boolean enableParameterAdapter) {
-    this.enableParameterAdapter = enableParameterAdapter;
+  public void setEnableActiveTimeseriesCounter(boolean enableActiveTimeseriesCounter) {
+    this.enableActiveTimeseriesCounter = enableActiveTimeseriesCounter;
   }
 
   public double getBufferedArraysMemoryProportion() {

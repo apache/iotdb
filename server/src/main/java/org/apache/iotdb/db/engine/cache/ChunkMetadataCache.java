@@ -27,7 +27,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
@@ -78,7 +77,6 @@ public class ChunkMetadataCache {
         if (count < 10) {
           long currentSize = value.get(0).calculateRamSize();
           averageSize = ((averageSize * count) + currentSize) / (++count);
-          IoTDBConfigDynamicAdapter.setChunkMetadataSizeInByte(averageSize);
           entrySize = RamUsageEstimator.sizeOf(key)
               + (currentSize + RamUsageEstimator.NUM_BYTES_OBJECT_REF) * value.size()
               + RamUsageEstimator.shallowSizeOf(value);

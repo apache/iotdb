@@ -89,8 +89,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       }
     } catch (BufferOverflowException e) {
       throw new IOException(
-          "Log cannot fit into buffer, if you don't enable Dynamic Parameter Adapter, please increase wal_buffer_size;"
-              + "otherwise, please increase the JVM memory", e);
+          "Log cannot fit into buffer, please increase wal_buffer_size or please increase the JVM memory", e);
     } finally {
       lock.writeLock().unlock();
     }
