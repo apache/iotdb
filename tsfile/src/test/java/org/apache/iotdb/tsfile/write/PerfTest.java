@@ -63,6 +63,7 @@ public class PerfTest {
   static public String errorOutputDataFile;
   static public Schema schema;
   static public Random r = new Random();
+  static public Random rm = new Random();
 
   static private void generateSampleInputDataFile() throws IOException {
     File file = new File(inputDataFile);
@@ -73,7 +74,6 @@ public class PerfTest {
 
     long startTime = System.currentTimeMillis();
     startTime = startTime - startTime % 1000;
-    Random rm = new Random();
     for (int i = 0; i < ROW_COUNT; i++) {
       String string4 = ",s4," + (char) (97 + i % 26);
       // write d1

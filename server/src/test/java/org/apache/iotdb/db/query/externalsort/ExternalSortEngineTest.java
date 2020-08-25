@@ -46,6 +46,7 @@ public class ExternalSortEngineTest {
   private SimpleExternalSortEngine engine;
   private String preBaseDir;
   private int preMinExternalSortSourceCount;
+  private Random rand = new Random();
 
   @Before
   public void before() {
@@ -138,7 +139,6 @@ public class ExternalSortEngineTest {
   }
 
   private List<long[]> genData(int lineCount, int valueCountEachLine) {
-    Random rand = new Random();
     List<long[]> data = new ArrayList<>();
     for (int i = 0; i < lineCount; i++) {
       long[] tmp = new long[valueCountEachLine];

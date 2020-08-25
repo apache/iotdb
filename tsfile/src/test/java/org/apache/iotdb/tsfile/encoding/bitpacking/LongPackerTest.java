@@ -35,10 +35,10 @@ import org.apache.iotdb.tsfile.encoding.bitpacking.LongPacker;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 public class LongPackerTest {
+  Random rand = new Random();
 
   @Test
   public void test() {
-    Random rand = new Random();
     int byteCount = 63;
 
     LongPacker packer = new LongPacker(byteCount);

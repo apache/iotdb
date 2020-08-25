@@ -29,10 +29,9 @@ import org.junit.Test;
 import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
 
 public class IntPackerTest {
-
+  Random rand = new Random();
   @Test
   public void test() {
-    Random rand = new Random();
     int width = 31;
 
     int count = 100000;

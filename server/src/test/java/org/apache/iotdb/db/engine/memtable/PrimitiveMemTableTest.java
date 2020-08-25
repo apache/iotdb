@@ -42,6 +42,7 @@ import org.junit.Test;
 public class PrimitiveMemTableTest {
 
   double delta;
+  Random rand = new Random();
 
   @Before
   public void setUp() {
@@ -163,7 +164,6 @@ public class PrimitiveMemTableTest {
 
   private TimeValuePair[] genTimeValuePair(int size, TSDataType dataType) {
     TimeValuePair[] ret = new TimeValuePair[size];
-    Random rand = new Random();
     for (int i = 0; i < size; i++) {
       switch (dataType) {
         case BOOLEAN:

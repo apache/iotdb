@@ -28,6 +28,7 @@ import org.junit.Test;
 
 public class LongTVListTest {
 
+  Random random = new Random();
 
   @Test
   public void testLongTVList1() {
@@ -57,7 +58,6 @@ public class LongTVListTest {
 
   @Test
   public void testLongTVList3() {
-    Random random = new Random();
     LongTVList tvList = new LongTVList();
     List<TimeValuePair> inputs = new ArrayList<>();
     for (long i = 0; i < 10000; i++) {
