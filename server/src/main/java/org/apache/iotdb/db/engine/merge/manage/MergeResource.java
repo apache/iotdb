@@ -74,6 +74,15 @@ public class MergeResource {
         .collect(Collectors.toList());
   }
 
+  public MergeResource(MergeResource another) {
+    this.fileReaderCache = another.fileReaderCache;
+    this.fileWriterCache = another.fileWriterCache;
+    this.modificationCache = another.modificationCache;
+    this.measurementSchemaMap = another.measurementSchemaMap;
+    this.chunkWriterCache = another.chunkWriterCache;
+  }
+
+
   private boolean filterResource(TsFileResource res) {
     return !res.isDeleted() && res.stillLives(timeLowerBound);
   }
@@ -221,16 +230,16 @@ public class MergeResource {
   }
 
   public void setSeqFiles(List<TsFileResource> seqFiles) {
-    this.seqFiles = seqFiles;
+    this.seqFiles = new ArrayList<>(seqFiles);
   }
 
   public List<TsFileResource> getUnseqFiles() {
-    return unseqFiles;
+    return new ArrayList<>(unseqFiles);
   }
 
   public void setUnseqFiles(
       List<TsFileResource> unseqFiles) {
-    this.unseqFiles = unseqFiles;
+    this.unseqFiles = new ArrayList<>(unseqFiles);
   }
 
   public void removeOutdatedSeqReaders() throws IOException {

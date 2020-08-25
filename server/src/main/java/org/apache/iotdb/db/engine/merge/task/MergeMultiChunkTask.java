@@ -89,7 +89,7 @@ public class MergeMultiChunkTask {
       int concurrentMergeSeriesNum, String storageGroupName) {
     this.mergeContext = context;
     this.taskName = taskName;
-    this.mergeLogger = mergeLogger;
+    this.mergeLogger = new MergeLogger(mergeLogger);
     this.resource = mergeResource;
     this.fullMerge = fullMerge;
     this.unmergedSeries = unmergedSeries;

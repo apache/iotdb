@@ -81,19 +81,19 @@ public class User {
   }
 
   public List<PathPrivilege> getPrivilegeList() {
-    return privilegeList;
+    return new ArrayList<>(privilegeList);
   }
 
   public void setPrivilegeList(List<PathPrivilege> privilegeList) {
-    this.privilegeList = privilegeList;
+    this.privilegeList = new ArrayList<>(privilegeList);
   }
 
   public List<String> getRoleList() {
-    return roleList;
+    return new ArrayList<>(roleList);
   }
 
   public void setRoleList(List<String> roleList) {
-    this.roleList = roleList;
+    this.roleList = new ArrayList<>(roleList);
   }
 
   public long getLastActiveTime() {

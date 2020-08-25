@@ -62,11 +62,11 @@ public class PathPrivilege {
   }
 
   public Set<Integer> getPrivileges() {
-    return privileges;
+    return new HashSet<>(privileges);
   }
 
   public void setPrivileges(Set<Integer> privileges) {
-    this.privileges = privileges;
+    this.privileges = new HashSet<>(privileges);
   }
 
   public String getPath() {

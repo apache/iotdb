@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.querycontext;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.common.Path;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -39,8 +40,8 @@ public class QueryDataSource {
 
   public QueryDataSource(Path seriesPath, List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seriesPath = seriesPath;
-    this.seqResources = seqResources;
-    this.unseqResources = unseqResources;
+    this.seqResources = new ArrayList<>(seqResources);
+    this.unseqResources = new ArrayList<>(unseqResources);
   }
 
   public Path getSeriesPath() {
@@ -48,11 +49,11 @@ public class QueryDataSource {
   }
 
   public List<TsFileResource> getSeqResources() {
-    return seqResources;
+    return new ArrayList<>(seqResources);
   }
 
   public List<TsFileResource> getUnseqResources() {
-    return unseqResources;
+    return new ArrayList<>(unseqResources);
   }
 
   public long getDataTTL() {

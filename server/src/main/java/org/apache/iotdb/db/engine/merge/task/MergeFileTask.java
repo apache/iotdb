@@ -23,11 +23,9 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
+
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
@@ -71,10 +69,10 @@ class MergeFileTask {
   MergeFileTask(String taskName, MergeContext context, MergeLogger mergeLogger,
       MergeResource resource, List<TsFileResource> unmergedSeqFiles) {
     this.taskName = taskName;
-    this.context = context;
-    this.mergeLogger = mergeLogger;
-    this.resource = resource;
-    this.unmergedFiles = unmergedSeqFiles;
+    this.context = new MergeContext(context);
+    this.mergeLogger = new MergeLogger(mergeLogger);
+    this.resource = new MergeResource(resource);
+    this.unmergedFiles = new ArrayList<>(unmergedSeqFiles);
   }
 
   void mergeFiles() throws IOException {

@@ -55,11 +55,11 @@ public class Role {
   }
 
   public List<PathPrivilege> getPrivilegeList() {
-    return privilegeList;
+    return new ArrayList<>(privilegeList);
   }
 
   public void setPrivilegeList(List<PathPrivilege> privilegeList) {
-    this.privilegeList = privilegeList;
+    this.privilegeList = new ArrayList<>(privilegeList);
   }
 
   public boolean hasPrivilege(String path, int privilegeId) {

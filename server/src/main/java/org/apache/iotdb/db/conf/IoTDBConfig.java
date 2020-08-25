@@ -805,7 +805,7 @@ public class IoTDBConfig {
   }
 
   void setDataDirs(String[] dataDirs) {
-    this.dataDirs = dataDirs;
+    this.dataDirs = dataDirs.clone();
   }
 
   public String getRpcAddress() {
@@ -1552,7 +1552,7 @@ public class IoTDBConfig {
   }
 
   public String[] getHdfsIp() {
-    return hdfsIp.split(",");
+    return hdfsIp.split(",").clone();
   }
 
   String getRawHDFSIp() {
@@ -1588,7 +1588,7 @@ public class IoTDBConfig {
   }
 
   public String[] getDfsHaNamenodes() {
-    return dfsHaNamenodes.split(",");
+    return dfsHaNamenodes.split(",").clone();
   }
 
   String getRawDfsHaNamenodes() {
