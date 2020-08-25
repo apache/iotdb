@@ -125,7 +125,7 @@ public class IoTDBConfig {
   /**
    * Memory allocated for the read process
    */
-  private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
+  private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 2 / 10;
 
   /**
    * Is active timeseries counter enable.
@@ -135,7 +135,7 @@ public class IoTDBConfig {
   /**
    * Ratio of memory allocated for buffered arrays
    */
-  private double bufferedArraysMemoryProportion = 0.75;
+  private double bufferedArraysMemoryProportion = 0.4;
 
   /**
    * Flush proportion for system

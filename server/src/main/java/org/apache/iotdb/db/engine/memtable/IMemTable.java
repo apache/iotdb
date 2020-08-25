@@ -124,7 +124,4 @@ public interface IMemTable {
 
   boolean checkIfNeedStartNewChunk(String deviceId, String measurement);
 
-  void addBytesMemSize(long size);
-
-  long getBytesMemSize();
 }

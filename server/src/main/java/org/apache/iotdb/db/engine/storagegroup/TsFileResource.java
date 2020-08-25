@@ -807,12 +807,29 @@ public class TsFileResource {
   }
 
   public long calculateRamSize() {
-    long size = 0;
-    for (Entry<String, Integer> entry : deviceToIndex.entrySet()) {
-      size += RamUsageEstimator.sizeOf(entry);
-    }
-    size += startTimes.length * Long.BYTES * 2;
-    return size;
+    return RamUsageEstimator.sizeOf(deviceToIndex) + RamUsageEstimator.sizeOf(startTimes) + 
+        RamUsageEstimator.sizeOf(endTimes);
   }
 
+  /**
+   * Calculate the resource ram increment when insert data in TsFileProcessor
+   * 
+   * @return ramIncrement
+   */
+  public long estimateRamIncrement(String deviceToBeChecked) {
+    long ramIncrement = 0L;
+    if (!containsDevice(deviceToBeChecked)) {
+      // 80 is the Map.Entry header ram size
+      if (deviceToIndex.isEmpty()) {
+        ramIncrement += 80;
+      }
+      // 16 is the Integer ram size
+      ramIncrement += RamUsageEstimator.sizeOf(deviceToBeChecked) + 16;
+      // if needs to extend the startTimes and endTimes arrays
+      if (deviceToIndex.size() >= startTimes.length) {
+        ramIncrement += startTimes.length * Long.BYTES;
+      }
+    }
+    return ramIncrement;
+  }
 }

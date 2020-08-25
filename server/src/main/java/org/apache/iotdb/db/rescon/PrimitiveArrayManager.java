@@ -22,7 +22,6 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -187,56 +186,42 @@ public class PrimitiveArrayManager {
       case BOOLEAN:
         boolean[][] booleans = new boolean[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
-          booleans[i] = (boolean[]) waitAndGetDataListByType(dataType);
+          booleans[i] = new boolean[ARRAY_SIZE];
         }
         return booleans;
       case INT32:
         int[][] ints = new int[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
-          ints[i] = (int[]) waitAndGetDataListByType(dataType);
+          ints[i] = new int[ARRAY_SIZE];
         }
         return ints;
       case INT64:
         long[][] longs = new long[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
-          longs[i] = (long[]) waitAndGetDataListByType(dataType);
+          longs[i] = new long[ARRAY_SIZE];
         }
         return longs;
       case FLOAT:
         float[][] floats = new float[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
-          floats[i] = (float[]) waitAndGetDataListByType(dataType);
+          floats[i] = new float[ARRAY_SIZE];
         }
         return floats;
       case DOUBLE:
         double[][] doubles = new double[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
-          doubles[i] = (double[]) waitAndGetDataListByType(dataType);
+          doubles[i] = new double[ARRAY_SIZE];
         }
         return doubles;
       case TEXT:
         Binary[][] binaries = new Binary[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
-          binaries[i] = (Binary[]) waitAndGetDataListByType(dataType);
+          binaries[i] = new Binary[ARRAY_SIZE];
         }
         return binaries;
       default:
         return null;
     }
-  }
-
-  private static Object waitAndGetDataListByType(TSDataType dataType) {
-    Object res = getDataListByType(dataType);
-    while (res == null) {
-      try {
-        TimeUnit.MILLISECONDS.sleep(100);
-      } catch (InterruptedException e) {
-        logger.error("Failed when waiting for getting an out of buffer array from system. ", e);
-        Thread.currentThread().interrupt();
-      }
-      res = getDataListByType(dataType);
-    }
-    return res;
   }
 
   /**

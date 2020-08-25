@@ -217,7 +217,9 @@ public class TsFileProcessor {
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
-        logger.info("System rejected, waiting for memory releasing... ");
+        logger.info("System rejected, waiting for memory releasing... "
+            + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
+            .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
         Thread.currentThread().interrupt();
@@ -231,8 +233,8 @@ public class TsFileProcessor {
     // the work memtable directly
     if (workMemTable.checkIfArrayIsEnough(insertRowPlan)) {
       logger.debug("Array in work MemTable is enough");
+      boolean needToReport = checkMemCostAndAddToTspInfo(insertRowPlan);
       workMemTable.insert(insertRowPlan);
-  
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         try {
           getLogNode().write(insertRowPlan);
@@ -249,13 +251,16 @@ public class TsFileProcessor {
       if (!sequence) {
         tsFileResource.updateEndTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
       }
+      if (needToReport) {
+        SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+      }
     }
     // If there aren't enough size of arrays in memtable, it may apply buffered array
     // from the array pool or get OOB array before inserting into the memtable
     else {
       try {
         logger.debug("Array in work MemTable isn't enough");
-        checkMemCostAndAddToTspInfo(insertRowPlan);
+        boolean needToReport = checkMemCostAndAddToTspInfo(insertRowPlan);
         workMemTable.insert(insertRowPlan);
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           getLogNode().write(insertRowPlan);
@@ -266,6 +271,9 @@ public class TsFileProcessor {
         //for unsequence tsfile, we have to update the endTime for each insertion.
         if (!sequence) {
           tsFileResource.updateEndTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
+        }
+        if (needToReport) {
+          SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
         }
       } catch (Exception e) {
         throw new WriteProcessException(e);
@@ -288,7 +296,9 @@ public class TsFileProcessor {
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
-        logger.info("System rejected, waiting for memory releasing... ");
+        logger.info("System rejected, waiting for memory releasing... "
+            + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
+            .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
         Thread.currentThread().interrupt();
@@ -302,6 +312,7 @@ public class TsFileProcessor {
     // the work memtable directly
     if (workMemTable.checkIfArrayIsEnough(insertTabletPlan)) {
       // insert insertRowPlan to the work memtable
+      boolean needToReport = checkMemCostAndAddToTspInfo(insertTabletPlan);
       try {
         workMemTable.insertTablet(insertTabletPlan, start, end);
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -329,13 +340,16 @@ public class TsFileProcessor {
             .updateEndTime(
                 insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
       }
+      if (needToReport) {
+        SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+      }
     }
     // If there aren't enough size of arrays in memtable, it may apply buffered array
     // from the array pool or get OOB array before inserting into the memtable
     else {
+      boolean needToReport = checkMemCostAndAddToTspInfo(insertTabletPlan);
       try {
         // if get buffered or OOB array successfully, estimate the memory cost
-        checkMemCostAndAddToTspInfo(insertTabletPlan);
         for (int i = start; i < end; i++) {
           results[i] = RpcUtils.SUCCESS_STATUS;
         }
@@ -356,6 +370,9 @@ public class TsFileProcessor {
               .updateEndTime(
                   insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
         }
+        if (needToReport) {
+          SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+        }
       } catch (Exception e) {
         for (int i = start; i < end; i++) {
           results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -363,35 +380,26 @@ public class TsFileProcessor {
         throw new WriteProcessException(e);
       }
     }
-
   }
 
-  private void checkMemCostAndAddToTspInfo(InsertPlan insertPlan) {
+  private boolean checkMemCostAndAddToTspInfo(InsertPlan insertPlan) {
     long bytesCost = 0L;
     long unsealedResourceCost = 0L;
     long chunkMetadataCost = 0L;
-    if (!tsFileResource.getDeviceToIndexMap().containsKey(insertPlan.getDeviceId())) {
-      unsealedResourceCost += RamUsageEstimator.sizeOf(insertPlan.getDeviceId()) + Integer.BYTES;
-      // if needs to extend the startTimes and endTimes arrays
-      // FIXME: not accurate, needs to be fixed
-      if (tsFileResource.getDeviceToIndexMap().size() >= tsFileResource.getStartTimes().length) {
-        unsealedResourceCost += tsFileResource.getDeviceToIndexMap().size() * Long.BYTES;
-      }
-    }
+    unsealedResourceCost = tsFileResource.estimateRamIncrement(insertPlan.getDeviceId());
     for (int i = 0; i < insertPlan.getDataTypes().length; i++) {
       // skip failed Measurements
       if (insertPlan.getDataTypes()[i] == null) {
         continue;
       }
       // String array cost
-      // FIXME: This '* 50' comes from experiment but I don't know why...
       if (insertPlan.getDataTypes()[i] == TSDataType.TEXT) {
         if (insertPlan instanceof InsertRowPlan) {
-          bytesCost += RamUsageEstimator.sizeOf((Binary) ((InsertRowPlan) insertPlan).getValues()[i]) * 50;
+          bytesCost += RamUsageEstimator.sizeOf((Binary) ((InsertRowPlan) insertPlan).getValues()[i]);
         }
         else {
           for (Binary bytes : (Binary[]) ((InsertTabletPlan) insertPlan).getColumns()[i]) {
-            bytesCost += RamUsageEstimator.sizeOf(bytes) * 50;
+            bytesCost += RamUsageEstimator.sizeOf(bytes);
           }
         }
       }
@@ -402,13 +410,13 @@ public class TsFileProcessor {
             insertPlan.getDataTypes()[i]);
       }
     }
-    workMemTable.addBytesMemSize(bytesCost);
     tsFileProcessorInfo.addBytesMemCost(bytesCost);
     tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
     tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
-    if (storageGroupInfo.checkIfNeedToReportStatusToSystem()) {
-      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+    if (bytesCost != 0 && storageGroupInfo.checkIfNeedToReportStatusToSystem()) {
+      return true;
     }
+    return false;
   }
 
   /**
@@ -489,7 +497,7 @@ public class TsFileProcessor {
     }
     synchronized (flushingMemTables) {
       try {
-        asyncClose();
+        asyncClose(true);
         long startTime = System.currentTimeMillis();
         while (!flushingMemTables.isEmpty()) {
           flushingMemTables.wait(60_000);
@@ -515,7 +523,7 @@ public class TsFileProcessor {
   }
 
 
-  void asyncClose() {
+  void asyncClose(boolean flushNow) {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
       logger
@@ -548,14 +556,18 @@ public class TsFileProcessor {
       // is set true, we need to generate a NotifyFlushMemTable as a signal task and submit it to
       // the FlushManager.
 
-      //we have to add the memtable into flushingList first and then set the shouldClose tag.
+      // we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
-      IMemTable tmpMemTable = workMemTable == null || workMemTable.memSize() == 0
-          ? new NotifyFlushMemTable()
+      IMemTable tmpMemTable = workMemTable == null || workMemTable.memSize() == 0 
+          ? new NotifyFlushMemTable() 
           : workMemTable;
 
       try {
-        addAMemtableIntoFlushingList(tmpMemTable);
+        // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
+        // flushing memTable in System module.
+        if (flushNow) {
+          addAMemtableIntoFlushingList(tmpMemTable);
+        }
         shouldClose = true;
         tsFileResource.setCloseFlag();
       } catch (Exception e) {
@@ -627,7 +639,7 @@ public class TsFileProcessor {
           .debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
-      if (workMemTable == null) {
+      if (workMemTable == null || workMemTable.size() == 0) {
         return;
       }
       addAMemtableIntoFlushingList(workMemTable);
@@ -701,10 +713,14 @@ public class TsFileProcessor {
             tsFileResource.getTsFile().getName(),
             memTable.isSignalMemTable(), flushingMemTables.size());
       }
+      logger.debug("before release a memtable, current Array cost {}, sg cost {}",
+          SystemInfo.getInstance().getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
       memTable.release();
-      if (memTable.getBytesMemSize() > 0) {
+      logger.debug("after release a memtable, current Array cost {}, sg cost {}",
+          SystemInfo.getInstance().getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
+      if (tsFileProcessorInfo.getBytesMemCost() > 0) {
         // For text type data, reset the mem cost in tsFileProcessorInfo
-        tsFileProcessorInfo.resetBytesMemCost(memTable.getBytesMemSize());
+        tsFileProcessorInfo.clearBytesMemCost();
         // report to System
         SystemInfo.getInstance().resetStorageGroupInfoStatus(storageGroupInfo);
       }
@@ -1012,9 +1028,13 @@ public class TsFileProcessor {
           logger
               .debug("{}: {} flushingMemtables is empty and will close the file", storageGroupName,
                   tsFileResource.getTsFile().getName());
+          logger.debug("before end memtable, current Array cost {}, sg cost {}",
+              SystemInfo.getInstance().getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
         }
         endFile();
         if (logger.isDebugEnabled()) {
+          logger.debug("after end memtable, current Array cost {}, sg cost {}",
+              SystemInfo.getInstance().getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
           logger.debug("{} flushingMemtables is clear {} vm files", storageGroupName,
               vmTsFileResources.size());
         }

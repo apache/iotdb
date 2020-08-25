@@ -65,7 +65,7 @@ public abstract class TVList {
   public TVList() {
     timestamps = new ArrayList<>();
     size = 0;
-    minTime = Long.MIN_VALUE;
+    minTime = Long.MAX_VALUE;
   }
 
   public int size() {
@@ -222,7 +222,7 @@ public abstract class TVList {
   public void clear() {
     size = 0;
     sorted = true;
-    minTime = Long.MIN_VALUE;
+    minTime = Long.MAX_VALUE;
     clearTime();
     clearSortedTime();
 
@@ -244,9 +244,6 @@ public abstract class TVList {
 
   protected void clearSortedTime() {
     if (sortedTimestamps != null) {
-      for (long[] dataArray : sortedTimestamps) {
-        PrimitiveArrayManager.release(dataArray);
-      }
       sortedTimestamps = null;
     }
   }

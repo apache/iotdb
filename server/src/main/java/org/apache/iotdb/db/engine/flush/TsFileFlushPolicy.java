@@ -41,7 +41,7 @@ public interface TsFileFlushPolicy {
     public void apply(StorageGroupProcessor storageGroupProcessor, TsFileProcessor tsFileProcessor,
         boolean isSeq) {
       if (tsFileProcessor.shouldClose()) {
-        storageGroupProcessor.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+        storageGroupProcessor.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor, false);
         logger.info("Async close tsfile: {}",
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       } else if (tsFileProcessor.shouldFlush()) {

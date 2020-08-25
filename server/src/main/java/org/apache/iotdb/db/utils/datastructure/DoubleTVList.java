@@ -120,9 +120,6 @@ public class DoubleTVList extends TVList {
   @Override
   void clearSortedValue() {
     if (sortedValues != null) {
-      for (double[] dataArray : sortedValues) {
-        PrimitiveArrayManager.release(dataArray);
-      }
       sortedValues = null;
     }
   }
