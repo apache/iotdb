@@ -119,9 +119,9 @@ public class SystemInfo {
     long newSgReportThreshold =
         (storageGroupInfo.getSgMemCost() / config.getStorageGroupMemBlockSize() + 1)
         * config.getStorageGroupMemBlockSize();
-    // return newSgReportThreshold;
-    return Math.min(newSgReportThreshold,
-        (long) (config.getAllocateMemoryForWrite() * (0.8) - arrayPoolMemCost));
+    return newSgReportThreshold;
+    //return Math.min(newSgReportThreshold,
+    //    (long) (config.getAllocateMemoryForWrite() * (0.8) - arrayPoolMemCost));
   }
 
   /**

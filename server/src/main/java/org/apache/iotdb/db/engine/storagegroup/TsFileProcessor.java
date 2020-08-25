@@ -489,7 +489,7 @@ public class TsFileProcessor {
     }
     synchronized (flushingMemTables) {
       try {
-        asyncClose();
+        asyncClose(true);
         long startTime = System.currentTimeMillis();
         while (!flushingMemTables.isEmpty()) {
           flushingMemTables.wait(60_000);
@@ -515,7 +515,7 @@ public class TsFileProcessor {
   }
 
 
-  void asyncClose() {
+  void asyncClose(boolean flushNow) {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
       logger
@@ -550,7 +550,16 @@ public class TsFileProcessor {
 
       // we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
+      IMemTable tmpMemTable = workMemTable == null || workMemTable.memSize() == 0 
+          ? new NotifyFlushMemTable() 
+          : workMemTable;
+
       try {
+        // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
+        // flushing memTable in System module.
+        if (flushNow) {
+          addAMemtableIntoFlushingList(tmpMemTable);
+        }
         shouldClose = true;
         tsFileResource.setCloseFlag();
       } catch (Exception e) {
@@ -938,6 +947,8 @@ public class TsFileProcessor {
     // for sync flush
     synchronized (memTableToFlush) {
       releaseFlushedMemTable(memTableToFlush);
+      logger.info("release a memtable, current Array cost {}, sg cost {}",
+          SystemInfo.getInstance().getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
       memTableToFlush.notifyAll();
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} released a memtable (signal={}), flushingMemtables size ={}",
@@ -1003,9 +1014,6 @@ public class TsFileProcessor {
           logger.error("{}: {} update compression ratio failed", storageGroupName,
               tsFileResource.getTsFile().getName(), e);
         }
-        logger
-        .info("{}: {} flushingMemtables is empty and will close the file", storageGroupName,
-            tsFileResource.getTsFile().getName());
         if (logger.isDebugEnabled()) {
           logger
               .debug("{}: {} flushingMemtables is empty and will close the file", storageGroupName,
