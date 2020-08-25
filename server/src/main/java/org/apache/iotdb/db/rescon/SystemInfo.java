@@ -98,13 +98,13 @@ public class SystemInfo {
     storageGroupInfo.setStorageGroupReportThreshold(newSgReportThreshold);
     if (arrayPoolMemCost + totalSgMemCost
         >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
-      logger.info("The total storage group mem costs are too large, call for flushing. "
+      logger.debug("The total storage group mem costs are too large, call for flushing. "
           + "Current sg cost is {}, array pool cost is {}", totalSgMemCost, arrayPoolMemCost);
       flush();
     } 
     if (arrayPoolMemCost + totalSgMemCost
         >= config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
-      logger.info("Change system to reject status...");
+      logger.debug("Change system to reject status...");
       rejected = true;
     }
   }
