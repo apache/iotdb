@@ -118,6 +118,7 @@ public class FlushPlan extends PhysicalPlan {
     return "FlushPlan{"
         + " storageGroups=" + storageGroups
         + ", isSeq=" + isSeq
+        + ", isSync=" + isSync
         + "}";
   }
 }

@@ -25,13 +25,18 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,8 +52,24 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       .getLogger(FilePartitionedSnapshotLogManager.class);
 
   public FilePartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
-      Node header, Node thisNode) {
-    super(logApplier, partitionTable, header, thisNode, FileSnapshot::new);
+      Node header, Node thisNode, DataGroupMember dataGroupMember) {
+    super(logApplier, partitionTable, header, thisNode, FileSnapshot::new, dataGroupMember);
+  }
+
+  /**
+   * send FlushPlan to all nodes in one dataGroup
+   */
+  public void syncFlushAllProcessor() {
+    logger.info("Start flush all storage group processor in one data group");
+    ConcurrentHashMap<String, StorageGroupProcessor> processorMap = StorageEngine.getInstance()
+        .getProcessorMap();
+    List<Path> storageGroups = new ArrayList<>();
+    for (Map.Entry<String, StorageGroupProcessor> entry : processorMap.entrySet()) {
+      Path path = new Path(entry.getKey());
+      storageGroups.add(path);
+    }
+    FlushPlan plan = new FlushPlan(null, true, storageGroups);
+    dataGroupMember.flushFileWhenDoSnapshot(plan);
   }
 
   @Override
@@ -56,7 +77,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
     synchronized (this) {
       logger.info("Taking snapshots, flushing IoTDB");
-      StorageEngine.getInstance().syncFlushAllProcessor();
+      syncFlushAllProcessor();
       logger.info("Taking snapshots, IoTDB is flushed");
 
       super.takeSnapshot();

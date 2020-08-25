@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.engine.flush;
 
-import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,8 +32,6 @@ import org.slf4j.LoggerFactory;
 public interface TsFileFlushPolicy {
 
   void apply(StorageGroupProcessor storageGroupProcessor, TsFileProcessor processor, boolean isSeq);
-
-  void apply(List<Path> storeGroups);
 
   class DirectFlushPolicy implements TsFileFlushPolicy {
 
@@ -53,11 +49,6 @@ public interface TsFileFlushPolicy {
         logger.info("Async flush a memtable to tsfile: {}",
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
-    }
-
-    @Override
-    public void apply(List<Path> storeGroups) {
-      // do nothing
     }
   }
 }

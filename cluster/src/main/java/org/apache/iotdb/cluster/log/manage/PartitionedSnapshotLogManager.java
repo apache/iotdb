@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -56,15 +57,17 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   PartitionTable partitionTable;
   private Node header;
   Node thisNode;
+  DataGroupMember dataGroupMember;
 
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
-      Node header, Node thisNode, SnapshotFactory<T> factory) {
+      Node header, Node thisNode, SnapshotFactory<T> factory, DataGroupMember dataGroupMember) {
     super(new SyncLogDequeSerializer(header.nodeIdentifier), logApplier, header.toString());
     this.partitionTable = partitionTable;
     this.header = header;
     this.factory = factory;
     this.thisNode = thisNode;
+    this.dataGroupMember = dataGroupMember;
   }
 
   @Override

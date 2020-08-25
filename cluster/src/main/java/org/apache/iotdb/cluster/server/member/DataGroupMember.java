@@ -43,7 +43,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.cluster.DataGroupMemberFlushPlanPolicy;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
@@ -215,12 +214,10 @@ public class DataGroupMember extends RaftMember {
       applier = new AsyncDataLogApplier(applier);
     }
     logManager = new FilePartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable(),
-        allNodes.get(0), thisNode);
+        allNodes.get(0), thisNode, this);
     initPeerMap();
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
-    StorageEngine.getInstance()
-        .setDataGroupMemberFlushPlanPolicy(new DataGroupMemberFlushPlanPolicy(this));
   }
 
   /**

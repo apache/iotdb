@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.common.IoTDBTest;
+import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterConstant;
@@ -55,7 +56,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
     PartitionTable partitionTable = TestUtils.getPartitionTable(3);
     LogApplier applier = new TestLogApplier();
     FilePartitionedSnapshotLogManager manager = new FilePartitionedSnapshotLogManager(applier,
-        partitionTable, TestUtils.getNode(0), TestUtils.getNode(0));
+        partitionTable, TestUtils.getNode(0), TestUtils.getNode(0), new TestDataGroupMember());
 
     try {
       List<Log> logs = TestUtils.prepareTestLogs(10);

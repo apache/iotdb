@@ -180,8 +180,6 @@ public abstract class RaftLogManager {
               logFlushTimeIntervalMS, TimeUnit.MILLISECONDS);
 
       applyAllCommittedLogWhenStartUp();
-
-      checkAppliedLogIndex();
     }
   }
 
@@ -462,6 +460,10 @@ public abstract class RaftLogManager {
     }
     if (this.commitIndex < snapshot.getLastLogIndex()) {
       this.commitIndex = snapshot.getLastLogIndex();
+    }
+
+    if (this.maxHaveAppliedCommitIndex < snapshot.getLastLogIndex()) {
+      this.maxHaveAppliedCommitIndex = snapshot.getLastLogIndex();
     }
   }
 

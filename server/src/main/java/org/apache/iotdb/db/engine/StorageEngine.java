@@ -126,11 +126,6 @@ public class StorageEngine implements IService {
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
 
   /**
-   * this is only used in cluster mode
-   */
-  private TsFileFlushPolicy dataGroupMemberFlushPlanPolicy = new DirectFlushPolicy();
-
-  /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
    * TimestampPrecision
    */
@@ -383,18 +378,6 @@ public class StorageEngine implements IService {
     }
   }
 
-  /**
-   * send FlushPlan to all nodes in one dataGroup, only used in cluster
-   */
-  public void syncFlushAllProcessor() {
-    logger.info("Start flush all storage group processor in one data group");
-    List<Path> storageGroups = new ArrayList<>();
-    for (StorageGroupProcessor processor : processorMap.values()) {
-      Path path = new Path(processor.getStorageGroupName());
-      storageGroups.add(path);
-    }
-    dataGroupMemberFlushPlanPolicy.apply(storageGroups);
-  }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
     logger.info("Start force closing all storage group processor");
@@ -663,10 +646,6 @@ public class StorageEngine implements IService {
     this.fileFlushPolicy = fileFlushPolicy;
   }
 
-  public void setDataGroupMemberFlushPlanPolicy(TsFileFlushPolicy dataGroupMemberFlushPlanPolicy) {
-    this.dataGroupMemberFlushPlanPolicy = dataGroupMemberFlushPlanPolicy;
-  }
-
   public boolean isFileAlreadyExist(TsFileResource tsFileResource, String storageGroup,
       long partitionNum) {
     StorageGroupProcessor processor = processorMap.get(storageGroup);
@@ -705,6 +684,10 @@ public class StorageEngine implements IService {
   public void removePartitions(String storageGroupName, TimePartitionFilter filter)
       throws StorageEngineException {
     getProcessor(storageGroupName).removePartitions(filter);
+  }
+
+  public ConcurrentHashMap<String, StorageGroupProcessor> getProcessorMap() {
+    return processorMap;
   }
 
   @TestOnly
