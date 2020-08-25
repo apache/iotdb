@@ -50,6 +50,15 @@ IoTDB> show storage group
 The result is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
 
+## Delete Storage Group
+
+User can delete a specified storage group by using [DELETE STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md). Please note the data in the storage group will also be deleted. 
+
+```
+IoTDB > DELETE STORAGE GROUP root.ln
+IoTDB > DELETE STORAGE GROUP root.sgcc
+```
+
 ## Create Timeseries
 
 According to the storage model selected before, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:

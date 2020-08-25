@@ -993,9 +993,9 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
-      deleteDataOfTimeSeries(deletePathList);
       List<String> failedNames = new LinkedList<>();
       for (Path path : deletePathList) {
+        StorageEngine.getInstance().deleteTimeseries(path.getDevice(), path.getMeasurement());
         String failedTimeseries = IoTDB.metaManager.deleteTimeseries(path.toString());
         if (!failedTimeseries.isEmpty()) {
           failedNames.add(failedTimeseries);
@@ -1073,22 +1073,6 @@ public class PlanExecutor implements IPlanExecutor {
       throw new QueryProcessException(e);
     }
     return true;
-  }
-
-  /**
-   * Delete all data of time series in pathList.
-   *
-   * @param pathList deleted paths
-   */
-  protected void deleteDataOfTimeSeries(List<Path> pathList)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    for (Path p : pathList) {
-      DeletePlan deletePlan = new DeletePlan();
-      deletePlan.addPath(p);
-      deletePlan.setDeleteStartTime(Long.MIN_VALUE);
-      deletePlan.setDeleteEndTime(Long.MAX_VALUE);
-      processNonQuery(deletePlan);
-    }
   }
 
   protected QueryDataSet processAuthorQuery(AuthorPlan plan)

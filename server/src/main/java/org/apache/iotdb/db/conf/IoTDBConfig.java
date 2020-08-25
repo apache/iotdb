@@ -257,7 +257,7 @@ public class IoTDBConfig {
   /**
    * Is vm merge enable
    */
-  private boolean enableVm = true;
+  private boolean enableVm = false;
 
   /**
    * The max vm num of each memtable. When vm num exceeds this, the vm files will merge to one.

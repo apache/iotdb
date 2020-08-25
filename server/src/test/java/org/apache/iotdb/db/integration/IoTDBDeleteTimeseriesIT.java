@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.integration;
 
 import java.sql.Connection;
@@ -23,6 +24,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -32,14 +34,23 @@ import org.junit.Test;
 
 public class IoTDBDeleteTimeseriesIT {
 
+  private long memtableSizeThreshold;
+  private boolean enableVm;
+
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
+    memtableSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
+    enableVm = IoTDBDescriptor.getInstance().getConfig().isEnableVm();
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(16);
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);
   }
 
   @After
   public void tearDown() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(enableVm);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -47,20 +58,20 @@ public class IoTDBDeleteTimeseriesIT {
   public void testDeleteTimeseries() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String[] retArray = new String[]{
-        "1,2,",
-        "1,2.1,"
+        "1,1,",
+        "2,1.1,"
     };
     int cnt = 0;
 
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement();) {
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create timeseries root.turbine1.d1.s1 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
       statement.execute(
           "create timeseries root.turbine1.d1.s2 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
-      statement.execute(
-          "create timeseries root.turbine1.d1.s3 with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
-      statement.execute("INSERT INTO root.turbine1.d1(timestamp,s2,s3) VALUES(1,2,3)");
-      boolean hasResult = statement.execute("SELECT s2 FROM root.turbine1.d1");
+      statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1,s2) VALUES(1,1,2)");
+      boolean hasResult = statement.execute("SELECT s1 FROM root.turbine1.d1");
       Assert.assertTrue(hasResult);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -73,11 +84,13 @@ public class IoTDBDeleteTimeseriesIT {
           cnt++;
         }
       }
-      statement.execute("DELETE timeseries root.turbine1.d1.s2");
+      statement.execute("DELETE timeseries root.turbine1.d1.s1");
       statement.execute(
-          "create timeseries root.turbine1.d1.s2 with datatype=FLOAT, encoding=PLAIN, compression=SNAPPY");
-      statement.execute("INSERT INTO root.turbine1.d1(timestamp,s2,s3) VALUES(1,2.1,3)");
-      hasResult = statement.execute("SELECT s2 FROM root.turbine1.d1");
+          "create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=PLAIN, compression=SNAPPY");
+      statement.execute("INSERT INTO root.turbine1.d1(timestamp,s1) VALUES(2,1.1)");
+      statement.execute("FLUSH");
+
+      hasResult = statement.execute("SELECT s1 FROM root.turbine1.d1");
       Assert.assertTrue(hasResult);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -90,6 +103,16 @@ public class IoTDBDeleteTimeseriesIT {
           cnt++;
         }
       }
+    }
+
+    EnvironmentUtils.restartDaemon();
+
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()){
+      boolean hasResult = statement.execute("SELECT * FROM root");
+      Assert.assertTrue(hasResult);
     }
   }
 }
