@@ -448,12 +448,12 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
     StringBuilder newSql = new StringBuilder(parts.get(0));
     for (int i = 1; i < parts.size(); i++) {
-      LoggerFactory.getLogger(IoTDBPreparedStatement.class).info("SQL {}",sql);
-      LoggerFactory.getLogger(IoTDBPreparedStatement.class).info("parameters {}",parameters.size());
+      LoggerFactory.getLogger(IoTDBPreparedStatement.class).debug("SQL {}",sql);
+      LoggerFactory.getLogger(IoTDBPreparedStatement.class).debug("parameters {}",parameters.size());
       if (!parameters.containsKey(i)) {
         throw new SQLException("Parameter #" + i + " is unset");
       }
-      newSql.append(parameters.get(i).toString());
+      newSql.append(parameters.get(i));
       newSql.append(parts.get(i));
     }
     return newSql.toString();
