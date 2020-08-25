@@ -86,10 +86,14 @@ public class IoTDBRestartIT {
       };
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      while (resultSet.next()) {
-        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-        assertEquals(exp[cnt], result);
-        cnt++;
+      try {
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
+      } finally {
+        resultSet.close();
       }
     }
 
@@ -133,26 +137,30 @@ public class IoTDBRestartIT {
       };
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      while (resultSet.next()) {
-        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-        assertEquals(exp[cnt], result);
-        cnt++;
-      }
+      try {
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
 
-      statement.execute("flush");
-      statement.execute("delete from root.turbine.d1.s1 where time<=2");
+        statement.execute("flush");
+        statement.execute("delete from root.turbine.d1.s1 where time<=2");
 
-      hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
-      assertTrue(hasResultSet);
-      exp = new String[]{
-          "3,3.0"
-      };
-      resultSet = statement.getResultSet();
-      cnt = 0;
-      while (resultSet.next()) {
-        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-        assertEquals(exp[cnt], result);
-        cnt++;
+        hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
+        assertTrue(hasResultSet);
+        exp = new String[]{
+                "3,3.0"
+        };
+        resultSet = statement.getResultSet();
+        cnt = 0;
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
+      } finally {
+        resultSet.close();
       }
     }
 
@@ -207,10 +215,14 @@ public class IoTDBRestartIT {
       };
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      while (resultSet.next()) {
-        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-        assertEquals(exp[cnt], result);
-        cnt++;
+      try {
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(1, cnt);
 

@@ -171,9 +171,13 @@ public class OpenFileNumUtil {
       BufferedReader in = new BufferedReader(new InputStreamReader(pro.getInputStream()));
       String line;
 
-      while ((line = in.readLine()) != null) {
-        lineCount++;
-        countOneFile(line, pid, resultMap);
+      try {
+        while ((line = in.readLine()) != null) {
+          lineCount++;
+          countOneFile(line, pid, resultMap);
+        }
+      } finally {
+        in.close();
       }
       if (lineCount < OpenFileNumStatistics.values().length) {
         isOutputValid = false;
@@ -183,7 +187,6 @@ public class OpenFileNumUtil {
       } else {
         isOutputValid = true;
       }
-      in.close();
       pro.destroy();
     } catch (Exception e) {
       logger.error("Cannot get open file number of IoTDB process because ", e);

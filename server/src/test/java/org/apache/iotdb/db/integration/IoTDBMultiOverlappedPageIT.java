@@ -91,10 +91,14 @@ public class IoTDBMultiOverlappedPageIT {
       String sql = "select s0 from root.vehicle.d0 where time >= 1 and time <= 50 AND root.vehicle.d0.s0 >= 111";
       ResultSet resultSet = statement.executeQuery(sql);
       int cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString("root.vehicle.d0.s0");
-        assertEquals(res[cnt], ans);
-        cnt++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString("root.vehicle.d0.s0");
+          assertEquals(res[cnt], ans);
+          cnt++;
+        }
+      } finally {
+        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -110,9 +114,13 @@ public class IoTDBMultiOverlappedPageIT {
         Statement statement = connection.createStatement()) {
       String sql = "select first_value(s0) from root.vehicle.d0 where time > 18";
       ResultSet resultSet = statement.executeQuery(sql);
-      while (resultSet.next()) {
-        String ans = resultSet.getString(first_value("root.vehicle.d0.s0"));
-        assertEquals("219", ans);
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(first_value("root.vehicle.d0.s0"));
+          assertEquals("219", ans);
+        }
+      } finally {
+        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();

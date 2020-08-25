@@ -195,9 +195,14 @@ public class SyncServiceImpl implements SyncService.Iface {
       if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
         currentFileWriter.get().close();
       }
-      currentFileWriter.set(new FileOutputStream(file).getChannel());
-      syncLog.get().startSyncTsFiles();
-      messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
+      FileOutputStream fos = new FileOutputStream(file);
+      try {
+        currentFileWriter.set(fos.getChannel());
+        syncLog.get().startSyncTsFiles();
+        messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
+      } finally {
+        fos.close();
+      }
     } catch (IOException | NoSuchAlgorithmException e) {
       logger.error("Can not init sync resource for file {}", filename, e);
       return getErrorResult(
@@ -231,10 +236,15 @@ public class SyncServiceImpl implements SyncService.Iface {
       }
       if (!md5OfSender.equals(md5OfReceiver)) {
         currentFile.get().delete();
-        currentFileWriter.set(new FileOutputStream(currentFile.get()).getChannel());
-        return getErrorResult(String
-            .format("MD5 of the sender is differ from MD5 of the receiver of the file %s.",
-                currentFile.get().getAbsolutePath()));
+        FileOutputStream fos = new FileOutputStream(currentFile.get());
+        try {
+          currentFileWriter.set(fos.getChannel());
+          return getErrorResult(String
+                  .format("MD5 of the sender is differ from MD5 of the receiver of the file %s.",
+                          currentFile.get().getAbsolutePath()));
+        } finally {
+          fos.close();
+        }
       } else {
         if (currentFile.get().getName().endsWith(MetadataConstant.METADATA_LOG)) {
           loadMetadata();
