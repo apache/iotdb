@@ -78,20 +78,23 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
   @Override
   public void takeSnapshot() throws IOException {
-    // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
-    synchronized (this) {
-      logger.info("{}: Taking snapshots, flushing IoTDB", getName());
-      syncFlushAllProcessor();
-      logger.info("{}: Taking snapshots, IoTDB is flushed", getName());
+    try {
+      // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
+      synchronized (this) {
+        logger.info("{}: Taking snapshots, flushing IoTDB", getName());
+        syncFlushAllProcessor();
+        logger.info("{}: Taking snapshots, IoTDB is flushed", getName());
 
-      super.takeSnapshot();
-      collectTimeseriesSchemas();
-      snapshotLastLogIndex = getCommitLogIndex();
-      snapshotLastLogTerm = getCommitLogTerm();
-      collectTsFilesAndFillTimeseriesSchemas();
-      logger.info("{}: Snapshot is taken", getName());
+        super.takeSnapshot();
+        collectTimeseriesSchemas();
+        snapshotLastLogIndex = getCommitLogIndex();
+        snapshotLastLogTerm = getCommitLogTerm();
+        collectTsFilesAndFillTimeseriesSchemas();
+        logger.info("{}: Snapshot is taken", getName());
+      }
+    } finally {
+      super.setBlockAppliedCommitIndex(-1);
     }
-    super.setBlockAppliedCommitIndex(-1);
   }
 
   /**
