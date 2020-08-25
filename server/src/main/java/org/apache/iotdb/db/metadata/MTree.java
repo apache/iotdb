@@ -409,10 +409,10 @@ public class MTree implements Serializable {
     }
     MNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
+      cur = cur.getChild(nodes[i]);
       if (cur instanceof StorageGroupMNode) {
         return (StorageGroupMNode) cur;
       }
-      cur = cur.getChild(nodes[i]);
     }
     throw new StorageGroupNotSetException(path.getFullPath());
   }
