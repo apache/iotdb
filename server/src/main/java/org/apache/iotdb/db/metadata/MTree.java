@@ -382,15 +382,39 @@ public class MTree implements Serializable {
   }
 
   /**
+   * E.g., root.sg is storage group
+   * given [root, sg], return the MNode of root.sg
+   * given [root, sg, device], throw exception
    * Get storage group node, if the give path is not a storage group, throw exception
    */
-  StorageGroupMNode getStorageGroupNode(PartialPath path) throws MetadataException {
+  StorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path) throws MetadataException {
     MNode node = getNodeByPath(path);
     if (node instanceof StorageGroupMNode) {
       return (StorageGroupMNode) node;
     } else {
       throw new StorageGroupNotSetException(path.getFullPath());
     }
+  }
+
+  /**
+   * E.g., root.sg is storage group
+   * given [root, sg], return the MNode of root.sg
+   * given [root, sg, device], return the MNode of root.sg
+   * Get storage group node, the give path don't need to be storage group path.
+   */
+  StorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
+    String[] nodes = path.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+    MNode cur = root;
+    for (int i = 1; i < nodes.length; i++) {
+      if (cur instanceof StorageGroupMNode) {
+        return (StorageGroupMNode) cur;
+      }
+      cur = cur.getChild(nodes[i]);
+    }
+    throw new StorageGroupNotSetException(path.getFullPath());
   }
 
   /**

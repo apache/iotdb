@@ -275,7 +275,7 @@ public class StorageEngine implements IService {
   public StorageGroupProcessor getProcessor(PartialPath path) throws StorageEngineException {
     PartialPath storageGroupPath;
     try {
-      StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNode(path);
+      StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
       StorageGroupProcessor processor;
       processor = processorMap.get(storageGroupPath);

@@ -1040,13 +1040,28 @@ public class MManager {
   }
 
   /**
+   * E.g., root.sg is storage group
+   * given [root, sg], return the MNode of root.sg
+   * given [root, sg, device], return the MNode of root.sg
    * Get storage group node by path. If storage group is not set, StorageGroupNotSetException will
    * be thrown
    */
-  public StorageGroupMNode getStorageGroupNode(PartialPath path) throws MetadataException {
+  public StorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getStorageGroupNode(path);
+      return mtree.getStorageGroupNodeByStorageGroupPath(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get storage group node by path. the give path don't need to be storage group path.
+   */
+  public StorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupNodeByPath(path);
     } finally {
       lock.readLock().unlock();
     }
@@ -1179,7 +1194,7 @@ public class MManager {
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      getStorageGroupNode(storageGroup).setDataTTL(dataTTL);
+      getStorageGroupNodeByStorageGroupPath(storageGroup).setDataTTL(dataTTL);
       if (!isRecovering) {
         logWriter.setTTL(storageGroup.getFullPath(), dataTTL);
       }
@@ -1198,7 +1213,7 @@ public class MManager {
     try {
       List<PartialPath> storageGroups = this.getAllStorageGroupPaths();
       for (PartialPath storageGroup : storageGroups) {
-        long ttl = getStorageGroupNode(storageGroup).getDataTTL();
+        long ttl = getStorageGroupNodeByStorageGroupPath(storageGroup).getDataTTL();
         storageGroupsTTL.put(storageGroup, ttl);
       }
     } catch (MetadataException e) {
