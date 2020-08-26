@@ -282,6 +282,11 @@ public class TsFileProcessorTest {
 
     // close synchronously
     processor.syncClose();
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
 
     assertTrue(processor.getTsFileResource().isClosed());
 
