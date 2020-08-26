@@ -100,8 +100,9 @@ public class ServerTimeGenerator extends TimeGenerator {
         return filter;
       } else if (leftTimeFilter != null) {
         return leftTimeFilter;
-      } else
+      } else {
         return rightTimeFilter;
+      }
     }
     return null;
   }
