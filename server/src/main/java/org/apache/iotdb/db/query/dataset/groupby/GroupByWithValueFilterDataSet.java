@@ -182,7 +182,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       throws IOException {
     for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt++) {
       timestamp = timestampGenerator.next();
-      if (timestamp < curEndTime) {
+      if (groupByTimePlan.isAscending() && timestamp < curEndTime) {
+        timestampArray[timeArrayLength++] = timestamp;
+      } else if (!groupByTimePlan.isAscending() && timestamp >= curStartTime) {
         timestampArray[timeArrayLength++] = timestamp;
       } else {
         hasCachedTimestamp = true;
