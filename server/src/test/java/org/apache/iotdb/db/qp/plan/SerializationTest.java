@@ -19,15 +19,19 @@
 
 package org.apache.iotdb.db.qp.plan;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -85,4 +89,42 @@ public class SerializationTest {
     PhysicalPlan planB = PhysicalPlan.Factory.create(buffer);
     assertEquals(plan, planB);
   }
+
+  @Test
+  public void testFlush() throws IOException {
+    List<Path> storageGroups = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      storageGroups.add(new Path("path_" + i));
+    }
+
+    Boolean isSeqArray[] = new Boolean[]{null, true};
+    boolean isSyncArray[] = new boolean[]{true, false};
+    for (Boolean isSeq : isSeqArray) {
+      for (boolean isSync : isSyncArray) {
+        FlushPlan plan = new FlushPlan(isSeq, isSync, storageGroups);
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+          plan.serialize(dataOutputStream);
+          ByteBuffer buffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+          FlushPlan planB = (FlushPlan) PhysicalPlan.Factory.create(buffer);
+          assertEquals(plan.getPaths(), planB.getPaths());
+          assertEquals(plan.isSeq(), planB.isSeq());
+          assertEquals(plan.isSync(), planB.isSync());
+        }
+
+        ByteBuffer buffer = ByteBuffer.allocate(4096);
+        plan.serialize(buffer);
+        buffer.flip();
+        FlushPlan planB = (FlushPlan) PhysicalPlan.Factory.create(buffer);
+        assertEquals(plan.getPaths(), planB.getPaths());
+        assertEquals(plan.isSeq(), planB.isSeq());
+        assertEquals(plan.isSync(), planB.isSync());
+      }
+    }
+  }
+
 }
+
+
+
