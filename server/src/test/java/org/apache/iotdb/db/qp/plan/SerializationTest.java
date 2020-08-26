@@ -125,6 +125,3 @@ public class SerializationTest {
   }
 
 }
-
-
-
