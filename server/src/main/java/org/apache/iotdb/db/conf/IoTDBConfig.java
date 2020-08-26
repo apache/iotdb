@@ -120,12 +120,12 @@ public class IoTDBConfig {
   /**
    * Memory allocated for the write process
    */
-  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 6 / 10;
+  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 5 / 10;
 
   /**
    * Memory allocated for the read process
    */
-  private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 2 / 10;
+  private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /**
    * Is active timeseries counter enable.

@@ -1288,7 +1288,7 @@ public class TsFileProcessor {
   }
 
   public long getWorkMemTableSize() {
-    return workMemTable.memSize();
+    return workMemTable != null ? workMemTable.memSize() : 0;
   }
 
   class VmMergeTask implements Runnable {

@@ -900,9 +900,7 @@ public class StorageGroupProcessor {
     }
 
     // check memtable size and may async try to flush the work memtable
-    if (tsFileProcessor.shouldFlush()) {
-      fileFlushPolicy.apply(this, tsFileProcessor, sequence);
-    }
+    fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     return true;
   }
 
