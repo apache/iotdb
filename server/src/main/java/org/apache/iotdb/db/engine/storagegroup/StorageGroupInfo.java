@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.SystemInfo;
@@ -131,14 +130,8 @@ public class StorageGroupInfo {
     storageGroupReportThreshold = value;
   }
 
-  public TsFileProcessor getLargestTsFileProcessor() {
-    TreeSet<TsFileProcessor> tsps = new TreeSet<>(
-        (o1, o2) -> Long.compare(o2.getTsFileProcessorInfo().getTsFileProcessorMemCost(),
-            o1.getTsFileProcessorInfo().getTsFileProcessorMemCost()));
-    for (TsFileProcessor tsp : reportedTsps) {
-      tsps.add(tsp);
-    }
-    return tsps.first();
+  public Set<TsFileProcessor> getAllReportedTsp() {
+    return reportedTsps;
   }
 
   /**

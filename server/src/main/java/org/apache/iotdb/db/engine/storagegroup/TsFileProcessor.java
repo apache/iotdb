@@ -370,14 +370,14 @@ public class TsFileProcessor {
               .updateEndTime(
                   insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
         }
-        if (needToReport) {
-          SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-        }
       } catch (Exception e) {
         for (int i = start; i < end; i++) {
           results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
         }
         throw new WriteProcessException(e);
+      }
+      if (needToReport) {
+        SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       }
     }
   }
@@ -1285,6 +1285,10 @@ public class TsFileProcessor {
       sequenceVmWriters.addAll(vmWriters.get(i));
     }
     return sequenceVmWriters;
+  }
+
+  public long getWorkMemTableSize() {
+    return workMemTable.memSize();
   }
 
   class VmMergeTask implements Runnable {

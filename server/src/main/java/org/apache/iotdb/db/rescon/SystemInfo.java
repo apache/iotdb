@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.rescon;
 
-import java.util.TreeMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeSet;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -38,8 +41,7 @@ public class SystemInfo {
   private long arrayPoolMemCost;
   private boolean rejected = false;
 
-  private TreeMap<StorageGroupInfo, Long> reportedSgMemCostMap = new TreeMap<>(
-      (o1, o2) -> Long.compare(o2.getSgMemCost(), o1.getSgMemCost()));
+  private Map<StorageGroupInfo, Long> reportedSgMemCostMap = new HashMap<>();
 
   private static final double FLUSH_PROPORTION = config.getFlushProportion();
   private static final double REJECT_PROPORTION = config.getRejectProportion();
@@ -189,13 +191,23 @@ public class SystemInfo {
       return;
     }
 
-    // get the first processor which has the max mem cost
-    StorageGroupInfo storageGroupInfo = reportedSgMemCostMap.firstKey();
-    TsFileProcessor flushedProcessor = storageGroupInfo.getLargestTsFileProcessor();
+    // get the tsFile processor which has the max work MemTable size
+    TsFileProcessor processor = getLargestTsFileProcessor();
 
-    if (flushedProcessor != null) {
-      flushedProcessor.asyncFlush();
+    if (processor != null) {
+      processor.asyncFlush();
     }
+  }
+
+  private TsFileProcessor getLargestTsFileProcessor() {
+    TreeSet<TsFileProcessor> tsps = new TreeSet<>(
+        (o1, o2) -> Long.compare(o2.getWorkMemTableSize(), o1.getWorkMemTableSize()));
+    for (StorageGroupInfo sgInfo : reportedSgMemCostMap.keySet()) {
+      for (TsFileProcessor tsp : sgInfo.getAllReportedTsp()) {
+        tsps.add(tsp);
+      }
+    }
+    return tsps.first();
   }
 
   public synchronized boolean isRejected() {
