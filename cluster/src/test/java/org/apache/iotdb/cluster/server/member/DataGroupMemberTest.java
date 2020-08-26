@@ -105,7 +105,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
@@ -553,8 +552,6 @@ public class DataGroupMemberTest extends MemberTest {
       for (int i = 0; i < 10; i++) {
         assertTrue(result.get().contains(TestUtils.getTestMeasurementSchema(i)));
       }
-    } catch (TException e) {
-      e.printStackTrace();
     } finally {
       RaftServer.setConnectionTimeoutInMS(prevTimeOut);
       RaftServer.setSyncLeaderMaxWaitMs(prevMaxWait);

@@ -23,7 +23,6 @@ import java.util.Map;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public interface ClusterMonitorMBean {
 

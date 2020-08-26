@@ -49,7 +49,7 @@ public class CMManager extends MManager {
   private RemoteMetaCache mRemoteMetaCache;
   private MetaPuller metaPuller;
 
-  protected CMManager() {
+  private CMManager() {
     super();
     metaPuller = MetaPuller.getInstance();
     int remoteCacheSize = config.getmRemoteSchemaCacheSize();
@@ -277,7 +277,7 @@ public class CMManager extends MManager {
 
   private static class RemoteMetaCache extends LRUCache<String, MeasurementMeta> {
 
-    public RemoteMetaCache(int cacheSize) {
+    RemoteMetaCache(int cacheSize) {
       super(cacheSize);
     }
 

@@ -57,7 +57,7 @@ public class StoppedMemberManager {
   private DataGroupMember.Factory memberFactory;
   private Node thisNode;
 
-  public StoppedMemberManager(
+  StoppedMemberManager(
       Factory memberFactory, Node thisNode) {
     this.memberFactory = memberFactory;
     this.thisNode = thisNode;

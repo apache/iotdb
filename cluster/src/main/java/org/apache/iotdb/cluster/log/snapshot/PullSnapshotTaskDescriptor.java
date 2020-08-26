@@ -64,7 +64,7 @@ public class PullSnapshotTaskDescriptor {
     this.slots = slots;
   }
 
-  public boolean isRequireReadOnly() {
+  boolean isRequireReadOnly() {
     return requireReadOnly;
   }
 

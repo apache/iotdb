@@ -33,7 +33,7 @@ import org.apache.thrift.transport.TTransportException;
  */
 public class SyncDataHeartbeatClient extends SyncDataClient {
 
-  public SyncDataHeartbeatClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
+  private SyncDataHeartbeatClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
     // the difference of the two clients lies in the port
     super(protocolFactory.getProtocol(new TimeoutChangeableTFastFramedTransport(

@@ -77,7 +77,7 @@ public class MetaPuller {
    * <p>
    * Attention!!!  Just copy from metaGroupMember now, will refactor later.
    */
-  public List<MeasurementSchema> pullMeasurementSchemas(List<String> prefixPaths)
+  List<MeasurementSchema> pullMeasurementSchemas(List<String> prefixPaths)
       throws MetadataException {
     logger.debug("{}: Pulling timeseries schemas of {}", metaGroupMember.getName(), prefixPaths);
     // split the paths by the data groups that will hold them
@@ -130,7 +130,7 @@ public class MetaPuller {
    * @param prefixPaths
    * @param results
    */
-  public void pullMeasurementSchemas(PartitionGroup partitionGroup,
+  private void pullMeasurementSchemas(PartitionGroup partitionGroup,
       List<String> prefixPaths, List<MeasurementSchema> results) {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the node is in the target group, synchronize with leader should be enough

@@ -39,7 +39,7 @@ public class NodeAdditionResult {
     return newGroup;
   }
 
-  public void setNewGroup(PartitionGroup newGroup) {
+  void setNewGroup(PartitionGroup newGroup) {
     this.newGroup = newGroup;
   }
 

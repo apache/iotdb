@@ -44,7 +44,7 @@ public class LogManagerMeta {
     return commitLogIndex;
   }
 
-  public void setCommitLogIndex(long commitLogIndex) {
+  void setCommitLogIndex(long commitLogIndex) {
     this.commitLogIndex = commitLogIndex;
   }
 
@@ -85,7 +85,7 @@ public class LogManagerMeta {
     this.lastLogTerm = lastLogTerm;
   }
 
-  public void setCommitLogTerm(long commitLogTerm) {
+  void setCommitLogTerm(long commitLogTerm) {
     this.commitLogTerm = commitLogTerm;
   }
 

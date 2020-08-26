@@ -275,11 +275,11 @@ public class DataGroupMember extends RaftMember {
     return allNodes.get(0);
   }
 
-  public ClusterQueryManager getQueryManager() {
+  private ClusterQueryManager getQueryManager() {
     return queryManager;
   }
 
-  public void setQueryManager(ClusterQueryManager queryManager) {
+  protected void setQueryManager(ClusterQueryManager queryManager) {
     this.queryManager = queryManager;
   }
 
@@ -483,7 +483,7 @@ public class DataGroupMember extends RaftMember {
    *
    * @param snapshot
    */
-  public void applySnapshot(Snapshot snapshot, int slot) throws SnapshotApplicationException {
+  void applySnapshot(Snapshot snapshot, int slot) throws SnapshotApplicationException {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: applying snapshot {}", name, snapshot);
     }
@@ -990,7 +990,7 @@ public class DataGroupMember extends RaftMember {
   /**
    * @return the path of the directory that is provided exclusively for the member.
    */
-  public String getMemberDir() {
+  private String getMemberDir() {
     return IoTDBDescriptor.getInstance().getConfig().getBaseDir() + File.separator +
         "raft" + File.separator + getHeader().nodeIdentifier + File.separator;
   }
@@ -1006,12 +1006,10 @@ public class DataGroupMember extends RaftMember {
    * @param storageGroupName
    * @param partitionId
    * @param isSeq
-   * @return false if the member is not a leader, true if the close request is accepted by the
-   * quorum
    */
-  public boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
+  void closePartition(String storageGroupName, long partitionId, boolean isSeq) {
     if (character != NodeCharacter.LEADER) {
-      return false;
+      return;
     }
     CloseFileLog log = new CloseFileLog(storageGroupName, partitionId, isSeq);
     synchronized (logManager) {
@@ -1023,10 +1021,9 @@ public class DataGroupMember extends RaftMember {
       logger.info("Send the close file request of {} to other nodes", log);
     }
     try {
-      return appendLogInGroup(log);
+      appendLogInGroup(log);
     } catch (LogExecutionException e) {
       logger.error("Cannot close partition {}#{} seq:{}", storageGroupName, partitionId, isSeq, e);
-      return false;
     }
   }
 
@@ -1180,7 +1177,7 @@ public class DataGroupMember extends RaftMember {
    * @return an IBatchReader or null if there is no satisfying data
    * @throws StorageEngineException
    */
-  IBatchReader getSeriesBatchReader(Path path, Set<String> allSensors, TSDataType dataType,
+  private IBatchReader getSeriesBatchReader(Path path, Set<String> allSensors, TSDataType dataType,
       Filter timeFilter,
       Filter valueFilter, QueryContext context)
       throws StorageEngineException, QueryProcessException {
@@ -1637,7 +1634,7 @@ public class DataGroupMember extends RaftMember {
    * @throws StorageEngineException
    * @throws QueryProcessException
    */
-  public List<AggregateResult> getAggrResult(List<String> aggregations,
+  List<AggregateResult> getAggrResult(List<String> aggregations,
       Set<String> allSensors, TSDataType dataType, String path,
       Filter timeFilter, QueryContext context)
       throws IOException, StorageEngineException, QueryProcessException {
@@ -1659,7 +1656,7 @@ public class DataGroupMember extends RaftMember {
   }
 
   @TestOnly
-  public void setLogManager(PartitionedSnapshotLogManager logManager) {
+  void setLogManager(PartitionedSnapshotLogManager logManager) {
     if (this.logManager != null) {
       this.logManager.close();
     }
@@ -1807,7 +1804,7 @@ public class DataGroupMember extends RaftMember {
    * @throws StorageEngineException
    * @throws IOException
    */
-  public TimeValuePair localPreviousFill(Path path, TSDataType dataType, long queryTime,
+  TimeValuePair localPreviousFill(Path path, TSDataType dataType, long queryTime,
       long beforeRange, Set<String> deviceMeasurements, QueryContext context)
       throws QueryProcessException, StorageEngineException, IOException {
     try {

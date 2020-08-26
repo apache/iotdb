@@ -60,14 +60,14 @@ public class LogCatchUpTask implements Callable<Boolean> {
   private boolean useBatch = ClusterDescriptor.getInstance().getConfig().isUseBatchInLogCatchUp();
   boolean abort = false;
 
-  public LogCatchUpTask(List<Log> logs, Node node, RaftMember raftMember) {
+  LogCatchUpTask(List<Log> logs, Node node, RaftMember raftMember) {
     this.logs = logs;
     this.node = node;
     this.raftMember = raftMember;
   }
 
   @TestOnly
-  public LogCatchUpTask(List<Log> logs, Node node, RaftMember raftMember, boolean useBatch) {
+  LogCatchUpTask(List<Log> logs, Node node, RaftMember raftMember, boolean useBatch) {
     this.logs = logs;
     this.node = node;
     this.raftMember = raftMember;
@@ -75,7 +75,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
   }
 
   @TestOnly
-  public void setUseBatch(boolean useBatch) {
+  void setUseBatch(boolean useBatch) {
     this.useBatch = useBatch;
   }
 
@@ -199,7 +199,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
   }
 
 
-  void doLogCatchUpInBatch() throws TException, InterruptedException {
+  private void doLogCatchUpInBatch() throws TException, InterruptedException {
 
     List<ByteBuffer> logList = new ArrayList<>();
     long totalLogSize = 0;

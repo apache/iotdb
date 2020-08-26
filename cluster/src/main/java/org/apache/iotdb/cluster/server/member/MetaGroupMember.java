@@ -223,7 +223,7 @@ public class MetaGroupMember extends RaftMember {
   // members in this node
   private static final int REPORT_INTERVAL_SEC = 10;
   // how many times is a data record replicated, also the number of nodes in a data group
-  public static final int REPLICATION_NUM =
+  private static final int REPLICATION_NUM =
       ClusterDescriptor.getInstance().getConfig().getReplicationNum();
 
   // hardlinks will be checked every hour
@@ -592,18 +592,15 @@ public class MetaGroupMember extends RaftMember {
     } else if (resp.getRespNum() == Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT) {
       if (logger.isInfoEnabled()) {
         CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
-        StringBuilder parameters = new StringBuilder();
-        parameters
-            .append(
-                checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval");
-        parameters.append(checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt");
-        parameters
-            .append(checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number");
-        parameters.append(checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes");
-        parameters.append(checkStatusResponse.isClusterNameEquals() ? "" : ", clusterName");
+        String parameters =
+            (checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval")
+                + (checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt")
+                + (checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number")
+                + (checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes")
+                + (checkStatusResponse.isClusterNameEquals() ? "" : ", clusterName");
         logger.info(
             "The start up configuration{} conflicts the cluster. Please reset the configurations. ",
-            parameters.toString().substring(1));
+            parameters.substring(1));
       }
       throw new ConfigInconsistentException();
     } else {
@@ -1410,7 +1407,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  protected TSStatus executeNonQueryLocally(PhysicalPlan plan) {
+  private TSStatus executeNonQueryLocally(PhysicalPlan plan) {
     boolean execRet;
     try {
       execRet = getLocalExecutor().processNonQuery(plan);
@@ -1608,7 +1605,7 @@ public class MetaGroupMember extends RaftMember {
    * @param planGroupMap
    * @return
    */
-  TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
+  private TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
     if (planGroupMap.size() == 1) {
@@ -1725,7 +1722,7 @@ public class MetaGroupMember extends RaftMember {
    * @return
    * @para plan
    */
-  TSStatus forwardPlan(List<PartitionGroup> partitionGroups, PhysicalPlan plan) {
+  private TSStatus forwardPlan(List<PartitionGroup> partitionGroups, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
     List<String> errorCodePartitionGroups = new ArrayList<>();
@@ -1764,7 +1761,7 @@ public class MetaGroupMember extends RaftMember {
    * @param insertPlan, some of the timeseries in it are not created yet
    * @return true of all uncreated timeseries are created
    */
-  boolean autoCreateTimeseries(InsertPlan insertPlan) {
+  private boolean autoCreateTimeseries(InsertPlan insertPlan) {
     List<String> seriesList = new ArrayList<>();
     String deviceId = insertPlan.getDeviceId();
     String storageGroupName;
@@ -1785,11 +1782,14 @@ public class MetaGroupMember extends RaftMember {
     List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
     for (String seriesPath : unregisteredSeriesList) {
       int index = seriesList.indexOf(seriesPath);
-      TSDataType dataType = (insertPlan.getDataTypes() != null && insertPlan.getDataTypes()[index] != null)
-          ? insertPlan.getDataTypes()[index]
-          : TypeInferenceUtils.getPredictedDataType(insertPlan instanceof InsertTabletPlan
-              ? Array.get(((InsertTabletPlan) insertPlan).getColumns()[index], 0)
-              : ((InsertRowPlan) insertPlan).getValues()[index], true);
+      TSDataType dataType;
+      if (insertPlan.getDataTypes() != null && insertPlan.getDataTypes()[index] != null) {
+        dataType = insertPlan.getDataTypes()[index];
+      } else {
+        dataType = TypeInferenceUtils.getPredictedDataType(insertPlan instanceof InsertTabletPlan
+            ? Array.get(((InsertTabletPlan) insertPlan).getColumns()[index], 0)
+            : ((InsertRowPlan) insertPlan).getValues()[index], true);
+      }
       TSEncoding encoding = getDefaultEncoding(dataType);
       CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
       CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(new Path(seriesPath),
@@ -1819,7 +1819,8 @@ public class MetaGroupMember extends RaftMember {
    * @param partitionGroup
    * @return
    */
-  List<String> getUnregisteredSeriesList(List<String> seriesList, PartitionGroup partitionGroup) {
+  private List<String> getUnregisteredSeriesList(List<String> seriesList,
+      PartitionGroup partitionGroup) {
     List<String> unregistered = new ArrayList<>();
     for (Node node : partitionGroup) {
       try {
@@ -1859,7 +1860,7 @@ public class MetaGroupMember extends RaftMember {
    * @param group
    * @return
    */
-  TSStatus forwardPlan(PhysicalPlan plan, PartitionGroup group) {
+  private TSStatus forwardPlan(PhysicalPlan plan, PartitionGroup group) {
     for (Node node : group) {
       TSStatus status;
       try {
@@ -1892,7 +1893,7 @@ public class MetaGroupMember extends RaftMember {
    * @param header   to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header) throws IOException {
+  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header) throws IOException {
     RaftService.AsyncClient client = getAsyncDataClient(receiver,
         RaftServer.getWriteOperationTimeoutMS());
     try {
@@ -1915,7 +1916,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header) throws IOException {
+  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header) {
     Client client = getSyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
     try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -2017,7 +2018,7 @@ public class MetaGroupMember extends RaftMember {
    * @param partitionGroup
    * @param prefixPaths
    */
-  public void pullTimeSeriesSchemas(PartitionGroup partitionGroup,
+  private void pullTimeSeriesSchemas(PartitionGroup partitionGroup,
       List<String> prefixPaths) {
     if (partitionGroup.contains(thisNode)) {
       // the node is in the target group, synchronize with leader should be enough
@@ -2326,11 +2327,7 @@ public class MetaGroupMember extends RaftMember {
       for (PartitionGroup partitionGroup : partitionGroups) {
         IPointReader seriesReader = getSeriesReader(partitionGroup, path,
             deviceMeasurements, timeFilter, valueFilter, context, dataType);
-        if (seriesReader.hasNextTimeValuePair()) {
-          // only add readers that have data, and they should basically not overlap with each
-          // other (from different time partitions) so the priority does not matter
-          mergeReader.addReader(seriesReader, 0);
-        }
+        mergeReader.addReader(seriesReader, 0);
       }
     } catch (IOException | QueryProcessException e) {
       throw new StorageEngineException(e);
@@ -2683,7 +2680,7 @@ public class MetaGroupMember extends RaftMember {
    * @return a pair of path lists, the first are the existing full paths, the second are invalid
    * original paths
    */
-  public Pair<List<String>, List<String>> getMatchedPaths(List<String> originalPaths) {
+  private Pair<List<String>, List<String>> getMatchedPaths(List<String> originalPaths) {
     ConcurrentSkipListSet<String> fullPaths = new ConcurrentSkipListSet<>();
     ConcurrentSkipListSet<String> nonExistPaths = new ConcurrentSkipListSet<>();
     ExecutorService getAllPathsService = Executors
@@ -3426,7 +3423,7 @@ public class MetaGroupMember extends RaftMember {
     return handler.getResult();
   }
 
-  public void performPreviousFill(PreviousFillArguments arguments, QueryContext context,
+  private void performPreviousFill(PreviousFillArguments arguments, QueryContext context,
       PartitionGroup group,
       PreviousFillHandler fillHandler) {
     if (group.contains(thisNode)) {
@@ -3436,7 +3433,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  public void localPreviousFill(PreviousFillArguments arguments, QueryContext context,
+  private void localPreviousFill(PreviousFillArguments arguments, QueryContext context,
       PartitionGroup group,
       PreviousFillHandler fillHandler) {
     DataGroupMember localDataMember = getLocalDataMember(group.getHeader());
@@ -3451,7 +3448,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  public void remotePreviousFill(PreviousFillArguments arguments, QueryContext context,
+  private void remotePreviousFill(PreviousFillArguments arguments, QueryContext context,
       PartitionGroup group,
       PreviousFillHandler fillHandler) {
     PreviousFillRequest request = new PreviousFillRequest(arguments.getPath().getFullPath(),
@@ -3524,7 +3521,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  protected PlanExecutor getLocalExecutor() throws QueryProcessException {
+  private PlanExecutor getLocalExecutor() throws QueryProcessException {
     if (localExecutor == null) {
       localExecutor = new PlanExecutor();
     }

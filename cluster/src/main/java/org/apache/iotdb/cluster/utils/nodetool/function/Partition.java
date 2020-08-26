@@ -22,11 +22,9 @@ import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
-import java.util.Map;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 @Command(name = "partition", description = "Print the hosts information of specific storage group and time range")
 public class Partition extends NodeToolCmd {

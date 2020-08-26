@@ -48,7 +48,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
 
   private Snapshot snapshot;
 
-  public SnapshotCatchUpTask(List<Log> logs, Snapshot snapshot, Node node, RaftMember raftMember) {
+  SnapshotCatchUpTask(List<Log> logs, Snapshot snapshot, Node node, RaftMember raftMember) {
     super(logs, node, raftMember);
     this.snapshot = snapshot;
   }

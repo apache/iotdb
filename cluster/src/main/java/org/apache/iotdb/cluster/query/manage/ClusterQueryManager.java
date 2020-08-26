@@ -95,7 +95,7 @@ public class ClusterQueryManager {
     return seriesReaderByTimestampMap.get(readerId);
   }
 
-  public IAggregateReader getAggrReader(long readerId) {
+  IAggregateReader getAggrReader(long readerId) {
     return aggrReaderMap.get(readerId);
   }
 
@@ -110,7 +110,7 @@ public class ClusterQueryManager {
     aggrReaderMap.clear();
   }
 
-  public long registerAggrReader(IAggregateReader aggregateReader) {
+  long registerAggrReader(IAggregateReader aggregateReader) {
     long newReaderId = idAtom.incrementAndGet();
     aggrReaderMap.put(newReaderId, aggregateReader);
     return newReaderId;

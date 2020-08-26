@@ -60,7 +60,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private static final String LOG_FILE_PREFIX = ".data";
 
   List<File> logFileList;
-  LogParser parser = LogParser.getINSTANCE();
+  private LogParser parser = LogParser.getINSTANCE();
   private File metaFile;
   private FileOutputStream currentLogOutputStream;
   private Deque<Integer> logSizeDeque = new ArrayDeque<>();
@@ -72,7 +72,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private long removedLogSize = 0;
   // when the removedLogSize larger than this, we actually delete logs
   private long maxRemovedLogSize = ClusterDescriptor.getInstance().getConfig()
-      .getMaxUnsnapshotedLogSize();
+      .getMaxUnsnapshotLogSize();
   // min version of available log
   private long minAvailableVersion = 0;
   // max version of available log
@@ -130,12 +130,12 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   @TestOnly
-  public String getLogDir() {
+  String getLogDir() {
     return logDir;
   }
 
   @TestOnly
-  public File getMetaFile() {
+  File getMetaFile() {
     return metaFile;
   }
 
@@ -253,7 +253,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       }
     } catch (IOException e) {
       logger.error("Error when force flushing logs serialization: ", e);
-      return;
     } finally {
       lock.writeLock().unlock();
     }
@@ -480,7 +479,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   }
 
-  public void removeFirst(int num) {
+  void removeFirst(int num) {
     if (bufferedLogNum > 0) {
       flushLogBuffer();
     }
@@ -564,7 +563,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     return log;
   }
 
-  public void recoverMeta() {
+  private void recoverMeta() {
     if (meta == null) {
       if (metaFile.exists() && metaFile.length() > 0) {
         if (logger.isInfoEnabled()) {
@@ -598,7 +597,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
             state);
   }
 
-  public void serializeMeta(LogManagerMeta meta) {
+  private void serializeMeta(LogManagerMeta meta) {
     File tempMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta.tmp");
     tempMetaFile.getParentFile().mkdirs();
     logger.debug("Serializing log meta into {}", tempMetaFile.getPath());

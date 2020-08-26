@@ -35,7 +35,7 @@ import org.apache.thrift.transport.TNonblockingSocket;
  */
 public class AsyncDataHeartbeatClient extends AsyncDataClient {
 
-  public AsyncDataHeartbeatClient(TProtocolFactory protocolFactory,
+  private AsyncDataHeartbeatClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager, Node node, AsyncClientPool pool) throws IOException {
     super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(),
         node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET

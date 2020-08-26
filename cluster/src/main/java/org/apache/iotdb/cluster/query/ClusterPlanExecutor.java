@@ -671,7 +671,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return super.getSeriesSchemas(insertPlan);
   }
 
-  public boolean getSeriesSchemas(String deviceId, String[] measurementList)
+  private boolean getSeriesSchemas(String deviceId, String[] measurementList)
       throws MetadataException {
     MNode node = null;
     boolean allSeriesExists = true;
@@ -698,7 +698,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return allSeriesExists;
   }
 
-  public void pullSeriesSchemas(String deviceId, String[] measurementList)
+  private void pullSeriesSchemas(String deviceId, String[] measurementList)
       throws MetadataException {
     List<String> schemasToPull = new ArrayList<>();
     for (String s : measurementList) {

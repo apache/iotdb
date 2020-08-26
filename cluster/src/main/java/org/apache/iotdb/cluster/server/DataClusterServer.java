@@ -126,7 +126,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     headerGroupMap.put(dataGroupMember.getHeader(), dataGroupMember);
   }
 
-  public DataAsyncService getDataAsyncService(Node header, AsyncMethodCallback resultHandler,
+  private DataAsyncService getDataAsyncService(Node header, AsyncMethodCallback resultHandler,
       Object request) {
     return asyncServiceMap.computeIfAbsent(header, h -> {
       DataGroupMember dataMember = getDataMember(h, resultHandler, request);
@@ -134,7 +134,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     });
   }
 
-  public DataSyncService getDataSyncService(Node header) {
+  private DataSyncService getDataSyncService(Node header) {
     return syncServiceMap.computeIfAbsent(header, h -> {
       DataGroupMember dataMember = getDataMember(h, null, null);
       return dataMember != null ? new DataSyncService(dataMember) : null;
@@ -379,7 +379,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void pullMeasurementSchema(PullSchemaRequest request,
-      AsyncMethodCallback<PullSchemaResp> resultHandler) throws TException {
+      AsyncMethodCallback<PullSchemaResp> resultHandler) {
     DataAsyncService service = getDataAsyncService(request.getHeader(), resultHandler,
         "Pull measurement schema");
     service.pullMeasurementSchema(request, resultHandler);

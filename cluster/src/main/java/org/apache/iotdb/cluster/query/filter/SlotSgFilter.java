@@ -37,7 +37,7 @@ public class SlotSgFilter implements StorageGroupFilter {
     return satisfy(storageGroup, slots);
   }
 
-  public static boolean satisfy(String storageGroup, List<Integer> nodeSlots) {
+  private static boolean satisfy(String storageGroup, List<Integer> nodeSlots) {
     int slot = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroup,0,
         ClusterConstant.SLOT_NUM);
     return nodeSlots.contains(slot);

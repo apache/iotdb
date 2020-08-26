@@ -80,7 +80,7 @@ public class NodeStatus implements Comparable<NodeStatus> {
     this.lastUpdateTime = lastUpdateTime;
   }
 
-  public void setLastResponseLatency(long lastResponseLatency) {
+  void setLastResponseLatency(long lastResponseLatency) {
     this.lastResponseLatency = lastResponseLatency;
   }
 }

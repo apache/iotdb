@@ -483,7 +483,7 @@ public abstract class RaftLogManager {
    * @param ignoreExecutionException when set to true, exceptions during applying the logs are
    *                                 ignored, otherwise they are reported to the upper level
    */
-  protected void applyEntries(List<Log> entries, boolean ignoreExecutionException)
+  void applyEntries(List<Log> entries, boolean ignoreExecutionException)
       throws LogExecutionException {
     for (Log entry : entries) {
       try {
@@ -507,7 +507,7 @@ public abstract class RaftLogManager {
    * @throws EntryCompactedException
    * @throws GetEntriesWrongParametersException
    */
-  protected void checkBound(long low, long high)
+  void checkBound(long low, long high)
       throws EntryCompactedException, GetEntriesWrongParametersException {
     if (low > high) {
       logger.error("{}: invalid getEntries: parameter: {} > {}", name, low, high);
@@ -533,7 +533,7 @@ public abstract class RaftLogManager {
    * @param entries request entries
    * @return -1 or conflictIndex
    */
-  protected long findConflict(List<Log> entries) {
+  long findConflict(List<Log> entries) {
     for (Log entry : entries) {
       if (!matchTerm(entry.getCurrLogTerm(), entry.getCurrLogIndex())) {
         if (entry.getCurrLogIndex() <= getLastLogIndex()) {
@@ -559,7 +559,7 @@ public abstract class RaftLogManager {
   }
 
   @TestOnly
-  public void setMinNumOfLogsInMem(int minNumOfLogsInMem) {
+  void setMinNumOfLogsInMem(int minNumOfLogsInMem) {
     this.minNumOfLogsInMem = minNumOfLogsInMem;
   }
 
@@ -588,29 +588,29 @@ public abstract class RaftLogManager {
     }
   }
 
-  public UnCommittedEntryManager getUnCommittedEntryManager() {
+  UnCommittedEntryManager getUnCommittedEntryManager() {
     return unCommittedEntryManager;
   }
 
-  public void setUnCommittedEntryManager(
+  private void setUnCommittedEntryManager(
       UnCommittedEntryManager unCommittedEntryManager) {
     this.unCommittedEntryManager = unCommittedEntryManager;
   }
 
-  public CommittedEntryManager getCommittedEntryManager() {
+  CommittedEntryManager getCommittedEntryManager() {
     return committedEntryManager;
   }
 
-  public void setCommittedEntryManager(
+  private void setCommittedEntryManager(
       CommittedEntryManager committedEntryManager) {
     this.committedEntryManager = committedEntryManager;
   }
 
-  public StableEntryManager getStableEntryManager() {
+  private StableEntryManager getStableEntryManager() {
     return stableEntryManager;
   }
 
-  public void setStableEntryManager(StableEntryManager stableEntryManager) {
+  private void setStableEntryManager(StableEntryManager stableEntryManager) {
     this.stableEntryManager = stableEntryManager;
   }
 
@@ -618,7 +618,7 @@ public abstract class RaftLogManager {
   /**
    * check whether delete the committed log
    */
-  public void checkDeleteLog() {
+  void checkDeleteLog() {
     synchronized (this) {
       if (committedEntryManager.getTotalSize() <= minNumOfLogsInMem) {
         return;
@@ -627,7 +627,7 @@ public abstract class RaftLogManager {
     }
   }
 
-  public void flushLogPeriodically() {
+  private void flushLogPeriodically() {
     synchronized (this) {
       getStableEntryManager().forceFlushLogBuffer();
     }

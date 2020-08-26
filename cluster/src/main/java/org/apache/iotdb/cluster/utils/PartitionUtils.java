@@ -210,14 +210,14 @@ public class PartitionUtils {
    */
   public static class Intervals extends ArrayList<Long> {
 
-    protected static final Intervals ALL_INTERVAL = new Intervals(Long.MIN_VALUE,
+    static final Intervals ALL_INTERVAL = new Intervals(Long.MIN_VALUE,
         Long.MAX_VALUE);
 
     public Intervals() {
       super();
     }
 
-    public Intervals(long lowerBound, long upperBound) {
+    Intervals(long lowerBound, long upperBound) {
       super();
       addInterval(lowerBound, upperBound);
     }
@@ -234,11 +234,11 @@ public class PartitionUtils {
       return get(index * 2 + 1);
     }
 
-    public void setLowerBound(int index, long lb) {
+    void setLowerBound(int index, long lb) {
       set(index * 2, lb);
     }
 
-    public void setUpperBound(int index, long ub) {
+    void setUpperBound(int index, long ub) {
       set(index * 2 + 1, ub);
     }
 
@@ -247,7 +247,7 @@ public class PartitionUtils {
       add(upperBound);
     }
 
-    public Intervals intersection(Intervals that) {
+    Intervals intersection(Intervals that) {
       Intervals result = new Intervals();
       int thisSize = this.getIntervalSize();
       int thatSize = that.getIntervalSize();
@@ -275,7 +275,7 @@ public class PartitionUtils {
      * @param that
      * @return
      */
-    public Intervals union(Intervals that) {
+    Intervals union(Intervals that) {
       if (this.isEmpty()) {
         return that;
       } else if (that.isEmpty()) {

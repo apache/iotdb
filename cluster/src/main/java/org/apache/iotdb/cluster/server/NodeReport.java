@@ -64,7 +64,7 @@ public class NodeReport {
   /**
    * A RaftMemberReport contains the character, leader, term, last log term/index of a raft member.
    */
-  public static class RaftMemberReport {
+  static class RaftMemberReport {
     NodeCharacter character;
     Node leader;
     long term;
@@ -75,7 +75,7 @@ public class NodeReport {
     boolean isReadOnly;
     long lastHeartbeatReceivedTime;
 
-    public RaftMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
+    RaftMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
         long lastLogIndex, long commitIndex, long commitTerm, boolean isReadOnly,
         long lastHeartbeatReceivedTime) {
       this.character = character;

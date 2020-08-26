@@ -49,7 +49,7 @@ public class CommitLogTask implements Runnable {
     this.mListener = mListener;
   }
 
-  public void doCommitLog() {
+  private void doCommitLog() {
     if (mListener == null) {
       logger.error("event listener is not registered");
       return;

@@ -34,7 +34,7 @@ import org.apache.thrift.transport.TNonblockingSocket;
  */
 public class AsyncMetaHeartbeatClient extends AsyncMetaClient {
 
-  public AsyncMetaHeartbeatClient(TProtocolFactory protocolFactory,
+  private AsyncMetaHeartbeatClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager, Node node, AsyncClientPool pool) throws IOException {
     super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(),
         node.getMetaPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET

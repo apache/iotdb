@@ -37,7 +37,7 @@ public class UnCommittedEntryManager {
   // the first uncommitted entry index.
   private long offset;
 
-  public UnCommittedEntryManager(long offset) {
+  UnCommittedEntryManager(long offset) {
     this.offset = offset;
     this.entries = Collections.synchronizedList(new ArrayList<>());
   }
@@ -47,7 +47,7 @@ public class UnCommittedEntryManager {
    *
    * @return offset
    */
-  public long getFirstUnCommittedIndex() {
+  long getFirstUnCommittedIndex() {
     return offset;
   }
 
@@ -57,7 +57,7 @@ public class UnCommittedEntryManager {
    *
    * @return -1 if entries are empty, or last entry's index
    */
-  public long maybeLastIndex() {
+  long maybeLastIndex() {
     int entryNum = entries.size();
     if (entryNum != 0) {
       return offset + entryNum - 1;
@@ -73,7 +73,7 @@ public class UnCommittedEntryManager {
    * for given index
    * @throws EntryUnavailableException
    */
-  public long maybeTerm(long index) {
+  long maybeTerm(long index) {
     int entryPos = (int) (index - offset);
     if (entryPos < 0) {
       logger.debug(
@@ -105,7 +105,7 @@ public class UnCommittedEntryManager {
    *
    * @param index request entry's index
    */
-  public void stableTo(long index) {
+  void stableTo(long index) {
     if (index < offset + entries.size() && index >= offset) {
       entries.subList(0, (int) (index + 1 - offset)).clear();
       offset = index + 1;
@@ -118,7 +118,7 @@ public class UnCommittedEntryManager {
    *
    * @param snapshot leader's snapshot
    */
-  public void applyingSnapshot(Snapshot snapshot) {
+  void applyingSnapshot(Snapshot snapshot) {
     this.offset = snapshot.getLastLogIndex() + 1;
     this.entries.clear();
   }
@@ -131,7 +131,7 @@ public class UnCommittedEntryManager {
    *
    * @param appendingEntries request entries
    */
-  public void truncateAndAppend(List<Log> appendingEntries) {
+  void truncateAndAppend(List<Log> appendingEntries) {
     if (appendingEntries.isEmpty()) {
       return;
     }
@@ -173,7 +173,7 @@ public class UnCommittedEntryManager {
    *
    * @param appendingEntry request entry
    */
-  public void truncateAndAppend(Log appendingEntry) {
+  void truncateAndAppend(Log appendingEntry) {
     if (maybeTerm(appendingEntry.getCurrLogIndex()) == appendingEntry.getCurrLogTerm()) {
       // skip existing entry
       return;
@@ -243,13 +243,13 @@ public class UnCommittedEntryManager {
   }
 
   @TestOnly
-  public UnCommittedEntryManager(long offset, List<Log> entries) {
+  UnCommittedEntryManager(long offset, List<Log> entries) {
     this.offset = offset;
     this.entries = entries;
   }
 
   @TestOnly
-  public List<Log> getAllEntries() {
+  List<Log> getAllEntries() {
     return entries;
   }
 }

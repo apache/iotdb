@@ -43,7 +43,7 @@ public class CommittedEntryManager {
    * Note that it is better to use applyingSnapshot to update dummy entry immediately after this
    * instance is created.
    */
-  public CommittedEntryManager(int maxNumOfLogInMem) {
+  CommittedEntryManager(int maxNumOfLogInMem) {
     entries = Collections.synchronizedList(new ArrayList<>(maxNumOfLogInMem));
     entries.add(new EmptyContentLog(-1, -1));
   }
@@ -55,7 +55,7 @@ public class CommittedEntryManager {
    *
    * @param snapshot snapshot
    */
-  public void applyingSnapshot(Snapshot snapshot) {
+  void applyingSnapshot(Snapshot snapshot) {
     long localIndex = getDummyIndex();
     long snapIndex = snapshot.getLastLogIndex();
     if (localIndex >= snapIndex) {
@@ -71,7 +71,7 @@ public class CommittedEntryManager {
    *
    * @return dummyIndex
    */
-  public Long getDummyIndex() {
+  Long getDummyIndex() {
     return entries.get(0).getCurrLogIndex();
   }
 
@@ -80,7 +80,7 @@ public class CommittedEntryManager {
    *
    * @return firstIndex
    */
-  public Long getFirstIndex() {
+  Long getFirstIndex() {
     return getDummyIndex() + 1;
   }
 
@@ -89,7 +89,7 @@ public class CommittedEntryManager {
    *
    * @return getLastIndex
    */
-  public Long getLastIndex() {
+  Long getLastIndex() {
     return getDummyIndex() + entries.size() - 1;
   }
 
@@ -98,7 +98,7 @@ public class CommittedEntryManager {
    *
    * @return entries's size
    */
-  public long getTotalSize() {
+  long getTotalSize() {
     return getLastIndex() - getFirstIndex() + 1;
   }
 
@@ -111,7 +111,7 @@ public class CommittedEntryManager {
    * dummyIndex, or return the entry's term for given index
    * @throws EntryCompactedException
    */
-  public long maybeTerm(long index) throws EntryCompactedException {
+  long maybeTerm(long index) throws EntryCompactedException {
     long dummyIndex = getDummyIndex();
     if (index < dummyIndex) {
       logger.info(
@@ -166,7 +166,7 @@ public class CommittedEntryManager {
    * @param compactIndex request compactIndex
    * @throws EntryUnavailableException
    */
-  public void compactEntries(long compactIndex) throws EntryUnavailableException {
+  void compactEntries(long compactIndex) throws EntryUnavailableException {
     long dummyIndex = getDummyIndex();
     if (compactIndex <= dummyIndex) {
       logger.info(
@@ -209,12 +209,12 @@ public class CommittedEntryManager {
   }
 
   @TestOnly
-  public CommittedEntryManager(List<Log> entries) {
+  CommittedEntryManager(List<Log> entries) {
     this.entries = entries;
   }
 
   @TestOnly
-  public List<Log> getAllEntries() {
+  List<Log> getAllEntries() {
     return entries;
   }
 }

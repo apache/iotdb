@@ -63,7 +63,7 @@ public class CatchUpTask implements Runnable {
    * @throws TException
    * @throws InterruptedException
    */
-  boolean checkMatchIndex() throws TException, InterruptedException, LeaderUnknownException {
+  private boolean checkMatchIndex() throws TException, InterruptedException, LeaderUnknownException {
     boolean isLogDebug = logger.isDebugEnabled();
     long lo = 0;
     long hi = 0;

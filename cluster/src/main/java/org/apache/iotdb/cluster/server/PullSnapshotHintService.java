@@ -124,7 +124,7 @@ public class PullSnapshotHintService {
     return syncDataClient.onSnapshotApplied(hint.header, hint.slots);
   }
 
-  static class PullSnapshotHint {
+  private static class PullSnapshotHint {
 
     /**
      * Nodes to send this hint;

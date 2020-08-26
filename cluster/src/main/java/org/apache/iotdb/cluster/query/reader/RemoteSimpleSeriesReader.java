@@ -45,7 +45,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
   private DataSourceInfo sourceInfo;
   private long lastTimestamp;
 
-  BatchData cachedBatch;
+  private BatchData cachedBatch;
 
   private AtomicReference<ByteBuffer> fetchResult = new AtomicReference<>();
   private GenericHandler<ByteBuffer> handler;
@@ -91,7 +91,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
     // closed by Resource manager
   }
 
-  void fetchBatch() throws IOException {
+  private void fetchBatch() throws IOException {
     if (!sourceInfo.checkCurClient()) {
       cachedBatch = null;
       return;
@@ -153,7 +153,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
     }
   }
 
-  public void clearCurDataForTest() {
+  void clearCurDataForTest() {
     this.cachedBatch = null;
   }
 }

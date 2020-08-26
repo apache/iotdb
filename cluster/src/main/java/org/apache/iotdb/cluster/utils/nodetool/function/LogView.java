@@ -54,15 +54,14 @@ public class LogView implements Runnable {
     Printer.msgPrintln("-------------------NODE STATE-------------------------");
     int count = 0;
 
-    for (int i = 0; i < logs.size(); i++) {
+    for (Log log : logs) {
       Printer.msgPrintln("Log NO " + count + ": ");
       count++;
-      Log curLog = logs.get(i);
       if (detail) {
-        Printer.msgPrintln(curLog.toString());
+        Printer.msgPrintln(log.toString());
       } else {
         Printer.msgPrintln(
-            curLog.getClass().getSimpleName() + " Size: " +
+            log.getClass().getSimpleName() + " Size: " +
                 logDequeSerializer.getLogSizeDeque().removeFirst());
       }
     }

@@ -223,9 +223,9 @@ public class ClusterDescriptor {
         .getProperty("write_operation_timeout_ms",
             String.valueOf(config.getWriteOperationTimeoutMS()))));
 
-    config.setMaxUnsnapshotedLogSize(Long.parseLong(properties
+    config.setMaxUnsnapshotLogSize(Long.parseLong(properties
         .getProperty("max_unsnapshoted_log_size",
-            String.valueOf(config.getMaxUnsnapshotedLogSize()))));
+            String.valueOf(config.getMaxUnsnapshotLogSize()))));
 
     config.setUseBatchInLogCatchUp(Boolean.parseBoolean(properties.getProperty(
         "use_batch_in_catch_up", String.valueOf(config.isUseBatchInLogCatchUp()))));
@@ -337,14 +337,14 @@ public class ClusterDescriptor {
     config.setConnectionTimeoutInMS(Integer.parseInt(properties
         .getProperty("connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
 
-    config.setMaxUnsnapshotedLogSize(Long.parseLong(properties
+    config.setMaxUnsnapshotLogSize(Long.parseLong(properties
         .getProperty("max_unsnapshoted_log_size",
-            String.valueOf(config.getMaxUnsnapshotedLogSize()))));
+            String.valueOf(config.getMaxUnsnapshotLogSize()))));
 
     logger.info("Set cluster configuration {}", properties);
   }
 
-  public String hostnameToIP(String hostname) throws UnknownHostException {
+  private String hostnameToIP(String hostname) throws UnknownHostException {
     InetAddress address = InetAddress.getByName(hostname);
     return address.getHostAddress();
   }

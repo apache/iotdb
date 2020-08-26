@@ -43,14 +43,14 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
   public static final ClusterMonitor INSTANCE = new ClusterMonitor();
 
-  private final String MBEAN_NAME = String
+  private final String mbeanName = String
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
 
   @Override
   public void start() throws StartupException {
     try {
-      JMXService.registerMBean(INSTANCE, MBEAN_NAME);
+      JMXService.registerMBean(INSTANCE, mbeanName);
     } catch (Exception e) {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
@@ -152,7 +152,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
   @Override
   public void stop() {
-    JMXService.deregisterMBean(MBEAN_NAME);
+    JMXService.deregisterMBean(mbeanName);
   }
 
   @Override
@@ -160,7 +160,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
     return ServiceType.CLUSTER_MONITOR_SERVICE;
   }
 
-  public String getMBEAN_NAME() {
-    return MBEAN_NAME;
+  public String getMbeanName() {
+    return mbeanName;
   }
 }

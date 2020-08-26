@@ -69,7 +69,7 @@ public abstract class HeartbeatServer {
 
   Node thisNode;
 
-  TProtocolFactory heartbeatProtocolFactory = config.isRpcThriftCompressionEnabled() ?
+  private TProtocolFactory heartbeatProtocolFactory = config.isRpcThriftCompressionEnabled() ?
       new TCompactProtocol.Factory() : new TBinaryProtocol.Factory();
 
   /**

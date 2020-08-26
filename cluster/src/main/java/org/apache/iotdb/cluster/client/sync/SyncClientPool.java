@@ -73,7 +73,7 @@ public class SyncClientPool {
     }
   }
 
-  @SuppressWarnings("java:S2273") // synchronized outside
+  @SuppressWarnings("squid:S2273") // synchronized outside
   private Client waitForClient(Deque<Client> clientStack, ClusterNode node, int nodeClientNum) {
     // wait for an available client
     long waitStart = System.currentTimeMillis();
@@ -100,7 +100,7 @@ public class SyncClientPool {
    * @param node
    * @param client
    */
-  public void putClient(Node node, Client client) {
+  void putClient(Node node, Client client) {
     ClusterNode clusterNode = new ClusterNode(node);
     //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
     Deque<Client> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());

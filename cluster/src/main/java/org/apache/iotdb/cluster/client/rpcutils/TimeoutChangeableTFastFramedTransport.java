@@ -24,7 +24,7 @@ import org.apache.thrift.transport.TSocket;
 
 public class TimeoutChangeableTFastFramedTransport extends TFastFramedTransport {
 
-  TSocket underlying;
+  private TSocket underlying;
 
   public TimeoutChangeableTFastFramedTransport(TSocket underlying) {
     super(underlying);

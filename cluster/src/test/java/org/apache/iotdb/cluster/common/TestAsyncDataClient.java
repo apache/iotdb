@@ -44,7 +44,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 public class TestAsyncDataClient extends AsyncDataClient {
@@ -145,14 +144,8 @@ public class TestAsyncDataClient extends AsyncDataClient {
   @Override
   public void pullMeasurementSchema(PullSchemaRequest request,
       AsyncMethodCallback<PullSchemaResp> resultHandler) {
-    new Thread(() -> {
-      try {
-        new DataAsyncService(dataGroupMemberMap.get(request.getHeader())).pullMeasurementSchema(request,
-            resultHandler);
-      } catch (TException e) {
-        e.printStackTrace();
-      }
-    }).start();
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(request.getHeader())).pullMeasurementSchema(request,
+        resultHandler)).start();
   }
 
   @Override

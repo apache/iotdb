@@ -126,7 +126,7 @@ public abstract class RaftMember {
   protected Node thisNode;
   // the nodes known by this node
   protected List<Node> allNodes;
-  protected Map<Node, Peer> peerMap;
+  Map<Node, Peer> peerMap;
 
   // the current term of the node, this object also works as lock of some transactions of the
   // member like elections
@@ -134,7 +134,7 @@ public abstract class RaftMember {
   volatile NodeCharacter character = NodeCharacter.ELECTOR;
   volatile Node leader;
   volatile Node voteFor;
-  final Object waitLeaderCondition = new Object();
+  private final Object waitLeaderCondition = new Object();
   volatile long lastHeartbeatReceivedTime;
 
   // the raft logs are all stored and maintained in the log manager
@@ -192,11 +192,11 @@ public abstract class RaftMember {
    * The maximum time to wait if there is no leader in the group, after which a
    * LeadNotFoundException will be thrown.
    */
-  public static long getWaitLeaderTimeMs() {
+  static long getWaitLeaderTimeMs() {
     return waitLeaderTimeMs;
   }
 
-  public static void setWaitLeaderTimeMs(long waitLeaderTimeMs) {
+  static void setWaitLeaderTimeMs(long waitLeaderTimeMs) {
     RaftMember.waitLeaderTimeMs = waitLeaderTimeMs;
   }
 
@@ -570,7 +570,7 @@ public abstract class RaftMember {
    *                       0, half of the cluster size will be used.
    * @return an AppendLogResult
    */
-  protected AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
+  private AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
     if (requiredQuorum <= 0) {
       return sendLogToFollowers(log, new AtomicInteger(allNodes.size() / 2));
     } else {
@@ -1129,7 +1129,7 @@ public abstract class RaftMember {
    * @param header   to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header) {
+  private TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header) {
     AsyncClient client = getAsyncClient(receiver);
     try {
       TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
@@ -1151,7 +1151,7 @@ public abstract class RaftMember {
     }
   }
 
-  TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header) {
+  private TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header) {
     Client client = getSyncClient(receiver);
     try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -1257,7 +1257,7 @@ public abstract class RaftMember {
    * @param log
    * @return true if the log is accepted by the quorum of the group, false otherwise
    */
-  protected boolean appendLogInGroup(Log log)
+  boolean appendLogInGroup(Log log)
       throws LogExecutionException {
     int retryTime = 0;
     while (true) {
@@ -1578,7 +1578,7 @@ public abstract class RaftMember {
   }
 
   @TestOnly
-  public void setAppendLogThreadPool(ExecutorService appendLogThreadPool) {
+  void setAppendLogThreadPool(ExecutorService appendLogThreadPool) {
     this.appendLogThreadPool = appendLogThreadPool;
   }
 
@@ -1586,7 +1586,7 @@ public abstract class RaftMember {
     return asyncThreadPool;
   }
 
-  public Object getSnapshotApplyLock() {
+  Object getSnapshotApplyLock() {
     return snapshotApplyLock;
   }
 
@@ -1614,7 +1614,7 @@ public abstract class RaftMember {
 
     @Override
     public void onError(Exception e) {
-      logger.error("async commit log failed, {}", e.toString());
+      logger.error("async commit log failed", e);
     }
   }
 

@@ -106,7 +106,7 @@ public class ClusterUtils {
         : seedNodesEquals(localSeedNodes, remoteSeedNodes);
   }
 
-  public static boolean seedNodesEquals(List<Node> thisNodeList, List<Node> thatNodeList) {
+  private static boolean seedNodesEquals(List<Node> thisNodeList, List<Node> thatNodeList) {
     Node[] thisNodeArray = thisNodeList.toArray(new Node[0]);
     Node[] thatNodeArray = thatNodeList.toArray(new Node[0]);
     Arrays.sort(thisNodeArray, ClusterUtils::compareSeedNode);
@@ -123,7 +123,7 @@ public class ClusterUtils {
     }
   }
 
-  public static int compareSeedNode(Node thisSeedNode, Node thatSeedNode) {
+  private static int compareSeedNode(Node thisSeedNode, Node thatSeedNode) {
     int ipCompare = thisSeedNode.getIp().compareTo(thatSeedNode.getIp());
     if (ipCompare != 0) {
       return ipCompare;
@@ -137,7 +137,7 @@ public class ClusterUtils {
     }
   }
 
-  public static boolean seedNodesContains(List<Node> seedNodeList, List<Node> subSeedNodeList) {
+  private static boolean seedNodesContains(List<Node> seedNodeList, List<Node> subSeedNodeList) {
     // Because identifier is not compared here, List.contains() is not suitable
     if (subSeedNodeList == null) {
       return false;

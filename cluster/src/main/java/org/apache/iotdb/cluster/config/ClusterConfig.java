@@ -54,10 +54,10 @@ public class ClusterConfig {
 
   private int connectionTimeoutInMS = 20 * 1000;
   /**
-   * This parameter controls when to actually delete snapshoted logs because we can't remove
-   * snapshoted logs directly from disk now
+   * This parameter controls when to actually delete snapshot logs because we can't remove
+   * snapshot logs directly from disk now
    */
-  private long maxUnsnapshotedLogSize = 1024 * 1024 * 128L;
+  private long maxUnsnapshotLogSize = 1024 * 1024 * 128L;
 
   private int readOperationTimeoutMS = 30 * 1000;
 
@@ -145,12 +145,12 @@ public class ClusterConfig {
     this.useBatchInLogCatchUp = useBatchInLogCatchUp;
   }
 
-  public long getMaxUnsnapshotedLogSize() {
-    return maxUnsnapshotedLogSize;
+  public long getMaxUnsnapshotLogSize() {
+    return maxUnsnapshotLogSize;
   }
 
-  public void setMaxUnsnapshotedLogSize(long maxUnsnapshotedLogSize) {
-    this.maxUnsnapshotedLogSize = maxUnsnapshotedLogSize;
+  void setMaxUnsnapshotLogSize(long maxUnsnapshotLogSize) {
+    this.maxUnsnapshotLogSize = maxUnsnapshotLogSize;
   }
 
   public String getClusterRpcIp() {
@@ -201,7 +201,7 @@ public class ClusterConfig {
     this.replicationNum = replicationNum;
   }
 
-  public void setClusterName(String clusterName) {
+  void setClusterName(String clusterName) {
     this.clusterName = clusterName;
   }
 
@@ -213,7 +213,7 @@ public class ClusterConfig {
     return internalDataPort;
   }
 
-  public void setInternalDataPort(int internalDataPort) {
+  void setInternalDataPort(int internalDataPort) {
     this.internalDataPort = internalDataPort;
   }
 
@@ -221,7 +221,7 @@ public class ClusterConfig {
     return clusterRpcPort;
   }
 
-  public void setClusterRpcPort(int clusterRpcPort) {
+  void setClusterRpcPort(int clusterRpcPort) {
     this.clusterRpcPort = clusterRpcPort;
   }
 
@@ -229,7 +229,7 @@ public class ClusterConfig {
     return connectionTimeoutInMS;
   }
 
-  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+  void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
   }
 
@@ -237,7 +237,7 @@ public class ClusterConfig {
     return readOperationTimeoutMS;
   }
 
-  public void setReadOperationTimeoutMS(int readOperationTimeoutMS) {
+  void setReadOperationTimeoutMS(int readOperationTimeoutMS) {
     this.readOperationTimeoutMS = readOperationTimeoutMS;
   }
 
@@ -245,7 +245,7 @@ public class ClusterConfig {
     return writeOperationTimeoutMS;
   }
 
-  public void setWriteOperationTimeoutMS(int writeOperationTimeoutMS) {
+  void setWriteOperationTimeoutMS(int writeOperationTimeoutMS) {
     this.writeOperationTimeoutMS = writeOperationTimeoutMS;
   }
 
@@ -253,7 +253,7 @@ public class ClusterConfig {
     return minNumOfLogsInMem;
   }
 
-  public void setMinNumOfLogsInMem(int minNumOfLogsInMem) {
+  void setMinNumOfLogsInMem(int minNumOfLogsInMem) {
     this.minNumOfLogsInMem = minNumOfLogsInMem;
   }
 
@@ -261,7 +261,7 @@ public class ClusterConfig {
     return logDeleteCheckIntervalSecond;
   }
 
-  public void setLogDeleteCheckIntervalSecond(int logDeleteCheckIntervalSecond) {
+  void setLogDeleteCheckIntervalSecond(int logDeleteCheckIntervalSecond) {
     this.logDeleteCheckIntervalSecond = logDeleteCheckIntervalSecond;
   }
 
@@ -277,7 +277,7 @@ public class ClusterConfig {
     return enableAutoCreateSchema;
   }
 
-  public void setEnableAutoCreateSchema(boolean enableAutoCreateSchema) {
+  void setEnableAutoCreateSchema(boolean enableAutoCreateSchema) {
     this.enableAutoCreateSchema = enableAutoCreateSchema;
   }
 
@@ -301,7 +301,7 @@ public class ClusterConfig {
     return useAsyncApplier;
   }
 
-  public void setUseAsyncApplier(boolean useAsyncApplier) {
+  void setUseAsyncApplier(boolean useAsyncApplier) {
     this.useAsyncApplier = useAsyncApplier;
   }
 
@@ -309,7 +309,7 @@ public class ClusterConfig {
     return maxNumOfLogsInMem;
   }
 
-  public void setMaxNumOfLogsInMem(int maxNumOfLogsInMem) {
+  void setMaxNumOfLogsInMem(int maxNumOfLogsInMem) {
     this.maxNumOfLogsInMem = maxNumOfLogsInMem;
   }
 
@@ -325,7 +325,7 @@ public class ClusterConfig {
     return flushRaftLogThreshold;
   }
 
-  public void setFlushRaftLogThreshold(int flushRaftLogThreshold) {
+  void setFlushRaftLogThreshold(int flushRaftLogThreshold) {
     this.flushRaftLogThreshold = flushRaftLogThreshold;
   }
 
@@ -333,7 +333,7 @@ public class ClusterConfig {
     return forceRaftLogPeriodInMS;
   }
 
-  public void setForceRaftLogPeriodInMS(int forceRaftLogPeriodInMS) {
+  void setForceRaftLogPeriodInMS(int forceRaftLogPeriodInMS) {
     this.forceRaftLogPeriodInMS = forceRaftLogPeriodInMS;
   }
 

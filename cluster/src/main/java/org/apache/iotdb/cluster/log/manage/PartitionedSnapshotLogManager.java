@@ -54,7 +54,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   long snapshotLastLogIndex;
   long snapshotLastLogTerm;
   PartitionTable partitionTable;
-  Node header;
+  private Node header;
   Node thisNode;
 
 

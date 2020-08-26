@@ -85,17 +85,17 @@ public class ClusterPlanRouter {
     throw new UnsupportedPlanException(plan);
   }
 
-  public PartitionGroup routePlan(InsertRowPlan plan)
+  private PartitionGroup routePlan(InsertRowPlan plan)
       throws MetadataException {
     return partitionTable.partitionByPathTime(plan.getDeviceId(), plan.getTime());
   }
 
-  public PartitionGroup routePlan(CreateTimeSeriesPlan plan)
+  private PartitionGroup routePlan(CreateTimeSeriesPlan plan)
       throws MetadataException {
     return partitionTable.partitionByPathTime(plan.getPath().getFullPath(), 0);
   }
 
-  public PartitionGroup routePlan(ShowChildPathsPlan plan) {
+  private PartitionGroup routePlan(ShowChildPathsPlan plan) {
     try {
       return partitionTable.route(getMManager().getStorageGroupName(plan.getPath().getFullPath())
           , 0);
@@ -133,21 +133,21 @@ public class ClusterPlanRouter {
     throw new UnsupportedPlanException(plan);
   }
 
-  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertRowPlan plan)
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertRowPlan plan)
       throws MetadataException {
     PartitionGroup partitionGroup = partitionTable.partitionByPathTime(plan.getDeviceId(),
         plan.getTime());
     return Collections.singletonMap(plan, partitionGroup);
   }
 
-  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(AlterTimeSeriesPlan plan)
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(AlterTimeSeriesPlan plan)
       throws MetadataException {
     PartitionGroup partitionGroup =
         partitionTable.partitionByPathTime(plan.getPath().getFullPath(), 0);
     return Collections.singletonMap(plan, partitionGroup);
   }
 
-  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateTimeSeriesPlan plan)
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateTimeSeriesPlan plan)
       throws MetadataException {
     PartitionGroup partitionGroup =
         partitionTable.partitionByPathTime(plan.getPath().getFullPath(), 0);
@@ -155,7 +155,7 @@ public class ClusterPlanRouter {
   }
 
   @SuppressWarnings("SuspiciousSystemArraycopy")
-  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertTabletPlan plan)
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertTabletPlan plan)
       throws MetadataException {
     String storageGroup = getMManager().getStorageGroupName(plan.getDeviceId());
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
@@ -247,13 +247,13 @@ public class ClusterPlanRouter {
     return values;
   }
 
-  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(UpdatePlan plan)
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(UpdatePlan plan)
       throws UnsupportedPlanException {
     logger.error("UpdatePlan is not implemented");
     throw new UnsupportedPlanException(plan);
   }
 
-  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan)
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan)
       throws StorageGroupNotSetException, IllegalPathException {
     //CountPlan is quite special because it has the behavior of wildcard at the tail of the path
     // even though there is no wildcard

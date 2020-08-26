@@ -105,7 +105,7 @@ public class AsyncDataClient extends AsyncClient {
     return ___currentMethod == null;
   }
 
-  public TAsyncMethodCall<?> getCurrMethod() {
+  TAsyncMethodCall<?> getCurrMethod() {
     return ___currentMethod;
   }
 }

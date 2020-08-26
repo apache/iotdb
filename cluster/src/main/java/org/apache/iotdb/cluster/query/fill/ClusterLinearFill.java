@@ -39,7 +39,7 @@ public class ClusterLinearFill extends LinearFill {
   private static final List<String> AGGREGATION_NAMES = Arrays.asList(SQLConstant.MIN_TIME,
       SQLConstant.FIRST_VALUE);
 
-  public ClusterLinearFill(LinearFill fill, MetaGroupMember metaGroupMember) {
+  ClusterLinearFill(LinearFill fill, MetaGroupMember metaGroupMember) {
     super(fill.getDataType(), fill.getQueryTime(), fill.getBeforeRange(), fill.getAfterRange());
     this.metaGroupMember = metaGroupMember;
   }

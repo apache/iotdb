@@ -110,7 +110,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     private QueryContext queryContext;
     private Set<String> deviceMeasurements;
 
-    public GroupLastTask(PartitionGroup group, Path seriesPath,
+    GroupLastTask(PartitionGroup group, Path seriesPath,
         TSDataType dataType, QueryContext queryContext,
         Set<String> deviceMeasurements) {
       this.group = group;

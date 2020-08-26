@@ -30,7 +30,7 @@ public class ClusterConcatPathOptimizer extends ConcatPathOptimizer {
 
   private MetaGroupMember metaGroupMember;
 
-  public ClusterConcatPathOptimizer(
+  ClusterConcatPathOptimizer(
       MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
   }

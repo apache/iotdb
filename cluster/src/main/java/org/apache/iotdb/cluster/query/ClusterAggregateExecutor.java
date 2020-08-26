@@ -47,7 +47,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
    *
    * @param aggregationPlan
    */
-  public ClusterAggregateExecutor(AggregationPlan aggregationPlan, MetaGroupMember metaMember) {
+  ClusterAggregateExecutor(AggregationPlan aggregationPlan, MetaGroupMember metaMember) {
     super(aggregationPlan);
     this.metaMember = metaMember;
   }

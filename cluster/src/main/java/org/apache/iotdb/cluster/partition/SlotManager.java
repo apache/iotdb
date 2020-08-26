@@ -133,7 +133,7 @@ public class SlotManager {
    * @param slotId
    * @return the source of a slot if it is being pulled, or null if it is not being pulled
    */
-  public Node getSource(int slotId) {
+  Node getSource(int slotId) {
     return idSlotMap.get(slotId).source;
   }
 
@@ -297,10 +297,10 @@ public class SlotManager {
     // in LOSING status, how many members in the new owner have pulled data
     private volatile int snapshotReceivedCount;
 
-    public SlotDescriptor() {
+    SlotDescriptor() {
     }
 
-    public SlotDescriptor(SlotStatus slotStatus) {
+    SlotDescriptor(SlotStatus slotStatus) {
       this.slotStatus = slotStatus;
     }
 

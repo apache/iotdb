@@ -37,7 +37,7 @@ public class NodeRemovalResult {
     return removedGroup;
   }
 
-  public void setRemovedGroup(PartitionGroup group) {
+  void setRemovedGroup(PartitionGroup group) {
     this.removedGroup = group;
   }
 
@@ -45,7 +45,7 @@ public class NodeRemovalResult {
     return newSlotOwners;
   }
 
-  public void setNewSlotOwners(
+  void setNewSlotOwners(
       Map<Node, List<Integer>> newSlotOwners) {
     this.newSlotOwners = newSlotOwners;
   }
@@ -54,7 +54,7 @@ public class NodeRemovalResult {
     return newGroup;
   }
 
-  public void setNewGroup(PartitionGroup newGroup) {
+  void setNewGroup(PartitionGroup newGroup) {
     this.newGroup = newGroup;
   }
 }

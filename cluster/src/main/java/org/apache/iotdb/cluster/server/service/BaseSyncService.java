@@ -49,7 +49,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   RaftMember member;
   String name;
 
-  public BaseSyncService(RaftMember member) {
+  BaseSyncService(RaftMember member) {
     this.member = member;
     this.name = member.getName();
   }

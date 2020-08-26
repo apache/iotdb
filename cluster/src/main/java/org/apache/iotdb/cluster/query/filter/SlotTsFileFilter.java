@@ -42,7 +42,7 @@ public class SlotTsFileFilter implements TsFileFilter {
     return fileNotInSlots(resource, slots);
   }
 
-  public static boolean fileNotInSlots(TsFileResource res, List<Integer> nodeSlots) {
+  private static boolean fileNotInSlots(TsFileResource res, List<Integer> nodeSlots) {
     // <storageGroupName>/<partitionNum>/<fileName>
     String[] pathSegments = FilePathUtils.splitTsFilePath(res);
     String storageGroupName = pathSegments[pathSegments.length - 3];

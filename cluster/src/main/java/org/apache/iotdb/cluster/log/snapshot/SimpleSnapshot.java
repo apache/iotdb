@@ -39,9 +39,9 @@ import org.slf4j.LoggerFactory;
 public class SimpleSnapshot extends Snapshot {
 
   private static final Logger logger = LoggerFactory.getLogger(SimpleSnapshot.class);
-  List<Log> snapshot;
+  private List<Log> snapshot;
 
-  public SimpleSnapshot() {
+  SimpleSnapshot() {
   }
 
   public SimpleSnapshot(long lastIndex, long lastTerm) {
@@ -66,7 +66,7 @@ public class SimpleSnapshot extends Snapshot {
     return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
-  void subSerialize(DataOutputStream dataOutputStream) {
+  private void subSerialize(DataOutputStream dataOutputStream) {
     // provided for sub-classes to add more serialized fields
   }
 
@@ -88,7 +88,7 @@ public class SimpleSnapshot extends Snapshot {
     subDeserialize(buffer);
   }
 
-  void subDeserialize(ByteBuffer buffer) {
+  private void subDeserialize(ByteBuffer buffer) {
     // provided for sub-classes to add more serialized fields
   }
 

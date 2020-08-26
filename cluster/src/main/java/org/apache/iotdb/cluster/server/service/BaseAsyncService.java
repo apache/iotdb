@@ -44,7 +44,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   RaftMember member;
   String name;
 
-  public BaseAsyncService(RaftMember member) {
+  BaseAsyncService(RaftMember member) {
     this.member = member;
     this.name = member.getName();
   }

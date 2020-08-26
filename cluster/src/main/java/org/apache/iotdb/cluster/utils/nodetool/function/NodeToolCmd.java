@@ -49,13 +49,13 @@ public abstract class NodeToolCmd implements Runnable {
 
   private static final String JMX_URL_FORMAT = "service:jmx:rmi:///jndi/rmi://%s:%s/jmxrmi";
 
-  public static final String BUILDING_CLUSTER_INFO = "The cluster is being created.";
+  static final String BUILDING_CLUSTER_INFO = "The cluster is being created.";
 
   @Override
   public void run() {
     try {
       MBeanServerConnection mbsc = connect();
-      ObjectName name = new ObjectName(ClusterMonitor.INSTANCE.getMBEAN_NAME());
+      ObjectName name = new ObjectName(ClusterMonitor.INSTANCE.getMbeanName());
       ClusterMonitorMBean clusterMonitorProxy = JMX
           .newMBeanProxy(mbsc, name, ClusterMonitorMBean.class);
       execute(clusterMonitorProxy);

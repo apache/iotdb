@@ -76,7 +76,17 @@ public class AsyncClientPool {
     return client;
   }
 
-  @SuppressWarnings("java:S2273") // synchronized outside
+  /**
+   * Wait for a client to be returned for at most WAIT_CLIENT_TIMEOUT_MS milliseconds. If no
+   * client is returned beyond the timeout, a new client will be returned.
+   * WARNING: the caller must synchronize on the pool.
+   * @param clientStack
+   * @param node
+   * @param nodeClientNum
+   * @return
+   * @throws IOException
+   */
+  @SuppressWarnings({"squid:S2273"}) // synchronized outside
   private AsyncClient waitForClient(Deque<AsyncClient> clientStack, ClusterNode node, int nodeClientNum)
       throws IOException {
     // wait for an available client
@@ -125,7 +135,7 @@ public class AsyncClientPool {
     }
   }
 
-  public void recreateClient(Node node) {
+  void recreateClient(Node node) {
     ClusterNode clusterNode = new ClusterNode(node);
     synchronized (this) {
       Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());

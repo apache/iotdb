@@ -76,7 +76,7 @@ public class SlotPartitionTable implements PartitionTable {
   private List<PartitionGroup> localGroups;
 
   private Node thisNode;
-  MManager mManager = IoTDB.metaManager;
+  private MManager mManager = IoTDB.metaManager;
 
   private List<PartitionGroup> globalGroups;
 
@@ -93,7 +93,7 @@ public class SlotPartitionTable implements PartitionTable {
     this(nodes, thisNode, ClusterConstant.SLOT_NUM);
   }
 
-  public SlotPartitionTable(Collection<Node> nodes, Node thisNode, int totalSlotNumbers) {
+  private SlotPartitionTable(Collection<Node> nodes, Node thisNode, int totalSlotNumbers) {
     this.thisNode = thisNode;
     this.totalSlotNumbers = totalSlotNumbers;
     init(nodes);

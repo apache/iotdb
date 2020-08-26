@@ -19,9 +19,21 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import junit.framework.TestCase;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.common.*;
+import org.apache.iotdb.cluster.common.IoTDBTest;
+import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
+import org.apache.iotdb.cluster.common.TestDataGroupMember;
+import org.apache.iotdb.cluster.common.TestMetaGroupMember;
+import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
@@ -56,19 +68,11 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import static org.junit.Assert.*;
 
 public class DataLogApplierTest extends IoTDBTest {
 
@@ -135,12 +139,8 @@ public class DataLogApplierTest extends IoTDBTest {
         public void pullMeasurementSchema(PullSchemaRequest request,
             AsyncMethodCallback<PullSchemaResp> resultHandler) {
           new Thread(() -> {
-            try {
-              new DataAsyncService(testDataGroupMember).pullMeasurementSchema(request,
-                  resultHandler);
-            } catch (TException e) {
-              e.printStackTrace();
-            }
+            new DataAsyncService(testDataGroupMember).pullMeasurementSchema(request,
+                resultHandler);
           }).start();
         }
       };

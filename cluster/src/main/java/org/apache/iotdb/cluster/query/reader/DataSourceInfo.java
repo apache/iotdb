@@ -144,15 +144,15 @@ public class DataSourceInfo {
     return partitionGroup.getHeader();
   }
 
-  public Node getCurrentNode() {
+  Node getCurrentNode() {
     return this.curSource;
   }
 
-  public AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
+  AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
     return isNoClient ? null : metaGroupMember.getAsyncDataClient(this.curSource, timeout);
   }
 
-  public SyncDataClient getCurSyncClient(int timeout) throws IOException {
+  SyncDataClient getCurSyncClient(int timeout) {
     return isNoClient ? null : metaGroupMember.getSyncDataClient(this.curSource, timeout);
   }
 
@@ -160,7 +160,7 @@ public class DataSourceInfo {
     return this.isNoData;
   }
 
-  public boolean isNoClient(){
+  private boolean isNoClient(){
     return this.isNoClient;
   }
 
