@@ -389,8 +389,9 @@ public class StorageEngine implements IService {
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupName);
     if (processor != null) {
-      logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupName,
-          isSeq);
+      logger.info("async closing sg processor is called for closing {}, seq = {}, isSync={}",
+          storageGroupName,
+          isSeq, isSync);
       processor.writeLock();
       try {
         if (isSeq) {

@@ -26,6 +26,7 @@ import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class FlushPlan extends PhysicalPlan {
 
@@ -80,13 +81,12 @@ public class FlushPlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    int type = PhysicalPlanType.FLUSH.ordinal();
-    stream.writeByte(type);
+    stream.writeByte((byte) PhysicalPlanType.FLUSH.ordinal());
     stream.writeByte((isSeq == null || !isSeq) ? 0 : 1);
     stream.writeByte(isSync ? 1 : 0);
-    stream.writeLong(storageGroups.size());
+    stream.writeInt(storageGroups.size());
     for (Path storageGroup : storageGroups) {
-      putString(stream, storageGroup.getFullPath());
+      ReadWriteIOUtils.write(storageGroup.getFullPath(), stream);
     }
   }
 
@@ -98,8 +98,9 @@ public class FlushPlan extends PhysicalPlan {
     buffer.put((byte) (isSync ? 1 : 0));
     buffer.putInt(storageGroups.size());
     for (Path storageGroup : storageGroups) {
-      putString(buffer, storageGroup.getFullPath());
+      ReadWriteIOUtils.write(storageGroup.getFullPath(), buffer);
     }
+
   }
 
   @Override
@@ -109,7 +110,7 @@ public class FlushPlan extends PhysicalPlan {
     int storageGroupsSize = buffer.getInt();
     this.storageGroups = new ArrayList<>(storageGroupsSize);
     for (int i = 0; i < storageGroupsSize; i++) {
-      storageGroups.add(new Path(readString(buffer)));
+      storageGroups.add(new Path(ReadWriteIOUtils.readString(buffer)));
     }
   }
 
