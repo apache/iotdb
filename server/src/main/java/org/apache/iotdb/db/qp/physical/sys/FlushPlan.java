@@ -83,7 +83,7 @@ public class FlushPlan extends PhysicalPlan {
     int type = PhysicalPlanType.FLUSH.ordinal();
     stream.writeByte(type);
     stream.writeByte((isSeq == null || !isSeq) ? 0 : 1);
-    stream.writeByte(isSync ? 0 : 1);
+    stream.writeByte(isSync ? 1 : 0);
     stream.writeLong(storageGroups.size());
     for (Path storageGroup : storageGroups) {
       putString(stream, storageGroup.getFullPath());
@@ -95,7 +95,7 @@ public class FlushPlan extends PhysicalPlan {
     int type = PhysicalPlanType.FLUSH.ordinal();
     buffer.put((byte) type);
     buffer.put((byte) ((isSeq == null || !isSeq) ? 0 : 1));
-    buffer.put((byte) (isSync ? 0 : 1));
+    buffer.put((byte) (isSync ? 1 : 0));
     buffer.putInt(storageGroups.size());
     for (Path storageGroup : storageGroups) {
       putString(buffer, storageGroup.getFullPath());
@@ -108,7 +108,7 @@ public class FlushPlan extends PhysicalPlan {
     this.isSync = buffer.get() == 1;
     int storageGroupsSize = buffer.getInt();
     this.storageGroups = new ArrayList<>(storageGroupsSize);
-    for (int i = 0; i > storageGroupsSize; i++) {
+    for (int i = 0; i < storageGroupsSize; i++) {
       storageGroups.add(new Path(readString(buffer)));
     }
   }
