@@ -86,7 +86,7 @@ public class IoTDBSeriesReaderIT {
     prevChunkMergePointThreshold = IoTDBDescriptor.getInstance().getConfig()
         .getChunkMergePointThreshold();
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.NormalStrategy);
+        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
     IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
 
@@ -112,7 +112,7 @@ public class IoTDBSeriesReaderIT {
 
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.LevelStrategy);
+        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance().getConfig()

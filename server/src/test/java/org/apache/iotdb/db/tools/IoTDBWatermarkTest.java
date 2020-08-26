@@ -63,7 +63,7 @@ public class IoTDBWatermarkTest {
     IoTDBDescriptor.getInstance().getConfig().setWatermarkBitString(watermarkBitString);
     IoTDBDescriptor.getInstance().getConfig().setWatermarkMethod(String.format("GroupBasedLSBMethod"
         + "(embed_row_cycle=%d,embed_lsb_num=%d)", embed_row_cycle, embed_lsb_num));
-    IoTDBDescriptor.getInstance().getConfig().setTsFileManagementStrategy(TsFileManagementStrategy.NormalStrategy);
+    IoTDBDescriptor.getInstance().getConfig().setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
 
     EnvironmentUtils.envSetUp();
     insertData();
@@ -94,7 +94,7 @@ public class IoTDBWatermarkTest {
       file2.delete();
     }
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setTsFileManagementStrategy(TsFileManagementStrategy.LevelStrategy);
+    IoTDBDescriptor.getInstance().getConfig().setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
   }
 
   private static void insertData()

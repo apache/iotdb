@@ -122,16 +122,6 @@ public class NormalTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public void addMerged(TsFileResource tsFileResource, boolean sequence) {
-    add(tsFileResource, sequence);
-  }
-
-  @Override
-  public void addMergedAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
-    addAll(tsFileResourceList, sequence);
-  }
-
-  @Override
   public boolean contains(TsFileResource tsFileResource, boolean sequence) {
     if (sequence) {
       return sequenceFileTreeSet.contains(tsFileResource);
@@ -170,12 +160,12 @@ public class NormalTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public void forkCurrentFileList() {
+  public void forkCurrentFileList(long timePartition) {
     logger.info("{} do not need fork", storageGroupName);
   }
 
   @Override
-  protected void merge() {
+  protected void merge(long timePartition) {
     logger.info("{} no merge logic", storageGroupName);
   }
 }

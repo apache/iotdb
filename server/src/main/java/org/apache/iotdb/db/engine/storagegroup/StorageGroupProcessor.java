@@ -1177,7 +1177,7 @@ public class StorageGroupProcessor {
           }
         }
         while (hotCompactionMergeWorking) {
-          Thread.sleep(100);
+          closeStorageGroupCondition.wait(100);
           if (System.currentTimeMillis() - startTime > 60_000) {
             logger
                 .warn("{} has spent {}s to wait for closing hot compaction.", this.storageGroupName,
@@ -1561,11 +1561,12 @@ public class StorageGroupProcessor {
       hotCompactionMergeWorking = true;
       logger.info("{} submit a hot compaction merge task", storageGroupName);
       // fork and filter current tsfile, then commit then to hot compaction merge
-      tsFileManagement.forkCurrentFileList();
+      tsFileManagement.forkCurrentFileList(tsFileProcessor.getTimeRangeId());
       try {
         HotCompactionMergeTaskPoolManager.getInstance()
             .submitTask(
-                tsFileManagement.new HotCompactionMergeTask(this::closeHotCompactionMergeCallBack));
+                tsFileManagement.new HotCompactionMergeTask(this::closeHotCompactionMergeCallBack,
+                    tsFileProcessor.getTimeRangeId()));
       } catch (RejectedExecutionException e) {
         this.closeHotCompactionMergeCallBack();
         logger.error("{} hot compaction submit task failed", storageGroupName);
@@ -1585,6 +1586,7 @@ public class StorageGroupProcessor {
    */
   private void closeHotCompactionMergeCallBack() {
     this.hotCompactionMergeWorking = false;
+    closeStorageGroupCondition.notifyAll();
   }
 
   /**

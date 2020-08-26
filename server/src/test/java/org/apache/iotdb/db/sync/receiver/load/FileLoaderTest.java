@@ -62,6 +62,7 @@ public class FileLoaderTest {
   @Before
   public void setUp()
       throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException, MetadataException {
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
@@ -79,6 +80,7 @@ public class FileLoaderTest {
 
   @After
   public void tearDown() throws InterruptedException, IOException, StorageEngineException {
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     EnvironmentUtils.cleanEnv();
   }
 

@@ -77,16 +77,6 @@ public abstract class TsFileManagement {
   public abstract void addAll(List<TsFileResource> tsFileResourceList, boolean sequence);
 
   /**
-   * add one merged TsFile to list, may be level {maxLevelNum} in level compaction
-   */
-  public abstract void addMerged(TsFileResource tsFileResource, boolean sequence);
-
-  /**
-   * add some merged TsFiles to list, may be level {maxLevelNum} in level compaction
-   */
-  public abstract void addMergedAll(List<TsFileResource> tsFileResourceList, boolean sequence);
-
-  /**
    * is one TsFile contained in list
    */
   public abstract boolean contains(TsFileResource tsFileResource, boolean sequence);
@@ -114,21 +104,24 @@ public abstract class TsFileManagement {
   /**
    * call this before merge to copy current TsFile list
    */
-  public abstract void forkCurrentFileList();
+  public abstract void forkCurrentFileList(long timePartition);
 
-  protected abstract void merge();
+  protected abstract void merge(long timePartition);
 
   public class HotCompactionMergeTask implements Runnable {
 
     private CloseHotCompactionMergeCallBack closeHotCompactionMergeCallBack;
+    private long timePartitionId;
 
-    public HotCompactionMergeTask(CloseHotCompactionMergeCallBack closeHotCompactionMergeCallBack) {
+    public HotCompactionMergeTask(CloseHotCompactionMergeCallBack closeHotCompactionMergeCallBack,
+        long timePartitionId) {
       this.closeHotCompactionMergeCallBack = closeHotCompactionMergeCallBack;
+      this.timePartitionId = timePartitionId;
     }
 
     @Override
     public void run() {
-      merge();
+      merge(timePartitionId);
       closeHotCompactionMergeCallBack.call();
     }
   }

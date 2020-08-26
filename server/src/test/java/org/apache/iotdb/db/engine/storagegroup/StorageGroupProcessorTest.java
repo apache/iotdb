@@ -70,7 +70,7 @@ public class StorageGroupProcessorTest {
   @Before
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.NormalStrategy);
+        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
@@ -88,7 +88,7 @@ public class StorageGroupProcessorTest {
     MergeManager.getINSTANCE().stop();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.LevelStrategy);
+        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
   }
 
   private void insertToStorageGroupProcessor(TSRecord record) throws WriteProcessException {
