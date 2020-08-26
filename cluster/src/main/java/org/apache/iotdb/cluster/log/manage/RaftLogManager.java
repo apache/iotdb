@@ -202,10 +202,15 @@ public abstract class RaftLogManager {
     if (blockAppliedCommitIndex < 0) {
       return;
     }
+    logger.info(
+        "{}: before take snapshot, blockAppliedCommitIndex={}, maxHaveAppliedCommitIndex={}, commitIndex={}",
+        name, blockAppliedCommitIndex, maxHaveAppliedCommitIndex, commitIndex);
     while (blockAppliedCommitIndex != maxHaveAppliedCommitIndex) {
       long waitTime = System.currentTimeMillis() - startTime;
       if (waitTime > LOG_APPLIER_WAIT_TIME_MS) {
-        logger.error("wait all log applied time out, time cost={}", waitTime);
+        logger.error(
+            "{}: wait all log applied time out, time cost={}, blockAppliedCommitIndex={}, maxHaveAppliedCommitIndex={},commitIndex={}",
+            name, waitTime, blockAppliedCommitIndex, maxHaveAppliedCommitIndex, commitIndex);
         throw logApplierWaitTimeOutException;
       }
     }
@@ -777,8 +782,8 @@ public abstract class RaftLogManager {
     long lo = maxHaveAppliedCommitIndex;
     long hi = getCommittedEntryManager().getLastIndex() + 1;
     if (lo >= hi) {
-      logger.info("the maxHaveAppliedCommitIndex={}, lastIndex={}, no need to reapply",
-          maxHaveAppliedCommitIndex, hi);
+      logger.info("{}: the maxHaveAppliedCommitIndex={}, lastIndex={}, no need to reapply",
+          name, maxHaveAppliedCommitIndex, hi);
       return;
     }
 
@@ -786,13 +791,13 @@ public abstract class RaftLogManager {
     try {
       entries = new ArrayList<>(getCommittedEntryManager().getEntries(lo, hi));
     } catch (EntryCompactedException e) {
-      logger.error("apply all committed log failed when get entries", e);
+      logger.error("{}: apply all committed log failed when get entries", name, e);
       return;
     }
     try {
       applyEntries(entries, true);
     } catch (LogExecutionException e) {
-      logger.error("apply all committed log failed", e);
+      logger.error("{}: apply all committed log failed", name, e);
     }
   }
 
@@ -845,9 +850,12 @@ public abstract class RaftLogManager {
 
   private void reapplyBlockedLogs() {
     try {
-      applyEntries(blockedUnappliedLogList, false);
+      if (blockedUnappliedLogList.size() > 0) {
+        applyEntries(blockedUnappliedLogList, false);
+        logger.info("{}: reapply {} number of logs", name, blockedUnappliedLogList.size());
+      }
     } catch (LogExecutionException e) {
-      logger.error("reapply blocked log list failed", e);
+      logger.error("{}: reapply blocked log list failed", name, e);
     } finally {
       blockedUnappliedLogList.clear();
     }
