@@ -210,8 +210,9 @@ public class SyncServiceImpl implements SyncService.Iface {
   @Override
   public SyncStatus syncData(ByteBuffer buff) {
     try {
+      int pos = buff.position();
       currentFileWriter.get().write(buff);
-      buff.flip();
+      buff.position(pos);
       messageDigest.get().update(buff);
     } catch (IOException e) {
       logger.error("Can not sync data for file {}", currentFile.get().getAbsoluteFile(), e);
