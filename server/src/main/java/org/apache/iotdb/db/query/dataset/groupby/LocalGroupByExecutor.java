@@ -119,7 +119,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
           batchData.next();
         }
       } else {
-        while (batchData.hasCurrent() && batchData.currentTime() > curEndTime) {
+        while (batchData.hasCurrent() && batchData.currentTime() >= curEndTime) {
           batchData.next();
         }
       }

@@ -51,17 +51,17 @@ public class SessionExample {
         throw e;
     }
 
-    createTimeseries();
-    createMultiTimeseries();
+//    createTimeseries();
+//    createMultiTimeseries();
     insertRecord();
-    insertTablet();
-    insertTablets();
-    insertRecords();
-    nonQuery();
-    query();
-    queryByIterator();
-    deleteData();
-    deleteTimeseries();
+//    insertTablet();
+//    insertTablets();
+//    insertRecords();
+//    nonQuery();
+//    query();
+//    queryByIterator();
+//    deleteData();
+//    deleteTimeseries();
     session.close();
   }
 
@@ -134,21 +134,18 @@ public class SessionExample {
   }
 
   private static void insertRecord() throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = "root.sg1.d1";
+    String deviceId = "root.liudw.d0";
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
+    measurements.add("s0");
     measurements.add("s1");
-    measurements.add("s2");
-    measurements.add("s3");
-    types.add(TSDataType.INT64);
-    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT32);
     types.add(TSDataType.INT64);
 
-    for (long time = 0; time < 100; time++) {
+    for (long time = 0; time < 1000; time++) {
       List<Object> values = new ArrayList<>();
-      values.add(1L);
-      values.add(2L);
-      values.add(3L);
+      values.add(((int) time));
+      values.add(time);
       session.insertRecord(deviceId, time, measurements, types, values);
     }
   }

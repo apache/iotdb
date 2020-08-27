@@ -140,7 +140,7 @@ public class RawDataQueryExecutor {
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
     return new RawQueryDataSetWithValueFilter(deduplicatedPaths, deduplicatedDataTypes,
-        timestampGenerator, readersOfSelectedSeries, cached);
+        timestampGenerator, readersOfSelectedSeries, cached, queryPlan.isAscending());
   }
 
   protected IReaderByTimestamp getReaderByTimestamp(Path path, Set<String> allSensors,

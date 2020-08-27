@@ -129,10 +129,11 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     long[] timestampArray = new long[timeStampFetchSize];
     int timeArrayLength = 0;
     if (hasCachedTimestamp) {
-      if ((groupByTimePlan.isAscending() && timestamp < curEndTime)
-          || (!groupByTimePlan.isAscending() && timestamp >= curEndTime)) {
-        if ((groupByTimePlan.isAscending() && timestamp >= curStartTime)
-            || (!groupByTimePlan.isAscending() && timestamp < curEndTime)) {
+      if (timestamp < curEndTime) {
+        if (!groupByTimePlan.isAscending() && timestamp < curStartTime) {
+          return constructRowRecord(aggregateResultList);
+        }
+        if (timestamp >= curStartTime) {
           hasCachedTimestamp = false;
           timestampArray[timeArrayLength++] = timestamp;
         }

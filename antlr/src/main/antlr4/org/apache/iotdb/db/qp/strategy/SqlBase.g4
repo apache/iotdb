@@ -207,12 +207,12 @@ fromClause
 
 specialClause
     : specialLimit
-    | groupByTimeClause specialLimit? orderByTimeClause ?
-    | groupByFillClause specialLimit? orderByTimeClause ?
-    | orderByTimeClause ?
+    | groupByTimeClause specialLimit? orderByTimeClause?
+    | groupByFillClause specialLimit? orderByTimeClause?
+    | orderByTimeClause? specialLimit?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
-    | groupByLevelClause specialLimit? orderByTimeClause ?
+    | groupByLevelClause specialLimit? orderByTimeClause?
     ;
 
 specialLimit
