@@ -113,6 +113,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       AsyncDataClient leaderClient = getLeaderClient();
       if (leaderClient == null) {
         resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+        return;
       }
       try {
         leaderClient.pullTimeSeriesSchema(request, resultHandler);
@@ -140,9 +141,10 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       AsyncDataClient leaderClient = getLeaderClient();
       if (leaderClient == null) {
         resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+        return;
       }
       try {
-        leaderClient.pullTimeSeriesSchema(request, resultHandler);
+        leaderClient.pullMeasurementSchema(request, resultHandler);
       } catch (TException e1) {
         resultHandler.onError(e1);
       }
