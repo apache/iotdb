@@ -218,7 +218,9 @@ public abstract class RaftMember {
     catchUpService =
         Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat(getName() +
             "-CatchUpThread%d").build());
-    appendLogThreadPool = Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat(getName() +
+    appendLogThreadPool =
+        Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 10,
+            new ThreadFactoryBuilder().setNameFormat(getName() +
         "-AppendLog%d").build());
     asyncThreadPool = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), 100,
         0L, TimeUnit.MILLISECONDS,
