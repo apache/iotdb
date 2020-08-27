@@ -95,34 +95,67 @@ public class IoTDBLastIT {
   }
 
   @Test
-  public void lastCacheUpdateTest() throws SQLException, MetadataException {
+  public void lastDescTimeTest() throws Exception {
     String[] retArray =
-        new String[] {
-          "500,root.ln.wf01.wt01.temperature,22.1",
-          "500,root.ln.wf01.wt01.status,false",
-          "500,root.ln.wf01.wt01.id,5",
-          "700,root.ln.wf01.wt01.temperature,33.1",
-          "700,root.ln.wf01.wt01.status,false",
-          "700,root.ln.wf01.wt01.id,3",
-          "700,root.ln.wf01.wt01.temperature,33.1",
-          "700,root.ln.wf01.wt01.status,false",
-          "700,root.ln.wf01.wt01.id,3"
+        new String[]{
+            "500,root.ln.wf01.wt01.status,false",
+            "500,root.ln.wf01.wt01.temperature,22.1",
+            "500,root.ln.wf01.wt01.id,5",
+            "500,root.ln.wf01.wt02.status,false",
+            "500,root.ln.wf01.wt02.temperature,15.7",
+            "500,root.ln.wf01.wt02.id,9",
+            "300,root.ln.wf01.wt03.status,true",
+            "300,root.ln.wf01.wt03.temperature,23.1",
+            "300,root.ln.wf01.wt03.id,8"
         };
 
     try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet = statement.execute("select last * from root.* order by time desc");
+      Assert.assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESTAMP_STR) + ","
+            + resultSet.getString(TIMESEIRES_STR) + ","
+            + resultSet.getString(VALUE_STR);
+        Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
+      }
+    }
+  }
+
+  @Test
+  public void lastCacheUpdateTest() throws SQLException, MetadataException {
+    String[] retArray =
+        new String[]{
+            "500,root.ln.wf01.wt01.temperature,22.1",
+            "500,root.ln.wf01.wt01.status,false",
+            "500,root.ln.wf01.wt01.id,5",
+            "700,root.ln.wf01.wt01.temperature,33.1",
+            "700,root.ln.wf01.wt01.status,false",
+            "700,root.ln.wf01.wt01.id,3",
+            "700,root.ln.wf01.wt01.temperature,33.1",
+            "700,root.ln.wf01.wt01.status,false",
+            "700,root.ln.wf01.wt01.id,3"
+        };
+
+    try (Connection connection =
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute(
-              "select last temperature,status,id from root.ln.wf01.wt01");
+          "select last temperature,status,id from root.ln.wf01.wt01");
 
       Assert.assertTrue(hasResultSet);
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
-                  + resultSet.getString(TIMESEIRES_STR) + ","
-                  + resultSet.getString(VALUE_STR);
+              + resultSet.getString(TIMESEIRES_STR) + ","
+              + resultSet.getString(VALUE_STR);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -144,8 +177,8 @@ public class IoTDBLastIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
-                  + resultSet.getString(TIMESEIRES_STR) + ","
-                  + resultSet.getString(VALUE_STR);
+              + resultSet.getString(TIMESEIRES_STR) + ","
+              + resultSet.getString(VALUE_STR);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -176,7 +209,7 @@ public class IoTDBLastIT {
   @Test
   public void lastWithUnSeqFilesTest() throws SQLException, MetadataException {
     String[] retArray =
-        new String[] {
+        new String[]{
             "500,root.ln.wf01.wt02.temperature,15.7",
             "500,root.ln.wf01.wt02.status,false",
             "500,root.ln.wf01.wt02.id,9",
@@ -186,7 +219,7 @@ public class IoTDBLastIT {
         };
 
     try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       MNode node = IoTDB.metaManager.getNodeByPath("root.ln.wf01.wt02.temperature");
@@ -214,12 +247,12 @@ public class IoTDBLastIT {
           "INSERT INTO root.ln.wf01.wt02(timestamp,temperature,status, id) values(450, 20.1, false, 5)");
       statement.execute("flush");
       hasResultSet = statement.execute(
-              "select last temperature,status,id from root.ln.wf01.wt02");
+          "select last temperature,status,id from root.ln.wf01.wt02");
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
-                  + resultSet.getString(TIMESEIRES_STR) + ","
-                  + resultSet.getString(VALUE_STR);
+              + resultSet.getString(TIMESEIRES_STR) + ","
+              + resultSet.getString(VALUE_STR);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -231,10 +264,9 @@ public class IoTDBLastIT {
   @Test
   public void lastWithEmptyChunkMetadataTest() throws SQLException, MetadataException {
     String[] retArray =
-        new String[] {
+        new String[]{
             "300,root.ln.wf01.wt03.temperature,23.1",
         };
-
 
     try (Connection connection =
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -243,9 +275,11 @@ public class IoTDBLastIT {
       MNode node = IoTDB.metaManager.getNodeByPath("root.ln.wf01.wt03.temperature");
       ((MeasurementMNode) node).resetCache();
 
-      statement.execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(500, false, 9)");
+      statement
+          .execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(500, false, 9)");
       statement.execute("flush");
-      statement.execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(400, false, 11)");
+      statement
+          .execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(400, false, 11)");
       statement.execute("flush");
       boolean hasResultSet = statement.execute(
           "select last temperature from root.ln.wf01.wt03");
@@ -269,18 +303,19 @@ public class IoTDBLastIT {
   @Test
   public void lastWithUnseqTimeLargerThanSeqTimeTest() throws SQLException, MetadataException {
     String[] retArray =
-        new String[] {
+        new String[]{
             "150,root.ln.wf01.wt04.temperature,31.2",
         };
-
 
     try (Connection connection =
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt04");
-      statement.execute("CREATE TIMESERIES root.ln.wf01.wt04.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.ln.wf01.wt04.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.ln.wf01.wt04.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.ln.wf01.wt04.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
       statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(100,22.1)");
       statement.execute("flush");
       statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,status) values(200,true)");
@@ -313,21 +348,23 @@ public class IoTDBLastIT {
   @Test
   public void lastWithDeletionTest() throws SQLException, MetadataException {
     String[] retArray =
-        new String[] {
+        new String[]{
             "350,root.ln.wf01.wt04.temperature,31.2",
             "200,root.ln.wf01.wt04.temperature,78.2"
         };
-
 
     try (Connection connection =
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt04");
-      statement.execute("CREATE TIMESERIES root.ln.wf01.wt04.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.ln.wf01.wt04.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.ln.wf01.wt04.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.ln.wf01.wt04.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
       statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(100,22.1)");
-      statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature, status) values(200, 78.2, true)");
+      statement.execute(
+          "INSERT INTO root.ln.wf01.wt04(timestamp,temperature, status) values(200, 78.2, true)");
       statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(350,31.2)");
       statement.execute("flush");
 
@@ -348,7 +385,8 @@ public class IoTDBLastIT {
         Assert.assertEquals(cnt, 1);
       }
 
-      statement.execute("delete from root.ln.wf01.wt04.temperature where time > 200 and time < 400");
+      statement
+          .execute("delete from root.ln.wf01.wt04.temperature where time > 200 and time < 400");
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
@@ -367,7 +405,6 @@ public class IoTDBLastIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
         Statement statement = connection.createStatement()) {
-
 
       for (String sql : dataSet1) {
         statement.execute(sql);
