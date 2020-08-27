@@ -54,7 +54,6 @@ import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
@@ -295,7 +294,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-        public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+      public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
         return new TestAsyncDataClient(node, dataGroupMemberMap);
       }
 
@@ -934,7 +933,7 @@ public class MetaGroupMemberTest extends MemberTest {
     request.setLeaderCommit(0);
     request.setPrevLogIndex(-1);
     request.setPrevLogTerm(-1);
-    request.setLeader(new Node("127.0.0.1", 30000, 0, 40000));
+    request.setLeader(new Node("127.0.0.1", 30000, 0, 40000, 55560));
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
     new MetaAsyncService(testMetaMember).appendEntry(request, handler);

@@ -32,7 +32,7 @@ public class HardStateTest {
     // Not NULL
     HardState state = new HardState();
     state.setCurrentTerm(2);
-    state.setVoteFor(new Node("127.0.0.1", 30000, 0, 40000));
+    state.setVoteFor(new Node("127.0.0.1", 30000, 0, 40000, 55560));
     ByteBuffer buffer = state.serialize();
     HardState newState = HardState.deserialize(buffer);
     assertEquals(state, newState);

@@ -45,7 +45,6 @@ import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -55,14 +54,9 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
@@ -75,7 +69,6 @@ import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -91,6 +84,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SlotPartitionTableTest {
+
   Logger logger = LoggerFactory.getLogger(SlotPartitionTableTest.class);
   SlotPartitionTable localTable;
   Node localNode;
@@ -123,14 +117,14 @@ public class SlotPartitionTableTest {
     //suppose there are 40 storage groups and each node maintains two of them.
     String[] storageNames = new String[40];
     List<String>[] nodeSGs = new ArrayList[20];
-    for (int i = 0; i < 20; i ++) {
+    for (int i = 0; i < 20; i++) {
       nodeSGs[i] = new ArrayList<>();
       tables[i] = new SlotPartitionTable(nodes, nodes.get(i));
     }
     localTable = tables[3];
     //thisNode hold No. 1500 to 1999 slot.
 
-    for (int i = 0; i < 20; i ++) {
+    for (int i = 0; i < 20; i++) {
       storageNames[i] = String.format("root.sg.l2.l3.%d", i);
       //determine which node the sg belongs to
       Node node = localTable.routeToHeaderByTime(storageNames[i], 0);
@@ -139,23 +133,24 @@ public class SlotPartitionTableTest {
       node = localTable.routeToHeaderByTime(storageNames[i + 20], 0);
       nodeSGs[node.getMetaPort() - 30000].add(storageNames[i + 20]);
     }
-    for (int i = 0; i < 20; i ++) {
+    for (int i = 0; i < 20; i++) {
       mManager[i] = MManagerWhiteBox.newMManager("target/schemas/mlog_" + i);
       initMockMManager(i, mManager[i], storageNames, nodeSGs[i]);
       Whitebox.setInternalState(tables[i], "mManager", mManager[i]);
     }
   }
 
-  private void initMockMManager(int id, MManager mmanager, String[] storageGroups, List<String> ownedSGs)
+  private void initMockMManager(int id, MManager mmanager, String[] storageGroups,
+      List<String> ownedSGs)
       throws MetadataException {
     for (String sg : storageGroups) {
       mmanager.setStorageGroup(sg);
     }
     for (String sg : ownedSGs) {
       //register 4 series;
-      for (int i = 0; i < 4; i ++) {
+      for (int i = 0; i < 4; i++) {
         try {
-          mmanager.createTimeseries(String.format(sg + ".ld.l1.d%d.s%d", i/2, i%2),
+          mmanager.createTimeseries(String.format(sg + ".ld.l1.d%d.s%d", i / 2, i % 2),
               TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY, Collections.EMPTY_MAP);
         } catch (Exception e) {
           e.printStackTrace();
@@ -189,7 +184,7 @@ public class SlotPartitionTableTest {
 
   @Test
   public void testGetHeaderGroup() {
-    Arrays.stream(new int[]{10, 15, 19}).forEach( i -> {
+    Arrays.stream(new int[]{10, 15, 19}).forEach(i -> {
       int last = (i + replica_size - 1) % 20;
       assertGetHeaderGroup(i, last);
     });
@@ -197,13 +192,15 @@ public class SlotPartitionTableTest {
 
   private void assertGetHeaderGroup(int start, int last) {
     PartitionGroup group = localTable
-        .getHeaderGroup(new Node("localhost", 30000 + start, start, 40000 + start));
+        .getHeaderGroup(new Node("localhost", 30000 + start, start, 40000 + start, 55560 + start));
     assertEquals(replica_size, group.size());
-    assertEquals(new Node("localhost", 30000 + start, start, 40000 + start), group.getHeader());
+    assertEquals(new Node("localhost", 30000 + start, start, 40000 + start, 55560 + start),
+        group.getHeader());
     assertEquals(
-        new Node("localhost", 30000 + last,  last, 40000 +  last),
+        new Node("localhost", 30000 + last, last, 40000 + last, 55560 + last),
         group.get(replica_size - 1));
   }
+
   private void assertPartitionGroup(PartitionGroup group, int... nodeIds) {
     for (int i = 0; i < nodeIds.length; i++) {
       assertEquals(nodeIds[i], group.get(i).nodeIdentifier);
@@ -215,7 +212,8 @@ public class SlotPartitionTableTest {
     PartitionGroup group1 = localTable.route("root.sg1", 1);
     PartitionGroup group2 = localTable.route("root.sg1", 2);
     PartitionGroup group3 = localTable.route("root.sg2", 2);
-    PartitionGroup group4 = localTable.route("root.sg1", 2 + StorageEngine.getTimePartitionInterval());
+    PartitionGroup group4 = localTable
+        .route("root.sg1", 2 + StorageEngine.getTimePartitionInterval());
 
     assertEquals(group1, group2);
     assertNotEquals(group2, group3);
@@ -237,7 +235,8 @@ public class SlotPartitionTableTest {
     int slot1 = localTable.getPartitionKey("root.sg.l2.l3.l4.28", 0);
     int slot2 = localTable.getPartitionKey("root.sg.l2.l3.l4.28", 1);
     int slot3 = localTable.getPartitionKey("root.sg.l2.l3.l4.29", 0);
-    int slot4 = localTable.getPartitionKey("root.sg.l2.l3.l4.29", StorageEngine.getTimePartitionInterval());
+    int slot4 = localTable
+        .getPartitionKey("root.sg.l2.l3.l4.29", StorageEngine.getTimePartitionInterval());
     assertEquals(slot1, slot2);
     assertNotEquals(slot1, slot3);
     assertNotEquals(slot3, slot4);
@@ -247,7 +246,8 @@ public class SlotPartitionTableTest {
   public void routeToHeader() {
     Node node1 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 0);
     Node node2 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 1);
-    Node node3 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 1 + StorageEngine.getTimePartitionInterval());
+    Node node3 = localTable
+        .routeToHeaderByTime("root.sg.l2.l3.l4.28", 1 + StorageEngine.getTimePartitionInterval());
     assertEquals(node1, node2);
     assertNotEquals(node2, node3);
   }
@@ -325,7 +325,8 @@ public class SlotPartitionTableTest {
       e.printStackTrace();
     }
     try {
-      PhysicalPlan authorPlan = new AuthorPlan(AuthorType.CREATE_ROLE, "test", "test", "test", "test", new String[]{},  new Path("root.sg.l2.l3.l4.28.ld.l1.d0"));
+      PhysicalPlan authorPlan = new AuthorPlan(AuthorType.CREATE_ROLE, "test", "test", "test",
+          "test", new String[]{}, new Path("root.sg.l2.l3.l4.28.ld.l1.d0"));
       assertTrue(PartitionUtils.isGlobalMetaPlan(authorPlan));
     } catch (AuthException e) {
       e.printStackTrace();
@@ -350,8 +351,11 @@ public class SlotPartitionTableTest {
 
   @Test
   public void testInsertPlan() {
-    PhysicalPlan insertPlan1 = new InsertRowPlan("root.sg.l2.l3.l4.28.ld.l1.d0", 1, new String[]{"s0", "s1"}, new String[]{"0", "1"});
-    PhysicalPlan insertPlan2 = new InsertRowPlan("root.sg.l2.l3.l4.28.ld.l1.d0", 1 + StorageEngine.getTimePartitionInterval(), new String[]{"s0", "s1"}, new String[]{"0", "1"});
+    PhysicalPlan insertPlan1 = new InsertRowPlan("root.sg.l2.l3.l4.28.ld.l1.d0", 1,
+        new String[]{"s0", "s1"}, new String[]{"0", "1"});
+    PhysicalPlan insertPlan2 = new InsertRowPlan("root.sg.l2.l3.l4.28.ld.l1.d0",
+        1 + StorageEngine.getTimePartitionInterval(), new String[]{"s0", "s1"},
+        new String[]{"0", "1"});
     PartitionGroup group1, group2;
     assertFalse(insertPlan1.canBeSplit());
     ClusterPlanRouter router = new ClusterPlanRouter(localTable);
@@ -367,11 +371,17 @@ public class SlotPartitionTableTest {
 
   @Test
   public void testCreateTimeSeriesPlan() {
-    PhysicalPlan createTimeSeriesPlan1 = new CreateTimeSeriesPlan(new Path("root.sg.l2.l3.l4.28.ld.l1.d1"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
+    PhysicalPlan createTimeSeriesPlan1 = new CreateTimeSeriesPlan(
+        new Path("root.sg.l2.l3.l4.28.ld.l1.d1"), TSDataType.BOOLEAN, TSEncoding.RLE,
+        CompressionType.SNAPPY, Collections
         .emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
-    PhysicalPlan createTimeSeriesPlan2 = new CreateTimeSeriesPlan(new Path("root.sg.l2.l3.l4.28.ld.l1.d2"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
+    PhysicalPlan createTimeSeriesPlan2 = new CreateTimeSeriesPlan(
+        new Path("root.sg.l2.l3.l4.28.ld.l1.d2"), TSDataType.BOOLEAN, TSEncoding.RLE,
+        CompressionType.SNAPPY, Collections
         .emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
-    PhysicalPlan createTimeSeriesPlan3 = new CreateTimeSeriesPlan(new Path("root.sg.l2.l3.l4.29.ld.l1.d2"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
+    PhysicalPlan createTimeSeriesPlan3 = new CreateTimeSeriesPlan(
+        new Path("root.sg.l2.l3.l4.29.ld.l1.d2"), TSDataType.BOOLEAN, TSEncoding.RLE,
+        CompressionType.SNAPPY, Collections
         .emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
     assertFalse(createTimeSeriesPlan1.canBeSplit());
     ClusterPlanRouter router = new ClusterPlanRouter(localTable);
@@ -390,7 +400,8 @@ public class SlotPartitionTableTest {
 
   @Test
   public void testInsertTabletPlan() {
-    PhysicalPlan batchInertPlan = new InsertTabletPlan("root.sg.l2.l3.l4.28.ld.l1.d0", new String[]{"s0", "s1"}, Arrays.asList(0, 1));
+    PhysicalPlan batchInertPlan = new InsertTabletPlan("root.sg.l2.l3.l4.28.ld.l1.d0",
+        new String[]{"s0", "s1"}, Arrays.asList(0, 1));
     assertTrue(batchInertPlan.canBeSplit());
     //(String deviceId, String[] measurements, List<Integer> dataTypes)
     long[] times = new long[9];
@@ -400,34 +411,34 @@ public class SlotPartitionTableTest {
 
     for (int i = 0; i < 3; i++) {
       times[i] = Math.abs(new Random().nextLong()) % StorageEngine.getTimePartitionInterval();
-      ((boolean[])values[0])[i] = new Random().nextBoolean();
-      ((int[])values[1])[i] = new Random().nextInt();
+      ((boolean[]) values[0])[i] = new Random().nextBoolean();
+      ((int[]) values[1])[i] = new Random().nextInt();
     }
     for (int i = 3; i < 6; i++) {
       times[i] = StorageEngine.getTimePartitionInterval() +
           Math.abs(new Random().nextLong()) % StorageEngine.getTimePartitionInterval();
-      ((boolean[])values[0])[i] = new Random().nextBoolean();
-      ((int[])values[1])[i] = new Random().nextInt();
+      ((boolean[]) values[0])[i] = new Random().nextBoolean();
+      ((int[]) values[1])[i] = new Random().nextInt();
     }
     for (int i = 6; i < 9; i++) {
       times[i] = StorageEngine.getTimePartitionInterval() * 10
           + Math.abs(new Random().nextLong()) % StorageEngine.getTimePartitionInterval();
-      ((boolean[])values[0])[i] = new Random().nextBoolean();
-      ((int[])values[1])[i] = new Random().nextInt();
+      ((boolean[]) values[0])[i] = new Random().nextBoolean();
+      ((int[]) values[1])[i] = new Random().nextInt();
     }
-    ((InsertTabletPlan)batchInertPlan).setTimes(times);
-    ((InsertTabletPlan)batchInertPlan).setColumns(values);
-    ((InsertTabletPlan)batchInertPlan).setRowCount(9);
+    ((InsertTabletPlan) batchInertPlan).setTimes(times);
+    ((InsertTabletPlan) batchInertPlan).setColumns(values);
+    ((InsertTabletPlan) batchInertPlan).setRowCount(9);
     try {
       ClusterPlanRouter router = new ClusterPlanRouter(localTable);
       Map<PhysicalPlan, PartitionGroup> result = router.splitAndRoutePlan(batchInertPlan);
       assertEquals(3, result.size());
-      result.forEach( (key, value) -> {
+      result.forEach((key, value) -> {
         assertEquals(3, ((InsertTabletPlan) key).getRowCount());
         long[] subtimes = ((InsertTabletPlan) key).getTimes();
         assertEquals(3, subtimes.length);
-        assertEquals(subtimes[0]/StorageEngine.getTimePartitionInterval(),
-            subtimes[2]/StorageEngine.getTimePartitionInterval());
+        assertEquals(subtimes[0] / StorageEngine.getTimePartitionInterval(),
+            subtimes[2] / StorageEngine.getTimePartitionInterval());
       });
     } catch (Exception e) {
       e.printStackTrace();
@@ -437,11 +448,16 @@ public class SlotPartitionTableTest {
 
   @Test
   public void testCountPlan() {
-    PhysicalPlan countPlan1 = new CountPlan(ShowContentType.COUNT_TIMESERIES,new Path("root.sg.*.l3.l4.28.*"));
-    PhysicalPlan countPlan2 = new CountPlan(ShowContentType.COUNT_TIMESERIES,new Path("root.sg.*.l3.*"));
-    PhysicalPlan countPlan3 = new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,new Path("root.sg.l2.l3.l4.28"));
-    PhysicalPlan countPlan4 = new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,new Path("root.sg.l2.l3"), 6);
-    PhysicalPlan countPlan5 = new CountPlan(ShowContentType.COUNT_NODES,new Path("root.sg.l2.l3"), 5);
+    PhysicalPlan countPlan1 = new CountPlan(ShowContentType.COUNT_TIMESERIES,
+        new Path("root.sg.*.l3.l4.28.*"));
+    PhysicalPlan countPlan2 = new CountPlan(ShowContentType.COUNT_TIMESERIES,
+        new Path("root.sg.*.l3.*"));
+    PhysicalPlan countPlan3 = new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,
+        new Path("root.sg.l2.l3.l4.28"));
+    PhysicalPlan countPlan4 = new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,
+        new Path("root.sg.l2.l3"), 6);
+    PhysicalPlan countPlan5 = new CountPlan(ShowContentType.COUNT_NODES, new Path("root.sg.l2.l3"),
+        5);
     try {
       ClusterPlanRouter router = new ClusterPlanRouter(localTable);
       assertTrue(countPlan1.canBeSplit());
@@ -465,13 +481,15 @@ public class SlotPartitionTableTest {
 
   @Test
   public void testShowChildPathsPlan() {
-    PhysicalPlan showChildPathsPlan1 = new ShowChildPathsPlan(ShowContentType.CHILD_PATH, new Path("root.sg.l2.l3.l4.28"));
-    PhysicalPlan showChildPathsPlan2 = new ShowChildPathsPlan(ShowContentType.CHILD_PATH, new Path("root.sg.l2.l3.l4"));
+    PhysicalPlan showChildPathsPlan1 = new ShowChildPathsPlan(ShowContentType.CHILD_PATH,
+        new Path("root.sg.l2.l3.l4.28"));
+    PhysicalPlan showChildPathsPlan2 = new ShowChildPathsPlan(ShowContentType.CHILD_PATH,
+        new Path("root.sg.l2.l3.l4"));
     try {
       assertFalse(showChildPathsPlan1.canBeSplit());
       ClusterPlanRouter router = new ClusterPlanRouter(localTable);
-      PartitionGroup group1= router.routePlan(showChildPathsPlan1);
-      PartitionGroup group2= router.routePlan(showChildPathsPlan2);
+      PartitionGroup group1 = router.routePlan(showChildPathsPlan1);
+      PartitionGroup group2 = router.routePlan(showChildPathsPlan2);
       assertNotEquals(group1, group2);
     } catch (Exception e) {
       e.printStackTrace();
@@ -487,7 +505,7 @@ public class SlotPartitionTableTest {
   }
 
   private Node getNode(int i) {
-    return new Node("localhost", 30000 + i, i, 40000 + i);
+    return new Node("localhost", 30000 + i, i, 40000 + i, 55560 + i);
   }
 
   @Test
@@ -500,7 +518,7 @@ public class SlotPartitionTableTest {
       assertTrue(removedGroup.contains(getNode(i)));
     }
     PartitionGroup newGroup = nodeRemovalResult.getNewGroup();
-    for (int i : new int[] {18, 19, 1, 2, 3}) {
+    for (int i : new int[]{18, 19, 1, 2, 3}) {
       assertTrue(newGroup.contains(getNode(i)));
     }
     // the slots owned by the removed one should be redistributed to other nodes

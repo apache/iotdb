@@ -138,7 +138,7 @@ public class ClusterMain {
     }
     Node localNode = new Node();
     localNode.setIp(config.getClusterRpcIp()).setMetaPort(config.getInternalMetaPort())
-        .setDataPort(config.getInternalDataPort());
+        .setDataPort(config.getInternalDataPort()).setClientPort(config.getClusterRpcPort());
     if (!seedNodes.contains(localNode)) {
       String message = String.format(
           "SeedNodes must contains local node in start-server mode. LocalNode: %s ,SeedNodes: %s",

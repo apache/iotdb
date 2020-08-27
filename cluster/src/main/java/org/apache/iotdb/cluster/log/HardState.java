@@ -56,11 +56,11 @@ public class HardState {
   public ByteBuffer serialize() {
     int totalSize = Long.BYTES + Byte.BYTES;
     // currentTerm(long), marker(byte)
-    // (optional)ipLength(int), ipBytes(byte[]), port(int), identifier(int), dataPort(int)
+    // (optional) ipLength(int), ipBytes(byte[]), port(int), identifier(int), dataPort(int), clientPort(int)
     if (voteFor != null) {
       byte[] ipBytes = voteFor.getIp().getBytes();
       totalSize +=
-          Integer.BYTES + ipBytes.length + Integer.BYTES + Integer.BYTES + Integer.BYTES;
+          Integer.BYTES + ipBytes.length + Integer.BYTES + Integer.BYTES + Integer.BYTES + Integer.BYTES;
       byte[] buffer = new byte[totalSize];
       ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
       byteBuffer.putLong(currentTerm);
@@ -70,6 +70,7 @@ public class HardState {
       byteBuffer.putInt(voteFor.getMetaPort());
       byteBuffer.putInt(voteFor.getNodeIdentifier());
       byteBuffer.putInt(voteFor.getDataPort());
+      byteBuffer.putInt(voteFor.getClientPort());
       byteBuffer.flip();
       return byteBuffer;
     }

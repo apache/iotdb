@@ -87,7 +87,7 @@ public class SerializeLogTest {
     AddNodeLog log = new AddNodeLog();
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
-    log.setNewNode(new Node("apache.iotdb.com", 1234, 1, 4321));
+    log.setNewNode(new Node("apache.iotdb.com", 1234, 1, 4321, 55560));
     ByteBuffer byteBuffer = log.serialize();
     Log logPrime = LogParser.getINSTANCE().parse(byteBuffer);
     assertEquals(log, logPrime);

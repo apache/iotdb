@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertTrue;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -38,14 +45,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertTrue;
 
 public class MetaLogApplierTest extends IoTDBTest {
 
@@ -72,7 +71,7 @@ public class MetaLogApplierTest extends IoTDBTest {
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     nodes.clear();
 
-    Node node = new Node("localhost", 1111, 0, 2222);
+    Node node = new Node("localhost", 1111, 0, 2222, 55560);
     AddNodeLog log = new AddNodeLog();
     log.setNewNode(node);
     applier.apply(log);

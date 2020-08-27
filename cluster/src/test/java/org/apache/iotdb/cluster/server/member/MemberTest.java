@@ -31,9 +31,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
+import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
-import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -53,7 +53,6 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -99,7 +98,7 @@ public class MemberTest {
     List<String> testUrls = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       Node node = TestUtils.getNode(i);
-      testUrls.add(node.getIp() + ":" + node.getMetaPort() + ":" + node.getDataPort());
+      testUrls.add(node.getIp() + ":" + node.getMetaPort() + ":" + node.getDataPort() + ":" + node.getClientPort());
     }
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(testUrls);
 

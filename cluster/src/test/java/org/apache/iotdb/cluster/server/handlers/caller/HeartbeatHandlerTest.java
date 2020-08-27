@@ -68,7 +68,7 @@ public class HeartbeatHandlerTest {
     HeartBeatResponse response = new HeartBeatResponse();
     response.setTerm(Response.RESPONSE_AGREE);
     response.setLastLogTerm(-2);
-    response.setFollower(new Node("192.168.0.6", 9003, 6, 40010));
+    response.setFollower(new Node("192.168.0.6", 9003, 6, 40010, 55560));
     catchUpFlag = false;
     for (int i = 0; i < looseInconsistentNum; i++) {
       handler.onComplete(response);

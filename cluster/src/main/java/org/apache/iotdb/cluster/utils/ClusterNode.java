@@ -23,16 +23,16 @@ import java.util.Objects;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 /**
- * ClusterNode overrides hashcode() and equals() in Node to avoid duplicates in hash data
- * structures caused by identifier change.
+ * ClusterNode overrides hashcode() and equals() in Node to avoid duplicates in hash data structures
+ * caused by identifier change.
  */
 public class ClusterNode extends Node {
 
   public ClusterNode() {
   }
 
-  public ClusterNode(String ip, int metaPort, int nodeIdentifier, int dataPort) {
-    super(ip, metaPort, nodeIdentifier, dataPort);
+  public ClusterNode(String ip, int metaPort, int nodeIdentifier, int dataPort, int clientPort) {
+    super(ip, metaPort, nodeIdentifier, dataPort, clientPort);
   }
 
   public ClusterNode(Node other) {
@@ -41,19 +41,20 @@ public class ClusterNode extends Node {
 
   @Override
   public boolean equals(Object that) {
-    if (!(that instanceof  ClusterNode)) {
+    if (!(that instanceof ClusterNode)) {
       return false;
     }
     return equals(((ClusterNode) that));
   }
 
   public boolean equals(ClusterNode that) {
-    return Objects.equals(this.ip, that.ip) && this.dataPort == that.dataPort && this.metaPort == that.metaPort;
+    return Objects.equals(this.ip, that.ip) && this.dataPort == that.dataPort
+        && this.metaPort == that.metaPort && this.clientPort == that.clientPort;
   }
 
 
   @Override
   public int hashCode() {
-    return Objects.hash(ip, metaPort, dataPort);
+    return Objects.hash(ip, metaPort, dataPort, clientPort);
   }
 }

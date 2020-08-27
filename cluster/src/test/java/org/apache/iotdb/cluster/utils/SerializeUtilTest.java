@@ -34,13 +34,8 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.transport.TIOStreamTransport;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 
 public class SerializeUtilTest {
@@ -50,7 +45,7 @@ public class SerializeUtilTest {
     for (int i = 0; i < 10; i++) {
       Node node = TestUtils.getNode(i);
       String nodeStr = node.toString();
-      Node fromStr = SerializeUtils.stringToNode(nodeStr);
+      Node fromStr = ClusterUtils.stringToNode(nodeStr);
       assertEquals(node, fromStr);
     }
   }

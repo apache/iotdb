@@ -147,7 +147,7 @@ public class ClusterDescriptor {
     List<String> newSeedUrls = new ArrayList<>();
     for (String seedUrl : config.getSeedNodeUrls()) {
       String[] splits = seedUrl.split(":");
-      if (splits.length != 3) {
+      if (splits.length != 4) {
         throw new BadSeedUrlFormatException(seedUrl);
       }
       String seedIP = splits[0];

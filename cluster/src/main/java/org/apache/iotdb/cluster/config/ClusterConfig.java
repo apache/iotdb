@@ -32,10 +32,9 @@ public class ClusterConfig {
   private int clusterRpcPort = 55560;
 
   /**
-   * each one is a "<IP | domain name>:<meta port>:<data port>" string tuple
+   * each one is a "<IP | domain name>:<meta port>:<data port>:<client port></>" string tuple
    */
-  private List<String> seedNodeUrls = Arrays.asList("127.0.0.1:9003:40010", "127.0.0.1"
-      + ":9005:40012", "127.0.0.1:9007:40014");
+  private List<String> seedNodeUrls = Arrays.asList("127.0.0.1:9003:40010:55560", "127.0.0.1:9005:40012:55561", "127.0.0.1:9007:40014:55562");
 
   @ClusterConsistent
   private boolean isRpcThriftCompressionEnabled = true;

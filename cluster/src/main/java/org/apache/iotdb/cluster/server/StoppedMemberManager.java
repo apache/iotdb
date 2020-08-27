@@ -31,8 +31,8 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.SerializeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,7 +138,7 @@ public class StoppedMemberManager {
   private void parseRemoved(String[] split) {
     PartitionGroup partitionGroup = new PartitionGroup();
     for (int i = 1; i < split.length; i++) {
-      Node node = SerializeUtils.stringToNode(split[i]);
+      Node node = ClusterUtils.stringToNode(split[i]);
       partitionGroup.add(node);
     }
     DataGroupMember member = memberFactory.create(partitionGroup, thisNode);
@@ -147,7 +147,7 @@ public class StoppedMemberManager {
   }
 
   private void parseResumed(String[] split) {
-    Node header = SerializeUtils.stringToNode(split[1]);
+    Node header = ClusterUtils.stringToNode(split[1]);
     removedMemberMap.remove(header);
   }
 }

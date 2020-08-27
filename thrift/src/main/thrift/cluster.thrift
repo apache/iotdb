@@ -20,8 +20,7 @@
 include "rpc.thrift"
 namespace java org.apache.iotdb.cluster.rpc.thrift
 
-typedef i32 int 
-typedef i16 short
+typedef i32 int
 typedef i64 long
 
 // TODO-Cluster: update rpc change list when ready to merge
@@ -113,6 +112,7 @@ struct Node {
   2: required int metaPort
   3: required int nodeIdentifier
   4: required int dataPort
+  5: required int clientPort
 }
 
 // leader -> follower
@@ -289,7 +289,7 @@ service RaftService {
   * bytes, only the remaining will be returned.
   * Notice that when the last chunk of the file is read, the file will be deleted immediately.
   **/
-  binary readFile(1:string filePath, 2:i64 offset, 3:i32 length)
+  binary readFile(1:string filePath, 2:long offset, 3:int length)
 
   /**
   * Test if a log of "index" and "term" exists.
