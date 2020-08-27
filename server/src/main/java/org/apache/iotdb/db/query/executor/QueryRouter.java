@@ -19,12 +19,24 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.SingleDataSet;
-import org.apache.iotdb.db.query.dataset.groupby.*;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByTimeDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,10 +50,6 @@ import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
@@ -225,4 +233,28 @@ public class QueryRouter implements IQueryRouter {
     return new LastQueryExecutor(lastQueryPlan);
   }
 
+  @Override
+  public QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
+      throws StorageEngineException, QueryProcessException {
+    IExpression expression = udtfPlan.getExpression();
+    IExpression optimizedExpression;
+    try {
+      optimizedExpression = expression == null ? null
+          : ExpressionOptimizer.getInstance().optimize(expression, udtfPlan.getDeduplicatedPaths());
+    } catch (QueryFilterOptimizationException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+    udtfPlan.setExpression(optimizedExpression);
+
+    boolean withValueFilter =
+        optimizedExpression != null && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME;
+    UDTFQueryExecutor udtfQueryExecutor = new UDTFQueryExecutor(udtfPlan);
+    return udtfPlan.isAlignByTime()
+        ? withValueFilter
+            ? udtfQueryExecutor.executeWithValueFilterAlignByTime(context, udtfPlan)
+            : udtfQueryExecutor.executeWithoutValueFilterAlignByTime(context, udtfPlan)
+        : withValueFilter
+            ? udtfQueryExecutor.executeWithValueFilterNonAlign(context, udtfPlan)
+            : udtfQueryExecutor.executeWithoutValueFilterNonAlign(context, udtfPlan);
+  }
 }

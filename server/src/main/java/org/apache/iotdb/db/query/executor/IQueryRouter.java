@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.executor;
 
-
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.*;
@@ -67,4 +66,10 @@ public interface IQueryRouter {
    */
   QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException;
+
+  /**
+   * Execute UDTF query
+   */
+  QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
+      throws StorageEngineException, QueryProcessException;
 }

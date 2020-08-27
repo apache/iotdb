@@ -543,11 +543,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByTimePlan, some
-   *             AuthorPlan
+   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByTimePlan, UDFPlan,
+   *             some AuthorPlan
    */
   private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
-      long statementId, PhysicalPlan plan, int fetchSize, String username) throws IOException {
+      long statementId, PhysicalPlan plan, int fetchSize, String username) {
     auditLogger.info("Session {} execute Query: {}", currSessionId.get(), statement);
     long startTime = System.currentTimeMillis();
     long queryId = -1;
