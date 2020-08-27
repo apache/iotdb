@@ -58,11 +58,11 @@ statement
     | REVOKE WATERMARK_EMBEDDING FROM rootOrId (COMMA rootOrId)* #revokeWatermarkEmbedding
     | LIST USER #listUser
     | LIST ROLE #listRole
-    | LIST PRIVILEGES USER username=ID ON {hasSingleQuoteString = false;} prefixPath #listPrivilegesUser
+    | LIST PRIVILEGES USER username=rootOrId ON {hasSingleQuoteString = false;} prefixPath #listPrivilegesUser
     | LIST PRIVILEGES ROLE roleName=ID ON {hasSingleQuoteString = false;} prefixPath #listPrivilegesRole
-    | LIST USER PRIVILEGES username = ID #listUserPrivileges
+    | LIST USER PRIVILEGES username =rootOrId #listUserPrivileges
     | LIST ROLE PRIVILEGES roleName = ID #listRolePrivileges
-    | LIST ALL ROLE OF USER username = ID #listAllRoleOfUser
+    | LIST ALL ROLE OF USER username = rootOrId #listAllRoleOfUser
     | LIST ALL USER OF ROLE roleName = ID #listAllUserOfRole
     | {hasSingleQuoteString = false;} SET TTL TO path=prefixPath time=INT #setTTLStatement
     | {hasSingleQuoteString = false;} UNSET TTL TO path=prefixPath #unsetTTLStatement
