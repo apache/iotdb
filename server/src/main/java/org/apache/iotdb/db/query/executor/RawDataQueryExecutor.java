@@ -72,7 +72,7 @@ public class RawDataQueryExecutor {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context, queryPlan);
     try {
       return new RawQueryDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
-          readersOfSelectedSeries);
+          readersOfSelectedSeries, queryPlan.isAscending());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new StorageEngineException(e.getMessage());

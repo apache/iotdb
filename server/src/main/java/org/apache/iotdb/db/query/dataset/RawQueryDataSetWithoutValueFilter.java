@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.dataset;
 
+import java.util.Comparator;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -96,7 +97,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
         Thread.currentThread().interrupt();
         reader.setHasRemaining(false);
       } catch (IOException e) {
-        putExceptionBatchData(e, String.format("Something gets wrong while reading from the series reader %s: ", pathName));
+        putExceptionBatchData(e, String
+            .format("Something gets wrong while reading from the series reader %s: ", pathName));
       } catch (Exception e) {
         putExceptionBatchData(e, "Something gets wrong: ");
       }
@@ -151,8 +153,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
    * @param readers   readers in List(IPointReader) structure
    */
   public RawQueryDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      List<ManagedSeriesReader> readers) throws IOException, InterruptedException {
-    super(paths, dataTypes);
+      List<ManagedSeriesReader> readers, boolean ascending)
+      throws IOException, InterruptedException {
+    super(paths, dataTypes, ascending);
     this.seriesReaderList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
     for (int i = 0; i < seriesReaderList.size(); i++) {
@@ -164,7 +167,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
   }
 
   private void init() throws IOException, InterruptedException {
-    timeHeap = new TreeSet<>();
+    timeHeap = new TreeSet<>(
+        super.ascending ? Long::compareTo : (Comparator<Long>) (o1, o2) -> Long.compare(o2, o1));
     for (int i = 0; i < seriesReaderList.size(); i++) {
       ManagedSeriesReader reader = seriesReaderList.get(i);
       reader.setHasRemaining(true);
@@ -187,7 +191,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
    * for RPC in RawData query between client and server fill time buffer, value buffers and bitmap
    * buffers
    */
-  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) throws IOException, InterruptedException {
+  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
+      throws IOException, InterruptedException {
     int seriesNum = seriesReaderList.size();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
 
@@ -358,9 +363,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
       ExceptionBatchData exceptionBatchData = (ExceptionBatchData) batchData;
       LOGGER.error("exception happened in producer thread", exceptionBatchData.getException());
       if (exceptionBatchData.getException() instanceof IOException) {
-        throw (IOException)exceptionBatchData.getException();
+        throw (IOException) exceptionBatchData.getException();
       } else if (exceptionBatchData.getException() instanceof RuntimeException) {
-        throw (RuntimeException)exceptionBatchData.getException();
+        throw (RuntimeException) exceptionBatchData.getException();
       }
 
     } else {   // there are more batch data in this time series queue
