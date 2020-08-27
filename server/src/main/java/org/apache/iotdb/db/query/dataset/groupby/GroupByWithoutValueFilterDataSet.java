@@ -153,14 +153,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         } else {
           return null;
         }
-      }
-
-      steps--;
-      if (steps > 0) {
-        nextStartTime = slidingStep * (steps - 1) + startTime;
-        nextEndTime = nextStartTime + interval;
       } else {
-        return null;
+        steps--;
+        if (steps > 0) {
+          nextStartTime = slidingStep * (steps - 1) + startTime;
+          nextEndTime = nextStartTime + interval;
+        } else {
+          return null;
+        }
       }
       result = pathExecutors.get(path).peekNextNotNullValue(i, nextStartTime, nextEndTime);
     } while (result == null);
