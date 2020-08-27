@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -214,8 +215,11 @@ public abstract class RaftMember {
     heartBeatService =
         Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
             name + "-HeartbeatThread@" + System.currentTimeMillis()));
-    catchUpService = Executors.newCachedThreadPool();
-    appendLogThreadPool = Executors.newCachedThreadPool();
+    catchUpService =
+        Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat(getName() +
+            "-CatchUpThread%d").build());
+    appendLogThreadPool = Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat(getName() +
+        "-AppendLog%d").build());
     asyncThreadPool = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), 100,
         0L, TimeUnit.MILLISECONDS,
         new LinkedBlockingQueue<>());
