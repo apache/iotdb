@@ -75,6 +75,12 @@ public abstract class RaftLogManager {
   private int maxNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig()
       .getMaxNumOfLogsInMem();
 
+  /**
+   * Each time new logs are appended, this condition will be notified so logs that have larger
+   * indices but arrived earlier can proceed.
+   */
+  private final Object logUpdateCondition = new Object();
+
 
   public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
@@ -317,6 +323,9 @@ public abstract class RaftLogManager {
       return -1;
     }
     getUnCommittedEntryManager().truncateAndAppend(entries);
+    synchronized (logUpdateCondition) {
+      logUpdateCondition.notifyAll();
+    }
     return getLastLogIndex();
   }
 
@@ -334,6 +343,9 @@ public abstract class RaftLogManager {
       return -1;
     }
     getUnCommittedEntryManager().truncateAndAppend(entry);
+    synchronized (logUpdateCondition) {
+      logUpdateCondition.notifyAll();
+    }
     return getLastLogIndex();
   }
 
@@ -650,5 +662,9 @@ public abstract class RaftLogManager {
     } catch (EntryUnavailableException e) {
       logger.error("{}: regular compact log entries failed, error={}", name, e.getMessage());
     }
+  }
+
+  public Object getLogUpdateCondition() {
+    return logUpdateCondition;
   }
 }

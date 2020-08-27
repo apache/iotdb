@@ -430,6 +430,14 @@ public abstract class RaftMember {
    */
   private long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
     long resp;
+
+    long lastLogIndex = logManager.getLastLogIndex();
+    if (lastLogIndex < prevLogIndex) {
+      if (!waitForPrevLog(prevLogIndex)) {
+        return Response.RESPONSE_LOG_MISMATCH;
+      }
+    }
+
     synchronized (logManager) {
       long success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
       if (success != -1) {
@@ -441,6 +449,25 @@ public abstract class RaftMember {
       }
     }
     return resp;
+  }
+
+  private boolean waitForPrevLog(long prevLogIndex) {
+    long waitStart = System.currentTimeMillis();
+    long alreadyWait = 0;
+    Object logUpdateCondition = logManager.getLogUpdateCondition();
+    while (logManager.getLastLogIndex() < prevLogIndex &&
+    alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
+      synchronized (logUpdateCondition) {
+        try {
+          logUpdateCondition.wait(100);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return false;
+        }
+      }
+      alreadyWait = System.currentTimeMillis() - waitStart;
+    }
+    return alreadyWait <= RaftServer.getWriteOperationTimeoutMS();
   }
 
   /**
@@ -663,26 +690,26 @@ public abstract class RaftMember {
       return;
     }
     Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
-    long waitStart = System.currentTimeMillis();
-    long alreadyWait = 0;
-    while (peer.getMatchIndex() < log.getCurrLogIndex() - 1
-        && character == NodeCharacter.LEADER
-        && alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
-      synchronized (peer) {
-        try {
-          peer.wait(RaftServer.getWriteOperationTimeoutMS());
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.warn("Waiting for peer to catch up interrupted");
-          return;
-        }
-      }
-      alreadyWait = System.currentTimeMillis() - waitStart;
-    }
-    if (alreadyWait > RaftServer.getWriteOperationTimeoutMS()) {
-      logger.warn("{}: node {} timed out when appending {}", name, node, log);
-      return;
-    }
+//    long waitStart = System.currentTimeMillis();
+//    long alreadyWait = 0;
+//    while (peer.getMatchIndex() < log.getCurrLogIndex() - 1
+//        && character == NodeCharacter.LEADER
+//        && alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
+//      synchronized (peer) {
+//        try {
+//          peer.wait(RaftServer.getWriteOperationTimeoutMS());
+//        } catch (InterruptedException e) {
+//          Thread.currentThread().interrupt();
+//          logger.warn("Waiting for peer to catch up interrupted");
+//          return;
+//        }
+//      }
+//      alreadyWait = System.currentTimeMillis() - waitStart;
+//    }
+//    if (alreadyWait > RaftServer.getWriteOperationTimeoutMS()) {
+//      logger.warn("{}: node {} timed out when appending {}", name, node, log);
+//      return;
+//    }
 
     if (character != NodeCharacter.LEADER) {
       return;
