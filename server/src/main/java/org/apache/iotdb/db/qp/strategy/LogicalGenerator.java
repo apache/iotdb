@@ -41,6 +41,7 @@ import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.query.udf.core.UDFContext;
 import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
@@ -71,12 +72,15 @@ import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AggregationCallContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AggregationElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AliasContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlignByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.BuiltInFunctionCallContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountNodesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountTimeseriesContext;
@@ -96,8 +100,6 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FlushContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FromClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FullMergeContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FullPathContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionCallContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FunctionElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleToUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantUserContext;
@@ -138,7 +140,6 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RevokeWatermarkEmbeddingContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.RootOrIdContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectConstElementContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SelectStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetColContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetStorageGroupContext;
@@ -155,11 +156,15 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowWhereClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathOrUdtfCallContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TableElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TagClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TracingOffContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TracingOnContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TypeClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UdfAttributeContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UdfCallContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnsetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UpdateStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.WhereClauseContext;
@@ -1246,27 +1251,58 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   @Override
-  public void enterFunctionElement(FunctionElementContext ctx) {
-    super.enterFunctionElement(ctx);
+  public void enterAggregationElement(AggregationElementContext ctx) {
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    List<FunctionCallContext> functionCallContextList = ctx.functionCall();
-    for (FunctionCallContext functionCallContext : functionCallContextList) {
-      Path path = parseSuffixPath(functionCallContext.suffixPath());
-      selectOp.addClusterPath(path, functionCallContext.functionName().getText());
+
+    for (AggregationCallContext aggregationCallContext : ctx.aggregationCall()) {
+      BuiltInFunctionCallContext builtInFunctionCallContext = aggregationCallContext
+          .builtInFunctionCall();
+      UdfCallContext udfCallContext = aggregationCallContext.udfCall();
+      if (builtInFunctionCallContext != null) {
+        selectOp.addClusterPath(parseSuffixPath(builtInFunctionCallContext.suffixPath()),
+            builtInFunctionCallContext.functionName().getText());
+        selectOp.addUdf(null);
+      } else if (udfCallContext != null) {
+        selectOp.addClusterPath(null, null);
+        parseUdfCall(udfCallContext);
+      }
     }
+
     queryOp.setSelectOperator(selectOp);
   }
 
   @Override
-  public void enterSelectElement(SelectElementContext ctx) {
-    super.enterSelectElement(ctx);
+  public void enterTableElement(TableElementContext ctx) {
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    List<SuffixPathContext> suffixPaths = ctx.suffixPath();
-    for (SuffixPathContext suffixPath : suffixPaths) {
-      Path path = parseSuffixPath(suffixPath);
-      selectOp.addSelectPath(path);
+
+    for (SuffixPathOrUdtfCallContext suffixPathOrUdfCallContext : ctx.suffixPathOrUdtfCall()) {
+      SuffixPathContext suffixPathContext = suffixPathOrUdfCallContext.suffixPath();
+      UdfCallContext udfCallContext = suffixPathOrUdfCallContext.udfCall();
+      if (suffixPathContext != null) {
+        selectOp.addSelectPath(parseSuffixPath(suffixPathContext));
+        selectOp.addUdf(null);
+      } else if (udfCallContext != null) {
+        selectOp.addSelectPath(null);
+        parseUdfCall(udfCallContext);
+      }
     }
+
     queryOp.setSelectOperator(selectOp);
+  }
+
+  public void parseUdfCall(UdfCallContext udfCall) {
+    String udfName = udfCall.udfName.getText();
+    UDFContext udf = new UDFContext(udfName);
+
+    for (SuffixPathContext suffixPathContext : udfCall.udfSuffixPaths().suffixPath()) {
+      udf.addPath(parseSuffixPath(suffixPathContext));
+    }
+    for (UdfAttributeContext udfAttributeContext : udfCall.udfAttribute()) {
+      udf.addAttribute(removeStringQuote(udfAttributeContext.udfAttributeKey.getText()),
+          removeStringQuote(udfAttributeContext.udfAttributeValue.getText()));
+    }
+
+    selectOp.addUdf(udf);
   }
 
   @Override

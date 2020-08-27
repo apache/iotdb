@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -53,6 +54,11 @@ public class UDTFConfigurations extends UDFConfigurations {
    *
    */
   protected List<Path> paths;
+
+  /**
+   *
+   */
+  protected List<TSDataType> outputDataTypes;
 
   /**
    *
@@ -92,6 +98,7 @@ public class UDTFConfigurations extends UDFConfigurations {
   public UDTFConfigurations(List<Path> paths) {
     this.paths = paths;
     int seriesNumber = paths.size();
+    outputDataTypes = new ArrayList<>(seriesNumber);
     dataPointAccessStrategies = new DataPointAccessStrategy[seriesNumber];
     dataPointBatchSizeLimits = new Integer[seriesNumber];
     dataPointBatchTimeWindowsInNanoseconds = new Long[seriesNumber];
@@ -101,13 +108,8 @@ public class UDTFConfigurations extends UDFConfigurations {
     rowRecordBatchTimeWindowsInNanoseconds = new HashMap<>();
   }
 
-  public UDTFConfigurations setColumnHeader(String columnHeader) {
-    this.columnHeader = columnHeader;
-    return this;
-  }
-
-  public UDTFConfigurations setOutputDataType(TSDataType outputDataType) {
-    this.outputDataType = outputDataType;
+  public UDTFConfigurations setOutputDataTypes(int seriesIndex, TSDataType dataType) {
+    this.outputDataTypes.set(seriesIndex, dataType);
     return this;
   }
 
@@ -166,6 +168,10 @@ public class UDTFConfigurations extends UDFConfigurations {
     rowRecordBatchTimeWindowsInNanoseconds
         .put(tabletName, DatetimeUtils.convertDurationStrToLong(timeWindow, unit.toString(), "ns"));
     return this;
+  }
+
+  public List<TSDataType> getOutputDataTypes() {
+    return outputDataTypes;
   }
 
   public DataPointAccessStrategy[] getDataPointAccessStrategies() {

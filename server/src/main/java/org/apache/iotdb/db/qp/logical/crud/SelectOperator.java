@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.tsfile.read.common.Path;
-
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.query.udf.core.UDFContext;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * this class maintains information from select clause.
@@ -31,6 +31,7 @@ public final class SelectOperator extends Operator {
 
   private List<Path> suffixList;
   private List<String> aggregations;
+  private List<UDFContext> udfList;
   private boolean lastQuery;
 
   /**
@@ -41,6 +42,7 @@ public final class SelectOperator extends Operator {
     operatorType = OperatorType.SELECT;
     suffixList = new ArrayList<>();
     aggregations = new ArrayList<>();
+    udfList = new ArrayList<>();
     lastQuery = false;
   }
 
@@ -51,6 +53,10 @@ public final class SelectOperator extends Operator {
   public void addClusterPath(Path suffixPath, String aggregation) {
     suffixList.add(suffixPath);
     aggregations.add(aggregation);
+  }
+
+  public boolean isLastQuery() {
+    return this.lastQuery;
   }
 
   public void setLastQuery() {
@@ -73,5 +79,15 @@ public final class SelectOperator extends Operator {
     return suffixList;
   }
 
-  public boolean isLastQuery() {return this.lastQuery; }
+  public void addUdf(UDFContext udf) {
+    udfList.add(udf);
+  }
+
+  public List<UDFContext> getUdfList() {
+    return udfList;
+  }
+
+  public void setUdfList(List<UDFContext> udfList) {
+    this.udfList = udfList;
+  }
 }

@@ -21,7 +21,8 @@ package org.apache.iotdb.db.query.udf.api;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.query.udf.api.customizer.UDAFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.UDFParameters;
 
 public abstract class UDAF extends AggregateResult implements UDF {
 
@@ -29,7 +30,5 @@ public abstract class UDAF extends AggregateResult implements UDF {
     super(null, AggregationType.UDF);
   }
 
-  public void setResultDataType(TSDataType resultDataType) {
-    this.resultDataType = resultDataType;
-  }
+  public abstract void initializeUDF(UDFParameters parameters, UDAFConfigurations configurations);
 }

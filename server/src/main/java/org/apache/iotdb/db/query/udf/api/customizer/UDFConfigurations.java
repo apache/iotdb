@@ -20,27 +20,8 @@
 package org.apache.iotdb.db.query.udf.api.customizer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class UDFConfigurations {
-
-  /**
-   *
-   */
-  protected String columnHeader;
-
-  /**
-   *
-   */
-  protected TSDataType outputDataType;
-
-  public String getColumnHeader() {
-    return columnHeader;
-  }
-
-  public TSDataType getOutputDataType() {
-    return outputDataType;
-  }
 
   /**
    *

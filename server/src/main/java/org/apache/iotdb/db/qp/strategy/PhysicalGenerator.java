@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -75,6 +74,9 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
@@ -100,13 +102,14 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
+import org.apache.iotdb.db.query.udf.core.UDFContext;
+import org.apache.iotdb.db.query.udf.core.UDFExecutor;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.db.service.IoTDB;
-
 
 /**
  * Used to convert logical operator to physical plan
@@ -375,7 +378,7 @@ public class PhysicalGenerator {
       ((FillQueryPlan) queryPlan).setQueryTime(time);
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
     } else if (queryOperator.hasAggregation()) {
-      queryPlan = new AggregationPlan();
+      queryPlan = queryOperator.hasUdf() ? new UDAFPlan() : new AggregationPlan();
       ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
       ((AggregationPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
@@ -387,19 +390,28 @@ public class PhysicalGenerator {
           }
         }
       }
+      if (queryPlan instanceof UDAFPlan) {
+        ((UDAFPlan) queryPlan)
+            .initializeUdfExecutors(queryOperator.getSelectOperator().getUdfList());
+      }
     } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
     } else {
-      queryPlan = new RawDataQueryPlan();
+      queryPlan = queryOperator.hasUdf() ? new UDTFPlan() : new RawDataQueryPlan();
+      if (queryPlan instanceof UDTFPlan) {
+        ((UDTFPlan) queryPlan)
+            .initializeUdfExecutors(queryOperator.getSelectOperator().getUdfList());
+      }
     }
+
     if (queryPlan instanceof LastQueryPlan) {
       // Last query result set will not be affected by alignment
       if (!queryOperator.isAlignByTime()) {
         throw new QueryProcessException("Disable align cannot be applied to LAST query.");
       }
-      List<Path> paths = queryOperator.getSelectedPaths();
-      queryPlan.setPaths(paths);
+      queryPlan.setPaths(queryOperator.getSelectedPaths());
     } else if (queryOperator.isAlignByDevice()) {
+      // TODO: select udf align by device
       // below is the core realization of ALIGN_BY_DEVICE sql logic
       AlignByDevicePlan alignByDevicePlan = new AlignByDevicePlan();
       if (queryPlan instanceof GroupByTimePlan) {
@@ -548,8 +560,7 @@ public class PhysicalGenerator {
       queryPlan = alignByDevicePlan;
     } else {
       queryPlan.setAlignByTime(queryOperator.isAlignByTime());
-      List<Path> paths = queryOperator.getSelectedPaths();
-      queryPlan.setPaths(paths);
+      queryPlan.setPaths(queryOperator.getSelectedPaths());
 
       // transform filter operator to expression
       FilterOperator filterOperator = queryOperator.getFilterOperator();
@@ -570,6 +581,7 @@ public class PhysicalGenerator {
         }
       }
     }
+
     try {
       deduplicate(queryPlan);
     } catch (MetadataException e) {
@@ -659,7 +671,7 @@ public class PhysicalGenerator {
     }
 
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
-    Set<String> columnSet = new HashSet<>();
+    Set<String> columnForReaderSet = new HashSet<>();
     // if it's a last query, no need to sort by device
     if (queryPlan instanceof LastQueryPlan) {
       for (int i = 0; i < paths.size(); i++) {
@@ -670,11 +682,11 @@ public class PhysicalGenerator {
         } else {
           column = path.toString();
         }
-        if (!columnSet.contains(column)) {
+        if (!columnForReaderSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
           rawDataQueryPlan.addDeduplicatedPaths(path);
           rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
-          columnSet.add(column);
+          columnForReaderSet.add(column);
         }
       }
       return;
@@ -683,30 +695,82 @@ public class PhysicalGenerator {
     // sort path by device
     List<Pair<Path, Integer>> indexedPaths = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      indexedPaths.add(new Pair<>(paths.get(i), i));
+      Path path = paths.get(i);
+      if (path != null) { // non-udf
+        indexedPaths.add(new Pair<>(paths.get(i), i));
+      } else { // udf
+        UDFContext context = queryPlan instanceof UDAFPlan
+            ? ((UDAFPlan) queryPlan).getExecutor(i).getContext()
+            : ((UDTFPlan) queryPlan).getExecutor(i).getContext();
+        for (Path udfPath : context.getPaths()) {
+          indexedPaths.add(new Pair<>(udfPath, i));
+        }
+      }
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
 
+    Map<String, Integer> columnForReader2DeduplicatedPathIndex = new HashMap<>();
+    Set<String> columnForDisplaySet = new HashSet<>();
     int index = 0;
+
     for (Pair<Path, Integer> indexedPath : indexedPaths) {
-      String column;
-      if (indexedPath.left.getAlias() != null) {
-        column = indexedPath.left.getFullPathWithAlias();
-      } else {
-        column = indexedPath.left.toString();
+      String columnForReader;
+      String columnForDisplay;
+
+      Path originalPath = indexedPath.left;
+      Integer originalIndex = indexedPath.right;
+
+      boolean isUdf = paths.get(originalIndex) == null;
+
+      if (isUdf) { // udf
+        UDFContext context = queryPlan instanceof UDAFPlan
+            ? ((UDAFPlan) queryPlan).getExecutor(originalIndex).getContext()
+            : ((UDTFPlan) queryPlan).getExecutor(originalIndex).getContext();
+        columnForDisplay = context.getColumn();
+        columnForReader = context.getName() + "(" + originalPath.toString() + ")";
+      } else { // non-udf
+        if (originalPath.getAlias() != null) {
+          columnForDisplay = originalPath.getFullPathWithAlias();
+        } else {
+          columnForDisplay = originalPath.toString();
+        }
+        if (queryPlan instanceof AggregationPlan) {
+          columnForDisplay =
+              queryPlan.getAggregations().get(originalIndex) + "(" + columnForDisplay + ")";
+        }
+        columnForReader = columnForDisplay;
       }
-      if (queryPlan instanceof AggregationPlan) {
-        column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";
-      }
-      if (!columnSet.contains(column)) {
-        TSDataType seriesType = dataTypes.get(indexedPath.right);
-        rawDataQueryPlan.addDeduplicatedPaths(indexedPath.left);
-        rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
-        columnSet.add(column);
-        rawDataQueryPlan.addPathToIndex(column, index++);
+
+      if (!columnForReaderSet.contains(columnForReader)) {
+        rawDataQueryPlan.addDeduplicatedPaths(originalPath);
+        rawDataQueryPlan.addDeduplicatedDataTypes(isUdf
+            ? IoTDB.metaManager.getSeriesType(originalPath.getFullPath())
+            : dataTypes.get(originalIndex));
         if (queryPlan instanceof AggregationPlan) {
           ((AggregationPlan) queryPlan)
-              .addDeduplicatedAggregations(queryPlan.getAggregations().get(indexedPath.right));
+              .addDeduplicatedAggregations(queryPlan.getAggregations().get(originalIndex));
+        }
+        columnForReaderSet.add(columnForReader);
+
+        columnForReader2DeduplicatedPathIndex
+            .put(columnForReader, rawDataQueryPlan.getDeduplicatedPaths().size() - 1);
+      }
+
+      if (!columnForDisplaySet.contains(columnForDisplay)) {
+        rawDataQueryPlan.addPathToIndex(columnForDisplay, index++);
+        columnForDisplaySet.add(columnForDisplay);
+      }
+    }
+
+    if (queryPlan instanceof UDFPlan) {
+      for (UDFExecutor executor : queryPlan instanceof UDAFPlan
+          ? ((UDAFPlan) queryPlan).getDeduplicatedExecutors()
+          : ((UDTFPlan) queryPlan).getDeduplicatedExecutors()) {
+        List<Path> udfPaths = executor.getContext().getPaths();
+        for (int i = 0; i < udfPaths.size(); ++i) {
+          String columnForReader = executor.getUniqueColumnNamesForReaderDeduplication(i);
+          executor.addPath2DeduplicatedPathIndex(udfPaths.get(i),
+              columnForReader2DeduplicatedPathIndex.get(columnForReader));
         }
       }
     }

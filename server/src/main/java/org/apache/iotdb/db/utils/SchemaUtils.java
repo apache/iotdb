@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -26,15 +30,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 
 public class SchemaUtils {
 
@@ -56,23 +54,21 @@ public class SchemaUtils {
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
     } catch (MetadataException e) {
-      logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(),
-          e);
+      logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(), e);
     }
-
   }
 
   public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths)
       throws MetadataException {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path.getFullPath()));
+      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path.getFullPath()));
     }
     return dataTypes;
   }
 
   /**
-   * @param paths time series paths
+   * @param paths       time series paths
    * @param aggregation aggregation function, may be null
    * @return The data type of aggregation or (data type of paths if aggregation is null)
    */
@@ -84,7 +80,7 @@ public class SchemaUtils {
     }
     List<TSDataType> dataTypes = new ArrayList<>();
     for (String path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path));
+      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
     }
     return dataTypes;
   }
@@ -97,20 +93,21 @@ public class SchemaUtils {
     }
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path.getFullPath()));
+      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path.getFullPath()));
     }
     return dataTypes;
   }
 
-  public static List<TSDataType> getSeriesTypesByPath(List<Path> paths,
-      List<String> aggregations) throws MetadataException {
+  public static List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
+      throws MetadataException {
     List<TSDataType> tsDataTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       TSDataType dataType = getAggregationType(aggregations.get(i));
       if (dataType != null) {
         tsDataTypes.add(dataType);
       } else {
-        tsDataTypes.add(IoTDB.metaManager.getSeriesType(paths.get(i).getFullPath()));
+        Path path = paths.get(i);
+        tsDataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path.getFullPath()));
       }
     }
     return tsDataTypes;
@@ -129,17 +126,15 @@ public class SchemaUtils {
       case SQLConstant.MAX_TIME:
       case SQLConstant.COUNT:
         return TSDataType.INT64;
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+        return TSDataType.DOUBLE;
       case SQLConstant.LAST_VALUE:
       case SQLConstant.FIRST_VALUE:
       case SQLConstant.MIN_VALUE:
       case SQLConstant.MAX_VALUE:
-        return null;
-      case SQLConstant.AVG:
-      case SQLConstant.SUM:
-        return TSDataType.DOUBLE;
       default:
-        throw new MetadataException(
-            "aggregate does not support " + aggregation + " function.");
+        return null;
     }
   }
 }

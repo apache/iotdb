@@ -17,28 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.customizer;
+package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import java.util.List;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.core.UDFContext;
 
-public class UDAFConfigurations extends UDFConfigurations {
+public interface UDFPlan {
 
-  /**
-   *
-   */
-  protected TSDataType outputDataType;
-
-  public TSDataType getOutputDataType() {
-    return outputDataType;
-  }
-
-  public UDAFConfigurations setOutputDataType(TSDataType outputDataType) {
-    this.outputDataType = outputDataType;
-    return this;
-  }
-
-  @Override
-  public void check() {
-
-  }
+  void initializeUdfExecutors(List<UDFContext> udfContexts) throws QueryProcessException;
 }

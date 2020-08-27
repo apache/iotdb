@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.*;
+import org.apache.iotdb.db.query.udf.core.UDFContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
@@ -42,7 +43,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   private static final Logger logger = LoggerFactory.getLogger(ConcatPathOptimizer.class);
   private static final String WARNING_NO_SUFFIX_PATHS = "given SFWOperator doesn't have suffix paths, cannot concat seriesPath";
   private static final String WARNING_NO_PREFIX_PATHS = "given SFWOperator doesn't have prefix paths, cannot concat seriesPath";
-
 
   @Override
   public Operator transform(Operator operator) throws LogicalOptimizeException {
@@ -80,7 +80,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     boolean isAlignByDevice = false;
     if (operator instanceof QueryOperator) {
-      if (!((QueryOperator) operator).isAlignByDevice() || ((QueryOperator) operator).isLastQuery()) {
+      if (!((QueryOperator) operator).isAlignByDevice()
+          || ((QueryOperator) operator).isLastQuery()) {
         concatSelect(prefixPaths, select); // concat and remove star
 
         if (((QueryOperator) operator).hasSlimit()) {
@@ -94,9 +95,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           String device = path.getDevice();
           if (!device.isEmpty()) {
             throw new LogicalOptimizeException(
-                    "The paths of the SELECT clause can only be single level. In other words, "
-                            + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
-                            + " For more details please refer to the SQL document.");
+                "The paths of the SELECT clause can only be single level. In other words, "
+                    + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
+                    + " For more details please refer to the SQL document.");
           }
         }
         // ALIGN_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
@@ -110,7 +111,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if (filter == null) {
       return operator;
     }
-    if(!isAlignByDevice){
+    if (!isAlignByDevice) {
       sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter, filterPaths));
     }
     sfwOperator.getFilterOperator().setPathSet(filterPaths);
@@ -156,27 +157,53 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       throws LogicalOptimizeException {
     List<Path> suffixPaths = judgeSelectOperator(selectOperator);
 
-    List<Path> allPaths = new ArrayList<>();
+    List<Path> afterConcatPaths = new ArrayList<>(); // null elements are for the UDFs
+
     List<String> originAggregations = selectOperator.getAggregations();
-    List<String> afterConcatAggregations = new ArrayList<>();
+    List<String> afterConcatAggregations = new ArrayList<>(); // null elements are for the UDFs
+
+    List<UDFContext> originUdfList = selectOperator.getUdfList();
+    List<UDFContext> afterConcatUdfList = new ArrayList<>();
 
     for (int i = 0; i < suffixPaths.size(); i++) {
       // selectPath cannot start with ROOT, which is guaranteed by TSParser
       Path selectPath = suffixPaths.get(i);
-      for (Path fromPath : fromPaths) {
-        allPaths.add(Path.addPrefixPath(selectPath, fromPath));
-        extendListSafely(originAggregations, i, afterConcatAggregations);
+
+      if (selectPath == null) { // udf
+        UDFContext originUdf = originUdfList.get(i);
+        List<Path> originUdfSuffixPaths = originUdf.getPaths();
+
+        for (Path fromPath : fromPaths) {
+          afterConcatPaths.add(null);
+          extendListSafely(originAggregations, i, afterConcatAggregations);
+
+          List<Path> afterConcatUdfPaths = new ArrayList<>();
+          for (Path originUdfSuffixPath : originUdfSuffixPaths) {
+            afterConcatUdfPaths.add(Path.addPrefixPath(originUdfSuffixPath, fromPath));
+          }
+          afterConcatUdfList.add(new UDFContext(originUdf.getName(), originUdf.getAttributes(),
+              originUdf.getAttributeKeysInOriginalOrder(), afterConcatUdfPaths));
+        }
+
+      } else { // non-udf
+        for (Path fromPath : fromPaths) {
+          afterConcatPaths.add(Path.addPrefixPath(selectPath, fromPath));
+          extendListSafely(originAggregations, i, afterConcatAggregations);
+
+          afterConcatUdfList.add(null);
+        }
       }
     }
 
-    removeStarsInPath(allPaths, afterConcatAggregations, selectOperator);
+    removeStarsInPath(afterConcatPaths, afterConcatAggregations, afterConcatUdfList,
+        selectOperator);
   }
 
   /**
    * Make 'SLIMIT&SOFFSET' take effect by trimming the suffixList and aggregations of the
    * selectOperator.
    *
-   * @param seriesLimit is ensured to be positive integer
+   * @param seriesLimit  is ensured to be positive integer
    * @param seriesOffset is ensured to be non-negative integer
    */
   private void slimitTrim(SelectOperator select, int seriesLimit, int seriesOffset)
@@ -204,6 +231,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           aggregations.subList(seriesOffset, endPosition));
       select.setAggregations(trimedAggregations);
     }
+
+    // trim arrays for udf
+    select.setUdfList(new ArrayList<>(select.getUdfList().subList(seriesOffset, endPosition)));
   }
 
   private FilterOperator concatFilter(List<Path> fromPaths, FilterOperator operator,
@@ -290,28 +320,78 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     return retPaths;
   }
 
-  private void removeStarsInPath(List<Path> paths, List<String> afterConcatAggregations,
-      SelectOperator selectOperator) throws LogicalOptimizeException {
-    List<Path> retPaths = new ArrayList<>();
+  private void removeStarsInPath(List<Path> afterConcatPaths, List<String> afterConcatAggregations,
+      List<UDFContext> afterConcatUdfList, SelectOperator selectOperator)
+      throws LogicalOptimizeException {
+    List<Path> newSuffixPathList = new ArrayList<>();
     List<String> newAggregations = new ArrayList<>();
-    for (int i = 0; i < paths.size(); i++) {
+    List<UDFContext> newUdfList = new ArrayList<>();
+
+    for (int i = 0; i < afterConcatPaths.size(); i++) {
       try {
-        List<Path> actualPaths = removeWildcard(paths.get(i).getFullPath());
-        for (Path actualPath : actualPaths) {
-          retPaths.add(actualPath);
-          if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty()) {
-            newAggregations.add(afterConcatAggregations.get(i));
+        Path afterConcatPath = afterConcatPaths.get(i);
+        if (afterConcatPath == null) { // udf
+          UDFContext originUdf = afterConcatUdfList.get(i);
+          List<Path> originPaths = originUdf.getPaths();
+          List<List<Path>> extendedPaths = new ArrayList<>();
+          for (Path originPath : originPaths) {
+            extendedPaths.add(removeWildcard(originPath.getFullPath()));
+          }
+          List<List<Path>> actualPaths = new ArrayList<>();
+          cartesianProduct(extendedPaths, actualPaths, 0, new ArrayList<>());
+
+          for (List<Path> actualPath : actualPaths) {
+            newSuffixPathList.add(null);
+            extendListSafely(afterConcatAggregations, i, newAggregations);
+
+            newUdfList.add(new UDFContext(originUdf.getName(), originUdf.getAttributes(),
+                originUdf.getAttributeKeysInOriginalOrder(), actualPath));
+          }
+
+        } else { // non-udf
+          for (Path actualPath : removeWildcard(afterConcatPath.getFullPath())) {
+            newSuffixPathList.add(actualPath);
+            extendListSafely(afterConcatAggregations, i, newAggregations);
+
+            newUdfList.add(null);
           }
         }
       } catch (MetadataException e) {
         throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
       }
     }
-    selectOperator.setSuffixPathList(retPaths);
+
+    selectOperator.setSuffixPathList(newSuffixPathList);
     selectOperator.setAggregations(newAggregations);
+    selectOperator.setUdfList(newUdfList);
   }
 
   protected List<Path> removeWildcard(String path) throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPath(path);
+  }
+
+  private static void cartesianProduct(List<List<Path>> dimensionValue, List<List<Path>> resultList,
+      int layer, List<Path> currentList) {
+    if (layer < dimensionValue.size() - 1) {
+      if (dimensionValue.get(layer).size() == 0) {
+        cartesianProduct(dimensionValue, resultList, layer + 1, currentList);
+      } else {
+        for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
+          List<Path> list = new ArrayList<>(currentList);
+          list.add(dimensionValue.get(layer).get(i));
+          cartesianProduct(dimensionValue, resultList, layer + 1, list);
+        }
+      }
+    } else if (layer == dimensionValue.size() - 1) {
+      if (dimensionValue.get(layer).size() == 0) {
+        resultList.add(currentList);
+      } else {
+        for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
+          List<Path> list = new ArrayList<>(currentList);
+          list.add(dimensionValue.get(layer).get(i));
+          resultList.add(list);
+        }
+      }
+    }
   }
 }

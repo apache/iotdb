@@ -19,12 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.api;
 
-import org.apache.iotdb.db.query.udf.api.customizer.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.UDTFConfigurations;
-
 public interface UDF {
-
-  void initializeUDF(UDFParameters parameters, UDTFConfigurations configurations);
 
   void finalizeUDF();
 }
