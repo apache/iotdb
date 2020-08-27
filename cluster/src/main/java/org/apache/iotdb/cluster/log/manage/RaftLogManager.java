@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -115,6 +116,8 @@ public abstract class RaftLogManager {
 
   private List<Log> blockedUnappliedLogList;
 
+  private ExecutorService logApplierExecutor;
+
   public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
     this.name = name;
@@ -163,6 +166,8 @@ public abstract class RaftLogManager {
             TimeUnit.SECONDS);
 
     checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
+
+    logApplierExecutor = Executors.newSingleThreadExecutor();
 
     /**
      * flush log to file periodically
@@ -521,7 +526,6 @@ public abstract class RaftLogManager {
     if (commitIndex >= newCommitIndex) {
       return;
     }
-
     long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
     long hi = newCommitIndex + 1;
     List<Log> entries = new ArrayList<>(getUnCommittedEntryManager()
@@ -546,7 +550,13 @@ public abstract class RaftLogManager {
         Log lastLog = entries.get(entries.size() - 1);
         getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
         commitIndex = lastLog.getCurrLogIndex();
-        applyEntries(entries, ignoreExecutionExceptions);
+        logApplierExecutor.submit(() -> {
+          try {
+            applyEntries(entries, ignoreExecutionExceptions);
+          } catch (LogExecutionException e) {
+            logger.error("{}: execute apply entries error", name, e);
+          }
+        });
       } catch (TruncateCommittedEntryException e) {
         logger.error("{}: Unexpected error:", name, e);
       } catch (IOException e) {
@@ -660,6 +670,7 @@ public abstract class RaftLogManager {
     this.maxHaveAppliedCommitIndex = first;
     this.blockAppliedCommitIndex = -1;
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
+    this.logApplierExecutor = Executors.newSingleThreadExecutor();
   }
 
   @TestOnly
@@ -707,6 +718,9 @@ public abstract class RaftLogManager {
         Thread.currentThread().interrupt();
       }
       flushLogExecutorService = null;
+    }
+    if (logApplierExecutor != null) {
+      logApplierExecutor.shutdown();
     }
   }
 
