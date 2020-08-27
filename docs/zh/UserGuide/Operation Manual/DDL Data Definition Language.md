@@ -50,6 +50,15 @@ IoTDB> show storage group
 执行结果为：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
 
+## 删除存储组
+
+用户使用[DELETE STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句可以删除指定的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
+
+```
+IoTDB > DELETE STORAGE GROUP root.ln
+IoTDB > DELETE STORAGE GROUP root.sgcc
+```
+
 ## 创建时间序列
 
 根据建立的数据模型，我们可以分别在两个存储组中创建相应的时间序列。创建时间序列的SQL语句如下所示：

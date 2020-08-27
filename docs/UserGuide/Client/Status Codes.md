@@ -66,6 +66,7 @@ Here is a list of Status Code and related message:
 |314|TSFILE_PROCESSOR_ERROR|TsFile processor related error|
 |315|PATH_ILLEGAL|Illegal path|
 |316|LOAD_FILE_ERROR|Meet error while loading file|
+|317|STORAGE_GROUP_NOT_READY| The storage group is in recovery mode, not ready fore accepting read/write operation|
 |400|EXECUTE_STATEMENT_ERROR|Execute statement error|
 |401|SQL_PARSE_ERROR|Meet error while parsing SQL|
 |402|GENERATE_TIME_ZONE_ERROR|Meet error while generating time zone|

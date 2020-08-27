@@ -47,6 +47,7 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.slf4j.Logger;
@@ -293,7 +294,8 @@ public class StorageEngine implements IService {
           }
         } else {
           // not finished recover, refuse the request
-          throw new StorageEngineException("the sg " + storageGroupName + " may not ready now, please wait and retry later");
+          throw new StorageEngineException("the sg " + storageGroupName + " may not ready now, please wait and retry later",
+              TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
       return processor;
@@ -433,6 +435,19 @@ public class StorageEngine implements IService {
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     try {
       storageGroupProcessor.delete(deviceId, measurementId, startTime, endTime);
+    } catch (IOException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+  }
+
+  /**
+   * delete data of timeseries "{deviceId}.{measurementId}"
+   */
+  public void deleteTimeseries(String deviceId, String measurementId)
+      throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
+    try {
+      storageGroupProcessor.delete(deviceId, measurementId, Long.MIN_VALUE, Long.MAX_VALUE);
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }

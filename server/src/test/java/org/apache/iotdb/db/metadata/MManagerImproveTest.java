@@ -55,7 +55,7 @@ public class MManagerImproveTest {
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
         String p = "root.t1.v2.d" + j + ".s" + i;
-        mManager.createTimeseries(p, TSDataType.TEXT, TSEncoding.RLE,
+        mManager.createTimeseries(p, TSDataType.TEXT, TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
       }
     }
