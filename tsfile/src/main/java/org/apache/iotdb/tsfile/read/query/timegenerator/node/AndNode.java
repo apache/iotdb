@@ -27,6 +27,7 @@ public class AndNode implements Node {
 
   private long cachedValue;
   private boolean hasCachedValue;
+  private boolean ascending = true;
 
   /**
    * Constructor of AndNode.
@@ -38,6 +39,13 @@ public class AndNode implements Node {
     this.leftChild = leftChild;
     this.rightChild = rightChild;
     this.hasCachedValue = false;
+  }
+
+  public AndNode(Node leftChild, Node rightChild, boolean ascending) {
+    this.leftChild = leftChild;
+    this.rightChild = rightChild;
+    this.hasCachedValue = false;
+    this.ascending = ascending;
   }
 
   @Override
@@ -53,17 +61,34 @@ public class AndNode implements Node {
           this.hasCachedValue = true;
           this.cachedValue = leftValue;
           return true;
-        } else if (leftValue > rightValue) {
-          if (rightChild.hasNext()) {
-            rightValue = rightChild.next();
-          } else {
-            return false;
+        }
+        if (ascending) {
+          if (leftValue > rightValue) {
+            if (rightChild.hasNext()) {
+              rightValue = rightChild.next();
+            } else {
+              return false;
+            }
+          } else { // leftValue < rightValue
+            if (leftChild.hasNext()) {
+              leftValue = leftChild.next();
+            } else {
+              return false;
+            }
           }
-        } else { // leftValue < rightValue
-          if (leftChild.hasNext()) {
-            leftValue = leftChild.next();
-          } else {
-            return false;
+        } else {
+          if (leftValue < rightValue) {
+            if (rightChild.hasNext()) {
+              rightValue = rightChild.next();
+            } else {
+              return false;
+            }
+          } else { // leftValue > rightValue
+            if (leftChild.hasNext()) {
+              leftValue = leftChild.next();
+            } else {
+              return false;
+            }
           }
         }
       }

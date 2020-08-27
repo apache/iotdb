@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class LocalGroupByExecutor implements GroupByExecutor {
 
@@ -210,7 +211,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public Object peekNextNotNullValue() throws IOException {
+  public Pair<Long, Object> peekNextNotNullValue() throws IOException {
     if (preCachedData != null && preCachedData.hasCurrent()) {
       int readCurArrayIndex = preCachedData.getReadCurArrayIndex();
       int readCurListIndex = preCachedData.getReadCurListIndex();
@@ -219,7 +220,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         if (preCachedData.currentValue() != null) {
           Object peekData = preCachedData.currentValue();
           preCachedData.resetBatchData(readCurArrayIndex, readCurListIndex);
-          return peekData;
+          return new Pair<>(preCachedData.currentTime(), peekData);
         }
         preCachedData.next();
       }
@@ -230,7 +231,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         if (preCachedData.currentValue() != null) {
           Object peekData = preCachedData.currentValue();
           preCachedData.resetBatchData();
-          return peekData;
+          return new Pair<>(preCachedData.currentTime(), peekData);
         }
         preCachedData.next();
       }
@@ -241,7 +242,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
           if (preCachedData.currentValue() != null) {
             Object peekData = preCachedData.currentValue();
             preCachedData.resetBatchData();
-            return peekData;
+            return new Pair<>(preCachedData.currentTime(), peekData);
           }
           preCachedData.next();
         }
@@ -254,7 +255,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
             if (preCachedData.currentValue() != null) {
               Object peekData = preCachedData.currentValue();
               preCachedData.resetBatchData();
-              return peekData;
+              return new Pair<>(preCachedData.currentTime(), peekData);
             }
             preCachedData.next();
           }

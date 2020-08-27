@@ -84,4 +84,9 @@ public class ServerTimeGenerator extends TimeGenerator {
         queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource,
         null, filter, null, queryPlan.isAscending());
   }
+
+  @Override
+  protected boolean isAscending() {
+    return queryPlan.isAscending();
+  }
 }

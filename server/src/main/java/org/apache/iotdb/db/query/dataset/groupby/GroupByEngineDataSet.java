@@ -117,5 +117,5 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     return new Pair<>(curStartTime, curEndTime);
   }
 
-  public abstract Object peekNextNotNullValue(Path path, int i) throws IOException;
+  public abstract Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException;
 }

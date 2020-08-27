@@ -85,29 +85,39 @@ public class GroupByFillDataSetTest {
   public void groupByWithValueFilterFillTest() throws Exception {
     QueryPlan queryPlan = (QueryPlan) processor
         .parseSQLToPhysicalPlan(
-            "select last_value(s0) from root.vehicle.* where s1 > 1  group by ([0,20), 1ms) fill (int32[Previous]) order by time desc");
+            "select last_value(s0) from root.vehicle.* where s1 >= 1  group by ([0,20), 1ms) fill (int32[Previous]) order by time desc");
     QueryDataSet dataSet = queryExecutor
         .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    while (dataSet.hasNext()) {
-      System.out.println(dataSet.next());
+    for (int i = 19; i >= 7; i--) {
+      assertTrue(dataSet.hasNext());
+      assertEquals(i + "\t7", dataSet.next().toString());
     }
-//    assertTrue(dataSet.hasNext());
-//    assertEquals("19\t8", dataSet.next().toString());
-//    for (int i = 0; i < 10; i++) {
-//      dataSet.hasNext();
-//      dataSet.next();
-//    }
-//    assertTrue(dataSet.hasNext());
-//    assertEquals("8\t8", dataSet.next().toString());
-//    for (int i = 7; i > -1; i--) {
-//      assertTrue(dataSet.hasNext());
-//      if (i > 5) {
-//        assertEquals(i + "\t" + i, dataSet.next().toString());
-//      } else if (i > 0) {
-//        assertEquals(i + "\t" + 1, dataSet.next().toString());
-//      } else {
-//        assertEquals(i + "\t" + "null", dataSet.next().toString());
-//      }
-//    }
+    assertTrue(dataSet.hasNext());
+    assertEquals("6\t6", dataSet.next().toString());
+    for (int i = 5; i >= 0; i--) {
+      assertTrue(dataSet.hasNext());
+      assertEquals(i + "\tnull", dataSet.next().toString());
+    }
+  }
+
+  @Test
+  public void groupByWithAndFilterFillTest() throws Exception {
+    QueryPlan queryPlan = (QueryPlan) processor
+        .parseSQLToPhysicalPlan(
+            "select last_value(s0) from root.vehicle.* where s1 > 1 or s0 > 1  group by ([0,20), 1ms) fill (int32[Previous]) order by time desc");
+    QueryDataSet dataSet = queryExecutor
+        .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    for (int i = 19; i >= 8; i--) {
+      assertTrue(dataSet.hasNext());
+      assertEquals(i + "\t8", dataSet.next().toString());
+    }
+    assertTrue(dataSet.hasNext());
+    assertEquals("7\t7", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("6\t6", dataSet.next().toString());
+    for (int i = 5; i >= 0; i--) {
+      assertTrue(dataSet.hasNext());
+      assertEquals(i + "\tnull", dataSet.next().toString());
+    }
   }
 }

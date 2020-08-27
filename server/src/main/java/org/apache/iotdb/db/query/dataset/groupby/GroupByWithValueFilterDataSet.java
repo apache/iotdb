@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -128,8 +129,10 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     long[] timestampArray = new long[timeStampFetchSize];
     int timeArrayLength = 0;
     if (hasCachedTimestamp) {
-      if (timestamp < curEndTime) {
-        if (timestamp >= curStartTime) {
+      if ((groupByTimePlan.isAscending() && timestamp < curEndTime)
+          || (!groupByTimePlan.isAscending() && timestamp >= curEndTime)) {
+        if ((groupByTimePlan.isAscending() && timestamp >= curStartTime)
+            || (!groupByTimePlan.isAscending() && timestamp < curEndTime)) {
           hasCachedTimestamp = false;
           timestampArray[timeArrayLength++] = timestamp;
         }
@@ -149,7 +152,10 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
       timeArrayLength = 0;
       // judge if it's end
-      if (timestamp >= curEndTime) {
+      if (groupByTimePlan.isAscending() && timestamp >= curEndTime) {
+        hasCachedTimestamp = true;
+        break;
+      } else if (!groupByTimePlan.isAscending() && timestamp <= curStartTime) {
         hasCachedTimestamp = true;
         break;
       }
@@ -166,8 +172,20 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   @Override
-  public Object peekNextNotNullValue(Path path, int i) throws IOException {
-//    return allDataReaderList.get(i).;
+  public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
+    long[] timestampArray = new long[1];
+    AggregateResult aggrResultByName = AggregateResultFactory.getAggrResultByName(
+        groupByTimePlan.getDeduplicatedAggregations().get(i),
+        groupByTimePlan.getDeduplicatedDataTypes().get(i));
+
+    int timeArrayLength = 0;
+    if (hasCachedTimestamp) {
+      timestampArray[timeArrayLength++] = timestamp;
+
+      aggrResultByName
+          .updateResultUsingTimestamps(timestampArray, timeArrayLength, allDataReaderList.get(i));
+      return new Pair<>(timestamp, aggrResultByName.getResult());
+    }
     return null;
   }
 

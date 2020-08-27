@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByFillDataSet extends QueryDataSet {
 
@@ -44,6 +45,7 @@ public class GroupByFillDataSet extends QueryDataSet {
   private Map<TSDataType, IFill> fillTypes;
   // the first value for each time series
   private Object[] previousValue;
+  private long[] previousTime;
   // last timestamp for each time series
   private long[] lastTimeArray;
 
@@ -61,6 +63,7 @@ public class GroupByFillDataSet extends QueryDataSet {
   private void initPreviousParis(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
       throws StorageEngineException, IOException, QueryProcessException {
     previousValue = new Object[paths.size()];
+    previousTime = new long[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       TSDataType dataType = dataTypes.get(i);
@@ -79,8 +82,10 @@ public class GroupByFillDataSet extends QueryDataSet {
       TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {
         previousValue[i] = null;
+        previousTime[i] = Long.MIN_VALUE;
       } else {
         previousValue[i] = timeValuePair.getValue().getValue();
+        previousTime[i] = timeValuePair.getTimestamp();
       }
     }
   }
@@ -122,16 +127,20 @@ public class GroupByFillDataSet extends QueryDataSet {
             !fillTypes.containsKey(dataTypes.get(i))
                 || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange() < 0
                 || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange()
-                >= groupByEngineDataSet.interval)) {
+                >= groupByEngineDataSet.interval) && rowRecord.getTimestamp() >= previousTime[i]) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
         } else if (!ascending) {
-          rowRecord.getFields().set(i,
-              Field.getField(groupByEngineDataSet.peekNextNotNullValue(paths.get(i), i),
-                  dataTypes.get(i)));
+          Pair<Long, Object> data = groupByEngineDataSet.peekNextNotNullValue(paths.get(i), i);
+          if (data != null) {
+            rowRecord.getFields().set(i, Field.getField(data.right, dataTypes.get(i)));
+            previousValue[i] = data.right;
+            previousTime[i] = data.left;
+          }
         }
-      } else if (ascending) {
+      } else {
         // use now value update previous value
         previousValue[i] = field.getObjectValue(field.getDataType());
+        previousTime[i] = rowRecord.getTimestamp();
       }
     }
     return rowRecord;

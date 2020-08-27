@@ -92,9 +92,9 @@ public abstract class TimeGenerator {
 
       if (expression.getType() == ExpressionType.OR) {
         hasOrNode = true;
-        return new OrNode(leftChild, rightChild);
+        return new OrNode(leftChild, rightChild, isAscending());
       } else if (expression.getType() == ExpressionType.AND) {
-        return new AndNode(leftChild, rightChild);
+        return new AndNode(leftChild, rightChild, isAscending());
       }
       throw new UnSupportedDataTypeException(
           "Unsupported ExpressionType when construct OperatorNode: " + expression.getType());
@@ -106,5 +106,9 @@ public abstract class TimeGenerator {
 
   public boolean hasOrNode() {
     return hasOrNode;
+  }
+
+  protected boolean isAscending() {
+    return true;
   }
 }

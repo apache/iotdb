@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,7 +139,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   @Override
-  public Object peekNextNotNullValue(Path path, int i) throws IOException {
+  public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
     return pathExecutors.get(path).peekNextNotNullValue();
   }
 

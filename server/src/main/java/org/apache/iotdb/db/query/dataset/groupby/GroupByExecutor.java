@@ -24,6 +24,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 
 /**
@@ -41,5 +42,5 @@ public interface GroupByExecutor {
    */
   List<AggregateResult> calcResult(long curStartTime, long curEndTime) throws IOException, QueryProcessException;
 
-  Object peekNextNotNullValue() throws IOException;
+  Pair<Long, Object> peekNextNotNullValue() throws IOException;
 }
