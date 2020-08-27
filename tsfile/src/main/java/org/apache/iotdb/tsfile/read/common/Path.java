@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 public class Path implements Serializable, Comparable<Path> {
 
   private static final long serialVersionUID = 3405277066329298200L;
-  protected String measurement;
+  private String measurement;
   protected String device;
   protected String fullPath;
   private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
