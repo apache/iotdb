@@ -651,7 +651,7 @@ SQL语句将不会执行，并且相应的错误提示如下：
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577867-577b5780-1ef6-11e9-978c-e02c1294bcc5.jpg"></center>
 
-#### Row and Column Control over Query Results
+#### 控制查询结果的行和列
 
 除了对查询结果进行行或列控制之外，IoTDB还允许用户控制查询结果的行和列。 这是同时包含LIMIT子句和SLIMIT子句的完整示例。
 
