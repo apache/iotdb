@@ -267,7 +267,7 @@ public class IoTDBConfig {
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max num of level.
    */
-  private int maxLevelNum = 10;
+  private int maxLevelNum = 3;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
