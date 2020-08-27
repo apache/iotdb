@@ -211,58 +211,30 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public Pair<Long, Object> peekNextNotNullValue() throws IOException {
-    if (preCachedData != null && preCachedData.hasCurrent()) {
-      int readCurArrayIndex = preCachedData.getReadCurArrayIndex();
-      int readCurListIndex = preCachedData.getReadCurListIndex();
+  public Pair<Long, Object> peekNextNotNullValue(int i, long nextStartTime, long nextEndTime)
+      throws IOException {
+    try {
+      if (preCachedData != null && preCachedData.hasCurrent()) {
+        int readCurArrayIndex = preCachedData.getReadCurArrayIndex();
+        int readCurListIndex = preCachedData.getReadCurListIndex();
 
-      while (preCachedData.hasCurrent()) {
-        if (preCachedData.currentValue() != null) {
-          Object peekData = preCachedData.currentValue();
-          preCachedData.resetBatchData(readCurArrayIndex, readCurListIndex);
-          return new Pair<>(preCachedData.currentTime(), peekData);
+        List<AggregateResult> aggregateResults = calcResult(nextStartTime, nextEndTime);
+        if (aggregateResults == null || aggregateResults.get(i).getResult() == null) {
+          return null;
         }
-        preCachedData.next();
+        preCachedData.resetBatchData(readCurArrayIndex, readCurListIndex);
+        return new Pair<>(nextStartTime, aggregateResults.get(i).getResult());
+      } else {
+        List<AggregateResult> aggregateResults = calcResult(nextStartTime, nextEndTime);
+        if (aggregateResults == null || aggregateResults.get(i) == null) {
+          return null;
+        }
+        preCachedData.resetBatchData();
+        return new Pair<>(nextStartTime, aggregateResults.get(i).getResult());
       }
+    } catch (QueryProcessException e) {
+      throw new IOException(e.getMessage(), e);
     }
-    if (reader.hasNextPage()) {
-      preCachedData = reader.nextPage();
-      while (preCachedData.hasCurrent()) {
-        if (preCachedData.currentValue() != null) {
-          Object peekData = preCachedData.currentValue();
-          preCachedData.resetBatchData();
-          return new Pair<>(preCachedData.currentTime(), peekData);
-        }
-        preCachedData.next();
-      }
-    } else if (reader.hasNextChunk()) {
-      if (reader.hasNextPage()) {
-        preCachedData = reader.nextPage();
-        while (preCachedData.hasCurrent()) {
-          if (preCachedData.currentValue() != null) {
-            Object peekData = preCachedData.currentValue();
-            preCachedData.resetBatchData();
-            return new Pair<>(preCachedData.currentTime(), peekData);
-          }
-          preCachedData.next();
-        }
-      }
-    } else if (reader.hasNextFile()) {
-      if (reader.hasNextChunk()) {
-        if (reader.hasNextPage()) {
-          preCachedData = reader.nextPage();
-          while (preCachedData.hasCurrent()) {
-            if (preCachedData.currentValue() != null) {
-              Object peekData = preCachedData.currentValue();
-              preCachedData.resetBatchData();
-              return new Pair<>(preCachedData.currentTime(), peekData);
-            }
-            preCachedData.next();
-          }
-        }
-      }
-    }
-    return null;
   }
 
   private boolean readAndCalcFromChunk(long curStartTime, long curEndTime)

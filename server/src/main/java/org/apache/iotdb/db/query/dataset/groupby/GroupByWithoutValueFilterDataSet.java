@@ -140,7 +140,31 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   @Override
   public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
-    return pathExecutors.get(path).peekNextNotNullValue();
+    Pair<Long, Object> result = null;
+    long nextStartTime, nextEndTime, steps;
+    nextStartTime = curStartTime;
+    nextEndTime = curEndTime;
+    steps = curSteps;
+    do {
+      if (ascending) {
+        nextStartTime = nextStartTime + slidingStep;
+        if (nextStartTime < endTime) {
+          nextEndTime = Math.min(nextStartTime + interval, endTime);
+        } else {
+          return null;
+        }
+      }
+
+      steps--;
+      if (steps > 0) {
+        nextStartTime = slidingStep * (steps - 1) + startTime;
+        nextEndTime = nextStartTime + interval;
+      } else {
+        return null;
+      }
+      result = pathExecutors.get(path).peekNextNotNullValue(i, nextStartTime, nextEndTime);
+    } while (result == null);
+    return result;
   }
 
   protected GroupByExecutor getGroupByExecutor(Path path, Set<String> allSensors,
