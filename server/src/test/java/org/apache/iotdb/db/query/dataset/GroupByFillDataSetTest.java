@@ -104,7 +104,7 @@ public class GroupByFillDataSetTest {
   public void groupByWithValueFilterFillTest() throws Exception {
     QueryPlan queryPlan = (QueryPlan) processor
         .parseSQLToPhysicalPlan(
-            "select last_value(s0) from root.vehicle.* where s1 >= 1  group by ([0,20), 1ms) fill (int32[Previous]) order by time desc");
+            "select last_value(s0) from root.vehicle.* where s1 > 1  group by ([0,20), 1ms) fill (int32[Previous]) order by time desc");
     QueryDataSet dataSet = queryExecutor
         .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     for (int i = 19; i >= 7; i--) {
