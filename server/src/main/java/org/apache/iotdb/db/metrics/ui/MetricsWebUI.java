@@ -47,7 +47,11 @@ public class MetricsWebUI {
     return handlers;
   }
 
+<<<<<<< HEAD
   public void setHandlers(List<ServletContextHandler> handlers) {
+=======
+  public void setHandlers(final List<ServletContextHandler> handlers) {
+>>>>>>> a7e038724... used final keyword to make object unmodifibale
     this.handlers = handlers;
   }
 

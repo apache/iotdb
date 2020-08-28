@@ -55,10 +55,17 @@ public class Role {
   }
 
   public List<PathPrivilege> getPrivilegeList() {
+<<<<<<< HEAD
     return privilegeList;
   }
 
   public void setPrivilegeList(List<PathPrivilege> privilegeList) {
+=======
+    return this.privilegeList;
+  }
+
+  public void setPrivilegeList(final List<PathPrivilege> privilegeList) {
+>>>>>>> a7e038724... used final keyword to make object unmodifibale
     this.privilegeList = privilegeList;
   }
 

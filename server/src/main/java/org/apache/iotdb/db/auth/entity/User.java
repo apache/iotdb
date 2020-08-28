@@ -84,7 +84,11 @@ public class User {
     return privilegeList;
   }
 
+<<<<<<< HEAD
   public void setPrivilegeList(List<PathPrivilege> privilegeList) {
+=======
+  public void setPrivilegeList(final List<PathPrivilege> privilegeList) {
+>>>>>>> a7e038724... used final keyword to make object unmodifibale
     this.privilegeList = privilegeList;
   }
 
@@ -92,7 +96,11 @@ public class User {
     return roleList;
   }
 
+<<<<<<< HEAD
   public void setRoleList(List<String> roleList) {
+=======
+  public void setRoleList(final List<String> roleList) {
+>>>>>>> a7e038724... used final keyword to make object unmodifibale
     this.roleList = roleList;
   }
 

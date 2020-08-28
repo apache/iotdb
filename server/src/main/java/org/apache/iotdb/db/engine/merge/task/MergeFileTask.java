@@ -23,7 +23,10 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
+<<<<<<< HEAD
 import java.util.HashMap;
+=======
+>>>>>>> a7e038724... used final keyword to make object unmodifibale
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -69,8 +72,8 @@ class MergeFileTask {
   private int currentMergeIndex;
   private String currMergeFile;
 
-  MergeFileTask(String taskName, MergeContext context, MergeLogger mergeLogger,
-      MergeResource resource, List<TsFileResource> unmergedSeqFiles) {
+  MergeFileTask(final String taskName, final MergeContext context, final MergeLogger mergeLogger,
+      final MergeResource resource, final List<TsFileResource> unmergedSeqFiles) {
     this.taskName = taskName;
     this.context = context;
     this.mergeLogger = mergeLogger;

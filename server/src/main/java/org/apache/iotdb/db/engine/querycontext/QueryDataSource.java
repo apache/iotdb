@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.engine.querycontext;
 
+<<<<<<< HEAD
+=======
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.read.common.Path;
+
+>>>>>>> a7e038724... used final keyword to make object unmodifibale
 import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -36,7 +42,11 @@ public class QueryDataSource {
    */
   private long dataTTL = Long.MAX_VALUE;
 
+<<<<<<< HEAD
   public QueryDataSource(PartialPath seriesPath, List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
+=======
+  public QueryDataSource(Path seriesPath, final List<TsFileResource> seqResources, final List<TsFileResource> unseqResources) {
+>>>>>>> a7e038724... used final keyword to make object unmodifibale
     this.seriesPath = seriesPath;
     this.seqResources = seqResources;
     this.unseqResources = unseqResources;
