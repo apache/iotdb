@@ -696,25 +696,7 @@ public abstract class RaftMember {
       return;
     }
     Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
-    long waitStart = System.currentTimeMillis();
-    long alreadyWait = 0;
-    // if the peer falls behind too much, wait until it catches up, otherwise there may be too
-    // many client threads in the peer
-    while (peer.getMatchIndex() < log.getCurrLogIndex() - 10
-        && character == NodeCharacter.LEADER
-        && alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
-      synchronized (peer) {
-        try {
-          peer.wait(RaftServer.getWriteOperationTimeoutMS());
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.warn("Waiting for peer to catch up interrupted");
-          return;
-        }
-      }
-      alreadyWait = System.currentTimeMillis() - waitStart;
-    }
-    if (alreadyWait > RaftServer.getWriteOperationTimeoutMS()) {
+    if (!waitForPrevLog(peer, log)) {
       logger.warn("{}: node {} timed out when appending {}", name, node, log);
       return;
     }
@@ -728,6 +710,28 @@ public abstract class RaftMember {
     } else {
       sendLogSync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
     }
+  }
+
+  private boolean waitForPrevLog(Peer peer, Log log) {
+    long waitStart = System.currentTimeMillis();
+    long alreadyWait = 0;
+    // if the peer falls behind too much, wait until it catches up, otherwise there may be too
+    // many client threads in the peer
+    while (peer.getMatchIndex() < log.getCurrLogIndex() - 10
+        && character == NodeCharacter.LEADER
+        && alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
+      synchronized (peer) {
+        try {
+          peer.wait(RaftServer.getWriteOperationTimeoutMS());
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger.warn("Waiting for peer to catch up interrupted");
+          return false;
+        }
+      }
+      alreadyWait = System.currentTimeMillis() - waitStart;
+    }
+    return alreadyWait <= RaftServer.getWriteOperationTimeoutMS();
   }
 
   private void sendLogAsync(Log log, AtomicInteger voteCounter, Node node,
