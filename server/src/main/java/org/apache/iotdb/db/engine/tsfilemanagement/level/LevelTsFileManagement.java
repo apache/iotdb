@@ -525,7 +525,9 @@ public class LevelTsFileManagement extends TsFileManagement {
               } else {
                 unSequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
               }
-              mergeResources.get(i + 1).add(newResource);
+              if (mergeResources.size() > i + 1) {
+                mergeResources.get(i + 1).add(newResource);
+              }
             } finally {
               hotCompactionMergeLock.writeLock().unlock();
             }

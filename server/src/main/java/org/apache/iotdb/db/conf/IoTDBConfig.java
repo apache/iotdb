@@ -256,7 +256,7 @@ public class IoTDBConfig {
   /**
    * TsFile manage strategy, define use which hot compaction strategy
    */
-  private TsFileManagementStrategy tsFileManagementStrategy = TsFileManagementStrategy.LEVEL_STRATEGY;
+  private TsFileManagementStrategy tsFileManagementStrategy = TsFileManagementStrategy.NORMAL_STRATEGY;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max file num of each level. When file
