@@ -248,7 +248,7 @@ public class SessionExample {
     Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
 
     for (long time = 0; time < 100; time++) {
-      int rowIndex = ++tablet.rowSize;
+      int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, time);
       for (int s = 0; s < 3; s++) {
         tablet.addValue(schemaList.get(s), rowIndex, (long) s);
@@ -283,9 +283,9 @@ public class SessionExample {
     tabletMap.put("root.sg1.d3", tablet3);
 
     for (long time = 0; time < 100; time++) {
-      int row1 = ++tablet1.rowSize;
-      int row2 = ++tablet2.rowSize;
-      int row3 = ++tablet3.rowSize;
+      int row1 = tablet1.rowSize++;
+      int row2 = tablet2.rowSize++;
+      int row3 = tablet3.rowSize++;
       tablet1.addTimestamp(row1, time);
       tablet2.addTimestamp(row2, time);
       tablet3.addTimestamp(row3, time);
