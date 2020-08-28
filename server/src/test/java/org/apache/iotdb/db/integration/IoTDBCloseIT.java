@@ -188,6 +188,7 @@ public class IoTDBCloseIT {
         // Although the statement2 has the same sql as statement1, they shouldn't affect each other.
         // So the statement1's ResultSet should also have 9 rows in total.
         Assert.assertEquals(9, cnt1);
+        statement1.close();
         Assert.assertTrue(statement1.isClosed());
       }
 
