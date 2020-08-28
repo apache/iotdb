@@ -90,7 +90,7 @@ public class UnCommittedEntryManager {
     // TODO-Cluster: improve concurrent safety
     try {
       log = entries.get(entryPos);
-    } catch (ArrayIndexOutOfBoundsException e) {
+    } catch (IndexOutOfBoundsException e) {
       return -1;
     }
     if (log.getCurrLogIndex() != index) {
