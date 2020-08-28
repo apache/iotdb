@@ -916,7 +916,7 @@ public class IoTDBSessionIT {
     sessionDataSet.closeOperationHandle();
   }
 
-    private void queryForAlignByDevice()
+  private void queryForAlignByDevice()
       throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet sessionDataSet = session
         .executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");

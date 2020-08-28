@@ -21,7 +21,6 @@ package org.apache.iotdb.db.service;
 import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
 import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
 
-import java.beans.Expression;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -91,10 +90,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
@@ -486,7 +481,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan physicalPlan;
       try {
         physicalPlan =
-                processor.rawDataQueryToPhysicalPlan(strPaths, startTime, endTime ,sessionIdZoneIdMap.get(req.getSessionId()));
+                processor.rawDataQueryToPhysicalPlan(strPaths, startTime, endTime);
       } catch (QueryProcessException | SQLParserException e) {
         logger.info(ERROR_PARSING_SQL, e.getMessage());
         return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
@@ -514,8 +509,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
     }
   }
-
-
 
     @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {

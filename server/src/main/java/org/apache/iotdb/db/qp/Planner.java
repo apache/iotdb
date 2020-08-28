@@ -74,13 +74,17 @@ public class Planner {
     return physicalGenerator.transformToPhysicalPlan(operator);
   }
 
-    public PhysicalPlan rawDataQueryToPhysicalPlan(List<String> paths, long startTime, long endTime, ZoneId zoneId)
+  /**
+   * convert raw data query to physical plan directly
+   */
+  public PhysicalPlan rawDataQueryToPhysicalPlan(List<String> paths, long startTime, long endTime)
           throws QueryProcessException {
-    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY); //select query operator
-
+    //construct query operator and set its global time filter
+    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
     SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
 
+    //iterate the path list and add it to from operator
     for (String p : paths) {
       Path path = new Path(p);
       fromOp.addPrefixTablePath(path);
@@ -90,8 +94,8 @@ public class Planner {
     queryOp.setSelectOperator(selectOp);
     queryOp.setFromOperator(fromOp);
 
+    //set time filter operator
     FilterOperator filterOp = new FilterOperator(SQLConstant.KW_AND);
-
     Path timePath = new Path("time");
     filterOp.setSinglePath(timePath);
     Set<Path> pathSet = new HashSet<>();
@@ -101,7 +105,6 @@ public class Planner {
 
     BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO, timePath, Long.toString(startTime));
     BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHAN, timePath, Long.toString(endTime));
-
     filterOp.addChildOperator(left);
     filterOp.addChildOperator(right);
 
