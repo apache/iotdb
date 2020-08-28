@@ -232,6 +232,20 @@ public class IoTDBSessionIT {
     session.close();
   }
 
+  @Test
+  public void testRawDataQuery() throws IoTDBConnectionException,
+  StatementExecutionException, BatchExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+
+    insertTabletTest2("root.sg1.d1");
+
+    rawDataQuery();
+  }
 
   @Test
   public void testAlignByDevice() throws IoTDBConnectionException,
@@ -876,7 +890,33 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void queryForAlignByDevice()
+  private void rawDataQuery()
+          throws StatementExecutionException, IoTDBConnectionException {
+    List<String> paths = new ArrayList<>();
+    paths.add("root.sg1.d1.*");
+    paths.add("root.sg1.d1.s1");
+    paths.add("root.sg1.d1.s2");
+
+    SessionDataSet sessionDataSet = session
+            .executeRawDataQuery(paths, 100L, 1000L);
+    sessionDataSet.setFetchSize(1024);
+
+    int count = 0;
+    System.out.println(sessionDataSet.getColumnNames());
+    while (sessionDataSet.hasNext()) {
+      count++;
+      StringBuilder sb = new StringBuilder();
+      List<Field> fields = sessionDataSet.next().getFields();
+      for (Field f : fields) {
+        sb.append(f.getStringValue()).append(",");
+      }
+      System.out.println(sb.toString());
+    }
+    Assert.assertEquals(900, count);
+    sessionDataSet.closeOperationHandle();
+  }
+
+    private void queryForAlignByDevice()
       throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet sessionDataSet = session
         .executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");

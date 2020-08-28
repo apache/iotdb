@@ -100,6 +100,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -647,6 +648,7 @@ public class PhysicalGenerator {
     basicOperator.setSinglePath(concatPath);
   }
 
+
   private void deduplicate(QueryPlan queryPlan) throws MetadataException {
     // generate dataType first
     List<Path> paths = queryPlan.getPaths();
@@ -711,6 +713,7 @@ public class PhysicalGenerator {
       }
     }
   }
+
 
   private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit, int seriesOffset)
       throws QueryProcessException {

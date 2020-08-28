@@ -23,9 +23,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.qp.logical.crud.*;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.ParseDriver;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -33,17 +33,26 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
+import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.sql.Struct;
 import java.time.ZoneId;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.function.BinaryOperator;
 
 /**
  * provide a integration method for other user.
  */
 public class Planner {
 
+  private static final Logger logger = LoggerFactory.getLogger(Planner.class);
   protected ParseDriver parseDriver;
 
   public Planner() {
@@ -65,6 +74,43 @@ public class Planner {
     return physicalGenerator.transformToPhysicalPlan(operator);
   }
 
+    public PhysicalPlan rawDataQueryToPhysicalPlan(List<String> paths, long startTime, long endTime, ZoneId zoneId)
+          throws QueryProcessException {
+    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY); //select query operator
+
+    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
+    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+
+    for (String p : paths) {
+      Path path = new Path(p);
+      fromOp.addPrefixTablePath(path);
+    }
+    selectOp.addSelectPath(new Path(""));
+
+    queryOp.setSelectOperator(selectOp);
+    queryOp.setFromOperator(fromOp);
+
+    FilterOperator filterOp = new FilterOperator(SQLConstant.KW_AND);
+
+    Path timePath = new Path("time");
+    filterOp.setSinglePath(timePath);
+    Set<Path> pathSet = new HashSet<>();
+    pathSet.add(timePath);
+    filterOp.setIsSingle(true);
+    filterOp.setPathSet(pathSet);
+
+    BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO, timePath, Long.toString(startTime));
+    BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHAN, timePath, Long.toString(endTime));
+
+    filterOp.addChildOperator(left);
+    filterOp.addChildOperator(right);
+
+    queryOp.setFilterOperator(filterOp);
+
+    SFWOperator op = (SFWOperator) logicalOptimize(queryOp);
+    PhysicalGenerator physicalGenerator = new PhysicalGenerator();
+    return physicalGenerator.transformToPhysicalPlan(op);
+  }
 
   /**
    * given an unoptimized logical operator tree and return a optimized result.

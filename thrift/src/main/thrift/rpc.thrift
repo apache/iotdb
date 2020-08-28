@@ -222,6 +222,16 @@ struct TSDeleteDataReq {
     4: required i64 endTime
 }
 
+struct TSRawDataQueryReq {
+    1: required i64 sessionId
+    2: required list<string> paths
+    3: optional i32 fetchSize
+    4: required i64 startTime
+    5: required i64 endTime
+    6: required i64 statementId
+    7: required string statement
+}
+
 struct TSCreateTimeseriesReq {
   1: required i64 sessionId
   2: required string path
@@ -278,6 +288,8 @@ service TSIService {
 	TSStatus executeBatchStatement(1:TSExecuteBatchStatementReq req);
 
 	TSExecuteStatementResp executeQueryStatement(1:TSExecuteStatementReq req);
+
+	TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 
 	TSExecuteStatementResp executeUpdateStatement(1:TSExecuteStatementReq req);
 
