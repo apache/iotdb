@@ -612,8 +612,8 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
 
-    for (int time = 0; time < 100; time++) {
-      int rowIndex = time;
+    for (int time = 1; time <= 100; time++) {
+      int rowIndex = time-1;
       tablet.addTimestamp(rowIndex, (long) time);
       for (int s = 0; s < 3; s++) {
         tablet.addValue(schemaList.get(s), rowIndex, (long) s);
@@ -818,7 +818,7 @@ public class IoTDBSessionIT {
         tablet.addValue(schemaList.get(s), rowIndex, (long) s);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet, true);
+        session.insertTablet(tablet);
         tablet.reset();
       }
     }
@@ -1089,7 +1089,7 @@ public class IoTDBSessionIT {
         tablet.addValue(schemaList.get(s), rowIndex, (long) s);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet, true);
+        session.insertTablet(tablet);
         tablet.reset();
       }
     }
@@ -1117,7 +1117,7 @@ public class IoTDBSessionIT {
         tablet.addValue(schemaList.get(s), rowIndex, (long) s);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet, true);
+        session.insertTablet(tablet);
         tablet.reset();
       }
     }
