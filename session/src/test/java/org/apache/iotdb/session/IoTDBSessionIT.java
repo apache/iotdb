@@ -611,13 +611,12 @@ public class IoTDBSessionIT {
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
+
     for (int time = 1; time <= 100; time++) {
-      timestamps[time - 1] = time;
-      for (int i = 0; i < 3; i++) {
-        long[] sensor = (long[]) values[i];
-        sensor[time - 1] = i;
+      int rowIndex = time;
+      tablet.addTimestamp(rowIndex, (long) time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s), rowIndex, (long) s);
       }
       tablet.rowSize++;
     }
@@ -812,18 +811,14 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
 
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
-
     for (long time = 0; time < 100; time++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = time;
-      for (int i = 0; i < 3; i++) {
-        long[] sensor = (long[]) values[i];
-        sensor[row] = i;
+      int rowIndex = ++tablet.rowSize;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s), rowIndex, (long) s);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet);
+        session.insertTablet(tablet, true);
         tablet.reset();
       }
     }
@@ -1087,18 +1082,14 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 256);
 
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
-
     for (long time = 0; time < 1000; time++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = time;
-      for (int i = 0; i < 3; i++) {
-        long[] sensor = (long[]) values[i];
-        sensor[row] = i;
+      int rowIndex = ++tablet.rowSize;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s), rowIndex, (long) s);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet);
+        session.insertTablet(tablet, true);
         tablet.reset();
       }
     }
@@ -1119,18 +1110,14 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 200);
 
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
-
     for (long time = 500; time < 1500; time++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = time;
-      for (int i = 0; i < 3; i++) {
-        long[] sensor = (long[]) values[i];
-        sensor[row] = i;
+      int rowIndex = ++tablet.rowSize;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s), rowIndex, (long) s);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet);
+        session.insertTablet(tablet, true);
         tablet.reset();
       }
     }
@@ -1156,15 +1143,11 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 1000);
 
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
-
     for (long time = begin; time < count + begin; time++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = time;
+      int rowIndex = ++tablet.rowSize;
+      tablet.addTimestamp(rowIndex, time);
       for (int i = 0; i < 6; i++) {
-        long[] sensor = (long[]) values[i];
-        sensor[row] = i;
+        tablet.addValue(schemaList.get(i), rowIndex, (long) i);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet);

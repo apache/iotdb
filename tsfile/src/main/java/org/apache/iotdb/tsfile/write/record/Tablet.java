@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write.record;
 
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.*;
 import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -79,6 +80,43 @@ public class Tablet {
    */
   public Tablet(String deviceId, List<MeasurementSchema> timeseries) {
     this(deviceId, timeseries, DEFAULT_SIZE);
+  }
+
+  public void addTimestamp(int rowIndex, long timestamp) {
+    timestamps[rowIndex - 1] = timestamp;
+  }
+
+  public void addValue(MeasurementSchema measurementSchema, int rowIndex, Object value) {
+
+    int indexOfValue = schemas.indexOf(measurementSchema);
+    if (measurementSchema.getType() == INT64) {
+      long[] sensor = (long[]) values[indexOfValue];
+      sensor[rowIndex - 1] = (long) value;
+      values[indexOfValue] = sensor;
+    } else if (measurementSchema.getType() == INT32) {
+      int[] sensor = (int[]) values[indexOfValue];
+      sensor[rowIndex - 1] = (int) value;
+      values[indexOfValue] = sensor;
+    } else if (measurementSchema.getType() == FLOAT) {
+      float[] sensor = (float[]) values[indexOfValue];
+      sensor[rowIndex - 1] = (float) value;
+      values[indexOfValue] = sensor;
+    } else if (measurementSchema.getType() == DOUBLE) {
+      double[] sensor = (double[]) values[indexOfValue];
+      sensor[rowIndex - 1] = (double) value;
+      values[indexOfValue] = sensor;
+    } else if (measurementSchema.getType() == BOOLEAN) {
+      boolean[] sensor = (boolean[]) values[indexOfValue];
+      sensor[rowIndex - 1] = (boolean) value;
+      values[indexOfValue] = sensor;
+    } else if (measurementSchema.getType() == TEXT) {
+      Binary[] sensor = (Binary[]) values[indexOfValue];
+      sensor[rowIndex - 1] = (Binary) value;
+      values[indexOfValue] = sensor;
+    } else {
+      throw new UnSupportedDataTypeException(
+          String.format("Data type %s is not supported.", measurementSchema.getType()));
+    }
   }
 
   /**

@@ -247,15 +247,11 @@ public class SessionExample {
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
 
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
-
     for (long time = 0; time < 100; time++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = time;
-      for (int i = 0; i < 3; i++) {
-        long[] sensor = (long[]) values[i];
-        sensor[row] = i;
+      int rowIndex = ++tablet.rowSize;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s), rowIndex, (long) s);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
@@ -286,31 +282,20 @@ public class SessionExample {
     tabletMap.put("root.sg1.d2", tablet2);
     tabletMap.put("root.sg1.d3", tablet3);
 
-    long[] timestamps1 = tablet1.timestamps;
-    Object[] values1 = tablet1.values;
-    long[] timestamps2 = tablet2.timestamps;
-    Object[] values2 = tablet2.values;
-    long[] timestamps3 = tablet3.timestamps;
-    Object[] values3 = tablet3.values;
-
     for (long time = 0; time < 100; time++) {
-      int row1 = tablet1.rowSize++;
-      int row2 = tablet2.rowSize++;
-      int row3 = tablet3.rowSize++;
-      timestamps1[row1] = time;
-      timestamps2[row2] = time;
-      timestamps3[row3] = time;
+      int row1 = ++tablet1.rowSize;
+      int row2 = ++tablet2.rowSize;
+      int row3 = ++tablet3.rowSize;
+      tablet1.addTimestamp(row1, time);
+      tablet2.addTimestamp(row2, time);
+      tablet3.addTimestamp(row3, time);
       for (int i = 0; i < 3; i++) {
-        long[] sensor1 = (long[]) values1[i];
-        sensor1[row1] = i;
-        long[] sensor2 = (long[]) values2[i];
-        sensor2[row2] = i;
-        long[] sensor3 = (long[]) values3[i];
-        sensor3[row3] = i;
+        tablet1.addValue(schemaList.get(i), row1, (long) i);
+        tablet2.addValue(schemaList.get(i), row2, (long) i);
+        tablet3.addValue(schemaList.get(i), row3, (long) i);
       }
       if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
         session.insertTablets(tabletMap, true);
-
         tablet1.reset();
         tablet2.reset();
         tablet3.reset();
