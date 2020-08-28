@@ -46,6 +46,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -911,6 +912,27 @@ public class Session {
         execResp.columnNameIndexMap,
         execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
         execResp.isIgnoreTimeStamp());
+  }
+
+  public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+          throws StatementExecutionException, IoTDBConnectionException {
+
+    String statement = "raw data query";
+    TSRawDataQueryReq execReq = new TSRawDataQueryReq(sessionId, paths, startTime, endTime, statementId, "");
+    execReq.setFetchSize(fetchSize);
+
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.executeRawDataQuery(execReq);
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet(statement, execResp.getColumns(), execResp.getDataTypeList(),
+            execResp.columnNameIndexMap,
+            execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
+            execResp.isIgnoreTimeStamp());
   }
 
   /**

@@ -115,6 +115,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -501,7 +502,49 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  @Override
+  public TSExecuteStatementResp executeRawDataQuery(TSRawDataQueryReq req) {
+    try {
+      if (!checkLogin(req.getSessionId())) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return RpcUtils.getTSExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
+      }
+      List<String> strPaths = req.getPaths();
+      long startTime = req.getStartTime();
+      long endTime = req.getEndTime();
+
+      PhysicalPlan physicalPlan;
+      try {
+        physicalPlan =
+                processor.rawDataQueryToPhysicalPlan(strPaths, startTime, endTime);
+      } catch (QueryProcessException | SQLParserException e) {
+        logger.info(ERROR_PARSING_SQL, e.getMessage());
+        return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
+      }
+
+      if (!physicalPlan.isQuery()) {
+        return RpcUtils.getTSExecuteStatementResp(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+      }
+
+      return internalExecuteQueryStatement("raw data query", req.statementId, physicalPlan, req.fetchSize,
+              sessionIdUsernameMap.get(req.getSessionId()));
+
+    } catch (ParseCancellationException e) {
+      logger.warn(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
+      return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR,
+              ERROR_PARSING_SQL + e.getMessage());
+    } catch (SQLParserException e) {
+      logger.error("check metadata error: ", e);
+      return RpcUtils.getTSExecuteStatementResp(
+              TSStatusCode.METADATA_ERROR, "Check metadata error: " + e.getMessage());
+    } catch (Exception e) {
+      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return RpcUtils.getTSExecuteStatementResp(
+              RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
+    }
+  }
+
+    @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
