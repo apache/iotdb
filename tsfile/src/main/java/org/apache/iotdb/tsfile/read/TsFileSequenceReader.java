@@ -93,17 +93,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     this(file, true);
   }
 
-  public TsFileSequenceReader (TsFileSequenceReader another) {
-    this.file = another.file;
-    this.tsFileInput = another.tsFileInput;
-    this.fileMetadataPos = another.fileMetadataPos;
-    this.fileMetadataSize = another.fileMetadataSize;
-    this.markerBuffer = another.markerBuffer;
-    this.totalChunkNum = another.totalChunkNum;
-    this.tsFileMetaData = another.tsFileMetaData;
-    this.cachedDeviceMetadata = another.cachedDeviceMetadata;
-    this.cacheDeviceMetadata = another.cacheDeviceMetadata;
-  }
   /**
    * construct function for TsFileSequenceReader.
    *

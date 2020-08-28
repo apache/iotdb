@@ -74,15 +74,6 @@ public class MergeResource {
         .collect(Collectors.toList());
   }
 
-  public MergeResource(MergeResource another) {
-    this.fileReaderCache = another.fileReaderCache;
-    this.fileWriterCache = another.fileWriterCache;
-    this.modificationCache = another.modificationCache;
-    this.measurementSchemaMap = another.measurementSchemaMap;
-    this.chunkWriterCache = another.chunkWriterCache;
-  }
-
-
   private boolean filterResource(TsFileResource res) {
     return !res.isDeleted() && res.stillLives(timeLowerBound);
   }

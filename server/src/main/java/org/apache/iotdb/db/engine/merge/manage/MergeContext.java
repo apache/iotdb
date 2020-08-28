@@ -39,14 +39,6 @@ public class MergeContext {
   private AtomicInteger totalChunkWritten = new AtomicInteger();
   private AtomicLong totalPointWritten = new AtomicLong();
 
-  public MergeContext(MergeContext another) {
-    this.mergedChunkCnt = another.mergedChunkCnt;
-    this.unmergedChunkCnt = another.unmergedChunkCnt;
-    this.unmergedChunkStartTimes = another.unmergedChunkStartTimes;
-    this.totalChunkWritten = another.totalChunkWritten;
-    this.totalPointWritten = another.totalPointWritten;
-  }
-
   public void clear() {
     mergedChunkCnt.clear();
     unmergedChunkCnt.clear();
