@@ -739,14 +739,8 @@ public abstract class RaftMember {
       Peer peer) {
     AsyncClient client = getAsyncClient(node);
     if (client != null) {
-      AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-      handler.setReceiver(node);
-      handler.setVoteCounter(voteCounter);
-      handler.setLeaderShipStale(leaderShipStale);
-      handler.setLog(log);
-      handler.setMember(this);
-      handler.setPeer(peer);
-      handler.setReceiverTerm(newLeaderTerm);
+      AppendNodeEntryHandler handler = getAppendNodeEntryHandler(log, voteCounter, node,
+          leaderShipStale, newLeaderTerm, peer);
       try {
         client.appendEntry(request, handler);
         logger.debug("{} sending a log to {}: {}", name, node, log);
@@ -756,19 +750,26 @@ public abstract class RaftMember {
     }
   }
 
+  private AppendNodeEntryHandler getAppendNodeEntryHandler(Log log, AtomicInteger voteCounter,
+      Node node, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, Peer peer) {
+    AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+    handler.setReceiver(node);
+    handler.setVoteCounter(voteCounter);
+    handler.setLeaderShipStale(leaderShipStale);
+    handler.setLog(log);
+    handler.setMember(this);
+    handler.setPeer(peer);
+    handler.setReceiverTerm(newLeaderTerm);
+    return handler;
+  }
+
   private void sendLogSync(Log log, AtomicInteger voteCounter, Node node,
       AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request,
       Peer peer) {
     Client client = getSyncClient(node);
     if (client != null) {
-      AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-      handler.setReceiver(node);
-      handler.setVoteCounter(voteCounter);
-      handler.setLeaderShipStale(leaderShipStale);
-      handler.setLog(log);
-      handler.setMember(this);
-      handler.setPeer(peer);
-      handler.setReceiverTerm(newLeaderTerm);
+      AppendNodeEntryHandler handler = getAppendNodeEntryHandler(log, voteCounter,
+          node, leaderShipStale, newLeaderTerm, peer);
       try {
         logger.debug("{} sending a log to {}: {}", name, node, log);
         long result = client.appendEntry(request);
@@ -836,13 +837,17 @@ public abstract class RaftMember {
    * @return
    */
   public Client getSyncClient(Node node) {
+    return getSyncClient(syncClientPool, node);
+  }
+
+  private Client getSyncClient(SyncClientPool pool, Node node) {
     if (node == null) {
       return null;
     }
 
     Client client;
     do {
-      client = syncClientPool.getClient(node);
+      client = pool.getClient(node);
       if (client == null) {
         try {
           Thread.sleep(syncClientTimeoutMills);
@@ -862,23 +867,7 @@ public abstract class RaftMember {
    * @return the heartbeat client for the node
    */
   public Client getSyncHeartbeatClient(Node node) {
-    if (node == null) {
-      return null;
-    }
-
-    Client client;
-    do {
-      client = syncHeartbeatClientPool.getClient(node);
-      if (client == null) {
-        try {
-          Thread.sleep(syncClientTimeoutMills);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return null;
-        }
-      }
-    } while (client == null);
-    return client;
+    return getSyncClient(syncHeartbeatClientPool, node);
   }
 
   private boolean isClientReady(AsyncClient client) {
