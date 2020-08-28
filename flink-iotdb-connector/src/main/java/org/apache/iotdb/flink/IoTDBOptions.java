@@ -23,7 +23,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -47,7 +46,7 @@ public class IoTDBOptions implements Serializable {
         this.user = user;
         this.password = password;
         this.storageGroup = storageGroup;
-        this.timeseriesOptionList = new ArrayList<>(timeseriesOptionList);
+        this.timeseriesOptionList = timeseriesOptionList;
     }
 
     public String getHost() {
@@ -91,11 +90,11 @@ public class IoTDBOptions implements Serializable {
     }
 
     public List<TimeseriesOption> getTimeseriesOptionList() {
-        return new ArrayList<>(timeseriesOptionList);
+        return timeseriesOptionList;
     }
 
     public void setTimeseriesOptionList(List<TimeseriesOption> timeseriesOptionList) {
-        this.timeseriesOptionList = new ArrayList<>(timeseriesOptionList);
+        this.timeseriesOptionList = timeseriesOptionList;
     }
 
     public static class TimeseriesOption implements Serializable {

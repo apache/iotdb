@@ -44,11 +44,11 @@ public class MetricsWebUI {
   }
 
   public List<ServletContextHandler> getHandlers() {
-    return new ArrayList<>(handlers);
+    return handlers;
   }
 
   public void setHandlers(List<ServletContextHandler> handlers) {
-    this.handlers = new ArrayList<>(handlers);
+    this.handlers = handlers;
   }
 
   public void initialize() {

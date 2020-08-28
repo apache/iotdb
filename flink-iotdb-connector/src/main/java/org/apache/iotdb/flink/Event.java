@@ -18,9 +18,6 @@
 
 package org.apache.iotdb.flink;
 
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -39,17 +36,17 @@ public class Event {
       List<Object> values) {
     this.device = device;
     this.timestamp = timestamp;
-    this.measurements = new ArrayList<>(measurements);
-    this.types = new ArrayList<>(types);
-    this.values = new ArrayList<>(values);
+    this.measurements = measurements;
+    this.types = types;
+    this.values = values;
   }
 
   public List<TSDataType> getTypes() {
-    return new ArrayList<>(types);
+    return types;
   }
 
   public void setTypes(List<TSDataType> types) {
-    this.types = new ArrayList<>(types);
+    this.types = types;
   }
 
   public String getDevice() {
@@ -61,10 +58,10 @@ public class Event {
   }
 
   public List<String> getMeasurements() {
-    return new ArrayList<>(measurements);
+    return measurements;
   }
 
   public List<Object> getValues() {
-    return new ArrayList<>(values);
+    return values;
   }
 }

@@ -199,10 +199,10 @@ public class TsFileResource {
       throws IOException {
     this.file = file;
     this.deviceToIndex = deviceToIndex;
-    this.startTimes = startTimes.clone();
-    this.endTimes = endTimes.clone();
-    this.chunkMetadataList = new ArrayList<>(chunkMetadataList);
-    this.readOnlyMemChunk = new ArrayList<>(readOnlyMemChunk);
+    this.startTimes = startTimes;
+    this.endTimes = endTimes;
+    this.chunkMetadataList = chunkMetadataList;
+    this.readOnlyMemChunk = readOnlyMemChunk;
     this.originTsFileResource = originTsFileResource;
     generateTimeSeriesMetadata();
   }
@@ -452,11 +452,11 @@ public class TsFileResource {
   }
 
   public long[] getStartTimes() {
-    return startTimes.clone();
+    return startTimes;
   }
 
   public long[] getEndTimes() {
-    return endTimes.clone();
+    return endTimes;
   }
 
   public void clearEndTimes() {
@@ -632,11 +632,11 @@ public class TsFileResource {
   }
 
   protected void setStartTimes(long[] startTimes) {
-    this.startTimes = startTimes.clone();
+    this.startTimes = startTimes;
   }
 
   protected void setEndTimes(long[] endTimes) {
-    this.endTimes = endTimes.clone();
+    this.endTimes = endTimes;
   }
 
   /**

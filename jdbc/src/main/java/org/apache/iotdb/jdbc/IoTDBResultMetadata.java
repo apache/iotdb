@@ -21,7 +21,6 @@ package org.apache.iotdb.jdbc;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.ArrayList;
 import java.util.List;
 
 public class IoTDBResultMetadata implements ResultSetMetaData {
@@ -34,8 +33,8 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
    * Constructor of IoTDBResultMetadata.
    */
   public IoTDBResultMetadata(List<String> columnInfoList, List<String> columnTypeList, boolean ignoreTimestamp) {
-    this.columnInfoList = new ArrayList<>(columnInfoList);
-    this.columnTypeList = new ArrayList<>(columnTypeList);
+    this.columnInfoList = columnInfoList;
+    this.columnTypeList = columnTypeList;
     this.ignoreTimestamp = ignoreTimestamp;
   }
 

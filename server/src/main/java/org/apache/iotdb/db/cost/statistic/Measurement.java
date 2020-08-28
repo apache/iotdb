@@ -436,10 +436,10 @@ public class Measurement implements MeasurementMBean, IService {
   }
 
   public long[] getOperationLatencies() {
-    return operationLatencies.clone();
+    return operationLatencies;
   }
 
   public long[] getOperationCnt() {
-    return operationCnt.clone();
+    return operationCnt;
   }
 }

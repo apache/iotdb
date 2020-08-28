@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.merge.selector;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -31,7 +30,7 @@ public class NaivePathSelector implements IMergePathSelector {
   private int maxSeriesNum;
 
   public NaivePathSelector(List<Path> paths, int maxSeriesNum) {
-    this.paths = new ArrayList<>(paths);
+    this.paths = paths;
     this.maxSeriesNum = maxSeriesNum;
   }
 

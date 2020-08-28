@@ -66,11 +66,11 @@ public class HDFSTSRecord implements Writable {
   }
 
   public List<DataPoint> getDataPointList() {
-    return new ArrayList<>(dataPointList);
+    return dataPointList;
   }
 
   public void setDataPointList(List<DataPoint> dataPointList) {
-    this.dataPointList = new ArrayList<>(dataPointList);
+    this.dataPointList = dataPointList;
   }
 
   public HDFSTSRecord() {

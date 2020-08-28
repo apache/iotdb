@@ -137,7 +137,7 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
 
   @Override
   public void setMeasurementIds(List<String> measurementIds) {
-    this.measurementIds = new ArrayList<>(measurementIds);
+    this.measurementIds = measurementIds;
   }
 
   @Override

@@ -257,28 +257,28 @@ public class LogAnalyzer {
   }
 
   public List<Path> getUnmergedPaths() {
-    return new ArrayList<>(unmergedPaths);
+    return unmergedPaths;
   }
 
   public void setUnmergedPaths(List<Path> unmergedPaths) {
-    this.unmergedPaths = new ArrayList<>(unmergedPaths);
+    this.unmergedPaths = unmergedPaths;
   }
 
   public List<TsFileResource> getUnmergedFiles() {
-    return new ArrayList<>(unmergedFiles);
+    return unmergedFiles;
   }
 
   public void setUnmergedFiles(
       List<TsFileResource> unmergedFiles) {
-    this.unmergedFiles = new ArrayList<>(unmergedFiles);
+    this.unmergedFiles = unmergedFiles;
   }
 
   public List<Path> getMergedPaths() {
-    return new ArrayList<>(mergedPaths);
+    return mergedPaths;
   }
 
   public void setMergedPaths(List<Path> mergedPaths) {
-    this.mergedPaths = new ArrayList<>(mergedPaths);
+    this.mergedPaths = mergedPaths;
   }
 
   public Map<File, Long> getFileLastPositions() {

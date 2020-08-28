@@ -144,6 +144,6 @@ public class TsFileDeserializer {
           throw new TsFileSerDeException("Unknown TypeInfo: " + columnType.getCategory());
       }
     }
-    return new ArrayList<>(row);
+    return row;
   }
 }

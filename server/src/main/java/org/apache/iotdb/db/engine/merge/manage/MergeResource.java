@@ -230,16 +230,16 @@ public class MergeResource {
   }
 
   public void setSeqFiles(List<TsFileResource> seqFiles) {
-    this.seqFiles = new ArrayList<>(seqFiles);
+    this.seqFiles = seqFiles;
   }
 
   public List<TsFileResource> getUnseqFiles() {
-    return new ArrayList<>(unseqFiles);
+    return unseqFiles;
   }
 
   public void setUnseqFiles(
       List<TsFileResource> unseqFiles) {
-    this.unseqFiles = new ArrayList<>(unseqFiles);
+    this.unseqFiles = unseqFiles;
   }
 
   public void removeOutdatedSeqReaders() throws IOException {

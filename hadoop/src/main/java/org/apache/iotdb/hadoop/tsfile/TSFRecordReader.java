@@ -224,7 +224,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
 
   @Override
   public void setReader(TsFileSequenceReader reader) {
-    this.reader = new TsFileSequenceReader(reader);
+    this.reader = reader;
   }
 
   @Override
