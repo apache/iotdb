@@ -769,7 +769,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       case FILL:
         for (Path path : paths) {
           // judge whether as clause is used or not first
-          String column = path.getTsAlias() != null ? path.getTsAlias() : null;
+          String column = path.getTsAlias();
           if (column == null) {
             column = path.getAlias() != null ? path.getFullPathWithAlias() : path.getFullPath();
           }
