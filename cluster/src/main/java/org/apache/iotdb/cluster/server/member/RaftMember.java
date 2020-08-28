@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -214,8 +215,13 @@ public abstract class RaftMember {
     heartBeatService =
         Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
             name + "-HeartbeatThread@" + System.currentTimeMillis()));
-    catchUpService = Executors.newCachedThreadPool();
-    appendLogThreadPool = Executors.newCachedThreadPool();
+    catchUpService =
+        Executors.newCachedThreadPool(new ThreadFactoryBuilder().setNameFormat(getName() +
+            "-CatchUpThread%d").build());
+    appendLogThreadPool =
+        Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 10,
+            new ThreadFactoryBuilder().setNameFormat(getName() +
+        "-AppendLog%d").build());
     asyncThreadPool = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), 100,
         0L, TimeUnit.MILLISECONDS,
         new LinkedBlockingQueue<>());
@@ -690,26 +696,10 @@ public abstract class RaftMember {
       return;
     }
     Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
-//    long waitStart = System.currentTimeMillis();
-//    long alreadyWait = 0;
-//    while (peer.getMatchIndex() < log.getCurrLogIndex() - 1
-//        && character == NodeCharacter.LEADER
-//        && alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
-//      synchronized (peer) {
-//        try {
-//          peer.wait(RaftServer.getWriteOperationTimeoutMS());
-//        } catch (InterruptedException e) {
-//          Thread.currentThread().interrupt();
-//          logger.warn("Waiting for peer to catch up interrupted");
-//          return;
-//        }
-//      }
-//      alreadyWait = System.currentTimeMillis() - waitStart;
-//    }
-//    if (alreadyWait > RaftServer.getWriteOperationTimeoutMS()) {
-//      logger.warn("{}: node {} timed out when appending {}", name, node, log);
-//      return;
-//    }
+    if (!waitForPrevLog(peer, log)) {
+      logger.warn("{}: node {} timed out when appending {}", name, node, log);
+      return;
+    }
 
     if (character != NodeCharacter.LEADER) {
       return;
@@ -722,19 +712,35 @@ public abstract class RaftMember {
     }
   }
 
+  private boolean waitForPrevLog(Peer peer, Log log) {
+    long waitStart = System.currentTimeMillis();
+    long alreadyWait = 0;
+    // if the peer falls behind too much, wait until it catches up, otherwise there may be too
+    // many client threads in the peer
+    while (peer.getMatchIndex() < log.getCurrLogIndex() - 10
+        && character == NodeCharacter.LEADER
+        && alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
+      synchronized (peer) {
+        try {
+          peer.wait(RaftServer.getWriteOperationTimeoutMS());
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger.warn("Waiting for peer to catch up interrupted");
+          return false;
+        }
+      }
+      alreadyWait = System.currentTimeMillis() - waitStart;
+    }
+    return alreadyWait <= RaftServer.getWriteOperationTimeoutMS();
+  }
+
   private void sendLogAsync(Log log, AtomicInteger voteCounter, Node node,
       AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request,
       Peer peer) {
     AsyncClient client = getAsyncClient(node);
     if (client != null) {
-      AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-      handler.setReceiver(node);
-      handler.setVoteCounter(voteCounter);
-      handler.setLeaderShipStale(leaderShipStale);
-      handler.setLog(log);
-      handler.setMember(this);
-      handler.setPeer(peer);
-      handler.setReceiverTerm(newLeaderTerm);
+      AppendNodeEntryHandler handler = getAppendNodeEntryHandler(log, voteCounter, node,
+          leaderShipStale, newLeaderTerm, peer);
       try {
         client.appendEntry(request, handler);
         logger.debug("{} sending a log to {}: {}", name, node, log);
@@ -744,19 +750,26 @@ public abstract class RaftMember {
     }
   }
 
+  private AppendNodeEntryHandler getAppendNodeEntryHandler(Log log, AtomicInteger voteCounter,
+      Node node, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, Peer peer) {
+    AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+    handler.setReceiver(node);
+    handler.setVoteCounter(voteCounter);
+    handler.setLeaderShipStale(leaderShipStale);
+    handler.setLog(log);
+    handler.setMember(this);
+    handler.setPeer(peer);
+    handler.setReceiverTerm(newLeaderTerm);
+    return handler;
+  }
+
   private void sendLogSync(Log log, AtomicInteger voteCounter, Node node,
       AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request,
       Peer peer) {
     Client client = getSyncClient(node);
     if (client != null) {
-      AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-      handler.setReceiver(node);
-      handler.setVoteCounter(voteCounter);
-      handler.setLeaderShipStale(leaderShipStale);
-      handler.setLog(log);
-      handler.setMember(this);
-      handler.setPeer(peer);
-      handler.setReceiverTerm(newLeaderTerm);
+      AppendNodeEntryHandler handler = getAppendNodeEntryHandler(log, voteCounter,
+          node, leaderShipStale, newLeaderTerm, peer);
       try {
         logger.debug("{} sending a log to {}: {}", name, node, log);
         long result = client.appendEntry(request);
@@ -824,13 +837,17 @@ public abstract class RaftMember {
    * @return
    */
   public Client getSyncClient(Node node) {
+    return getSyncClient(syncClientPool, node);
+  }
+
+  private Client getSyncClient(SyncClientPool pool, Node node) {
     if (node == null) {
       return null;
     }
 
     Client client;
     do {
-      client = syncClientPool.getClient(node);
+      client = pool.getClient(node);
       if (client == null) {
         try {
           Thread.sleep(syncClientTimeoutMills);
@@ -850,23 +867,7 @@ public abstract class RaftMember {
    * @return the heartbeat client for the node
    */
   public Client getSyncHeartbeatClient(Node node) {
-    if (node == null) {
-      return null;
-    }
-
-    Client client;
-    do {
-      client = syncHeartbeatClientPool.getClient(node);
-      if (client == null) {
-        try {
-          Thread.sleep(syncClientTimeoutMills);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return null;
-        }
-      }
-    } while (client == null);
-    return client;
+    return getSyncClient(syncHeartbeatClientPool, node);
   }
 
   private boolean isClientReady(AsyncClient client) {
