@@ -89,11 +89,11 @@ public class User {
   }
 
   public List<String> getRoleList() {
-    return new ArrayList<>(roleList);
+    return roleList;
   }
 
   public void setRoleList(List<String> roleList) {
-    this.roleList = new ArrayList<>(roleList);
+    this.roleList = roleList;
   }
 
   public long getLastActiveTime() {
