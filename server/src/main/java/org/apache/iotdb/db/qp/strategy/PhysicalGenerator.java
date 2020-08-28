@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -100,12 +99,12 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.db.service.IoTDB;
 
 
 /**
@@ -421,6 +420,7 @@ public class PhysicalGenerator {
 
       // to record result measurement columns
       List<String> measurements = new ArrayList<>();
+      Map<String, String> measurementAliasMap = new HashMap<>();
       // to check the same measurement of different devices having the same datatype
       // record the data type of each column of result set
       Map<String, TSDataType> columnDataTypeMap = new HashMap<>();
@@ -448,6 +448,10 @@ public class PhysicalGenerator {
           try {
             // remove stars in SELECT to get actual paths
             List<String> actualPaths = getMatchedTimeseries(fullPath.getFullPath());
+            if (suffixPath.getTsAlias() != null && actualPaths.size() >= 2) {
+              throw new QueryProcessException(
+                  "alias '" + suffixPath.getTsAlias() + "' can only be matched with one time series");
+            }
             // for actual non exist path
             if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
               String nonExistMeasurement = fullPath.getMeasurement();
@@ -502,6 +506,11 @@ public class PhysicalGenerator {
                   || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
                 measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
               }
+
+              // It will be optimized after PR# 1496
+              if (suffixPath.getTsAlias() != null) {
+                measurementAliasMap.put(measurementChecked, suffixPath.getTsAlias());
+              }
               // update paths
               paths.add(path);
             }
@@ -533,6 +542,7 @@ public class PhysicalGenerator {
 
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
+      alignByDevicePlan.setMeasurementAliasMap(measurementAliasMap);
       alignByDevicePlan.setDevices(devices);
       alignByDevicePlan.setColumnDataTypeMap(columnDataTypeMap);
       alignByDevicePlan.setMeasurementTypeMap(measurementTypeMap);
@@ -664,11 +674,9 @@ public class PhysicalGenerator {
     if (queryPlan instanceof LastQueryPlan) {
       for (int i = 0; i < paths.size(); i++) {
         Path path = paths.get(i);
-        String column;
-        if (path.getAlias() != null) {
-          column = path.getFullPathWithAlias();
-        } else {
-          column = path.toString();
+        String column = path.getTsAlias();
+        if (column == null) {
+          column = path.getAlias() != null ? path.getFullPathWithAlias() : path.toString();
         }
         if (!columnSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
@@ -689,14 +697,14 @@ public class PhysicalGenerator {
 
     int index = 0;
     for (Pair<Path, Integer> indexedPath : indexedPaths) {
-      String column;
-      if (indexedPath.left.getAlias() != null) {
-        column = indexedPath.left.getFullPathWithAlias();
-      } else {
-        column = indexedPath.left.toString();
-      }
-      if (queryPlan instanceof AggregationPlan) {
-        column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";
+      // judge whether as clause is used or not first
+      String column = indexedPath.left.getTsAlias();
+      if (column == null) {
+        column = indexedPath.left.getAlias() != null ? indexedPath.left.getFullPathWithAlias()
+            : indexedPath.left.toString();
+        if (queryPlan instanceof AggregationPlan) {
+          column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";
+        }
       }
       if (!columnSet.contains(column)) {
         TSDataType seriesType = dataTypes.get(indexedPath.right);

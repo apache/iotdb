@@ -345,9 +345,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
-          List<TSDataType> dataTypes =
-              getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null);
-          resp.setDataType(dataTypes.get(0).toString());
+          resp.setDataType(getSeriesTypesByString(req.getColumnPath()).toString());
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "ALL_COLUMNS":
@@ -761,22 +759,23 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // wide means not align by device
   private void getWideQueryHeaders(
       QueryPlan plan, List<String> respColumns, List<String> columnTypes)
-      throws TException, QueryProcessException, MetadataException {
+      throws TException, MetadataException {
     // Restore column header of aggregate to func(column_name), only
     // support single aggregate function for now
     List<Path> paths = plan.getPaths();
-    List<TSDataType> seriesTypes;
+    List<TSDataType> seriesTypes = new ArrayList<>();
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
         for (Path path : paths) {
-          if (path.getAlias() != null) {
-            respColumns.add(path.getFullPathWithAlias());
-          } else {
-            respColumns.add(path.getFullPath());
+          // judge whether as clause is used or not first
+          String column = path.getTsAlias();
+          if (column == null) {
+            column = path.getAlias() != null ? path.getFullPathWithAlias() : path.getFullPath();
           }
+          respColumns.add(column);
+          seriesTypes.add(getSeriesTypesByString(path.getFullPath()));
         }
-        seriesTypes = getSeriesTypesByString(respColumns, null);
         break;
       case AGGREGATION:
       case GROUPBYTIME:
@@ -788,11 +787,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
         }
         for (int i = 0; i < paths.size(); i++) {
-          if (paths.get(i).getAlias() != null) {
-            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")");
-          } else {
-            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+          Path path = paths.get(i);
+          // judge whether as clause is used or not first
+          String column = path.getTsAlias();
+          if (column == null) {
+            column = path.getAlias() != null
+                ? aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")"
+                : aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")";
           }
+          respColumns.add(column);
         }
         seriesTypes = getSeriesTypesByPath(paths, aggregations);
         break;
@@ -820,6 +823,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     // build column header with constant and non exist column and deduplication
     List<String> measurements = plan.getMeasurements();
+    Map<String, String> measurementAliasMap = plan.getMeasurementAliasMap();
     Map<String, MeasurementType> measurementTypeMap = plan.getMeasurementTypeMap();
     for (String measurement : measurements) {
       TSDataType type = null;
@@ -831,7 +835,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case Constant:
           type = TSDataType.TEXT;
       }
-      respColumns.add(measurement);
+      respColumns.add(measurementAliasMap.getOrDefault(measurement, measurement));
       columnTypes.add(type.toString());
 
       if (!deduplicatedMeasurements.contains(measurement)) {
@@ -1577,8 +1581,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
   }
 
-  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
-      throws MetadataException {
-    return SchemaUtils.getSeriesTypesByString(paths, aggregation);
+  protected TSDataType getSeriesTypesByString(String path) throws MetadataException {
+    return SchemaUtils.getSeriesTypesByString(path);
   }
 }
