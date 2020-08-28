@@ -17,18 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api;
+package org.apache.iotdb.db.query.udf.api.customizer.config;
 
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDAFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public abstract class UDAF extends AggregateResult implements UDF {
+public class UDAFConfigurations extends UDFConfigurations {
 
-  public UDAF() {
-    super(null, AggregationType.UDF);
+  public UDAFConfigurations setOutputDataType(TSDataType outputDataType) {
+    this.outputDataType = outputDataType;
+    return this;
   }
 
-  public abstract void initializeUDF(UDFParameters parameters, UDAFConfigurations configurations);
+  @Override
+  public void check() throws QueryProcessException {
+    super.check();
+  }
 }

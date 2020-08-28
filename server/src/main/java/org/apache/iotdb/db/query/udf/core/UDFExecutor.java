@@ -25,8 +25,9 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDF;
-import org.apache.iotdb.db.query.udf.api.customizer.UDFParameters;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public abstract class UDFExecutor {
@@ -53,6 +54,8 @@ public abstract class UDFExecutor {
   }
 
   abstract public void initializeUDF() throws QueryProcessException;
+
+  abstract public TSDataType getOutputDataType() throws QueryProcessException;
 
   public void finalizeUDF() {
     udf.finalizeUDF();

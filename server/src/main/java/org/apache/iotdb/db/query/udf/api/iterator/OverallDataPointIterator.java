@@ -27,16 +27,16 @@ public interface OverallDataPointIterator extends Iterator {
 
   DataPointIterator getDataPointIterator();
 
-  DataPointBatchIterator getSizeLimitedDataPointBatchIterator(final int batchSize)
+  DataPointBatchIterator getSizeLimitedBatchIterator(final int batchSize)
       throws QueryProcessException;
 
-  DataPointBatchIterator getSizeLimitedDataPointBatchIterator(final int batchSize,
+  DataPointBatchIterator getSizeLimitedBatchIterator(final int batchSize,
       final long displayWindowBegin) throws QueryProcessException;
 
-  DataPointBatchIterator getTimeWindowDataPointBatchIterator(final long timeInterval,
-      final long slidingStep) throws QueryProcessException;
+  DataPointBatchIterator getTimeWindowBatchIterator(final long timeInterval, final long slidingStep)
+      throws QueryProcessException;
 
-  DataPointBatchIterator getTimeWindowDataPointBatchIterator(final long displayWindowBegin,
+  DataPointBatchIterator getTimeWindowBatchIterator(final long displayWindowBegin,
       final long displayWindowEnd, final long timeInterval, final long slidingStep)
       throws QueryProcessException;
 

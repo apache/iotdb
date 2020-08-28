@@ -17,18 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api;
+package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDAFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 
-public abstract class UDAF extends AggregateResult implements UDF {
+public abstract class DataPointBatchIterationStrategy implements IterationStrategy {
 
-  public UDAF() {
-    super(null, AggregationType.UDF);
+  private final int seriesIndex;
+
+  public DataPointBatchIterationStrategy(int seriesIndex) {
+    this.seriesIndex = seriesIndex;
   }
 
-  public abstract void initializeUDF(UDFParameters parameters, UDAFConfigurations configurations);
+  @Override
+  public void check() throws QueryProcessException {
+    if (seriesIndex < 0) {
+      throw new QueryProcessException(
+          String.format("Parameter seriesIndex(%d) can not be negative.", seriesIndex));
+    }
+  }
+
+  public int getSeriesIndex() {
+    return seriesIndex;
+  }
 }

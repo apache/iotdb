@@ -284,7 +284,7 @@ public class ElasticSerializableTVList implements OverallDataPointIterator, Data
   }
 
   @Override
-  public DataPointBatchIterator getSizeLimitedDataPointBatchIterator(final int batchSize)
+  public DataPointBatchIterator getSizeLimitedBatchIterator(final int batchSize)
       throws QueryProcessException {
     if (batchSize <= 0) {
       throw new QueryProcessException("Batch size should be larger than 0.");
@@ -293,7 +293,7 @@ public class ElasticSerializableTVList implements OverallDataPointIterator, Data
   }
 
   @Override
-  public DataPointBatchIterator getSizeLimitedDataPointBatchIterator(final int batchSize,
+  public DataPointBatchIterator getSizeLimitedBatchIterator(final int batchSize,
       final long displayWindowBegin) throws QueryProcessException {
     if (batchSize <= 0) {
       throw new QueryProcessException("Batch size should be larger than 0.");
@@ -410,7 +410,7 @@ public class ElasticSerializableTVList implements OverallDataPointIterator, Data
   }
 
   @Override
-  public DataPointBatchIterator getTimeWindowDataPointBatchIterator(final long timeInterval,
+  public DataPointBatchIterator getTimeWindowBatchIterator(final long timeInterval,
       final long slidingStep) throws QueryProcessException {
     long displayWindowBegin = 0;
     long displayWindowEnd = 0;
@@ -422,12 +422,12 @@ public class ElasticSerializableTVList implements OverallDataPointIterator, Data
     } catch (IOException e) {
       throw new QueryProcessException(e.toString());
     }
-    return getTimeWindowDataPointBatchIterator(displayWindowBegin, displayWindowEnd, timeInterval,
+    return getTimeWindowBatchIterator(displayWindowBegin, displayWindowEnd, timeInterval,
         slidingStep);
   }
 
   @Override
-  public DataPointBatchIterator getTimeWindowDataPointBatchIterator(final long displayWindowBegin,
+  public DataPointBatchIterator getTimeWindowBatchIterator(final long displayWindowBegin,
       final long displayWindowEnd, final long timeInterval, final long slidingStep)
       throws QueryProcessException {
     if (displayWindowEnd < displayWindowBegin) {

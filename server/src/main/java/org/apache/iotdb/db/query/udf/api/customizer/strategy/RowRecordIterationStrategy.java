@@ -17,18 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api;
+package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDAFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+public enum RowRecordIterationStrategy {
 
-public abstract class UDAF extends AggregateResult implements UDF {
-
-  public UDAF() {
-    super(null, AggregationType.UDF);
-  }
-
-  public abstract void initializeUDF(UDFParameters parameters, UDAFConfigurations configurations);
+  FETCH_BY_ROW,
+  FETCH_BY_TIME_WINDOW,
+  FETCH_BY_SIZE_LIMITED_WINDOW,
+  RANDOM_ACCESS_TO_OVERALL_DATA,
 }

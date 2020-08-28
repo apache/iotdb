@@ -17,14 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.customizer;
+package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+public abstract class RowRecordBatchIterationStrategy implements IterationStrategy {
 
-public abstract class UDFConfigurations {
+  private final String tabletName;
 
-  /**
-   *
-   */
-  public abstract void check() throws QueryProcessException;
+  public RowRecordBatchIterationStrategy(String tabletName) {
+    this.tabletName = tabletName;
+  }
+
+  public String getTabletName() {
+    return tabletName;
+  }
 }

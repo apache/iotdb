@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.db.query.udf.core;
 
-import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.customizer.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class UDTFExecutor extends UDFExecutor {
@@ -50,7 +49,8 @@ public class UDTFExecutor extends UDFExecutor {
     return configurations;
   }
 
-  public List<TSDataType> getResultTypes() throws QueryProcessException {
-    return getConfigurations().getOutputDataTypes();
+  @Override
+  public TSDataType getOutputDataType() throws QueryProcessException {
+    return getConfigurations().getOutputDataType();
   }
 }

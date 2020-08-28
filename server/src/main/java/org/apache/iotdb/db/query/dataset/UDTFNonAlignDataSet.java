@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,17 +32,17 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 public class UDTFNonAlignDataSet extends UDTFDataSet {
 
   // execute with value filter
-  public UDTFNonAlignDataSet(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
-      TimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries,
-      List<Boolean> cached) {
-    super(deduplicatedPaths, deduplicatedDataTypes, timestampGenerator, readersOfSelectedSeries,
-        cached);
+  public UDTFNonAlignDataSet(UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
+      List<TSDataType> deduplicatedDataTypes, TimeGenerator timestampGenerator,
+      List<IReaderByTimestamp> readersOfSelectedSeries, List<Boolean> cached) {
+    super(udtfPlan, deduplicatedPaths, deduplicatedDataTypes, timestampGenerator,
+        readersOfSelectedSeries, cached);
   }
 
   // execute without value filter
-  public UDTFNonAlignDataSet(List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
-      List<ManagedSeriesReader> readersOfSelectedSeries) {
-    super(deduplicatedPaths, deduplicatedDataTypes, readersOfSelectedSeries);
+  public UDTFNonAlignDataSet(UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
+      List<TSDataType> deduplicatedDataTypes, List<ManagedSeriesReader> readersOfSelectedSeries) {
+    super(udtfPlan, deduplicatedPaths, deduplicatedDataTypes, readersOfSelectedSeries);
   }
 
   @Override

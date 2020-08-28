@@ -36,14 +36,17 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 public class UDTFQueryExecutor extends RawDataQueryExecutor {
 
+  protected final UDTFPlan udtfPlan;
+
   public UDTFQueryExecutor(UDTFPlan udtfPlan) {
     super(udtfPlan);
+    this.udtfPlan = udtfPlan;
   }
 
   public QueryDataSet executeWithoutValueFilterAlignByTime(QueryContext context,
       RawDataQueryPlan queryPlan) throws StorageEngineException, QueryProcessException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context, queryPlan);
-    return new UDTFAlignByTimeDataSet(deduplicatedPaths, deduplicatedDataTypes,
+    return new UDTFAlignByTimeDataSet(udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
         readersOfSelectedSeries);
   }
 
@@ -54,14 +57,14 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
         timestampGenerator.hasOrNode());
     List<IReaderByTimestamp> readersOfSelectedSeries = initSeriesReaderByTimestamp(context,
         queryPlan, cached);
-    return new UDTFAlignByTimeDataSet(deduplicatedPaths, deduplicatedDataTypes, timestampGenerator,
-        readersOfSelectedSeries, cached);
+    return new UDTFAlignByTimeDataSet(udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
+        timestampGenerator, readersOfSelectedSeries, cached);
   }
 
   public QueryDataSet executeWithoutValueFilterNonAlign(QueryContext context,
       RawDataQueryPlan queryPlan) throws QueryProcessException, StorageEngineException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context, queryPlan);
-    return new UDTFNonAlignDataSet(deduplicatedPaths, deduplicatedDataTypes,
+    return new UDTFNonAlignDataSet(udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
         readersOfSelectedSeries);
   }
 
@@ -72,7 +75,7 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
         timestampGenerator.hasOrNode());
     List<IReaderByTimestamp> readersOfSelectedSeries = initSeriesReaderByTimestamp(context,
         queryPlan, cached);
-    return new UDTFNonAlignDataSet(deduplicatedPaths, deduplicatedDataTypes, timestampGenerator,
-        readersOfSelectedSeries, cached);
+    return new UDTFNonAlignDataSet(udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
+        timestampGenerator, readersOfSelectedSeries, cached);
   }
 }

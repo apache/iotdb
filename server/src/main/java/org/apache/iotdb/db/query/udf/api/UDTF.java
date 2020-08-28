@@ -22,8 +22,8 @@ package org.apache.iotdb.db.query.udf.api;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.query.udf.api.collector.DataPointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.iterator.Iterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -36,8 +36,8 @@ public abstract class UDTF implements UDF {
   protected List<Path> paths;
   protected List<TSDataType> dataTypes;
 
-  protected List<Iterator> columnDataGenerators;
-  protected Map<String, Iterator> rowDataGenerators;
+  protected List<Iterator> dataPointIterators;
+  protected Map<String, Iterator> rowRecordIterators;
 
   protected DataPointCollector collector;
 
@@ -63,12 +63,12 @@ public abstract class UDTF implements UDF {
     this.dataTypes = dataTypes;
   }
 
-  public final void setColumnDataGenerators(List<Iterator> columnDataGenerators) {
-    this.columnDataGenerators = columnDataGenerators;
+  public final void setDataPointIterators(List<Iterator> dataPointIterators) {
+    this.dataPointIterators = dataPointIterators;
   }
 
-  public final void setRowDataGenerators(Map<String, Iterator> rowDataGenerators) {
-    this.rowDataGenerators = rowDataGenerators;
+  public final void setRowRecordIterators(Map<String, Iterator> rowRecordIterators) {
+    this.rowRecordIterators = rowRecordIterators;
   }
 
   public final void setCollector(DataPointCollector collector) {

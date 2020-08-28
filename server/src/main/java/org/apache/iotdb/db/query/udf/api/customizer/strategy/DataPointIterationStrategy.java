@@ -17,28 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.customizer;
+package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+public enum DataPointIterationStrategy {
 
-public class UDAFConfigurations extends UDFConfigurations {
-
-  /**
-   *
-   */
-  protected TSDataType outputDataType;
-
-  public TSDataType getOutputDataType() {
-    return outputDataType;
-  }
-
-  public UDAFConfigurations setOutputDataType(TSDataType outputDataType) {
-    this.outputDataType = outputDataType;
-    return this;
-  }
-
-  @Override
-  public void check() {
-
-  }
+  FETCH_BY_POINT,
+  FETCH_BY_TIME_WINDOW,
+  FETCH_BY_SIZE_LIMITED_WINDOW,
+  RANDOM_ACCESS_TO_OVERALL_DATA,
 }
