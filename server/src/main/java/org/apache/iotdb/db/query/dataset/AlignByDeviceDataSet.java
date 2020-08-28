@@ -90,18 +90,22 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       case GROUPBYTIME:
         this.dataSetType = DataSetType.GROUPBYTIME;
         this.groupByTimePlan = alignByDevicePlan.getGroupByTimePlan();
+        this.groupByTimePlan.setAscending(alignByDevicePlan.isAscending());
         break;
       case AGGREGATION:
         this.dataSetType = DataSetType.AGGREGATE;
         this.aggregationPlan = alignByDevicePlan.getAggregationPlan();
+        this.aggregationPlan.setAscending(alignByDevicePlan.isAscending());
         break;
       case FILL:
         this.dataSetType = DataSetType.FILL;
         this.fillQueryPlan = alignByDevicePlan.getFillQueryPlan();
+        this.fillQueryPlan.setAscending(alignByDevicePlan.isAscending());
         break;
       default:
         this.dataSetType = DataSetType.QUERY;
         this.rawDataQueryPlan = new RawDataQueryPlan();
+        this.rawDataQueryPlan.setAscending(alignByDevicePlan.isAscending());
     }
 
     this.curDataSetInitialized = false;

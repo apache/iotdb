@@ -52,6 +52,6 @@ public class ListDataSet extends QueryDataSet {
   }
 
   public void sortByTime() {
-    records.sort(Comparator.comparingLong(RowRecord::getTimestamp));
+    records.sort(((o1, o2) -> Long.compare(o2.getTimestamp(), o1.getTimestamp())));
   }
 }

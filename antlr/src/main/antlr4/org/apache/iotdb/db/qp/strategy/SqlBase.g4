@@ -102,7 +102,7 @@ selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
     | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
-    | lastClause orderByTimeClause?  #lastElement
+    | lastClause  #lastElement
     ;
 
 functionCall
@@ -206,7 +206,7 @@ fromClause
     ;
 
 specialClause
-    : specialLimit
+    : specialLimit? orderByTimeClause?
     | groupByTimeClause specialLimit? orderByTimeClause?
     | groupByFillClause specialLimit? orderByTimeClause?
     | orderByTimeClause? specialLimit?

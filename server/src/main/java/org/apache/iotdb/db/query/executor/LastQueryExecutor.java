@@ -98,12 +98,12 @@ public class LastQueryExecutor {
         resultRecord.addField(valueField);
 
         dataSet.putRecord(resultRecord);
-        if (lastQueryPlan.isAscending()) {
-          dataSet.sortByTime();
-        }
       }
     }
 
+    if (!lastQueryPlan.isAscending()) {
+      dataSet.sortByTime();
+    }
     return dataSet;
   }
 
