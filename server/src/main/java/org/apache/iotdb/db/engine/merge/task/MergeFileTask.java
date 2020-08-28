@@ -23,12 +23,12 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
@@ -152,9 +152,7 @@ class MergeFileTask {
       TsFileIOWriter oldFileWriter = getOldFileWriter(seqFile);
 
       // filter the chunks that have been merged
-      oldFileWriter.filterChunks(
-          context.getUnmergedChunkStartTimes().get(seqFile).entrySet().stream()
-              .collect(Collectors.toMap(Entry::getKey, Map.Entry::getValue))
+      oldFileWriter.filterChunks(new HashMap<>(context.getUnmergedChunkStartTimes().get(seqFile))
       );
 
       RestorableTsFileIOWriter newFileWriter = resource.getMergeFileWriter(seqFile);
