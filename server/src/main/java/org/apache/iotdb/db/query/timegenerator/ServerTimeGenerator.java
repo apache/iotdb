@@ -67,9 +67,8 @@ public class ServerTimeGenerator extends TimeGenerator {
     try {
       Filter filter = expression.getFilter();
       PartialPath path = new PartialPath(expression.getSeriesPath().getFullPath());
-      TSDataType dataType;
+      TSDataType dataType = IoTDB.metaManager.getSeriesType(path);
       QueryDataSource queryDataSource;
-      dataType = IoTDB.metaManager.getSeriesType(path);
       queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, filter);
       // update filter by TTL
       filter = queryDataSource.updateFilterUsingTTL(filter);
