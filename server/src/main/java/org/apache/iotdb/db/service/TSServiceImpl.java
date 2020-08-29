@@ -1461,6 +1461,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.attributesList == null ? null : req.attributesList.get(i),
           req.measurementAliasList == null ? null : req.measurementAliasList.get(i));
 
+      System.out.println();
       TSStatus status = checkPathValidity(req.paths.get(i));
       if (status != null) {
         // path naming is not valid
