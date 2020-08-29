@@ -625,8 +625,8 @@ public class IoTDBSessionIT {
     for (int time = 101; time <= 200; time++) {
       int rowIndex = time - 1;
       tablet.addTimestamp(rowIndex, time);
+      long value = 0;
       for (int s = 0; s < 3; s++) {
-        long value = 0;
         tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
         value++;
       }
@@ -825,9 +825,9 @@ public class IoTDBSessionIT {
 
     for (long time = 0; time < 100; time++) {
       int rowIndex = tablet.rowSize++;
+      long value = 0;
       tablet.addTimestamp(rowIndex, time);
       for (int s = 0; s < 3; s++) {
-        long value = 0;
         tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
         value++;
       }
@@ -1119,9 +1119,9 @@ public class IoTDBSessionIT {
 
     for (long time = 1000; time < 2000; time++) {
       int rowIndex = tablet.rowSize++;
+      long value = 0;
       tablet.addTimestamp(rowIndex, time);
       for (int s = 0; s < 3; s++) {
-        long value = 0;
         tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
         value++;
       }
@@ -1170,9 +1170,9 @@ public class IoTDBSessionIT {
 
     for (long time = 500; time < 1500; time++) {
       int rowIndex = tablet.rowSize++;
+      long value = 0;
       tablet.addTimestamp(rowIndex, time);
       for (int s = 0; s < 3; s++) {
-        long value = 0;
         tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
         value++;
       }
@@ -1226,9 +1226,9 @@ public class IoTDBSessionIT {
 
     for (long time = begin; time < count + begin; time++) {
       int rowIndex = tablet.rowSize++;
+      long value = 0;
       tablet.addTimestamp(rowIndex, time);
       for (int i = 0; i < 6; i++) {
-        long value = 0;
         tablet.addValue(schemaList.get(i).getMeasurementId(), rowIndex, value);
         value++;
       }
