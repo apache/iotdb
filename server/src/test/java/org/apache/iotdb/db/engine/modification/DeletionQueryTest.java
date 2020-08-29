@@ -252,6 +252,7 @@ public class DeletionQueryTest {
     dataTypes.add(dataType);
     dataTypes.add(dataType);
 
+    System.out.println();
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPaths(pathList);
