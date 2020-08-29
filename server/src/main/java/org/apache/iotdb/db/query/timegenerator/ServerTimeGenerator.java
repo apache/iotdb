@@ -68,8 +68,8 @@ public class ServerTimeGenerator extends TimeGenerator {
       Filter filter = expression.getFilter();
       PartialPath path = new PartialPath(expression.getSeriesPath().getFullPath());
       TSDataType dataType = IoTDB.metaManager.getSeriesType(path);
-      QueryDataSource queryDataSource;
-      queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, filter);
+      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
+          .getQueryDataSource(path, context, filter);
       // update filter by TTL
       filter = queryDataSource.updateFilterUsingTTL(filter);
       return new SeriesRawDataBatchReader(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource, null, filter, null);
