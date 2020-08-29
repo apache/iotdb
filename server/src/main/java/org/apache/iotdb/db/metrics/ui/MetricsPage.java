@@ -47,24 +47,16 @@ public class MetricsPage {
   public String render() {
     String html = "";
     String tmpStr = "";
-    InputStream is = null;
-    BufferedReader br = null;
     try {
       URL resource = MetricsPage.class.getClassLoader().getResource("iotdb/ui/static/index.html");
-      is = resource.openStream();
-      br = new BufferedReader(new InputStreamReader(is));
-      while ((tmpStr = br.readLine()) != null) {
-        html += tmpStr;
+      try (InputStream is = resource.openStream();
+           BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+        while ((tmpStr = br.readLine()) != null) {
+          html += tmpStr;
+        }
       }
     } catch (IOException e) {
       logger.error("Response page failed", e);
-    } finally {
-      try {
-        is.close();
-        br.close();
-      } catch (IOException e) {
-        logger.error("Failed when closing resources", e);
-      }
     }
     html = html.replace("{version}", IoTDBConstant.VERSION);
     
