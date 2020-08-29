@@ -22,8 +22,9 @@ package org.apache.iotdb.cluster.log.manage;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogApplier;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Test;
 
@@ -64,11 +66,11 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
       manager.commitTo(10, false);
       manager.setMaxHaveAppliedCommitIndex(manager.getCommitLogIndex());
 
-      List<Path> storageGroups = new ArrayList<>();
+      Map<Path, List<Pair<Long, Boolean>>> storageGroupPartitionIds = new HashMap<>();
       // create files for sgs
       for (int i = 1; i < 4; i++) {
         String sg = TestUtils.getTestSg(i);
-        storageGroups.add(new Path(sg));
+        storageGroupPartitionIds.put(new Path(sg), null);
         for (int j = 0; j < 4; j++) {
           // closed files
           prepareData(i, j * 10, 10);
@@ -78,7 +80,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
         prepareData(i, 40, 10);
       }
 
-      FlushPlan plan = new FlushPlan(null, true, storageGroups);
+      FlushPlan plan = new FlushPlan(null, true, storageGroupPartitionIds);
       PlanExecutor executor = new PlanExecutor();
       executor.processNonQuery(plan);
 

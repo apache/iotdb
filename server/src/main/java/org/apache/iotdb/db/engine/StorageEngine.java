@@ -72,8 +72,8 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -423,7 +423,15 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void asyncCloseProcessor(String storageGroupName, long partitionId, boolean isSeq)
+  /**
+   * @param storageGroupName the storage group name
+   * @param partitionId      the partition id
+   * @param isSeq            is sequence tsfile or unsequence tsfile
+   * @param isSync           close tsfile synchronously or asynchronously
+   * @throws StorageGroupNotSetException
+   */
+  public void closeProcessor(String storageGroupName, long partitionId, boolean isSeq,
+      boolean isSync)
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupName);
     if (processor != null) {
@@ -437,7 +445,11 @@ public class StorageEngine implements IService {
       try {
         for (TsFileProcessor tsfileProcessor : processors) {
           if (tsfileProcessor.getTimeRangeId() == partitionId) {
-            processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+            if (isSync) {
+              processor.syncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+            } else {
+              processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+            }
             break;
           }
         }
@@ -688,6 +700,26 @@ public class StorageEngine implements IService {
 
   public ConcurrentHashMap<String, StorageGroupProcessor> getProcessorMap() {
     return processorMap;
+  }
+
+  public Map<String, List<Pair<Long, Boolean>>> getStorageGroupPartitions() {
+    Map<String, List<Pair<Long, Boolean>>> res = new ConcurrentHashMap<>();
+    for (Entry<String, StorageGroupProcessor> entry : processorMap.entrySet()) {
+      List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
+      StorageGroupProcessor processor = entry.getValue();
+      for (TsFileProcessor tsFileProcessor : processor.getWorkSequenceTsFileProcessors()) {
+        Pair<Long, Boolean> tmpPair = new Pair(tsFileProcessor.getTimeRangeId(), true);
+        partitionIdList.add(tmpPair);
+      }
+
+      for (TsFileProcessor tsFileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+        Pair<Long, Boolean> tmpPair = new Pair(tsFileProcessor.getTimeRangeId(), false);
+        partitionIdList.add(tmpPair);
+      }
+
+      res.put(entry.getKey(), partitionIdList);
+    }
+    return res;
   }
 
   @TestOnly

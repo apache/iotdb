@@ -147,11 +147,11 @@ public abstract class RaftLogManager {
 
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
 
-    deleteLogExecutorService = new ScheduledThreadPoolExecutor(1,
+    this.deleteLogExecutorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
             .build());
 
-    checkLogApplierExecutorService = new ScheduledThreadPoolExecutor(1,
+    this.checkLogApplierExecutorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("check-log-applier-%d").daemon(true)
             .build());
     /**
@@ -160,14 +160,14 @@ public abstract class RaftLogManager {
     int logDeleteCheckIntervalSecond = ClusterDescriptor.getInstance().getConfig()
         .getLogDeleteCheckIntervalSecond();
 
-    deleteLogFuture = deleteLogExecutorService
+    this.deleteLogFuture = deleteLogExecutorService
         .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
             logDeleteCheckIntervalSecond,
             TimeUnit.SECONDS);
 
-    checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
+    this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
 
-    logApplierExecutor = Executors.newSingleThreadExecutor();
+    this.logApplierExecutor = Executors.newSingleThreadExecutor();
 
     /**
      * flush log to file periodically
@@ -184,7 +184,7 @@ public abstract class RaftLogManager {
           .scheduleAtFixedRate(this::flushLogPeriodically, logFlushTimeIntervalMS,
               logFlushTimeIntervalMS, TimeUnit.MILLISECONDS);
 
-      applyAllCommittedLogWhenStartUp();
+      this.applyAllCommittedLogWhenStartUp();
     }
   }
 
@@ -683,6 +683,11 @@ public abstract class RaftLogManager {
     this.maxHaveAppliedCommitIndex = maxHaveAppliedCommitIndex;
   }
 
+  @TestOnly
+  public void setLogApplierExecutor(ExecutorService logApplierExecutor) {
+    this.logApplierExecutor = logApplierExecutor;
+  }
+
   public void close() {
     getStableEntryManager().close();
     if (deleteLogExecutorService != null) {
@@ -721,6 +726,13 @@ public abstract class RaftLogManager {
     }
     if (logApplierExecutor != null) {
       logApplierExecutor.shutdown();
+      try {
+        logApplierExecutor.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("log applier log thread still doesn't exit after 30s.");
+        Thread.currentThread().interrupt();
+      }
+      logApplierExecutor = null;
     }
   }
 

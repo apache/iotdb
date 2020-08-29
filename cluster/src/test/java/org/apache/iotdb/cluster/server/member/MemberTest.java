@@ -31,16 +31,19 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
+import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
-import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.config.ConsistencyLevel;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.log.applier.DataLogApplier;
+import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -53,7 +56,6 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -186,9 +188,24 @@ public class MemberTest {
     newMember.setMetaGroupMember(testMetaMember);
     newMember.setLeader(node);
     newMember.setCharacter(NodeCharacter.LEADER);
-    newMember.setLogManager(new TestPartitionedLogManager());
+    newMember
+        .setLogManager(
+            getLogManager(partitionTable.getHeaderGroup(TestUtils.getNode(0)), newMember));
+    newMember
+        .getLogManager().setLogApplierExecutor(Executors.newSingleThreadExecutor());
+
     newMember.setAppendLogThreadPool(testThreadPool);
     return newMember;
+  }
+
+  private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup,
+      DataGroupMember dataGroupMember) {
+    return new TestPartitionedLogManager(new DataLogApplier(testMetaMember, dataGroupMember),
+        testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot::new) {
+      @Override
+      public void takeSnapshot() {
+      }
+    };
   }
 
   protected MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
@@ -220,7 +237,7 @@ public class MemberTest {
 
       @Override
       public DataGroupMember getLocalDataMember(Node header, AsyncMethodCallback resultHandler,
-                                                Object request) {
+          Object request) {
         return getDataGroupMember(header);
       }
 

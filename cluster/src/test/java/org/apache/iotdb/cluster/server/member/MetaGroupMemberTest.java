@@ -54,7 +54,6 @@ import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
@@ -295,7 +294,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-        public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+      public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
         return new TestAsyncDataClient(node, dataGroupMemberMap);
       }
 
@@ -481,8 +480,12 @@ public class MetaGroupMemberTest extends MemberTest {
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }
+    try {
+      Thread.sleep(1_000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     ExecutorService testThreadPool = Executors.newFixedThreadPool(4);
-    testMetaMember.setAppendLogThreadPool(testThreadPool);
     testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
 
     StorageGroupProcessor processor =
@@ -509,6 +512,14 @@ public class MetaGroupMemberTest extends MemberTest {
       }).start();
 
       System.out.println("Close the first file");
+
+      //wait all log applied
+      try {
+        Thread.sleep(2_000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+
       testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
       assertTrue(processor.getWorkSequenceTsFileProcessors().isEmpty());
 
@@ -523,6 +534,12 @@ public class MetaGroupMemberTest extends MemberTest {
       System.out.println("Close the second file");
       dummyResponse.set(100);
       testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
+      //wait all log applied
+      try {
+        Thread.sleep(2_000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
       assertFalse(processor.getWorkSequenceTsFileProcessors().isEmpty());
     } finally {
       RaftServer.setConnectionTimeoutInMS(prevTimeout);
@@ -1117,6 +1134,12 @@ public class MetaGroupMemberTest extends MemberTest {
     testMetaMember.setLeader(testMetaMember.getThisNode());
     testMetaMember.setCharacter(LEADER);
     doRemoveNode(resultRef, testMetaMember.getThisNode());
+    // wait all log is applied
+    try {
+      Thread.sleep(2_000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(testMetaMember.getAllNodes().contains(testMetaMember.getThisNode()));
   }
@@ -1128,6 +1151,12 @@ public class MetaGroupMemberTest extends MemberTest {
     testMetaMember.setLeader(TestUtils.getNode(40));
     testMetaMember.setCharacter(FOLLOWER);
     doRemoveNode(resultRef, TestUtils.getNode(40));
+    // wait all log is applied
+    try {
+      Thread.sleep(2_000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(40)));
     assertEquals(ELECTOR, testMetaMember.getCharacter());
@@ -1141,6 +1170,11 @@ public class MetaGroupMemberTest extends MemberTest {
     testMetaMember.setLeader(TestUtils.getNode(40));
     testMetaMember.setCharacter(FOLLOWER);
     doRemoveNode(resultRef, TestUtils.getNode(20));
+    try {
+      Thread.sleep(2_000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(20)));
     assertEquals(0, testMetaMember.getLastHeartbeatReceivedTime());
@@ -1153,6 +1187,11 @@ public class MetaGroupMemberTest extends MemberTest {
     testMetaMember.setLeader(testMetaMember.getThisNode());
     testMetaMember.setCharacter(LEADER);
     doRemoveNode(resultRef, TestUtils.getNode(20));
+    try {
+      Thread.sleep(2_000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(20)));
     System.out.println("Checking exiled node in testRemoveNodeAsLeader()");
@@ -1190,11 +1229,21 @@ public class MetaGroupMemberTest extends MemberTest {
       testMetaMember.setLeader(testMetaMember.getThisNode());
       doRemoveNode(resultRef, TestUtils.getNode(90 - i * 10));
       assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
+      try {
+        Thread.sleep(1_000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
       assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(90 - i * 10)));
     }
     AtomicReference<Long> resultRef = new AtomicReference<>();
     testMetaMember.setCharacter(LEADER);
     doRemoveNode(resultRef, TestUtils.getNode(10));
+    try {
+      Thread.sleep(1_000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     assertEquals(Response.RESPONSE_CLUSTER_TOO_SMALL, (long) resultRef.get());
     assertTrue(testMetaMember.getAllNodes().contains(TestUtils.getNode(10)));
   }

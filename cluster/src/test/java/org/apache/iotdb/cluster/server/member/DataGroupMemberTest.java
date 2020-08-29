@@ -217,7 +217,9 @@ public class DataGroupMemberTest extends MemberTest {
         }
       }
     };
-    dataGroupMember.setLogManager(getLogManager(nodes, dataGroupMember));
+    PartitionedSnapshotLogManager logManager = getLogManager(nodes, dataGroupMember);
+    logManager.setLogApplierExecutor(Executors.newCachedThreadPool());
+    dataGroupMember.setLogManager(logManager);
     dataGroupMember.setLeader(node);
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     dataGroupMember.setAppendLogThreadPool(testThreadPool);
@@ -502,7 +504,7 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testLeaderExecuteNonQuery() {
+  public void testLeaderExecuteNonQuery() throws QueryProcessException {
     System.out.println("Start testLeaderExecuteNonQuery()");
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
@@ -515,9 +517,13 @@ public class DataGroupMemberTest extends MemberTest {
             timeseriesSchema.getType(), timeseriesSchema.getEncodingType(),
             timeseriesSchema.getCompressor(), timeseriesSchema.getProps(),
             Collections.emptyMap(), Collections.emptyMap(), null);
+    testMetaMember = super.getMetaGroupMember(TestUtils.getNode(0));
+    testMetaMember.setPartitionTable(partitionTable);
+    dataGroupMember.setLogManager(
+        getLogManager(partitionTable.getHeaderGroup(TestUtils.getNode(0)), dataGroupMember));
+    dataGroupMember.getLogManager().setLogApplierExecutor(Executors.newSingleThreadExecutor());
     assertEquals(200, dataGroupMember.executeNonQuery(createTimeSeriesPlan).code);
     assertTrue(IoTDB.metaManager.isPathExist(timeseriesSchema.getFullPath()));
-
     testThreadPool.shutdownNow();
   }
 

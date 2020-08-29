@@ -19,8 +19,17 @@
 
 package org.apache.iotdb.db.qp.plan;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
@@ -32,16 +41,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-import static org.junit.Assert.assertEquals;
 
 public class SerializationTest {
 
@@ -92,16 +95,22 @@ public class SerializationTest {
 
   @Test
   public void testFlush() throws IOException {
-    List<Path> storageGroups = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      storageGroups.add(new Path("path_" + i));
-    }
+    Map<Path, List<Pair<Long, Boolean>>> storageGroupPartitionIds = new HashMap<>();
 
     Boolean isSeqArray[] = new Boolean[]{null, true};
     boolean isSyncArray[] = new boolean[]{true, false};
+    Random random = new Random();
+    for (int i = 0; i < 10; i++) {
+      List<Pair<Long, Boolean>> partitionIdPairs = new ArrayList<>();
+      for (int j = 0; j < 10; j++) {
+        partitionIdPairs.add(new Pair<Long, Boolean>((long) i + j, isSyncArray[random.nextInt(1)]));
+      }
+
+      storageGroupPartitionIds.put(new Path("path_" + i), partitionIdPairs);
+    }
     for (Boolean isSeq : isSeqArray) {
       for (boolean isSync : isSyncArray) {
-        FlushPlan plan = new FlushPlan(isSeq, isSync, storageGroups);
+        FlushPlan plan = new FlushPlan(isSeq, isSync, storageGroupPartitionIds);
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -109,6 +118,8 @@ public class SerializationTest {
           ByteBuffer buffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
           FlushPlan planB = (FlushPlan) PhysicalPlan.Factory.create(buffer);
           assertEquals(plan.getPaths(), planB.getPaths());
+          assertEquals(plan.getPathsStrings(), planB.getPathsStrings());
+          assertEquals(plan.getStorageGroupPartitionIds(), planB.getStorageGroupPartitionIds());
           assertEquals(plan.isSeq(), planB.isSeq());
           assertEquals(plan.isSync(), planB.isSync());
         }
@@ -118,6 +129,8 @@ public class SerializationTest {
         buffer.flip();
         FlushPlan planB = (FlushPlan) PhysicalPlan.Factory.create(buffer);
         assertEquals(plan.getPaths(), planB.getPaths());
+        assertEquals(plan.getPathsStrings(), planB.getPathsStrings());
+        assertEquals(plan.getStorageGroupPartitionIds(), planB.getStorageGroupPartitionIds());
         assertEquals(plan.isSeq(), planB.isSeq());
         assertEquals(plan.isSync(), planB.isSync());
       }

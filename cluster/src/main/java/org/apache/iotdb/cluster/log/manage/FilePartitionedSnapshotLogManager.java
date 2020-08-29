@@ -25,7 +25,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -33,10 +32,8 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,19 +58,13 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
    */
   public void syncFlushAllProcessor() {
     logger.info("{}: Start flush all storage group processor in one data group", getName());
-    ConcurrentHashMap<String, StorageGroupProcessor> processorMap = StorageEngine.getInstance()
-        .getProcessorMap();
-    if (processorMap.size() == 0) {
+    Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions = StorageEngine.getInstance()
+        .getStorageGroupPartitions();
+    if (storageGroupPartitions.size() == 0) {
       logger.info("{}: no need to flush processor", getName());
       return;
     }
-    List<Path> storageGroups = new ArrayList<>();
-    for (Map.Entry<String, StorageGroupProcessor> entry : processorMap.entrySet()) {
-      Path path = new Path(entry.getKey());
-      storageGroups.add(path);
-    }
-    FlushPlan plan = new FlushPlan(null, true, storageGroups);
-    dataGroupMember.flushFileWhenDoSnapshot(plan);
+    dataGroupMember.flushFileWhenDoSnapshot(storageGroupPartitions);
   }
 
   @Override

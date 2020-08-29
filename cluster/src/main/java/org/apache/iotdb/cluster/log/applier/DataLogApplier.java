@@ -70,9 +70,9 @@ public class DataLogApplier extends BaseApplier {
     } else if (log instanceof CloseFileLog) {
       CloseFileLog closeFileLog = ((CloseFileLog) log);
       try {
-        StorageEngine.getInstance().asyncCloseProcessor(closeFileLog.getStorageGroupName(),
+        StorageEngine.getInstance().closeProcessor(closeFileLog.getStorageGroupName(),
             closeFileLog.getPartitionId(),
-            closeFileLog.isSeq());
+            closeFileLog.isSeq(), false);
       } catch (StorageGroupNotSetException e) {
         logger.error("Cannot close {} file in {}, partitionId {}",
             closeFileLog.isSeq() ? "seq" : "unseq",

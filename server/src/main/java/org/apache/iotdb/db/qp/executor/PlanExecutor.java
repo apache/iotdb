@@ -295,15 +295,26 @@ public class PlanExecutor implements IPlanExecutor {
     if (plan.getPaths() == null) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     } else {
-      if (plan.isSeq() == null) {
-        for (Path storageGroup : plan.getPaths()) {
-          StorageEngine.getInstance().closeProcessor(storageGroup.toString(), true, plan.isSync());
-          StorageEngine.getInstance().closeProcessor(storageGroup.toString(), false, plan.isSync());
+      Map<Path, List<Pair<Long, Boolean>>> storageGroupMap = plan.getStorageGroupPartitionIds();
+      for (Entry<Path, List<Pair<Long, Boolean>>> entry : storageGroupMap.entrySet()) {
+        String storageGroupName = entry.getKey().toString();
+        // normal flush
+        if (entry.getValue() == null) {
+          if (plan.isSeq() == null) {
+            StorageEngine.getInstance().closeProcessor(storageGroupName, true, plan.isSync());
+            StorageEngine.getInstance().closeProcessor(storageGroupName, false, plan.isSync());
+          } else {
+            StorageEngine.getInstance()
+                .closeProcessor(storageGroupName, plan.isSeq(), plan.isSync());
+          }
         }
-      } else {
-        for (Path storageGroup : plan.getPaths()) {
-          StorageEngine.getInstance()
-              .closeProcessor(storageGroup.toString(), plan.isSeq(), plan.isSync());
+        // for snapshot flush plan
+        else {
+          List<Pair<Long, Boolean>> partitionIdSequencePairs = entry.getValue();
+          for (Pair<Long, Boolean> pair : partitionIdSequencePairs) {
+            StorageEngine.getInstance()
+                .closeProcessor(storageGroupName, pair.left, pair.right, true);
+          }
         }
       }
     }

@@ -142,6 +142,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
@@ -1029,10 +1030,35 @@ public class DataGroupMember extends RaftMember {
     }
   }
 
-  public boolean flushFileWhenDoSnapshot(FlushPlan plan) {
+  public boolean flushFileWhenDoSnapshot(
+      Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions) {
     if (character != NodeCharacter.LEADER) {
       return false;
     }
+
+    Map<Path, List<Pair<Long, Boolean>>> localDataMemberStorageGroupPartitions = new HashMap<>();
+    for (Entry<String, List<Pair<Long, Boolean>>> entry : storageGroupPartitions.entrySet()) {
+      List<Pair<Long, Boolean>> localListPair = new ArrayList<>();
+
+      String storageGroupName = entry.getKey();
+      List<Pair<Long, Boolean>> tmpPairList = entry.getValue();
+      for (Pair<Long, Boolean> pair : tmpPairList) {
+        long partitionId = pair.left;
+        Node header = metaGroupMember.getPartitionTable().routeToHeaderByTime(storageGroupName,
+            partitionId * StorageEngine.getTimePartitionInterval());
+        DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+        if (localDataMember.getHeader().equals(this.getHeader())) {
+          localListPair.add(new Pair<Long, Boolean>(partitionId, pair.right));
+        }
+      }
+      localDataMemberStorageGroupPartitions.put(new Path(storageGroupName), localListPair);
+    }
+
+    if (localDataMemberStorageGroupPartitions.size() <= 0) {
+      logger.info("{}: have no data to flush", name);
+      return true;
+    }
+    FlushPlan flushPlan = new FlushPlan(null, true, localDataMemberStorageGroupPartitions);
     PhysicalPlanLog log = new PhysicalPlanLog();
     // assign term and index to the new log and append it
     synchronized (logManager) {
@@ -1040,7 +1066,7 @@ public class DataGroupMember extends RaftMember {
       long blockIndex = logManager.getLastLogIndex() + 1;
       log.setCurrLogIndex(blockIndex);
 
-      log.setPlan(plan);
+      log.setPlan(flushPlan);
       logManager.append(log);
       logManager.setBlockAppliedCommitIndex(blockIndex);
     }
