@@ -28,8 +28,9 @@ public class TsFileConstant {
   public static final String TMP_SUFFIX = "tmp";
   public static final String FLUSH_SUFFIX = ".flush";
   public static final String PATH_SEPARATOR = ".";
+  public static final char PATH_SEPARATOR_CHAR = '.';
   public static final String PATH_SEPARATER_NO_REGEX = "\\.";
-
+  public static final char DOUBLE_QUOTE = '"';
   private TsFileConstant() {
   }
 }

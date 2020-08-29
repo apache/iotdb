@@ -80,7 +80,7 @@ public class TsFileWriterTest {
     try {
       //String measurementId, TSDataType type, TSEncoding encoding,
       //      CompressionType compressionType
-      writer.registerTimeseries(new Path("d1.s1"),
+      writer.registerTimeseries(new Path("d1",  "s1"),
           new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       e.printStackTrace();
@@ -89,7 +89,7 @@ public class TsFileWriterTest {
     try {
       //String measurementId, TSDataType type, TSEncoding encoding,
       //      CompressionType compressionType
-      writer.registerTimeseries(new Path("d1.s1"),
+      writer.registerTimeseries(new Path("d1", "s1"),
           new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       Assert.assertEquals("given timeseries has exists! d1.s1", e.getMessage());
@@ -97,7 +97,7 @@ public class TsFileWriterTest {
     try {
       //String measurementId, TSDataType type, TSEncoding encoding,
       //      CompressionType compressionType
-      writer.registerTimeseries(new Path("d1.s2"),
+      writer.registerTimeseries(new Path("d1", "s2"),
           new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       e.printStackTrace();
@@ -105,7 +105,7 @@ public class TsFileWriterTest {
     }
     try {
       for(int i = 2; i < 3; i++) {
-        writer.registerTimeseries(new Path("d"+ i + ".s1"),
+        writer.registerTimeseries(new Path("d"+ i ,"s1"),
             new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
       }
     } catch (WriteProcessException e) {
@@ -257,8 +257,8 @@ public class TsFileWriterTest {
       ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(
           new TsFileSequenceReader("target/tsfileWriter-" + fileName));
       QueryDataSet dataSet = readOnlyTsFile.query(QueryExpression.create()
-          .addSelectedPath(new Path("d1.s1"))
-          .addSelectedPath(new Path("d1.s2")));
+          .addSelectedPath(new Path("d1", "s1"))
+          .addSelectedPath(new Path("d1", "s2")));
       assertFalse(dataSet.hasNext());
       readOnlyTsFile.close();
     } catch (IOException e) {
@@ -275,9 +275,9 @@ public class TsFileWriterTest {
       ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(
           new TsFileSequenceReader("target/tsfileWriter-" + fileName));
       QueryDataSet dataSet = readOnlyTsFile.query(QueryExpression.create()
-          .addSelectedPath(new Path("d1.s1"))
-          .addSelectedPath(new Path("d1.s2"))
-          .addSelectedPath(new Path("d1.s3")));
+          .addSelectedPath(new Path("d1", "s1"))
+          .addSelectedPath(new Path("d1", "s2"))
+          .addSelectedPath(new Path("d1", "s3")));
       while(dataSet.hasNext()) {
         RowRecord result = dataSet.next();
         assertEquals(2, result.getFields().size());

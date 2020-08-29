@@ -25,6 +25,7 @@ import java.util.Collections;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -52,42 +53,42 @@ public class PlannerTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    mManager.setStorageGroup("root.vehicle");
-    mManager.setStorageGroup("root.vehicle1");
-    mManager.createTimeseries("root.vehicle.device1.sensor1", TSDataType.valueOf("INT32"),
+    mManager.setStorageGroup(new PartialPath("root.vehicle"));
+    mManager.setStorageGroup(new PartialPath("root.vehicle1"));
+    mManager.createTimeseries(new PartialPath("root.vehicle.device1.sensor1"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries("root.vehicle.device1.sensor2", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle.device1.sensor2"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries("root.vehicle.device1.sensor3", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle.device1.sensor3"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries("root.vehicle.device2.sensor1", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle.device2.sensor1"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries("root.vehicle.device2.sensor2", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle.device2.sensor2"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries("root.vehicle.device2.sensor3", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle.device2.sensor3"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries("root.vehicle1.device1.sensor1", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle1.device1.sensor1"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries("root.vehicle1.device1.sensor2", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle1.device1.sensor2"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries("root.vehicle1.device1.sensor3", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle1.device1.sensor3"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries("root.vehicle1.device2.sensor1", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle1.device2.sensor1"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries("root.vehicle1.device2.sensor2", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle1.device2.sensor2"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries("root.vehicle1.device2.sensor3", TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle1.device2.sensor3"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
   }

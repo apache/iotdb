@@ -20,15 +20,15 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * this class maintains information of {@code FROM} clause.
  */
 public class FromOperator extends Operator {
 
-  private List<Path> prefixList;
+  private List<PartialPath> prefixList;
 
   public FromOperator(int tokenIntType) {
     super(tokenIntType);
@@ -36,11 +36,11 @@ public class FromOperator extends Operator {
     prefixList = new ArrayList<>();
   }
 
-  public void addPrefixTablePath(Path prefixPath) {
+  public void addPrefixTablePath(PartialPath prefixPath) {
     prefixList.add(prefixPath);
   }
 
-  public List<Path> getPrefixPaths() {
+  public List<PartialPath> getPrefixPaths() {
     return prefixList;
   }
 

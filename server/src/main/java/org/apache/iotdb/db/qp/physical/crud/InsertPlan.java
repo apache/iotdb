@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -29,7 +30,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 abstract public class InsertPlan extends PhysicalPlan {
 
-  protected String deviceId;
+  protected PartialPath deviceId;
   protected String[] measurements;
   protected TSDataType[] dataTypes;
   protected MeasurementSchema[] schemas;
@@ -45,11 +46,11 @@ abstract public class InsertPlan extends PhysicalPlan {
     super.canBeSplit = false;
   }
 
-  public String getDeviceId() {
+  public PartialPath getDeviceId() {
     return deviceId;
   }
 
-  public void setDeviceId(String deviceId) {
+  public void setDeviceId(PartialPath deviceId) {
     this.deviceId = deviceId;
   }
 
