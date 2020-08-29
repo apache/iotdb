@@ -613,10 +613,12 @@ public class IoTDBSessionIT {
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
 
     for (int time = 1; time <= 100; time++) {
-      int rowIndex = time-1;
-      tablet.addTimestamp(rowIndex, (long) time);
+      int rowIndex = time - 1;
+      tablet.addTimestamp(rowIndex, time);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s), rowIndex, (long) s);
+        long value = 0;
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
       }
       tablet.rowSize++;
     }
@@ -815,7 +817,9 @@ public class IoTDBSessionIT {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, time);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s), rowIndex, (long) s);
+        long value = 0;
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet);
@@ -1086,7 +1090,9 @@ public class IoTDBSessionIT {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, time);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s), rowIndex, (long) s);
+        long value = 0;
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet);
@@ -1114,7 +1120,9 @@ public class IoTDBSessionIT {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, time);
       for (int s = 0; s < 3; s++) {
-        tablet.addValue(schemaList.get(s), rowIndex, (long) s);
+        long value = 0;
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet);
@@ -1147,7 +1155,9 @@ public class IoTDBSessionIT {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, time);
       for (int i = 0; i < 6; i++) {
-        tablet.addValue(schemaList.get(i), rowIndex, (long) i);
+        long value = 0;
+        tablet.addValue(schemaList.get(i).getMeasurementId(), rowIndex, value);
+        value++;
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet);
