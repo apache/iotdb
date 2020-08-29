@@ -262,7 +262,7 @@ public class DeletionQueryTest {
       dataSet.next();
       count++;
     }
-    assertEquals(170, count);
+    assertEquals(count, 170);
   }
 
   @Test
