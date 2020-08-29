@@ -31,6 +31,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
@@ -63,19 +66,44 @@ public class ServerTimeGenerator extends TimeGenerator {
 
   @Override
   protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
-      throws IOException{
+      throws IOException {
+    Filter valueFilter = expression.getFilter();
+    PartialPath path = (PartialPath) expression.getSeriesPath();
+    TSDataType dataType;
+    QueryDataSource queryDataSource;
     try {
-      Filter filter = expression.getFilter();
-      PartialPath path = new PartialPath(expression.getSeriesPath().getFullPath());
-      TSDataType dataType = IoTDB.metaManager.getSeriesType(path);
-      QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSource(path, context, filter);
-      // update filter by TTL
-      filter = queryDataSource.updateFilterUsingTTL(filter);
-      return new SeriesRawDataBatchReader(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource, null, filter, null);
+      dataType = IoTDB.metaManager.getSeriesType(path);
+      queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, valueFilter);
+      // update valueFilter by TTL
+      valueFilter = queryDataSource.updateFilterUsingTTL(valueFilter);
     } catch (Exception e) {
       throw new IOException(e);
     }
+    
+    // get the TimeFilter part in SingleSeriesExpression
+    Filter timeFilter = getTimeFilter(valueFilter);
 
+    return new SeriesRawDataBatchReader(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource, timeFilter, valueFilter, null);
+  }
+
+  /**
+   * extract time filter from a value filter
+   */
+  private Filter getTimeFilter(Filter filter) {
+    if (filter instanceof UnaryFilter && ((UnaryFilter) filter).getFilterType() == FilterType.TIME_FILTER) {
+      return filter;
+    }
+    if (filter instanceof AndFilter) {
+      Filter leftTimeFilter = getTimeFilter(((AndFilter) filter).getLeft());
+      Filter rightTimeFilter = getTimeFilter(((AndFilter) filter).getRight());
+      if (leftTimeFilter != null && rightTimeFilter != null) {
+        return filter;
+      } else if (leftTimeFilter != null) {
+        return leftTimeFilter;
+      } else {
+        return rightTimeFilter;
+      }
+    }
+    return null;
   }
 }
