@@ -25,6 +25,22 @@ struct TSStatus {
   3: optional list<TSStatus> subStatus
 }
 
+struct TSQueryDataSet{
+    // ByteBuffer for time column
+    1: required binary time
+    // ByteBuffer for each column values
+    2: required list<binary> valueList
+    // Bitmap for each column to indicate whether it is a null value
+    3: required list<binary> bitmapList
+}
+
+struct TSQueryNonAlignDataSet{
+    // ByteBuffer for each time column
+	  1: required list<binary> timeList
+	  // ByteBuffer for each column values
+    2: required list<binary> valueList
+}
+
 struct TSExecuteStatementResp {
 	1: required TSStatus status
 	2: optional i64 queryId
@@ -250,22 +266,6 @@ struct ServerProperties {
 	1: required string version;
 	2: required list<string> supportedTimeAggregationOperations;
 	3: required string timestampPrecision;
-}
-
-struct TSQueryDataSet{
-    // ByteBuffer for time column
-    1: required binary time
-    // ByteBuffer for each column values
-    2: required list<binary> valueList
-    // Bitmap for each column to indicate whether it is a null value
-    3: required list<binary> bitmapList
-}
-
-struct TSQueryNonAlignDataSet{
-    // ByteBuffer for each time column
-	  1: required list<binary> timeList
-	  // ByteBuffer for each column values
-    2: required list<binary> valueList
 }
 
 service TSIService {

@@ -40,8 +40,10 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
@@ -79,9 +81,9 @@ public class SyncReceiverLogAnalyzerTest {
   private void initMetadata() throws MetadataException {
     MManager mmanager = IoTDB.metaManager;
     mmanager.init();
-    mmanager.setStorageGroup("root.sg0");
-    mmanager.setStorageGroup("root.sg1");
-    mmanager.setStorageGroup("root.sg2");
+    mmanager.setStorageGroup(new PartialPath("root.sg0"));
+    mmanager.setStorageGroup(new PartialPath("root.sg1"));
+    mmanager.setStorageGroup(new PartialPath("root.sg2"));
   }
 
   @After
@@ -91,7 +93,8 @@ public class SyncReceiverLogAnalyzerTest {
   }
 
   @Test
-  public void recover() throws IOException, StorageEngineException, InterruptedException {
+  public void recover()
+      throws IOException, StorageEngineException, InterruptedException, IllegalPathException {
     receiverLogger = new SyncReceiverLogger(
         new File(getReceiverFolderFile(), SyncConstant.SYNC_LOG_NAME));
     fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
@@ -141,7 +144,7 @@ public class SyncReceiverLogAnalyzerTest {
     }
 
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       assertTrue(processor.getSequenceFileTreeSet().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }

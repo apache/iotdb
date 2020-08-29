@@ -31,6 +31,8 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -58,8 +60,8 @@ public class IoTDBRemovePartitionIT {
   }
 
   @Test
-  public void testRemoveNoPartition() throws StorageEngineException {
-    StorageEngine.getInstance().removePartitions("root.test1",
+  public void testRemoveNoPartition() throws StorageEngineException, IllegalPathException {
+    StorageEngine.getInstance().removePartitions(new PartialPath("root.test1"),
         (storageGroupName, timePartitionId) -> false);
 
     try (Connection connection = DriverManager
@@ -80,10 +82,10 @@ public class IoTDBRemovePartitionIT {
   }
 
   @Test
-  public void testRemovePartialPartition() throws StorageEngineException {
-    StorageEngine.getInstance().removePartitions("root.test1",
+  public void testRemovePartialPartition() throws StorageEngineException, IllegalPathException {
+    StorageEngine.getInstance().removePartitions(new PartialPath("root.test1"),
         (storageGroupName, timePartitionId) -> timePartitionId >= 5);
-    StorageEngine.getInstance().removePartitions("root.test2",
+    StorageEngine.getInstance().removePartitions(new PartialPath("root.test2"),
         (storageGroupName, timePartitionId) -> timePartitionId < 5);
 
     try (Connection connection = DriverManager
@@ -114,8 +116,8 @@ public class IoTDBRemovePartitionIT {
   }
 
   @Test
-  public void testRemoveAllPartition() throws StorageEngineException {
-    StorageEngine.getInstance().removePartitions("root.test1",
+  public void testRemoveAllPartition() throws StorageEngineException, IllegalPathException {
+    StorageEngine.getInstance().removePartitions(new PartialPath("root.test1"),
         (storageGroupName, timePartitionId) -> true);
 
     try (Connection connection = DriverManager

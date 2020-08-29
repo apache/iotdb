@@ -21,9 +21,9 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class LoadDataPlan extends PhysicalPlan {
 
@@ -40,10 +40,10 @@ public class LoadDataPlan extends PhysicalPlan {
   }
 
   @Override
-  public List<Path> getPaths() {
-    List<Path> ret = new ArrayList<>();
+  public List<PartialPath> getPaths() {
+    List<PartialPath> ret = new ArrayList<>();
     if (measureType != null) {
-      ret.add(new Path(measureType));
+      ret.add(new PartialPath(new String[]{measureType}));
     }
     return ret;
   }

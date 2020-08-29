@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -55,7 +56,7 @@ public class InOperator extends FunctionOperator {
    * @param path path
    * @param values values
    */
-  public InOperator(int tokenIntType, Path path, boolean not, Set<String> values) {
+  public InOperator(int tokenIntType, PartialPath path, boolean not, Set<String> values) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.IN;
     this.singlePath = path;
@@ -76,7 +77,7 @@ public class InOperator extends FunctionOperator {
 
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
-      Map<Path, TSDataType> pathTSDataTypeHashMap)
+      Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
       throws LogicalOperatorException, MetadataException {
     TSDataType type = pathTSDataTypeHashMap.get(singlePath);
     if (type == null) {
@@ -144,14 +145,14 @@ public class InOperator extends FunctionOperator {
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(singlePath.toString(), this.tokenSymbol, not, values, ", single\n");
+    sc.addTail(singlePath.getFullPath(), this.tokenSymbol, not, values, ", single\n");
     return sc.toString();
   }
 
   @Override
   public InOperator copy() {
     InOperator ret;
-    ret = new InOperator(this.tokenIntType, singlePath.clone(), not, new HashSet<>(values));
+    ret = new InOperator(this.tokenIntType, new PartialPath(singlePath.getNodes().clone()), not, new HashSet<>(values));
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;

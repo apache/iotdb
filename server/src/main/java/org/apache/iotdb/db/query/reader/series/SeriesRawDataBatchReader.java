@@ -24,12 +24,12 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class SeriesRawDataBatchReader implements ManagedSeriesReader {
@@ -47,7 +47,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     this.seriesReader = seriesReader;
   }
 
-  public SeriesRawDataBatchReader(Path seriesPath, Set<String> allSensors, TSDataType dataType,
+  public SeriesRawDataBatchReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType,
       QueryContext context, QueryDataSource dataSource, Filter timeFilter, Filter valueFilter,
       TsFileFilter fileFilter) {
     this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, dataSource,
@@ -55,7 +55,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
   }
 
   @TestOnly
-  public SeriesRawDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
+  public SeriesRawDataBatchReader(PartialPath seriesPath, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
       Filter timeFilter, Filter valueFilter) {
     Set<String> allSensors = new HashSet<>();
