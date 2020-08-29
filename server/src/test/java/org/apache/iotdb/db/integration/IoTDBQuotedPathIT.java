@@ -89,7 +89,7 @@ public class IoTDBQuotedPathIT {
           assertEquals(exp[i], ans.get(i));
         }
 
-        hasResultSet = statement.execute("SELECT  * FROM root.ln.wf01.wt01 WHERE \'status.2.3\' = false");
+        hasResultSet = statement.execute("SELECT  * FROM root.ln.\"wf.01\".wt01 WHERE \"status.2.3\" = false");
         assertTrue(hasResultSet);
         exp = new String[]{
                 "1509465600002,false",
@@ -107,13 +107,11 @@ public class IoTDBQuotedPathIT {
         for (int i = 0; i < exp.length; i++) {
           assertEquals(exp[i], ans.get(i));
         }
-        statement.execute("DELETE FROM root.ln.wf01.wt01.\"status.2.3\" WHERE time < 1509465600001");
-        statement.execute("DELETE TIMESERIES root.ln.wf01.wt01.\"status.2.3\"");
+        statement.execute("DELETE FROM root.ln.\"wf.01\".wt01.\"status.2.3\" WHERE time < 1509465600001");
+        statement.execute("DELETE TIMESERIES root.ln.\"wf.01\".wt01.\"status.2.3\"");
       } finally {
         resultSet.close();
       }
-      statement.execute("DELETE FROM root.ln.\"wf.01\".wt01.\"status.2.3\" WHERE time < 1509465600001");
-      statement.execute("DELETE TIMESERIES root.ln.\"wf.01\".wt01.\"status.2.3\"");
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
