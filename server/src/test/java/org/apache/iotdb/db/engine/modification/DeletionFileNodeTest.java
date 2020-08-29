@@ -82,7 +82,7 @@ public class DeletionFileNodeTest {
     IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
       deviceMNode.addChild(measurements[i], new MeasurementMNode(null, null, null, null));
-      IoTDB.metaManager.createTimeseries(new PartialPath(processorName + "." + measurements[i]), dataType,
+      IoTDB.metaManager.createTimeseries(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]), dataType,
           encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     }
   }
@@ -116,7 +116,7 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[5], 0, 30);
     StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[5], 30, 50);
 
-    SingleSeriesExpression expression = new SingleSeriesExpression(new PartialPath(processorName + "." +
+    SingleSeriesExpression expression = new SingleSeriesExpression(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR +
         measurements[5]), null);
     QueryDataSource dataSource = QueryResourceManager.getInstance()
         .getQueryDataSource((PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
@@ -216,7 +216,7 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[5], 0, 30);
     StorageEngine.getInstance().delete(new PartialPath(processorName), measurements[5], 30, 50);
 
-    SingleSeriesExpression expression = new SingleSeriesExpression(new PartialPath(processorName + "." +
+    SingleSeriesExpression expression = new SingleSeriesExpression(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR +
         measurements[5]), null);
 
     QueryDataSource dataSource = QueryResourceManager.getInstance()

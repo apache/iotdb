@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
@@ -764,7 +765,7 @@ public class IoTDBConfig {
     if (getMultiDirStrategyClassName() == null) {
       multiDirStrategyClassName = DEFAULT_MULTI_DIR_STRATEGY;
     }
-    if (!getMultiDirStrategyClassName().contains(".")) {
+    if (!getMultiDirStrategyClassName().contains(TsFileConstant.PATH_SEPARATOR)) {
       multiDirStrategyClassName = MULTI_DIR_STRATEGY_PREFIX + multiDirStrategyClassName;
     }
 

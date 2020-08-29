@@ -29,6 +29,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.RandomNum;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -57,7 +58,7 @@ public class FileNodeManagerBenchmark {
 
   static {
     for (int i = 0; i < numOfDevice; i++) {
-      devices[i] = prefix + "." + "device_" + i;
+      devices[i] = prefix + TsFileConstant.PATH_SEPARATOR + "device_" + i;
     }
   }
 

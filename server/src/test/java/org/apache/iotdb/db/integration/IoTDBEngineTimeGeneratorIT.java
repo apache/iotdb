@@ -41,7 +41,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
@@ -186,7 +186,7 @@ public class IoTDBEngineTimeGeneratorIT {
       throws IOException, StorageEngineException, IllegalPathException {
     //System.out.println("Test >>> root.vehicle.d0.s0 >= 14 && time > 500");
 
-    PartialPath pd0s0 = new PartialPath(TestConstant.d0 + "." + TestConstant.s0);
+    PartialPath pd0s0 = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(14);
     TimeFilter.TimeGt timeGt = TimeFilter.gt(500);
 
@@ -213,7 +213,7 @@ public class IoTDBEngineTimeGeneratorIT {
       throws IOException, StorageEngineException, IllegalPathException {
     //System.out.println("Test >>> root.vehicle.d1.s0 >= 5");
 
-    PartialPath pd1s0 = new PartialPath(TestConstant.d1 + "." + TestConstant.s0);
+    PartialPath pd1s0 = new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(5);
 
     IExpression singleSeriesExpression = new SingleSeriesExpression(pd1s0, valueGtEq);
@@ -241,8 +241,8 @@ public class IoTDBEngineTimeGeneratorIT {
     System.out
         .println("Test >>> root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11.5 || time > 900");
 
-    PartialPath pd0s0 = new PartialPath(TestConstant.d0 + "." + TestConstant.s0);
-    PartialPath pd0s2 = new PartialPath(TestConstant.d0 + "." + TestConstant.s2);
+    PartialPath pd0s0 = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
+    PartialPath pd0s2 = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2);
 
     ValueFilter.ValueGtEq valueGtEq5 = ValueFilter.gtEq(5);
     ValueFilter.ValueGtEq valueGtEq11 = ValueFilter.gtEq(11.5f);

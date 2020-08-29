@@ -45,6 +45,7 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -667,7 +668,7 @@ public class IoTDBSessionIT {
   private void createTimeseriesInChinese(String storageGroup, String[] devices)
       throws StatementExecutionException, IoTDBConnectionException {
     for (String path : devices) {
-      String fullPath = storageGroup + "." + path;
+      String fullPath = storageGroup + TsFileConstant.PATH_SEPARATOR + path;
       session.createTimeseries(fullPath, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     }
   }
@@ -679,7 +680,7 @@ public class IoTDBSessionIT {
         String[] ss = path.split("\\.");
         String deviceId = storageGroup;
         for (int j = 0; j < ss.length - 1; j++) {
-          deviceId += ("." + ss[j]);
+          deviceId += (TsFileConstant.PATH_SEPARATOR + ss[j]);
         }
         String sensorId = ss[ss.length - 1];
         List<String> measurements = new ArrayList<>();

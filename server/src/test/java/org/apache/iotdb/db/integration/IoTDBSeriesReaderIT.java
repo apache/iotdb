@@ -47,8 +47,8 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
@@ -256,21 +256,21 @@ public class IoTDBSeriesReaderIT {
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new PartialPath(TestConstant.d0 + "." + TestConstant.s0));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new PartialPath(TestConstant.d0 + "." + TestConstant.s1));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     dataTypes.add(TSDataType.INT64);
-    pathList.add(new PartialPath(TestConstant.d0 + "." + TestConstant.s2));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2));
     dataTypes.add(TSDataType.FLOAT);
-    pathList.add(new PartialPath(TestConstant.d0 + "." + TestConstant.s3));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s3));
     dataTypes.add(TSDataType.TEXT);
-    pathList.add(new PartialPath(TestConstant.d0 + "." + TestConstant.s4));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s4));
     dataTypes.add(TSDataType.BOOLEAN);
-    pathList.add(new PartialPath(TestConstant.d0 + "." + TestConstant.s5));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s5));
     dataTypes.add(TSDataType.DOUBLE);
-    pathList.add(new PartialPath(TestConstant.d1 + "." + TestConstant.s0));
+    pathList.add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new PartialPath(TestConstant.d1 + "." + TestConstant.s1));
+    pathList.add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     dataTypes.add(TSDataType.INT64);
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
@@ -297,7 +297,7 @@ public class IoTDBSeriesReaderIT {
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    PartialPath p = new PartialPath(TestConstant.d0 + "." + TestConstant.s0);
+    PartialPath p = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
     pathList.add(p);
     dataTypes.add(TSDataType.INT32);
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(p,
@@ -326,7 +326,7 @@ public class IoTDBSeriesReaderIT {
   public void seriesTimeDigestReadTest()
       throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
     QueryRouter queryRouter = new QueryRouter();
-    PartialPath path = new PartialPath(TestConstant.d0 + "." + TestConstant.s0);
+    PartialPath path = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
     List<TSDataType> dataTypes = Collections.singletonList(TSDataType.INT32);
     SingleSeriesExpression expression = new SingleSeriesExpression(path, TimeFilter.gt(22987L));
 
@@ -353,8 +353,8 @@ public class IoTDBSeriesReaderIT {
   public void crossSeriesReadUpdateTest()
       throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
     QueryRouter queryRouter = new QueryRouter();
-    PartialPath path1 = new PartialPath(TestConstant.d0 + "." + TestConstant.s0);
-    PartialPath path2 = new PartialPath(TestConstant.d0 + "." + TestConstant.s1);
+    PartialPath path1 = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
+    PartialPath path2 = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
 

@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -25,6 +32,7 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
@@ -32,12 +40,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import static org.junit.Assert.*;
 
 public class MManagerImproveTest {
 
@@ -83,7 +85,7 @@ public class MManagerImproveTest {
 
     String deviceId = "root.t1.v2.d3";
     String measurement = "s5";
-    String path = deviceId + "." + measurement;
+    String path = deviceId + TsFileConstant.PATH_SEPARATOR + measurement;
 
     startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
@@ -114,7 +116,7 @@ public class MManagerImproveTest {
   private void doOriginTest(String deviceId, List<String> measurementList)
       throws MetadataException {
     for (String measurement : measurementList) {
-      String path = deviceId + "." + measurement;
+      String path = deviceId + TsFileConstant.PATH_SEPARATOR + measurement;
       assertTrue(mManager.isPathExist(new PartialPath(path)));
       TSDataType dataType = mManager.getSeriesType(new PartialPath(path));
       assertEquals(TSDataType.TEXT, dataType);
@@ -124,7 +126,7 @@ public class MManagerImproveTest {
   private void doPathLoopOnceTest(String deviceId, List<String> measurementList)
       throws MetadataException {
     for (String measurement : measurementList) {
-      String path = deviceId + "." + measurement;
+      String path = deviceId + TsFileConstant.PATH_SEPARATOR + measurement;
       TSDataType dataType = mManager.getSeriesType(new PartialPath(path));
       assertEquals(TSDataType.TEXT, dataType);
     }

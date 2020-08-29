@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -87,7 +88,7 @@ public class FilePathUtils {
           if (k == 0) {
             path.append(tmpPath[k]);
           } else {
-            path.append(".").append(tmpPath[k]);
+            path.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[k]);
           }
         }
         key = path.toString();

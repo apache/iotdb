@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -70,7 +71,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    PartialPath path = new PartialPath(deviceIds[0] + "." + measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(), context,
@@ -94,7 +95,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    PartialPath path = new PartialPath(deviceIds[0] + "." + measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(), context,
@@ -119,7 +120,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    PartialPath path = new PartialPath(deviceIds[0] + "." + measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(), context,
@@ -143,7 +144,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    PartialPath path = new PartialPath(deviceIds[0] + "." + measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(), context,
@@ -171,7 +172,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    PartialPath path = new PartialPath(deviceIds[0] + "." + measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(), context,
@@ -195,7 +196,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    PartialPath path = new PartialPath(deviceIds[0] + "." + measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(2));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(), context,
@@ -235,7 +236,7 @@ public class MergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    PartialPath path = new PartialPath(deviceIds[0] + "." + measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(), context,

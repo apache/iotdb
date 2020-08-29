@@ -220,7 +220,7 @@ public class TTLTest {
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
     assertEquals(0, unseqResource.size());
-    PartialPath path = new PartialPath(sg1 + "." + s1);
+    PartialPath path = new PartialPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1);
     Set<String> allSensors = new HashSet<>();
     allSensors.add(s1);
     IBatchReader reader = new SeriesRawDataBatchReader(path, allSensors, TSDataType.INT64,
