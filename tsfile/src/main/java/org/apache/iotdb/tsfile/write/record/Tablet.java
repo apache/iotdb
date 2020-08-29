@@ -122,30 +122,36 @@ public class Tablet {
     MeasurementSchema measurementSchema = schemas.get(indexOfValue);
 
     switch (measurementSchema.getType()) {
-      case TEXT:
-        Binary[] sensort = (Binary[]) values[indexOfValue];
-        sensort[rowIndex] = (Binary) value;
+      case TEXT: {
+        Binary[] sensor = (Binary[]) values[indexOfValue];
+        sensor[rowIndex] = (Binary) value;
         break;
-      case FLOAT:
-        float[] sensorf = (float[]) values[indexOfValue];
-        sensorf[rowIndex] = (float) value;
+      }
+      case FLOAT: {
+        float[] sensor = (float[]) values[indexOfValue];
+        sensor[rowIndex] = (float) value;
         break;
-      case INT32:
-        int[] sensori = (int[]) values[indexOfValue];
-        sensori[rowIndex] = (int) value;
+      }
+      case INT32: {
+        int[] sensor = (int[]) values[indexOfValue];
+        sensor[rowIndex] = (int) value;
         break;
-      case INT64:
-        long[] sensorl = (long[]) values[indexOfValue];
-        sensorl[rowIndex] = (long) value;
+      }
+      case INT64: {
+        long[] sensor = (long[]) values[indexOfValue];
+        sensor[rowIndex] = (long) value;
         break;
-      case DOUBLE:
-        double[] sensord = (double[]) values[indexOfValue];
-        sensord[rowIndex] = (double) value;
+      }
+      case DOUBLE: {
+        double[] sensor = (double[]) values[indexOfValue];
+        sensor[rowIndex] = (double) value;
         break;
-      case BOOLEAN:
-        boolean[] sensorb = (boolean[]) values[indexOfValue];
-        sensorb[rowIndex] = (boolean) value;
+      }
+      case BOOLEAN: {
+        boolean[] sensor = (boolean[]) values[indexOfValue];
+        sensor[rowIndex] = (boolean) value;
         break;
+      }
       default:
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", measurementSchema.getType()));
