@@ -21,13 +21,13 @@ package org.apache.iotdb.db.query.timegenerator;
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -68,18 +68,18 @@ public class ServerTimeGenerator extends TimeGenerator {
   protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
       throws IOException {
     Filter valueFilter = expression.getFilter();
-    Path path = expression.getSeriesPath();
+    PartialPath path = (PartialPath) expression.getSeriesPath();
     TSDataType dataType;
     QueryDataSource queryDataSource;
     try {
-      dataType = IoTDB.metaManager.getSeriesType(path.getFullPath());
+      dataType = IoTDB.metaManager.getSeriesType(path);
       queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, valueFilter);
       // update valueFilter by TTL
       valueFilter = queryDataSource.updateFilterUsingTTL(valueFilter);
     } catch (Exception e) {
       throw new IOException(e);
     }
-
+    
     // get the TimeFilter part in SingleSeriesExpression
     Filter timeFilter = getTimeFilter(valueFilter);
 

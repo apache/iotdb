@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import javax.activation.UnsupportedDataTypeException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
@@ -30,23 +35,17 @@ import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import javax.activation.UnsupportedDataTypeException;
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-
 public class FillQueryExecutor {
 
-  private List<Path> selectedSeries;
+  private List<PartialPath> selectedSeries;
   private List<TSDataType> dataTypes;
   private long queryTime;
   private Map<TSDataType, IFill> typeIFillMap;
 
-  public FillQueryExecutor(List<Path> selectedSeries,
+  public FillQueryExecutor(List<PartialPath> selectedSeries,
       List<TSDataType> dataTypes,
       long queryTime,
       Map<TSDataType, IFill> typeIFillMap) {
@@ -66,7 +65,7 @@ public class FillQueryExecutor {
     RowRecord record = new RowRecord(queryTime);
 
     for (int i = 0; i < selectedSeries.size(); i++) {
-      Path path = selectedSeries.get(i);
+      PartialPath path = selectedSeries.get(i);
       TSDataType dataType = dataTypes.get(i);
       IFill fill;
       long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
@@ -102,7 +101,7 @@ public class FillQueryExecutor {
     return dataSet;
   }
 
-  protected IFill configureFill(IFill fill, Path path, TSDataType dataType, long queryTime,
+  protected IFill configureFill(IFill fill, PartialPath path, TSDataType dataType, long queryTime,
       Set<String> deviceMeasurements, QueryContext context) {
     fill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
     return fill;

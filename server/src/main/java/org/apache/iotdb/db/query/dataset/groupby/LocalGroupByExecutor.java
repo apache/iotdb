@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -31,14 +36,8 @@ import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 
 public class LocalGroupByExecutor implements GroupByExecutor {
 
@@ -55,7 +54,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
 
   private QueryDataSource queryDataSource;
 
-  public LocalGroupByExecutor(Path path, Set<String> allSensors, TSDataType dataType,
+  public LocalGroupByExecutor(PartialPath path, Set<String> allSensors, TSDataType dataType,
       QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
     queryDataSource = QueryResourceManager.getInstance()

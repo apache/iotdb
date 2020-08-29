@@ -25,6 +25,7 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -33,14 +34,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class LastPointReader {
 
-  private Path seriesPath;
+  private PartialPath seriesPath;
   long queryTime;
   TSDataType dataType;
   private QueryContext context;
@@ -58,7 +58,7 @@ public class LastPointReader {
 
   }
 
-  public LastPointReader(Path seriesPath, TSDataType dataType, Set<String> deviceMeasurements,
+  public LastPointReader(PartialPath seriesPath, TSDataType dataType, Set<String> deviceMeasurements,
       QueryContext context, QueryDataSource dataSource, long queryTime, Filter timeFilter) {
     this.seriesPath = seriesPath;
     this.dataType = dataType;

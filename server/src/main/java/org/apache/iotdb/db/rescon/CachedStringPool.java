@@ -16,33 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.rescon;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * CountOperator is used to count time-series and count nodes.
- */
-public class CountOperator extends ShowOperator{
-  private PartialPath path;
-  private int level;
+public class CachedStringPool {
 
-  public CountOperator(int tokenIntType, PartialPath path){
-    super(tokenIntType);
-    this.path = path;
+  private Map<String, String> cachedPool = new ConcurrentHashMap<>();
+
+  public Map<String, String> getCachedPool() {
+    return cachedPool;
   }
 
-  public CountOperator(int tokenIntType, PartialPath path, int level){
-    super(tokenIntType);
-    this.path = path;
-    this.level = level;
+  public static CachedStringPool getInstance() {
+    return CachedStringPool.InstanceHolder.INSTANCE;
   }
 
-  public PartialPath getPath() {
-    return this.path;
-  }
+  private static class InstanceHolder {
 
-  public int getLevel() {
-    return this.level;
+    private static final CachedStringPool INSTANCE = new CachedStringPool();
+
+    private InstanceHolder() {
+    }
   }
 }

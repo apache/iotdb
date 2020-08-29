@@ -43,16 +43,16 @@ public class RecordUtilsTest {
   private static Schema generateTestData() {
     Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema.registerTimeseries(new Path("d1.s1"),
+    schema.registerTimeseries(new Path("d1", "s1"),
         new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1.s2"),
+    schema.registerTimeseries(new Path("d1", "s2"),
         new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1.s3"),
+    schema.registerTimeseries(new Path("d1", "s3"),
         new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1.s4"),
+    schema.registerTimeseries(new Path("d1", "s4"),
         new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1.s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d1.s6"), new MeasurementSchema("s6", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1", "s6"), new MeasurementSchema("s6", TSDataType.TEXT, TSEncoding.PLAIN));
     return schema;
   }
 
