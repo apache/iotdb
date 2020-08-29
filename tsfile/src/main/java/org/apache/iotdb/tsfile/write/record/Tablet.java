@@ -57,7 +57,7 @@ public class Tablet {
   /**
    * measurementId->indexOf(measurementSchema)
    */
-  private Map<String, Integer> mschemawithindex;
+  private Map<String, Integer> mSchemaWithIndex;
 
   /**
    * timestamps in this tablet
@@ -102,10 +102,10 @@ public class Tablet {
     this.deviceId = deviceId;
     this.schemas = schemas;
     this.maxRowNumber = maxRowNumber;
-    mschemawithindex = new HashMap<>();
+    mSchemaWithIndex = new HashMap<>();
 
     for (int i = 0; i < schemas.size(); i++) {
-      mschemawithindex.put(schemas.get(i).getMeasurementId(), i);
+      mSchemaWithIndex.put(schemas.get(i).getMeasurementId(), i);
     }
 
     createColumns();
@@ -118,7 +118,7 @@ public class Tablet {
   }
 
   public void addValue(String measurementId, int rowIndex, Object value) {
-    int indexOfValue = mschemawithindex.get(measurementId);
+    int indexOfValue = mSchemaWithIndex.get(measurementId);
     MeasurementSchema measurementSchema = schemas.get(indexOfValue);
 
     switch (measurementSchema.getType()) {
