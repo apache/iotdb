@@ -448,9 +448,13 @@ public class PhysicalGenerator {
           try {
             // remove stars in SELECT to get actual paths
             List<PartialPath> actualPaths = getMatchedTimeseries(fullPath);
-            if (suffixPath.getTsAlias() != null && actualPaths.size() >= 2) {
-              throw new QueryProcessException(
-                  "alias '" + suffixPath.getTsAlias() + "' can only be matched with one time series");
+            if (suffixPath.getTsAlias() != null) {
+              if (actualPaths.size() == 1) {
+                measurementAliasMap.put(actualPaths.get(0).getMeasurement(), suffixPath.getTsAlias());
+              } else if (actualPaths.size() >= 2) {
+                throw new QueryProcessException(
+                    "alias '" + suffixPath.getTsAlias() + "' can only be matched with one time series");
+              }
             }
 
             // for actual non exist path
@@ -510,10 +514,6 @@ public class PhysicalGenerator {
                 measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
               }
 
-              // It will be optimized after PR# 1496
-              if (suffixPath.getTsAlias() != null) {
-                measurementAliasMap.put(measurementChecked, suffixPath.getTsAlias());
-              }
               // update paths
               paths.add(path);
             }
