@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.conf;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.ZoneId;
 import java.util.Properties;
@@ -119,12 +119,23 @@ public class IoTDBDescriptor {
    * load an property file and set TsfileDBConfig variables.
    */
   private void loadProps() {
-    String url = getPropsUrl();
-    if (url == null) {
+    URL url;
+    try {
+      String propsUrl = getPropsUrl();
+      if(propsUrl == null) {
+        return;
+      }
+      // If the url doesn't contain a ":" it's provided as a normal path.
+      // So we need to add the prefix "file:" to make it a real URL.
+      if(!propsUrl.contains(":")) {
+        propsUrl = "file:" + propsUrl;
+      }
+      url = new URL(propsUrl);
+    } catch (MalformedURLException e) {
       return;
     }
 
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
+    try (InputStream inputStream = url.openStream()) {
 
       logger.info("Start to read config file {}", url);
       Properties properties = new Properties();
@@ -660,11 +671,23 @@ public class IoTDBDescriptor {
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {
-    String url = getPropsUrl();
-    if (url == null) {
+    URL url;
+    try {
+      String propsUrl = getPropsUrl();
+      if(propsUrl == null) {
+        return;
+      }
+      // If the url doesn't contain a ":" it's provided as a normal path.
+      // So we need to add the prefix "file:" to make it a real URL.
+      if(!propsUrl.contains(":")) {
+        propsUrl = "file:" + propsUrl;
+      }
+      url = new URL(propsUrl);
+    } catch (MalformedURLException e) {
       return;
     }
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
+
+    try (InputStream inputStream = url.openStream()) {
       logger.info("Start to reload config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
