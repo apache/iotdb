@@ -21,11 +21,13 @@ package org.apache.iotdb.db.engine.flush;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.VmMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -97,6 +99,9 @@ public class FlushManager implements FlushManagerMBean, IService {
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
       registerTsFileProcessor(tsFileProcessor);
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
+        StatMonitor.getInstance().
+      }
     }
   }
 

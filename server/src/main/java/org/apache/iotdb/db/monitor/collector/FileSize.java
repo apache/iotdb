@@ -64,11 +64,11 @@ public class FileSize implements IStatistic {
     Map<String, String> hashMap = new HashMap<>();
     for (FileSizeConstants kind : FileSizeConstants.values()) {
       String seriesPath = MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME
-          + MonitorConstants.MONITOR_PATH_SEPARATOR
+          + MonitorConstants.PATH_SEPARATOR
           + kind.name();
-      hashMap.put(seriesPath, MonitorConstants.DATA_TYPE_INT64);
+      hashMap.put(seriesPath, MonitorConstants.INT64);
     }
-    StatMonitor.getInstance().registerStatStorageGroup(hashMap);
+    StatMonitor.getInstance().registerStatTimeSeries(hashMap);
   }
 
   @Override
@@ -76,7 +76,7 @@ public class FileSize implements IStatistic {
     List<String> list = new ArrayList<>();
     for (FileSizeConstants kind : MonitorConstants.FileSizeConstants.values()) {
       list.add(
-          MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME + MonitorConstants.MONITOR_PATH_SEPARATOR
+          MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME + MonitorConstants.PATH_SEPARATOR
               + kind.name());
     }
     return list;
