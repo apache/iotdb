@@ -53,7 +53,7 @@ public class ChunkLoaderTest {
   public void test() throws IOException {
     fileReader = new TsFileSequenceReader(FILE_PATH);
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);
-    List<ChunkMetadata> chunkMetadataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d2.s1"));
+    List<ChunkMetadata> chunkMetadataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d2", "s1"));
 
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
     for (ChunkMetadata chunkMetaData : chunkMetadataList) {

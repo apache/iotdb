@@ -36,7 +36,6 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -106,7 +105,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
     ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(reader);
     for (String deviceId : deviceIds) {
       List<Path> paths = measurementIds.stream()
-          .map(measurementId -> new Path(deviceId + TsFileConstant.PATH_SEPARATOR + measurementId))
+          .map(measurementId -> new Path(deviceId, measurementId))
           .collect(toList());
       QueryExpression queryExpression = QueryExpression.create(paths, null);
       QueryDataSet dataSet = queryEngine.query(queryExpression,
