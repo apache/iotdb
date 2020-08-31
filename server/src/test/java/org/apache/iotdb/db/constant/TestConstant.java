@@ -29,14 +29,14 @@ public class TestConstant {
     public static final String OUTPUT_DATA_DIR = BASE_OUTPUT_PATH.concat("data")
         .concat(File.separator);
 
-    public static final String d0s0 = "root.vehicle.d0.s0";
-    public static final String d0s1 = "root.vehicle.d0.s1";
-    public static final String d0s2 = "root.vehicle.d0.s2";
-    public static final String d0s3 = "root.vehicle.d0.s3";
-    public static final String d0s4 = "root.vehicle.d0.s4";
-    public static final String d0s5 = "root.vehicle.d0.s5";
-    public static final String d1s0 = "root.vehicle.d1.s0";
-    public static final String d1s1 = "root.vehicle.d1.s1";
+    public static final String d0 = "root.vehicle.d0";
+    public static final String s0 = "s0";
+    public static final String s1 = "s1";
+    public static final String s2 = "s2";
+    public static final String s3 = "s3";
+    public static final String s4 = "s4";
+    public static final String s5 = "s5";
+    public static final String d1 = "root.vehicle.d1";
     public static final String TIMESTAMP_STR = "Time";
     public static boolean testFlag = true;
     public static String[] stringValue = new String[]{"A", "B", "C", "D", "E"};

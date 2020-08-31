@@ -17,6 +17,8 @@
 #
 
 import sys
+# Uncomment the following line to use apache-iotdb module installed by pip3
+#import iotdb
 sys.path.append("./utils")
 from IoTDBConstants import *
 from Tablet import Tablet

@@ -18,18 +18,23 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.sql.*;
-import java.util.ArrayList;
-
-import static org.apache.iotdb.db.constant.TestConstant.*;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 public class IoTDBQuotedPathIT {
 
@@ -50,24 +55,23 @@ public class IoTDBQuotedPathIT {
     try(Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
                     "root");
-        Statement statement = connection.createStatement();){
+        Statement statement = connection.createStatement()){
       String[] exp = new String[]{
               "1509465600000,true",
               "1509465600001,true",
               "1509465600002,false",
               "1509465600003,false"
       };
-      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
-      statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.\"status.2.3\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-      statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,\"status.2.3\") values(1509465600000,true)");
-      statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,\'status.2.3\') values(1509465600001,true)");
-      statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,\"status.2.3\") values(1509465600002,false)");
-      statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,\'status.2.3\') values(1509465600003,false)");
-      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt02");
-      statement.execute("CREATE TIMESERIES root.ln.wf01.wt02.\"abd\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.ln.wf01.wt02.\"asf.asd.sdf\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.ln.wf01.wt02.\"asd12\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-      boolean hasResultSet = statement.execute("SELECT * FROM root.ln.wf01.wt01");
+      statement.execute("SET STORAGE GROUP TO root.ln");
+      statement.execute("CREATE TIMESERIES root.ln.\"wf.01\".wt01.\"status.2.3\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.ln.\"wf.01\".wt01(timestamp,\"status.2.3\") values(1509465600000,true)");
+      statement.execute("INSERT INTO root.ln.\"wf.01\".wt01(timestamp,\"status.2.3\") values(1509465600001,true)");
+      statement.execute("INSERT INTO root.ln.\"wf.01\".wt01(timestamp,\"status.2.3\") values(1509465600002,false)");
+      statement.execute("INSERT INTO root.ln.\"wf.01\".wt01(timestamp,\"status.2.3\") values(1509465600003,false)");
+      statement.execute("CREATE TIMESERIES root.ln.\"wf.01\".wt02.\"abd\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.ln.\"wf.01\".wt02.\"asf.asd.sdf\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.ln.\"wf.01\".wt02.\"asd12\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      boolean hasResultSet = statement.execute("SELECT * FROM root.ln.\"wf.01\".wt01");
 
       assertTrue(hasResultSet);
       int cnt;
@@ -84,7 +88,7 @@ public class IoTDBQuotedPathIT {
         assertEquals(exp[i], ans.get(i));
       }
 
-      hasResultSet = statement.execute("SELECT  * FROM root.ln.wf01.wt01 WHERE \'status.2.3\' = false");
+      hasResultSet = statement.execute("SELECT  * FROM root.ln.\"wf.01\".wt01 WHERE \"status.2.3\" = false");
       assertTrue(hasResultSet);
       exp = new String[]{
               "1509465600002,false",
@@ -102,8 +106,25 @@ public class IoTDBQuotedPathIT {
       for (int i = 0; i < exp.length; i++) {
         assertEquals(exp[i], ans.get(i));
       }
-      statement.execute("DELETE FROM root.ln.wf01.wt01.\"status.2.3\" WHERE time < 1509465600001");
-      statement.execute("DELETE TIMESERIES root.ln.wf01.wt01.\"status.2.3\"");
+      statement.execute("DELETE FROM root.ln.\"wf.01\".wt01.\"status.2.3\" WHERE time < 1509465600001");
+      statement.execute("DELETE TIMESERIES root.ln.\"wf.01\".wt01.\"status.2.3\"");
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+  }
+
+  @Test
+  public void testIllegalStorageGroup() throws SQLException {
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.\"ln\"");
+    } catch (IoTDBSQLException e) {
+      Assert.assertEquals("315: org.apache.iotdb.db.exception.metadata.IllegalPathException: "
+              + "The storage group name can only be characters, numbers and underscores. root.\"ln\" is not a legal path",
+          e.getMessage());
     }
   }
 }

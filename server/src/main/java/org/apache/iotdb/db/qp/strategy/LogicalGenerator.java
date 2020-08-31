@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
+
 import java.io.File;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -30,6 +32,7 @@ import java.util.Set;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
@@ -154,6 +157,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowVersionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowWhereClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.StringLiteralContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TagClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
@@ -171,7 +175,6 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
@@ -203,7 +206,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCountTimeseries(CountTimeseriesContext ctx) {
     super.enterCountTimeseries(ctx);
     PrefixPathContext pathContext = ctx.prefixPath();
-    Path path = (pathContext != null ? parsePrefixPath(pathContext) : new Path(SQLConstant.ROOT));
+    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext) : new PartialPath(SQLConstant.getSingleRootArray()));
     if (ctx.INT() != null) {
       initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODE_TIMESERIES,
           path, Integer.parseInt(ctx.INT().getText()));
@@ -221,7 +224,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       flushOperator.setSeq(Boolean.parseBoolean(ctx.booleanClause().getText()));
     }
     if (ctx.prefixPath(0) != null) {
-      List<Path> storageGroups = new ArrayList<>();
+      List<PartialPath> storageGroups = new ArrayList<>();
       for (PrefixPathContext prefixPathContext : ctx.prefixPath()) {
         storageGroups.add(parsePrefixPath(prefixPathContext));
       }
@@ -276,7 +279,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
           parsePrefixPath(ctx.prefixPath()));
     } else {
       initializedOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES,
-          new Path(SQLConstant.ROOT));
+          new PartialPath(SQLConstant.getSingleRootArray()));
     }
   }
 
@@ -288,7 +291,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
           parsePrefixPath(ctx.prefixPath()));
     } else {
       initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS,
-          new Path(SQLConstant.ROOT));
+          new PartialPath(SQLConstant.getSingleRootArray()));
     }
   }
 
@@ -304,20 +307,20 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.autoCreateSchema() != null) {
       if (ctx.autoCreateSchema().INT() != null) {
         initializedOperator = new LoadFilesOperator(
-            new File(removeStringQuote(ctx.STRING_LITERAL().getText())),
+            new File(removeStringQuote(ctx.stringLiteral().getText())),
             Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
             Integer.parseInt(ctx.autoCreateSchema().INT().getText())
         );
       } else {
         initializedOperator = new LoadFilesOperator(
-            new File(removeStringQuote(ctx.STRING_LITERAL().getText())),
+            new File(removeStringQuote(ctx.stringLiteral().getText())),
             Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
             IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()
         );
       }
     } else {
       initializedOperator = new LoadFilesOperator(
-          new File(removeStringQuote(ctx.STRING_LITERAL().getText())),
+          new File(removeStringQuote(ctx.stringLiteral().getText())),
           true,
           IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()
       );
@@ -328,15 +331,15 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterMoveFile(MoveFileContext ctx) {
     super.enterMoveFile(ctx);
     initializedOperator = new MoveFileOperator(
-        new File(removeStringQuote(ctx.STRING_LITERAL(0).getText())),
-        new File(removeStringQuote(ctx.STRING_LITERAL(1).getText())));
+        new File(removeStringQuote(ctx.stringLiteral(0).getText())),
+        new File(removeStringQuote(ctx.stringLiteral(1).getText())));
   }
 
   @Override
   public void enterRemoveFile(RemoveFileContext ctx) {
     super.enterRemoveFile(ctx);
     initializedOperator = new RemoveFileOperator(
-        new File(removeStringQuote(ctx.STRING_LITERAL().getText())));
+        new File(removeStringQuote(ctx.stringLiteral().getText())));
   }
 
   @Override
@@ -376,7 +379,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES,
           parsePrefixPath(ctx.prefixPath()), orderByHeat);
     } else {
-      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES, new Path("root"),
+      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES, new PartialPath(SQLConstant.getSingleRootArray()),
           orderByHeat);
     }
   }
@@ -436,7 +439,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.property(0) != null) {
       for (PropertyContext property : tagsList) {
         String value;
-        if (property.propertyValue().STRING_LITERAL() != null) {
+        if (property.propertyValue().stringLiteral() != null) {
           value = removeStringQuote(property.propertyValue().getText());
         } else {
           value = property.propertyValue().getText();
@@ -585,7 +588,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       throw new SQLParserException("data load command: child count < 3\n");
     }
 
-    String csvPath = ctx.STRING_LITERAL().getText();
+    String csvPath = ctx.stringLiteral().getText();
     StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
     List<NodeNameContext> nodeNames = ctx.prefixPath().nodeName();
     sc.addTail(ctx.prefixPath().ROOT().getText());
@@ -642,7 +645,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterListPrivilegesUser(ctx);
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
         AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-    operator.setUserName(ctx.ID().getText());
+    operator.setUserName(ctx.rootOrId().getText());
     operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_LIST;
@@ -664,7 +667,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterListUserPrivileges(ctx);
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
         AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-    operator.setUserName(ctx.ID().getText());
+    operator.setUserName(ctx.rootOrId().getText());
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_LIST;
   }
@@ -685,7 +688,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
         AuthorOperator.AuthorType.LIST_USER_ROLES);
     initializedOperator = operator;
-    operator.setUserName(ctx.ID().getText());
+    operator.setUserName(ctx.rootOrId().getText());
     operatorType = SQLConstant.TOK_LIST;
   }
 
@@ -703,7 +706,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterSetTTLStatement(SetTTLStatementContext ctx) {
     super.enterSetTTLStatement(ctx);
     SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_SET);
-    operator.setStorageGroup(parsePrefixPath(ctx.prefixPath()).getFullPath());
+    operator.setStorageGroup(parsePrefixPath(ctx.prefixPath()));
     operator.setDataTTL(Long.parseLong(ctx.INT().getText()));
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_SET;
@@ -713,7 +716,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterUnsetTTLStatement(UnsetTTLStatementContext ctx) {
     super.enterUnsetTTLStatement(ctx);
     SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_UNSET);
-    operator.setStorageGroup(parsePrefixPath(ctx.prefixPath()).getFullPath());
+    operator.setStorageGroup(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_UNSET;
   }
@@ -721,10 +724,10 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterShowTTLStatement(ShowTTLStatementContext ctx) {
     super.enterShowTTLStatement(ctx);
-    List<String> storageGroups = new ArrayList<>();
+    List<PartialPath> storageGroups = new ArrayList<>();
     List<PrefixPathContext> prefixPathList = ctx.prefixPath();
     for (PrefixPathContext prefixPath : prefixPathList) {
-      storageGroups.add(parsePrefixPath(prefixPath).getFullPath());
+      storageGroups.add(parsePrefixPath(prefixPath));
     }
     initializedOperator = new ShowTTLOperator(storageGroups);
   }
@@ -732,14 +735,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterShowAllTTLStatement(ShowAllTTLStatementContext ctx) {
     super.enterShowAllTTLStatement(ctx);
-    List<String> storageGroups = new ArrayList<>();
+    List<PartialPath> storageGroups = new ArrayList<>();
     initializedOperator = new ShowTTLOperator(storageGroups);
   }
 
   private String[] parsePrivilege(PrivilegesContext ctx) {
-    List<TerminalNode> privilegeList = ctx.STRING_LITERAL();
+    List<StringLiteralContext> privilegeList = ctx.stringLiteral();
     List<String> privileges = new ArrayList<>();
-    for (TerminalNode privilege : privilegeList) {
+    for (StringLiteralContext privilege : privilegeList) {
       privileges.add(removeStringQuote(privilege.getText()));
     }
     return privileges.toArray(new String[0]);
@@ -758,7 +761,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterDeleteTimeseries(DeleteTimeseriesContext ctx) {
     super.enterDeleteTimeseries(ctx);
-    List<Path> deletePaths = new ArrayList<>();
+    List<PartialPath> deletePaths = new ArrayList<>();
     List<PrefixPathContext> prefixPaths = ctx.prefixPath();
     for (PrefixPathContext prefixPath : prefixPaths) {
       deletePaths.add(parsePrefixPath(prefixPath));
@@ -775,7 +778,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterSetStorageGroup(ctx);
     SetStorageGroupOperator setStorageGroupOperator = new SetStorageGroupOperator(
         SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
-    Path path = parseFullPath(ctx.fullPath());
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
     setStorageGroupOperator.setPath(path);
     initializedOperator = setStorageGroupOperator;
     operatorType = SQLConstant.TOK_METADATA_SET_FILE_LEVEL;
@@ -784,10 +787,10 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterDeleteStorageGroup(DeleteStorageGroupContext ctx) {
     super.enterDeleteStorageGroup(ctx);
-    List<Path> deletePaths = new ArrayList<>();
-    List<FullPathContext> fullPaths = ctx.fullPath();
-    for (FullPathContext fullPath : fullPaths) {
-      deletePaths.add(parseFullPath(fullPath));
+    List<PartialPath> deletePaths = new ArrayList<>();
+    List<PrefixPathContext> prefixPaths = ctx.prefixPath();
+    for (PrefixPathContext prefixPath : prefixPaths) {
+      deletePaths.add(parsePrefixPath(prefixPath));
     }
     DeleteStorageGroupOperator deleteStorageGroupOperator = new DeleteStorageGroupOperator(
         SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL);
@@ -804,7 +807,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     List<PrefixPathContext> prefixPaths = ctx.prefixPath();
     for (PrefixPathContext prefixPath : prefixPaths) {
-      Path path = parsePrefixPath(prefixPath);
+      PartialPath path = parsePrefixPath(prefixPath);
       selectOp.addSelectPath(path);
     }
     deleteDataOp.setSelectOperator(selectOp);
@@ -1082,9 +1085,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     List<String> measurementList = new ArrayList<>();
     for (NodeNameWithoutStarContext nodeNameWithoutStar : nodeNamesWithoutStar) {
       String measurement = nodeNameWithoutStar.getText();
-      if (measurement.contains("\"") || measurement.contains("'")) {
-        measurement = measurement.substring(1, measurement.length() - 1);
-      }
       measurementList.add(measurement);
     }
     insertOp.setMeasurementList(measurementList.toArray(new String[0]));
@@ -1109,17 +1109,18 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     initializedOperator = insertOp;
   }
 
-  private Path parseFullPath(FullPathContext ctx) {
+  private PartialPath parseFullPath(FullPathContext ctx) {
     List<NodeNameWithoutStarContext> nodeNamesWithoutStar = ctx.nodeNameWithoutStar();
-    List<String> path = new ArrayList<>();
+    String[] path = new String[nodeNamesWithoutStar.size() + 1];
+    int i = 0;
     if (ctx.ROOT() != null) {
-      path.add(ctx.ROOT().getText());
+      path[0] = ctx.ROOT().getText();
     }
     for (NodeNameWithoutStarContext nodeNameWithoutStar : nodeNamesWithoutStar) {
-      path.add(nodeNameWithoutStar.getText());
+      i++;
+      path[i] = nodeNameWithoutStar.getText();
     }
-    return new Path(
-        new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
+    return new PartialPath(path);
   }
 
   @Override
@@ -1186,7 +1187,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     Map<String, String> tags = new HashMap<>(property2.size());
     if (property3 != null) {
       for (PropertyContext property : property2) {
-        if (property.propertyValue().STRING_LITERAL() != null) {
+        if (property.propertyValue().stringLiteral() != null) {
           value = removeStringQuote(property.propertyValue().getText());
         } else {
           value = property.propertyValue().getText();
@@ -1203,7 +1204,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     insertOp = new InsertOperator(SQLConstant.TOK_INSERT);
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     operatorType = SQLConstant.TOK_INSERT;
-    selectOp.addSelectPath(parseFullPath(ctx.fullPath()));
+    selectOp.addSelectPath(parsePrefixPath(ctx.prefixPath()));
     insertOp.setSelectOperator(selectOp);
   }
 
@@ -1240,7 +1241,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
     List<PrefixPathContext> prefixFromPaths = ctx.prefixPath();
     for (PrefixPathContext prefixFromPath : prefixFromPaths) {
-      Path path = parsePrefixPath(prefixFromPath);
+      PartialPath path = parsePrefixPath(prefixFromPath);
       fromOp.addPrefixTablePath(path);
     }
     queryOp.setFromOperator(fromOp);
@@ -1252,7 +1253,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     List<FunctionCallContext> functionCallContextList = ctx.functionCall();
     for (FunctionCallContext functionCallContext : functionCallContextList) {
-      Path path = parseSuffixPath(functionCallContext.suffixPath());
+      PartialPath path = parseSuffixPath(functionCallContext.suffixPath());
       selectOp.addClusterPath(path, functionCallContext.functionName().getText());
     }
     queryOp.setSelectOperator(selectOp);
@@ -1264,7 +1265,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     List<SuffixPathContext> suffixPaths = ctx.suffixPath();
     for (SuffixPathContext suffixPath : suffixPaths) {
-      Path path = parseSuffixPath(suffixPath);
+      PartialPath path = parseSuffixPath(suffixPath);
       selectOp.addSelectPath(path);
     }
     queryOp.setSelectOperator(selectOp);
@@ -1278,7 +1279,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     LastClauseContext lastClauseContext = ctx.lastClause();
     List<SuffixPathContext> suffixPaths = lastClauseContext.suffixPath();
     for (SuffixPathContext suffixPath : suffixPaths) {
-      Path path = parseSuffixPath(suffixPath);
+      PartialPath path = parseSuffixPath(suffixPath);
       selectOp.addSelectPath(path);
     }
     queryOp.setSelectOperator(selectOp);
@@ -1293,15 +1294,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
 
-  private Path parsePrefixPath(PrefixPathContext ctx) {
+  private PartialPath parsePrefixPath(PrefixPathContext ctx) {
     List<NodeNameContext> nodeNames = ctx.nodeName();
-    List<String> path = new ArrayList<>();
-    path.add(ctx.ROOT().getText());
-    for (NodeNameContext nodeName : nodeNames) {
-      path.add(nodeName.getText());
+    String[] path = new String[nodeNames.size() + 1];
+    path[0] = ctx.ROOT().getText();
+    for (int i = 0; i < nodeNames.size(); i++) {
+      path[i + 1] = nodeNames.get(i).getText();
     }
-    return new Path(
-        new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
+    return new PartialPath(path);
   }
 
   /**
@@ -1377,7 +1377,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       operator.setKey(ctx.property().ID().getText());
     }
     String value;
-    if (propertyValueContext.STRING_LITERAL() != null) {
+    if (propertyValueContext.stringLiteral() != null) {
       value = removeStringQuote(propertyValueContext.getText());
     } else {
       value = propertyValueContext.getText();
@@ -1438,9 +1438,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     } else if (ctx.LR_BRACKET() != null && ctx.OPERATOR_NOT() == null) {
       return parseOrExpression(ctx.orExpression());
     } else {
-      Path path = null;
+      PartialPath path = null;
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
-        path = new Path(SQLConstant.RESERVED_TIME);
+        path = new PartialPath(SQLConstant.getSingleTimeArray());
       }
       if (ctx.fullPath() != null) {
         path = parseFullPath(ctx.fullPath());
@@ -1459,13 +1459,13 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     }
   }
 
-  private FilterOperator parseInOperator(InClauseContext ctx, Path path) {
+  private FilterOperator parseInOperator(InClauseContext ctx, PartialPath path) {
     Set<String> values = new HashSet<>();
     boolean not = ctx.OPERATOR_NOT() != null;
     for (ConstantContext constant : ctx.constant()) {
       if (constant.dateExpression() != null) {
-        if (!path.equals(SQLConstant.RESERVED_TIME)) {
-          throw new SQLParserException(path.toString(), "Date can only be used to time");
+        if (!path.equals(TIME_PATH)) {
+          throw new SQLParserException(path.getFullPath(), "Date can only be used to time");
         }
         values.add(Long.toString(parseDateExpression(constant.dateExpression())));
       } else {
@@ -1475,11 +1475,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     return new InOperator(ctx.OPERATOR_IN().getSymbol().getType(), path, not, values);
   }
 
-  private FilterOperator parseBasicFunctionOperator(PredicateContext ctx, Path path) {
+  private FilterOperator parseBasicFunctionOperator(PredicateContext ctx, PartialPath path) {
     BasicFunctionOperator basic;
     if (ctx.constant().dateExpression() != null) {
-      if (!path.equals(SQLConstant.RESERVED_TIME)) {
-        throw new SQLParserException(path.toString(), "Date can only be used to time");
+      if (!path.equals(TIME_PATH)) {
+        throw new SQLParserException(path.getFullPath(), "Date can only be used to time");
       }
       basic = new BasicFunctionOperator(ctx.comparisonOperator().type.getType(), path,
           Long.toString(parseDateExpression(ctx.constant().dateExpression())));
@@ -1490,14 +1490,13 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     return basic;
   }
 
-  private Path parseSuffixPath(SuffixPathContext ctx) {
+  private PartialPath parseSuffixPath(SuffixPathContext ctx) {
     List<NodeNameContext> nodeNames = ctx.nodeName();
-    List<String> path = new ArrayList<>();
-    for (NodeNameContext nodeName : nodeNames) {
-      path.add(nodeName.getText());
+    String[] path = new String[nodeNames.size()];
+    for (int i = 0; i < nodeNames.size(); i++) {
+      path[i] = nodeNames.get(i).getText();
     }
-    return new Path(
-        new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
+    return new PartialPath(path);
   }
 
   /**
@@ -1617,7 +1616,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterDeletePartition(ctx);
     DeletePartitionOperator deletePartitionOperator = new DeletePartitionOperator(
         SQLConstant.TOK_DELETE_PARTITION);
-    deletePartitionOperator.setStorageGroupName(ctx.prefixPath().getText());
+    deletePartitionOperator.setStorageGroupName(parsePrefixPath(ctx.prefixPath()));
     Set<Long> idSet = new HashSet<>();
     for (TerminalNode terminalNode : ctx.INT()) {
       idSet.add(Long.parseLong(terminalNode.getText()));

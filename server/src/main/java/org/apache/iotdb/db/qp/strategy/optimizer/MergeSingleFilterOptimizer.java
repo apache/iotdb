@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -55,14 +55,14 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
    * @return - if all recursive children of this node have same seriesPath, set this node to single
    * node, and return the same seriesPath, otherwise, throw exception;
    */
-  private Path mergeSamePathFilter(FilterOperator filter) throws LogicalOptimizeException {
+  private PartialPath mergeSamePathFilter(FilterOperator filter) throws LogicalOptimizeException {
     if (filter.isLeaf()) {
       return filter.getSinglePath();
     }
     List<FilterOperator> children = filter.getChildren();
     checkInnerFilterLen(children);
-    Path childPath = mergeSamePathFilter(children.get(0));
-    Path tempPath;
+    PartialPath childPath = mergeSamePathFilter(children.get(0));
+    PartialPath tempPath;
     for (int i = 1; i < children.size(); i++) {
       tempPath = mergeSamePathFilter(children.get(i));
       // if one of children differs from others or is not single node(seriesPath = null), filter's
@@ -92,8 +92,8 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
   private int mergeSingleFilters(List<FilterOperator> ret, FilterOperator filter) {
     List<FilterOperator> children = filter.getChildren();
     List<FilterOperator> tempExtrNode = null;
-    Path tempPath;
-    Path childPath = null;
+    PartialPath tempPath;
+    PartialPath childPath = null;
     int firstNonSingleIndex;
     for (firstNonSingleIndex = 0; firstNonSingleIndex < children.size(); firstNonSingleIndex++) {
       tempPath = children.get(firstNonSingleIndex).getSinglePath();
@@ -148,8 +148,8 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     return firstNonSingleIndex;
   }
 
-  private Path addLastNullChild(List<FilterOperator> ret,
-                                FilterOperator filter, int i, Path childPath){
+  private PartialPath addLastNullChild(List<FilterOperator> ret,
+                                FilterOperator filter, int i, PartialPath childPath){
     List<FilterOperator> children = filter.getChildren();
     for (; i < children.size(); i++) {
       ret.add(children.get(i));

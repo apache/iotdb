@@ -38,17 +38,18 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -343,7 +344,7 @@ public class IoTDBSessionIT {
 
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
-    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance().getNodeByPath("root.sg1.d1.s1");
+    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d1.s1"));
     assertNull(mNode.getSchema().getProps());
 
   }
@@ -478,7 +479,7 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.\"1.2.3\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d1.\'1.2.4\'", TSDataType.INT64, TSEncoding.RLE,
+    session.createTimeseries("root.sg1.d1.\"1.2.4\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
 
     session.setStorageGroup("root.1");
@@ -550,7 +551,7 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.\"1.2.3\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d1.\'1.2.4\'", TSDataType.INT64, TSEncoding.RLE,
+    session.createTimeseries("root.sg1.d1.\"1.2.4\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
 
     session.setStorageGroup("root.1");
@@ -681,7 +682,7 @@ public class IoTDBSessionIT {
   private void createTimeseriesInChinese(String storageGroup, String[] devices)
       throws StatementExecutionException, IoTDBConnectionException {
     for (String path : devices) {
-      String fullPath = storageGroup + "." + path;
+      String fullPath = storageGroup + TsFileConstant.PATH_SEPARATOR + path;
       session.createTimeseries(fullPath, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     }
   }
@@ -693,7 +694,7 @@ public class IoTDBSessionIT {
         String[] ss = path.split("\\.");
         String deviceId = storageGroup;
         for (int j = 0; j < ss.length - 1; j++) {
-          deviceId += ("." + ss[j]);
+          deviceId += (TsFileConstant.PATH_SEPARATOR + ss[j]);
         }
         String sensorId = ss[ss.length - 1];
         List<String> measurements = new ArrayList<>();
@@ -929,7 +930,7 @@ public class IoTDBSessionIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      Assert.assertEquals("root.sg1.d1,11,0,11,", sb.toString());
+      Assert.assertEquals("root.sg1.d1,\'11\',0,\'11\',", sb.toString());
     }
     Assert.assertEquals(1000, count);
     sessionDataSet.closeOperationHandle();
@@ -948,7 +949,7 @@ public class IoTDBSessionIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      Assert.assertEquals("root.sg1.d1,11,0,11,null,0,null,", sb.toString());
+      Assert.assertEquals("root.sg1.d1,'11',0,'11',null,0,null,", sb.toString());
     }
     Assert.assertEquals(1000, count);
     sessionDataSet.closeOperationHandle();
@@ -1074,10 +1075,10 @@ public class IoTDBSessionIT {
     checkSetSG(session, "root..vehicle", false);
     checkSetSG(session, "root.1234a4", true);
     checkSetSG(session, "root.1_2", true);
-    checkSetSG(session, "root.%12345", true);
-    checkSetSG(session, "root.+12345", true);
-    checkSetSG(session, "root.-12345", true);
-    checkSetSG(session, "root.a{12345}", true);
+    checkSetSG(session, "root.%12345", false);
+    checkSetSG(session, "root.+12345", false);
+    checkSetSG(session, "root.-12345", false);
+    checkSetSG(session, "root.a{12345}", false);
 
     //test create timeseries
     checkCreateTimeseries(session, "root.vehicle.d0.s0", true);
@@ -1085,7 +1086,7 @@ public class IoTDBSessionIT {
     checkCreateTimeseries(session, "root.vehicle.d0.1220", true);
     checkCreateTimeseries(session, "root.vehicle._1234.s0", true);
     checkCreateTimeseries(session, "root.vehicle.1245.\"1.2.3\"", true);
-    checkCreateTimeseries(session, "root.vehicle.1245.\'1.2.4\'", true);
+    checkCreateTimeseries(session, "root.vehicle.1245.\"1.2.4\"", true);
     checkCreateTimeseries(session, "root.vehicle./d0.s0", true);
     checkCreateTimeseries(session, "root.vehicle.d\t0.s0", false);
     checkCreateTimeseries(session, "root.vehicle.!d\t0.s0", false);

@@ -19,14 +19,13 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.tsfile.read.common.Path;
-
 import java.util.Map;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.RootOperator;
 
 public class AlterTimeSeriesOperator extends RootOperator {
 
-  private Path path;
+  private PartialPath path;
 
   private AlterType alterType;
 
@@ -47,11 +46,11 @@ public class AlterTimeSeriesOperator extends RootOperator {
     operatorType = OperatorType.ALTER_TIMESERIES;
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
 
-  public void setPath(Path path) {
+  public void setPath(PartialPath path) {
     this.path = path;
   }
 

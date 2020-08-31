@@ -25,12 +25,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -46,18 +47,18 @@ public class SerializationTest {
   @Before
   public void before() throws MetadataException {
     MManager.getInstance().init();
-    MManager.getInstance().setStorageGroup("root.vehicle");
+    MManager.getInstance().setStorageGroup(new PartialPath("root.vehicle"));
     MManager.getInstance()
-        .createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED, null);
     MManager.getInstance()
-        .createTimeseries("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.vehicle.d2.s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED, null);
     MManager.getInstance()
-        .createTimeseries("root.vehicle.d3.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.vehicle.d3.s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED, null);
     MManager.getInstance()
-        .createTimeseries("root.vehicle.d4.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.vehicle.d4.s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED, null);
   }
 
@@ -68,7 +69,7 @@ public class SerializationTest {
   }
 
   @Test
-  public void testInsert() throws QueryProcessException, IOException {
+  public void testInsert() throws QueryProcessException, IOException, IllegalPathException {
     String sqlStr = "INSERT INTO root.vehicle.d1(timestamp, s1) VALUES (1, 5.0)";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
