@@ -83,6 +83,7 @@ public class Session {
   private ZoneId zoneId;
   private long statementId;
   private int fetchSize;
+  private String rawDataQuery = "raw data query";
 
   public Session(String host, int port) {
     this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
@@ -914,11 +915,22 @@ public class Session {
         execResp.isIgnoreTimeStamp());
   }
 
+  /**
+   * query eg. select * from paths where time >= startTime and time < endTime
+   * time interval include startTime and exclude endTime
+   * @param paths
+   * @param startTime included
+   * @param endTime excluded
+   * @return
+   * @throws StatementExecutionException
+   * @throws IoTDBConnectionException
+   */
+
   public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
           throws StatementExecutionException, IoTDBConnectionException {
 
-    String statement = "raw data query";
-    TSRawDataQueryReq execReq = new TSRawDataQueryReq(sessionId, paths, startTime, endTime, statementId, "");
+    String statement = rawDataQuery;
+    TSRawDataQueryReq execReq = new TSRawDataQueryReq(sessionId, paths, startTime, endTime, statementId, statement);
     execReq.setFetchSize(fetchSize);
 
     TSExecuteStatementResp execResp;

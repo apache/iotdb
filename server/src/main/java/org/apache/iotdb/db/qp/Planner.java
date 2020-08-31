@@ -39,7 +39,9 @@ import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.tsfile.read.common.Path;
+import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
 
 import java.time.ZoneId;
 import java.util.HashSet;
@@ -75,8 +77,12 @@ public class Planner {
   /**
    * convert raw data query to physical plan directly
    */
-  public PhysicalPlan rawDataQueryToPhysicalPlan(List<String> paths, long startTime, long endTime)
+  public PhysicalPlan rawDataQueryReqToPhysicalPlan(TSRawDataQueryReq rawDataQueryReq)
           throws QueryProcessException {
+    List<String> paths = rawDataQueryReq.getPaths();
+    long startTime = rawDataQueryReq.getStartTime();
+    long endTime = rawDataQueryReq.getEndTime();
+
     //construct query operator and set its global time filter
     QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
@@ -94,7 +100,7 @@ public class Planner {
 
     //set time filter operator
     FilterOperator filterOp = new FilterOperator(SQLConstant.KW_AND);
-    Path timePath = new Path("time");
+    Path timePath = new Path(TIME);
     filterOp.setSinglePath(timePath);
     Set<Path> pathSet = new HashSet<>();
     pathSet.add(timePath);

@@ -910,7 +910,7 @@ public class IoTDBSessionIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      System.out.println(sb.toString());
+      //System.out.println(sb.toString());
     }
     Assert.assertEquals(900, count);
     sessionDataSet.closeOperationHandle();

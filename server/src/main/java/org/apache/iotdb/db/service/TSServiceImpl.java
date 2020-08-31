@@ -508,14 +508,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return RpcUtils.getTSExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
       }
-      List<String> strPaths = req.getPaths();
-      long startTime = req.getStartTime();
-      long endTime = req.getEndTime();
 
       PhysicalPlan physicalPlan;
       try {
         physicalPlan =
-                processor.rawDataQueryToPhysicalPlan(strPaths, startTime, endTime);
+                processor.rawDataQueryReqToPhysicalPlan(req);
       } catch (QueryProcessException | SQLParserException e) {
         logger.info(ERROR_PARSING_SQL, e.getMessage());
         return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
@@ -526,7 +523,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
       }
 
-      return internalExecuteQueryStatement("raw data query", req.statementId, physicalPlan, req.fetchSize,
+      return internalExecuteQueryStatement(req.getStatement(), req.statementId, physicalPlan, req.fetchSize,
               sessionIdUsernameMap.get(req.getSessionId()));
 
     } catch (ParseCancellationException e) {
