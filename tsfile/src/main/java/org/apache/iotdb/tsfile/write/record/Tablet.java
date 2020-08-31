@@ -102,10 +102,10 @@ public class Tablet {
     this.deviceId = deviceId;
     this.schemas = schemas;
     this.maxRowNumber = maxRowNumber;
-    mSchemaWithIndex = new HashMap<>();
+    measurementIndex = new HashMap<>();
 
     for (int i = 0; i < schemas.size(); i++) {
-      mSchemaWithIndex.put(schemas.get(i).getMeasurementId(), i);
+      measurementIndex.put(schemas.get(i).getMeasurementId(), i);
     }
 
     createColumns();
@@ -118,7 +118,7 @@ public class Tablet {
   }
 
   public void addValue(String measurementId, int rowIndex, Object value) {
-    int indexOfValue = mSchemaWithIndex.get(measurementId);
+    int indexOfValue = measurementIndex.get(measurementId);
     MeasurementSchema measurementSchema = schemas.get(indexOfValue);
 
     switch (measurementSchema.getType()) {
