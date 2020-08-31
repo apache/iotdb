@@ -49,8 +49,6 @@ public class IoTDBRemovePartitionIT {
     EnvironmentUtils.envSetUp();
     StorageEngine.setEnablePartition(true);
     StorageEngine.setTimePartitionInterval(partitionInterval);
-    IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.NormalStrategy);
     insertData();
   }
 
@@ -59,8 +57,6 @@ public class IoTDBRemovePartitionIT {
     EnvironmentUtils.cleanEnv();
     StorageEngine.setEnablePartition(false);
     StorageEngine.setTimePartitionInterval(-1);
-    IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.LevelStrategy);
   }
 
   @Test
@@ -178,6 +174,7 @@ public class IoTDBRemovePartitionIT {
         sqls.add(String.format("INSERT INTO root.test%d(timestamp, s0) VALUES (%d, %d)", j,
             i * partitionInterval, i * partitionInterval));
       }
+      sqls.add("MERGE");
       // last file is unclosed
       if (i < 9) {
         sqls.add("FLUSH");

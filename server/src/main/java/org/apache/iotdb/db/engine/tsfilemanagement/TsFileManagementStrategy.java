@@ -23,14 +23,14 @@ import org.apache.iotdb.db.engine.tsfilemanagement.level.LevelTsFileManagement;
 import org.apache.iotdb.db.engine.tsfilemanagement.normal.NormalTsFileManagement;
 
 public enum TsFileManagementStrategy {
-  LevelStrategy,
-  NormalStrategy;
+  LEVEL_STRATEGY,
+  NORMAL_STRATEGY;
 
   public TsFileManagement getTsFileManagement(String storageGroupName, String storageGroupDir) {
     switch (this) {
-      case LevelStrategy:
+      case LEVEL_STRATEGY:
         return new LevelTsFileManagement(storageGroupName, storageGroupDir);
-      case NormalStrategy:
+      case NORMAL_STRATEGY:
       default:
         return new NormalTsFileManagement(storageGroupName, storageGroupDir);
     }

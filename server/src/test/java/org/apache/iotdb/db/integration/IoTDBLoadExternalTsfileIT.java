@@ -115,7 +115,7 @@ public class IoTDBLoadExternalTsfileIT {
   @Before
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.NormalStrategy);
+        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -126,7 +126,7 @@ public class IoTDBLoadExternalTsfileIT {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.LevelStrategy);
+        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
   }
 
   @Test

@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  */
 public class HotCompactionMergeTaskPoolManager implements IService {
 
-  private static final Logger LOGGER = LoggerFactory
+  private static final Logger logger = LoggerFactory
       .getLogger(HotCompactionMergeTaskPoolManager.class);
   private static final HotCompactionMergeTaskPoolManager INSTANCE = new HotCompactionMergeTaskPoolManager();
   private ExecutorService pool;
@@ -50,24 +50,24 @@ public class HotCompactionMergeTaskPoolManager implements IService {
       this.pool = IoTDBThreadPoolFactory
           .newCachedThreadPool(ThreadName.HOT_COMPACTION_SERVICE.getName());
     }
-    LOGGER.info("Hot compaction merge task manager started.");
+    logger.info("Hot compaction merge task manager started.");
   }
 
   @Override
   public void stop() {
     if (pool != null) {
       pool.shutdownNow();
-      LOGGER.info("Waiting for task pool to shut down");
+      logger.info("Waiting for task pool to shut down");
       long startTime = System.currentTimeMillis();
       while (!pool.isTerminated()) {
         // wait
         long time = System.currentTimeMillis() - startTime;
         if (time % 60_000 == 0) {
-          LOGGER.warn("HotCompactionManager has wait for {} seconds to stop", time / 1000);
+          logger.warn("HotCompactionManager has wait for {} seconds to stop", time / 1000);
         }
       }
       pool = null;
-      LOGGER.info("HotCompactionManager stopped");
+      logger.info("HotCompactionManager stopped");
     }
   }
 
@@ -75,17 +75,17 @@ public class HotCompactionMergeTaskPoolManager implements IService {
   public void waitAndStop(long millseconds) {
     if (pool != null) {
       awaitTermination(pool, millseconds);
-      LOGGER.info("Waiting for task pool to shut down");
+      logger.info("Waiting for task pool to shut down");
       long startTime = System.currentTimeMillis();
       while (!pool.isTerminated()) {
         // wait
         long time = System.currentTimeMillis() - startTime;
         if (time % 60_000 == 0) {
-          LOGGER.warn("HotCompactionManager has wait for {} seconds to stop", time / 1000);
+          logger.warn("HotCompactionManager has wait for {} seconds to stop", time / 1000);
         }
       }
       pool = null;
-      LOGGER.info("HotCompactionManager stopped");
+      logger.info("HotCompactionManager stopped");
     }
   }
 
@@ -94,7 +94,7 @@ public class HotCompactionMergeTaskPoolManager implements IService {
       service.shutdown();
       service.awaitTermination(millseconds, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
-      LOGGER.warn("HotCompactionThreadPool can not be closed in {} ms", millseconds);
+      logger.warn("HotCompactionThreadPool can not be closed in {} ms", millseconds);
       Thread.currentThread().interrupt();
     }
     service.shutdownNow();

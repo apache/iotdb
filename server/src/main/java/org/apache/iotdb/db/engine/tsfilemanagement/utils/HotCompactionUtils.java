@@ -59,10 +59,10 @@ public class HotCompactionUtils {
   private static Pair<ChunkMetadata, Chunk> writeSeqChunk(String storageGroup,
       Map<String, TsFileSequenceReader> tsFileSequenceReaderMap, String deviceId,
       String measurementId,
-      List<TsFileResource> levelResources, ChunkMetadata lastChunkMetadata, Chunk lastChunk)
+      List<TsFileResource> levelResources)
       throws IOException {
-    ChunkMetadata newChunkMetadata = lastChunkMetadata;
-    Chunk newChunk = lastChunk;
+    ChunkMetadata newChunkMetadata = null;
+    Chunk newChunk = null;
     for (TsFileResource levelResource : levelResources) {
       TsFileSequenceReader reader = buildReaderFromTsFileResource(levelResource,
           tsFileSequenceReaderMap,
@@ -194,8 +194,7 @@ public class HotCompactionUtils {
             .entrySet()) {
           String measurementId = entry.getKey();
           Pair<ChunkMetadata, Chunk> chunkPair = writeSeqChunk(storageGroup,
-              tsFileSequenceReaderMap, deviceId, measurementId, tsFileResources, null,
-              null);
+              tsFileSequenceReaderMap, deviceId, measurementId, tsFileResources);
           ChunkMetadata newChunkMetadata = chunkPair.left;
           Chunk newChunk = chunkPair.right;
           if (newChunkMetadata != null && newChunk != null) {
