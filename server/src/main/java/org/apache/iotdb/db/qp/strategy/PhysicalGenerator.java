@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -105,12 +106,16 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
  * Used to convert logical operator to physical plan
  */
 public class PhysicalGenerator {
+
+  private static Logger logger = LoggerFactory.getLogger(PhysicalGenerator.class);
 
   public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
     List<PartialPath> paths;
@@ -171,13 +176,9 @@ public class PhysicalGenerator {
       case INSERT:
         InsertOperator insert = (InsertOperator) operator;
         paths = insert.getSelectedPaths();
-        if (paths.size() != 1) {
-          throw new LogicalOperatorException(
-              "For Insert command, cannot specified more than one seriesPath: " + paths);
-        }
 
         if (insert.getMeasurementList().length != insert.getValueList().length) {
-          throw new ArrayIndexOutOfBoundsException(
+          throw new SQLParserException(
               String.format(
                   "the measurementList's size %d is not consistent with the valueList's size %d",
                   insert.getMeasurementList().length, insert.getValueList().length));
