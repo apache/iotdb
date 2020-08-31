@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
 /**
@@ -31,6 +30,10 @@ public class PublicBAOS extends ByteArrayOutputStream {
 
   public PublicBAOS() {
     super();
+  }
+
+  public PublicBAOS(int size) {
+    super(size);
   }
 
   /**

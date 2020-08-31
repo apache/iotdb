@@ -21,8 +21,6 @@ package org.apache.iotdb.cluster.server.member;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -87,6 +85,7 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.IoTDBException;
@@ -1149,6 +1148,7 @@ public abstract class RaftMember {
     }
   }
 
+
   /**
    * Forward a non-query plan to "receiver" using "client".
    *
@@ -1181,12 +1181,10 @@ public abstract class RaftMember {
 
   private TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header) {
     Client client = getSyncClient(receiver);
-    try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-      plan.serialize(dataOutputStream);
+    try {
 
       ExecutNonQueryReq req = new ExecutNonQueryReq();
-      req.setPlanBytes(byteArrayOutputStream.toByteArray());
+      req.setPlanBytes(PlanSerializer.instance.serialize(plan));
       if (header != null) {
         req.setHeader(header);
       }
@@ -1344,6 +1342,7 @@ public abstract class RaftMember {
   public TSStatus executeNonQueryPlan(ExecutNonQueryReq request) throws IOException {
     // process the plan locally
     PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
+
     TSStatus answer = executeNonQuery(plan);
     logger.debug("{}: Received a plan {}, executed answer: {}", name, plan, answer);
     return answer;

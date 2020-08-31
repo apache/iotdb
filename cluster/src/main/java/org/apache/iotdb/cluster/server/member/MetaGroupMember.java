@@ -27,7 +27,6 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -143,6 +142,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
+import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -182,6 +182,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -1915,15 +1916,32 @@ public class MetaGroupMember extends RaftMember {
       return StatusUtils.TIME_OUT;
     }
   }
-
+  TSIService.Client cli;
+  long sId;
   private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header) {
     Client client = getSyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
-    try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-      plan.serialize(dataOutputStream);
+    try {
+
+//            if (plan instanceof CreateTimeSeriesPlan) {
+//        CreateTimeSeriesPlan timeSeriesPlan = (CreateTimeSeriesPlan) plan;
+//        if (cli == null) {
+//          TSocket tSocket = new TSocket("127.0.0.1", 6669);
+//          tSocket.open();
+//          cli = new TSIService.Client(new TBinaryProtocol(new TFastFramedTransport(tSocket)));
+//          TSOpenSessionReq tsOpenSessionReq = new TSOpenSessionReq(
+//              TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+//          tsOpenSessionReq.setUsername("root");
+//          tsOpenSessionReq.setPassword("root");
+//          TSOpenSessionResp tsOpenSessionResp = cli.openSession(tsOpenSessionReq);
+//          sId = tsOpenSessionResp.sessionId;
+//        }
+//        TSCreateTimeseriesReq re =
+//            new TSCreateTimeseriesReq(sId, timeSeriesPlan.getPath().getFullPath(), 0, 0, 0);
+//        return cli.createTimeseries(re);
+//      }
 
       ExecutNonQueryReq req = new ExecutNonQueryReq();
-      req.setPlanBytes(byteArrayOutputStream.toByteArray());
+      req.setPlanBytes(PlanSerializer.instance.serialize(plan));
       if (header != null) {
         req.setHeader(header);
       }

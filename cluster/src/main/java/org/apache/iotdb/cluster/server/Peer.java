@@ -29,6 +29,8 @@ public class Peer {
   // so just adding a volatile is enough to face the concurrency problem
   private volatile boolean isCatchUp;
   private AtomicInteger inconsistentHeartbeatNum = new AtomicInteger();
+  // lastLogIndex from the last heartbeat
+  private long lastHeartBeatIndex;
 
   public Peer(long nextIndex) {
     this.nextIndex = nextIndex;
@@ -68,5 +70,13 @@ public class Peer {
 
   public void resetInconsistentHeartbeatNum() {
     inconsistentHeartbeatNum.set(0);
+  }
+
+  public long getLastHeartBeatIndex() {
+    return lastHeartBeatIndex;
+  }
+
+  public void setLastHeartBeatIndex(long lastHeartBeatIndex) {
+    this.lastHeartBeatIndex = lastHeartBeatIndex;
   }
 }
