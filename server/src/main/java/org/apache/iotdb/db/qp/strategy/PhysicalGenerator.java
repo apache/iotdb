@@ -106,16 +106,12 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 /**
  * Used to convert logical operator to physical plan
  */
 public class PhysicalGenerator {
-
-  private static Logger logger = LoggerFactory.getLogger(PhysicalGenerator.class);
 
   public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
     List<PartialPath> paths;
@@ -176,7 +172,6 @@ public class PhysicalGenerator {
       case INSERT:
         InsertOperator insert = (InsertOperator) operator;
         paths = insert.getSelectedPaths();
-
         if (insert.getMeasurementList().length != insert.getValueList().length) {
           throw new SQLParserException(
               String.format(
