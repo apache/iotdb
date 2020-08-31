@@ -83,7 +83,6 @@ public class Session {
   private ZoneId zoneId;
   private long statementId;
   private int fetchSize;
-  private String rawDataQuery = "raw data query";
 
   public Session(String host, int port) {
     this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
@@ -929,7 +928,7 @@ public class Session {
   public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
           throws StatementExecutionException, IoTDBConnectionException {
 
-    String statement = rawDataQuery;
+    String statement = SessionUtils.rawDataQuery;
     TSRawDataQueryReq execReq = new TSRawDataQueryReq(sessionId, paths, startTime, endTime, statementId, statement);
     execReq.setFetchSize(fetchSize);
 

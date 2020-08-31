@@ -28,6 +28,8 @@ import java.nio.ByteBuffer;
 
 public class SessionUtils {
 
+  public static final String rawDataQuery = "raw data query";
+
   public static ByteBuffer getTimeBuffer(Tablet tablet) {
     ByteBuffer timeBuffer = ByteBuffer.allocate(tablet.getTimeBytesSize());
     for (int i = 0; i < tablet.rowSize; i++) {
