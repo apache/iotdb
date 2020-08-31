@@ -927,7 +927,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       List<String> failedNames = new LinkedList<>();
       for (PartialPath path : deletePathList) {
-        StorageEngine.getInstance().deleteTimeseries(new PartialPath(path.getDevice()),
+        StorageEngine.getInstance().deleteTimeseries(path.getDevicePath(),
             path.getMeasurement());
         String failedTimeseries = mManager.deleteTimeseries(path);
         if (!failedTimeseries.isEmpty()) {
