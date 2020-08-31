@@ -24,18 +24,20 @@
 ## 集群环境搭建
 用户可以搭建伪分布式模式或是分布式模式，伪分布式模式和分布式模式的主要区别是配置文件中seed_nodes的不同，配置项含义请参考[配置项](#配置项)。
 启动其中一个节点的服务，需要执行如下命令：
-```
+
+```bash
 # Unix/OS X
 > nohup sbin/start-node.sh >/dev/null 2>&1 &
 or
 > nohup sbin/start-node.sh -c <conf_path> -internal_meta_port 9003 >/dev/null 2>&1 &
 
 # Windows
-> nohup sbin/start-node.bat >/dev/null 2>&1 &
+> nohup sbin/start-node.bat
 or
-> nohup sbin/start-node.bat -c <conf_path> -internal_meta_port 9003 >/dev/null 2>&1 &
+> nohup sbin/start-node.bat -c <conf_path> -internal_meta_port 9003
 or
 ```
+
 -c <conf_path>使用conf_path文件夹里面的配置文件覆盖默认配置文件; -internal_meta_port 9003覆盖特定配置项internal_meta_port的配置，
 目前支持的启动覆盖原有配置的配置项有：
 internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两者都存在的时候，指定配置项的配置会覆盖配置文件中的配置。
@@ -54,7 +56,7 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 
 * `iotdb-cluster.properties`: IoTDB集群所需要的一些配置。
 
-`iotdb-engine.properties`、`iotdb-env.sh` 两个配置文件详细说明请参考[配置手册](Config%20Manual.md)，下面配置项是`iotdb-cluster.properties`解释。
+`iotdb-engine.properties`、`iotdb-env.sh` 两个配置文件详细说明请参考[配置手册](Config%20Manual.md)，下面描述的配置项是在`iotdb-cluster.properties`文件中的。
 
 * internal\_meta\_port
 
@@ -235,3 +237,18 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 |类型|BOOLEAN|
 |默认值|false|
 |改后生效方式|重启服务器生效|
+
+## 开启GC日志
+GC日志默认是关闭的。为了性能调优，用户可能会需要手机GC信息。
+若要打开GC日志，则需要在启动IoTDB Server的时候加上"printgc"参数：
+
+```bash
+nohup sbin/start-node.sh printgc >/dev/null 2>&1 &
+```
+或者
+
+```bash
+sbin\start-node.bat printgc
+```
+
+GC日志会被存储在`IOTDB_HOME/logs/`下面。
