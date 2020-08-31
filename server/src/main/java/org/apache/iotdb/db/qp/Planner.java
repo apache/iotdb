@@ -22,6 +22,7 @@ import java.time.ZoneId;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -80,7 +81,7 @@ public class Planner {
    * convert raw data query to physical plan directly
    */
   public PhysicalPlan rawDataQueryReqToPhysicalPlan(TSRawDataQueryReq rawDataQueryReq)
-          throws QueryProcessException {
+      throws QueryProcessException, IllegalPathException {
     List<String> paths = rawDataQueryReq.getPaths();
     long startTime = rawDataQueryReq.getStartTime();
     long endTime = rawDataQueryReq.getEndTime();
@@ -92,19 +93,19 @@ public class Planner {
 
     //iterate the path list and add it to from operator
     for (String p : paths) {
-      Path path = new Path(p);
+      PartialPath path = new PartialPath(p);
       fromOp.addPrefixTablePath(path);
     }
-    selectOp.addSelectPath(new Path(""));
+    selectOp.addSelectPath(new PartialPath(""));
 
     queryOp.setSelectOperator(selectOp);
     queryOp.setFromOperator(fromOp);
 
     //set time filter operator
     FilterOperator filterOp = new FilterOperator(SQLConstant.KW_AND);
-    Path timePath = new Path(TIME);
+    PartialPath timePath = new PartialPath(TIME);
     filterOp.setSinglePath(timePath);
-    Set<Path> pathSet = new HashSet<>();
+    Set<PartialPath> pathSet = new HashSet<>();
     pathSet.add(timePath);
     filterOp.setIsSingle(true);
     filterOp.setPathSet(pathSet);
