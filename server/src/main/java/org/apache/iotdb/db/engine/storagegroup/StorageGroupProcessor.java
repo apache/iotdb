@@ -1669,16 +1669,16 @@ public class StorageGroupProcessor {
       logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
           fullMerge);
 
-      if (tsFileManagement.isEmpty(false) || tsFileManagement.isEmpty(true)) {
+      List<TsFileResource> seqMergeList = tsFileManagement.getMergeTsFileList(true);
+      List<TsFileResource> unSeqMergeList = tsFileManagement.getMergeTsFileList(false);
+      if (seqMergeList.isEmpty() || unSeqMergeList.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
         return;
       }
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
       long timeLowerBound = System.currentTimeMillis() - dataTTL;
-      MergeResource mergeResource = new MergeResource(tsFileManagement.getMergeTsFileList(true),
-          tsFileManagement.getMergeTsFileList(false),
-          timeLowerBound);
+      MergeResource mergeResource = new MergeResource(seqMergeList, unSeqMergeList, timeLowerBound);
 
       IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
       try {
