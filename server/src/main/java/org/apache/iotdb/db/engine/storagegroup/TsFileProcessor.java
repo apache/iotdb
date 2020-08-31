@@ -245,11 +245,11 @@ public class TsFileProcessor {
       }
 
       // update start time of this memtable
-      tsFileResource.updateStartTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
+      tsFileResource.updateStartTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
       //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
       //for unsequence tsfile, we have to update the endTime for each insertion.
       if (!sequence) {
-        tsFileResource.updateEndTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
+        tsFileResource.updateEndTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
       }
       if (needToReport) {
         SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
@@ -331,14 +331,14 @@ public class TsFileProcessor {
       }
 
       tsFileResource
-          .updateStartTime(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[start]);
+          .updateStartTime(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[start]);
 
       //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
       //for unsequence tsfile, we have to update the endTime for each insertion.
       if (!sequence) {
         tsFileResource
             .updateEndTime(
-                insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
+                insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
       }
       if (needToReport) {
         SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
@@ -386,7 +386,7 @@ public class TsFileProcessor {
     long bytesCost = 0L;
     long unsealedResourceCost = 0L;
     long chunkMetadataCost = 0L;
-    unsealedResourceCost = tsFileResource.estimateRamIncrement(insertPlan.getDeviceId());
+    unsealedResourceCost = tsFileResource.estimateRamIncrement(insertPlan.getDeviceId().getFullPath());
     for (int i = 0; i < insertPlan.getDataTypes().length; i++) {
       // skip failed Measurements
       if (insertPlan.getDataTypes()[i] == null) {
@@ -404,7 +404,7 @@ public class TsFileProcessor {
         }
       }
       // ChunkMetadataCost
-      if (workMemTable.checkIfNeedStartNewChunk(insertPlan.getDeviceId(),
+      if (workMemTable.checkIfNeedStartNewChunk(insertPlan.getDeviceId().getFullPath(),
           insertPlan.getMeasurements()[i])) {
         chunkMetadataCost += ChunkMetadata.calculateRamSize(insertPlan.getMeasurements()[i],
             insertPlan.getDataTypes()[i]);

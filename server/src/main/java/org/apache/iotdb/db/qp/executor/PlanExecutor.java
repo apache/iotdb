@@ -562,51 +562,6 @@ public class PlanExecutor implements IPlanExecutor {
     return singleDataSet;
   }
 
-  private QueryDataSet processShowDynamicParameterQuery() {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(new PartialPath(COLUMN_PARAMETER, false), new PartialPath(COLUMN_VALUE, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
-
-    int timestamp = 0;
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "memtable size threshold",
-        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold() + "B");
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "memtable number",
-        IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber() + "B");
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "tsfile size threshold",
-        IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold() + "B");
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "compression ratio",
-        Double.toString(CompressionRatio.getInstance().getRatio()));
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "storage group number",
-        Integer.toString(IoTDB.metaManager.getAllStorageGroupPaths().size()));
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "timeseries number",
-        Integer.toString(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries()));
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp,
-        "maximal timeseries number among storage groups",
-        Long.toString(IoTDB.metaManager.getMaximalSeriesNumberAmongStorageGroups()));
-    return listDataSet;
-  }
-
   private QueryDataSet processShowFlushTaskInfo() {
     ListDataSet listDataSet =
         new ListDataSet(

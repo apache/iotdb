@@ -26,7 +26,9 @@ import java.util.Random;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -101,12 +103,13 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void testCheckArrayInMemTable() throws QueryProcessException, IOException, WriteProcessException {
+  public void testCheckArrayInMemTable()
+      throws QueryProcessException, IOException, WriteProcessException, IllegalPathException {
     IMemTable memTable = new PrimitiveMemTable();
     String deviceId = "root.sg.device99";
     String sensorId = "sensor4";
     int arraySize = IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
-    InsertPlan insertPlan = new InsertRowPlan(deviceId, 64, sensorId, TSDataType.INT64, "4");
+    InsertPlan insertPlan = new InsertRowPlan(new PartialPath(deviceId), 64, sensorId, TSDataType.INT64, "4");
     Assert.assertFalse(memTable.checkIfArrayIsEnough(insertPlan));
 
     for (long i = 0; i < arraySize - 1; i++) {
@@ -118,7 +121,7 @@ public class PrimitiveMemTableTest {
     memTable.write(deviceId, sensorId, new MeasurementSchema(sensorId, TSDataType.INT64, TSEncoding.RLE), arraySize - 1,
         10L);
     Assert.assertFalse(memTable.checkIfArrayIsEnough(insertPlan));
-    insertPlan = new InsertRowPlan(deviceId, 11, "sensor3", TSDataType.INT32, "4");
+    insertPlan = new InsertRowPlan(new PartialPath(deviceId), 11, "sensor3", TSDataType.INT32, "4");
     Assert.assertFalse(memTable.checkIfArrayIsEnough(insertPlan));
   }
 

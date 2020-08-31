@@ -177,8 +177,6 @@ public class MManager {
       }
     };
 
-    int remoteCacheSize = config.getmRemoteSchemaCacheSize();
-
     timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
         "timedCreateMTreeSnapshotThread"));
     timedCreateMTreeSnapshotThread
@@ -209,7 +207,7 @@ public class MManager {
       isRecovering = true;
       int lineNumber = initFromLog(logFile);
 
-      if (config.isEnableActiveTimeseriesCounter())) {
+      if (config.isEnableActiveTimeseriesCounter()) {
         List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
         for (PartialPath sg : storageGroups) {
           MNode node = mtree.getNodeByPath(sg);
