@@ -176,6 +176,13 @@ public class PhysicalGenerator {
               "For Insert command, cannot specified more than one seriesPath: " + paths);
         }
 
+        if (insert.getMeasurementList().length != insert.getValueList().length) {
+          throw new ArrayIndexOutOfBoundsException(
+              String.format(
+                  "the measurementList's size %d is not consistent with the valueList's size %d",
+                  insert.getMeasurementList().length, insert.getValueList().length));
+        }
+
         return new InsertRowPlan(paths.get(0), insert.getTime(),
             insert.getMeasurementList(), insert.getValueList());
       case MERGE:
