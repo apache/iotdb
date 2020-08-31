@@ -40,6 +40,7 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -97,11 +98,11 @@ public class SeqTsFileRecoverTest {
     tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
-    IoTDB.metaManager.setStorageGroup("root.sg");
+    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         IoTDB.metaManager
-            .createTimeseries("root.sg.device" + i + ".sensor" + j, TSDataType.INT64,
+            .createTimeseries(new PartialPath("root.sg.device" + i + ".sensor" + j), TSDataType.INT64,
                 TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(),
                 Collections.emptyMap());
       }
@@ -151,7 +152,7 @@ public class SeqTsFileRecoverTest {
           types[k] = TSDataType.INT64;
           values[k] = String.valueOf(k);
         }
-        InsertRowPlan insertPlan = new InsertRowPlan("root.sg.device" + j, i, measurements, types,
+        InsertRowPlan insertPlan = new InsertRowPlan(new PartialPath("root.sg.device" + j), i, measurements, types,
             values);
         node.write(insertPlan);
       }

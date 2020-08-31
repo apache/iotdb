@@ -53,6 +53,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -346,12 +347,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           break;
         case "COLUMN":
           List<TSDataType> dataTypes =
-              getSeriesTypesByString(Collections.singletonList(req.getColumnPath()), null);
+              getSeriesTypesByString(Collections.singletonList(new PartialPath(req.getColumnPath())), null);
           resp.setDataType(dataTypes.get(0).toString());
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "ALL_COLUMNS":
-          resp.setColumnsList(getPaths(req.getColumnPath()));
+          resp.setColumnsList(getPaths(new PartialPath(req.getColumnPath())).stream().map(PartialPath::getFullPath).collect(
+              Collectors.toList()));
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         default:
@@ -378,8 +380,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return IoTDB.metaManager.getMetadataInString();
   }
 
-  protected List<String> getPaths(String path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesName(path);
+  protected List<PartialPath> getPaths(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getAllTimeseriesPath(path);
   }
 
   @Override
@@ -759,22 +761,22 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // wide means not align by device
   private void getWideQueryHeaders(
       QueryPlan plan, List<String> respColumns, List<String> columnTypes)
-      throws TException, QueryProcessException, MetadataException {
+      throws TException, MetadataException {
     // Restore column header of aggregate to func(column_name), only
     // support single aggregate function for now
-    List<Path> paths = plan.getPaths();
+    List<PartialPath> paths = plan.getPaths();
     List<TSDataType> seriesTypes;
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
-        for (Path path : paths) {
+        for (PartialPath path : paths) {
           if (path.getAlias() != null) {
             respColumns.add(path.getFullPathWithAlias());
           } else {
             respColumns.add(path.getFullPath());
           }
         }
-        seriesTypes = getSeriesTypesByString(respColumns, null);
+        seriesTypes = getSeriesTypesByString(paths, null);
         break;
       case AGGREGATION:
       case GROUPBYTIME:
@@ -1049,7 +1051,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return sessionIdUsernameMap.get(sessionId) != null;
   }
 
-  private boolean checkAuthorization(List<Path> paths, PhysicalPlan plan, String username)
+  private boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
       throws AuthException {
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
@@ -1127,7 +1129,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     InsertRowPlan plan = new InsertRowPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
-        plan.setDeviceId(req.getDeviceIds().get(i));
+        plan.setDeviceId(new PartialPath(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1165,7 +1167,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     InsertRowPlan plan = new InsertRowPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
-        plan.setDeviceId(req.getDeviceIds().get(i));
+        plan.setDeviceId(new PartialPath(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1235,7 +1237,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       InsertRowPlan plan = new InsertRowPlan();
-      plan.setDeviceId(req.getDeviceId());
+      plan.setDeviceId(new PartialPath(req.getDeviceId()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1266,7 +1268,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       InsertRowPlan plan = new InsertRowPlan();
-      plan.setDeviceId(req.getDeviceId());
+      plan.setDeviceId(new PartialPath(req.getDeviceId()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1285,26 +1287,31 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSStatus deleteData(TSDeleteDataReq req) {
-    if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
-    }
+  public TSStatus deleteData(TSDeleteDataReq req) throws TException {
+    try {
+      if (!checkLogin(req.getSessionId())) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      }
 
-    DeletePlan plan = new DeletePlan();
-    plan.setDeleteStartTime(req.getStartTime());
-    plan.setDeleteEndTime(req.getEndTime());
-    List<Path> paths = new ArrayList<>();
-    for (String path : req.getPaths()) {
-      paths.add(new Path(path));
-    }
-    plan.addPaths(paths);
+      DeletePlan plan = new DeletePlan();
+      plan.setDeleteStartTime(req.getStartTime());
+      plan.setDeleteEndTime(req.getEndTime());
+      List<PartialPath> paths = new ArrayList<>();
+      for (String path : req.getPaths()) {
+        paths.add(new PartialPath(path));
+      }
+      plan.addPaths(paths);
 
-    TSStatus status = checkAuthority(plan, req.getSessionId());
-    if (status != null) {
-      return new TSStatus(status);
+      TSStatus status = checkAuthority(plan, req.getSessionId());
+      if (status != null) {
+        return new TSStatus(status);
+      }
+      return new TSStatus(executeNonQueryPlan(plan));
+    } catch (Exception e) {
+      logger.error("meet error when delete data", e);
     }
-    return new TSStatus(executeNonQueryPlan(plan));
+    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
@@ -1316,7 +1323,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       }
 
-      InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceId, req.measurements);
+      InsertTabletPlan insertTabletPlan = new InsertTabletPlan(new PartialPath(req.deviceId), req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
           QueryDataSetUtils.readValuesFromBuffer(
@@ -1350,7 +1357,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       List<TSStatus> statusList = new ArrayList<>();
       for (int i = 0; i < req.deviceIds.size(); i++) {
-        InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceIds.get(i),
+        InsertTabletPlan insertTabletPlan = new InsertTabletPlan(new PartialPath(req.deviceIds.get(i)),
             req.measurementsList.get(i));
         insertTabletPlan.setTimes(
             QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
@@ -1381,136 +1388,165 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus setStorageGroup(long sessionId, String storageGroup) {
-    if (!checkLogin(sessionId)) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
-    }
+    try {
+      if (!checkLogin(sessionId)) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      }
 
-    TSStatus status = checkPathValidity(storageGroup);
-    if (status != null) {
-      return status;
-    }
+      TSStatus status = checkPathValidity(storageGroup);
+      if (status != null) {
+        return status;
+      }
 
-    SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(storageGroup));
-    status = checkAuthority(plan, sessionId);
-    if (status != null) {
-      return new TSStatus(status);
+      SetStorageGroupPlan plan = new SetStorageGroupPlan(new PartialPath(storageGroup));
+      status = checkAuthority(plan, sessionId);
+      if (status != null) {
+        return new TSStatus(status);
+      }
+      return new TSStatus(executeNonQueryPlan(plan));
+    } catch (Exception e) {
+      logger.error("meet error when set storage group", e);
     }
-    return new TSStatus(executeNonQueryPlan(plan));
+    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
   public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups) {
-    if (!checkLogin(sessionId)) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+    try {
+      if (!checkLogin(sessionId)) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      }
+      List<PartialPath> storageGroupList = new ArrayList<>();
+      for (String storageGroup : storageGroups) {
+        storageGroupList.add(new PartialPath(storageGroup));
+      }
+      DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(storageGroupList);
+      TSStatus status = checkAuthority(plan, sessionId);
+      if (status != null) {
+        return new TSStatus(status);
+      }
+      return new TSStatus(executeNonQueryPlan(plan));
+    } catch (Exception e) {
+      logger.error("meet error when delete storage groups", e);
     }
-    List<Path> storageGroupList = new ArrayList<>();
-    for (String storageGroup : storageGroups) {
-      storageGroupList.add(new Path(storageGroup));
-    }
-    DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(storageGroupList);
-    TSStatus status = checkAuthority(plan, sessionId);
-    if (status != null) {
-      return new TSStatus(status);
-    }
-    return new TSStatus(executeNonQueryPlan(plan));
+    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
   public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
-    if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
-    }
+    try {
+      if (!checkLogin(req.getSessionId())) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      }
 
-    auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
-    TSStatus status = checkPathValidity(req.path);
-    if (status != null) {
-      return status;
-    }
+      if (auditLogger.isDebugEnabled()) {
+        auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
+      }
+      TSStatus status = checkPathValidity(req.path);
+      if (status != null) {
+        return status;
+      }
 
-    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.path),
-        TSDataType.values()[req.dataType], TSEncoding.values()[req.encoding],
-        CompressionType.values()[req.compressor], req.props, req.tags, req.attributes,
-        req.measurementAlias);
-    status = checkAuthority(plan, req.getSessionId());
-    if (status != null) {
-      return status;
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(req.path),
+          TSDataType.values()[req.dataType], TSEncoding.values()[req.encoding],
+          CompressionType.values()[req.compressor], req.props, req.tags, req.attributes,
+          req.measurementAlias);
+      status = checkAuthority(plan, req.getSessionId());
+      if (status != null) {
+        return status;
+      }
+      return executeNonQueryPlan(plan);
+    } catch (Exception e) {
+      logger.error("meet error when create timeseries", e);
     }
-    return executeNonQueryPlan(plan);
+    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
   public TSStatus createMultiTimeseries(TSCreateMultiTimeseriesReq req) {
-    if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
-    }
-    auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
-        req.getPaths().size(), req.getPaths().get(0));
-    List<TSStatus> statusList = new ArrayList<>(req.paths.size());
-    for (int i = 0; i < req.paths.size(); i++) {
-      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.getPaths().get(i)),
-          TSDataType.values()[req.dataTypes.get(i)], TSEncoding.values()[req.encodings.get(i)],
-          CompressionType.values()[req.compressors.get(i)],
-          req.propsList == null ? null : req.propsList.get(i),
-          req.tagsList == null ? null : req.tagsList.get(i),
-          req.attributesList == null ? null : req.attributesList.get(i),
-          req.measurementAliasList == null ? null : req.measurementAliasList.get(i));
+    try {
+      if (!checkLogin(req.getSessionId())) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      }
+      if (auditLogger.isDebugEnabled()) {
+        auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
+            req.getPaths().size(), req.getPaths().get(0));
+      }
+      List<TSStatus> statusList = new ArrayList<>(req.paths.size());
+      for (int i = 0; i < req.paths.size(); i++) {
+        CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(req.getPaths().get(i)),
+            TSDataType.values()[req.dataTypes.get(i)], TSEncoding.values()[req.encodings.get(i)],
+            CompressionType.values()[req.compressors.get(i)],
+            req.propsList == null ? null : req.propsList.get(i),
+            req.tagsList == null ? null : req.tagsList.get(i),
+            req.attributesList == null ? null : req.attributesList.get(i),
+            req.measurementAliasList == null ? null : req.measurementAliasList.get(i));
 
-      TSStatus status = checkPathValidity(req.paths.get(i));
-      if (status != null) {
-        // path naming is not valid
-        statusList.add(status);
-        continue;
+        TSStatus status = checkPathValidity(req.paths.get(i));
+        if (status != null) {
+          // path naming is not valid
+          statusList.add(status);
+          continue;
+        }
+
+        status = checkAuthority(plan, req.getSessionId());
+        if (status != null) {
+          // not authorized
+          statusList.add(status);
+          continue;
+        }
+
+        statusList.add(executeNonQueryPlan(plan));
       }
 
-      status = checkAuthority(plan, req.getSessionId());
-      if (status != null) {
-        // not authorized
-        statusList.add(status);
-        continue;
+      boolean isAllSuccessful = true;
+      for (TSStatus tsStatus : statusList) {
+        if (tsStatus.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          isAllSuccessful = false;
+          break;
+        }
       }
 
-      statusList.add(executeNonQueryPlan(plan));
-    }
-
-    boolean isAllSuccessful = true;
-    for (TSStatus tsStatus : statusList) {
-      if (tsStatus.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        isAllSuccessful = false;
-        break;
+      if (isAllSuccessful) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("Create multiple timeseries successfully");
+        }
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else {
+        logger.debug("Create multiple timeseries failed!");
+        return RpcUtils.getStatus(statusList);
       }
+    } catch (Exception e) {
+      logger.error("meet error when create multi timeseries", e);
     }
-
-    if (isAllSuccessful) {
-      if (logger.isDebugEnabled()) {
-        logger.debug("Create multiple timeseries successfully");
-      }
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } else {
-      logger.debug("Create multiple timeseries failed!");
-      return RpcUtils.getStatus(statusList);
-    }
+    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
   public TSStatus deleteTimeseries(long sessionId, List<String> paths) {
-    if (!checkLogin(sessionId)) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+    try {
+      if (!checkLogin(sessionId)) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      }
+      List<PartialPath> pathList = new ArrayList<>();
+      for (String path : paths) {
+        pathList.add(new PartialPath(path));
+      }
+      DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(pathList);
+      TSStatus status = checkAuthority(plan, sessionId);
+      if (status != null) {
+        return status;
+      }
+      return executeNonQueryPlan(plan);
+    } catch (Exception e) {
+      logger.error("meet error when delete timeseries", e);
     }
-    List<Path> pathList = new ArrayList<>();
-    for (String path : paths) {
-      pathList.add(new Path(path));
-    }
-    DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(pathList);
-    TSStatus status = checkAuthority(plan, sessionId);
-    if (status != null) {
-      return status;
-    }
-    return executeNonQueryPlan(plan);
+    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
@@ -1521,7 +1557,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
-    List<Path> paths = plan.getPaths();
+    List<PartialPath> paths = plan.getPaths();
     try {
       if (!checkAuthorization(paths, plan, sessionIdUsernameMap.get(sessionId))) {
         return RpcUtils.getStatus(
@@ -1570,12 +1606,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
   }
 
-  protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
+  protected List<TSDataType> getSeriesTypesByPath(List<PartialPath> paths, List<String> aggregations)
       throws MetadataException {
     return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
   }
 
-  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
+  protected List<TSDataType> getSeriesTypesByString(List<PartialPath> paths, String aggregation)
       throws MetadataException {
     return SchemaUtils.getSeriesTypesByString(paths, aggregation);
   }

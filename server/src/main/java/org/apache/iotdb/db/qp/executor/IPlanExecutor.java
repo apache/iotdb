@@ -25,13 +25,13 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
 
@@ -64,7 +64,7 @@ public interface IPlanExecutor {
    * @param endTime   end time in update command
    * @param value     - in type of string
    */
-  void update(Path path, long startTime, long endTime, String value)
+  void update(PartialPath path, long startTime, long endTime, String value)
       throws QueryProcessException;
 
   /**
@@ -81,7 +81,7 @@ public interface IPlanExecutor {
    * @param startTime start time in delete command
    * @param endTime end time in delete command
    */
-  void delete(Path path, long startTime, long endTime) throws QueryProcessException;
+  void delete(PartialPath path, long startTime, long endTime) throws QueryProcessException;
 
   /**
    * execute insert command and return whether the operator is successful.

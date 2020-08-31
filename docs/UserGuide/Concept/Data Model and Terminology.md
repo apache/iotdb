@@ -76,6 +76,10 @@ We call the middle part of a path between two "." as a layer, and thus `root.A.B
 
 It is worth noting that in the path, root is a reserved character, which is only allowed to appear at the beginning of the time series mentioned below. If root appears in other layers, it cannot be parsed and an error is reported.
 
+Single quotes are not allowed in the path. If you want to use special characters such as "." in LayerName, use double quotes. For example, `root.sg."d.1"."s.1"`. 
+
+> Note: the LayerName of storage group can only be characters, numbers and underscores.
+
 * Timeseries Path
 
 The timeseries path is the core concept in IoTDB. A timeseries path can be thought of as the complete path of a sensor that produces the time series data. All timeseries paths in IoTDB must start with root and end with the sensor. A timeseries path can also be called a full path.

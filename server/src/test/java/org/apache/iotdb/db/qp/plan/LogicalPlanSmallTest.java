@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
+import java.util.ArrayList;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
@@ -32,12 +35,9 @@ import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.strategy.ParseDriver;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.ArrayList;
 
 public class LogicalPlanSmallTest {
 
@@ -188,12 +188,12 @@ public class LogicalPlanSmallTest {
   }
 
   @Test
-  public void testDeleteStorageGroup() {
+  public void testDeleteStorageGroup() throws IllegalPathException {
     String sqlStr = "delete storage group root.vehicle.d1";
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(DeleteStorageGroupOperator.class, operator.getClass());
-    Path path = new Path("root.vehicle.d1");
+    PartialPath path = new PartialPath("root.vehicle.d1");
     Assert.assertEquals(path, ((DeleteStorageGroupOperator) operator).getDeletePathList().get(0));
   }
 
@@ -223,19 +223,19 @@ public class LogicalPlanSmallTest {
   }
 
   @Test
-  public void testChineseCharacter() {
+  public void testChineseCharacter() throws IllegalPathException {
     String sqlStr1 = "set storage group to root.一级";
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr1, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(SetStorageGroupOperator.class, operator.getClass());
-    Assert.assertEquals(new Path("root.一级"), ((SetStorageGroupOperator) operator).getPath());
+    Assert.assertEquals(new PartialPath("root.一级"), ((SetStorageGroupOperator) operator).getPath());
 
     String sqlStr2 = "select * from root.一级.设备1 limit 10 offset 20";
     operator = (RootOperator) parseDriver
         .parse(sqlStr2, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
-    ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("*"));
+    ArrayList<PartialPath> paths = new ArrayList<>();
+    paths.add(new PartialPath("*"));
     Assert.assertEquals(paths, ((QueryOperator) operator).getSelectedPaths());
   }
 
@@ -255,12 +255,12 @@ public class LogicalPlanSmallTest {
   }
 
   @Test
-  public void testRangeDelete() {
+  public void testRangeDelete() throws IllegalPathException {
     String sql1 = "delete from root.d1.s1 where time>=1 and time < 3";
     Operator op = parseDriver.parse(sql1, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     Assert.assertEquals(DeleteDataOperator.class, op.getClass());
-    ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("root.d1.s1"));
+    ArrayList<PartialPath> paths = new ArrayList<>();
+    paths.add(new PartialPath("root.d1.s1"));
     Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
     Assert.assertEquals(1, ((DeleteDataOperator) op).getStartTime());
     Assert.assertEquals(2, ((DeleteDataOperator) op).getEndTime());

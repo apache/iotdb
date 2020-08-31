@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
-import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
-import org.apache.iotdb.tsfile.read.common.Path;
-
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
 
 /**
  * this class contains several constants used in SQL.
@@ -34,6 +33,9 @@ public class SQLConstant {
     // forbidding instantiation
   }
 
+  private static final String[] SINGLE_ROOT_ARRAY = new String[1];
+  private static final String[] SINGLE_TIME_ARRAY = new String[1];
+  public static final PartialPath TIME_PATH = new PartialPath(SINGLE_TIME_ARRAY);
   public static final String ALIGNBY_DEVICE_COLUMN_NAME = "Device";
   public static final String RESERVED_TIME = "time";
   public static final String IS_AGGREGATION = "IS_AGGREGATION";
@@ -158,7 +160,17 @@ public class SQLConstant {
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();
 
+  public static String[] getSingleRootArray() {
+    return SINGLE_ROOT_ARRAY;
+  }
+
+  public static String[] getSingleTimeArray() {
+    return SINGLE_TIME_ARRAY;
+  }
+
   static {
+    SINGLE_ROOT_ARRAY[0] = ROOT;
+    SINGLE_TIME_ARRAY[0] = RESERVED_TIME;
     tokenSymbol.put(KW_AND, "&");
     tokenSymbol.put(KW_OR, "|");
     tokenSymbol.put(KW_NOT, "!");
@@ -238,8 +250,8 @@ public class SQLConstant {
     reverseWords.put(GREATERTHAN, LESSTHANOREQUALTO);
   }
 
-  public static boolean isReservedPath(Path pathStr) {
-    return pathStr.equals(SQLConstant.RESERVED_TIME);
-
+  public static boolean isReservedPath(PartialPath pathStr) {
+    return pathStr.equals(TIME_PATH);
   }
+
 }

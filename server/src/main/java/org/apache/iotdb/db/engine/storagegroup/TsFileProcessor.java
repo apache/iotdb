@@ -266,11 +266,11 @@ public class TsFileProcessor {
           getLogNode().write(insertRowPlan);
         }
         // update start time of this memtable
-        tsFileResource.updateStartTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
+        tsFileResource.updateStartTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
         //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
         //for unsequence tsfile, we have to update the endTime for each insertion.
         if (!sequence) {
-          tsFileResource.updateEndTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
+          tsFileResource.updateEndTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
         }
         if (needToReport) {
           SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
@@ -361,14 +361,14 @@ public class TsFileProcessor {
           getLogNode().write(insertTabletPlan);
         }
         tsFileResource
-            .updateStartTime(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[start]);
+            .updateStartTime(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[start]);
 
         //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
         //for unsequence tsfile, we have to update the endTime for each insertion.
         if (!sequence) {
           tsFileResource
               .updateEndTime(
-                  insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
+                  insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
         }
       } catch (Exception e) {
         for (int i = start; i < end; i++) {

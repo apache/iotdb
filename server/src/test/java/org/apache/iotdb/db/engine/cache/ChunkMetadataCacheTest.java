@@ -31,7 +31,9 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -80,7 +82,8 @@ public class ChunkMetadataCacheTest {
     EnvironmentUtils.cleanDir(systemDir);
   }
 
-  private void insertOneRecord(long time, int num) throws WriteProcessException {
+  private void insertOneRecord(long time, int num)
+      throws WriteProcessException, IllegalPathException {
     TSRecord record = new TSRecord(time, storageGroup);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId0, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT64, measurementId1, String.valueOf(num)));
@@ -98,7 +101,7 @@ public class ChunkMetadataCacheTest {
     storageGroupProcessor.insert(insertRowPlan);
   }
 
-  protected void insertData() throws IOException, WriteProcessException {
+  protected void insertData() throws IOException, WriteProcessException, IllegalPathException {
     for (int j = 1; j <= 100; j++) {
       insertOneRecord(j, j);
     }
@@ -128,10 +131,10 @@ public class ChunkMetadataCacheTest {
   }
 
   @Test
-  public void test1() throws IOException, QueryProcessException {
+  public void test1() throws IOException, QueryProcessException, IllegalPathException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(false);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(storageGroup, measurementId5, context, null, null);
+        .query(new PartialPath(storageGroup), measurementId5, context, null, null);
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
@@ -149,10 +152,10 @@ public class ChunkMetadataCacheTest {
   }
 
   @Test
-  public void test2() throws IOException, QueryProcessException {
+  public void test2() throws IOException, QueryProcessException, IllegalPathException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(true);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(storageGroup, measurementId5, context, null, null);
+        .query(new PartialPath(storageGroup), measurementId5, context, null, null);
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
