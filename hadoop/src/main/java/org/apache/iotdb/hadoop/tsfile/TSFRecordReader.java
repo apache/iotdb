@@ -103,15 +103,19 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
     readerSet.setReadTime(TSFInputFormat.getReadTime(configuration));
 
     ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(reader);
-    for (String deviceId : deviceIds) {
-      List<Path> paths = measurementIds.stream()
-          .map(measurementId -> new Path(deviceId, measurementId))
-          .collect(toList());
-      QueryExpression queryExpression = QueryExpression.create(paths, null);
-      QueryDataSet dataSet = queryEngine.query(queryExpression,
-          split.getStart(), split.getStart() + split.getLength());
-      dataSetList.add(dataSet);
-      deviceIdList.add(deviceId);
+    try {
+      for (String deviceId : deviceIds) {
+        List<Path> paths = measurementIds.stream()
+                .map(measurementId -> new Path(deviceId, measurementId))
+                .collect(toList());
+        QueryExpression queryExpression = QueryExpression.create(paths, null);
+        QueryDataSet dataSet = queryEngine.query(queryExpression,
+                split.getStart(), split.getStart() + split.getLength());
+        dataSetList.add(dataSet);
+        deviceIdList.add(deviceId);
+      }
+    } finally {
+      queryEngine.close();
     }
   }
 

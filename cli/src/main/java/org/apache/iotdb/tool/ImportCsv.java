@@ -302,30 +302,35 @@ public class ImportCsv extends AbstractCsvTool {
       Map<String, ArrayList<Integer>> deviceToColumn,
       List<String> colInfo)
       throws SQLException, IOException {
-    Statement statement = connection.createStatement();
+    try (Statement statement = connection.createStatement()) {
 
-    for (int i = 1; i < strHeadInfo.length; i++) {
-      statement.execute("show timeseries "+ strHeadInfo[i]);
-      ResultSet resultSet= statement.getResultSet();
-      if (resultSet.next()) {
-        timeseriesDataType.put(strHeadInfo[i], resultSet.getString(2));
-      } else {
-        String errorInfo = String.format("Database cannot find %s in %s, stop import!",
-            strHeadInfo[i], file.getAbsolutePath());
-        System.out.println("Database cannot find "+strHeadInfo[i]+" in "+file.getAbsolutePath()+", "
-            + "stop import!");
-        bw.write(errorInfo);
-        return false;
-      }
-      headInfo.add(strHeadInfo[i]);
-      String deviceInfo = strHeadInfo[i].substring(0, strHeadInfo[i].lastIndexOf('.'));
+      for (int i = 1; i < strHeadInfo.length; i++) {
+        statement.execute("show timeseries " + strHeadInfo[i]);
+        ResultSet resultSet = statement.getResultSet();
+        try {
+          if (resultSet.next()) {
+            timeseriesDataType.put(strHeadInfo[i], resultSet.getString(2));
+          } else {
+            String errorInfo = String.format("Database cannot find %s in %s, stop import!",
+                    strHeadInfo[i], file.getAbsolutePath());
+            System.out.println("Database cannot find " + strHeadInfo[i] + " in " + file.getAbsolutePath() + ", "
+                    + "stop import!");
+            bw.write(errorInfo);
+            return false;
+          }
+        } finally {
+          resultSet.close();
+        }
+        headInfo.add(strHeadInfo[i]);
+        String deviceInfo = strHeadInfo[i].substring(0, strHeadInfo[i].lastIndexOf('.'));
 
-      if (!deviceToColumn.containsKey(deviceInfo)) {
-        deviceToColumn.put(deviceInfo, new ArrayList<>());
+        if (!deviceToColumn.containsKey(deviceInfo)) {
+          deviceToColumn.put(deviceInfo, new ArrayList<>());
+        }
+        // storage every device's sensor index info
+        deviceToColumn.get(deviceInfo).add(i - 1);
+        colInfo.add(strHeadInfo[i].substring(strHeadInfo[i].lastIndexOf('.') + 1));
       }
-      // storage every device's sensor index info
-      deviceToColumn.get(deviceInfo).add(i - 1);
-      colInfo.add(strHeadInfo[i].substring(strHeadInfo[i].lastIndexOf('.') + 1));
     }
     return true;
   }
