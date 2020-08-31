@@ -152,10 +152,10 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public boolean checkIfArrayIsEnough(InsertPlan insertPlan) {
-    if (!memTableMap.containsKey(insertPlan.getDeviceId())) {
+    if (!memTableMap.containsKey(insertPlan.getDeviceId().getFullPath())) {
       return false;
     }
-    Map<String, IWritableMemChunk> memSeries = memTableMap.get(insertPlan.getDeviceId());
+    Map<String, IWritableMemChunk> memSeries = memTableMap.get(insertPlan.getDeviceId().getFullPath());
     for (String measurement : insertPlan.getMeasurements()) {
       if (!memSeries.containsKey(measurement)) {
         return false;
