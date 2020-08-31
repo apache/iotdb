@@ -57,7 +57,7 @@ public class Tablet {
   /**
    * measurementId->indexOf(measurementSchema)
    */
-  private Map<String, Integer> mSchemaWithIndex;
+  private Map<String, Integer> measurementIndex;
 
   /**
    * timestamps in this tablet
