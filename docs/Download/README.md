@@ -29,14 +29,14 @@
 	    <th>release notes</th>  
 	</tr>
 	<tr>
-          <td>0.10.0</td>
-          <td><a href="https://www.apache.org/dyn/closer.cgi/incubator/iotdb/0.10.0-incubating/apache-iotdb-0.10.0-incubating-bin.zip">Release</a></td>
-          <td><a href="https://downloads.apache.org/incubator/iotdb/0.10.0-incubating/apache-iotdb-0.10.0-incubating-bin.zip.sha512">SHA512</a></td>
-          <td><a href="https://downloads.apache.org/incubator/iotdb/0.10.0-incubating/apache-iotdb-0.10.0-incubating-bin.zip.asc">ASC</a></td>
-          <td><a href="https://www.apache.org/dyn/closer.cgi/incubator/iotdb/0.10.0-incubating/apache-iotdb-0.10.0-incubating-source-release.zip">Sources</a></td>
-          <td><a href="https://downloads.apache.org/incubator/iotdb/0.10.0-incubating/apache-iotdb-0.10.0-incubating-source-release.zip.sha512">SHA512</a></td>
-          <td><a href="https://downloads.apache.org/incubator/iotdb/0.10.0-incubating/apache-iotdb-0.10.0-incubating-source-release.zip.asc">ASC</a></td>
-          <td><a href="https://raw.githubusercontent.com/apache/incubator-iotdb/release/0.10.0/RELEASE_NOTES.md">release notes</a></td>
+          <td>0.10.1</td>
+          <td><a href="https://www.apache.org/dyn/closer.cgi/incubator/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-bin.zip">Release</a></td>
+          <td><a href="https://downloads.apache.org/incubator/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-bin.zip.sha512">SHA512</a></td>
+          <td><a href="https://downloads.apache.org/incubator/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-bin.zip.asc">ASC</a></td>
+          <td><a href="https://www.apache.org/dyn/closer.cgi/incubator/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-source-release.zip">Sources</a></td>
+          <td><a href="https://downloads.apache.org/incubator/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-source-release.zip.sha512">SHA512</a></td>
+          <td><a href="https://downloads.apache.org/incubator/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-source-release.zip.asc">ASC</a></td>
+          <td><a href="https://raw.githubusercontent.com/apache/incubator-iotdb/release/0.10.1/RELEASE_NOTES.md">release notes</a></td>
     </tr>
 	<tr>
         <td>0.9.3</td>

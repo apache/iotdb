@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.db.qp;
 
+import java.time.ZoneId;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
@@ -42,7 +45,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.tsfile.read.common.Path;
 import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
-
 import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
@@ -182,7 +184,7 @@ public class Planner {
     if (filter == null) {
       return root;
     }
-    Set<Path> pathSet = filter.getPathSet();
+    Set<PartialPath> pathSet = filter.getPathSet();
     RemoveNotOptimizer removeNot = new RemoveNotOptimizer();
     filter = removeNot.optimize(filter);
     DnfFilterOptimizer dnf = new DnfFilterOptimizer();

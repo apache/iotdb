@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.io.Serializable;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
  * This class define an Object named Path to represent a series in IoTDB.
@@ -31,32 +30,67 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 public class Path implements Serializable, Comparable<Path> {
 
   private static final long serialVersionUID = 3405277066329298200L;
-  private String measurement = null;
-  private String alias = null;
-  private String device = null;
-  private String fullPath;
-  private static final String illegalPathArgument = "Path parameter is null";
+  private String measurement;
+  protected String device;
+  protected String fullPath;
+  private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
 
-  public Path(StringContainer pathSc) {
-    if (pathSc == null) {
-      throw new IllegalArgumentException("input pathSc is null!");
-    }
 
-    init(pathSc.toString());
-  }
+  public Path() {}
 
+  /**
+   * this constructor doesn't split the path, only useful for table header.
+   * @param pathSc the path that wouldn't  be split.
+   */
+  @SuppressWarnings("the path that wouldn't be split")
   public Path(String pathSc) {
-    if (pathSc == null) {
-      throw new IllegalArgumentException(illegalPathArgument);
-    }
-    init(pathSc);
+    this(pathSc, false);
   }
 
-  public Path(String[] pathSc) {
+  /**
+   * @param pathSc path
+   * @param needSplit whether need to be split to device and measurement, doesn't support escape character yet.
+   */
+  public Path(String pathSc, boolean needSplit) {
     if (pathSc == null) {
-      throw new IllegalArgumentException(illegalPathArgument);
+      throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
     }
-    init(new StringContainer(pathSc, TsFileConstant.PATH_SEPARATOR).toString());
+    if(!needSplit) {
+      fullPath = pathSc;
+      device = "";
+      measurement = pathSc;
+    } else {
+      if (pathSc.length() > 0) {
+        if (pathSc.charAt(pathSc.length() - 1) == TsFileConstant.DOUBLE_QUOTE) {
+          int endIndex = pathSc.lastIndexOf('"', pathSc.length() - 2);
+          if (endIndex != -1 && (endIndex == 0 || pathSc.charAt(endIndex - 1) == '.')) {
+            fullPath = pathSc;
+            device = pathSc.substring(0, endIndex - 1);
+            measurement = pathSc.substring(endIndex);
+          } else {
+            throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
+          }
+        } else if (pathSc.charAt(pathSc.length() - 1) != TsFileConstant.DOUBLE_QUOTE
+            && pathSc.charAt(pathSc.length() - 1) != TsFileConstant.PATH_SEPARATOR_CHAR) {
+          int endIndex = pathSc.lastIndexOf(TsFileConstant.PATH_SEPARATOR_CHAR);
+          if (endIndex < 0) {
+            fullPath = pathSc;
+            device = "";
+            measurement = pathSc;
+          } else {
+            fullPath = pathSc;
+            device = pathSc.substring(0, endIndex);
+            measurement = pathSc.substring(endIndex + 1);
+          }
+        } else {
+          throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
+        }
+      } else {
+        fullPath = pathSc;
+        device = "";
+        measurement = pathSc;
+      }
+    }
   }
 
   /**
@@ -68,101 +102,15 @@ public class Path implements Serializable, Comparable<Path> {
    */
   public Path(String device, String measurement) {
     if (device == null || measurement == null) {
-      throw new IllegalArgumentException(illegalPathArgument);
+      throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
     }
     this.device = device;
     this.measurement = measurement;
-    this.fullPath = device + TsFileConstant.PATH_SEPARATOR
-        + (measurement.contains(TsFileConstant.PATH_SEPARATOR) ? "\"" + measurement + "\"" : measurement);
-  }
-
-  /**
-   * extract device and measurement info from complete path string
-   *
-   * @param pathSc complete path string
-   */
-  private void init(String pathSc) {
-    int i = 0;
-    int j = 0;
-    for (char c : pathSc.toCharArray()) {
-      if (c == '\"') {
-        i++;
-      } else if (c == '\'') {
-        j++;
-      }
-    }
-    if ((i != 2 && i != 0) || (j != 2 && j != 0)) {
-      throw new IllegalArgumentException("input pathSc single/double quotes error, not in pair or more than one pair!");
-    }
-    if ((i == 2 && pathSc.length() - 1 != pathSc.lastIndexOf("\""))
-        || (j == 2 && pathSc.length() - 1 != pathSc.lastIndexOf("\'"))) {
-      throw new IllegalArgumentException("input pathSc contains quoted string in the middle!");
-    }
-    String[] subStrs;
-    if (i != 0 || j != 0) {
-      if (i == 2) {
-        subStrs = pathSc.split("\"");
-      } else {
-        subStrs = pathSc.split("\'");
-      }
-      device = subStrs[0];
-      if (!device.equals("")) {
-        device = device.substring(0, subStrs[0].length() - 1);
-      }
-      measurement = subStrs[1];
-      fullPath = pathSc;
+    if(!device.equals("")) {
+      this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
     } else {
-      StringContainer sc = new StringContainer(pathSc.split(TsFileConstant.PATH_SEPARATER_NO_REGEX),
-          TsFileConstant.PATH_SEPARATOR);
-      if (sc.size() <= 1) {
-        device = "";
-        fullPath = measurement = sc.toString();
-      } else {
-        device = sc.getSubStringContainer(0, -2).toString();
-        measurement = sc.getSubString(-1);
-        fullPath = sc.toString();
-      }
+      fullPath = measurement;
     }
-  }
-
-  public static Path mergePath(Path prefix, Path suffix) {
-    if (suffix.fullPath.equals("")) {
-      return prefix;
-    } else if (prefix.fullPath.equals("")) {
-      return suffix;
-    }
-    StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
-    sc.addTail(prefix);
-    sc.addTail(suffix);
-    return new Path(sc);
-  }
-
-  /**
-   * add {@code prefix} as the prefix of {@code src}.
-   *
-   * @param src    to be added.
-   * @param prefix the newly prefix
-   * @return if this path start with prefix
-   */
-  public static Path addPrefixPath(Path src, String prefix) {
-    if (prefix.equals("")) {
-      return src;
-    }
-    StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
-    sc.addTail(prefix);
-    sc.addTail(src);
-    return new Path(sc);
-  }
-
-  /**
-   * add {@code prefix} as the prefix of {@code src}.
-   *
-   * @param src    to be added.
-   * @param prefix the newly prefix
-   * @return <code>Path</code>
-   */
-  public static Path addPrefixPath(Path src, Path prefix) {
-    return addPrefixPath(src, prefix.fullPath);
   }
 
   public String getFullPath() {
@@ -177,11 +125,7 @@ public class Path implements Serializable, Comparable<Path> {
     return measurement;
   }
 
-  public String getAlias() { return alias; }
-
-  public void setAlias(String alias) { this.alias = alias; }
-
-  public String getFullPathWithAlias() { return device + TsFileConstant.PATH_SEPARATOR + alias; }
+  public String getFullPathWithAlias() { throw new IllegalArgumentException("doesn't alias in TSFile Path"); }
 
   @Override
   public int hashCode() {
@@ -210,28 +154,6 @@ public class Path implements Serializable, Comparable<Path> {
   @Override
   public Path clone() {
     return new Path(fullPath);
-  }
-
-  /**
-   * if prefix is null, return false, else judge whether this.fullPath starts with
-   * prefix
-   *
-   * @param prefix the prefix string to be tested.
-   * @return True if fullPath starts with prefix
-   */
-  public boolean startWith(String prefix) {
-    return prefix != null && fullPath.startsWith(prefix);
-  }
-
-  /**
-   * if prefix is null, return false, else judge whether this.fullPath starts with
-   * prefix.fullPath
-   *
-   * @param prefix the prefix path to be tested.
-   * @return True if fullPath starts with prefix.fullPath
-   */
-  public boolean startWith(Path prefix) {
-    return startWith(prefix.fullPath);
   }
 
 }
