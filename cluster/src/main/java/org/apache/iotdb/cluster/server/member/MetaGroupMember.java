@@ -1390,6 +1390,7 @@ public class MetaGroupMember extends RaftMember {
    */
   @Override
   public TSStatus executeNonQuery(PhysicalPlan plan) {
+    // instrument here
     if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
       return executeNonQueryLocally(plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
@@ -1680,12 +1681,14 @@ public class MetaGroupMember extends RaftMember {
   private TSStatus forwardToSingleGroup(Map.Entry<PhysicalPlan, PartitionGroup> entry) {
     if (entry.getValue().contains(thisNode)) {
       // the query should be handled by a group the local node is in, handle it with in the group
+      // instrument here
       logger.debug("Execute {} in a local group of {}", entry.getKey(),
           entry.getValue().getHeader());
       return getLocalDataMember(entry.getValue().getHeader())
           .executeNonQuery(entry.getKey());
     } else {
       // forward the query to the group that should handle it
+      // instrument here
       logger.debug("Forward {} to a remote group of {}", entry.getKey(),
           entry.getValue().getHeader());
       return forwardPlan(entry.getKey(), entry.getValue());

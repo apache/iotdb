@@ -1036,6 +1036,7 @@ public class DataGroupMember extends RaftMember {
    */
   TSStatus executeNonQuery(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
+      // instrument here
       TSStatus status = processPlanLocally(plan);
       if (status != null) {
         return status;
@@ -1044,6 +1045,7 @@ public class DataGroupMember extends RaftMember {
       return forwardPlan(plan, leader, getHeader());
     }
 
+    // instrument here
     waitLeader();
     // the leader can be itself after waiting
     if (character == NodeCharacter.LEADER) {
