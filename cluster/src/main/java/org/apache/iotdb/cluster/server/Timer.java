@@ -36,48 +36,48 @@ public class Timer {
   public static String getReport() {
     String result = "";
     result += dataGroupMemberProcessPlanLocallyMSString
-        + dataGroupMemberProcessPlanLocallyMS + ", "
+        + dataGroupMemberProcessPlanLocallyMS.get()/1000000L + ", "
         + dataGroupMemberProcessPlanLocallyCounter + ", "
-        + (double) dataGroupMemberProcessPlanLocallyMS.get()
+        + (double) dataGroupMemberProcessPlanLocallyMS.get()/1000000L
         / dataGroupMemberProcessPlanLocallyCounter.get()
         + "\n";
     result += dataGroupMemberWaitLeaderMSString
-        + dataGroupMemberWaitLeaderMS + ", "
+        + dataGroupMemberWaitLeaderMS.get()/1000000L + ", "
         + dataGroupMemberWaitLeaderCounter + ", "
-        + (double) dataGroupMemberWaitLeaderMS.get() / dataGroupMemberWaitLeaderCounter.get()
+        + (double) dataGroupMemberWaitLeaderMS.get()/1000000L / dataGroupMemberWaitLeaderCounter.get()
         + "\n";
     result += metaGroupMemberExecuteNonQueryMSString
-        + metaGroupMemberExecuteNonQueryMS + ", "
+        + metaGroupMemberExecuteNonQueryMS.get()/1000000L + ", "
         + metaGroupMemberExecuteNonQueryCounter + ", "
-        + (double) metaGroupMemberExecuteNonQueryMS.get() / metaGroupMemberExecuteNonQueryCounter
+        + (double) metaGroupMemberExecuteNonQueryMS.get()/1000000L / metaGroupMemberExecuteNonQueryCounter
         .get() + "\n";
     result += metaGroupMemberExecuteNonQueryInLocalGroupMSString
-        + metaGroupMemberExecuteNonQueryInLocalGroupMS + ", "
+        + metaGroupMemberExecuteNonQueryInLocalGroupMS.get()/1000000L + ", "
         + metaGroupMemberExecuteNonQueryInLocalGroupCounter + ", "
-        + (double) metaGroupMemberExecuteNonQueryInLocalGroupMS.get()
+        + (double) metaGroupMemberExecuteNonQueryInLocalGroupMS.get()/1000000L
         / metaGroupMemberExecuteNonQueryInLocalGroupCounter.get() + "\n";
     result += metaGroupMemberExecuteNonQueryInRemoteGroupMSString
-        + metaGroupMemberExecuteNonQueryInRemoteGroupMS + ", "
+        + metaGroupMemberExecuteNonQueryInRemoteGroupMS.get()/1000000L + ", "
         + metaGroupMemberExecuteNonQueryInRemoteGroupCounter + ", "
-        + (double) metaGroupMemberExecuteNonQueryInRemoteGroupMS.get()
+        + (double) metaGroupMemberExecuteNonQueryInRemoteGroupMS.get()/1000000L
         / metaGroupMemberExecuteNonQueryInRemoteGroupCounter.get() + "\n";
     result += raftMemberAppendLogMSString
-        + raftMemberAppendLogMS + ", "
+        + raftMemberAppendLogMS.get()/1000000L + ", "
         + raftMemberAppendLogCounter + ", "
-        + (double) raftMemberAppendLogMS.get() / raftMemberAppendLogCounter.get() + "\n";
+        + (double) raftMemberAppendLogMS.get()/1000000L / raftMemberAppendLogCounter.get() + "\n";
     result += raftMemberSendLogToFollowerMSString
-        + raftMemberSendLogToFollowerMS + ", "
+        + raftMemberSendLogToFollowerMS.get()/1000000L + ", "
         + raftMemberSendLogToFollowerCounter + ", "
-        + (double) raftMemberSendLogToFollowerMS.get() / raftMemberSendLogToFollowerCounter.get()
+        + (double) raftMemberSendLogToFollowerMS.get()/1000000L / raftMemberSendLogToFollowerCounter.get()
         + "\n";
     result += raftMemberCommitLogMSString
-        + raftMemberCommitLogMS + ", "
+        + raftMemberCommitLogMS.get()/1000000L + ", "
         + raftMemberCommitLogCounter + ", "
-        + (double) raftMemberCommitLogMS.get() / raftMemberCommitLogCounter.get() + "\n";
+        + (double) raftMemberCommitLogMS.get()/1000000L / raftMemberCommitLogCounter.get() + "\n";
     result += raftFollowerAppendEntryString
-        + raftFollowerAppendEntryMS + ", "
+        + raftFollowerAppendEntryMS.get()/1000000L + ", "
         + raftFollowerAppendEntryCounter + ", "
-        + (double) raftFollowerAppendEntryMS.get() / raftFollowerAppendEntryCounter.get() + "\n";
+        + (double) raftFollowerAppendEntryMS.get()/1000000L / raftFollowerAppendEntryCounter.get() + "\n";
 
     return result;
   }

@@ -1247,7 +1247,7 @@ public abstract class RaftMember {
       log.setPlan(plan);
       logManager.append(log);
     }
-    Timer.raftMemberAppendLogMS.addAndGet(System.currentTimeMillis() - start);
+    Timer.raftMemberAppendLogMS.addAndGet(System.nanoTime() - start);
     Timer.raftMemberAppendLogCounter.incrementAndGet();
 
     try {
