@@ -169,6 +169,11 @@ public class LogReplayer {
     } else {
       InsertTabletPlan tPlan = (InsertTabletPlan) plan;
       tPlan.setSchemas(schemas);
+      for (int i = 0; i < schemas.length; i++) {
+        if (schemas[i].getType() != tPlan.getDataTypes()[i]) {
+          tPlan.markFailedMeasurementInsertion(i);
+        }
+      }
       recoverMemTable.insertTablet(tPlan, 0, tPlan.getRowCount());
     }
   }
