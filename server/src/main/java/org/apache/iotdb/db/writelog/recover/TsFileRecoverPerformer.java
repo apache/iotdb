@@ -331,7 +331,10 @@ public class TsFileRecoverPerformer {
       // otherwise this file is not closed before crush, do nothing so we can continue writing
       // into it
       return res;
-    } catch (IOException | InterruptedException | ExecutionException e) {
+    } catch (IOException | ExecutionException e) {
+      throw new StorageGroupProcessorException(e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new StorageGroupProcessorException(e);
     }
   }

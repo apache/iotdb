@@ -87,7 +87,7 @@ public class FileLoaderTest {
   }
 
   @Test
-  public void loadNewTsfiles() throws IOException, StorageEngineException, IllegalPathException {
+  public void loadNewTsfiles() throws IOException, StorageEngineException, IllegalPathException, InterruptedException {
     fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
     Map<String, List<File>> allFileList = new HashMap<>();
     Map<String, Set<String>> correctSequenceLoadedFileMap = new HashMap<>();
@@ -158,6 +158,8 @@ public class FileLoaderTest {
       }
     } catch (InterruptedException e) {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
+      Thread.currentThread().interrupt();
+      throw e;
     }
 
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
@@ -253,6 +255,8 @@ public class FileLoaderTest {
       }
     } catch (InterruptedException e) {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
+      Thread.currentThread().interrupt();
+      throw e;
     }
 
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
@@ -306,6 +310,8 @@ public class FileLoaderTest {
       }
     } catch (InterruptedException e) {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
+      Thread.currentThread().interrupt();
+      throw e;
     }
 
     loadedFileMap.clear();

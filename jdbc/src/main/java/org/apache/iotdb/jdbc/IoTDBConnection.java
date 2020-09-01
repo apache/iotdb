@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.jdbc;
 
+import java.io.IOException;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -483,6 +484,7 @@ public class IoTDBConnection implements Connection {
           Thread.sleep(Config.RETRY_INTERVAL);
         } catch (InterruptedException e1) {
           logger.error("reconnect is interrupted.", e1);
+          Thread.currentThread().interrupt();
         }
       }
     }

@@ -173,7 +173,8 @@ public class WatermarkDetector {
   private static int calMin(int l, double alpha) throws IOException {
     int b = l;
     BigDecimal sum = new BigDecimal("1");
-    BigDecimal thrs = new BigDecimal.valueOf(alpha);
+
+    BigDecimal thrs = BigDecimal.valueOf(alpha);
     for (int i = 0; i < l; i++) {
       thrs = thrs.multiply(new BigDecimal("2"));
     }

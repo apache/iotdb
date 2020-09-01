@@ -1295,6 +1295,7 @@ public class StorageGroupProcessor {
       } catch (InterruptedException e) {
         logger.error("CloseFileNodeCondition error occurs while waiting for closing the storage "
             + "group {}", storageGroupName, e);
+        Thread.currentThread().interrupt();
       }
     }
   }
