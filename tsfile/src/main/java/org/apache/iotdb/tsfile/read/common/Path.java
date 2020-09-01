@@ -22,10 +22,11 @@ import java.io.Serializable;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 /**
- * This class define an Object named Path to represent a series in IoTDB.
- * AndExpression in batch read, this definition is also used in query
- * processing. Note that, Path is unmodified after a new object has been
- * created.
+ * This class represent a time series in TsFile,
+ * which is usually defined by a device and a measurement.
+ *
+ * If you want to use one String such as "device1.measurement1" to init Path in TsFile API,
+ * please use the new Path(string, true) to split it to device and measurement.
  */
 public class Path implements Serializable, Comparable<Path> {
 
@@ -48,6 +49,7 @@ public class Path implements Serializable, Comparable<Path> {
   }
 
   /**
+   *
    * @param pathSc path
    * @param needSplit whether need to be split to device and measurement, doesn't support escape character yet.
    */
