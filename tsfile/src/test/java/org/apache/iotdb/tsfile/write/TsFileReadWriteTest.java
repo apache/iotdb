@@ -119,7 +119,7 @@ public class TsFileReadWriteTest {
     TsFileSequenceReader reader = new TsFileSequenceReader(path);
     ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("device_1.sensor_2"));
+    paths.add(new Path("device_1", "sensor_2"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
     try {
       QueryDataSet queryDataSet = readTsFile.query(queryExpression);
@@ -162,7 +162,7 @@ public class TsFileReadWriteTest {
     TsFileSequenceReader reader = new TsFileSequenceReader(path);
     ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("device_1.sensor_1"));
+    paths.add(new Path("device_1", "sensor_1"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
 
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);

@@ -18,9 +18,16 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
@@ -29,14 +36,8 @@ import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByFillDataSet extends QueryDataSet {
@@ -49,11 +50,11 @@ public class GroupByFillDataSet extends QueryDataSet {
   // last timestamp for each time series
   private long[] lastTimeArray;
 
-  public GroupByFillDataSet(List<Path> paths, List<TSDataType> dataTypes,
+  public GroupByFillDataSet(List<PartialPath> paths, List<TSDataType> dataTypes,
       GroupByEngineDataSet groupByEngineDataSet,
       Map<TSDataType, IFill> fillTypes, QueryContext context, GroupByTimeFillPlan groupByFillPlan)
       throws StorageEngineException, IOException, QueryProcessException {
-    super(paths, dataTypes, groupByFillPlan.isAscending());
+    super(new ArrayList<>(paths), dataTypes, groupByFillPlan.isAscending());
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.fillTypes = fillTypes;
     initPreviousParis(context, groupByFillPlan);
@@ -65,7 +66,7 @@ public class GroupByFillDataSet extends QueryDataSet {
     previousValue = new Object[paths.size()];
     previousTime = new long[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
+      PartialPath path = (PartialPath) paths.get(i);
       TSDataType dataType = dataTypes.get(i);
       IFill fill;
       if (fillTypes.containsKey(dataType)) {
@@ -95,9 +96,14 @@ public class GroupByFillDataSet extends QueryDataSet {
     lastTimeArray = new long[paths.size()];
     Arrays.fill(lastTimeArray, Long.MAX_VALUE);
     for (int i = 0; i < paths.size(); i++) {
-      TimeValuePair lastTimeValuePair = LastQueryExecutor.calculateLastPairForOneSeriesLocally(
-          paths.get(i), dataTypes.get(i), context,
-          groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
+      TimeValuePair lastTimeValuePair;
+      try {
+        lastTimeValuePair = LastQueryExecutor.calculateLastPairForOneSeriesLocally(
+            new PartialPath(paths.get(i).getFullPath()), dataTypes.get(i), context,
+            groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
+      } catch (IllegalPathException e) {
+        throw new QueryProcessException(e.getMessage());
+      }
       if (lastTimeValuePair.getValue() != null) {
         lastTimeArray[i] = lastTimeValuePair.getTimestamp();
       }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.dataset;
 
 import java.util.Comparator;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
@@ -152,10 +153,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
    * @param dataTypes time series data type
    * @param readers   readers in List(IPointReader) structure
    */
-  public RawQueryDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      List<ManagedSeriesReader> readers, boolean ascending)
-      throws IOException, InterruptedException {
-    super(paths, dataTypes, ascending);
+  public RawQueryDataSetWithoutValueFilter(List<PartialPath> paths, List<TSDataType> dataTypes,
+      List<ManagedSeriesReader> readers, boolean ascending) throws IOException, InterruptedException {
+    super(new ArrayList<>(paths), dataTypes, ascending);
     this.seriesReaderList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
     for (int i = 0; i < seriesReaderList.size(); i++) {

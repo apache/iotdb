@@ -4,6 +4,9 @@
 **/lib/**
 **/data/**
 
+# Python runtime file
+**/__pycache__/**
+
 # Eclipse IDE files
 **/.classpath
 **/.project
@@ -87,3 +90,7 @@ node_identifier
 # gitpod
 .theia/
 
+### Cmake files ###
+*.cmake
+Makefile
+**/CMakeFiles/

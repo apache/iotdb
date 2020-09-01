@@ -154,20 +154,20 @@ public class PerfTest {
   private static Schema generateTestData() {
     Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema.registerTimeseries(new Path("d1.s1"),
+    schema.registerTimeseries(new Path("d1", "s1"),
         new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1.s2"),
+    schema.registerTimeseries(new Path("d1", "s2"),
         new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1.s3"),
+    schema.registerTimeseries(new Path("d1", "s3"),
         new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1.s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d2.s1"),
+    schema.registerTimeseries(new Path("d1", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d2", "s1"),
         new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d2.s2"),
+    schema.registerTimeseries(new Path("d2", "s2"),
         new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d2.s3"),
+    schema.registerTimeseries(new Path("d2", "s3"),
         new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerTimeseries(new Path("d2.s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d2", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     JSONObject s4 = new JSONObject();
     s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
     s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());

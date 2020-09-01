@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
@@ -46,7 +47,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
@@ -200,7 +200,7 @@ public class SeriesReader {
 
   private TimeOrderUtils orderUtils;
 
-  private final Path seriesPath;
+  private final PartialPath seriesPath;
 
   // all the sensors in this device;
   private final Set<String> allSensors;
@@ -252,7 +252,7 @@ public class SeriesReader {
   private boolean hasCachedNextOverlappedPage;
   private BatchData cachedBatchData;
 
-  public SeriesReader(Path seriesPath, Set<String> allSensors, TSDataType dataType,
+  public SeriesReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType,
       QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter,
       boolean ascending) {
@@ -282,7 +282,7 @@ public class SeriesReader {
   }
 
   @TestOnly
-  SeriesReader(Path seriesPath, Set<String> allSensors, TSDataType dataType, QueryContext context,
+  SeriesReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
       Filter timeFilter, Filter valueFilter, boolean ascending) {
     this.seriesPath = seriesPath;

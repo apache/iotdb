@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
@@ -162,7 +163,8 @@ public class IoTDBLastIT {
       }
 
       MeasurementMNode node =
-          (MeasurementMNode) IoTDB.metaManager.getNodeByPath("root.ln.wf01.wt01.temperature");
+          (MeasurementMNode) IoTDB.metaManager.getNodeByPath(new PartialPath(
+              "root.ln.wf01.wt01.temperature"));
       node.resetCache();
 
       statement.execute(
@@ -222,7 +224,7 @@ public class IoTDBLastIT {
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      MNode node = IoTDB.metaManager.getNodeByPath("root.ln.wf01.wt02.temperature");
+      MNode node = IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt02.temperature"));
       ((MeasurementMNode) node).resetCache();
       boolean hasResultSet =
           statement.execute(
@@ -272,7 +274,7 @@ public class IoTDBLastIT {
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      MNode node = IoTDB.metaManager.getNodeByPath("root.ln.wf01.wt03.temperature");
+      MNode node = IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt03.temperature"));
       ((MeasurementMNode) node).resetCache();
 
       statement
@@ -323,7 +325,7 @@ public class IoTDBLastIT {
       statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(150,31.2)");
       statement.execute("flush");
 
-      MNode node = IoTDB.metaManager.getNodeByPath("root.ln.wf01.wt03.temperature");
+      MNode node = IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt03.temperature"));
       ((MeasurementMNode) node).resetCache();
 
       boolean hasResultSet = statement.execute(

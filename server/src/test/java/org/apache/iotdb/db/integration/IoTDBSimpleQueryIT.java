@@ -21,6 +21,7 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -60,8 +61,8 @@ public class IoTDBSimpleQueryIT {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance()
-        .getNodeByPath("root.sg1.d0.s1");
+    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath(
+        "root.sg1.d0.s1"));
     assertNull(mNode.getSchema().getProps());
   }
 

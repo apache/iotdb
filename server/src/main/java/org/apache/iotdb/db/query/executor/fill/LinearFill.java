@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.executor.fill;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrResult;
@@ -34,17 +36,14 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import java.io.IOException;
-
 public class LinearFill extends IFill {
 
-  protected Path seriesPath;
+  protected PartialPath seriesPath;
   protected long beforeRange;
   protected long afterRange;
   protected Filter beforeFilter;
@@ -102,7 +101,7 @@ public class LinearFill extends IFill {
 
   @Override
   public void configureFill(
-      Path path, TSDataType dataType, long queryTime, Set<String> sensors, QueryContext context) {
+      PartialPath path, TSDataType dataType, long queryTime, Set<String> sensors, QueryContext context) {
     this.seriesPath = path;
     this.dataType = dataType;
     this.queryTime = queryTime;
