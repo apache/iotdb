@@ -83,6 +83,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
@@ -220,7 +221,7 @@ public abstract class RaftMember {
     appendLogThreadPool =
         Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 10,
             new ThreadFactoryBuilder().setNameFormat(getName() +
-        "-AppendLog%d").build());
+                "-AppendLog%d").build());
     asyncThreadPool = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), 100,
         0L, TimeUnit.MILLISECONDS,
         new LinkedBlockingQueue<>());
@@ -461,7 +462,7 @@ public abstract class RaftMember {
     long alreadyWait = 0;
     Object logUpdateCondition = logManager.getLogUpdateCondition();
     while (logManager.getLastLogIndex() < prevLogIndex &&
-    alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
+        alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
       synchronized (logUpdateCondition) {
         try {
           logUpdateCondition.wait(100);
@@ -1232,6 +1233,7 @@ public abstract class RaftMember {
     if (readOnly) {
       return StatusUtils.NODE_READ_ONLY;
     }
+    long start = System.currentTimeMillis();
     PhysicalPlanLog log = new PhysicalPlanLog();
     // assign term and index to the new log and append it
     synchronized (logManager) {
@@ -1241,6 +1243,8 @@ public abstract class RaftMember {
       log.setPlan(plan);
       logManager.append(log);
     }
+    Timer.raftMemberAppendLogMS += (System.currentTimeMillis() - start);
+    Timer.raftMemberAppendLogCounter++;
 
     try {
       if (appendLogInGroup(log)) {
@@ -1287,12 +1291,18 @@ public abstract class RaftMember {
       throws LogExecutionException {
     int retryTime = 0;
     while (true) {
+      long start = System.currentTimeMillis();
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
       AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
+      Timer.raftMemberSendLogToFollowerMS += (System.currentTimeMillis() - start);
+      Timer.raftMemberSendLogToFollowerCounter++;
       switch (result) {
         case OK:
+          start = System.currentTimeMillis();
           logger.debug("{}: log {} is accepted", name, log);
           commitLog(log);
+          Timer.raftMemberCommitLogMS += (System.currentTimeMillis() - start);
+          Timer.raftMemberCommitLogCounter++;
           return true;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);

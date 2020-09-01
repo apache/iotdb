@@ -132,6 +132,7 @@ import org.apache.iotdb.cluster.server.NodeReport;
 import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
@@ -412,7 +413,8 @@ public class MetaGroupMember extends RaftMember {
     // initialize allNodes
     for (String seedUrl : seedUrls) {
       Node node = generateNode(seedUrl);
-      if (node != null && (!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode.getMetaPort())
+      if (node != null && (!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode
+          .getMetaPort())
           && !allNodes.contains(node)) {
         // do not add the local node since it is added in `setThisNode()`
         allNodes.add(node);
@@ -1391,21 +1393,26 @@ public class MetaGroupMember extends RaftMember {
    */
   @Override
   public TSStatus executeNonQuery(PhysicalPlan plan) {
+    TSStatus result;
+    long start = System.currentTimeMillis();
     if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
-      return executeNonQueryLocally(plan);
+      result = executeNonQueryLocally(plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
-      return processNonPartitionedMetaPlan(plan);
+      result = processNonPartitionedMetaPlan(plan);
     } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all data group nodes
-      return processNonPartitionedDataPlan(plan);
+      result = processNonPartitionedDataPlan(plan);
     } else { //split the plan and forward them to some PartitionGroups
       try {
-        return processPartitionedPlan(plan);
+        result = processPartitionedPlan(plan);
       } catch (UnsupportedPlanException e) {
         TSStatus status = StatusUtils.UNSUPPORTED_OPERATION.deepCopy();
         status.setMessage(e.getMessage());
-        return status;
+        result = status;
       }
     }
+    Timer.metaGroupMemberExecuteNonQueryMS += (System.currentTimeMillis() - start);
+    Timer.metaGroupMemberExecuteNonQueryCounter++;
+    return result;
   }
 
   private TSStatus executeNonQueryLocally(PhysicalPlan plan) {
@@ -1679,18 +1686,27 @@ public class MetaGroupMember extends RaftMember {
   }
 
   private TSStatus forwardToSingleGroup(Map.Entry<PhysicalPlan, PartitionGroup> entry) {
+    TSStatus result;
     if (entry.getValue().contains(thisNode)) {
       // the query should be handled by a group the local node is in, handle it with in the group
+      long start = System.currentTimeMillis();
       logger.debug("Execute {} in a local group of {}", entry.getKey(),
           entry.getValue().getHeader());
-      return getLocalDataMember(entry.getValue().getHeader())
+      result = getLocalDataMember(entry.getValue().getHeader())
           .executeNonQuery(entry.getKey());
+      Timer.metaGroupMemberExecuteNonQueryInLocalGroupMS += (System.currentTimeMillis() - start);
+      Timer.metaGroupMemberExecuteNonQueryInLocalGroupCounter++;
+
     } else {
       // forward the query to the group that should handle it
+      long start = System.currentTimeMillis();
       logger.debug("Forward {} to a remote group of {}", entry.getKey(),
           entry.getValue().getHeader());
-      return forwardPlan(entry.getKey(), entry.getValue());
+      result = forwardPlan(entry.getKey(), entry.getValue());
+      Timer.metaGroupMemberExecuteNonQueryInRemoteGroupMS += (System.currentTimeMillis() - start);
+      Timer.metaGroupMemberExecuteNonQueryInRemoteGroupCounter++;
     }
+    return result;
   }
 
   private TSStatus forwardToMultipleGroup(Map<PhysicalPlan, PartitionGroup> planGroupMap) {
@@ -1894,7 +1910,8 @@ public class MetaGroupMember extends RaftMember {
    * @param header   to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header) throws IOException {
+  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header)
+      throws IOException {
     RaftService.AsyncClient client = getAsyncDataClient(receiver,
         RaftServer.getWriteOperationTimeoutMS());
     try {
@@ -1916,8 +1933,10 @@ public class MetaGroupMember extends RaftMember {
       return StatusUtils.TIME_OUT;
     }
   }
+
   TSIService.Client cli;
   long sId;
+
   private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header) {
     Client client = getSyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
     try {
@@ -2009,7 +2028,8 @@ public class MetaGroupMember extends RaftMember {
 
       }
       if (!partitionGroup.getHeader().equals(ignoredGroup)) {
-        partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>()).add(prefixPath);
+        partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>())
+            .add(prefixPath);
       }
     }
 
