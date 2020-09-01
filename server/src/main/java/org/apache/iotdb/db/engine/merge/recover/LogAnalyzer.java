@@ -250,6 +250,9 @@ public class LogAnalyzer {
         Long lastPost = Long.parseLong(splits[1]);
         fileLastPositions.put(currFile, lastPost);
       } else {
+        if (currFile == null) {
+          throw new IOException("Illegal merge files");
+        }
         fileLastPositions.remove(currFile);
         String seqFilePath = currFile.getAbsolutePath().replace(MergeTask.MERGE_SUFFIX, "");
         Iterator<TsFileResource> unmergedFileIter = unmergedFiles.iterator();

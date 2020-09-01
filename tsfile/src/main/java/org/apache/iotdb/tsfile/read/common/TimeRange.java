@@ -18,10 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -188,6 +185,11 @@ public class TimeRange implements Comparable<TimeRange> {
     }
     TimeRange that = (TimeRange) o;
     return (this.min == that.min && this.max == that.max);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(min, max);
   }
 
   /**

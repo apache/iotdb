@@ -824,7 +824,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     List<String> measurements = plan.getMeasurements();
     Map<String, MeasurementType> measurementTypeMap = plan.getMeasurementTypeMap();
     for (String measurement : measurements) {
-      TSDataType type = null;
+      TSDataType type = TSDataType.TEXT;
       switch (measurementTypeMap.get(measurement)) {
         case Exist:
           type = measurementDataTypeMap.get(measurement);

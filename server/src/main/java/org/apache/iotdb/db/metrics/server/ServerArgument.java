@@ -64,13 +64,13 @@ public class ServerArgument {
   }
 
   private String inferHostname() {
-    InetAddress ia = null;
     try {
-      ia = InetAddress.getLocalHost();
+      InetAddress ia = InetAddress.getLocalHost();
+      return ia.getHostName();
     } catch (UnknownHostException e) {
       logger.error("The host is unknow", e);
     }
-    return ia.getHostName();
+    return "";
   }
 
   private String osName() {
