@@ -483,6 +483,7 @@ public abstract class RaftMember {
    * @param request
    */
   public long appendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
+    long start = System.nanoTime();
     logger.debug("{} received an AppendEntryRequest: {}", name, request);
     // the term checked here is that of the leader, not that of the log
     long checkResult = checkRequestTerm(request);
@@ -494,6 +495,9 @@ public abstract class RaftMember {
     long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
         log);
     logger.debug("{} AppendEntryRequest of {} completed", name, log);
+
+    Timer.raftFollowerAppendEntryMS.addAndGet(System.nanoTime() - start);
+    Timer.raftMemberAppendLogCounter.incrementAndGet();
     return result;
   }
 
@@ -1233,7 +1237,7 @@ public abstract class RaftMember {
     if (readOnly) {
       return StatusUtils.NODE_READ_ONLY;
     }
-    long start = System.currentTimeMillis();
+    long start = System.nanoTime();
     PhysicalPlanLog log = new PhysicalPlanLog();
     // assign term and index to the new log and append it
     synchronized (logManager) {
@@ -1243,8 +1247,8 @@ public abstract class RaftMember {
       log.setPlan(plan);
       logManager.append(log);
     }
-    Timer.raftMemberAppendLogMS += (System.currentTimeMillis() - start);
-    Timer.raftMemberAppendLogCounter++;
+    Timer.raftMemberAppendLogMS.addAndGet(System.currentTimeMillis() - start);
+    Timer.raftMemberAppendLogCounter.incrementAndGet();
 
     try {
       if (appendLogInGroup(log)) {
@@ -1291,18 +1295,18 @@ public abstract class RaftMember {
       throws LogExecutionException {
     int retryTime = 0;
     while (true) {
-      long start = System.currentTimeMillis();
+      long start = System.nanoTime();
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
       AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
-      Timer.raftMemberSendLogToFollowerMS += (System.currentTimeMillis() - start);
-      Timer.raftMemberSendLogToFollowerCounter++;
+      Timer.raftMemberSendLogToFollowerMS.addAndGet(System.nanoTime() - start);
+      Timer.raftMemberSendLogToFollowerCounter.incrementAndGet();
       switch (result) {
         case OK:
-          start = System.currentTimeMillis();
+          start = System.nanoTime();
           logger.debug("{}: log {} is accepted", name, log);
           commitLog(log);
-          Timer.raftMemberCommitLogMS += (System.currentTimeMillis() - start);
-          Timer.raftMemberCommitLogCounter++;
+          Timer.raftMemberCommitLogMS.addAndGet(System.nanoTime() - start);
+          Timer.raftMemberCommitLogCounter.incrementAndGet();
           return true;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);

@@ -1037,10 +1037,10 @@ public class DataGroupMember extends RaftMember {
    */
   TSStatus executeNonQuery(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
-      long start = System.currentTimeMillis();
+      long start = System.nanoTime();
       TSStatus status = processPlanLocally(plan);
-      Timer.dataGroupMemberProcessPlanLocallyMS += (System.currentTimeMillis() - start);
-      Timer.dataGroupMemberProcessPlanLocallyCounter++;
+      Timer.dataGroupMemberProcessPlanLocallyMS.addAndGet(System.nanoTime() - start);
+      Timer.dataGroupMemberProcessPlanLocallyCounter.incrementAndGet();
       if (status != null) {
         return status;
       }
@@ -1048,10 +1048,10 @@ public class DataGroupMember extends RaftMember {
       return forwardPlan(plan, leader, getHeader());
     }
 
-    long start = System.currentTimeMillis();
+    long start = System.nanoTime();
     waitLeader();
-    Timer.dataGroupMemberWaitLeaderMS += (System.currentTimeMillis() - start);
-    Timer.dataGroupMemberWaitLeaderCounter++;
+    Timer.dataGroupMemberWaitLeaderMS.addAndGet(System.nanoTime() - start);
+    Timer.dataGroupMemberWaitLeaderCounter.incrementAndGet();
     // the leader can be itself after waiting
     if (character == NodeCharacter.LEADER) {
       TSStatus status = processPlanLocally(plan);

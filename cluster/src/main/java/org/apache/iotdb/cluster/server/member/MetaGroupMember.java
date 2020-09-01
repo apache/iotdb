@@ -1394,7 +1394,7 @@ public class MetaGroupMember extends RaftMember {
   @Override
   public TSStatus executeNonQuery(PhysicalPlan plan) {
     TSStatus result;
-    long start = System.currentTimeMillis();
+    long start = System.nanoTime();
     if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
       result = executeNonQueryLocally(plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
@@ -1410,8 +1410,8 @@ public class MetaGroupMember extends RaftMember {
         result = status;
       }
     }
-    Timer.metaGroupMemberExecuteNonQueryMS += (System.currentTimeMillis() - start);
-    Timer.metaGroupMemberExecuteNonQueryCounter++;
+    Timer.metaGroupMemberExecuteNonQueryMS.addAndGet(System.nanoTime() - start);
+    Timer.metaGroupMemberExecuteNonQueryCounter.incrementAndGet();
     return result;
   }
 
@@ -1689,22 +1689,22 @@ public class MetaGroupMember extends RaftMember {
     TSStatus result;
     if (entry.getValue().contains(thisNode)) {
       // the query should be handled by a group the local node is in, handle it with in the group
-      long start = System.currentTimeMillis();
+      long start = System.nanoTime();
       logger.debug("Execute {} in a local group of {}", entry.getKey(),
           entry.getValue().getHeader());
       result = getLocalDataMember(entry.getValue().getHeader())
           .executeNonQuery(entry.getKey());
-      Timer.metaGroupMemberExecuteNonQueryInLocalGroupMS += (System.currentTimeMillis() - start);
-      Timer.metaGroupMemberExecuteNonQueryInLocalGroupCounter++;
+      Timer.metaGroupMemberExecuteNonQueryInLocalGroupMS.addAndGet(System.nanoTime() - start);
+      Timer.metaGroupMemberExecuteNonQueryInLocalGroupCounter.incrementAndGet();
 
     } else {
       // forward the query to the group that should handle it
-      long start = System.currentTimeMillis();
+      long start = System.nanoTime();
       logger.debug("Forward {} to a remote group of {}", entry.getKey(),
           entry.getValue().getHeader());
       result = forwardPlan(entry.getKey(), entry.getValue());
-      Timer.metaGroupMemberExecuteNonQueryInRemoteGroupMS += (System.currentTimeMillis() - start);
-      Timer.metaGroupMemberExecuteNonQueryInRemoteGroupCounter++;
+      Timer.metaGroupMemberExecuteNonQueryInRemoteGroupMS.addAndGet(System.nanoTime() - start);
+      Timer.metaGroupMemberExecuteNonQueryInRemoteGroupCounter.incrementAndGet();
     }
     return result;
   }

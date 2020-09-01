@@ -1,23 +1,27 @@
 package org.apache.iotdb.cluster.server;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public class Timer {
 
-  public static long dataGroupMemberProcessPlanLocallyMS = 0L;
-  public static long dataGroupMemberProcessPlanLocallyCounter = 0L;
-  public static long dataGroupMemberWaitLeaderMS = 0L;
-  public static long dataGroupMemberWaitLeaderCounter = 0L;
-  public static long metaGroupMemberExecuteNonQueryMS = 0L;
-  public static long metaGroupMemberExecuteNonQueryCounter = 0L;
-  public static long metaGroupMemberExecuteNonQueryInLocalGroupMS = 0L;
-  public static long metaGroupMemberExecuteNonQueryInLocalGroupCounter = 0L;
-  public static long metaGroupMemberExecuteNonQueryInRemoteGroupMS = 0L;
-  public static long metaGroupMemberExecuteNonQueryInRemoteGroupCounter = 0L;
-  public static long raftMemberAppendLogMS = 0L;
-  public static long raftMemberAppendLogCounter = 0L;
-  public static long raftMemberSendLogToFollowerMS = 0L;
-  public static long raftMemberSendLogToFollowerCounter = 0L;
-  public static long raftMemberCommitLogMS = 0L;
-  public static long raftMemberCommitLogCounter = 0L;
+  public static AtomicLong dataGroupMemberProcessPlanLocallyMS = new AtomicLong(0);
+  public static AtomicLong dataGroupMemberProcessPlanLocallyCounter = new AtomicLong(0);
+  public static AtomicLong dataGroupMemberWaitLeaderMS = new AtomicLong(0);
+  public static AtomicLong dataGroupMemberWaitLeaderCounter = new AtomicLong(0);
+  public static AtomicLong metaGroupMemberExecuteNonQueryMS = new AtomicLong(0);
+  public static AtomicLong metaGroupMemberExecuteNonQueryCounter = new AtomicLong(0);
+  public static AtomicLong metaGroupMemberExecuteNonQueryInLocalGroupMS = new AtomicLong(0);
+  public static AtomicLong metaGroupMemberExecuteNonQueryInLocalGroupCounter = new AtomicLong(0);
+  public static AtomicLong metaGroupMemberExecuteNonQueryInRemoteGroupMS = new AtomicLong(0);
+  public static AtomicLong metaGroupMemberExecuteNonQueryInRemoteGroupCounter = new AtomicLong(0);
+  public static AtomicLong raftMemberAppendLogMS = new AtomicLong(0);
+  public static AtomicLong raftMemberAppendLogCounter = new AtomicLong(0);
+  public static AtomicLong raftMemberSendLogToFollowerMS = new AtomicLong(0);
+  public static AtomicLong raftMemberSendLogToFollowerCounter = new AtomicLong(0);
+  public static AtomicLong raftMemberCommitLogMS = new AtomicLong(0);
+  public static AtomicLong raftMemberCommitLogCounter = new AtomicLong(0);
+  public static AtomicLong raftFollowerAppendEntryMS = new AtomicLong(0);
+  public static AtomicLong raftFollowerAppendEntryCounter = new AtomicLong(0);
 
   private static final String dataGroupMemberProcessPlanLocallyMSString = "Data group member - process plan locally : ";
   private static final String dataGroupMemberWaitLeaderMSString = "Data group member - wait leader: ";
@@ -33,38 +37,38 @@ public class Timer {
     result += dataGroupMemberProcessPlanLocallyMSString
         + dataGroupMemberProcessPlanLocallyMS + ", "
         + dataGroupMemberProcessPlanLocallyCounter + ", "
-        + (double) dataGroupMemberProcessPlanLocallyMS / dataGroupMemberProcessPlanLocallyCounter
+        +  (double)dataGroupMemberProcessPlanLocallyMS.get() / dataGroupMemberProcessPlanLocallyCounter.get()
         + "\n";
     result += dataGroupMemberWaitLeaderMSString
         + dataGroupMemberWaitLeaderMS + ", "
         + dataGroupMemberWaitLeaderCounter + ", "
-        + (double) dataGroupMemberWaitLeaderMS / dataGroupMemberWaitLeaderCounter + "\n";
+        + (double) dataGroupMemberWaitLeaderMS.get() / dataGroupMemberWaitLeaderCounter.get() + "\n";
     result += metaGroupMemberExecuteNonQueryMSString
         + metaGroupMemberExecuteNonQueryMS + ", "
         + metaGroupMemberExecuteNonQueryCounter + ", "
-        + (double) metaGroupMemberExecuteNonQueryMS / metaGroupMemberExecuteNonQueryCounter + "\n";
+        + (double) metaGroupMemberExecuteNonQueryMS.get() / metaGroupMemberExecuteNonQueryCounter.get() + "\n";
     result += metaGroupMemberExecuteNonQueryInLocalGroupMSString
         + metaGroupMemberExecuteNonQueryInLocalGroupMS + ", "
         + metaGroupMemberExecuteNonQueryInLocalGroupCounter + ", "
-        + (double) metaGroupMemberExecuteNonQueryInLocalGroupMS
-        / metaGroupMemberExecuteNonQueryInLocalGroupCounter + "\n";
+        + (double) metaGroupMemberExecuteNonQueryInLocalGroupMS.get()
+        / metaGroupMemberExecuteNonQueryInLocalGroupCounter.get() + "\n";
     result += metaGroupMemberExecuteNonQueryInRemoteGroupMSString
         + metaGroupMemberExecuteNonQueryInRemoteGroupMS + ", "
         + metaGroupMemberExecuteNonQueryInRemoteGroupCounter + ", "
-        + (double) metaGroupMemberExecuteNonQueryInRemoteGroupMS
-        / metaGroupMemberExecuteNonQueryInRemoteGroupCounter + "\n";
+        + (double) metaGroupMemberExecuteNonQueryInRemoteGroupMS.get()
+        / metaGroupMemberExecuteNonQueryInRemoteGroupCounter.get() + "\n";
     result += raftMemberAppendLogMSString
         + raftMemberAppendLogMS + ", "
         + raftMemberAppendLogCounter + ", "
-        + (double) raftMemberAppendLogMS / raftMemberAppendLogCounter + "\n";
+        + (double) raftMemberAppendLogMS.get() / raftMemberAppendLogCounter.get() + "\n";
     result += raftMemberSendLogToFollowerMSString
         + raftMemberSendLogToFollowerMS + ", "
         + raftMemberSendLogToFollowerCounter + ", "
-        + (double) raftMemberSendLogToFollowerMS / raftMemberSendLogToFollowerCounter + "\n";
+        + (double) raftMemberSendLogToFollowerMS.get() / raftMemberSendLogToFollowerCounter.get() + "\n";
     result += raftMemberCommitLogMSString
         + raftMemberCommitLogMS + ", "
         + raftMemberCommitLogCounter + ", "
-        + (double) raftMemberCommitLogMS / raftMemberCommitLogCounter + "\n";
+        + (double) raftMemberCommitLogMS.get() / raftMemberCommitLogCounter.get() + "\n";
 
     return result;
   }
