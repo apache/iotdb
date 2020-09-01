@@ -679,7 +679,7 @@ public class PhysicalGenerator {
         PartialPath path = paths.get(i);
         String column = path.getTsAlias();
         if (column == null) {
-          column = path.getAlias() != null ? path.getFullPathWithAlias() : path.toString();
+          column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.toString();
         }
         if (!columnSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
@@ -703,7 +703,7 @@ public class PhysicalGenerator {
       // judge whether as clause is used or not first
       String column = indexedPath.left.getTsAlias();
       if (column == null) {
-        column = indexedPath.left.getAlias() != null ? indexedPath.left.getFullPathWithAlias()
+        column = indexedPath.left.getMeasurementAlias() != null ? indexedPath.left.getFullPathWithAlias()
             : indexedPath.left.toString();
         if (queryPlan instanceof AggregationPlan) {
           column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";

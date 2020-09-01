@@ -31,8 +31,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 public class PartialPath extends Path implements Comparable<Path> {
 
   private String[] nodes;
-  // alias of sensor
-  private String alias = null;
+  // alias of measurement
+  private String measurementAlias = null;
   // alias of time series used in SELECT AS
   private String tsAlias = null;
 
@@ -147,11 +147,11 @@ public class PartialPath extends Path implements Comparable<Path> {
     }
   }
 
-  public String getAlias() {
-    return alias;
+  public String getMeasurementAlias() {
+    return measurementAlias;
   }
 
-  public void setAlias(String alias) { this.alias = alias; }
+  public void setMeasurementAlias(String measurementAlias) { this.measurementAlias = measurementAlias; }
 
   public String getTsAlias() {
     return tsAlias;
@@ -163,7 +163,7 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   @Override
   public String getFullPathWithAlias() {
-    return getDevice() + IoTDBConstant.PATH_SEPARATOR + alias;
+    return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
   }
 
   @Override

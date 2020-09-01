@@ -93,7 +93,7 @@ public class LastQueryExecutor {
         if (selectedSeries.get(i).getTsAlias() != null) {
           pathField.setBinaryV(new Binary(selectedSeries.get(i).getTsAlias()));
         } else {
-          if (selectedSeries.get(i).getAlias() != null) {
+          if (selectedSeries.get(i).getMeasurementAlias() != null) {
             pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
           } else {
             pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));

@@ -773,7 +773,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           // judge whether as clause is used or not first
           String column = path.getTsAlias();
           if (column == null) {
-            column = path.getAlias() != null ? path.getFullPathWithAlias() : path.getFullPath();
+            column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.getFullPath();
           }
           respColumns.add(column);
           seriesTypes.add(getSeriesTypeByPath(path));
@@ -793,7 +793,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           // judge whether as clause is used or not first
           String column = path.getTsAlias();
           if (column == null) {
-            column = path.getAlias() != null
+            column = path.getMeasurementAlias() != null
                 ? aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")"
                 : aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")";
           }
