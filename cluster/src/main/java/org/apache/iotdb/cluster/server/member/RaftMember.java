@@ -1232,7 +1232,6 @@ public abstract class RaftMember {
     if (readOnly) {
       return StatusUtils.NODE_READ_ONLY;
     }
-    // instrument here
     PhysicalPlanLog log = new PhysicalPlanLog();
     // assign term and index to the new log and append it
     synchronized (logManager) {
@@ -1289,12 +1288,10 @@ public abstract class RaftMember {
     int retryTime = 0;
     while (true) {
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
-      // instrument here
       AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
       switch (result) {
         case OK:
           logger.debug("{}: log {} is accepted", name, log);
-          // instrument here
           commitLog(log);
           return true;
         case TIME_OUT:
