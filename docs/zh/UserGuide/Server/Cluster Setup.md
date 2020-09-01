@@ -239,7 +239,7 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 |改后生效方式|重启服务器生效|
 
 ## 开启GC日志
-GC日志默认是关闭的。为了性能调优，用户可能会需要手机GC信息。
+GC日志默认是关闭的。为了性能调优，用户可能会需要收集GC信息。
 若要打开GC日志，则需要在启动IoTDB Server的时候加上"printgc"参数：
 
 ```bash
