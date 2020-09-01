@@ -54,9 +54,8 @@ public class IoTDBDeleteTimeseriesIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  // test different types of timeseries
   @Test
-  public void testDeleteTimeseries() throws Exception {
+  public void testDeleteDifferentTypesTimeseries() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String[] retArray = new String[]{
         "1,1,",
@@ -116,11 +115,9 @@ public class IoTDBDeleteTimeseriesIT {
       Assert.assertTrue(hasResult);
     }
   }
-
-
-  // test same types of timeseries
+  
   @Test
-  public void testDeleteTimeseries1() throws Exception {
+  public void testDeleteSameTypeTimeseries1() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String[] retArray = new String[]{
         "1,1,",
