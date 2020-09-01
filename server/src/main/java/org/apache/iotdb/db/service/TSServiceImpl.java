@@ -173,11 +173,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
-    logger.info(
-        "{}: receive open session request from username {}",
-        IoTDBConstant.GLOBAL_DB_NAME,
-        req.getUsername());
-
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "{}: receive open session request from username {}",
+          IoTDBConstant.GLOBAL_DB_NAME,
+          req.getUsername());
+    }
     boolean status;
     IAuthorizer authorizer;
     try {
@@ -220,9 +221,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
         TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
     resp.setSessionId(sessionId);
-    logger.info(
-        "{}: Login status: {}. User : {}", IoTDBConstant.GLOBAL_DB_NAME, tsStatus.message,
-        req.getUsername());
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "{}: Login status: {}. User : {}", IoTDBConstant.GLOBAL_DB_NAME, tsStatus.message,
+          req.getUsername());
+    }
 
     return resp;
   }
@@ -233,7 +236,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
-    logger.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
+    }
     long sessionId = currSessionId.get();
     currSessionId.remove();
 
