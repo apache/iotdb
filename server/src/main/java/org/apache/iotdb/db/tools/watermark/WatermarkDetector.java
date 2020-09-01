@@ -64,53 +64,53 @@ public class WatermarkDetector {
     System.out.println("-----Watermark detection begins-----");
     int[] trueNums = new int[watermarkBitString.length()]; // for majority vote
     int[] falseNums = new int[watermarkBitString.length()]; // for majority vote
-    BufferedReader reader = new BufferedReader(new FileReader(filePath));
-    String line = reader.readLine(); // skip header
-    String[] items = line.split(",");
-    if (columnIndex < 1 || columnIndex > items.length - 1) {
-      throw new IOException("columnIndex is out of range.");
-    }
-    while ((line = reader.readLine()) != null) {
-      items = line.split(",");
-      long timestamp = parseTimestamp(items[0]);
-      if (GroupedLSBWatermarkEncoder
-          .hashMod(String.format("%s%d", secretKey, timestamp), embed_row_cycle)
-          == 0) {
-        String str = items[columnIndex];
-        if (str.equals("null")) {
-          continue;
-        }
+    try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+      String line = reader.readLine(); // skip header
+      String[] items = line.split(",");
+      if (columnIndex < 1 || columnIndex > items.length - 1) {
+        throw new IOException("columnIndex is out of range.");
+      }
+      while ((line = reader.readLine()) != null) {
+        items = line.split(",");
+        long timestamp = parseTimestamp(items[0]);
+        if (GroupedLSBWatermarkEncoder
+                .hashMod(String.format("%s%d", secretKey, timestamp), embed_row_cycle)
+                == 0) {
+          String str = items[columnIndex];
+          if (str.equals("null")) {
+            continue;
+          }
 
-        int targetBitPosition = GroupedLSBWatermarkEncoder
-            .hashMod(String.format("%s%d%s", secretKey, timestamp, secretKey),
-                embed_lsb_num);
-        int groupId = GroupedLSBWatermarkEncoder
-            .hashMod(String.format("%d%s", timestamp, secretKey), watermarkBitString.length());
+          int targetBitPosition = GroupedLSBWatermarkEncoder
+                  .hashMod(String.format("%s%d%s", secretKey, timestamp, secretKey),
+                          embed_lsb_num);
+          int groupId = GroupedLSBWatermarkEncoder
+                  .hashMod(String.format("%d%s", timestamp, secretKey), watermarkBitString.length());
 
-        boolean isTrue = true;
-        switch (dataType) {
-          case "int":
-            isTrue = EncodingUtils.testBit(Integer.parseInt(items[columnIndex]), targetBitPosition);
-            break;
-          case "float":
-            int floatToIntBits = Float.floatToIntBits(Float.parseFloat(items[columnIndex]));
-            isTrue = EncodingUtils.testBit(floatToIntBits, targetBitPosition);
-            break;
-          case "double":
-            long doubleToLongBits = Double.doubleToLongBits(Double.parseDouble(items[columnIndex]));
-            isTrue = EncodingUtils.testBit(doubleToLongBits, targetBitPosition);
-            break;
-          default:
-            ;
-        }
-        if (isTrue) {
-          trueNums[groupId] += 1;
-        } else {
-          falseNums[groupId] += 1;
+          boolean isTrue = true;
+          switch (dataType) {
+            case "int":
+              isTrue = EncodingUtils.testBit(Integer.parseInt(items[columnIndex]), targetBitPosition);
+              break;
+            case "float":
+              int floatToIntBits = Float.floatToIntBits(Float.parseFloat(items[columnIndex]));
+              isTrue = EncodingUtils.testBit(floatToIntBits, targetBitPosition);
+              break;
+            case "double":
+              long doubleToLongBits = Double.doubleToLongBits(Double.parseDouble(items[columnIndex]));
+              isTrue = EncodingUtils.testBit(doubleToLongBits, targetBitPosition);
+              break;
+            default:
+              ;
+          }
+          if (isTrue) {
+            trueNums[groupId] += 1;
+          } else {
+            falseNums[groupId] += 1;
+          }
         }
       }
     }
-    reader.close();
 
     int cnt = 0; // total counted number
     int hit_cnt = 0; // detected hit number
@@ -173,12 +173,12 @@ public class WatermarkDetector {
   private static int calMin(int l, double alpha) throws IOException {
     int b = l;
     BigDecimal sum = new BigDecimal("1");
-    BigDecimal thrs = new BigDecimal(alpha);
+    BigDecimal thrs = new BigDecimal.valueOf(alpha);
     for (int i = 0; i < l; i++) {
       thrs = thrs.multiply(new BigDecimal("2"));
     }
 
-    while (sum.compareTo(thrs) == -1) { // sum < thrs
+    while (sum.compareTo(thrs) < 0) { // sum < thrs
       b -= 1;
       sum = sum.add(Comb(l, b));
     }

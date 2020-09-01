@@ -166,8 +166,7 @@ public class SyncClient implements ISyncClient {
    * @param lockFile lock file
    */
   private boolean lockInstance(File lockFile) {
-    try {
-      final RandomAccessFile randomAccessFile = new RandomAccessFile(lockFile, "rw");
+    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(lockFile, "rw")) {
       final FileLock fileLock = randomAccessFile.getChannel().tryLock();
       if (fileLock != null) {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
