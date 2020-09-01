@@ -62,17 +62,10 @@ public class PathPrivilege {
   }
 
   public Set<Integer> getPrivileges() {
-<<<<<<< HEAD
     return privileges;
   }
 
   public void setPrivileges(Set<Integer> privileges) {
-=======
-    return this.privileges;
-  }
-
-  public void setPrivileges(final Set<Integer> privileges) {
->>>>>>> a7e038724... used final keyword to make object unmodifibale
     this.privileges = privileges;
   }
 

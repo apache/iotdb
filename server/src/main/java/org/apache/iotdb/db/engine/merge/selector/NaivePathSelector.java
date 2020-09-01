@@ -29,11 +29,7 @@ public class NaivePathSelector implements IMergePathSelector {
   private int idx;
   private int maxSeriesNum;
 
-<<<<<<< HEAD
   public NaivePathSelector(List<PartialPath> paths, int maxSeriesNum) {
-=======
-  public NaivePathSelector(final List<Path> paths, int maxSeriesNum) {
->>>>>>> a7e038724... used final keyword to make object unmodifibale
     this.paths = paths;
     this.maxSeriesNum = maxSeriesNum;
   }

@@ -84,13 +84,8 @@ public class MergeMultiChunkTask {
 
   private String storageGroupName;
 
-<<<<<<< HEAD
   public MergeMultiChunkTask(MergeContext context, String taskName, MergeLogger mergeLogger,
       MergeResource mergeResource, boolean fullMerge, List<PartialPath> unmergedSeries,
-=======
-  public MergeMultiChunkTask(final MergeContext context, String taskName, final MergeLogger mergeLogger,
-      final MergeResource mergeResource, boolean fullMerge, final List<Path> unmergedSeries,
->>>>>>> a7e038724... used final keyword to make object unmodifibale
       int concurrentMergeSeriesNum, String storageGroupName) {
     this.mergeContext = context;
     this.taskName = taskName;

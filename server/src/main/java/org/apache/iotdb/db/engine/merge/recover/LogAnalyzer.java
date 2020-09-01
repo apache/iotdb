@@ -269,19 +269,11 @@ public class LogAnalyzer {
     }
   }
 
-<<<<<<< HEAD
   public List<PartialPath> getUnmergedPaths() {
     return unmergedPaths;
   }
 
   public void setUnmergedPaths(List<PartialPath> unmergedPaths) {
-=======
-  public List<Path> getUnmergedPaths() {
-    return unmergedPaths;
-  }
-
-  public void setUnmergedPaths(final List<Path> unmergedPaths) {
->>>>>>> a7e038724... used final keyword to make object unmodifibale
     this.unmergedPaths = unmergedPaths;
   }
 
@@ -290,7 +282,6 @@ public class LogAnalyzer {
   }
 
   public void setUnmergedFiles(
-<<<<<<< HEAD
       List<TsFileResource> unmergedFiles) {
     this.unmergedFiles = unmergedFiles;
   }
@@ -300,17 +291,6 @@ public class LogAnalyzer {
   }
 
   public void setMergedPaths(List<PartialPath> mergedPaths) {
-=======
-      final List<TsFileResource> unmergedFiles) {
-    this.unmergedFiles = unmergedFiles;
-  }
-
-  public List<Path> getMergedPaths() {
-    return mergedPaths;
-  }
-
-  public void setMergedPaths(final List<Path> mergedPaths) {
->>>>>>> a7e038724... used final keyword to make object unmodifibale
     this.mergedPaths = mergedPaths;
   }
 

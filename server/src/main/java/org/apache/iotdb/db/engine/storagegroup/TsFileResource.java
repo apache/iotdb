@@ -204,18 +204,13 @@ public class TsFileResource {
    * unsealed TsFile
    */
   public TsFileResource(File file, Map<String, Integer> deviceToIndex, long[] startTimes,
-      long[] endTimes, final List<ReadOnlyMemChunk> readOnlyMemChunk,
-      final List<ChunkMetadata> chunkMetadataList, final TsFileResource originTsFileResource)
+      long[] endTimes, List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<ChunkMetadata> chunkMetadataList, TsFileResource originTsFileResource)
       throws IOException {
     this.file = file;
     this.deviceToIndex = deviceToIndex;
-<<<<<<< HEAD
     this.startTimes = startTimes;
     this.endTimes = endTimes;
-=======
-    this.startTimes = startTimes.clone();
-    this.endTimes = endTimes.clone();
->>>>>>> a7e038724... used final keyword to make object unmodifibale
     this.chunkMetadataList = chunkMetadataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
     this.originTsFileResource = originTsFileResource;

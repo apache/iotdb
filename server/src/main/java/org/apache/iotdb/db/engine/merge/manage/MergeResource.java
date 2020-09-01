@@ -220,11 +220,7 @@ public class MergeResource {
     return seqFiles;
   }
 
-<<<<<<< HEAD
   public void setSeqFiles(List<TsFileResource> seqFiles) {
-=======
-  public void setSeqFiles(final List<TsFileResource> seqFiles) {
->>>>>>> a7e038724... used final keyword to make object unmodifibale
     this.seqFiles = seqFiles;
   }
 
@@ -233,11 +229,7 @@ public class MergeResource {
   }
 
   public void setUnseqFiles(
-<<<<<<< HEAD
       List<TsFileResource> unseqFiles) {
-=======
-      final List<TsFileResource> unseqFiles) {
->>>>>>> a7e038724... used final keyword to make object unmodifibale
     this.unseqFiles = unseqFiles;
   }
 
