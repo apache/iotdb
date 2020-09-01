@@ -114,6 +114,7 @@ public class NodeReport {
           ", commitTerm=" + commitTerm +
           ", readOnly=" + isReadOnly +
           ", lastHeartbeat=" + (System.currentTimeMillis() - lastHeartbeatReceivedTime) + "ms ago" +
+          ", \n timer: "+ Timer.getReport() +
           '}';
     }
   }
