@@ -182,6 +182,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -411,7 +412,8 @@ public class MetaGroupMember extends RaftMember {
     // initialize allNodes
     for (String seedUrl : seedUrls) {
       Node node = generateNode(seedUrl);
-      if (node != null && (!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode.getMetaPort())
+      if (node != null && (!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode
+          .getMetaPort())
           && !allNodes.contains(node)) {
         // do not add the local node since it is added in `setThisNode()`
         allNodes.add(node);
@@ -1443,7 +1445,11 @@ public class MetaGroupMember extends RaftMember {
         return status;
       }
     } else if (leader != null) {
-      return forwardPlan(plan, leader, null);
+      TSStatus result = forwardPlan(plan, leader, null);
+      if (!StatusUtils.NO_LEADER.equals(result)) {
+        result.setRedirectNode(new EndPoint(leader.ip, leader.clientPort));
+        return result;
+      }
     }
 
     waitLeader();
@@ -1454,7 +1460,11 @@ public class MetaGroupMember extends RaftMember {
         return status;
       }
     }
-    return forwardPlan(plan, leader, null);
+    TSStatus result = forwardPlan(plan, leader, null);
+    if (!StatusUtils.NO_LEADER.equals(result)) {
+      result.setRedirectNode(new EndPoint(leader.ip, leader.clientPort));
+    }
+    return result;
   }
 
   /**
@@ -1644,6 +1654,8 @@ public class MetaGroupMember extends RaftMember {
     TSStatus[] subStatus = null;
     boolean noFailure = true;
     boolean isBatchFailure = false;
+    boolean allRedirect = true;
+    EndPoint endPoint = null;
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
       logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
@@ -1651,6 +1663,11 @@ public class MetaGroupMember extends RaftMember {
           (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
       isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
           || isBatchFailure;
+      if (tmpStatus.isSetRedirectNode()) {
+        endPoint = tmpStatus.getRedirectNode();
+      } else {
+        allRedirect = false;
+      }
       if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         if (subStatus == null) {
           subStatus = new TSStatus[plan.getRowCount()];
@@ -1669,6 +1686,9 @@ public class MetaGroupMember extends RaftMember {
     TSStatus status;
     if (noFailure) {
       status = StatusUtils.OK;
+      if (allRedirect) {
+        status.setRedirectNode(endPoint);
+      }
     } else if (isBatchFailure) {
       //noinspection ConstantConditions, subStatus is never null in this case
       status = RpcUtils.getStatus(Arrays.asList(subStatus));
@@ -1697,8 +1717,15 @@ public class MetaGroupMember extends RaftMember {
   private TSStatus forwardToMultipleGroup(Map<PhysicalPlan, PartitionGroup> planGroupMap) {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
+    boolean allRedirect = true;
+    EndPoint endPoint = null;
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
+      if (tmpStatus.isSetRedirectNode()) {
+        endPoint = tmpStatus.getRedirectNode();
+      } else {
+        allRedirect = false;
+      }
       if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
@@ -1709,6 +1736,9 @@ public class MetaGroupMember extends RaftMember {
     TSStatus status;
     if (errorCodePartitionGroups.isEmpty()) {
       status = StatusUtils.OK;
+      if (allRedirect) {
+        status.setRedirectNode(endPoint);
+      }
     } else {
       status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
       status.setMessage(MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
@@ -1878,6 +1908,9 @@ public class MetaGroupMember extends RaftMember {
         status.setMessage(e.getMessage());
       }
       if (!StatusUtils.TIME_OUT.equals(status)) {
+        if (!status.isSetRedirectNode()) {
+          status.setRedirectNode(new EndPoint(node.ip, node.clientPort));
+        }
         return status;
       } else {
         logger.warn("Forward {} to {} timed out", plan, node);
@@ -1895,7 +1928,8 @@ public class MetaGroupMember extends RaftMember {
    * @param header   to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header) throws IOException {
+  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header)
+      throws IOException {
     RaftService.AsyncClient client = getAsyncDataClient(receiver,
         RaftServer.getWriteOperationTimeoutMS());
     try {
@@ -1993,7 +2027,8 @@ public class MetaGroupMember extends RaftMember {
 
       }
       if (!partitionGroup.getHeader().equals(ignoredGroup)) {
-        partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>()).add(prefixPath);
+        partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>())
+            .add(prefixPath);
       }
     }
 

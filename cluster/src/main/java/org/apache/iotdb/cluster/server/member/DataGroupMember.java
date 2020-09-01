@@ -98,6 +98,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -130,6 +131,7 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -1041,7 +1043,13 @@ public class DataGroupMember extends RaftMember {
         return status;
       }
     } else if (leader != null) {
-      return forwardPlan(plan, leader, getHeader());
+      TSStatus result = forwardPlan(plan, leader, getHeader());
+      if (!StatusUtils.NO_LEADER.equals(result)) {
+        if (!result.isSetRedirectNode()) {
+          result.setRedirectNode(new EndPoint(leader.ip, leader.clientPort));
+        }
+        return result;
+      }
     }
 
     waitLeader();
@@ -1052,7 +1060,13 @@ public class DataGroupMember extends RaftMember {
         return status;
       }
     }
-    return forwardPlan(plan, leader, getHeader());
+    TSStatus result = forwardPlan(plan, leader, getHeader());
+    if (!StatusUtils.NO_LEADER.equals(result)) {
+      if (!result.isSetRedirectNode()) {
+        result.setRedirectNode(new EndPoint(leader.ip, leader.clientPort));
+      }
+    }
+    return result;
   }
 
   /**
