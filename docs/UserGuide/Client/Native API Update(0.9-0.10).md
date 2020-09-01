@@ -19,22 +19,24 @@
 
 -->
 
-## 0.9-0.10 版本IoTDB Session 接口更新文档
+## 0.9-0.10 IoTDB Session Interface Updates
 
-从0.9到0.10版本的IoTDB session接口有了较大改变。一部分接口名称和参数类型发生了变化，另外新增了大量可用接口。所有session接口抛出的异常类型 IoTDBSessionExeception更改为IoTDBConnectionException和StatementExecutionExeception。下面详细介绍具体接口的变化。
+From 0.9 to 0.10, the interfaces of IoTDB session has been modified a lot. 
+We added a large numbers of new interfaces, and some old interfaces had new names or parameters.
+Besides, all exceptions thrown by session interfaces are changed from IoTDBSessionExeception to IoTDBConnectionException or StatementExecutionExeception.
+The detailed modifications are listed as follows.
 
-### 接口名称更改
+### Method name modification
 
 #### insert()
 
-用于插入一行数据，需提供数据点的deviceId, time, 所有measurement和相应的value值。
+Insert a Record，which contains deviceId, timestamp of the record and multiple measurement values
 
 ```
 void insert(String deviceId, long time, List<String> measurements, List<String> values)
 ```
 
-
-该方法在0.10版本中方法名发生变化
+The method name has been changed to insertRecord() in 0.10 version
 
 ```
 void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
@@ -42,7 +44,7 @@ void insertRecord(String deviceId, long time, List<String> measurements, List<St
 
 #### insertRowInBatch()
 
-用于插入多行数据，需提供各行数据的deviceId, time, 所有measurement名称和相应的value值。
+Insert multiple Records, which contains all the deviceIds, timestamps of the records and multiple measurement values
 
 ```
 void insertRowInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList,   
@@ -50,7 +52,7 @@ void insertRowInBatch(List<String> deviceIds, List<Long> times, List<List<String
 ```
 
 
-该方法在0.10版本中方法名发生变化
+The method name has been changed to insertRecords() in 0.10 version
 
 ```
 void insertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
@@ -59,13 +61,13 @@ void insertRecords(List<String> deviceIds, List<Long> times, List<List<String>> 
 
 #### insertBatch()
 
-在0.9版本中用于以RowBatch结构为单位插入数据
+In 0.9, insertBatch is used for inserting in terms of RowBatch structure.
 
 ```
 void insertBatch(RowBatch rowBatch)
 ```
 
-在0.10版本中RowBatch类型更改为Tablet类型，因此方法名也随之改变。
+As Tablet replaced RowBatch in 0.10, the name has been changed to insertTablet()
 
 ```
 void insertTablet(Tablet tablet)
@@ -73,13 +75,13 @@ void insertTablet(Tablet tablet)
 
 #### testInsertRow()
 
-用于测试插入一行接口的响应
+To test the responsiveness of insertRow()
 
 ```
 void testInsertRow(String deviceId, long time, List<String> measurements, List<String> values)
 ```
 
-在0.10版本中方法名改为testInsertRecord。
+The method name has been changed to testInsertRecord() in 0.10 version
 
 ```
 void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
@@ -87,14 +89,14 @@ void testInsertRecord(String deviceId, long time, List<String> measurements, Lis
 
 #### testInsertRowInBatch()
 
-用于测试插入多行数据接口的响应
+To test the responsiveness of insertRowInBatch()
 
 ```
 void testInsertRowInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
                           List<List<String>> valuesList)
 ```
 
-在0.10版本中方法名改为testInsertRecords
+The method name has been changed to testInsertRecords() in 0.10 version
 
 ```
 void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
@@ -103,13 +105,13 @@ void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<Strin
 
 #### testInsertBatch
 
-用于测试以RowBatch结构为单位插入数据的响应
+To test the responsiveness of insertBatch()
 
 ```
 void testInsertBatch(RowBatch rowBatch)
 ```
 
-在0.10版本中RowBatch类型更改为Tabet类型，因此方法名也随之改变为testInsertTablet
+The method name has been changed to testInsertTablet() in 0.10 version
 
 ```
 void testInsertTablet(Tablet tablet)
@@ -117,45 +119,47 @@ void testInsertTablet(Tablet tablet)
 
 
 
-### 新增接口
+### New Interfaces
 
 ```
 void open(boolean enableRPCCompression)
 ```
 
-开启一个session，并指定是否启用RPC压缩。注意客户端开启PRC压缩的状态需与服务端保持一致。
+Open a session, with a parameter to specify whether to enable RPC compression. 
+Please pay attention that this RPC compression status of client must comply with the status of IoTDB server
 
 ```
 void insertRecord(String deviceId, long time, List<String> measurements,
       List<TSDataType> types, List<Object> values)
 ```
 
-插入一行数据，该方法和已有的insertRecord()方法不同在于需额外提供每个measurement的类型信息types，且参数values以原始类型的方式提供。写入速度相对于参数为String格式的insertRecord接口要快一些。
+Insert one record, in a way that user has to provide the type information of each measurement, which is different from the original insertRecord() interface.
+The values should be provided in their primitive types. This interface is more proficient than the one without type parameters.
 
 ```
 void insertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
                    List<List<TSDataType>> typesList, List<List<Object>> valuesList)
 ```
 
-插入多行数据，该方法和已有的insertRecords()方法不同在于需额外提供每个measurement的类型信息typesList，且参数valuesList以原始类型的方式提供。写入速度相对于参数为String格式的insertRecords接口要快一些。
+Insert multiple records with type parameters. This interface is more proficient than the one without type parameters.
 
 ```
 void insertTablet(Tablet tablet, boolean sorted)
 ```
 
-提供额外的sorted参数，表示tablet是否内部已排好序，如sorted为真则会省去排序的过程从而提升处理速度。
+An additional insertTablet() interface that providing a "sorted" parameter indicating if the tablet is in order. A sorted tablet may accelerate the insertion process.
 
 ```
 void insertTablets(Map<String, Tablet> tablets)
 ```
 
-新增insertTablets接口用于写入多个tablet结构，tablets参数为Map<device名, tablet数据>
+A new insertTablets() for inserting multiple tablets. 
 
 ```
 void insertTablets(Map<String, Tablet> tablets, boolean sorted)
 ```
 
-带额外sorted参数的insertTablets接口
+insertTablets() with an additional "sorted" parameter. 
 
 ```
 void testInsertRecord(String deviceId, long time, List<String> measurements, List<TSDataType> types, 
@@ -167,7 +171,7 @@ void testInsertTablets(Map<String, Tablet> tablets)
 void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
 ```
 
-以上接口均为新增的测试rpc响应的方法，用于测试新增的写入接口
+The above interfaces are newly added to test responsiveness of new insert interfaces.
 
 ```
 void createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor, 	
@@ -175,7 +179,7 @@ void createTimeseries(String path, TSDataType dataType, TSEncoding encoding, Com
                       String measurementAlias)
 ```
 
-在原来createTimeseries接口的基础上，创建时间序列可以额外指定时间序列的props, tags, attributes和measurementAlias。如果不需要指定以上额外参数可以将参数设为null。
+Create a timeseries with path, datatype, encoding and compression. Additionally, users can provide props, tags, attributes and measurementAlias。
 
 ```
 void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes, List<TSEncoding> encodings, 
@@ -184,9 +188,9 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes, List<
                            List<String> measurementAliasList)
 ```
 
-一次性创建多个时间序列，同时也可以指定多个时间序列的props, tags, attributes和measurementAlias。
+Create multiple timeseries with a single method. Users can provide props, tags, attributes and measurementAlias as well for detailed timeseries information.
 
 ```
 boolean checkTimeseriesExists(String path)
 ```
-用于检测时间序列是否存在
+Added a method to check whether the specific timeseries exists.
