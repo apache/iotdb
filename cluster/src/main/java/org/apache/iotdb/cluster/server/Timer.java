@@ -31,22 +31,26 @@ public class Timer {
   private static final String raftMemberAppendLogMSString = "Raft member - append log: ";
   private static final String raftMemberSendLogToFollowerMSString = "Raft member - send log to follower: ";
   private static final String raftMemberCommitLogMSString = "Raft member - commit log: ";
+  private static final String raftFollowerAppendEntryString = "Raft member - follower append entry: ";
 
   public static String getReport() {
     String result = "";
     result += dataGroupMemberProcessPlanLocallyMSString
         + dataGroupMemberProcessPlanLocallyMS + ", "
         + dataGroupMemberProcessPlanLocallyCounter + ", "
-        +  (double)dataGroupMemberProcessPlanLocallyMS.get() / dataGroupMemberProcessPlanLocallyCounter.get()
+        + (double) dataGroupMemberProcessPlanLocallyMS.get()
+        / dataGroupMemberProcessPlanLocallyCounter.get()
         + "\n";
     result += dataGroupMemberWaitLeaderMSString
         + dataGroupMemberWaitLeaderMS + ", "
         + dataGroupMemberWaitLeaderCounter + ", "
-        + (double) dataGroupMemberWaitLeaderMS.get() / dataGroupMemberWaitLeaderCounter.get() + "\n";
+        + (double) dataGroupMemberWaitLeaderMS.get() / dataGroupMemberWaitLeaderCounter.get()
+        + "\n";
     result += metaGroupMemberExecuteNonQueryMSString
         + metaGroupMemberExecuteNonQueryMS + ", "
         + metaGroupMemberExecuteNonQueryCounter + ", "
-        + (double) metaGroupMemberExecuteNonQueryMS.get() / metaGroupMemberExecuteNonQueryCounter.get() + "\n";
+        + (double) metaGroupMemberExecuteNonQueryMS.get() / metaGroupMemberExecuteNonQueryCounter
+        .get() + "\n";
     result += metaGroupMemberExecuteNonQueryInLocalGroupMSString
         + metaGroupMemberExecuteNonQueryInLocalGroupMS + ", "
         + metaGroupMemberExecuteNonQueryInLocalGroupCounter + ", "
@@ -64,11 +68,16 @@ public class Timer {
     result += raftMemberSendLogToFollowerMSString
         + raftMemberSendLogToFollowerMS + ", "
         + raftMemberSendLogToFollowerCounter + ", "
-        + (double) raftMemberSendLogToFollowerMS.get() / raftMemberSendLogToFollowerCounter.get() + "\n";
+        + (double) raftMemberSendLogToFollowerMS.get() / raftMemberSendLogToFollowerCounter.get()
+        + "\n";
     result += raftMemberCommitLogMSString
         + raftMemberCommitLogMS + ", "
         + raftMemberCommitLogCounter + ", "
         + (double) raftMemberCommitLogMS.get() / raftMemberCommitLogCounter.get() + "\n";
+    result += raftFollowerAppendEntryString
+        + raftFollowerAppendEntryMS + ", "
+        + raftFollowerAppendEntryCounter + ", "
+        + (double) raftFollowerAppendEntryMS.get() / raftFollowerAppendEntryCounter.get() + "\n";
 
     return result;
   }

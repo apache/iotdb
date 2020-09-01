@@ -497,7 +497,7 @@ public abstract class RaftMember {
     logger.debug("{} AppendEntryRequest of {} completed", name, log);
 
     Timer.raftFollowerAppendEntryMS.addAndGet(System.nanoTime() - start);
-    Timer.raftMemberAppendLogCounter.incrementAndGet();
+    Timer.raftFollowerAppendEntryCounter.incrementAndGet();
     return result;
   }
 
