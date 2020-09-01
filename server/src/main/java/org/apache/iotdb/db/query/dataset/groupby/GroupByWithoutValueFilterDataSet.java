@@ -35,6 +35,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
@@ -46,7 +47,7 @@ import org.slf4j.LoggerFactory;
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   private static final Logger logger = LoggerFactory
-          .getLogger(GroupByWithoutValueFilterDataSet.class);
+      .getLogger(GroupByWithoutValueFilterDataSet.class);
 
   private Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
 
@@ -170,9 +171,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     return result;
   }
 
-  protected GroupByExecutor getGroupByExecutor(PartialPath path, Set<String> allSensors, TSDataType dataType,
-                                               QueryContext context, Filter timeFilter, TsFileFilter fileFilter, boolean ascending)
-          throws StorageEngineException, QueryProcessException {
+  protected GroupByExecutor getGroupByExecutor(PartialPath path, Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context, Filter timeFilter, TsFileFilter fileFilter, boolean ascending)
+      throws StorageEngineException, QueryProcessException {
     return new LocalGroupByExecutor(path, allSensors, dataType, context, timeFilter, fileFilter,
         ascending);
   }

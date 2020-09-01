@@ -156,7 +156,7 @@ public class SeriesReaderTest {
         }
         expectedTime--;
       }
-    } catch (IOException e) {
+    } catch (IOException | IllegalPathException e) {
       e.printStackTrace();
       fail();
     }

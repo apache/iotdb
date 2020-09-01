@@ -37,6 +37,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
@@ -91,7 +92,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     this.groupByTimePlan = groupByTimePlan;
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = (PartialPath) paths.get(i);
-      allDataReaderList.add(getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
+      allDataReaderList
+          .add(getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
     }
   }
 
