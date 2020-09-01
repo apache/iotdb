@@ -98,7 +98,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(Monitor.getInstance());
-    registerManager.register(StatMonitor.getInstance());
     registerManager.register(Measurement.INSTANCE);
     registerManager.register(ManageDynamicParameters.getInstance());
     registerManager.register(TVListAllocator.getInstance());

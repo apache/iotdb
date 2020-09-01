@@ -475,7 +475,7 @@ public class MManager {
     try {
       List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
       // Monitor storage group seriesPath is not allowed to be deleted
-      allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.getStatStorageGroupPrefixArray()));
+      allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
 
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
