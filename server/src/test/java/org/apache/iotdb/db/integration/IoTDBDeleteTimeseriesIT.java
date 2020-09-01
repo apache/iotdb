@@ -55,7 +55,7 @@ public class IoTDBDeleteTimeseriesIT {
   }
 
   @Test
-  public void testDeleteDifferentTypesTimeseries() throws Exception {
+  public void deleteTimeseriesAndCreateDifferentTypeTest() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String[] retArray = new String[]{
         "1,1,",
@@ -117,7 +117,7 @@ public class IoTDBDeleteTimeseriesIT {
   }
 
   @Test
-  public void testDeleteSameTypeTimeseries() throws Exception {
+  public void deleteTimeseriesAndCreateSameTypeTest() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String[] retArray = new String[]{
         "1,1,",
