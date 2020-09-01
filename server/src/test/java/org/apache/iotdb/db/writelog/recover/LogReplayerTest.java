@@ -169,9 +169,10 @@ public class LogReplayerTest {
         } else {
           IPointReader iterator = memChunk.getPointReader();
           iterator.hasNextTimeValuePair();
-          for (int time = 0; time < 10; time++) {
+          for (int time = 0; time < 100; time++) {
             TimeValuePair timeValuePair = iterator.nextTimeValuePair();
-            System.out.println(i + ": " + timeValuePair.getTimestamp());
+            assertEquals(time, timeValuePair.getTimestamp());
+            assertEquals(time, timeValuePair.getValue().getLong());
           }
         }
       }
