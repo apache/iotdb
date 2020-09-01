@@ -115,9 +115,9 @@ public class IoTDBDeleteTimeseriesIT {
       Assert.assertTrue(hasResult);
     }
   }
-  
+
   @Test
-  public void testDeleteSameTypeTimeseries1() throws Exception {
+  public void testDeleteSameTypeTimeseries() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String[] retArray = new String[]{
         "1,1,",
