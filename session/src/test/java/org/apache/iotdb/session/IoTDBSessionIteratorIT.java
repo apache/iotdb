@@ -34,9 +34,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBSessionIteratorIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBSessionIteratorIT.class);
   private Session session;
 
   @Before
@@ -82,7 +85,7 @@ public class IoTDBSessionIteratorIT {
       assertEquals(retArray.length, count);
       sessionDataSet.closeOperationHandle();
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -109,7 +112,7 @@ public class IoTDBSessionIteratorIT {
       assertEquals(retArray.length, count);
       sessionDataSet.closeOperationHandle();
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -135,7 +138,7 @@ public class IoTDBSessionIteratorIT {
       assertEquals(retArray.length, count);
       sessionDataSet.closeOperationHandle();
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.hive;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.MapWritable;
@@ -40,7 +42,7 @@ public class TSFHiveRecordReaderTest {
 
   private TSFHiveRecordReader tsfHiveRecordReader;
   private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
-
+  private static final Logger logger = LoggerFactory.getLogger(TSFHiveRecordReaderTest.class);
 
   @Before
   public void setUp() throws IOException {
@@ -118,7 +120,7 @@ public class TSFHiveRecordReaderTest {
       // reach the end of the file
       assertFalse(tsfHiveRecordReader.next(key, value));
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }

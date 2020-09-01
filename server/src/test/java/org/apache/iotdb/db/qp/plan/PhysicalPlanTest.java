@@ -54,11 +54,14 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.Assert.*;
 
 public class PhysicalPlanTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(PhysicalPlanTest.class);
   private Planner processor = new Planner();
 
   @Before
@@ -263,7 +266,7 @@ public class PhysicalPlanTest {
       PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(TSDataType.INT32);
       assertFalse(previousFill.isUntilLast());
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -294,7 +297,7 @@ public class PhysicalPlanTest {
         assertTrue(previousFill.isUntilLast());
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -330,7 +333,7 @@ public class PhysicalPlanTest {
       previousFill = (PreviousFill) groupByFillPlan.getFillType().get(TSDataType.INT64);
       assertFalse(previousFill.isUntilLast());
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -346,7 +349,7 @@ public class PhysicalPlanTest {
     } catch (SQLParserException e) {
       assertEquals("group by fill doesn't support linear fill", e.getMessage());
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -362,7 +365,7 @@ public class PhysicalPlanTest {
     } catch (QueryProcessException e) {
       assertEquals("Group By Fill only support last_value function", e.getMessage());
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -378,7 +381,7 @@ public class PhysicalPlanTest {
     } catch (ParseCancellationException e) {
       assertTrue(e.getMessage().contains("mismatched input 'fill'"));
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -397,7 +400,7 @@ public class PhysicalPlanTest {
         fail();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }

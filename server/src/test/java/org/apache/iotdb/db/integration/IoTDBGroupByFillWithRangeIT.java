@@ -24,6 +24,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -37,6 +39,8 @@ import org.junit.Test;
 
 public class IoTDBGroupByFillWithRangeIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBGroupByFillWithRangeIT.class);
+  
   private static String[] dataSet1 = new String[]{
       "SET STORAGE GROUP TO root.ln.wf01.wt01",
       "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -138,7 +142,7 @@ public class IoTDBGroupByFillWithRangeIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
 
@@ -155,7 +159,7 @@ public class IoTDBGroupByFillWithRangeIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 }

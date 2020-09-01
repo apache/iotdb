@@ -39,9 +39,12 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ReadPageInMemTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(ReadPageInMemTest.class);
   private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("TsFileReadPageInMem");
   private File file = new File(filePath);
   private TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
@@ -108,7 +111,7 @@ public class ReadPageInMemTest {
       try {
         innerWriter.write(record);
       } catch (IOException | WriteProcessException e) {
-        e.printStackTrace();
+        logger.error("Error message", e);
         fail(e.getMessage());
       }
     }
@@ -118,14 +121,14 @@ public class ReadPageInMemTest {
       try {
         innerWriter.write(record);
       } catch (IOException | WriteProcessException e) {
-        e.printStackTrace();
+        logger.error("Error message", e);
         fail(e.getMessage());
       }
     }
     try {
       innerWriter.close();
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -140,7 +143,7 @@ public class ReadPageInMemTest {
       try {
         innerWriter.write(record);
       } catch (IOException | WriteProcessException e) {
-        e.printStackTrace();
+        logger.error("Error message", e);
         fail(e.getMessage());
       }
     }
@@ -150,7 +153,7 @@ public class ReadPageInMemTest {
       try {
         innerWriter.write(record);
       } catch (IOException | WriteProcessException e) {
-        e.printStackTrace();
+        logger.error("Error message", e);
         fail(e.getMessage());
       }
     }
@@ -161,7 +164,7 @@ public class ReadPageInMemTest {
       try {
         innerWriter.write(record);
       } catch (IOException | WriteProcessException e) {
-        e.printStackTrace();
+        logger.error("Error message", e);
         fail(e.getMessage());
       }
     }
@@ -172,7 +175,7 @@ public class ReadPageInMemTest {
       try {
         innerWriter.write(record);
       } catch (IOException | WriteProcessException e) {
-        e.printStackTrace();
+        logger.error("Error message", e);
         fail(e.getMessage());
       }
     }

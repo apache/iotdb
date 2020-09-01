@@ -43,9 +43,13 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SeriesReaderTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(SeriesReaderTest.class);
+  
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<String> deviceIds = new ArrayList<>();
   private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
@@ -94,7 +98,7 @@ public class SeriesReaderTest {
         count++;
       }
     } catch (IOException | IllegalPathException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -124,7 +128,7 @@ public class SeriesReaderTest {
         expectedTime++;
       }
     } catch (IOException | IllegalPathException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
 

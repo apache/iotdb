@@ -22,6 +22,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -38,6 +40,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class IoTDBClearCacheIT {
+
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBClearCacheIT.class);
 
   private static String[] sqls = new String[]{
       "set storage group to root.ln",
@@ -134,7 +138,7 @@ public class IoTDBClearCacheIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -167,7 +171,7 @@ public class IoTDBClearCacheIT {
       assertTrue(TimeSeriesMetadataCache.getInstance().isEmpty());
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }

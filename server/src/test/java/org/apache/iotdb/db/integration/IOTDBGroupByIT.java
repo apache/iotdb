@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.integration;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -34,6 +36,7 @@ import static org.junit.Assert.fail;
 
 public class IOTDBGroupByIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IOTDBGroupByIT.class);
 
   private static String[] dataSet1 = new String[]{
       "SET STORAGE GROUP TO root.ln.wf01.wt01",
@@ -220,7 +223,7 @@ public class IOTDBGroupByIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -305,7 +308,7 @@ public class IOTDBGroupByIT {
       }
       Assert.assertEquals(retArray2.length, cnt);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -378,7 +381,7 @@ public class IOTDBGroupByIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -439,7 +442,7 @@ public class IOTDBGroupByIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -492,7 +495,7 @@ public class IOTDBGroupByIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -531,7 +534,7 @@ public class IOTDBGroupByIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -570,7 +573,7 @@ public class IOTDBGroupByIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -593,7 +596,7 @@ public class IOTDBGroupByIT {
       Assert.assertEquals(35.5, Double.valueOf(resultSet.getString(4)).doubleValue(), 0.01);
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -609,7 +612,7 @@ public class IOTDBGroupByIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 

@@ -30,6 +30,8 @@ import static org.apache.iotdb.db.constant.TestConstant.min_value;
 import static org.apache.iotdb.db.constant.TestConstant.sum;
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -45,6 +47,7 @@ import org.junit.Test;
 
 public class IoTDBAggregationLargeDataIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBAggregationLargeDataIT.class);
   private static final String TIMESTAMP_STR = "Time";
   private final String d0s0 = "root.vehicle.d0.s0";
   private final String d0s1 = "root.vehicle.d0.s1";
@@ -181,7 +184,7 @@ public class IoTDBAggregationLargeDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -211,7 +214,7 @@ public class IoTDBAggregationLargeDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -241,7 +244,7 @@ public class IoTDBAggregationLargeDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -274,7 +277,7 @@ public class IoTDBAggregationLargeDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -304,7 +307,7 @@ public class IoTDBAggregationLargeDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -333,7 +336,7 @@ public class IoTDBAggregationLargeDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -392,7 +395,7 @@ public class IoTDBAggregationLargeDataIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -431,7 +434,7 @@ public class IoTDBAggregationLargeDataIT {
         }
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -471,7 +474,7 @@ public class IoTDBAggregationLargeDataIT {
         }
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -509,7 +512,7 @@ public class IoTDBAggregationLargeDataIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -544,7 +547,7 @@ public class IoTDBAggregationLargeDataIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -583,7 +586,7 @@ public class IoTDBAggregationLargeDataIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -618,7 +621,7 @@ public class IoTDBAggregationLargeDataIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -655,7 +658,7 @@ public class IoTDBAggregationLargeDataIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -690,7 +693,7 @@ public class IoTDBAggregationLargeDataIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -727,7 +730,7 @@ public class IoTDBAggregationLargeDataIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -762,7 +765,7 @@ public class IoTDBAggregationLargeDataIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -835,7 +838,7 @@ public class IoTDBAggregationLargeDataIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }

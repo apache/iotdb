@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -33,6 +35,8 @@ import org.junit.Test;
 import java.sql.*;
 
 public class IoTDBLastIT {
+
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBLastIT.class);
 
   private static String[] dataSet1 = new String[]{
       "SET STORAGE GROUP TO root.ln.wf01.wt01",
@@ -382,7 +386,7 @@ public class IoTDBLastIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 }

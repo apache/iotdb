@@ -35,6 +35,8 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -44,6 +46,7 @@ public class IoTDBMultiOverlappedPageIT {
 
   private static int beforeMaxNumberOfPointsInPage;
   private static long beforeMemtableSizeThreshold;
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBMultiOverlappedPageIT.class);
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -101,7 +104,7 @@ public class IoTDBMultiOverlappedPageIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -123,7 +126,7 @@ public class IoTDBMultiOverlappedPageIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -170,7 +173,7 @@ public class IoTDBMultiOverlappedPageIT {
       }
       statement.execute("flush");
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }

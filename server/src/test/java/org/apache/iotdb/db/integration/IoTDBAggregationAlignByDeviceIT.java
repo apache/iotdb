@@ -21,6 +21,8 @@ package org.apache.iotdb.db.integration;
 import static org.apache.iotdb.db.constant.TestConstant.count;
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -34,6 +36,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class IoTDBAggregationAlignByDeviceIT {
+
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBAggregationAlignByDeviceIT.class);
 
   private static final String[] dataSet = new String[]{
       "INSERT INTO root.sg1.d1(timestamp,s1,s2,s3) values(1, 1.0, 1.1, 1.2)",
@@ -91,7 +95,7 @@ public class IoTDBAggregationAlignByDeviceIT {
         Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -107,7 +111,7 @@ public class IoTDBAggregationAlignByDeviceIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 }

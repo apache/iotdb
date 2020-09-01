@@ -20,6 +20,8 @@ package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -41,7 +43,8 @@ import org.junit.Test;
  * defined as integration test.
  */
 public class IoTDBCloseIT {
-
+  
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBCloseIT.class);
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -105,7 +108,7 @@ public class IoTDBCloseIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -193,7 +196,7 @@ public class IoTDBCloseIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
 

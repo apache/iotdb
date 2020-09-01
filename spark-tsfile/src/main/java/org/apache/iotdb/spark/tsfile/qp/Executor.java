@@ -24,11 +24,15 @@ import java.util.List;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class used to execute Queries on TSFile
  */
 public class Executor {
+
+  private static final Logger logger = LoggerFactory.getLogger(Executor.class);
 
   public static List<QueryDataSet> query(ReadOnlyTsFile reader,
       List<QueryExpression> queryExpressions, long start, long end) {
@@ -39,7 +43,7 @@ public class Executor {
         dataSets.add(queryDataSet);
       }
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
 
     return dataSets;

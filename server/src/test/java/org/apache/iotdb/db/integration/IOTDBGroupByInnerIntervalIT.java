@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -31,6 +33,8 @@ import static org.apache.iotdb.db.constant.TestConstant.*;
 import static org.junit.Assert.*;
 
 public class IOTDBGroupByInnerIntervalIT {
+
+  private static final Logger logger = LoggerFactory.getLogger(IOTDBGroupByInnerIntervalIT.class);
 
   private static String[] dataSet1 = new String[]{
           "SET STORAGE GROUP TO root.ln.wf01.wt01",
@@ -143,7 +147,7 @@ public class IOTDBGroupByInnerIntervalIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -183,7 +187,7 @@ public class IOTDBGroupByInnerIntervalIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -223,7 +227,7 @@ public class IOTDBGroupByInnerIntervalIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -283,7 +287,7 @@ public class IOTDBGroupByInnerIntervalIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 

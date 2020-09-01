@@ -21,6 +21,8 @@ package org.apache.iotdb.db.integration;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -35,6 +37,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class IoTDBFlushQueryMergeIT {
+
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBFlushQueryMergeIT.class);
 
   private static String[] sqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
@@ -79,7 +83,7 @@ public class IoTDBFlushQueryMergeIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 
@@ -104,7 +108,7 @@ public class IoTDBFlushQueryMergeIT {
       }
       statement.execute("merge");
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -157,7 +161,7 @@ public class IoTDBFlushQueryMergeIT {
       assertEquals(30, i);
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }

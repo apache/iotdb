@@ -20,6 +20,8 @@ package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -35,6 +37,8 @@ import org.junit.Test;
 
 public class IoTDBAlignByDeviceIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBAlignByDeviceIT.class);
+  
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle",
@@ -123,7 +127,7 @@ public class IoTDBAlignByDeviceIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 
@@ -186,7 +190,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(19, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -243,7 +247,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(14, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -296,7 +300,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(10, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -352,7 +356,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(14, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -405,7 +409,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(6, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -453,7 +457,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -505,7 +509,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(6, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -552,7 +556,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -638,7 +642,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(3, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -694,7 +698,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(5, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -760,7 +764,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(19, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -826,7 +830,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(19, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -894,7 +898,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(17, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -965,7 +969,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(19, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -1040,7 +1044,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(19, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }

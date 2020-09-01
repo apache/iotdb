@@ -24,6 +24,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -38,6 +40,8 @@ import org.junit.Test;
 
 public class IoTDBGroupByFillIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBGroupByFillIT.class);
+  
   private static String[] dataSet1 = new String[]{
           "SET STORAGE GROUP TO root.ln.wf01.wt01",
           "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
@@ -109,7 +113,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
 
@@ -127,7 +131,7 @@ public class IoTDBGroupByFillIT {
     } catch (IoTDBSQLException e) {
       assertTrue(e.getMessage().contains("Group By Fill only support last_value function"));
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
 
@@ -170,7 +174,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -213,7 +217,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -252,7 +256,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
 
@@ -296,7 +300,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -335,7 +339,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
 
@@ -354,7 +358,7 @@ public class IoTDBGroupByFillIT {
       System.out.println(e.getMessage());
       assertTrue(e.getMessage().contains("Group By Fill only support last_value function"));
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
 
@@ -397,7 +401,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -440,7 +444,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -479,7 +483,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
 
@@ -521,7 +525,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
 
@@ -565,7 +569,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -604,7 +608,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
 
@@ -621,7 +625,7 @@ public class IoTDBGroupByFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 }

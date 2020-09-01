@@ -33,9 +33,13 @@ import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBTagIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBTagIT.class);
+  
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
@@ -82,7 +86,7 @@ public class IoTDBTagIT {
       }
       assertEquals(ret.length, count);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -131,7 +135,7 @@ public class IoTDBTagIT {
       }
       assertEquals(ret.length, count);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -224,7 +228,7 @@ public class IoTDBTagIT {
       }
       assertEquals(ret.length, count);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -269,7 +273,7 @@ public class IoTDBTagIT {
       }
       assertEquals(ret.length, count);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -347,7 +351,7 @@ public class IoTDBTagIT {
       assertEquals(ret2.length, count);
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -425,7 +429,7 @@ public class IoTDBTagIT {
       assertEquals(ret2.length, count);
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -539,7 +543,7 @@ public class IoTDBTagIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -659,7 +663,7 @@ public class IoTDBTagIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -737,7 +741,7 @@ public class IoTDBTagIT {
       assertEquals(ret.size(), count);
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -846,7 +850,7 @@ public class IoTDBTagIT {
       assertEquals(ret2.size(), count);
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -985,7 +989,7 @@ public class IoTDBTagIT {
       }
       assertEquals(ret.length, count);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }

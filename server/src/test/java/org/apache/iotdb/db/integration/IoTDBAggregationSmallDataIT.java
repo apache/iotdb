@@ -30,6 +30,8 @@ import static org.apache.iotdb.db.constant.TestConstant.min_value;
 import static org.apache.iotdb.db.constant.TestConstant.sum;
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -48,6 +50,7 @@ import org.junit.Test;
  */
 public class IoTDBAggregationSmallDataIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBAggregationSmallDataIT.class);
   private static final String TIMESTAMP_STR = "Time";
   private final String d0s0 = "root.vehicle.d0.s0";
   private final String d0s1 = "root.vehicle.d0.s1";
@@ -160,7 +163,7 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -268,7 +271,7 @@ public class IoTDBAggregationSmallDataIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -299,7 +302,7 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -331,7 +334,7 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -361,7 +364,7 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -391,7 +394,7 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -423,7 +426,7 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -459,7 +462,7 @@ public class IoTDBAggregationSmallDataIT {
         }
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -495,7 +498,7 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -532,7 +535,7 @@ public class IoTDBAggregationSmallDataIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -568,7 +571,7 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -598,7 +601,7 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -662,8 +665,8 @@ public class IoTDBAggregationSmallDataIT {
           Assert.assertEquals(1, cnt);
         }
       }
-    } catch (Exception e) {
-      e.printStackTrace();
+    } catch (Exception e) { 
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -678,7 +681,7 @@ public class IoTDBAggregationSmallDataIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }

@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.utils.RecordUtils;
 @Ignore
 public class TsFileGeneratorForSeriesReaderByTimestamp {
 
+  private static final Logger logger = LoggerFactory.getLogger(TsFileGeneratorForSeriesReaderByTimestamp.class);
   public static final long START_TIMESTAMP = 1480562618000L;
   private static final Logger LOG = LoggerFactory.getLogger(TsFileGeneratorForSeriesReaderByTimestamp.class);
   public static TsFileWriter innerWriter;
@@ -166,7 +167,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
     try {
       writeToFile(schema);
     } catch (WriteProcessException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
     LOG.info("write to file successfully!!");
   }
@@ -227,7 +228,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
       Scanner in = new Scanner(file);
       return in;
     } catch (FileNotFoundException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       return null;
     }
   }

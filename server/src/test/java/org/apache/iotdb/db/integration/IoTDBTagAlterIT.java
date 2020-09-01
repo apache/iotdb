@@ -32,9 +32,13 @@ import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBTagAlterIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBTagAlterIT.class);
+  
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
@@ -119,7 +123,7 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret.length, count);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -192,7 +196,7 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret2.length, count);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -263,7 +267,7 @@ public class IoTDBTagAlterIT {
         assertTrue(e.getMessage().contains("The key tag1 is not a tag"));
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -331,7 +335,7 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret2.length, count);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -399,7 +403,7 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret2.length, count);
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -500,7 +504,7 @@ public class IoTDBTagAlterIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }

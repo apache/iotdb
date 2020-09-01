@@ -35,6 +35,8 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
@@ -42,6 +44,7 @@ import org.junit.Test;
  */
 public class IoTDBSameMeasurementsDifferentTypesIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBSameMeasurementsDifferentTypesIT.class);
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -105,7 +108,7 @@ public class IoTDBSameMeasurementsDifferentTypesIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -182,7 +185,7 @@ public class IoTDBSameMeasurementsDifferentTypesIT {
       Assert.assertEquals(9, cnt1);
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
 

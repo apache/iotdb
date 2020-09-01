@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -45,6 +47,7 @@ import static org.junit.Assert.fail;
  */
 public class IoTDBInsertNaNIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBInsertNaNIT.class);
   private static final String CREATE_TEMPLATE_SQL = "CREATE TIMESERIES root.vehicle.%s.%s WITH DATATYPE=%s, ENCODING=%s, MAX_POINT_NUMBER=%d";
   private static final String INSERT_TEMPLATE_SQL = "insert into root.vehicle.%s(timestamp,%s) values(%d,%s)";
   private static List<String> sqls = new ArrayList<>();
@@ -95,7 +98,7 @@ public class IoTDBInsertNaNIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 
@@ -131,7 +134,7 @@ public class IoTDBInsertNaNIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }

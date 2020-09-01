@@ -32,12 +32,16 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
  * defined as integration test.
  */
 public class IoTDBNumberPathIT {
+
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBNumberPathIT.class);
 
   @Before
   public void setUp() throws Exception {
@@ -416,7 +420,7 @@ public class IoTDBNumberPathIT {
         }
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 }

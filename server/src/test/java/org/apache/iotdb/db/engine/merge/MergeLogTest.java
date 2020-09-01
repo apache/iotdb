@@ -22,6 +22,8 @@ package org.apache.iotdb.db.engine.merge;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -43,6 +45,7 @@ import org.junit.Test;
 public class MergeLogTest extends MergeTest {
 
   File tempSGDir;
+  private static final Logger logger = LoggerFactory.getLogger(MergeLogTest.class);
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
@@ -74,7 +77,7 @@ public class MergeLogTest extends MergeTest {
         lineCnt ++;
       }
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
     assertEquals(309, lineCnt);

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -31,6 +33,8 @@ import static org.junit.Assert.fail;
 
 public class IoTDBDisableAlignIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBDisableAlignIT.class);
+  
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle",
@@ -118,7 +122,7 @@ public class IoTDBDisableAlignIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
   
@@ -179,7 +183,7 @@ public class IoTDBDisableAlignIT {
         Assert.assertEquals(11, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -234,7 +238,7 @@ public class IoTDBDisableAlignIT {
         Assert.assertEquals(11, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -295,7 +299,7 @@ public class IoTDBDisableAlignIT {
         Assert.assertEquals(10, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -349,7 +353,7 @@ public class IoTDBDisableAlignIT {
         Assert.assertEquals(11, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }

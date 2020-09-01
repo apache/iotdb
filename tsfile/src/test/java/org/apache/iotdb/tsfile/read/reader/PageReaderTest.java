@@ -45,9 +45,12 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PageReaderTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(PageReaderTest.class);
   private static final int POINTS_COUNT_IN_ONE_PAGE = 1000000;
 
   @Test
@@ -193,7 +196,7 @@ public class PageReaderTest {
                 + "\tTime-used:" + (endTimestamp - startTimestamp) + "ms");
         Assert.assertEquals(count, index);
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Error message", e);
         Assert.fail("Fail when executing test: [" + name + "]");
       }
     }
@@ -233,7 +236,7 @@ public class PageReaderTest {
           }
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.error("Error message", e);
         Assert.fail("Fail when executing test: [" + name + "]");
       }
     }

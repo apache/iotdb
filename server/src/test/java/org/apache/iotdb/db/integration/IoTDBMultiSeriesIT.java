@@ -38,6 +38,8 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -45,6 +47,7 @@ import org.junit.Test;
  */
 public class IoTDBMultiSeriesIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBMultiSeriesIT.class);
   private static boolean testFlag = TestConstant.testFlag;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
@@ -222,7 +225,7 @@ public class IoTDBMultiSeriesIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -250,7 +253,7 @@ public class IoTDBMultiSeriesIT {
         assertEquals(24399, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -282,7 +285,7 @@ public class IoTDBMultiSeriesIT {
         assertEquals(23400, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -313,7 +316,7 @@ public class IoTDBMultiSeriesIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -345,7 +348,7 @@ public class IoTDBMultiSeriesIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -378,7 +381,7 @@ public class IoTDBMultiSeriesIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -399,7 +402,7 @@ public class IoTDBMultiSeriesIT {
         assertEquals(23400, cnt);
       }
     } catch (SQLException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -431,7 +434,7 @@ public class IoTDBMultiSeriesIT {
           "select s1 from root.vehicle.d0 where root.vehicle.d0.s0 < 111 and root.vehicle.d0.s10 < 111");
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       assertEquals(
           "411: Meet error in query process: org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());

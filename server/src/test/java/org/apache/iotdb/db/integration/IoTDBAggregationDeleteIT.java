@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -32,6 +34,7 @@ import static org.junit.Assert.*;
 
 public class IoTDBAggregationDeleteIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBAggregationDeleteIT.class);
 
   private static String[] dataSet = new String[]{
       "INSERT INTO root.turbine.d1(timestamp,s1) values(1,1)",
@@ -76,7 +79,7 @@ public class IoTDBAggregationDeleteIT {
       }
 
     } catch (SQLException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -92,7 +95,7 @@ public class IoTDBAggregationDeleteIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 }

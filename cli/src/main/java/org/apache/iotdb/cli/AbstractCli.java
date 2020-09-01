@@ -47,6 +47,8 @@ import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class AbstractCli {
 
@@ -117,6 +119,7 @@ public abstract class AbstractCli {
 
   private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
   private static boolean cursorBeforeFirst = true;
+  private static final Logger logger = LoggerFactory.getLogger(AbstractCli.class);
 
   static void init() {
     keywordSet.add("-" + HOST_ARGS);
@@ -572,7 +575,7 @@ public abstract class AbstractCli {
                 break;
               }
             } catch (IOException e) {
-              e.printStackTrace();
+                logger.error("error message", e);
             }
           }
         }

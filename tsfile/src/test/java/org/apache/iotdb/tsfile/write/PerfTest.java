@@ -55,6 +55,7 @@ import org.apache.iotdb.tsfile.utils.RecordUtils;
  */
 public class PerfTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(PerfTest.class);
   public static final int ROW_COUNT = 1000;// 0000;
   private static final Logger LOG = LoggerFactory.getLogger(PerfTest.class);
   public static TsFileWriter innerWriter;
@@ -127,7 +128,7 @@ public class PerfTest {
     try {
       writeToFile(schema);
     } catch (WriteProcessException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
     LOG.info("write to file successfully!!");
   }
@@ -138,7 +139,7 @@ public class PerfTest {
       Scanner in = new Scanner(file);
       return in;
     } catch (FileNotFoundException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       return null;
     }
   }

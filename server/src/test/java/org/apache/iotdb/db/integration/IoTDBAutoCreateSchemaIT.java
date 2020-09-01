@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.integration;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -42,6 +44,7 @@ import java.sql.Statement;
  */
 public class IoTDBAutoCreateSchemaIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBAutoCreateSchemaIT.class);
   private static IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
   @Before
@@ -143,7 +146,7 @@ public class IoTDBAutoCreateSchemaIT {
         }
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 }

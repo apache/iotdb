@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.net.*;
 import java.io.*;
 import java.nio.channels.*;
@@ -26,6 +28,8 @@ public class MavenWrapperDownloader {
    */
   private static final String DEFAULT_DOWNLOAD_URL = "https://repo.maven.apache.org/maven2/io/takari/maven-wrapper/"
       + WRAPPER_VERSION + "/maven-wrapper-" + WRAPPER_VERSION + ".jar";
+
+  private static final Logger logger = LoggerFactory.getLogger(MavenWrapperDownloader.class);
 
   /**
    * Path to the maven-wrapper.properties file, which might contain a downloadUrl property to
@@ -89,7 +93,7 @@ public class MavenWrapperDownloader {
       System.exit(0);
     } catch (Throwable e) {
       System.out.println("- Error downloading");
-      e.printStackTrace();
+      logger.error("throws error", e);
       System.exit(1);
     }
   }
@@ -108,13 +112,10 @@ public class MavenWrapperDownloader {
     URL website = new URL(urlString);
     ReadableByteChannel rbc;
     rbc = Channels.newChannel(website.openStream());
-    try {
-      FileOutputStream fos = new FileOutputStream(destination);
-      fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-    } finally {
-      fos.close();
-      rbc.close();
-    }
+    FileOutputStream fos = new FileOutputStream(destination);
+    fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+    fos.close();
+    rbc.close();
   }
 
 }

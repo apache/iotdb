@@ -30,9 +30,12 @@ import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TimeSeriesMetadataTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(TimeSeriesMetadataTest.class);
   public static final String measurementUID = "sensor01";
   public static final int typeLength = 1024;
   final String PATH = TestConstant.BASE_OUTPUT_PATH.concat("outputTimeSeries.tsfile");
@@ -70,13 +73,13 @@ public class TimeSeriesMetadataTest {
       metaData = TimeseriesMetadata.deserializeFrom(buffer);
       return metaData;
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     } finally {
       if (fis != null) {
         try {
           fis.close();
         } catch (IOException e) {
-          e.printStackTrace();
+          logger.error("Error message", e);
         }
       }
     }
@@ -93,13 +96,13 @@ public class TimeSeriesMetadataTest {
       fos = new FileOutputStream(file);
       metaData.serializeTo(fos);
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     } finally {
       if (fos != null) {
         try {
           fos.close();
         } catch (IOException e) {
-          e.printStackTrace();
+          logger.error("Error message", e);
         }
       }
     }

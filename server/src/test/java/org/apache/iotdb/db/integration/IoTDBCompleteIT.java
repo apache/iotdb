@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -34,6 +36,8 @@ import java.sql.*;
  */
 public class IoTDBCompleteIT {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBCompleteIT.class);
+  
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
@@ -411,7 +415,7 @@ public class IoTDBCompleteIT {
         }
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 }

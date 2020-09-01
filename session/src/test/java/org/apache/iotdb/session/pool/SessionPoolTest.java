@@ -35,10 +35,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 //this test is not for testing the correctness of Session API. So we just implement one of the API.
 public class SessionPoolTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(SessionPoolTest.class);
+  
   @Before
   public void setUp() throws Exception {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
@@ -71,7 +75,7 @@ public class SessionPoolTest {
     try {
       assertTrue(service.awaitTermination(10, TimeUnit.SECONDS));
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
     assertTrue(pool.currentAvailableSize() <= 3);
@@ -120,7 +124,7 @@ public class SessionPoolTest {
       assertEquals(0, pool.currentAvailableSize());
       assertTrue(pool.currentOccupiedSize() <= 3);
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
     pool.close();
@@ -145,7 +149,7 @@ public class SessionPoolTest {
               .executeQueryStatement("select * from root.sg1.d1 where time = " + no);
           pool.closeResultSet(wrapper);
         } catch (Exception e) {
-          e.printStackTrace();
+          logger.error("Error message", e);
           fail();
         }
       });
@@ -156,7 +160,7 @@ public class SessionPoolTest {
       assertTrue(pool.currentAvailableSize() <= 3);
       assertEquals(0, pool.currentOccupiedSize());
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
   }
@@ -202,7 +206,7 @@ public class SessionPoolTest {
       assertEquals(1, pool.currentAvailableSize());
       assertEquals(0, pool.currentOccupiedSize());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail();
     }
     pool.close();

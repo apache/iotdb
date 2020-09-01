@@ -105,7 +105,7 @@ public class TsFileTestHelper {
       // close TsFile
       tsFileWriter.close();
     } catch (Throwable e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       System.out.println(e.getMessage());
     }
   }

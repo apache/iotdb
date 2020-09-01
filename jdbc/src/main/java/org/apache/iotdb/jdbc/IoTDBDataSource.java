@@ -89,7 +89,7 @@ public class IoTDBDataSource implements DataSource {
         try {
             return new IoTDBConnection(url, properties);
         } catch (TTransportException e) {
-            e.printStackTrace();
+            logger.error("Error message", e);
         }
         return null;
     }
@@ -103,7 +103,7 @@ public class IoTDBDataSource implements DataSource {
            return new IoTDBConnection(url, newProp);
        }
        catch (Exception e){
-           e.printStackTrace();
+           logger.error("Error message", e);
        }
        return null;
     }

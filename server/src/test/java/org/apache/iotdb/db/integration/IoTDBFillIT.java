@@ -20,6 +20,8 @@ package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -33,6 +35,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class IoTDBFillIT {
+
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBFillIT.class);
 
   private static String[] dataSet1 = new String[]{
       "SET STORAGE GROUP TO root.ln.wf01.wt01",
@@ -200,7 +204,7 @@ public class IoTDBFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -261,7 +265,7 @@ public class IoTDBFillIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -323,7 +327,7 @@ public class IoTDBFillIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -369,7 +373,7 @@ public class IoTDBFillIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -411,7 +415,7 @@ public class IoTDBFillIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -467,7 +471,7 @@ public class IoTDBFillIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -513,7 +517,7 @@ public class IoTDBFillIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -566,7 +570,7 @@ public class IoTDBFillIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -622,7 +626,7 @@ public class IoTDBFillIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -661,7 +665,7 @@ public class IoTDBFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -701,7 +705,7 @@ public class IoTDBFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -721,7 +725,7 @@ public class IoTDBFillIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 }

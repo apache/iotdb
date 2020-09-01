@@ -22,6 +22,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -35,6 +37,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class IoTDBAliasIT {
+
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBAliasIT.class);
 
   private static String[] sqls = new String[]{
       "SET STORAGE GROUP TO root.sg",
@@ -84,7 +88,7 @@ public class IoTDBAliasIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 
@@ -124,7 +128,7 @@ public class IoTDBAliasIT {
         assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -155,7 +159,7 @@ public class IoTDBAliasIT {
         assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -197,7 +201,7 @@ public class IoTDBAliasIT {
         assertEquals(4, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -229,7 +233,7 @@ public class IoTDBAliasIT {
         assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -270,7 +274,7 @@ public class IoTDBAliasIT {
         assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -330,7 +334,7 @@ public class IoTDBAliasIT {
       }
     } catch (Exception e) {
       fail(e.getMessage());
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
 

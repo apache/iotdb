@@ -23,6 +23,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -57,7 +59,8 @@ import org.junit.Test;
  * IoTDB server should be defined as integration test.
  */
 public class IoTDBEngineTimeGeneratorIT {
-
+  
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBEngineTimeGeneratorIT.class);
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -159,7 +162,7 @@ public class IoTDBEngineTimeGeneratorIT {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }

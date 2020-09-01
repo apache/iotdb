@@ -45,10 +45,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.Assert.*;
 
 public class TsFileWriterTest {
+
+  private static final Logger logger = LoggerFactory.getLogger(TsFileWriterTest.class);
   TsFileWriter writer = null;
   long fileName = System.nanoTime();
   boolean closed = false;
@@ -58,7 +62,7 @@ public class TsFileWriterTest {
       writer = new TsFileWriter(new File("target/tsfileWriter-" + fileName));
       addMeasurement();
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -71,7 +75,7 @@ public class TsFileWriterTest {
     try {
       Files.deleteIfExists(new File("target/tsfileWriter-" + fileName).toPath());
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -83,7 +87,7 @@ public class TsFileWriterTest {
       writer.registerTimeseries(new Path("d1",  "s1"),
           new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
     try {
@@ -100,7 +104,7 @@ public class TsFileWriterTest {
       writer.registerTimeseries(new Path("d1", "s2"),
           new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
     try {
@@ -109,7 +113,7 @@ public class TsFileWriterTest {
             new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
       }
     } catch (WriteProcessException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
 
@@ -248,7 +252,7 @@ public class TsFileWriterTest {
       closed = true;
       writer.close();
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
     }
   }
   private void readNothing() {
@@ -262,7 +266,7 @@ public class TsFileWriterTest {
       assertFalse(dataSet.hasNext());
       readOnlyTsFile.close();
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
@@ -287,7 +291,7 @@ public class TsFileWriterTest {
       }
       readOnlyTsFile.close();
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       fail(e.getMessage());
     }
   }
