@@ -117,7 +117,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       }
       if (config.getForceWalPeriodInMs() > 0) {
         executorService = Executors.newSingleThreadScheduledExecutor();
-        executorService.scheduleAtFixedRate(this::forceTask, config.getForceWalPeriodInMs(),
+        executorService.scheduleWithFixedDelay(this::forceTask, config.getForceWalPeriodInMs(),
             config.getForceWalPeriodInMs(), TimeUnit.MILLISECONDS);
       }
     } catch (Exception e) {
