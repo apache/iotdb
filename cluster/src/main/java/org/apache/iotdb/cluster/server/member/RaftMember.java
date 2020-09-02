@@ -654,28 +654,33 @@ public abstract class RaftMember {
       request.setHeader(getHeader());
     }
 
-    synchronized (voteCounter) {
-      // synchronized: avoid concurrent modification
-      try {
-        for (Node node : allNodes) {
-          appendLogThreadPool.submit(() -> sendLogToFollower(log, voteCounter, node,
-              leaderShipStale, newLeaderTerm, request));
-          if (character != NodeCharacter.LEADER) {
-            return AppendLogResult.LEADERSHIP_STALE;
-          }
+    // synchronized: avoid concurrent modification
+    try {
+      for (Node node : allNodes) {
+        appendLogThreadPool.submit(() -> sendLogToFollower(log, voteCounter, node,
+            leaderShipStale, newLeaderTerm, request));
+        if (character != NodeCharacter.LEADER) {
+          return AppendLogResult.LEADERSHIP_STALE;
         }
-      } catch (ConcurrentModificationException e) {
-        // retry if allNodes has changed
-        return AppendLogResult.TIME_OUT;
       }
+    } catch (ConcurrentModificationException e) {
+      // retry if allNodes has changed
+      return AppendLogResult.TIME_OUT;
+    }
 
-      try {
-        voteCounter.wait(RaftServer.getWriteOperationTimeoutMS());
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.warn("Unexpected interruption when sending a log", e);
+    long start = System.nanoTime();
+    synchronized (voteCounter) {
+      if (voteCounter.get() > 0) {
+        try {
+          voteCounter.wait(RaftServer.getWriteOperationTimeoutMS());
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger.warn("Unexpected interruption when sending a log", e);
+        }
       }
     }
+    Timer.raftMemberVoteCounterMS.addAndGet(System.nanoTime() - start);
+    Timer.raftMemberVoteCounterCounter.incrementAndGet();
 
     // some node has a larger term than the local node, this node is no longer a valid leader
     if (leaderShipStale.get()) {
