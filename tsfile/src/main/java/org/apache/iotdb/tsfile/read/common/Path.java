@@ -59,8 +59,6 @@ public class Path implements Serializable, Comparable<Path> {
     }
     if(!needSplit) {
       fullPath = pathSc;
-      device = "";
-      measurement = pathSc;
     } else {
       if (pathSc.length() > 0) {
         if (pathSc.charAt(pathSc.length() - 1) == TsFileConstant.DOUBLE_QUOTE) {
