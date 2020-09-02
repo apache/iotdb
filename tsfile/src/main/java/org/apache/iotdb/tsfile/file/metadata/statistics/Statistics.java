@@ -429,6 +429,6 @@ public abstract class Statistics<T> {
 
   @Override
   public int hashCode() {
-    return Objects.hash(count, startTime, endTime);
+    return Objects.hash(super.hashCode(), count, startTime, endTime);
   }
 }
