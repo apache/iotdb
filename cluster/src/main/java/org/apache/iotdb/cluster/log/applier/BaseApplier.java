@@ -83,7 +83,7 @@ abstract class BaseApplier implements LogApplier {
           throw e;
         }
       }
-    } else {
+    } else if (plan != null){
       logger.error("Unsupported physical plan: {}", plan);
     }
   }
