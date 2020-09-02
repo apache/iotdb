@@ -770,7 +770,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       case QUERY:
       case FILL:
         for (PartialPath path : paths) {
-          // judge whether as clause is used or not first
           String column = path.getTsAlias();
           if (column == null) {
             column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.getFullPath();
@@ -790,7 +789,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
         for (int i = 0; i < paths.size(); i++) {
           PartialPath path = paths.get(i);
-          // judge whether as clause is used or not first
           String column = path.getTsAlias();
           if (column == null) {
             column = path.getMeasurementAlias() != null
