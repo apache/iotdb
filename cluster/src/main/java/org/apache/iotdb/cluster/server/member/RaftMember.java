@@ -439,6 +439,7 @@ public abstract class RaftMember {
   private long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
     long resp;
 
+    long start = System.nanoTime();
     long lastLogIndex = logManager.getLastLogIndex();
     if (lastLogIndex < prevLogIndex) {
       if (!waitForPrevLog(prevLogIndex)) {
@@ -446,6 +447,10 @@ public abstract class RaftMember {
       }
     }
 
+    Timer.rafTMemberReceiverWaitForPrevLogMS.addAndGet(System.nanoTime() - start);
+    Timer.rafTMemberReceiverWaitForPrevLogCounter.incrementAndGet();
+
+    start = System.nanoTime();
     synchronized (logManager) {
       long success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
       if (success != -1) {
@@ -456,6 +461,8 @@ public abstract class RaftMember {
         resp = Response.RESPONSE_LOG_MISMATCH;
       }
     }
+    Timer.rafTMemberMayBeAppendMS.addAndGet(System.nanoTime() - start);
+    Timer.rafTMemberMayBeAppendCounter.incrementAndGet();
     return resp;
   }
 

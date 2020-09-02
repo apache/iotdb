@@ -33,6 +33,11 @@ public class Timer {
   public static AtomicLong raftMemberVoteCounterCounter = new AtomicLong(0);
   public static AtomicLong raftMemberLogParseMS = new AtomicLong(0);
   public static AtomicLong raftMemberLogParseCounter = new AtomicLong(0);
+  public static AtomicLong rafTMemberReceiverWaitForPrevLogMS = new AtomicLong(0);
+  public static AtomicLong rafTMemberReceiverWaitForPrevLogCounter = new AtomicLong(0);
+  public static AtomicLong rafTMemberMayBeAppendMS = new AtomicLong(0);
+  public static AtomicLong rafTMemberMayBeAppendCounter = new AtomicLong(0);
+
 
   private static final String dataGroupMemberProcessPlanLocallyMSString = "Data group member - process plan locally : ";
   private static final String dataGroupMemberWaitLeaderMSString = "Data group member - wait leader: ";
@@ -48,6 +53,8 @@ public class Timer {
   private static final String raftMemberSendLogAyncString = "Raft member - send log aync: ";
   private static final String raftMemberVoteCounterString = "Raft member - vote counter: ";
   private static final String raftMemberLogParseString = "Raft member - log parse: ";
+  private static final String rafTMemberReceiverWaitForPrevLogString = "Raft member - receiver wait for prev log: ";
+  private static final String rafTMemberMayBeAppendString = "Raft member - receiver wait for prev log: ";
 
 
 
@@ -116,6 +123,15 @@ public class Timer {
         + raftMemberLogParseMS.get()/1000000L + ", "
         + raftMemberLogParseCounter + ", "
         + (double) raftMemberLogParseMS.get()/1000000L / raftMemberLogParseCounter.get() + "\n";
+    result += rafTMemberReceiverWaitForPrevLogString
+        + rafTMemberReceiverWaitForPrevLogMS.get()/1000000L + ", "
+        + rafTMemberReceiverWaitForPrevLogCounter + ", "
+        + (double) rafTMemberReceiverWaitForPrevLogMS.get()/1000000L / rafTMemberReceiverWaitForPrevLogCounter.get() + "\n";
+    result += rafTMemberMayBeAppendString
+        + rafTMemberMayBeAppendMS.get()/1000000L + ", "
+        + rafTMemberMayBeAppendCounter + ", "
+        + (double) rafTMemberMayBeAppendMS.get()/1000000L / rafTMemberMayBeAppendCounter.get() + "\n";
+
     return result;
   }
 }
