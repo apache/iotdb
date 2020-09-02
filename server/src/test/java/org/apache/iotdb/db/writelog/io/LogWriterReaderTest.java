@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -41,17 +43,18 @@ public class LogWriterReaderTest {
   List<PhysicalPlan> plans = new ArrayList<>();
 
   @Before
-  public void prepare() {
+  public void prepare() throws IllegalPathException {
     if (new File(filePath).exists()) {
       new File(filePath).delete();
     }
-    InsertRowPlan insertRowPlan1 = new InsertRowPlan("d1", 10L, new String[]{"s1", "s2"},
+    InsertRowPlan insertRowPlan1 = new InsertRowPlan(new PartialPath(
+        "d1"), 10L, new String[]{"s1", "s2"},
         new TSDataType[]{TSDataType.INT64, TSDataType.INT64},
         new String[]{"1", "2"});
-    InsertRowPlan insertRowPlan2 = new InsertRowPlan("d1", 10L, new String[]{"s1", "s2"},
+    InsertRowPlan insertRowPlan2 = new InsertRowPlan(new PartialPath("d1"), 10L, new String[]{"s1", "s2"},
         new TSDataType[]{TSDataType.INT64, TSDataType.INT64},
         new String[]{"1", "2"});
-    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 10L, new Path("root.d1.s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 10L, new PartialPath("root.d1.s1"));
     plans.add(insertRowPlan1);
     plans.add(insertRowPlan2);
     plans.add(deletePlan);

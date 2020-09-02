@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.plan;
 import org.antlr.v4.runtime.RecognitionException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -54,18 +55,18 @@ public class ConcatOptimizerTest {
   public void before() throws MetadataException {
     processor = new Planner();
     IoTDB.metaManager.init();
-    IoTDB.metaManager.setStorageGroup("root.laptop");
-    IoTDB.metaManager.createTimeseries("root.laptop.d1.s1", TSDataType.INT64, TSEncoding.PLAIN,
+    IoTDB.metaManager.setStorageGroup(new PartialPath("root.laptop"));
+    IoTDB.metaManager.createTimeseries(new PartialPath("root.laptop.d1.s1"), TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries("root.laptop.d1.s2", TSDataType.INT64, TSEncoding.PLAIN,
+    IoTDB.metaManager.createTimeseries(new PartialPath("root.laptop.d1.s2"), TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries("root.laptop.d2.s1", TSDataType.INT64, TSEncoding.PLAIN,
+    IoTDB.metaManager.createTimeseries(new PartialPath("root.laptop.d2.s1"), TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries("root.laptop.d2.s2", TSDataType.INT64, TSEncoding.PLAIN,
+    IoTDB.metaManager.createTimeseries(new PartialPath("root.laptop.d2.s2"), TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries("root.laptop.d3.s1", TSDataType.INT64, TSEncoding.PLAIN,
+    IoTDB.metaManager.createTimeseries(new PartialPath("root.laptop.d3.s1"), TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries("root.laptop.d3.s2", TSDataType.INT64, TSEncoding.PLAIN,
+    IoTDB.metaManager.createTimeseries(new PartialPath("root.laptop.d3.s2"), TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, null);
   }
 
@@ -79,16 +80,16 @@ public class ConcatOptimizerTest {
   public void testConcat1() throws QueryProcessException, RecognitionException {
     String inputSQL = "select s1 from root.laptop.d1";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
-    assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).toString());
+    assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).getFullPath());
   }
 
   @Test
   public void testConcat2() throws QueryProcessException, RecognitionException {
     String inputSQL = "select s1 from root.laptop.*";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
-    assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).toString());
-    assertEquals("root.laptop.d2.s1", plan.getPaths().get(1).toString());
-    assertEquals("root.laptop.d3.s1", plan.getPaths().get(2).toString());
+    assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).getFullPath());
+    assertEquals("root.laptop.d2.s1", plan.getPaths().get(1).getFullPath());
+    assertEquals("root.laptop.d3.s1", plan.getPaths().get(2).getFullPath());
   }
 
   @Test
@@ -96,7 +97,7 @@ public class ConcatOptimizerTest {
     String inputSQL = "select s1 from root.laptop.d1 where s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
     SingleSeriesExpression seriesExpression = new SingleSeriesExpression(
-        new Path("root.laptop.d1.s1"),
+        new Path("root.laptop.d1", "s1"),
         ValueFilter.lt(10));
     assertEquals(seriesExpression.toString(), ((RawDataQueryPlan) plan).getExpression().toString());
   }
@@ -108,14 +109,14 @@ public class ConcatOptimizerTest {
     IExpression expression = BinaryExpression.and(
         BinaryExpression.and(
             new SingleSeriesExpression(
-                new Path("root.laptop.d1.s1"),
+                new Path("root.laptop.d1", "s1"),
                 ValueFilter.lt(10)),
             new SingleSeriesExpression(
-                new Path("root.laptop.d2.s1"),
+                new Path("root.laptop.d2", "s1"),
                 ValueFilter.lt(10))
         ),
         new SingleSeriesExpression(
-            new Path("root.laptop.d3.s1"),
+            new Path("root.laptop.d3", "s1"),
             ValueFilter.lt(10))
     );
     assertEquals(expression.toString(), ((RawDataQueryPlan) plan).getExpression().toString());

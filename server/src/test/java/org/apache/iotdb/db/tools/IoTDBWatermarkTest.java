@@ -28,6 +28,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -154,9 +155,9 @@ public class IoTDBWatermarkTest {
       while (resultSet.next()) {
         String ans =
             resultSet.getString(TestConstant.TIMESTAMP_STR)
-                + "," + resultSet.getString(TestConstant.d0s0)
-                + "," + resultSet.getString(TestConstant.d0s1)
-                + "," + resultSet.getString(TestConstant.d0s2);
+                + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0)
+                + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1)
+                + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s2);
         writer1.println(ans);
       }
       writer1.close();
@@ -196,9 +197,9 @@ public class IoTDBWatermarkTest {
       while (resultSet.next()) {
         String ans =
             resultSet.getString(TestConstant.TIMESTAMP_STR)
-                + "," + resultSet.getString(TestConstant.d0s0)
-                + "," + resultSet.getString(TestConstant.d0s1)
-                + "," + resultSet.getString(TestConstant.d0s2);
+                + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0)
+                + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1)
+                + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s2);
         writer2.println(ans);
       }
       writer2.close();
