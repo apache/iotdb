@@ -19,14 +19,14 @@
 
 -->
 
-## 0.9-0.10 IoTDB Session Interface Updates
+## Summary for 0.9-0.10 IoTDB Session Interface Updates
 
-From 0.9 to 0.10, the interfaces of IoTDB session has been modified a lot. 
+Great changes have taken place in IoTDB session of version 0.10 compared to version 0.9.
 We added a large numbers of new interfaces, and some old interfaces had new names or parameters.
-Besides, all exceptions thrown by session interfaces are changed from IoTDBSessionExeception to IoTDBConnectionException or StatementExecutionExeception.
+Besides, all exceptions thrown by session interfaces are changed from *IoTDBSessionExeception* to *IoTDBConnectionException* or *StatementExecutionExeception*.
 The detailed modifications are listed as follows.
 
-### Method name modification
+### Method name modifications
 
 #### insert()
 
@@ -61,13 +61,13 @@ void insertRecords(List<String> deviceIds, List<Long> times, List<List<String>> 
 
 #### insertBatch()
 
-In 0.9, insertBatch is used for inserting in terms of RowBatch structure.
+In 0.9, insertBatch is used for insertion in terms of "RowBatch" structure.
 
 ```
 void insertBatch(RowBatch rowBatch)
 ```
 
-As Tablet replaced RowBatch in 0.10, the name has been changed to insertTablet()
+As "Tablet" replaced "RowBatch" in 0.10, the name has been changed to insertTablet()
 
 ```
 void insertTablet(Tablet tablet)

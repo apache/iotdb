@@ -19,9 +19,9 @@
 
 -->
 
-## 0.9-0.10 版本IoTDB Session 接口更新文档
+## 0.9-0.10 版本IoTDB Session 接口更新总结
 
-从0.9到0.10版本的IoTDB session接口有了较大改变。一部分接口名称和参数类型发生了变化，另外新增了大量可用接口。所有session接口抛出的异常类型 IoTDBSessionExeception更改为IoTDBConnectionException和StatementExecutionExeception。下面详细介绍具体接口的变化。
+从0.9到0.10版本的IoTDB session接口有了较大改变。一部分接口名称和参数类型发生了变化，另外新增了大量可用接口。所有session接口抛出的异常类型 *IoTDBSessionExeception* 更改为 *IoTDBConnectionException* 和 *StatementExecutionExeception* 。下面详细介绍具体接口的变化。
 
 ### 接口名称更改
 
@@ -59,13 +59,13 @@ void insertRecords(List<String> deviceIds, List<Long> times, List<List<String>> 
 
 #### insertBatch()
 
-在0.9版本中用于以RowBatch结构为单位插入数据
+在0.9版本中用于以"RowBatch"结构为单位插入数据
 
 ```
 void insertBatch(RowBatch rowBatch)
 ```
 
-在0.10版本中RowBatch类型更改为Tablet类型，因此方法名也随之改变。
+在0.10版本中"RowBatch"类型更改为"Tablet"类型，因此方法名也随之改变。
 
 ```
 void insertTablet(Tablet tablet)
