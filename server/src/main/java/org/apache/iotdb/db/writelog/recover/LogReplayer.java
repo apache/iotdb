@@ -164,8 +164,8 @@ public class LogReplayer {
     }
     if (plan instanceof InsertRowPlan) {
       InsertRowPlan tPlan = (InsertRowPlan) plan;
-      //only inferTyp when users pass a String value
-      //WAL already serializes the real data type, so no need to infer typ
+      //only infer type when users pass a String value
+      //WAL already serializes the real data type, so no need to infer type
       ((InsertRowPlan) plan).setNeedInferType(false);
       tPlan.setSchemasAndTransferType(schemas);
       //mark failed plan manually 
