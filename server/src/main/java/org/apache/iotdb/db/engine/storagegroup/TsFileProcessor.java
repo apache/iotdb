@@ -227,6 +227,9 @@ public class TsFileProcessor {
     }
 
     boolean needToReport = checkMemCostAndAddToTspInfo(insertRowPlan);
+    if (workMemTable == null) {
+      workMemTable = new PrimitiveMemTable();
+    }
     // If there are enough size of arrays in memtable, insert insertRowPlan to
     // the work memtable directly
     if (workMemTable.checkIfArrayIsEnough(insertRowPlan)) {
@@ -302,6 +305,9 @@ public class TsFileProcessor {
     }
 
     boolean needToReport = checkMemCostAndAddToTspInfo(insertTabletPlan);
+    if (workMemTable == null) {
+      workMemTable = new PrimitiveMemTable();
+    }
     // If there are enough size of arrays in memtable, insert insertRowPlan to
     // the work memtable directly
     if (workMemTable.checkIfArrayIsEnough(insertTabletPlan)) {
