@@ -54,7 +54,7 @@ public class Timer {
   private static final String raftMemberVoteCounterString = "Raft member - vote counter: ";
   private static final String raftMemberLogParseString = "Raft member - log parse: ";
   private static final String rafTMemberReceiverWaitForPrevLogString = "Raft member - receiver wait for prev log: ";
-  private static final String rafTMemberMayBeAppendString = "Raft member - receiver wait for prev log: ";
+  private static final String rafTMemberMayBeAppendString = "Raft member - maybe append: ";
 
 
 
