@@ -68,6 +68,7 @@ import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
+import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -491,7 +492,8 @@ public abstract class RaftMember {
       return checkResult;
     }
 
-    Log log = LogParser.getINSTANCE().parse(request.entry);
+//    Log log = LogParser.getINSTANCE().parse(request.entry);
+    Log log = new EmptyContentLog(request.prevLogIndex + 1, request.prevLogTerm);
     long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
         log);
     logger.debug("{} AppendEntryRequest of {} completed", name, log);
