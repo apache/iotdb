@@ -705,7 +705,6 @@ public class PhysicalGenerator {
 
     int index = 0;
     for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
-      // judge whether as clause is used or not first
       String column = indexedPath.left.getTsAlias();
       if (column == null) {
         column = indexedPath.left.getMeasurementAlias() != null ? indexedPath.left.getFullPathWithAlias()
