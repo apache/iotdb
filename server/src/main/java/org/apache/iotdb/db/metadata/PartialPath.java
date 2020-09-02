@@ -54,7 +54,10 @@ public class PartialPath extends Path implements Comparable<Path> {
     nodes = partialNodes;
   }
 
-
+  /**
+   * @param path path
+   * @param needSplit needSplit is basically false, whether need to be split to device and measurement, doesn't support escape character yet.
+   */
   public PartialPath(String path, boolean needSplit) {
     super(path, needSplit);
   }

@@ -49,7 +49,6 @@ public class Path implements Serializable, Comparable<Path> {
   }
 
   /**
-   *
    * @param pathSc path
    * @param needSplit whether need to be split to device and measurement, doesn't support escape character yet.
    */
