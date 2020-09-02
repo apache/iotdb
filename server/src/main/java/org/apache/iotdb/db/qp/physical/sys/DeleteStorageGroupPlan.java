@@ -23,16 +23,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class DeleteStorageGroupPlan extends PhysicalPlan {
   
-  private List<Path> deletePathList;
+  private List<PartialPath> deletePathList;
   
-  public DeleteStorageGroupPlan (List<Path> deletePathList) {
+  public DeleteStorageGroupPlan (List<PartialPath> deletePathList) {
 	  super(false, Operator.OperatorType.DELETE_STORAGE_GROUP);
 	  this.deletePathList = deletePathList;
   }
@@ -42,7 +42,7 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
   }
   
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return deletePathList;
   }
 
@@ -51,7 +51,7 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
     int type = PhysicalPlan.PhysicalPlanType.DELETE_STORAGE_GROUP.ordinal();
     stream.writeByte((byte) type);
     stream.writeInt(this.getPaths().size());
-    for (Path path : this.getPaths()) {
+    for (PartialPath path : this.getPaths()) {
       putString(stream, path.getFullPath());
     }
   }
@@ -61,17 +61,17 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
     int type = PhysicalPlanType.DELETE_STORAGE_GROUP.ordinal();
     buffer.put((byte) type);
     buffer.putInt(this.getPaths().size());
-    for (Path path : this.getPaths()) {
+    for (PartialPath path : this.getPaths()) {
       putString(buffer, path.getFullPath());
     }
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     int pathNum = buffer.getInt();
     this.deletePathList = new ArrayList<>();
     for (int i = 0; i < pathNum; i++) {
-      deletePathList.add(new Path(readString(buffer)));
+      deletePathList.add(new PartialPath(readString(buffer)));
     }
   }
 

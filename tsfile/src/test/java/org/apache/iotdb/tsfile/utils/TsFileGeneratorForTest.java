@@ -179,20 +179,20 @@ public class TsFileGeneratorForTest {
 
   private static Schema generateTestSchema() {
     Schema schema = new Schema();
-    schema.registerTimeseries(new Path("d1.s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d1.s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d1.s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
-    schema.registerTimeseries(new Path("d1.s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN,
+    schema.registerTimeseries(new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d1", "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d1", "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+    schema.registerTimeseries(new Path("d1", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
-    schema.registerTimeseries(new Path("d1.s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d1.s6"), new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE,
+    schema.registerTimeseries(new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d1", "s6"), new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE,
         CompressionType.SNAPPY, Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5")));
-    schema.registerTimeseries(new Path("d1.s7"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA));
+    schema.registerTimeseries(new Path("d1", "s7"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA));
 
-    schema.registerTimeseries(new Path("d2.s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d2.s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d2.s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
-    schema.registerTimeseries(new Path("d2.s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN,
+    schema.registerTimeseries(new Path("d2", "s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+    schema.registerTimeseries(new Path("d2", "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d2", "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+    schema.registerTimeseries(new Path("d2", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
     return schema;
   }

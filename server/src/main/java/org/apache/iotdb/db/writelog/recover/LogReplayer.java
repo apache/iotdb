@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -27,6 +31,7 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -38,15 +43,9 @@ import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * LogReplayer finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the
@@ -119,8 +118,8 @@ public class LogReplayer {
   }
 
   private void replayDelete(DeletePlan deletePlan) throws IOException {
-    List<Path> paths = deletePlan.getPaths();
-    for (Path path : paths) {
+    List<PartialPath> paths = deletePlan.getPaths();
+    for (PartialPath path : paths) {
       recoverMemTable
           .delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteStartTime(),
               deletePlan.getDeleteEndTime());
@@ -142,18 +141,18 @@ public class LogReplayer {
         maxTime = ((InsertTabletPlan) plan).getMaxTime();
       }
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      long lastEndTime = currentTsFileResource.getEndTime(plan.getDeviceId());
+      long lastEndTime = currentTsFileResource.getEndTime(plan.getDeviceId().getFullPath());
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime &&
           sequence) {
         return;
       }
-      Long startTime = tempStartTimeMap.get(plan.getDeviceId());
+      Long startTime = tempStartTimeMap.get(plan.getDeviceId().getFullPath());
       if (startTime == null || startTime > minTime) {
-        tempStartTimeMap.put(plan.getDeviceId(), minTime);
+        tempStartTimeMap.put(plan.getDeviceId().getFullPath(), minTime);
       }
-      Long endTime = tempEndTimeMap.get(plan.getDeviceId());
+      Long endTime = tempEndTimeMap.get(plan.getDeviceId().getFullPath());
       if (endTime == null || endTime < maxTime) {
-        tempEndTimeMap.put(plan.getDeviceId(), maxTime);
+        tempEndTimeMap.put(plan.getDeviceId().getFullPath(), maxTime);
       }
     }
     MeasurementSchema[] schemas;
