@@ -115,7 +115,7 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
             title="硬件成本低"
             width="400"
             trigger="hover"
-            content="Apache IoTDB（孵化中）可以达到磁盘存储的高压缩率。"
+            content="Apache IoTDB（孵化中）可以实现磁盘存储的高压缩率。"
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon4.png" style="width:40px;height:40px;">
