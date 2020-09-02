@@ -25,7 +25,10 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+<<<<<<<HEAD
 import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
+=======
+    >>>>>>>master
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -36,7 +39,7 @@ import org.junit.Test;
 public class IoTDBDeleteTimeseriesIT {
 
   private long memtableSizeThreshold;
-  private boolean enableVm;
+  private TsFileManagementStrategy tsFileManagementStrategy;
 
   @Before
   public void setUp() throws Exception {
@@ -44,6 +47,8 @@ public class IoTDBDeleteTimeseriesIT {
     EnvironmentUtils.envSetUp();
     memtableSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(16);
+    tsFileManagementStrategy = IoTDBDescriptor.getInstance().getConfig()
+        .getTsFileManagementStrategy();
     IoTDBDescriptor.getInstance().getConfig()
         .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
   }
@@ -52,7 +57,7 @@ public class IoTDBDeleteTimeseriesIT {
   public void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
+        .setTsFileManagementStrategy(tsFileManagementStrategy);
     EnvironmentUtils.cleanEnv();
   }
 
