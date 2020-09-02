@@ -31,6 +31,8 @@ public class Timer {
   public static AtomicLong raftMemberSendLogAyncCounter = new AtomicLong(0);
   public static AtomicLong raftMemberVoteCounterMS = new AtomicLong(0);
   public static AtomicLong raftMemberVoteCounterCounter = new AtomicLong(0);
+  public static AtomicLong raftMemberLogParseMS = new AtomicLong(0);
+  public static AtomicLong raftMemberLogParseCounter = new AtomicLong(0);
 
   private static final String dataGroupMemberProcessPlanLocallyMSString = "Data group member - process plan locally : ";
   private static final String dataGroupMemberWaitLeaderMSString = "Data group member - wait leader: ";
@@ -45,6 +47,7 @@ public class Timer {
   private static final String raftMemberWaitForPrevLogString = "Raft member - wait for prev log: ";
   private static final String raftMemberSendLogAyncString = "Raft member - send log aync: ";
   private static final String raftMemberVoteCounterString = "Raft member - vote counter: ";
+  private static final String raftMemberLogParseString = "Raft member - log parse: ";
 
 
 
@@ -109,6 +112,10 @@ public class Timer {
         + raftMemberVoteCounterMS.get()/1000000L + ", "
         + raftMemberVoteCounterCounter + ", "
         + (double) raftMemberVoteCounterMS.get()/1000000L / raftMemberVoteCounterCounter.get() + "\n";
+    result += raftMemberLogParseString
+        + raftMemberLogParseMS.get()/1000000L + ", "
+        + raftMemberLogParseCounter + ", "
+        + (double) raftMemberLogParseMS.get()/1000000L / raftMemberLogParseCounter.get() + "\n";
     return result;
   }
 }

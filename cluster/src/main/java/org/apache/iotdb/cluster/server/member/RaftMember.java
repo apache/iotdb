@@ -96,6 +96,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -492,8 +493,19 @@ public abstract class RaftMember {
       return checkResult;
     }
 
-//    Log log = LogParser.getINSTANCE().parse(request.entry);
-    Log log = new EmptyContentLog(request.prevLogIndex + 1, request.prevLogTerm);
+    long start1 = System.nanoTime();
+    Log log = LogParser.getINSTANCE().parse(request.entry);
+    Timer.raftMemberLogParseMS.addAndGet(System.nanoTime() - start1);
+    Timer.raftMemberLogParseCounter.incrementAndGet();
+
+    if (log instanceof PhysicalPlanLog) {
+      PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
+      PhysicalPlan plan = physicalPlanLog.getPlan();
+      if (plan instanceof InsertPlan) {
+        physicalPlanLog.setPlan(null);
+      }
+    }
+
     long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
         log);
     logger.debug("{} AppendEntryRequest of {} completed", name, log);
