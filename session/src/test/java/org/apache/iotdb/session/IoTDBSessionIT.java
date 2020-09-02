@@ -611,7 +611,7 @@ public class IoTDBSessionIT {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
-    Tablet tablet = new Tablet(deviceId, schemaList, 100);
+    Tablet tablet = new Tablet(deviceId, schemaList, 200);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
     for (int time = 1; time <= 100; time++) {
@@ -619,6 +619,17 @@ public class IoTDBSessionIT {
       for (int i = 0; i < 3; i++) {
         long[] sensor = (long[]) values[i];
         sensor[time - 1] = i;
+      }
+      tablet.rowSize++;
+    }
+
+    for (int time = 101; time <= 200; time++) {
+      int rowIndex = time - 1;
+      tablet.addTimestamp(rowIndex, time);
+      long value = 0;
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
       }
       tablet.rowSize++;
     }
@@ -813,6 +824,25 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
 
+    for (long time = 0; time < 100; time++) {
+      int rowIndex = tablet.rowSize++;
+      long value = 0;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -892,7 +922,7 @@ public class IoTDBSessionIT {
       }
       Assert.assertEquals("root.sg1.d1,\'11\',0,\'11\',", sb.toString());
     }
-    Assert.assertEquals(1000, count);
+    Assert.assertEquals(2000, count);
     sessionDataSet.closeOperationHandle();
   }
 
@@ -911,7 +941,7 @@ public class IoTDBSessionIT {
       }
       Assert.assertEquals("root.sg1.d1,'11',0,'11',null,0,null,", sb.toString());
     }
-    Assert.assertEquals(1000, count);
+    Assert.assertEquals(2000, count);
     sessionDataSet.closeOperationHandle();
   }
 
@@ -1088,6 +1118,25 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 256);
 
+    for (long time = 1000; time < 2000; time++) {
+      int rowIndex = tablet.rowSize++;
+      long value = 0;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -1119,6 +1168,25 @@ public class IoTDBSessionIT {
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 200);
+
+    for (long time = 500; time < 1500; time++) {
+      int rowIndex = tablet.rowSize++;
+      long value = 0;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
 
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
@@ -1157,6 +1225,25 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 1000);
 
+    for (long time = begin; time < count + begin; time++) {
+      int rowIndex = tablet.rowSize++;
+      long value = 0;
+      tablet.addTimestamp(rowIndex, time);
+      for (int i = 0; i < 6; i++) {
+        tablet.addValue(schemaList.get(i).getMeasurementId(), rowIndex, value);
+        value++;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -1177,7 +1264,6 @@ public class IoTDBSessionIT {
       session.insertTablet(tablet);
       tablet.reset();
     }
-
   }
 
   private void queryForBatch() throws ClassNotFoundException, SQLException {
@@ -1204,7 +1290,7 @@ public class IoTDBSessionIT {
       }
       Assert.assertEquals(standard, resultStr.toString());
       // d1 and d2 will align
-      Assert.assertEquals(7000, count);
+      Assert.assertEquals(14000, count);
     }
   }
 
@@ -1272,7 +1358,7 @@ public class IoTDBSessionIT {
       }
       Assert.assertEquals(standard, resultStr.toString());
       // d1 and d2 will align
-      Assert.assertEquals(10500, count);
+      Assert.assertEquals(14000, count);
     }
   }
 

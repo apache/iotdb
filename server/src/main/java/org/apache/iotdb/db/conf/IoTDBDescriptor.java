@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.conf;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.ZoneId;
 import java.util.Properties;
@@ -89,17 +89,19 @@ public class IoTDBDescriptor {
     return true;
   }
 
-  public String getPropsUrl() {
-    String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
-    if (url == null) {
-      url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-      if (url != null) {
-        url = url + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
+  public URL getPropsUrl() {
+    // Check if a config-directory was specified first.
+    String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
+    // If it wasn't, check if a home directory was provided (This usually contains a config)
+    if (urlString == null) {
+      urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+      if (urlString != null) {
+        urlString = urlString + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
       } else {
+        // If this too wasn't provided, try to find a default config in the root of the classpath.
         URL uri = IoTDBConfig.class.getResource("/" + IoTDBConfig.CONFIG_NAME);
         if (uri != null) {
-          url = uri.getPath();
-          return url;
+          return uri;
         }
         logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
@@ -109,22 +111,35 @@ public class IoTDBDescriptor {
         conf.updatePath();
         return null;
       }
-    } else {
-      url += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
-    return url;
+    // If a config location was provided, but it doesn't end with a properties file,
+    // append the default location.
+    else if(!urlString.endsWith(".properties")) {
+      urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
+    }
+    // If the url doesn't contain a ":" it's provided as a normal path.
+    // So we need to add the prefix "file:" to make it a real URL.
+    if(!urlString.contains(":")) {
+      urlString = "file:" + urlString;
+    }
+    try {
+      return new URL(urlString);
+    } catch (MalformedURLException e) {
+      return null;
+    }
   }
 
   /**
    * load an property file and set TsfileDBConfig variables.
    */
   private void loadProps() {
-    String url = getPropsUrl();
-    if (url == null) {
+    URL url = getPropsUrl();
+    if(url == null) {
+      logger.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
 
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
+    try (InputStream inputStream = url.openStream()) {
 
       logger.info("Start to read config file {}", url);
       Properties properties = new Properties();
@@ -674,11 +689,13 @@ public class IoTDBDescriptor {
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {
-    String url = getPropsUrl();
-    if (url == null) {
+    URL url = getPropsUrl();
+    if(url == null) {
+      logger.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
+
+    try (InputStream inputStream = url.openStream()) {
       logger.info("Start to reload config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
