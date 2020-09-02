@@ -712,11 +712,15 @@ public abstract class RaftMember {
       return;
     }
 
+    start = System.nanoTime();
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       sendLogAsync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
     } else {
       sendLogSync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
     }
+    Timer.raftMemberSendLogAyncMS.addAndGet(System.nanoTime() - start);
+    Timer.raftMemberSendLogAyncCounter.incrementAndGet();
+
   }
 
   private boolean waitForPrevLog(Peer peer, Log log) {
