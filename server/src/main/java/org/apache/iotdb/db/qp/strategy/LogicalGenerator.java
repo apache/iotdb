@@ -642,7 +642,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterListPrivilegesUser(ctx);
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
         AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-    operator.setUserName(ctx.rootOrId().getText());
+    operator.setUserName(ctx.ID().getText());
     operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_LIST;
@@ -664,7 +664,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterListUserPrivileges(ctx);
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
         AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-    operator.setUserName(ctx.rootOrId().getText());
+    operator.setUserName(ctx.ID().getText());
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_LIST;
   }
@@ -685,7 +685,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
         AuthorOperator.AuthorType.LIST_USER_ROLES);
     initializedOperator = operator;
-    operator.setUserName(ctx.rootOrId().getText());
+    operator.setUserName(ctx.ID().getText());
     operatorType = SQLConstant.TOK_LIST;
   }
 

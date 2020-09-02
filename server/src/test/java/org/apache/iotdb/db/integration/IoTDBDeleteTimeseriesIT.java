@@ -25,10 +25,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-<<<<<<<HEAD
 import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
-=======
-    >>>>>>>master
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
