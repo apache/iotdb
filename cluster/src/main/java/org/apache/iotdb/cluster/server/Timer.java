@@ -25,6 +25,8 @@ public class Timer {
   public static AtomicLong raftFollowerAppendEntryCounter = new AtomicLong(0);
   public static AtomicLong dataGroupMemberForwardPlanMS = new AtomicLong(0);
   public static AtomicLong dataGroupMemberForwardPlanCounter = new AtomicLong(0);
+  public static AtomicLong raftMemberWaitForPrevLogMS = new AtomicLong(0);
+  public static AtomicLong raftMemberWaitForPrevLogCounter = new AtomicLong(0);
 
   private static final String dataGroupMemberProcessPlanLocallyMSString = "Data group member - process plan locally : ";
   private static final String dataGroupMemberWaitLeaderMSString = "Data group member - wait leader: ";
@@ -36,6 +38,8 @@ public class Timer {
   private static final String raftMemberCommitLogMSString = "Raft member - commit log: ";
   private static final String raftFollowerAppendEntryString = "Raft member - follower append entry: ";
   private static final String dataGroupMemberForwardPlanString = "Data group member - forward plan: ";
+  private static final String raftMemberWaitForPrevLogString = "Raft member - wait for prev log: ";
+
 
 
   public static String getReport() {
@@ -87,7 +91,10 @@ public class Timer {
         + dataGroupMemberForwardPlanMS.get()/1000000L + ", "
         + dataGroupMemberForwardPlanCounter + ", "
         + (double) dataGroupMemberForwardPlanMS.get()/1000000L / dataGroupMemberForwardPlanCounter.get() + "\n";
-
+    result += raftMemberWaitForPrevLogString
+        + raftMemberWaitForPrevLogMS.get()/1000000L + ", "
+        + raftMemberWaitForPrevLogCounter + ", "
+        + (double) raftMemberWaitForPrevLogMS.get()/1000000L / raftMemberWaitForPrevLogCounter.get() + "\n";
     return result;
   }
 }

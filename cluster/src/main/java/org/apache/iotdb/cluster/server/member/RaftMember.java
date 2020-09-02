@@ -699,11 +699,14 @@ public abstract class RaftMember {
     if (node.equals(thisNode)) {
       return;
     }
+    long start = System.nanoTime();
     Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
     if (!waitForPrevLog(peer, log)) {
       logger.warn("{}: node {} timed out when appending {}", name, node, log);
       return;
     }
+    Timer.raftMemberWaitForPrevLogMS.addAndGet(System.nanoTime() - start);
+    Timer.raftMemberWaitForPrevLogCounter.incrementAndGet();
 
     if (character != NodeCharacter.LEADER) {
       return;
