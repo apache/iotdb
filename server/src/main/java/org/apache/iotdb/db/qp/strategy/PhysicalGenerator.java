@@ -450,7 +450,12 @@ public class PhysicalGenerator {
             List<PartialPath> actualPaths = getMatchedTimeseries(fullPath);
             if (suffixPath.getTsAlias() != null) {
               if (actualPaths.size() == 1) {
-                measurementAliasMap.put(actualPaths.get(0).getMeasurement(), suffixPath.getTsAlias());
+                String columnName = actualPaths.get(0).getMeasurement();
+                if (originAggregations != null && !originAggregations.isEmpty()) {
+                  measurementAliasMap.put(originAggregations.get(i) + "(" + columnName + ")", suffixPath.getTsAlias());
+                } else {
+                  measurementAliasMap.put(columnName, suffixPath.getTsAlias());
+                }
               } else if (actualPaths.size() >= 2) {
                 throw new QueryProcessException(
                     "alias '" + suffixPath.getTsAlias() + "' can only be matched with one time series");
