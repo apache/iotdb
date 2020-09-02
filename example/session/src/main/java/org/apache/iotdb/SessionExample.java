@@ -364,7 +364,7 @@ public class SessionExample {
     SessionDataSet dataSet;
     dataSet = session.executeRawDataQuery(paths, startTime, endTime);
     System.out.println(dataSet.getColumnNames());
-    dataSet.setFetchSize(1024); // default is 10000
+    dataSet.setFetchSize(1024); 
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
