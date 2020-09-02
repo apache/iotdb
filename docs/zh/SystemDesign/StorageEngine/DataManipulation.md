@@ -36,7 +36,7 @@
 	* 根据写入数据的时间以及当前设备落盘的最后时间戳，找到对应的 TsFileProcessor
 	* 写入 TsFileProcessor 对应的 memtable 中
 	    * 如果是乱序文件，则更新tsfileResource中的endTimeMap
-	    * 如果tsfile中没有该设备的信息，则更新tsfileResource中的startTimeMap
+	    * 如果tsfile中没有该设备的信息，或新插入数据的时间小于已存startTime，则更新tsfileResource中的startTimeMap
 	* 记录写前日志
 	* 根据 memtable 大小，来判断是否触发异步持久化 memtable 操作
 	    * 如果是顺序文件且执行了刷盘动作，则更新tsfileResource中的endTimeMap
@@ -52,7 +52,7 @@
 	* 根据这批数据的时间以及当前设备落盘的最后时间戳，将这批数据分成小批，分别对应到一个 TsFileProcessor 中
 	* 分别将每小批写入 TsFileProcessor 对应的 memtable 中
 	    * 如果是乱序文件，则更新tsfileResource中的endTimeMap
-	    * 如果tsfile中没有该设备的信息，则更新tsfileResource中的startTimeMap
+	    * 如果tsfile中没有该设备的信息，或新插入数据的时间小于已存startTime，则更新tsfileResource中的startTimeMap
 	* 记录写前日志
 	* 根据 memtable 大小，来判断是否触发异步持久化 memtable 操作
 	    * 如果是顺序文件且执行了刷盘动作，则更新tsfileResource中的endTimeMap
