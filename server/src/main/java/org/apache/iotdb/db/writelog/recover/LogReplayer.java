@@ -164,16 +164,14 @@ public class LogReplayer {
     }
     if (plan instanceof InsertRowPlan) {
       InsertRowPlan tPlan = (InsertRowPlan) plan;
+      ((InsertRowPlan) plan).setNeedInferType(false);
       tPlan.setSchemasAndTransferType(schemas);
+      checkDataTypeAndMarkFailed(schemas, tPlan);
       recoverMemTable.insert(tPlan);
     } else {
       InsertTabletPlan tPlan = (InsertTabletPlan) plan;
       tPlan.setSchemas(schemas);
-      for (int i = 0; i < schemas.length; i++) {
-        if (schemas[i].getType() != tPlan.getDataTypes()[i]) {
-          tPlan.markFailedMeasurementInsertion(i);
-        }
-      }
+      checkDataTypeAndMarkFailed(schemas, tPlan);
       recoverMemTable.insertTablet(tPlan, 0, tPlan.getRowCount());
     }
   }
@@ -182,5 +180,13 @@ public class LogReplayer {
   private void replayUpdate(UpdatePlan updatePlan) {
     // TODO: support update
     throw new UnsupportedOperationException("Update not supported");
+  }
+
+  private void checkDataTypeAndMarkFailed(final MeasurementSchema[] schemas, InsertPlan tPlan) {
+    for (int i = 0; i < schemas.length; i++) {
+      if (schemas[i] == null || schemas[i].getType() != tPlan.getDataTypes()[i]) {
+        tPlan.markFailedMeasurementInsertion(i);
+      }
+    }
   }
 }

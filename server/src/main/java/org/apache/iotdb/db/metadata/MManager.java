@@ -686,10 +686,15 @@ public class MManager {
       MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurements.length];
       for (int i = 0; i < measurementSchemas.length; i++) {
         if (!deviceNode.hasChild(measurements[i])) {
-          throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
+          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+            measurementSchemas[i] = null;
+          } else {
+            throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
+          }
+        } else {
+          measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]))
+              .getSchema();
         }
-        measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]))
-            .getSchema();
       }
       return measurementSchemas;
     } finally {
