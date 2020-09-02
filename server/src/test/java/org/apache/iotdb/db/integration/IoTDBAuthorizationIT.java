@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -581,7 +582,8 @@ public class IoTDBAuthorizationIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection adminCon = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement adminStmt = adminCon.createStatement()) {
+         Statement adminStmt = adminCon.createStatement();
+         PreparedStatement adminPreparedStatement = adminCon.prepareStatement("INSERT INTO root.a(timestamp, b0) VALUES (?" + ", 100)")) {
 
       adminStmt.execute("CREATE USER tempuser 'temppw'");
       adminStmt.execute("SET STORAGE GROUP TO root.a");
@@ -592,7 +594,7 @@ public class IoTDBAuthorizationIT {
       }
       try (Connection userCon = DriverManager
               .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser", "temppw");
-           Statement userStmt = userCon.createStatement()) {
+          PreparedStatement userPreparedStatement = userCon.prepareStatement("INSERT INTO root.a(timestamp, b" + (privilegeCnt - 1) + ") VALUES (?" + ", 100)")) {
 
         int insertCnt = 20000;
         int batchSize = 500;
@@ -601,12 +603,11 @@ public class IoTDBAuthorizationIT {
         time = System.currentTimeMillis();
         for (int i = 0; i < insertCnt; ) {
           for (int j = 0; j < batchSize; j++) {
-            userStmt.addBatch(
-                    "INSERT INTO root.a(timestamp, b" + (privilegeCnt - 1) + ") VALUES (" + (i++ + 1)
-                            + ", 100)");
+            userPreparedStatement.setInt(1,(i++ + 1));
+            userPreparedStatement.addBatch();
           }
-          userStmt.executeBatch();
-          userStmt.clearBatch();
+          userPreparedStatement.executeBatch();
+          userPreparedStatement.clearBatch();
         }
         if (logger.isInfoEnabled()) {
           logger.info("User inserted {} data points used {} ms with {} privileges.", insertCnt,
@@ -616,11 +617,11 @@ public class IoTDBAuthorizationIT {
         time = System.currentTimeMillis();
         for (int i = 0; i < insertCnt; ) {
           for (int j = 0; j < batchSize; j++) {
-            adminStmt.addBatch(
-                    "INSERT INTO root.a(timestamp, b0) VALUES (" + (i++ + 1 + insertCnt) + ", 100)");
+            adminPreparedStatement.setInt(1,(i++ + 1 + insertCnt));
+            adminPreparedStatement.addBatch();
           }
-          adminStmt.executeBatch();
-          adminStmt.clearBatch();
+          adminPreparedStatement.executeBatch();
+          adminPreparedStatement.clearBatch();
         }
         if (logger.isInfoEnabled()) {
           logger.info("User inserted {} data points used {} ms with {} privileges.", insertCnt,
@@ -636,6 +637,8 @@ public class IoTDBAuthorizationIT {
     Connection adminCon = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
+    PreparedStatement adminPreparedStatementCreat = adminCon.prepareStatement("CREATE USER user?" + " 'password ?" + "'");
+    PreparedStatement adminPreparedStatementDrop = adminCon.prepareStatement("DROP USER user?");
 
     try {
       ResultSet resultSet = adminStmt.executeQuery("LIST USER");
@@ -644,7 +647,9 @@ public class IoTDBAuthorizationIT {
         validateResultSet(resultSet, ans);
 
         for (int i = 0; i < 10; i++) {
-          adminStmt.execute("CREATE USER user" + i + " 'password " + i + "'");
+          adminPreparedStatementCreat.setInt(1,i);
+          adminPreparedStatementCreat.setInt(2,i);
+          adminPreparedStatementCreat.execute();
         }
         resultSet = adminStmt.executeQuery("LIST USER");
         ans = "root,\n"
@@ -662,7 +667,8 @@ public class IoTDBAuthorizationIT {
 
         for (int i = 0; i < 10; i++) {
           if (i % 2 == 0) {
-            adminStmt.execute("DROP USER user" + i);
+            adminPreparedStatementDrop.setInt(1,i);
+            adminPreparedStatementDrop.execute();
           }
         }
         resultSet = adminStmt.executeQuery("LIST USER");
@@ -687,6 +693,8 @@ public class IoTDBAuthorizationIT {
     Connection adminCon = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement adminStmt = adminCon.createStatement();
+    PreparedStatement adminPreparedStatementCreate = adminCon.prepareStatement("CREATE ROLE role?");
+    PreparedStatement adminPreparedStatementDrop = adminCon.prepareStatement("DROP ROLE role?");
 
     try {
       ResultSet resultSet = adminStmt.executeQuery("LIST ROLE");
@@ -695,7 +703,8 @@ public class IoTDBAuthorizationIT {
         validateResultSet(resultSet, ans);
 
         for (int i = 0; i < 10; i++) {
-          adminStmt.execute("CREATE ROLE role" + i);
+          adminPreparedStatementCreate.setInt(1,i);
+          adminPreparedStatementCreate.execute();
         }
 
         resultSet = adminStmt.executeQuery("LIST ROLE");
@@ -713,7 +722,8 @@ public class IoTDBAuthorizationIT {
 
         for (int i = 0; i < 10; i++) {
           if (i % 2 == 0) {
-            adminStmt.execute("DROP ROLE role" + i);
+            adminPreparedStatementDrop.setInt(1,i);
+            adminPreparedStatementDrop.execute();
           }
         }
         resultSet = adminStmt.executeQuery("LIST ROLE");

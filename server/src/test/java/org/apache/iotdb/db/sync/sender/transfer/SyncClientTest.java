@@ -22,13 +22,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.primitives.Ints;
 import java.io.File;
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Random;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -75,7 +76,7 @@ public class SyncClientTest {
   public void makeFileSnapshot() throws IOException {
     Map<String, Set<File>> allFileList = new HashMap<>();
 
-    Random r = new Random(0);
+    SecureRandom r = new SecureRandom(Ints.toByteArray(0));
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         if (!allFileList.containsKey(String.valueOf(i))) {

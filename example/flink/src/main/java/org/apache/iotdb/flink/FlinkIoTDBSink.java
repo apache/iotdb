@@ -18,12 +18,12 @@
 package org.apache.iotdb.flink;
 
 import com.google.common.collect.Lists;
+import java.security.SecureRandom;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 
 public class FlinkIoTDBSink {
     public static void main(String[] args) throws Exception {
@@ -55,7 +55,7 @@ public class FlinkIoTDBSink {
 
     private static class SensorSource implements SourceFunction<Map<String,String>> {
         boolean running = true;
-        Random random = new Random();
+        SecureRandom random = new SecureRandom ();
         @Override
         public void run(SourceContext context) throws Exception {
             while (running) {

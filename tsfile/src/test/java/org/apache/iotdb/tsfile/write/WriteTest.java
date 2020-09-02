@@ -24,9 +24,9 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Random;
 
 import org.junit.After;
 import org.junit.Before;
@@ -62,7 +62,7 @@ public class WriteTest {
   private String inputDataFile;
   private String outputDataFile;
   private String errorOutputDataFile;
-  private Random rm = new Random();
+  private SecureRandom rm = new SecureRandom();
   private ArrayList<MeasurementSchema> measurementArray;
   private ArrayList<Path> pathArray;
   private Schema schema;

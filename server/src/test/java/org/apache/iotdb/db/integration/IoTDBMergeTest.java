@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -60,12 +61,15 @@ public class IoTDBMergeTest {
     logger.info("test...");
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement();
+        PreparedStatement preparedStatement = connection.prepareStatement("CREATE TIMESERIES root.mergeTest.s?" + " WITH DATATYPE=INT64,"
+            + "ENCODING=PLAIN")
+        ) {
       statement.execute("SET STORAGE GROUP TO root.mergeTest");
       for (int i = 1; i <= 3; i++) {
         try {
-          statement.execute("CREATE TIMESERIES root.mergeTest.s" + i + " WITH DATATYPE=INT64,"
-              + "ENCODING=PLAIN");
+          preparedStatement.setInt(1,i);
+          preparedStatement.execute();
         } catch (SQLException e) {
           // ignore
         }
@@ -111,12 +115,14 @@ public class IoTDBMergeTest {
     // e.g.: write 1. seq [10, 20), 2. seq [20, 30), 3. unseq [20, 30), 4. unseq [10, 20)
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement();
+        PreparedStatement preparedStatement = connection.prepareStatement("CREATE TIMESERIES root.mergeTest.s?" + " WITH DATATYPE=INT64,"
+            + "ENCODING=PLAIN")) {
       statement.execute("SET STORAGE GROUP TO root.mergeTest");
       for (int i = 1; i <= 3; i++) {
         try {
-          statement.execute("CREATE TIMESERIES root.mergeTest.s" + i + " WITH DATATYPE=INT64,"
-              + "ENCODING=PLAIN");
+          preparedStatement.setInt(1,i);
+          preparedStatement.execute();
         } catch (SQLException e) {
           // ignore
         }
@@ -173,12 +179,14 @@ public class IoTDBMergeTest {
     logger.info("testCrossPartition...");
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement();
+        PreparedStatement preparedStatement = connection.prepareStatement("CREATE TIMESERIES root.mergeTest.s?" + " WITH DATATYPE=INT64,"
+            + "ENCODING=PLAIN")) {
       statement.execute("SET STORAGE GROUP TO root.mergeTest");
       for (int i = 1; i <= 3; i++) {
         try {
-          statement.execute("CREATE TIMESERIES root.mergeTest.s" + i + " WITH DATATYPE=INT64,"
-              + "ENCODING=PLAIN");
+          preparedStatement.setInt(1,i);
+          preparedStatement.execute();
         } catch (SQLException e) {
           // ignore
         }

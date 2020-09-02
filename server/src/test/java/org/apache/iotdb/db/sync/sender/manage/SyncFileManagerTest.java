@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.sync.sender.manage;
 
+import com.google.common.primitives.Ints;
+import java.security.SecureRandom;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -73,7 +75,7 @@ public class SyncFileManagerTest {
   public void testGetValidFiles() throws IOException, MetadataException {
     Map<String, Map<Long, Set<File>>> allFileList = new HashMap<>();
 
-    Random r = new Random(0);
+    SecureRandom r = new SecureRandom(Ints.toByteArray(0));
     for (int i = 0; i < 3; i++) {
       IoTDB.metaManager.setStorageGroup(new PartialPath(getSgName(i)));
     }
@@ -115,7 +117,7 @@ public class SyncFileManagerTest {
 
     // add some files
     Map<String, Map<Long, Set<File>>> correctToBeSyncedFiles = new HashMap<>();
-    r = new Random(1);
+    r = new SecureRandom(Ints.toByteArray(1));
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
@@ -155,7 +157,7 @@ public class SyncFileManagerTest {
 
     // add some files and delete some files
     correctToBeSyncedFiles.clear();
-    r = new Random(2);
+    r = new SecureRandom(Ints.toByteArray(2));
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
@@ -218,7 +220,7 @@ public class SyncFileManagerTest {
     assertFileMap(correctToBeSyncedFiles, toBeSyncedFilesMap);
 
     // add some invalid files
-    r = new Random(3);
+    r = new SecureRandom(Ints.toByteArray(3));
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())

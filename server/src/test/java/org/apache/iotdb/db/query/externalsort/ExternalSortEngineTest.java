@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.externalsort;
 
+import java.security.SecureRandom;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -37,7 +38,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class ExternalSortEngineTest {
 
@@ -46,7 +46,7 @@ public class ExternalSortEngineTest {
   private SimpleExternalSortEngine engine;
   private String preBaseDir;
   private int preMinExternalSortSourceCount;
-  private Random rand = new Random();
+  private SecureRandom rand = new SecureRandom();
 
   @Before
   public void before() {

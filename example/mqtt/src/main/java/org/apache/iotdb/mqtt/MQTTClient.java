@@ -17,11 +17,10 @@
  */
 package org.apache.iotdb.mqtt;
 
+import java.security.SecureRandom;
 import org.fusesource.mqtt.client.BlockingConnection;
 import org.fusesource.mqtt.client.MQTT;
 import org.fusesource.mqtt.client.QoS;
-
-import java.util.Random;
 
 public class MQTTClient {
     public static void main(String[] args) throws Exception {
@@ -33,7 +32,7 @@ public class MQTTClient {
         BlockingConnection connection = mqtt.blockingConnection();
         connection.connect();
 
-        Random random = new Random();
+        SecureRandom random = new SecureRandom ();
         for (int i = 0; i < 10; i++) {
             String payload = String.format("{\n" +
                     "\"device\":\"root.sg.d1\",\n" +

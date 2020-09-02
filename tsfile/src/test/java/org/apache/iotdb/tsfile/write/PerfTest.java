@@ -22,7 +22,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Random;
+import java.security.SecureRandom;
 import java.util.Scanner;
 
 import org.junit.After;
@@ -63,8 +63,8 @@ public class PerfTest {
   static public String outputDataFile;
   static public String errorOutputDataFile;
   static public Schema schema;
-  static public Random r = new Random();
-  static public Random rm = new Random();
+  static public SecureRandom r = new SecureRandom();
+  static public SecureRandom rm = new SecureRandom();
 
   static private void generateSampleInputDataFile() throws IOException {
     File file = new File(inputDataFile);

@@ -22,8 +22,6 @@ package org.apache.iotdb.db.engine.merge;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import com.sun.org.slf4j.internal.Logger;
-import com.sun.org.slf4j.internal.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -41,6 +39,8 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MergeLogTest extends MergeTest {
 

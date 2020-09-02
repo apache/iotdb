@@ -25,9 +25,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 import org.junit.Test;
 
@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.encoding.bitpacking.LongPacker;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 public class LongPackerTest {
-  Random rand = new Random();
+  SecureRandom rand = new SecureRandom();
 
   @Test
   public void test() {

@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.junit.Assert;
@@ -28,7 +28,7 @@ import org.junit.Test;
 
 public class LongTVListTest {
 
-  Random random = new Random();
+  SecureRandom random = new SecureRandom();
 
   @Test
   public void testLongTVList1() {

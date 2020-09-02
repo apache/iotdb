@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Random;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -42,7 +42,7 @@ import org.junit.Test;
 public class PrimitiveMemTableTest {
 
   double delta;
-  Random rand = new Random();
+  SecureRandom rand = new SecureRandom();
 
   @Before
   public void setUp() {

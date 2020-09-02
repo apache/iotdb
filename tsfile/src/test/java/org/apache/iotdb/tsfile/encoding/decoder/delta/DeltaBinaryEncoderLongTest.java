@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.encoding.decoder.delta;
 
+import java.security.SecureRandom;
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
 import org.junit.Before;
@@ -34,7 +35,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Random;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
@@ -53,7 +53,7 @@ public class DeltaBinaryEncoderLongTest {
   ByteArrayOutputStream out;
   private DeltaBinaryEncoder writer;
   private DeltaBinaryDecoder reader;
-  private Random ran = new Random();
+  private SecureRandom ran = new SecureRandom();
   private ByteBuffer buffer;
 
   @Before

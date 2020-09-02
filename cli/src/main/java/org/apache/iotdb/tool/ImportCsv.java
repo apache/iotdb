@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.LineNumberReader;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -302,11 +303,10 @@ public class ImportCsv extends AbstractCsvTool {
       Map<String, ArrayList<Integer>> deviceToColumn,
       List<String> colInfo)
       throws SQLException, IOException {
-    try (Statement statement = connection.createStatement()) {
-
+    try (PreparedStatement preparedStatement = connection.prepareStatement("show timeseries ?")) {
       for (int i = 1; i < strHeadInfo.length; i++) {
-        statement.execute("show timeseries " + strHeadInfo[i]);
-        ResultSet resultSet = statement.getResultSet();
+        preparedStatement.setString(1,strHeadInfo[i]);
+        ResultSet resultSet = preparedStatement.executeQuery();
         try {
           if (resultSet.next()) {
             timeseriesDataType.put(strHeadInfo[i], resultSet.getString(2));

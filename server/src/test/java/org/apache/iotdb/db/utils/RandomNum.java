@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.util.Random;
+import java.security.SecureRandom;
 
 public class RandomNum {
 
-  private static Random random = new Random();
+  private static SecureRandom random = new SecureRandom();
 
   private RandomNum() {
     throw new IllegalStateException("Utility class");

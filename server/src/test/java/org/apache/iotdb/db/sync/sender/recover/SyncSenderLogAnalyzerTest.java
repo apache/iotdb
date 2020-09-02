@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.sync.sender.recover;
 
+import com.google.common.primitives.Ints;
+import java.security.SecureRandom;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -84,7 +86,7 @@ public class SyncSenderLogAnalyzerTest {
     for (int i = 0; i < 3; i++) {
       IoTDB.metaManager.setStorageGroup(new PartialPath(getSgName(i)));
     }
-    Random r = new Random(0);
+    SecureRandom r = new SecureRandom(Ints.toByteArray(0));
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>()).computeIfAbsent(0L, k -> new HashSet<>());

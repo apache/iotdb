@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Random;
+import java.security.SecureRandom;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -37,7 +37,7 @@ public class DeltaBinaryEncoderIntegerTest {
   ByteArrayOutputStream out;
   private DeltaBinaryEncoder writer;
   private DeltaBinaryDecoder reader;
-  private Random ran = new Random();
+  private SecureRandom ran = new SecureRandom();
   private ByteBuffer buffer;
 
   @Before

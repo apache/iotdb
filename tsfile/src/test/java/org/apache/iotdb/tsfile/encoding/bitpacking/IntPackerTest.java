@@ -21,15 +21,15 @@ package org.apache.iotdb.tsfile.encoding.bitpacking;
 
 import static org.junit.Assert.assertEquals;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.Random;
 
 import org.junit.Test;
 
 import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
 
 public class IntPackerTest {
-  Random rand = new Random();
+  SecureRandom rand = new SecureRandom();
   @Test
   public void test() {
     int width = 31;

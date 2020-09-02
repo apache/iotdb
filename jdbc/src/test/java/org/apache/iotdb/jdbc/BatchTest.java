@@ -79,19 +79,16 @@ public class BatchTest {
     int[] result = statement.executeBatch();
     assertEquals(1, result.length);
 
-    List<TSStatus> resExpected = new ArrayList<TSStatus>() {
-      {
-        add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-        add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-        add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-        add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-        add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-        add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-        add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-        add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-        add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-      }
-    };
+    List<TSStatus> resExpected = new ArrayList<TSStatus>();
+    resExpected.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    resExpected.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    resExpected.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    resExpected.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    resExpected.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    resExpected.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    resExpected.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    resExpected.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    resExpected.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     resp.setSubStatus(resExpected);
 
     statement.clearBatch();
@@ -138,12 +135,9 @@ public class BatchTest {
     resp = RpcUtils.getStatus(Collections.singletonList(errorStatus));
     statement.addBatch("sql1");
     statement.addBatch("sql1");
-    List<TSStatus> resExpected = new ArrayList<TSStatus>() {
-      {
-        add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-        add(RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR));
-      }
-    };
+    List<TSStatus> resExpected = new ArrayList<TSStatus>();
+    resExpected.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    resExpected.add(RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR));
     resp.setSubStatus(resExpected);
     when(client.executeBatchStatement(any(TSExecuteBatchStatementReq.class))).thenReturn(resp);
     try {

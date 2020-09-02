@@ -73,12 +73,9 @@ public class IoTDBConnectionTest {
   @Test
   public void testGetServerProperties() throws TException {
     final String version = "v0.1";
-    @SuppressWarnings("serial") final List<String> supportedAggregationTime = new ArrayList<String>() {
-      {
-        add("max_time");
-        add("min_time");
-      }
-    };
+    @SuppressWarnings("serial") final List<String> supportedAggregationTime = new ArrayList<String>();
+    supportedAggregationTime.add("max_time");
+    supportedAggregationTime.add("min_time");
     final String timestampPrecision = "ms";
     when(client.getProperties())
         .thenReturn(new ServerProperties(version, supportedAggregationTime, timestampPrecision));

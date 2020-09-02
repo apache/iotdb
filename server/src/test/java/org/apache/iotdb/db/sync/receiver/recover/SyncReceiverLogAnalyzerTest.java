@@ -22,14 +22,15 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.primitives.Ints;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -102,7 +103,7 @@ public class SyncReceiverLogAnalyzerTest {
     Map<String, Set<File>> correctSequenceLoadedFileMap = new HashMap<>();
 
     // add some new tsfiles
-    Random r = new Random(0);
+    SecureRandom r = new SecureRandom(Ints.toByteArray(0));
     receiverLogger.startSyncTsFiles();
     Set<String> toBeSyncedFiles = new HashSet<>();
     for (int i = 0; i < 3; i++) {

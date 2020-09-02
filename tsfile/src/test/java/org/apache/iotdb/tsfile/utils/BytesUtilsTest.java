@@ -21,12 +21,13 @@ package org.apache.iotdb.tsfile.utils;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.primitives.Longs;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 import org.junit.Test;
 
@@ -35,7 +36,7 @@ import org.apache.iotdb.tsfile.constant.TestConstant;
 
 public class BytesUtilsTest {
 
-  private Random r = new Random(System.currentTimeMillis());
+  private SecureRandom r = new SecureRandom(Longs.toByteArray(System.currentTimeMillis()));
 
   @Test
   public void testIntToBytes() {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb;
 
+import java.sql.PreparedStatement;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import java.sql.Connection;
@@ -40,12 +41,13 @@ public class JDBCExample {
       } catch (IoTDBSQLException e) {
         System.out.println(e.getMessage());
       }
-
+      PreparedStatement preparedStatement = connection.prepareStatement("insert into root.sg1.d1(timestamp, s1, s2, s3) values(?" + "," + 1 + "," + 1 + "," + 1 + ")");
       for (int i = 0; i <= 100; i++) {
-        statement.addBatch("insert into root.sg1.d1(timestamp, s1, s2, s3) values("+ i + "," + 1 + "," + 1 + "," + 1 + ")");
+        preparedStatement.setLong(1,i);
+        preparedStatement.addBatch();
       }
-      statement.executeBatch();
-      statement.clearBatch();
+      preparedStatement.executeBatch();
+      preparedStatement.clearBatch();
 
       ResultSet resultSet = statement.executeQuery("select * from root where time <= 10");
       outputResult(resultSet);

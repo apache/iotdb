@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import com.sun.org.slf4j.internal.Logger;
-import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -30,6 +28,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.db.constant.TestConstant.*;
 import static org.junit.Assert.assertEquals;
