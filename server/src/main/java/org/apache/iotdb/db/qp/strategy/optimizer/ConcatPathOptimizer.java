@@ -18,21 +18,26 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.*;
+import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 /**
  * concat paths in select and from clause.
@@ -80,7 +85,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     boolean isAlignByDevice = false;
     if (operator instanceof QueryOperator) {
-      if (!((QueryOperator) operator).isAlignByDevice() || ((QueryOperator) operator).isLastQuery()) {
+      if (!((QueryOperator) operator).isAlignByDevice() || ((QueryOperator) operator)
+          .isLastQuery()) {
         concatSelect(prefixPaths, select); // concat and remove star
 
         if (((QueryOperator) operator).hasSlimit()) {
@@ -94,9 +100,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           String device = path.getDevice();
           if (!device.isEmpty()) {
             throw new LogicalOptimizeException(
-                    "The paths of the SELECT clause can only be single level. In other words, "
-                            + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
-                            + " For more details please refer to the SQL document.");
+                "The paths of the SELECT clause can only be single level. In other words, "
+                    + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
+                    + " For more details please refer to the SQL document.");
           }
         }
         // ALIGN_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
@@ -110,7 +116,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if (filter == null) {
       return operator;
     }
-    if(!isAlignByDevice){
+    if (!isAlignByDevice) {
       sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter, filterPaths));
     }
     sfwOperator.getFilterOperator().setPathSet(filterPaths);
@@ -164,7 +170,11 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       // selectPath cannot start with ROOT, which is guaranteed by TSParser
       PartialPath selectPath = suffixPaths.get(i);
       for (PartialPath fromPath : fromPaths) {
-        allPaths.add(fromPath.concatPath(selectPath));
+        PartialPath fullPath = fromPath.concatPath(selectPath);
+        if (selectPath.getTsAlias() != null) {
+          fullPath.setTsAlias(selectPath.getTsAlias());
+        }
+        allPaths.add(fullPath);
         extendListSafely(originAggregations, i, afterConcatAggregations);
       }
     }
@@ -176,7 +186,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
    * Make 'SLIMIT&SOFFSET' take effect by trimming the suffixList and aggregations of the
    * selectOperator.
    *
-   * @param seriesLimit is ensured to be positive integer
+   * @param seriesLimit  is ensured to be positive integer
    * @param seriesOffset is ensured to be non-negative integer
    */
   private void slimitTrim(SelectOperator select, int seriesLimit, int seriesOffset)
@@ -297,6 +307,14 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     for (int i = 0; i < paths.size(); i++) {
       try {
         List<PartialPath> actualPaths = removeWildcard(paths.get(i));
+        if (paths.get(i).getTsAlias() != null) {
+          if (actualPaths.size() == 1) {
+            actualPaths.get(0).setTsAlias(paths.get(i).getTsAlias());
+          } else if (actualPaths.size() >= 2) {
+            throw new LogicalOptimizeException(
+                "alias '" + paths.get(i).getTsAlias() + "' can only be matched with one time series");
+          }
+        }
         for (PartialPath actualPath : actualPaths) {
           retPaths.add(actualPath);
           if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty()) {

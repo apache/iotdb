@@ -31,7 +31,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
 public class PartialPath extends Path implements Comparable<Path> {
 
   private String[] nodes;
-  private String alias;
+  // alias of measurement
+  private String measurementAlias = null;
+  // alias of time series used in SELECT AS
+  private String tsAlias = null;
 
   public PartialPath(String path) throws IllegalPathException {
     this.nodes = MetaUtils.splitPathToDetachedPath(path);
@@ -144,23 +147,29 @@ public class PartialPath extends Path implements Comparable<Path> {
     }
   }
 
-  public void setAlias(String alias) {
-    this.alias = alias;
+  public String getMeasurementAlias() {
+    return measurementAlias;
+  }
+
+  public void setMeasurementAlias(String measurementAlias) { this.measurementAlias = measurementAlias; }
+
+  public String getTsAlias() {
+    return tsAlias;
+  }
+
+  public void setTsAlias(String tsAlias) {
+    this.tsAlias = tsAlias;
   }
 
   @Override
   public String getFullPathWithAlias() {
-    return getDevice() + IoTDBConstant.PATH_SEPARATOR + alias;
+    return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
   }
 
   @Override
   public int compareTo(Path path) {
     PartialPath partialPath = (PartialPath) path;
     return this.getFullPath().compareTo(partialPath.getFullPath());
-  }
-
-  public String getAlias() {
-    return alias;
   }
 
   public boolean startsWith(String[] otherNodes) {

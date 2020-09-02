@@ -35,7 +35,6 @@ public class Path implements Serializable, Comparable<Path> {
   protected String fullPath;
   private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
 
-
   public Path() {}
 
   /**

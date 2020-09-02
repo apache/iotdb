@@ -100,7 +100,7 @@ public class SchemaUtils {
   }
 
   /**
-   * @param paths time series paths
+   * @param paths       time series paths
    * @param aggregation aggregation function, may be null
    * @return The data type of aggregation or (data type of paths if aggregation is null)
    */
@@ -117,7 +117,11 @@ public class SchemaUtils {
     return dataTypes;
   }
 
-  public static List<TSDataType> getSeriesTypesByPath(List<PartialPath> paths,
+  public static TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getSeriesType(path);
+  }
+
+  public static List<TSDataType> getSeriesTypesByPaths(List<PartialPath> paths,
       List<String> aggregations) throws MetadataException {
     List<TSDataType> tsDataTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
@@ -160,8 +164,9 @@ public class SchemaUtils {
 
   public static void checkDataTypeWithEncoding(TSDataType dataType, TSEncoding encoding)
       throws MetadataException {
-    if(!schemaChecker.get(dataType).contains(encoding)) {
-      throw new MetadataException(String.format("encoding %s does not support %s", dataType.toString(), encoding.toString()));
+    if (!schemaChecker.get(dataType).contains(encoding)) {
+      throw new MetadataException(String
+          .format("encoding %s does not support %s", dataType.toString(), encoding.toString()));
     }
   }
 }

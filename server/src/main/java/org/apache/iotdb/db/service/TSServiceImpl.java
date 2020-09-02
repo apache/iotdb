@@ -346,9 +346,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
-          List<TSDataType> dataTypes =
-              getSeriesTypesByString(Collections.singletonList(new PartialPath(req.getColumnPath())), null);
-          resp.setDataType(dataTypes.get(0).toString());
+          resp.setDataType(getSeriesTypeByPath(new PartialPath(req.getColumnPath())).toString());
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "ALL_COLUMNS":
@@ -767,18 +765,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // Restore column header of aggregate to func(column_name), only
     // support single aggregate function for now
     List<PartialPath> paths = plan.getPaths();
-    List<TSDataType> seriesTypes;
+    List<TSDataType> seriesTypes = new ArrayList<>();
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
         for (PartialPath path : paths) {
-          if (path.getAlias() != null) {
-            respColumns.add(path.getFullPathWithAlias());
-          } else {
-            respColumns.add(path.getFullPath());
+          String column = path.getTsAlias();
+          if (column == null) {
+            column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.getFullPath();
           }
+          respColumns.add(column);
+          seriesTypes.add(getSeriesTypeByPath(path));
         }
-        seriesTypes = getSeriesTypesByString(paths, null);
         break;
       case AGGREGATION:
       case GROUPBYTIME:
@@ -790,13 +788,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
         }
         for (int i = 0; i < paths.size(); i++) {
-          if (paths.get(i).getAlias() != null) {
-            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")");
-          } else {
-            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+          PartialPath path = paths.get(i);
+          String column = path.getTsAlias();
+          if (column == null) {
+            column = path.getMeasurementAlias() != null
+                ? aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")"
+                : aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")";
           }
+          respColumns.add(column);
         }
-        seriesTypes = getSeriesTypesByPath(paths, aggregations);
+        seriesTypes = getSeriesTypesByPaths(paths, aggregations);
         break;
       default:
         throw new TException("unsupported query type: " + plan.getOperatorType());
@@ -822,6 +823,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     // build column header with constant and non exist column and deduplication
     List<String> measurements = plan.getMeasurements();
+    Map<String, String> measurementAliasMap = plan.getMeasurementAliasMap();
     Map<String, MeasurementType> measurementTypeMap = plan.getMeasurementTypeMap();
     for (String measurement : measurements) {
       TSDataType type = null;
@@ -833,7 +835,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case Constant:
           type = TSDataType.TEXT;
       }
-      respColumns.add(measurement);
+      respColumns.add(measurementAliasMap.getOrDefault(measurement, measurement));
       columnTypes.add(type.toString());
 
       if (!deduplicatedMeasurements.contains(measurement)) {
@@ -1608,13 +1610,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
   }
 
-  protected List<TSDataType> getSeriesTypesByPath(List<PartialPath> paths, List<String> aggregations)
+  protected List<TSDataType> getSeriesTypesByPaths(List<PartialPath> paths, List<String> aggregations)
       throws MetadataException {
-    return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+    return SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
   }
 
-  protected List<TSDataType> getSeriesTypesByString(List<PartialPath> paths, String aggregation)
-      throws MetadataException {
-    return SchemaUtils.getSeriesTypesByString(paths, aggregation);
+
+  protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
+    return SchemaUtils.getSeriesTypeByPath(path);
   }
 }
