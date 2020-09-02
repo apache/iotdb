@@ -39,7 +39,7 @@ public class RowRowRecordParser implements RowRecordParser<Row>, ResultTypeQuery
 	private final int[] indexMapping;
 	private final RowTypeInfo rowTypeInfo;
 
-	public RowRowRecordParser(int[] indexMapping, RowTypeInfo rowTypeInfo) {
+	public RowRowRecordParser(final int[] indexMapping, RowTypeInfo rowTypeInfo) {
 		this.indexMapping = indexMapping;
 		this.rowTypeInfo = rowTypeInfo;
 	}

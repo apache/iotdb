@@ -30,7 +30,7 @@ public class MultiSourceExternalSortJobPart extends ExternalSortJobPart {
   private long queryId;
 
   public MultiSourceExternalSortJobPart(long queryId, String tmpFilePath,
-      List<ExternalSortJobPart> source) {
+      final List<ExternalSortJobPart> source) {
     super(ExternalSortJobPartType.MULTIPLE_SOURCE);
     this.source = source;
     this.tmpFilePath = tmpFilePath;

@@ -54,7 +54,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
 
   private QueryDataSource queryDataSource;
 
-  public LocalGroupByExecutor(PartialPath path, Set<String> allSensors, TSDataType dataType,
+  public LocalGroupByExecutor(PartialPath path, final Set<String> allSensors, TSDataType dataType,
       QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
     queryDataSource = QueryResourceManager.getInstance()

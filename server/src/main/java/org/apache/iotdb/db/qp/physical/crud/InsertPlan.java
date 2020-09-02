@@ -58,7 +58,7 @@ abstract public class InsertPlan extends PhysicalPlan {
     return this.measurements;
   }
 
-  public void setMeasurements(String[] measurements) {
+  public void setMeasurements(final String[] measurements) {
     this.measurements = measurements;
   }
 
@@ -66,7 +66,7 @@ abstract public class InsertPlan extends PhysicalPlan {
     return dataTypes;
   }
 
-  public void setDataTypes(TSDataType[] dataTypes) {
+  public void setDataTypes(final TSDataType[] dataTypes) {
     this.dataTypes = dataTypes;
   }
 
@@ -74,7 +74,7 @@ abstract public class InsertPlan extends PhysicalPlan {
     return schemas;
   }
 
-  public void setSchemas(MeasurementSchema[] schemas) {
+  public void setSchemas(final MeasurementSchema[] schemas) {
     this.schemas = schemas;
   }
 

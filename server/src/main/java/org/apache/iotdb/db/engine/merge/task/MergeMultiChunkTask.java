@@ -85,7 +85,7 @@ public class MergeMultiChunkTask {
   private String storageGroupName;
 
   public MergeMultiChunkTask(MergeContext context, String taskName, MergeLogger mergeLogger,
-      MergeResource mergeResource, boolean fullMerge, List<PartialPath> unmergedSeries,
+      MergeResource mergeResource, boolean fullMerge, final List<PartialPath> unmergedSeries,
       int concurrentMergeSeriesNum, String storageGroupName) {
     this.mergeContext = context;
     this.taskName = taskName;
@@ -166,7 +166,7 @@ public class MergeMultiChunkTask {
     mergeLogger.logTSEnd();
   }
 
-  private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders)
+  private void pathsMergeOneFile(int seqFileIdx, final IPointReader[] unseqReaders)
       throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
     String deviceId = currMergingPaths.get(0).getDevice();
@@ -225,7 +225,7 @@ public class MergeMultiChunkTask {
     }
   }
 
-  private List<Integer> filterNoDataPaths(List[] seqChunkMeta, int seqFileIdx) {
+  private List<Integer> filterNoDataPaths(final List[] seqChunkMeta, int seqFileIdx) {
     // if the last seqFile does not contains this series but the unseqFiles do, data of this
     // series should also be written into a new chunk
     List<Integer> ret = new ArrayList<>();
@@ -239,8 +239,8 @@ public class MergeMultiChunkTask {
     return ret;
   }
 
-  private boolean mergeChunks(List<ChunkMetadata>[] seqChunkMeta, boolean isLastFile,
-      TsFileSequenceReader reader, IPointReader[] unseqReaders,
+  private boolean mergeChunks(final List<ChunkMetadata>[] seqChunkMeta, boolean isLastFile,
+      TsFileSequenceReader reader, final IPointReader[] unseqReaders,
       RestorableTsFileIOWriter mergeFileWriter, TsFileResource currFile)
       throws IOException {
     int[] ptWrittens = new int[seqChunkMeta.length];
@@ -442,11 +442,11 @@ public class MergeMultiChunkTask {
 
     private int totalSeriesNum;
 
-    public MergeChunkHeapTask(PriorityQueue<Integer> chunkIdxHeap,
-        MetaListEntry[] metaListEntries, int[] ptWrittens,
-        TsFileSequenceReader reader,
-        RestorableTsFileIOWriter mergeFileWriter,
-        IPointReader[] unseqReaders, TsFileResource currFile, boolean isLastFile, int taskNum) {
+    public MergeChunkHeapTask(final PriorityQueue<Integer> chunkIdxHeap,
+        final MetaListEntry[] metaListEntries, int[] ptWrittens,
+        final TsFileSequenceReader reader,
+        final RestorableTsFileIOWriter mergeFileWriter,
+        final IPointReader[] unseqReaders, final TsFileResource currFile, boolean isLastFile, int taskNum) {
       this.chunkIdxHeap = chunkIdxHeap;
       this.metaListEntries = metaListEntries;
       this.ptWrittens = ptWrittens;

@@ -36,7 +36,7 @@ public class InsertOperator extends SFWOperator {
     return measurementList;
   }
 
-  public void setMeasurementList(String[] measurementList) {
+  public void setMeasurementList(final String[] measurementList) {
     this.measurementList = measurementList;
   }
 
@@ -44,7 +44,7 @@ public class InsertOperator extends SFWOperator {
     return valueList;
   }
 
-  public void setValueList(String[] insertValue) {
+  public void setValueList(final String[] insertValue) {
     this.valueList = insertValue;
   }
 

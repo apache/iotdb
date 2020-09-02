@@ -734,7 +734,7 @@ public class IoTDBConfig {
     }
   }
 
-  void reloadDataDirs(String[] dataDirs) throws LoadConfigurationException {
+  void reloadDataDirs(final String[] dataDirs) throws LoadConfigurationException {
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
       for (int i = 0; i < dataDirs.length; i++) {

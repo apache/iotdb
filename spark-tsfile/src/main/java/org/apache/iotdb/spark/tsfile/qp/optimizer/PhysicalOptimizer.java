@@ -41,11 +41,11 @@ public class PhysicalOptimizer {
   private List<String> validDeltaObjects = new ArrayList<>();
   private List<String> columnNames;
 
-  public PhysicalOptimizer(List<String> columnNames) {
+  public PhysicalOptimizer(final List<String> columnNames) {
     this.columnNames = columnNames;
   }
 
-  public List<TSQueryPlan> optimize(SingleQuery singleQuery, List<String> paths,
+  public List<TSQueryPlan> optimize(SingleQuery singleQuery, final List<String> paths,
       TsFileSequenceReader in, Long start, Long end) throws IOException {
 
     Map<String, TSDataType> allMeasurementsInFile = in.getAllMeasurements();
@@ -127,8 +127,8 @@ public class PhysicalOptimizer {
    * @param beginIndex         current recursion list index
    * @param values             combination of column values
    */
-  private void combination(List<String> actualDeltaObjects, Map<String, Set<String>> columnValues,
-      Object[] columns, int beginIndex, String[] values) {
+  private void combination(final List<String> actualDeltaObjects, final Map<String, Set<String>> columnValues,
+      final Object[] columns, int beginIndex, final String[] values) {
     // which should in column names -> now just device_name
     // use delta_object column
     if (columnValues.containsKey(SQLConstant.RESERVED_DELTA_OBJECT)) {
@@ -166,7 +166,7 @@ public class PhysicalOptimizer {
     }
   }
 
-  private Map<String, Set<String>> mergeColumns(List<FilterOperator> columnFilterOperators) {
+  private Map<String, Set<String>> mergeColumns(final List<FilterOperator> columnFilterOperators) {
     Map<String, Set<String>> column_values_map = new HashMap<>();
     for (FilterOperator filterOperator : columnFilterOperators) {
       Pair<String, Set<String>> column_values = mergeColumn(filterOperator);

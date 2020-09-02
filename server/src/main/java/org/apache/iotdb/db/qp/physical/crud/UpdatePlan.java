@@ -61,7 +61,7 @@ public class UpdatePlan extends PhysicalPlan {
    * @param value -value
    * @param path -path
    */
-  public UpdatePlan(List<Pair<Long, Long>> list, String value, PartialPath path) {
+  public UpdatePlan(final List<Pair<Long, Long>> list, String value, PartialPath path) {
     super(false, Operator.OperatorType.UPDATE);
     setValue(value);
     setPath(path);
@@ -72,11 +72,11 @@ public class UpdatePlan extends PhysicalPlan {
     return intervals;
   }
 
-  public void addInterval(Pair<Long, Long> interval) {
+  public void addInterval(final Pair<Long, Long> interval) {
     this.intervals.add(interval);
   }
 
-  public void addIntervals(List<Pair<Long, Long>> intervals) {
+  public void addIntervals(final List<Pair<Long, Long>> intervals) {
     this.intervals.addAll(intervals);
   }
 

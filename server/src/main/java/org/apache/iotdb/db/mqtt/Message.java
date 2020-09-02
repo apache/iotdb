@@ -41,7 +41,7 @@ public class Message {
         return timestamp;
     }
 
-    public void setTimestamp(Long timestamp) {
+    public void setTimestamp(final Long timestamp) {
         this.timestamp = timestamp;
     }
 
@@ -49,7 +49,7 @@ public class Message {
         return measurements;
     }
 
-    public void setMeasurements(List<String> measurements) {
+    public void setMeasurements(final List<String> measurements) {
         this.measurements = measurements;
     }
 
@@ -57,7 +57,7 @@ public class Message {
         return values;
     }
 
-    public void setValues(List<String> values) {
+    public void setValues(final List<String> values) {
         this.values = values;
     }
 

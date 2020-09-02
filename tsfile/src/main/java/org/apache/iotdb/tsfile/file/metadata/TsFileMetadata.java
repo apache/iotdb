@@ -137,7 +137,7 @@ public class TsFileMetadata {
    * @param outputStream -output stream to determine byte length
    * @return -byte length
    */
-  public int serializeBloomFilter(OutputStream outputStream, Set<Path> paths)
+  public int serializeBloomFilter(OutputStream outputStream, final Set<Path> paths)
       throws IOException {
     int byteLen = 0;
     BloomFilter filter = buildBloomFilter(paths);
@@ -156,7 +156,7 @@ public class TsFileMetadata {
    *
    * @return bloom filter
    */
-  private BloomFilter buildBloomFilter(Set<Path> paths) {
+  private BloomFilter buildBloomFilter(final Set<Path> paths) {
     BloomFilter filter = BloomFilter
         .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(),
             paths.size());
@@ -198,7 +198,7 @@ public class TsFileMetadata {
     this.metadataIndex = metadataIndex;
   }
 
-  public void setVersionInfo(List<Pair<Long, Long>> versionInfo) {
+  public void setVersionInfo(final List<Pair<Long, Long>> versionInfo) {
     this.versionInfo = versionInfo;
   }
 

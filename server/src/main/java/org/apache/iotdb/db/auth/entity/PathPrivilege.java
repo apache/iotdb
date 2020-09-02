@@ -65,7 +65,7 @@ public class PathPrivilege {
     return privileges;
   }
 
-  public void setPrivileges(Set<Integer> privileges) {
+  public void setPrivileges(final Set<Integer> privileges) {
     this.privileges = privileges;
   }
 

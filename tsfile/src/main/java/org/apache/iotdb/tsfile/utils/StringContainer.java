@@ -62,12 +62,12 @@ public class StringContainer {
     this.joinSeparator = joinSeparator;
   }
 
-  public StringContainer(String[] strings) {
+  public StringContainer(final String[] strings) {
     this();
     addTail(strings);
   }
 
-  public StringContainer(String[] strings, String joinSeparator) {
+  public StringContainer(final String[] strings, String joinSeparator) {
     this(joinSeparator);
     addTail(strings);
   }

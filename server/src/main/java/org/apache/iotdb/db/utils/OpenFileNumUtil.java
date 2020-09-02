@@ -274,7 +274,7 @@ public class OpenFileNumUtil {
     // e.g. data/data/ for SEQUENCE_FILE_OPEN_NUM
     private List<String> path;
 
-    OpenFileNumStatistics(List<String> path) {
+    OpenFileNumStatistics(final List<String> path) {
       this.path = path;
     }
 

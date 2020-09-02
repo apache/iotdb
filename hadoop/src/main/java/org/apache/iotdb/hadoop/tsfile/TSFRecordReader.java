@@ -231,7 +231,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
   }
 
   @Override
-  public void setMeasurementIds(List<String> measurementIds) {
+  public void setMeasurementIds(final List<String> measurementIds) {
     this.measurementIds = measurementIds;
   }
 

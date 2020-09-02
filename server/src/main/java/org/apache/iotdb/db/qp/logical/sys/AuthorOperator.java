@@ -98,7 +98,7 @@ public class AuthorOperator extends RootOperator {
     return privilegeList;
   }
 
-  public void setPrivilegeList(String[] authorizationList) {
+  public void setPrivilegeList(final String[] authorizationList) {
     this.privilegeList = authorizationList;
   }
 

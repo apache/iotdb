@@ -32,7 +32,7 @@ public class SingleQuery {
   private FilterOperator timeFilterOperator;
   private FilterOperator valueFilterOperator;
 
-  public SingleQuery(List<FilterOperator> columnFilterOperators,
+  public SingleQuery(final List<FilterOperator> columnFilterOperators,
       FilterOperator timeFilter, FilterOperator valueFilter) {
     super();
     this.columnFilterOperators = columnFilterOperators;

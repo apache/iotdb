@@ -260,7 +260,7 @@ public class MergeUtils {
     private int listIdx;
     private List<ChunkMetadata> chunkMetadataList;
 
-    public MetaListEntry(int pathId, List<ChunkMetadata> chunkMetadataList) {
+    public MetaListEntry(int pathId, final List<ChunkMetadata> chunkMetadataList) {
       this.pathId = pathId;
       this.listIdx = -1;
       this.chunkMetadataList = chunkMetadataList;

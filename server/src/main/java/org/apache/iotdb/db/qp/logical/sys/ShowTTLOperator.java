@@ -28,7 +28,7 @@ public class ShowTTLOperator extends ShowOperator {
 
   private List<PartialPath> storageGroups;
 
-  public ShowTTLOperator(List<PartialPath> storageGroups) {
+  public ShowTTLOperator(final List<PartialPath> storageGroups) {
     super(SQLConstant.TOK_SHOW, OperatorType.TTL);
     this.storageGroups = storageGroups;
   }

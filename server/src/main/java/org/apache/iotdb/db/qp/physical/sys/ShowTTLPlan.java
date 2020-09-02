@@ -25,7 +25,7 @@ public class ShowTTLPlan extends ShowPlan {
 
   private List<PartialPath> storageGroups;
 
-  public ShowTTLPlan(List<PartialPath> storageGroups) {
+  public ShowTTLPlan(final List<PartialPath> storageGroups) {
     super(ShowContentType.TTL);
     this.storageGroups = storageGroups;
   }

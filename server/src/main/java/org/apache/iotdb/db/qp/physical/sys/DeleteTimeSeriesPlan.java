@@ -32,7 +32,7 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
 
   private List<PartialPath> deletePathList;
 
-  public DeleteTimeSeriesPlan(List<PartialPath> deletePathList) {
+  public DeleteTimeSeriesPlan(final List<PartialPath> deletePathList) {
     super(false, Operator.OperatorType.DELETE_TIMESERIES);
     this.deletePathList = deletePathList;
   }

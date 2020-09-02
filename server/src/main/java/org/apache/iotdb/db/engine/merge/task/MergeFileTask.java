@@ -69,8 +69,8 @@ class MergeFileTask {
   private int currentMergeIndex;
   private String currMergeFile;
 
-  MergeFileTask(String taskName, MergeContext context, MergeLogger mergeLogger,
-      MergeResource resource, List<TsFileResource> unmergedSeqFiles) {
+  MergeFileTask(String taskName, final MergeContext context, final MergeLogger mergeLogger,
+      final MergeResource resource, final List<TsFileResource> unmergedSeqFiles) {
     this.taskName = taskName;
     this.context = context;
     this.mergeLogger = mergeLogger;
@@ -254,7 +254,7 @@ class MergeFileTask {
     seqFile.setHistoricalVersions(newHistoricalVersions);
   }
 
-  private void writeMergedChunkGroup(List<ChunkMetadata> chunkMetadataList, String device,
+  private void writeMergedChunkGroup(final List<ChunkMetadata> chunkMetadataList, String device,
       TsFileSequenceReader reader, TsFileIOWriter fileWriter)
       throws IOException {
     fileWriter.startChunkGroup(device);
@@ -345,7 +345,7 @@ class MergeFileTask {
             + IoTDBConstant.FILE_NAME_SEPARATOR + mergeVersion + TSFILE_SUFFIX);
   }
 
-  private long writeUnmergedChunks(List<Long> chunkStartTimes,
+  private long writeUnmergedChunks(final List<Long> chunkStartTimes,
       List<ChunkMetadata> chunkMetadataList, TsFileSequenceReader reader,
       RestorableTsFileIOWriter fileWriter) throws IOException {
     long maxVersion = 0;

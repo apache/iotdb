@@ -58,7 +58,7 @@ public class Role {
     return privilegeList;
   }
 
-  public void setPrivilegeList(List<PathPrivilege> privilegeList) {
+  public void setPrivilegeList(final List<PathPrivilege> privilegeList) {
     this.privilegeList = privilegeList;
   }
 
@@ -77,7 +77,7 @@ public class Role {
   /**
    * set privileges of path.
    */
-  public void setPrivileges(String path, Set<Integer> privileges) {
+  public void setPrivileges(String path, final Set<Integer> privileges) {
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (pathPrivilege.getPath().equals(path)) {
         pathPrivilege.setPrivileges(privileges);
@@ -128,7 +128,7 @@ public class Role {
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
-  public void deserialize(ByteBuffer buffer) {
+  public void deserialize(final ByteBuffer buffer) {
     name = SerializeUtils.deserializeString(buffer);
     int privilegeListSize = buffer.getInt();
     privilegeList = new ArrayList<>(privilegeListSize);

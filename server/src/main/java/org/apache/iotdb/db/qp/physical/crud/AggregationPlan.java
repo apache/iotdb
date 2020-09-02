@@ -43,7 +43,7 @@ public class AggregationPlan extends RawDataQueryPlan {
     return aggregations;
   }
 
-  public void setAggregations(List<String> aggregations) {
+  public void setAggregations(final List<String> aggregations) {
     this.aggregations = aggregations;
   }
 

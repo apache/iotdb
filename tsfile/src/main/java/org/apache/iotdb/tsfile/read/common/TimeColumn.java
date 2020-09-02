@@ -53,7 +53,7 @@ public class TimeColumn {
     count = 0;
   }
 
-  public TimeColumn(List<long[]> timeRet, int count, int capacity) {
+  public TimeColumn(final List<long[]> timeRet, int count, int capacity) {
     this.count = count;
     this.readCurListIndex = 0;
     this.readCurArrayIndex = 0;

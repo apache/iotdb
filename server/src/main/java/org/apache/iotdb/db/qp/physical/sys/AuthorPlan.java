@@ -60,7 +60,7 @@ public class AuthorPlan extends PhysicalPlan {
    */
   public AuthorPlan(AuthorOperator.AuthorType authorType, String userName, String roleName,
       String password,
-      String newPassword, String[] authorizationList, PartialPath nodeName) throws AuthException {
+      String newPassword, final String[] authorizationList, PartialPath nodeName) throws AuthException {
     super(false, Operator.OperatorType.AUTHOR);
     this.authorType = authorType;
     this.userName = userName;
@@ -207,7 +207,7 @@ public class AuthorPlan extends PhysicalPlan {
     return permissions;
   }
 
-  public void setPermissions(Set<Integer> permissions) {
+  public void setPermissions(final Set<Integer> permissions) {
     this.permissions = permissions;
   }
 
@@ -215,7 +215,7 @@ public class AuthorPlan extends PhysicalPlan {
     return nodeName;
   }
 
-  private Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
+  private Set<Integer> strToPermissions(final String[] authorizationList) throws AuthException {
     Set<Integer> result = new HashSet<>();
     if (authorizationList == null) {
       return result;

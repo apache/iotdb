@@ -29,7 +29,7 @@ public class TimeseriesMetadataForV1 extends TimeseriesMetadata {
   
   private List<ChunkMetadata> chunkMetadataList;
 
-  public void setChunkMetadataList(List<ChunkMetadata> chunkMetadataList) {
+  public void setChunkMetadataList(final List<ChunkMetadata> chunkMetadataList) {
     this.chunkMetadataList = chunkMetadataList;
   }
 

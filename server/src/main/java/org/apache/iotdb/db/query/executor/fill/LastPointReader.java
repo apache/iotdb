@@ -58,7 +58,7 @@ public class LastPointReader {
 
   }
 
-  public LastPointReader(PartialPath seriesPath, TSDataType dataType, Set<String> deviceMeasurements,
+  public LastPointReader(PartialPath seriesPath, TSDataType dataType, final Set<String> deviceMeasurements,
       QueryContext context, QueryDataSource dataSource, long queryTime, Filter timeFilter) {
     this.seriesPath = seriesPath;
     this.dataType = dataType;

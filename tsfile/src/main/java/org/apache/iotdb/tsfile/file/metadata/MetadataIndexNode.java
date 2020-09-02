@@ -47,7 +47,7 @@ public class MetadataIndexNode {
     this.nodeType = nodeType;
   }
 
-  public MetadataIndexNode(List<MetadataIndexEntry> children, long endOffset,
+  public MetadataIndexNode(final List<MetadataIndexEntry> children, long endOffset,
       MetadataIndexNodeType nodeType) {
     this.children = children;
     this.endOffset = endOffset;

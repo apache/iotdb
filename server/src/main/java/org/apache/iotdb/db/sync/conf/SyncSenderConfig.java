@@ -116,7 +116,7 @@ public class SyncSenderConfig {
     return new ArrayList<>(storageGroupList);
   }
 
-  public void setStorageGroupList(List<String> storageGroupList) {
+  public void setStorageGroupList(final List<String> storageGroupList) {
     this.storageGroupList = storageGroupList;
   }
 

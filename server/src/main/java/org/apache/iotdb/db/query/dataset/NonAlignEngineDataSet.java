@@ -55,7 +55,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
 
 
     public ReadTask(ManagedSeriesReader reader,
-        BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue, WatermarkEncoder encoder,
+        final BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue, WatermarkEncoder encoder,
         int index) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;

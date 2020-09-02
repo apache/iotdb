@@ -35,7 +35,7 @@ public class DataAuthPlan extends PhysicalPlan {
     super(false, operatorType);
   }
 
-  public DataAuthPlan(OperatorType operatorType, List<String> users) {
+  public DataAuthPlan(OperatorType operatorType, final List<String> users) {
     super(false, operatorType);
     this.users = users;
   }

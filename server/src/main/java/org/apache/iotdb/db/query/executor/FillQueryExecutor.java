@@ -45,10 +45,10 @@ public class FillQueryExecutor {
   private long queryTime;
   private Map<TSDataType, IFill> typeIFillMap;
 
-  public FillQueryExecutor(List<PartialPath> selectedSeries,
-      List<TSDataType> dataTypes,
+  public FillQueryExecutor(final List<PartialPath> selectedSeries,
+      final List<TSDataType> dataTypes,
       long queryTime,
-      Map<TSDataType, IFill> typeIFillMap) {
+      final Map<TSDataType, IFill> typeIFillMap) {
     this.selectedSeries = selectedSeries;
     this.queryTime = queryTime;
     this.typeIFillMap = typeIFillMap;
@@ -102,7 +102,7 @@ public class FillQueryExecutor {
   }
 
   protected IFill configureFill(IFill fill, PartialPath path, TSDataType dataType, long queryTime,
-      Set<String> deviceMeasurements, QueryContext context) {
+      final Set<String> deviceMeasurements, QueryContext context) {
     fill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
     return fill;
   }

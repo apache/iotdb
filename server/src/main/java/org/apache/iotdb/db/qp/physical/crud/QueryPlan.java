@@ -51,7 +51,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     return paths;
   }
 
-  public void setPaths(List<PartialPath> paths) {
+  public void setPaths(final List<PartialPath> paths) {
     this.paths = paths;
   }
 
@@ -59,7 +59,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     return dataTypes;
   }
 
-  public void setDataTypes(List<TSDataType> dataTypes) {
+  public void setDataTypes(final List<TSDataType> dataTypes) {
     this.dataTypes = dataTypes;
   }
 

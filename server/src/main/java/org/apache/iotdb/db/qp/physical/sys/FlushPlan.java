@@ -32,7 +32,7 @@ public class FlushPlan extends PhysicalPlan {
 
   private Boolean isSeq;
 
-  public FlushPlan(Boolean isSeq, List<PartialPath> storeGroups) {
+  public FlushPlan(Boolean isSeq, final List<PartialPath> storeGroups) {
     super(false, OperatorType.FLUSH);
     this.storeGroups = storeGroups;
     this.isSeq = isSeq;

@@ -91,7 +91,7 @@ public class Tablet {
    *                  batch, only measurementId and type take effects
    * @param maxRowNumber the maximum number of rows for this tablet
    */
-  public Tablet(String deviceId, List<MeasurementSchema> schemas, int maxRowNumber) {
+  public Tablet(String deviceId, final List<MeasurementSchema> schemas, int maxRowNumber) {
     this.deviceId = deviceId;
     this.schemas = schemas;
     this.maxRowNumber = maxRowNumber;

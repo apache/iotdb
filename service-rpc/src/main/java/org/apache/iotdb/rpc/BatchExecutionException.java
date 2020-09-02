@@ -29,12 +29,12 @@ public class BatchExecutionException extends StatementExecutionException {
     super(message);
   }
 
-  public BatchExecutionException(List<TSStatus> statusList) {
+  public BatchExecutionException(final List<TSStatus> statusList) {
     super("");
     this.statusList = statusList;
   }
 
-  public BatchExecutionException(List<TSStatus> statusList, String message) {
+  public BatchExecutionException(final List<TSStatus> statusList, String message) {
     super(message);
     this.statusList = statusList;
   }

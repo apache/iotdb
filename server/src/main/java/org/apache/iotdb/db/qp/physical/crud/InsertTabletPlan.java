@@ -62,19 +62,19 @@ public class InsertTabletPlan extends InsertPlan {
     super(OperatorType.BATCHINSERT);
   }
 
-  public InsertTabletPlan(PartialPath deviceId, List<String> measurements) {
+  public InsertTabletPlan(PartialPath deviceId, final List<String> measurements) {
     super(OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements.toArray(new String[0]);
   }
 
-  public InsertTabletPlan(PartialPath deviceId, String[] measurements) {
+  public InsertTabletPlan(PartialPath deviceId, final String[] measurements) {
     super(OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements;
   }
 
-  public InsertTabletPlan(PartialPath deviceId, String[] measurements, List<Integer> dataTypes) {
+  public InsertTabletPlan(PartialPath deviceId, final String[] measurements, final List<Integer> dataTypes) {
     super(OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements;
@@ -333,7 +333,7 @@ public class InsertTabletPlan extends InsertPlan {
     columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, measurementSize, rows);
   }
 
-  public void setDataTypes(List<Integer> dataTypes) {
+  public void setDataTypes(final List<Integer> dataTypes) {
     this.dataTypes = new TSDataType[dataTypes.size()];
     for (int i = 0; i < dataTypes.size(); i++) {
       this.dataTypes[i] = TSDataType.values()[dataTypes.get(i)];
@@ -344,7 +344,7 @@ public class InsertTabletPlan extends InsertPlan {
     return columns;
   }
 
-  public void setColumns(Object[] columns) {
+  public void setColumns(final Object[] columns) {
     this.columns = columns;
   }
 
@@ -419,7 +419,7 @@ public class InsertTabletPlan extends InsertPlan {
     return times;
   }
 
-  public void setTimes(long[] times) {
+  public void setTimes(final long[] times) {
     this.times = times;
   }
 

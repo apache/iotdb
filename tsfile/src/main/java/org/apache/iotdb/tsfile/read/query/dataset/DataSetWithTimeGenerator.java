@@ -45,9 +45,9 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
    * @param timeGenerator TimeGenerator object
    * @param readers readers in List(FileSeriesReaderByTimestamp) structure
    */
-  public DataSetWithTimeGenerator(List<Path> paths, List<Boolean> cached,
-      List<TSDataType> dataTypes,
-      TimeGenerator timeGenerator, List<FileSeriesReaderByTimestamp> readers) {
+  public DataSetWithTimeGenerator(final List<Path> paths, final List<Boolean> cached,
+      final List<TSDataType> dataTypes,
+      TimeGenerator timeGenerator, final List<FileSeriesReaderByTimestamp> readers) {
     super(paths, dataTypes);
     this.cached = cached;
     this.timeGenerator = timeGenerator;

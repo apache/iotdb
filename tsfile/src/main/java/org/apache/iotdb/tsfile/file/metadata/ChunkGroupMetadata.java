@@ -29,7 +29,7 @@ public class ChunkGroupMetadata {
 
   private List<ChunkMetadata> chunkMetadataList;
 
-  public ChunkGroupMetadata(String device, List<ChunkMetadata> chunkMetadataList) {
+  public ChunkGroupMetadata(String device, final List<ChunkMetadata> chunkMetadataList) {
     this.device = device;
     this.chunkMetadataList = chunkMetadataList;
   }

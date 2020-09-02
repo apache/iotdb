@@ -178,7 +178,7 @@ public class LogAnalyzer {
     resource.setUnseqFiles(mergeUnseqFiles);
   }
 
-  private void analyzeMergedSeries(BufferedReader bufferedReader, List<PartialPath> unmergedPaths) throws IOException {
+  private void analyzeMergedSeries(BufferedReader bufferedReader, final List<PartialPath> unmergedPaths) throws IOException {
     if (!STR_MERGE_START.equals(currLine)) {
       return;
     }
@@ -273,7 +273,7 @@ public class LogAnalyzer {
     return unmergedPaths;
   }
 
-  public void setUnmergedPaths(List<PartialPath> unmergedPaths) {
+  public void setUnmergedPaths(final List<PartialPath> unmergedPaths) {
     this.unmergedPaths = unmergedPaths;
   }
 
@@ -281,8 +281,7 @@ public class LogAnalyzer {
     return unmergedFiles;
   }
 
-  public void setUnmergedFiles(
-      List<TsFileResource> unmergedFiles) {
+  public void setUnmergedFiles(final List<TsFileResource> unmergedFiles) {
     this.unmergedFiles = unmergedFiles;
   }
 
@@ -290,7 +289,7 @@ public class LogAnalyzer {
     return mergedPaths;
   }
 
-  public void setMergedPaths(List<PartialPath> mergedPaths) {
+  public void setMergedPaths(final List<PartialPath> mergedPaths) {
     this.mergedPaths = mergedPaths;
   }
 
@@ -298,7 +297,7 @@ public class LogAnalyzer {
     return fileLastPositions;
   }
 
-  public void setFileLastPositions(Map<File, Long> fileLastPositions) {
+  public void setFileLastPositions(final Map<File, Long> fileLastPositions) {
     this.fileLastPositions = fileLastPositions;
   }
 
