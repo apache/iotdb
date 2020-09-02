@@ -1,5 +1,6 @@
 package org.apache.iotdb.cluster.server;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Timer {
@@ -22,6 +23,8 @@ public class Timer {
   public static AtomicLong raftMemberCommitLogCounter = new AtomicLong(0);
   public static AtomicLong raftFollowerAppendEntryMS = new AtomicLong(0);
   public static AtomicLong raftFollowerAppendEntryCounter = new AtomicLong(0);
+  public static AtomicLong dataGroupMemberForwardPlanMS = new AtomicLong(0);
+  public static AtomicLong dataGroupMemberForwardPlanCounter = new AtomicLong(0);
 
   private static final String dataGroupMemberProcessPlanLocallyMSString = "Data group member - process plan locally : ";
   private static final String dataGroupMemberWaitLeaderMSString = "Data group member - wait leader: ";
@@ -32,9 +35,11 @@ public class Timer {
   private static final String raftMemberSendLogToFollowerMSString = "Raft member - send log to follower: ";
   private static final String raftMemberCommitLogMSString = "Raft member - commit log: ";
   private static final String raftFollowerAppendEntryString = "Raft member - follower append entry: ";
+  private static final String dataGroupMemberForwardPlanString = "Data group member - forward plan: ";
+
 
   public static String getReport() {
-    String result = "";
+    String result = "\n";
     result += dataGroupMemberProcessPlanLocallyMSString
         + dataGroupMemberProcessPlanLocallyMS.get()/1000000L + ", "
         + dataGroupMemberProcessPlanLocallyCounter + ", "
@@ -78,6 +83,10 @@ public class Timer {
         + raftFollowerAppendEntryMS.get()/1000000L + ", "
         + raftFollowerAppendEntryCounter + ", "
         + (double) raftFollowerAppendEntryMS.get()/1000000L / raftFollowerAppendEntryCounter.get() + "\n";
+    result += dataGroupMemberForwardPlanString
+        + dataGroupMemberForwardPlanMS.get()/1000000L + ", "
+        + dataGroupMemberForwardPlanCounter + ", "
+        + (double) dataGroupMemberForwardPlanMS.get()/1000000L / dataGroupMemberForwardPlanCounter.get() + "\n";
 
     return result;
   }
