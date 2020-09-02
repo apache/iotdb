@@ -225,15 +225,12 @@ public class TsFileProcessor {
         Thread.currentThread().interrupt();
       }
     }
-    if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable();
-    }
 
+    boolean needToReport = checkMemCostAndAddToTspInfo(insertRowPlan);
     // If there are enough size of arrays in memtable, insert insertRowPlan to
     // the work memtable directly
     if (workMemTable.checkIfArrayIsEnough(insertRowPlan)) {
       logger.debug("Array in work MemTable is enough");
-      boolean needToReport = checkMemCostAndAddToTspInfo(insertRowPlan);
       workMemTable.insert(insertRowPlan);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         try {
@@ -260,7 +257,6 @@ public class TsFileProcessor {
     else {
       try {
         logger.debug("Array in work MemTable isn't enough");
-        boolean needToReport = checkMemCostAndAddToTspInfo(insertRowPlan);
         workMemTable.insert(insertRowPlan);
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           getLogNode().write(insertRowPlan);
@@ -304,15 +300,12 @@ public class TsFileProcessor {
         Thread.currentThread().interrupt();
       }
     }
-    if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable();
-    }
 
+    boolean needToReport = checkMemCostAndAddToTspInfo(insertTabletPlan);
     // If there are enough size of arrays in memtable, insert insertRowPlan to
     // the work memtable directly
     if (workMemTable.checkIfArrayIsEnough(insertTabletPlan)) {
       // insert insertRowPlan to the work memtable
-      boolean needToReport = checkMemCostAndAddToTspInfo(insertTabletPlan);
       try {
         workMemTable.insertTablet(insertTabletPlan, start, end);
         if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -347,7 +340,6 @@ public class TsFileProcessor {
     // If there aren't enough size of arrays in memtable, it may apply buffered array
     // from the array pool or get OOB array before inserting into the memtable
     else {
-      boolean needToReport = checkMemCostAndAddToTspInfo(insertTabletPlan);
       try {
         // if get buffered or OOB array successfully, estimate the memory cost
         for (int i = start; i < end; i++) {
@@ -402,6 +394,9 @@ public class TsFileProcessor {
             bytesCost += RamUsageEstimator.sizeOf(bytes);
           }
         }
+      }
+      if (workMemTable == null) {
+        workMemTable = new PrimitiveMemTable();
       }
       // ChunkMetadataCost
       if (workMemTable.checkIfNeedStartNewChunk(insertPlan.getDeviceId().getFullPath(),

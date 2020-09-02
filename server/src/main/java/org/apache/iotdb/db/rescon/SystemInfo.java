@@ -203,9 +203,7 @@ public class SystemInfo {
     TreeSet<TsFileProcessor> tsps = new TreeSet<>(
         (o1, o2) -> Long.compare(o2.getWorkMemTableSize(), o1.getWorkMemTableSize()));
     for (StorageGroupInfo sgInfo : reportedSgMemCostMap.keySet()) {
-      for (TsFileProcessor tsp : sgInfo.getAllReportedTsp()) {
-        tsps.add(tsp);
-      }
+      tsps.addAll(sgInfo.getAllReportedTsp());
     }
     return tsps.first();
   }
