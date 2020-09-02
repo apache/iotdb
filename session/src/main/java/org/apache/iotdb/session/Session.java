@@ -928,8 +928,7 @@ public class Session {
   public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
           throws StatementExecutionException, IoTDBConnectionException {
 
-    String statement = SessionUtils.rawDataQuery;
-    TSRawDataQueryReq execReq = new TSRawDataQueryReq(sessionId, paths, startTime, endTime, statementId, statement);
+    TSRawDataQueryReq execReq = new TSRawDataQueryReq(sessionId, paths, startTime, endTime);
     execReq.setFetchSize(fetchSize);
 
     TSExecuteStatementResp execResp;
@@ -940,7 +939,7 @@ public class Session {
     }
 
     RpcUtils.verifySuccess(execResp.getStatus());
-    return new SessionDataSet(statement, execResp.getColumns(), execResp.getDataTypeList(),
+    return new SessionDataSet("", execResp.getColumns(), execResp.getDataTypeList(),
             execResp.columnNameIndexMap,
             execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
             execResp.isIgnoreTimeStamp());

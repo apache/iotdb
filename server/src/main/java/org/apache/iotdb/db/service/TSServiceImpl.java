@@ -525,11 +525,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
       }
 
-      return internalExecuteQueryStatement(req.getStatement(), req.statementId, physicalPlan, req.fetchSize,
+      return internalExecuteQueryStatement("", generateQueryId(true), physicalPlan, req.fetchSize,
               sessionIdUsernameMap.get(req.getSessionId()));
 
     } catch (ParseCancellationException e) {
-      logger.warn(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
+      logger.warn(ERROR_PARSING_SQL, e.getMessage());
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR,
               ERROR_PARSING_SQL + e.getMessage());
     } catch (SQLParserException e) {

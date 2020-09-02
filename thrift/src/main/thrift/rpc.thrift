@@ -244,8 +244,6 @@ struct TSRawDataQueryReq {
     3: optional i32 fetchSize
     4: required i64 startTime
     5: required i64 endTime
-    6: required i64 statementId
-    7: required string statement
 }
 
 struct TSCreateTimeseriesReq {
