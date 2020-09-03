@@ -820,6 +820,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     queryOp.setAlignByTime(false);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void enterGroupByFillClause(SqlBaseParser.GroupByFillClauseContext ctx) {
     super.enterGroupByFillClause(ctx);
@@ -1430,6 +1431,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     return binaryOp;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private FilterOperator parsePredicate(PredicateContext ctx) {
     if (ctx.OPERATOR_NOT() != null) {
       FilterOperator notOp = new FilterOperator(SQLConstant.KW_NOT);

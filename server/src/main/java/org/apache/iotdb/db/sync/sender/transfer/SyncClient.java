@@ -583,6 +583,7 @@ public class SyncClient implements ISyncClient {
   /**
    * Transfer data of a tsfile to the receiver.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void syncSingleFile(File snapshotFile)
       throws SyncConnectionException, SyncDeviceOwnerConflictException {
     try {

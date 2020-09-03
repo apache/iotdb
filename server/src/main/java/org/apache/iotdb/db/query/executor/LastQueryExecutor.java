@@ -121,6 +121,7 @@ public class LastQueryExecutor {
    * @param context query context
    * @return TimeValuePair
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TimeValuePair calculateLastPairForOneSeriesLocally(
       PartialPath seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
       throws IOException, QueryProcessException, StorageEngineException {

@@ -58,6 +58,7 @@ public class WatermarkDetector {
         columnIndex, dataType);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static boolean isWatermarked(String filePath, String secretKey, String watermarkBitString,
       int embed_row_cycle, int embed_lsb_num, double alpha,
       int columnIndex, String dataType) throws LogicalOperatorException, IOException {

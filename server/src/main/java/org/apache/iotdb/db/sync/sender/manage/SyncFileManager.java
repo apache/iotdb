@@ -79,6 +79,7 @@ public class SyncFileManager implements ISyncFileManager {
     return SyncFileManagerHolder.INSTANCE;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void getCurrentLocalFiles(String dataDir) {
     LOGGER.info("Start to get current local files in data folder {}", dataDir);
@@ -156,6 +157,7 @@ public class SyncFileManager implements ISyncFileManager {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void getValidFiles(String dataDir) throws IOException {
     allSGs = new HashMap<>();

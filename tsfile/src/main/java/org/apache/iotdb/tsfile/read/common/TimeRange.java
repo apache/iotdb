@@ -303,6 +303,7 @@ public class TimeRange implements Comparable<TimeRange> {
    * @param timeRangesPrev time ranges union in ascending order of the start time
    * @return the remaining time ranges
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public List<TimeRange> getRemains(List<TimeRange> timeRangesPrev) {
     List<TimeRange> remains = new ArrayList<>();
 

@@ -224,6 +224,7 @@ public class ServerArgument {
   /**
    * read cpu info(windows)
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private long[] readWinCpu(final Process proc) throws Exception {
     long[] retn = new long[2];
     proc.getOutputStream().close();
