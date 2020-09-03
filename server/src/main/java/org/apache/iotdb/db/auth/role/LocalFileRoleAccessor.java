@@ -96,6 +96,8 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       return role;
     } catch (Exception e) {
       throw new IOException(e);
+    } finally {
+      strBufferLocal.remove();
     }
   }
 
@@ -120,6 +122,8 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       } catch (Exception e) {
         throw new IOException(e);
       }
+    } finally {
+      encodingBufferLocal.remove();
     }
 
     File oldFile = SystemFileFactory.INSTANCE.getFile(

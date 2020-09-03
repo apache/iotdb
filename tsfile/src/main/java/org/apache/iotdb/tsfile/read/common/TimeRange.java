@@ -18,10 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -190,6 +187,11 @@ public class TimeRange implements Comparable<TimeRange> {
     return (this.min == that.min && this.max == that.max);
   }
 
+  @Override
+  public int hashCode() {
+    return Objects.hash(min, max);
+  }
+
   /**
    * Check if two TimeRanges overlap
    * @param rhs the given time range
@@ -301,6 +303,7 @@ public class TimeRange implements Comparable<TimeRange> {
    * @param timeRangesPrev time ranges union in ascending order of the start time
    * @return the remaining time ranges
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public List<TimeRange> getRemains(List<TimeRange> timeRangesPrev) {
     List<TimeRange> remains = new ArrayList<>();
 

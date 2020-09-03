@@ -56,9 +56,9 @@ public class IoTDBRemovePartitionIT {
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
     StorageEngine.setEnablePartition(false);
     StorageEngine.setTimePartitionInterval(-1);
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test

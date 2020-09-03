@@ -65,6 +65,7 @@ public class FilePathUtils {
    * @param pathIndex
    * @return
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Map<String, Long> getPathByLevel(List<PartialPath> rawPaths, int level, Map<Integer, String> pathIndex)
       throws QueryProcessException {
     // pathGroupByLevel -> count

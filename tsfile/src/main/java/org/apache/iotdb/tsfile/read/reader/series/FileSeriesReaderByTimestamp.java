@@ -60,6 +60,7 @@ public class FileSeriesReaderByTimestamp {
   /**
    * get value with time equals timestamp. If there is no such point, return null.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public Object getValueInTimestamp(long timestamp) throws IOException {
     this.currentTimestamp = timestamp;
 
@@ -109,6 +110,7 @@ public class FileSeriesReaderByTimestamp {
    *
    * @return true if has next, false if not.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public boolean hasNext() throws IOException {
 
     if (chunkReader != null) {
