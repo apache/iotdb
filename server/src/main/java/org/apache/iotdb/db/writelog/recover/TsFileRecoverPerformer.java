@@ -84,8 +84,7 @@ public class TsFileRecoverPerformer {
    * file and the vmfiles are not closed before crash, so these writers can be used to continue
    * writing
    */
-  public RestorableTsFileIOWriter recover()
-      throws StorageGroupProcessorException {
+  public RestorableTsFileIOWriter recover() throws StorageGroupProcessorException {
 
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
     if (!file.exists()) {

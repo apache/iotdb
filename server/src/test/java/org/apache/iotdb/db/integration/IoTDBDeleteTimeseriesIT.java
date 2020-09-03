@@ -53,8 +53,7 @@ public class IoTDBDeleteTimeseriesIT {
   @After
   public void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
-    IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(tsFileManagementStrategy);
+    IoTDBDescriptor.getInstance().getConfig().setTsFileManagementStrategy(tsFileManagementStrategy);
     EnvironmentUtils.cleanEnv();
   }
 

@@ -92,13 +92,9 @@ public class GroupByFillDataSet extends QueryDataSet {
     Arrays.fill(lastTimeArray, Long.MAX_VALUE);
     for (int i = 0; i < paths.size(); i++) {
       TimeValuePair lastTimeValuePair;
-      try {
-        lastTimeValuePair = LastQueryExecutor.calculateLastPairForOneSeriesLocally(
-            new PartialPath(paths.get(i).getFullPath()), dataTypes.get(i), context,
-            groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
-      } catch (IllegalPathException e) {
-        throw new QueryProcessException(e.getMessage());
-      }
+      lastTimeValuePair = LastQueryExecutor.calculateLastPairForOneSeriesLocally(
+          (PartialPath) paths.get(i), dataTypes.get(i), context,
+          groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
       if (lastTimeValuePair.getValue() != null) {
         lastTimeArray[i] = lastTimeValuePair.getTimestamp();
       }

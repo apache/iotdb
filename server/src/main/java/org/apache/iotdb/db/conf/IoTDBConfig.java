@@ -160,7 +160,7 @@ public class IoTDBConfig {
    * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call outputStream.force(true) after every each insert
    */
-  private long forceWalPeriodInMs = 10;
+  private long forceWalPeriodInMs = 100;
 
   /**
    * Size of log buffer in each log node(in byte). If WAL is enabled and the size of a insert plan
@@ -267,12 +267,12 @@ public class IoTDBConfig {
    * Work when tsfile_manage_strategy is level_strategy. The max file num of each level. When file
    * num exceeds this, the files in one level will merge to one.
    */
-  private int maxFileNumInEachLevel = 10;
+  private int maxFileNumInEachLevel = 100;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max num of level.
    */
-  private int maxLevelNum = 3;
+  private int maxLevelNum = 2;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -487,7 +487,7 @@ public class IoTDBConfig {
    * If one merge file selection runs for more than this time, it will be ended and its current
    * selection will be used as final selection. Unit: millis. When < 0, it means time is unbounded.
    */
-  private long mergeFileSelectionTimeBudget = 30 * 1000;
+  private long mergeFileSelectionTimeBudget = 30 * 1000L;
 
   /**
    * When set to true, if some crashed merges are detected during system rebooting, such merges will

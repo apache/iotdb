@@ -247,6 +247,7 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
    *
    * @param value - value to encode
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   protected void encodeValue(T value) {
     if (!isBitWidthSaved) {
       // save bit width in header,

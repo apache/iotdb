@@ -137,49 +137,57 @@ public class IoTDBMultiStatementsIT {
       Assert.assertTrue(hasResultSet1);
       ResultSet resultSet1 = statement1.getResultSet();
       int cnt1 = 0;
-      while (resultSet1.next() && cnt1 < 5) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
-                .append(",")
-                .append(resultSet1.getString("root.fans.d0.s0"))
-                .append(",")
-                .append(resultSet1.getString("root.fans.d0.s1"));
-        Assert.assertEquals(retArray[cnt1], builder.toString());
-        cnt1++;
-      }
+      try {
+        while (resultSet1.next() && cnt1 < 5) {
+          StringBuilder builder = new StringBuilder();
+          builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
+                  .append(",")
+                  .append(resultSet1.getString("root.fans.d0.s0"))
+                  .append(",")
+                  .append(resultSet1.getString("root.fans.d0.s1"));
+          Assert.assertEquals(retArray[cnt1], builder.toString());
+          cnt1++;
+        }
 
-      statement2.setFetchSize(10);
-      boolean hasResultSet2 = statement2.execute(selectSql);
-      Assert.assertTrue(hasResultSet2);
-      ResultSet resultSet2 = statement2.getResultSet();
-      int cnt2 = 0;
-      while (resultSet2.next()) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(resultSet2.getString(TestConstant.TIMESTAMP_STR))
-                .append(",")
-                .append(resultSet2.getString("root.fans.d0.s0"))
-                .append(",")
-                .append(resultSet2.getString("root.fans.d0.s1"));
-        Assert.assertEquals(retArray[cnt2], builder.toString());
-        cnt2++;
-      }
-      Assert.assertEquals(9, cnt2);
+        statement2.setFetchSize(10);
+        boolean hasResultSet2 = statement2.execute(selectSql);
+        Assert.assertTrue(hasResultSet2);
+        ResultSet resultSet2 = statement2.getResultSet();
+        int cnt2 = 0;
+        try {
+          while (resultSet2.next()) {
+            StringBuilder builder = new StringBuilder();
+            builder.append(resultSet2.getString(TestConstant.TIMESTAMP_STR))
+                    .append(",")
+                    .append(resultSet2.getString("root.fans.d0.s0"))
+                    .append(",")
+                    .append(resultSet2.getString("root.fans.d0.s1"));
+            Assert.assertEquals(retArray[cnt2], builder.toString());
+            cnt2++;
+          }
+        } finally {
+          resultSet2.close();
+        }
+        Assert.assertEquals(9, cnt2);
 
-      // use do-while instead of while because in the previous while loop, we have executed the next function,
-      // and the cursor has been moved to the next position, so we should fetch that value first.
-      do {
-        StringBuilder builder = new StringBuilder();
-        builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
-                .append(",")
-                .append(resultSet1.getString("root.fans.d0.s0"))
-                .append(",")
-                .append(resultSet1.getString("root.fans.d0.s1"));
-        Assert.assertEquals(retArray[cnt1], builder.toString());
-        cnt1++;
-      } while (resultSet1.next());
-      // Although the statement2 has the same sql as statement1, they shouldn't affect each other.
-      // So the statement1's ResultSet should also have 9 rows in total.
-      Assert.assertEquals(9, cnt1);
+        // use do-while instead of while because in the previous while loop, we have executed the next function,
+        // and the cursor has been moved to the next position, so we should fetch that value first.
+        do {
+          StringBuilder builder = new StringBuilder();
+          builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
+                  .append(",")
+                  .append(resultSet1.getString("root.fans.d0.s0"))
+                  .append(",")
+                  .append(resultSet1.getString("root.fans.d0.s1"));
+          Assert.assertEquals(retArray[cnt1], builder.toString());
+          cnt1++;
+        } while (resultSet1.next());
+        // Although the statement2 has the same sql as statement1, they shouldn't affect each other.
+        // So the statement1's ResultSet should also have 9 rows in total.
+        Assert.assertEquals(9, cnt1);
+      } finally {
+        resultSet1.close();
+      }
 
     } catch (Exception e) {
       e.printStackTrace();

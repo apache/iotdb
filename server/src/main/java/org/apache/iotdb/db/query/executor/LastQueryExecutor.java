@@ -80,20 +80,20 @@ public class LastQueryExecutor {
 
     for (int i = 0; i < selectedSeries.size(); i++) {
       TimeValuePair lastTimeValuePair = null;
-      try {
-        lastTimeValuePair = calculateLastPairForOneSeries(
-                new PartialPath(selectedSeries.get(i).getFullPath()), dataTypes.get(i), context,
-                lastQueryPlan.getAllMeasurementsInDevice(selectedSeries.get(i).getDevice()));
-      } catch (IllegalPathException e) {
-        throw new QueryProcessException(e.getMessage());
-      }
+      lastTimeValuePair = calculateLastPairForOneSeries(
+              selectedSeries.get(i), dataTypes.get(i), context,
+              lastQueryPlan.getAllMeasurementsInDevice(selectedSeries.get(i).getDevice()));
       if (lastTimeValuePair.getValue() != null) {
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
-        if (selectedSeries.get(i).getAlias() != null) {
-          pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
+        if (selectedSeries.get(i).getTsAlias() != null) {
+          pathField.setBinaryV(new Binary(selectedSeries.get(i).getTsAlias()));
         } else {
-          pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+          if (selectedSeries.get(i).getMeasurementAlias() != null) {
+            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
+          } else {
+            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+          }
         }
         resultRecord.addField(pathField);
 
@@ -121,6 +121,7 @@ public class LastQueryExecutor {
    * @param context query context
    * @return TimeValuePair
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TimeValuePair calculateLastPairForOneSeriesLocally(
       PartialPath seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
       throws IOException, QueryProcessException, StorageEngineException {

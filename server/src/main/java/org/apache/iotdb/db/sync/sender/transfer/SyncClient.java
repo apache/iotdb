@@ -166,8 +166,7 @@ public class SyncClient implements ISyncClient {
    * @param lockFile lock file
    */
   private boolean lockInstance(File lockFile) {
-    try {
-      final RandomAccessFile randomAccessFile = new RandomAccessFile(lockFile, "rw");
+    try (final RandomAccessFile randomAccessFile = new RandomAccessFile(lockFile, "rw")) {
       final FileLock fileLock = randomAccessFile.getChannel().tryLock();
       if (fileLock != null) {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -364,12 +363,12 @@ public class SyncClient implements ISyncClient {
     try (BufferedReader br = new BufferedReader(new FileReader(getSchemaLogFile()));
         ByteArrayOutputStream bos = new ByteArrayOutputStream(SyncConstant.DATA_CHUNK_SIZE)) {
       schemaFileLinePos = 0;
+      String line;
       while (schemaFileLinePos < schemaPos) {
-        br.readLine();
+        line = br.readLine();
         schemaFileLinePos++;
       }
       MessageDigest md = MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME);
-      String line;
       int cntLine = 0;
       while ((line = br.readLine()) != null) {
         schemaFileLinePos++;
@@ -584,6 +583,7 @@ public class SyncClient implements ISyncClient {
   /**
    * Transfer data of a tsfile to the receiver.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void syncSingleFile(File snapshotFile)
       throws SyncConnectionException, SyncDeviceOwnerConflictException {
     try {
