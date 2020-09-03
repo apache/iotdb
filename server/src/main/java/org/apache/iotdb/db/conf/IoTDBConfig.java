@@ -267,12 +267,12 @@ public class IoTDBConfig {
    * Work when tsfile_manage_strategy is level_strategy. The max file num of each level. When file
    * num exceeds this, the files in one level will merge to one.
    */
-  private int maxFileNumInEachLevel = 10;
+  private int maxFileNumInEachLevel = 100;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max num of level.
    */
-  private int maxLevelNum = 3;
+  private int maxLevelNum = 2;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
