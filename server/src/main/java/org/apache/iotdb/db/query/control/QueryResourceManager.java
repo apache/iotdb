@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
+import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -172,6 +173,9 @@ public class QueryResourceManager {
     }
     // remove usage of opened file paths of current thread
     filePathsManager.removeUsedFilesForQuery(queryId);
+
+    // close and delete UDF temp files
+    TemporaryQueryDataFileService.getInstance().deregister(queryId);
   }
 
   private static class QueryTokenManagerHelper {

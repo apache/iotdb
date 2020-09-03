@@ -70,6 +70,12 @@ public class TemporaryQueryDataFileService implements IService {
             queryId, e.toString()));
       }
     }
+    try {
+      FileUtils.cleanDirectory(SystemFileFactory.INSTANCE.getFile(getDirName(queryId)));
+    } catch (IOException e) {
+      logger.warn(String.format("Failed to clean dir in method deregister(%d), because %s",
+          queryId, e.toString()));
+    }
   }
 
   private void makeDirIfNecessary(String dir) throws IOException {
@@ -78,6 +84,10 @@ public class TemporaryQueryDataFileService implements IService {
       return;
     }
     FileUtils.forceMkdir(file);
+  }
+
+  private String getDirName(long queryId) {
+    return temporaryFileDir + File.separator + queryId + File.separator;
   }
 
   private String getDirName(long queryId, String dataId) {
@@ -99,12 +109,8 @@ public class TemporaryQueryDataFileService implements IService {
 
   @Override
   public void stop() {
-    try {
-      for (Long queryId : recorders.keySet()) {
-        deregister(queryId);
-      }
-      FileUtils.cleanDirectory(SystemFileFactory.INSTANCE.getFile(temporaryFileDir));
-    } catch (IOException ignored) {
+    for (Object queryId : recorders.keySet().toArray()) {
+      deregister((Long) queryId);
     }
   }
 
