@@ -159,7 +159,7 @@ public class IoTDBConfig {
    * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call outputStream.force(true) after every each insert
    */
-  private long forceWalPeriodInMs = 10;
+  private long forceWalPeriodInMs = 100;
 
   /**
    * Size of log buffer in each log node(in byte). If WAL is enabled and the size of a insert plan
