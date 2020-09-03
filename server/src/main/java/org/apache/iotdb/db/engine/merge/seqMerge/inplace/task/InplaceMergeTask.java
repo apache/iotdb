@@ -23,31 +23,25 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.Callable;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
-import org.apache.iotdb.db.engine.merge.MergeLogger;
 import org.apache.iotdb.db.engine.merge.MergeTask;
-import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.Callable;
 
 /**
  * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
@@ -101,13 +95,13 @@ public class InplaceMergeTask extends MergeTask {
 
     resource.setChunkWriterCache(MergeUtils.constructChunkWriterCache(storageGroupName));
 
-    Set<String> devices = IoTDB.metaManager.getDevices(storageGroupName);
-    Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
-    List<Path> unmergedSeries = new ArrayList<>();
-    for (String device : devices) {
+    Set<PartialPath> devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
+    Map<PartialPath, MeasurementSchema> measurementSchemaMap = new HashMap<>();
+    List<PartialPath> unmergedSeries = new ArrayList<>();
+    for (PartialPath device : devices) {
       MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
-        Path path = new Path(device, entry.getKey());
+        PartialPath path = device.concatNode(entry.getKey());
         measurementSchemaMap.put(path, ((MeasurementMNode) entry.getValue()).getSchema());
         unmergedSeries.add(path);
       }

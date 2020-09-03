@@ -189,6 +189,7 @@ public abstract class AbstractCli {
     return options;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
       long timestamp, ZoneId zoneid, String timestampPrecision) {
     if (timestampPrecision.equals("ms")) {
@@ -327,6 +328,7 @@ public abstract class AbstractCli {
     return args;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   static String[] processExecuteArgs(String[] args) {
     int index = -1;
     for (int i = 0; i < args.length; i++) {
@@ -597,6 +599,7 @@ public abstract class AbstractCli {
    * @return List<List<String>> result
    * @throws SQLException throw exception
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
       int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId) throws SQLException {
     List<List<String>> lists = new ArrayList<>(columnCount);

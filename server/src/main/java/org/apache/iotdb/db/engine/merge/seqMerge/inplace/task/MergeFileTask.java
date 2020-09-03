@@ -23,6 +23,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLog
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -41,7 +43,6 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -150,7 +151,8 @@ class MergeFileTask {
       TsFileIOWriter oldFileWriter = getOldFileWriter(seqFile);
 
       // filter the chunks that have been merged
-      oldFileWriter.filterChunks(context.getUnmergedChunkStartTimes().get(seqFile));
+      oldFileWriter.filterChunks(new HashMap<>(context.getUnmergedChunkStartTimes().get(seqFile))
+      );
 
       RestorableTsFileIOWriter newFileWriter = resource.getMergeFileWriter(seqFile);
       newFileWriter.close();
@@ -268,7 +270,7 @@ class MergeFileTask {
   }
 
   private void moveUnmergedToNew(TsFileResource seqFile) throws IOException {
-    Map<Path, List<Long>> fileUnmergedChunkStartTimes =
+    Map<PartialPath, List<Long>> fileUnmergedChunkStartTimes =
         context.getUnmergedChunkStartTimes().get(seqFile);
     RestorableTsFileIOWriter fileWriter = resource.getMergeFileWriter(seqFile);
 
@@ -278,8 +280,8 @@ class MergeFileTask {
     int unmergedChunkNum = context.getUnmergedChunkCnt().getOrDefault(seqFile, 0);
 
     if (unmergedChunkNum > 0) {
-      for (Entry<Path, List<Long>> entry : fileUnmergedChunkStartTimes.entrySet()) {
-        Path path = entry.getKey();
+      for (Entry<PartialPath, List<Long>> entry : fileUnmergedChunkStartTimes.entrySet()) {
+        PartialPath path = entry.getKey();
         List<Long> chunkStartTimes = entry.getValue();
         if (chunkStartTimes.isEmpty()) {
           continue;

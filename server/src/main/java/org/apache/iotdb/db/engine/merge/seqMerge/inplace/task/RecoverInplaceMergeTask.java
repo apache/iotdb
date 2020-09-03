@@ -35,8 +35,8 @@ import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.LogAnalyzer;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.LogAnalyzer.Status;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -146,10 +146,10 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
       RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(tsFileResource);
       mergeFileWriter.makeMetadataVisible();
       mergeContext.getUnmergedChunkStartTimes().put(tsFileResource, new HashMap<>());
-      List<Path> pathsToRecover = analyzer.getMergedPaths();
+      List<PartialPath> pathsToRecover = analyzer.getMergedPaths();
       int cnt = 0;
       double progress = 0.0;
-      for (Path path : pathsToRecover) {
+      for(PartialPath path : pathsToRecover) {
         recoverChunkCounts(path, tsFileResource, mergeFileWriter);
         if (logger.isInfoEnabled()) {
           cnt += 1.0;
@@ -166,7 +166,7 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
     analyzer.setMergedPaths(null);
   }
 
-  private void recoverChunkCounts(Path path, TsFileResource tsFileResource,
+  private void recoverChunkCounts(PartialPath path, TsFileResource tsFileResource,
       RestorableTsFileIOWriter mergeFileWriter) throws IOException {
     mergeContext.getUnmergedChunkStartTimes().get(tsFileResource).put(path, new ArrayList<>());
 

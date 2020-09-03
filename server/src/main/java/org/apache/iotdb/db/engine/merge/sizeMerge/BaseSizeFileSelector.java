@@ -133,6 +133,7 @@ public abstract class BaseSizeFileSelector implements IMergeFileSelector {
     return seqFiles.subList(startIdx, endIdx + 1);
   }
 
-  protected abstract boolean isSmallFile(TsFileResource seqFile) throws IOException;
+  protected abstract boolean isSmallFile(TsFileResource seqFile)
+      throws IOException;
 
 }

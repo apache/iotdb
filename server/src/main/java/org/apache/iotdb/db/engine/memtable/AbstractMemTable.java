@@ -108,7 +108,7 @@ public abstract class AbstractMemTable implements IMemTable {
       Object value = insertRowPlan.getValues()[i];
       memSize += MemUtils.getRecordSize(insertRowPlan.getSchemas()[i].getType(), value);
 
-      write(insertRowPlan.getDeviceId(), insertRowPlan.getMeasurements()[i],
+      write(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getMeasurements()[i],
           insertRowPlan.getSchemas()[i], insertRowPlan.getTime(), value);
     }
 
@@ -142,7 +142,7 @@ public abstract class AbstractMemTable implements IMemTable {
       if (insertTabletPlan.getColumns()[i] == null) {
         continue;
       }
-      IWritableMemChunk memSeries = createIfNotExistAndGet(insertTabletPlan.getDeviceId(),
+      IWritableMemChunk memSeries = createIfNotExistAndGet(insertTabletPlan.getDeviceId().getFullPath(),
           insertTabletPlan.getMeasurements()[i], insertTabletPlan.getSchemas()[i]);
       memSeries.write(insertTabletPlan.getTimes(), insertTabletPlan.getColumns()[i],
           insertTabletPlan.getDataTypes()[i], start, end);
@@ -236,6 +236,11 @@ public abstract class AbstractMemTable implements IMemTable {
       IWritableMemChunk chunk = deviceMap.get(measurementId);
       if (chunk == null) {
         return;
+      }
+      // If startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE,
+      // it means that the whole timeseries is deleted
+      if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
+        deviceMap.remove(measurementId);
       }
       int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
       totalPointsNum -= deletedPointsNumber;

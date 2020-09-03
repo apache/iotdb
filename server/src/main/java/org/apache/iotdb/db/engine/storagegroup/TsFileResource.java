@@ -18,6 +18,25 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -25,10 +44,11 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.rescon.CachedStringPool;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -39,20 +59,10 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-
 public class TsFileResource {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileResource.class);
+  private static Map<String, String> cachedDevicePool = CachedStringPool.getInstance().getCachedPool();
 
   // tsfile
   private File file;
@@ -285,10 +295,10 @@ public class TsFileResource {
       for (int i = 0; i < size; i++) {
         String path = ReadWriteIOUtils.readString(inputStream);
         long time = ReadWriteIOUtils.readLong(inputStream);
-        // To reduce the String number in memory, 
-        // use the deviceId from MManager instead of the deviceId read from disk
-        path = IoTDB.metaManager.getDeviceId(path);
-        deviceMap.put(path, i);
+        // To reduce the String number in memory,
+        // use the deviceId from memory instead of the deviceId read from disk
+        String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
+        deviceMap.put(cachedPath, i);
         startTimesArray[i] = time;
       }
       size = ReadWriteIOUtils.readInt(inputStream);
@@ -773,7 +783,7 @@ public class TsFileResource {
     }
 
     while (true) {
-      String hardlinkSuffix = "." + System.currentTimeMillis() + "_" + random.nextLong();
+      String hardlinkSuffix = TsFileConstant.PATH_SEPARATOR + System.currentTimeMillis() + "_" + random.nextLong();
       File hardlink = new File(file.getAbsolutePath() + hardlinkSuffix);
 
       try {

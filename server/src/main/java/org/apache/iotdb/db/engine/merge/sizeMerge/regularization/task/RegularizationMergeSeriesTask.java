@@ -36,9 +36,9 @@ import org.apache.iotdb.db.engine.merge.MergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -68,7 +68,7 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
 
   public RegularizationMergeSeriesTask(MergeContext context, String taskName,
       MergeLogger mergeLogger,
-      MergeResource mergeResource, List<Path> unmergedSeries, String storageGroupName) {
+      MergeResource mergeResource, List<PartialPath> unmergedSeries, String storageGroupName) {
     super(context, taskName, mergeLogger, mergeResource, unmergedSeries, storageGroupName);
   }
 
@@ -103,8 +103,8 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
     currentMergeResource = newTsFilePair.right;
     newResources.add(currentMergeResource);
 
-    List<List<Path>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
-    for (List<Path> pathList : devicePaths) {
+    List<List<PartialPath>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
+    for (List<PartialPath> pathList : devicePaths) {
       mergePaths(pathList);
       currentMergeResource.setHistoricalVersions(historicalVersions);
       mergedSeriesCnt += pathList.size();

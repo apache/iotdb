@@ -989,7 +989,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
                 + "when getting all timeseries info. please check server status");
       }
     }
-    return null;
+    return "";
   }
 
   /*

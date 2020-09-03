@@ -32,6 +32,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -56,7 +57,8 @@ public class MergeResource {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<Path, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
+  private Map<PartialPath, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
+  private long timeLowerBound = Long.MIN_VALUE;
 
   private boolean cacheDeviceMeta = false;
 
@@ -88,7 +90,7 @@ public class MergeResource {
     chunkWriterCache.clear();
   }
 
-  public IChunkWriter getChunkWriter(Path path) {
+  public IChunkWriter getChunkWriter(PartialPath path) {
     return chunkWriterCache.get(path);
   }
 
@@ -114,7 +116,7 @@ public class MergeResource {
    *
    * @param path name of the time series
    */
-  public List<ChunkMetadata> queryChunkMetadata(Path path, TsFileResource seqFile)
+  public List<ChunkMetadata> queryChunkMetadata(PartialPath path, TsFileResource seqFile)
       throws IOException {
     TsFileSequenceReader sequenceReader = getFileReader(seqFile);
     return sequenceReader.getChunkMetadataList(path);
@@ -155,7 +157,7 @@ public class MergeResource {
    * @param paths names of the timeseries
    * @return an array of UnseqResourceMergeReaders each corresponding to a timeseries in paths
    */
-  public IPointReader[] getUnseqReaders(List<Path> paths) throws IOException {
+  public IPointReader[] getUnseqReaders(List<PartialPath> paths) throws IOException {
     List<Chunk>[] pathChunks = MergeUtils.collectUnseqChunks(paths, unseqFiles, this);
     IPointReader[] ret = new IPointReader[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
@@ -172,7 +174,7 @@ public class MergeResource {
    *
    * @param path name of the time series
    */
-  public List<Modification> getModifications(TsFileResource tsFileResource, Path path) {
+  public List<Modification> getModifications(TsFileResource tsFileResource, PartialPath path) {
     // copy from TsFileResource so queries are not affected
     List<Modification> modifications = modificationCache.computeIfAbsent(tsFileResource,
         resource -> new LinkedList<>(resource.getModFile().getModifications()));
@@ -250,12 +252,11 @@ public class MergeResource {
     this.cacheDeviceMeta = cacheDeviceMeta;
   }
 
-  public void setChunkWriterCache(Map<Path, IChunkWriter> chunkWriterCache) {
+  public void setChunkWriterCache(Map<PartialPath, IChunkWriter> chunkWriterCache) {
     this.chunkWriterCache = chunkWriterCache;
   }
 
   public void clearChunkWriterCache() {
     this.chunkWriterCache.clear();
   }
-
 }

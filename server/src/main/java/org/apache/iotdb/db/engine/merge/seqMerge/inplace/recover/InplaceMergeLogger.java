@@ -27,7 +27,7 @@ import java.util.List;
 import org.apache.iotdb.db.engine.merge.MergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.metadata.PartialPath;
 
 /**
  * InplaceMergeLogger records the progress of a merge in file "merge.log" as text lines.
@@ -55,10 +55,10 @@ public class InplaceMergeLogger implements MergeLogger {
     logStream.close();
   }
 
-  public void logTSStart(List<Path> paths) throws IOException {
+  public void logTSStart(List<PartialPath> paths) throws IOException {
     logStream.write(STR_START);
-    for (Path path : paths) {
-      logStream.write(" " + path.getFullPath());
+    for (PartialPath path : paths) {
+      logStream.write(" " + path);
     }
     logStream.newLine();
     logStream.flush();

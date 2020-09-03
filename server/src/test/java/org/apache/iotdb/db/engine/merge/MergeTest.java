@@ -34,7 +34,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Before;
 
 public abstract class MergeTest {
 
@@ -69,6 +70,7 @@ public abstract class MergeTest {
 
   private int prevMergeChunkThreshold;
 
+  @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     IoTDB.metaManager.init();
     prevMergeChunkThreshold =
@@ -101,11 +103,12 @@ public abstract class MergeTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = MERGE_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.metaManager.setStorageGroup(MERGE_TEST_SG);
+    IoTDB.metaManager.setStorageGroup(new PartialPath(MERGE_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
+        PartialPath devicePath = new PartialPath(device);
         IoTDB.metaManager.createTimeseries(
-            device + PATH_SEPARATOR + measurementSchema.getMeasurementId(), measurementSchema
+            devicePath.concatNode(measurementSchema.getMeasurementId()), measurementSchema
                 .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());
       }

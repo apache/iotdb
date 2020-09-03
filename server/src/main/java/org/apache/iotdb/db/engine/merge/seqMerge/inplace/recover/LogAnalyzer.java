@@ -19,22 +19,33 @@
 
 package org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover;
 
-import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger.*;
+import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger.STR_ALL_TS_END;
+import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger.STR_END;
+import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger.STR_MERGE_END;
+import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger.STR_MERGE_START;
+import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger.STR_START;
+import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger.STR_TIMESERIES;
+import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger.STR_UNSEQ_FILES;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
-
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,8 +81,8 @@ public class LogAnalyzer {
   private Map<File, Long> fileLastPositions = new HashMap<>();
   private Map<File, Long> tempFileLastPositions = new HashMap<>();
 
-  private List<Path> mergedPaths = new ArrayList<>();
-  private List<Path> unmergedPaths;
+  private List<PartialPath> mergedPaths = new ArrayList<>();
+  private List<PartialPath> unmergedPaths;
   private List<TsFileResource> unmergedFiles;
   private String currLine;
 
@@ -99,11 +110,9 @@ public class LogAnalyzer {
 
         analyzeUnseqFiles(bufferedReader);
 
-        List<String> storageGroupPaths = IoTDB.metaManager.getAllTimeseriesName(storageGroupName + ".*");
+        List<PartialPath> storageGroupPaths = IoTDB.metaManager.getAllTimeseriesPath(new PartialPath(storageGroupName + ".*"));
         unmergedPaths = new ArrayList<>();
-        for (String path : storageGroupPaths) {
-          unmergedPaths.add(new Path(path));
-        }
+        unmergedPaths.addAll(storageGroupPaths);
 
         analyzeMergedSeries(bufferedReader, unmergedPaths);
 
@@ -169,7 +178,8 @@ public class LogAnalyzer {
     resource.setUnseqFiles(mergeUnseqFiles);
   }
 
-  private void analyzeMergedSeries(BufferedReader bufferedReader, List<Path> unmergedPaths) throws IOException {
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  private void analyzeMergedSeries(BufferedReader bufferedReader, List<PartialPath> unmergedPaths) throws IOException {
     if (!STR_MERGE_START.equals(currLine)) {
       return;
     }
@@ -180,7 +190,7 @@ public class LogAnalyzer {
       fileLastPositions.put(mergeFile, 0L);
     }
 
-    List<Path> currTSList = new ArrayList<>();
+    List<PartialPath> currTSList = new ArrayList<>();
     long startTime = System.currentTimeMillis();
     while ((currLine = bufferedReader.readLine()) != null) {
       if (STR_ALL_TS_END.equals(currLine)) {
@@ -190,7 +200,11 @@ public class LogAnalyzer {
         // a TS starts to merge
         String[] splits = currLine.split(" ");
         for (int i = 1; i < splits.length; i ++) {
-          currTSList.add(new Path(splits[i]));
+          try {
+            currTSList.add(new PartialPath(splits[i]));
+          } catch (IllegalPathException e) {
+            throw new IOException(e.getMessage());
+          }
         }
         tempFileLastPositions.clear();
       } else if (!currLine.contains(STR_END)) {
@@ -215,6 +229,7 @@ public class LogAnalyzer {
     }
   }
 
+  @SuppressWarnings("squid:S3776")
   private void analyzeMergedFiles(BufferedReader bufferedReader) throws IOException {
     if (!STR_ALL_TS_END.equals(currLine)) {
       return;
@@ -237,6 +252,9 @@ public class LogAnalyzer {
         Long lastPost = Long.parseLong(splits[1]);
         fileLastPositions.put(currFile, lastPost);
       } else {
+        if (currFile == null) {
+          throw new IOException("Illegal merge files");
+        }
         fileLastPositions.remove(currFile);
         String seqFilePath = currFile.getAbsolutePath().replace(InplaceMergeTask.MERGE_SUFFIX, "");
         Iterator<TsFileResource> unmergedFileIter = unmergedFiles.iterator();
@@ -256,11 +274,11 @@ public class LogAnalyzer {
     }
   }
 
-  public List<Path> getUnmergedPaths() {
+  public List<PartialPath> getUnmergedPaths() {
     return unmergedPaths;
   }
 
-  public void setUnmergedPaths(List<Path> unmergedPaths) {
+  public void setUnmergedPaths(List<PartialPath> unmergedPaths) {
     this.unmergedPaths = unmergedPaths;
   }
 
@@ -273,11 +291,11 @@ public class LogAnalyzer {
     this.unmergedFiles = unmergedFiles;
   }
 
-  public List<Path> getMergedPaths() {
+  public List<PartialPath> getMergedPaths() {
     return mergedPaths;
   }
 
-  public void setMergedPaths(List<Path> mergedPaths) {
+  public void setMergedPaths(List<PartialPath> mergedPaths) {
     this.mergedPaths = mergedPaths;
   }
 

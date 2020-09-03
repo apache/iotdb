@@ -35,11 +35,12 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.junit.After;
 import org.junit.Before;
@@ -72,7 +73,7 @@ public class InplaceMergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),
@@ -97,7 +98,7 @@ public class InplaceMergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),
@@ -123,7 +124,7 @@ public class InplaceMergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),
@@ -148,7 +149,7 @@ public class InplaceMergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),
@@ -177,7 +178,7 @@ public class InplaceMergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),
@@ -202,7 +203,7 @@ public class InplaceMergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(2));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),
@@ -224,8 +225,8 @@ public class InplaceMergeTaskTest extends MergeTest {
   @Test
   public void mergeWithDeletionTest() throws Exception {
     try {
-      seqResources.get(0).getModFile().write(new Deletion(new Path(deviceIds[0],
-          measurementSchemas[0].getMeasurementId()), 10000, 0, 49));
+      PartialPath device = new PartialPath(deviceIds[0]);
+      seqResources.get(0).getModFile().write(new Deletion(device.concatNode(measurementSchemas[0].getMeasurementId()), 10000, 0, 49));
     } finally {
       seqResources.get(0).getModFile().close();
     }
@@ -243,7 +244,7 @@ public class InplaceMergeTaskTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(seqResources.get(0));
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),

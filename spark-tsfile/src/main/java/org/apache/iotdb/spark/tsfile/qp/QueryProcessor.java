@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 public class QueryProcessor {
 
   //construct logical query plans first, then convert them to physical ones
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public List<TSQueryPlan> generatePlans(FilterOperator filter, List<String> paths,
       List<String> columnNames, TsFileSequenceReader in, Long start, Long end) throws
       QueryProcessorException, IOException {
@@ -127,6 +128,7 @@ public class QueryProcessor {
     return filterOperator.childOperators;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private SingleQuery constructSelectPlan(FilterOperator filterOperator, List<String> columnNames)
       throws QueryOperatorException {
     FilterOperator timeFilter = null;

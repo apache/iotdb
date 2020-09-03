@@ -72,9 +72,8 @@ public class InplaceMergeLogTest extends MergeTest {
       File mergeLog, List<TsFileResource> newFile) {
     int lineCnt = 0;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(mergeLog))) {
-      String line;
-      while ((line = bufferedReader.readLine()) != null) {
-        lineCnt++;
+      while (bufferedReader.readLine() != null) {
+        lineCnt ++;
       }
     } catch (IOException e) {
       e.printStackTrace();

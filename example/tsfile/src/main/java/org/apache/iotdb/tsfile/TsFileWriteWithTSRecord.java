@@ -43,35 +43,33 @@ public class TsFileWriteWithTSRecord {
       if (f.exists()) {
         f.delete();
       }
-      TsFileWriter tsFileWriter = new TsFileWriter(f);
 
-      // add measurements into file schema
-
-      for (int i = 0; i < 4; i++) {
+      try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
         // add measurements into file schema
-        tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_1),
-            new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
-        tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_2),
-            new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
-        tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_3),
-            new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
+        for (int i = 0; i < 4; i++) {
+          // add measurements into file schema
+          tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_1),
+                  new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
+          tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_2),
+                  new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
+          tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_3),
+                  new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
+        }
+
+        // construct TSRecord
+        for (int i = 0; i < 100; i++) {
+          TSRecord tsRecord = new TSRecord(i, Constant.DEVICE_PREFIX + (i % 4));
+          DataPoint dPoint1 = new LongDataPoint(Constant.SENSOR_1, i);
+          DataPoint dPoint2 = new LongDataPoint(Constant.SENSOR_2, i);
+          DataPoint dPoint3 = new LongDataPoint(Constant.SENSOR_3, i);
+          tsRecord.addTuple(dPoint1);
+          tsRecord.addTuple(dPoint2);
+          tsRecord.addTuple(dPoint3);
+
+          // write TSRecord
+          tsFileWriter.write(tsRecord);
+        }
       }
-
-      // construct TSRecord
-      for (int i = 0; i < 100; i++) {
-        TSRecord tsRecord = new TSRecord(i, Constant.DEVICE_PREFIX + (i % 4));
-        DataPoint dPoint1 = new LongDataPoint(Constant.SENSOR_1, i);
-        DataPoint dPoint2 = new LongDataPoint(Constant.SENSOR_2, i);
-        DataPoint dPoint3 = new LongDataPoint(Constant.SENSOR_3, i);
-        tsRecord.addTuple(dPoint1);
-        tsRecord.addTuple(dPoint2);
-        tsRecord.addTuple(dPoint3);
-
-        // write TSRecord
-        tsFileWriter.write(tsRecord);
-      }
-
-      tsFileWriter.close();
     } catch (Throwable e) {
       e.printStackTrace();
       System.out.println(e.getMessage());

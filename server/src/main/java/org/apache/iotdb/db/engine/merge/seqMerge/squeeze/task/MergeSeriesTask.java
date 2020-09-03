@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.merge.seqMerge.squeeze.task;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.BaseMergeSeriesTask;
@@ -30,12 +29,12 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.sizeMerge.SizeMergeFileStrategy;
 import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeSeriesTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.metadata.PartialPath;
 
 class MergeSeriesTask extends BaseMergeSeriesTask {
 
   MergeSeriesTask(MergeContext context, String taskName, MergeLogger mergeLogger,
-      MergeResource mergeResource, List<Path> unmergedSeries, String storageGroupName) {
+      MergeResource mergeResource, List<PartialPath> unmergedSeries, String storageGroupName) {
     super(context, taskName, mergeLogger, mergeResource, unmergedSeries, storageGroupName);
   }
 

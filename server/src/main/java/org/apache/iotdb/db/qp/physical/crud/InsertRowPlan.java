@@ -27,8 +27,10 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -36,7 +38,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -62,7 +63,7 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @TestOnly
-  public InsertRowPlan(String deviceId, long insertTime, String[] measurements,
+  public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurements,
       TSDataType[] dataTypes, String[] insertValues) {
     super(OperatorType.INSERT);
     this.time = insertTime;
@@ -80,7 +81,7 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @TestOnly
-  public InsertRowPlan(String deviceId, long insertTime, String measurement, TSDataType type,
+  public InsertRowPlan(PartialPath deviceId, long insertTime, String measurement, TSDataType type,
       String insertValue) {
     super(OperatorType.INSERT);
     this.time = insertTime;
@@ -95,9 +96,9 @@ public class InsertRowPlan extends InsertPlan {
     }
   }
 
-  public InsertRowPlan(TSRecord tsRecord) {
+  public InsertRowPlan(TSRecord tsRecord) throws IllegalPathException {
     super(OperatorType.INSERT);
-    this.deviceId = tsRecord.deviceId;
+    this.deviceId = new PartialPath(tsRecord.deviceId);
     this.time = tsRecord.time;
     this.measurements = new String[tsRecord.dataPointList.size()];
     this.schemas = new MeasurementSchema[tsRecord.dataPointList.size()];
@@ -112,7 +113,7 @@ public class InsertRowPlan extends InsertPlan {
     }
   }
 
-  public InsertRowPlan(String deviceId, long insertTime, String[] measurementList,
+  public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurementList,
       TSDataType[] dataTypes, Object[] insertValues) {
     super(Operator.OperatorType.INSERT);
     this.time = insertTime;
@@ -122,7 +123,7 @@ public class InsertRowPlan extends InsertPlan {
     this.values = insertValues;
   }
 
-  public InsertRowPlan(String deviceId, long insertTime, String[] measurementList,
+  public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurementList,
       String[] insertValues) {
     super(Operator.OperatorType.INSERT);
     this.time = insertTime;
@@ -156,6 +157,7 @@ public class InsertRowPlan extends InsertPlan {
    * if inferType is true, transfer String[] values to specific data types (Integer, Long, Float,
    * Double, Binary)
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setSchemasAndTransferType(MeasurementSchema[] schemas) throws QueryProcessException {
     this.schemas = schemas;
     if (isNeedInferType) {
@@ -165,7 +167,7 @@ public class InsertRowPlan extends InsertPlan {
             markFailedMeasurementInsertion(i);
           } else {
             throw new QueryProcessException(new PathNotExistException(
-                deviceId + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
+                deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
           }
           continue;
         }
@@ -193,11 +195,11 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @Override
-  public List<Path> getPaths() {
-    List<Path> ret = new ArrayList<>();
-
+  public List<PartialPath> getPaths() {
+    List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
-      ret.add(new Path(deviceId, m));
+      PartialPath fullPath = deviceId.concatNode(m);
+      ret.add(fullPath);
     }
     return ret;
   }
@@ -235,7 +237,7 @@ public class InsertRowPlan extends InsertPlan {
     stream.writeByte((byte) type);
     stream.writeLong(time);
 
-    putString(stream, deviceId);
+    putString(stream, deviceId.getFullPath());
 
     stream.writeInt(
         measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
@@ -373,7 +375,7 @@ public class InsertRowPlan extends InsertPlan {
     buffer.put((byte) type);
     buffer.putLong(time);
 
-    putString(buffer, deviceId);
+    putString(buffer, deviceId.getFullPath());
 
     buffer
         .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
@@ -395,9 +397,9 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     this.time = buffer.getLong();
-    this.deviceId = readString(buffer);
+    this.deviceId = new PartialPath(readString(buffer));
 
     int measurementSize = buffer.getInt();
 

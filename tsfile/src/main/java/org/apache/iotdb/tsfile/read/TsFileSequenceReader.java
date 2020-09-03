@@ -810,7 +810,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the position of the file that is fine. All data after the position in the file should
    * be truncated.
    */
-
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public long selfCheck(Map<Path, MeasurementSchema> newSchema,
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       List<Pair<Long, Long>> versionInfo,

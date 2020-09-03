@@ -35,18 +35,12 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSizeSelectorStrategy;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
-import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -63,7 +57,7 @@ public abstract class BaseMergeSeriesTask {
   protected MergeResource resource;
   protected MergeContext mergeContext;
   private long timeBlock;
-  protected List<Path> unmergedSeries;
+  protected List<PartialPath> unmergedSeries;
   private MergeSizeSelectorStrategy mergeSizeSelectorStrategy;
   private int minChunkPointNum;
   protected int mergedSeriesCnt;
@@ -74,7 +68,7 @@ public abstract class BaseMergeSeriesTask {
   protected TsFileResource currentMergeResource;
 
   protected BaseMergeSeriesTask(MergeContext context, String taskName, MergeLogger mergeLogger,
-      MergeResource mergeResource, List<Path> unmergedSeries, String storageGroupName) {
+      MergeResource mergeResource, List<PartialPath> unmergedSeries, String storageGroupName) {
     this.mergeContext = context;
     this.taskName = taskName;
     this.mergeLogger = mergeLogger;
@@ -118,7 +112,7 @@ public abstract class BaseMergeSeriesTask {
     }
   }
 
-  protected void mergePaths(List<Path> pathList) throws IOException {
+  protected void mergePaths(List<PartialPath> pathList) throws IOException {
     List<TsFileResource> currSeqFiles = new ArrayList<>();
     List<TsFileResource> currUnseqFiles = new ArrayList<>();
     String deviceId = pathList.get(0).getDevice();
@@ -135,12 +129,12 @@ public abstract class BaseMergeSeriesTask {
     currentFileWriter.startChunkGroup(deviceId);
     int mergeChunkSubTaskNum = IoTDBDescriptor.getInstance().getConfig()
         .getMergeChunkSubThreadNum();
-    PriorityQueue<Path>[] seriesHeaps = new PriorityQueue[mergeChunkSubTaskNum];
+    PriorityQueue<PartialPath>[] seriesHeaps = new PriorityQueue[mergeChunkSubTaskNum];
     for (int i = 0; i < mergeChunkSubTaskNum; i++) {
       seriesHeaps[i] = new PriorityQueue<>();
     }
     int idx = 0;
-    for (Path currMergingPath : pathList) {
+    for (PartialPath currMergingPath : pathList) {
       seriesHeaps[idx % mergeChunkSubTaskNum].add(currMergingPath);
       idx++;
     }
@@ -164,13 +158,13 @@ public abstract class BaseMergeSeriesTask {
 
   public class BaseMergeChunkHeapTask extends MergeChunkHeapTask {
 
-    private PriorityQueue<Path> seriesHeaps;
+    private PriorityQueue<PartialPath> seriesHeaps;
     private List<TsFileResource> seqFiles;
     private List<TsFileResource> unseqFiles;
     private int taskNum;
     private int mergedSeriesNum = 0;
 
-    public BaseMergeChunkHeapTask(PriorityQueue<Path> seriesHeaps, List<TsFileResource> seqFiles,
+    public BaseMergeChunkHeapTask(PriorityQueue<PartialPath> seriesHeaps, List<TsFileResource> seqFiles,
         List<TsFileResource> unseqFiles, int taskNum) {
       this.seriesHeaps = seriesHeaps;
       this.seqFiles = seqFiles;
@@ -187,7 +181,7 @@ public abstract class BaseMergeSeriesTask {
     @SuppressWarnings("java:S2445") // avoid reading the same reader concurrently
     private void mergeChunkHeap() throws IOException {
       while (!seriesHeaps.isEmpty()) {
-        Path path = seriesHeaps.poll();
+        PartialPath path = seriesHeaps.poll();
         long currMinTime = Long.MAX_VALUE;
         long currMaxTime = Long.MIN_VALUE;
         IChunkWriter chunkWriter = resource.getChunkWriter(path);
