@@ -66,6 +66,8 @@ import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.CommitLogTask;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.LogDispatcher;
+import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
@@ -178,6 +180,8 @@ public abstract class RaftMember {
    * the lock is to make sure that only one thread can apply snapshot at the same time
    */
   private final Object snapshotApplyLock = new Object();
+
+  private LogDispatcher logDispatcher;
 
   public RaftMember() {
   }
@@ -657,23 +661,7 @@ public abstract class RaftMember {
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(term.get());
 
-    AppendEntryRequest request = new AppendEntryRequest();
-    request.setTerm(term.get());
-    request.setEntry(log.serialize());
-    request.setLeader(getThisNode());
-    // don't need lock because even it's larger than the commitIndex when appending this log to logManager,
-    // the follower can handle the larger commitIndex with no effect
-    request.setLeaderCommit(logManager.getCommitLogIndex());
-    request.setPrevLogIndex(log.getCurrLogIndex() - 1);
-    try {
-      request.setPrevLogTerm(logManager.getTerm(log.getCurrLogIndex() - 1));
-    } catch (Exception e) {
-      logger.error("getTerm failed for newly append entries", e);
-    }
-    if (getHeader() != null) {
-      // data groups use header to find a particular DataGroupMember
-      request.setHeader(getHeader());
-    }
+    AppendEntryRequest request = buildAppendEntryRequest(log);
 
     // synchronized: avoid concurrent modification
     try {
@@ -688,7 +676,11 @@ public abstract class RaftMember {
       // retry if allNodes has changed
       return AppendLogResult.TIME_OUT;
     }
+    return waitAppendResult(voteCounter, leaderShipStale, newLeaderTerm);
+  }
 
+  public AppendLogResult waitAppendResult(AtomicInteger voteCounter,
+      AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm) {
     long start = System.nanoTime();
     synchronized (voteCounter) {
       if (voteCounter.get() > 0) {
@@ -720,7 +712,8 @@ public abstract class RaftMember {
     return AppendLogResult.OK;
   }
 
-  private void sendLogToFollower(Log log, AtomicInteger voteCounter, Node node,
+
+  public void sendLogToFollower(Log log, AtomicInteger voteCounter, Node node,
       AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request) {
     if (node.equals(thisNode)) {
       return;
@@ -747,6 +740,13 @@ public abstract class RaftMember {
     Timer.raftMemberSendLogAyncMS.addAndGet(System.nanoTime() - start);
     Timer.raftMemberSendLogAyncCounter.incrementAndGet();
 
+  }
+
+  public synchronized LogDispatcher getLogDispatcher() {
+    if (logDispatcher == null) {
+      logDispatcher = new LogDispatcher(this);
+    }
+    return logDispatcher;
   }
 
   private boolean waitForPrevLog(Peer peer, Log log) {
@@ -787,7 +787,7 @@ public abstract class RaftMember {
     }
   }
 
-  private AppendNodeEntryHandler getAppendNodeEntryHandler(Log log, AtomicInteger voteCounter,
+  public AppendNodeEntryHandler getAppendNodeEntryHandler(Log log, AtomicInteger voteCounter,
       Node node, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, Peer peer) {
     AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
     handler.setReceiver(node);
@@ -1266,6 +1266,10 @@ public abstract class RaftMember {
    * during the appending
    */
   TSStatus processPlanLocally(PhysicalPlan plan) {
+    if (true) {
+      return processPlanLocallyV2(plan);
+    }
+
     logger.debug("{}: Processing plan {}", name, plan);
     if (readOnly) {
       return StatusUtils.NODE_READ_ONLY;
@@ -1288,25 +1292,113 @@ public abstract class RaftMember {
         return StatusUtils.OK;
       }
     } catch (LogExecutionException e) {
-      Throwable cause = getRootCause(e);
-      if (cause instanceof BatchInsertionException) {
-        return RpcUtils
-            .getStatus(Arrays.asList(((BatchInsertionException) cause).getFailingStatus()));
-      }
-      TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-      if (cause instanceof IoTDBException) {
-        tsStatus.setCode(((IoTDBException) cause).getErrorCode());
-      }
-      if (!(cause instanceof PathNotExistException) &&
-          !(cause instanceof StorageGroupNotSetException) &&
-          !(cause instanceof PathAlreadyExistException) &&
-          !(cause instanceof StorageGroupAlreadySetException)) {
-        logger.debug("{} cannot be executed because {}", plan, cause);
-      }
-      tsStatus.setMessage(cause.getClass().getName() + ":" + cause.getMessage());
-      return tsStatus;
+      return handleLogExecutionException(log, e);
     }
     return StatusUtils.TIME_OUT;
+  }
+
+
+  TSStatus processPlanLocallyV2(PhysicalPlan plan) {
+    logger.debug("{}: Processing plan {}", name, plan);
+    if (readOnly) {
+      return StatusUtils.NODE_READ_ONLY;
+    }
+    PhysicalPlanLog log = new PhysicalPlanLog();
+    // assign term and index to the new log and append it
+    SendLogRequest sendLogRequest;
+    long start = System.nanoTime();
+    synchronized (logManager) {
+      log.setCurrLogTerm(getTerm().get());
+      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+      log.setPlan(plan);
+      logManager.append(log);
+
+      sendLogRequest = buildSendLogRequest(log);
+      getLogDispatcher().offer(sendLogRequest);
+    }
+    Timer.raftMemberOfferLogMS.addAndGet(System.nanoTime() - start);
+    Timer.raftMemberOfferLogCounter.incrementAndGet();
+
+
+    try {
+      start = System.nanoTime();
+      AppendLogResult appendLogResult = waitAppendResult(sendLogRequest.voteCounter,
+          sendLogRequest.leaderShipStale,
+          sendLogRequest.newLeaderTerm);
+      Timer.raftMemberAppendLogResultMS.addAndGet(System.nanoTime() - start);
+      Timer.raftMemberAppendLogResultCounter.incrementAndGet();
+
+      switch (appendLogResult) {
+        case OK:
+          logger.debug("{}: log {} is accepted", name, log);
+          start = System.nanoTime();
+          commitLog(log);
+          Timer.raftMemberCommitLogResultMS.addAndGet(System.nanoTime() - start);
+          Timer.raftMemberCommitLogResultCounter.incrementAndGet();
+          return StatusUtils.OK;
+        case TIME_OUT:
+          logger.debug("{}: log {} timed out, retrying...", name, log);
+        case LEADERSHIP_STALE:
+          // abort the appending, the new leader will fix the local logs by catch-up
+        default:
+          break;
+      }
+    } catch (LogExecutionException e) {
+      return handleLogExecutionException(log, e);
+    }
+    return StatusUtils.TIME_OUT;
+  }
+
+  private TSStatus handleLogExecutionException(
+      PhysicalPlanLog log, LogExecutionException e) {
+    Throwable cause = getRootCause(e);
+    if (cause instanceof BatchInsertionException) {
+      return RpcUtils
+          .getStatus(Arrays.asList(((BatchInsertionException) cause).getFailingStatus()));
+    }
+    TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+    if (cause instanceof IoTDBException) {
+      tsStatus.setCode(((IoTDBException) cause).getErrorCode());
+    }
+    if (!(cause instanceof PathNotExistException) &&
+        !(cause instanceof StorageGroupNotSetException) &&
+        !(cause instanceof PathAlreadyExistException) &&
+        !(cause instanceof StorageGroupAlreadySetException)) {
+      logger.debug("{} cannot be executed because ", log, cause);
+    }
+    tsStatus.setMessage(cause.getClass().getName() + ":" + cause.getMessage());
+    return tsStatus;
+  }
+
+  private SendLogRequest buildSendLogRequest(Log log) {
+    AtomicInteger voteCounter = new AtomicInteger(allNodes.size() / 2);
+    AtomicBoolean leaderShipStale = new AtomicBoolean(false);
+    AtomicLong newLeaderTerm = new AtomicLong(term.get());
+    AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(log);
+
+    return new SendLogRequest(log, voteCounter, leaderShipStale, newLeaderTerm, appendEntryRequest);
+  }
+
+  private AppendEntryRequest buildAppendEntryRequest(Log log) {
+    AppendEntryRequest request = new AppendEntryRequest();
+    request.setTerm(term.get());
+    request.setEntry(log.serialize());
+    request.setLeader(getThisNode());
+    // don't need lock because even it's larger than the commitIndex when appending this log to logManager,
+    // the follower can handle the larger commitIndex with no effect
+    request.setLeaderCommit(logManager.getCommitLogIndex());
+    request.setPrevLogIndex(log.getCurrLogIndex() - 1);
+    try {
+      request.setPrevLogTerm(logManager.getTerm(log.getCurrLogIndex() - 1));
+    } catch (Exception e) {
+      logger.error("getTerm failed for newly append entries", e);
+    }
+    if (getHeader() != null) {
+      // data groups use header to find a particular DataGroupMember
+      request.setHeader(getHeader());
+    }
+    return request;
   }
 
   private Throwable getRootCause(Throwable e) {

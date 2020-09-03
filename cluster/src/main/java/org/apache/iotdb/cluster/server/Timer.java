@@ -37,6 +37,12 @@ public class Timer {
   public static AtomicLong rafTMemberReceiverWaitForPrevLogCounter = new AtomicLong(0);
   public static AtomicLong rafTMemberMayBeAppendMS = new AtomicLong(0);
   public static AtomicLong rafTMemberMayBeAppendCounter = new AtomicLong(0);
+  public static AtomicLong raftMemberOfferLogMS = new AtomicLong(0);
+  public static AtomicLong raftMemberOfferLogCounter = new AtomicLong(0);
+  public static AtomicLong raftMemberCommitLogResultMS = new AtomicLong(0);
+  public static AtomicLong raftMemberCommitLogResultCounter = new AtomicLong(0);
+  public static AtomicLong raftMemberAppendLogResultMS = new AtomicLong(0);
+  public static AtomicLong raftMemberAppendLogResultCounter = new AtomicLong(0);
 
 
   private static final String dataGroupMemberProcessPlanLocallyMSString = "Data group member - process plan locally : ";
@@ -55,6 +61,9 @@ public class Timer {
   private static final String raftMemberLogParseString = "Raft member - log parse: ";
   private static final String rafTMemberReceiverWaitForPrevLogString = "Raft member - receiver wait for prev log: ";
   private static final String rafTMemberMayBeAppendString = "Raft member - maybe append: ";
+  private static final String rafTMemberOfferLogString = "Raft member - offer log: ";
+  private static final String raftMemberCommitLogResultString = "Raft member - commit log result: ";
+  private static final String raftMemberAppendLogResultString = "Raft member - append log result: ";
 
 
 
@@ -131,6 +140,20 @@ public class Timer {
         + rafTMemberMayBeAppendMS.get()/1000000L + ", "
         + rafTMemberMayBeAppendCounter + ", "
         + (double) rafTMemberMayBeAppendMS.get()/1000000L / rafTMemberMayBeAppendCounter.get() + "\n";
+    result += rafTMemberOfferLogString
+        + raftMemberOfferLogMS.get()/1000000L + ", "
+        + raftMemberOfferLogCounter + ", "
+        + (double) raftMemberOfferLogMS.get()/1000000L / raftMemberOfferLogCounter.get() + "\n";
+    result += raftMemberAppendLogResultString
+        + raftMemberAppendLogResultMS.get()/1000000L + ", "
+        + raftMemberAppendLogResultCounter + ", "
+        + (double) raftMemberAppendLogResultMS.get()/1000000L / raftMemberAppendLogResultCounter.get() + "\n";
+    result += raftMemberCommitLogResultString
+        + raftMemberCommitLogResultMS.get()/1000000L + ", "
+        + raftMemberCommitLogResultCounter + ", "
+        + (double) raftMemberCommitLogResultMS.get()/1000000L / raftMemberCommitLogResultCounter.get() + "\n";
+
+
 
     return result;
   }
