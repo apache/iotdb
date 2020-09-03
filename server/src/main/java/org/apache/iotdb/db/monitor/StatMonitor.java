@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.monitor;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -26,8 +27,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -36,8 +39,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.monitor.MonitorConstants.StatMeasurementConstants;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -49,23 +51,25 @@ import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StatMonitor {
+public class StatMonitor implements StatMonitorMBean, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(StatMonitor.class);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static MManager mManager = IoTDB.metaManager;
+  private final String mbeanName = String
+      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
+          getID().getJmxName());
 
   // storage group name -> monitor series of it.
   private Map<String, List<PartialPath>> monitorSeriesMap = new ConcurrentHashMap<>();
   // monitor series -> current value of it.   e.g. root.stats.global.TOTAL_POINTS -> value
   private Map<PartialPath, Long> cachedValueMap = new ConcurrentHashMap<>();
 
-  private StatMonitor() {
+  public StatMonitor() {
     if (config.isEnableStatMonitor()) {
       registerStatGlobalInfo();
       List<PartialPath> storageGroupNames = mManager.getAllStorageGroupPaths();
       registerStatStorageGroupInfo(storageGroupNames);
-      JMXService.registerMBean(this, "StatMonitor");
     }
   }
 
@@ -176,6 +180,43 @@ public class StatMonitor {
   public void recovery() {
   }
 
+  @Override
+  public long getGlobalTotalPointsNum() {
+    List<PartialPath> monitorSeries = monitorSeriesMap
+        .get(MonitorConstants.STAT_STORAGE_GROUP_NAME);
+    return cachedValueMap.get(monitorSeries.indexOf(0));
+  }
+
+  @Override
+  public String getSystemDirectory() {
+    try {
+      File file = SystemFileFactory.INSTANCE.getFile(config.getSystemDir());
+      return file.getAbsolutePath();
+    } catch (Exception e) {
+      logger.error("meet error while trying to get base dir.", e);
+      return "Unavailable";
+    }
+  }
+
+  @Override
+  public void start() throws StartupException {
+    try {
+      JMXService.registerMBean(getInstance(), mbeanName);
+    } catch (Exception e) {
+      throw new StartupException(this.getID().getName(), e.getMessage());
+    }
+  }
+
+  @Override
+  public void stop() {
+    JMXService.deregisterMBean(mbeanName);
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.MONITOR_SERVICE;
+  }
+
   private static class StatMonitorHolder {
 
     private StatMonitorHolder() {
@@ -184,5 +225,4 @@ public class StatMonitor {
 
     private static final StatMonitor INSTANCE = new StatMonitor();
   }
-
 }
