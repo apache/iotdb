@@ -22,9 +22,15 @@ package org.apache.iotdb.db.query.udf.api;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.query.udf.api.collector.DataPointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.db.query.udf.api.iterator.DataPointBatchIterator;
+import org.apache.iotdb.db.query.udf.api.iterator.DataPointIterator;
 import org.apache.iotdb.db.query.udf.api.iterator.Iterator;
+import org.apache.iotdb.db.query.udf.api.iterator.OverallDataPointIterator;
+import org.apache.iotdb.db.query.udf.api.iterator.OverallRowRecordIterator;
+import org.apache.iotdb.db.query.udf.api.iterator.RowRecordBatchIterator;
+import org.apache.iotdb.db.query.udf.api.iterator.RowRecordIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
@@ -38,9 +44,42 @@ public abstract class UDTF implements UDF {
 
   protected DataPointCollector collector;
 
+  /**
+   * @param parameters
+   * @param configurations
+   */
   public abstract void initializeUDF(UDFParameters parameters, UDTFConfigurations configurations);
 
+  /**
+   *
+   */
   public abstract void transform();
+
+  public final DataPointIterator getDataPointIterator(int index) {
+    return (DataPointIterator) dataPointIterators.get(index);
+  }
+
+  public final DataPointBatchIterator getDataPointBatchIterator(int index) {
+    return (DataPointBatchIterator) dataPointIterators.get(index);
+  }
+
+  public final OverallDataPointIterator getOverallDataPointIterator(int index) {
+    return (OverallDataPointIterator) dataPointIterators.get(index);
+  }
+
+  public final RowRecordIterator getRowRecordIterator(String tabletName) {
+    return (RowRecordIterator) rowRecordIterators.get(tabletName);
+  }
+
+  public final RowRecordBatchIterator getRowRecordBatchIterator(String tabletName) {
+    return (RowRecordBatchIterator) rowRecordIterators.get(tabletName);
+  }
+
+  public final OverallRowRecordIterator getOverallRowRecordIterator(String tabletName) {
+    return (OverallRowRecordIterator) rowRecordIterators.get(tabletName);
+  }
+
+  // The following methods are not for users
 
   public final void setPaths(List<Path> paths) {
     this.paths = paths;
