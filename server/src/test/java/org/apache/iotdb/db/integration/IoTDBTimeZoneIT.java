@@ -111,10 +111,14 @@ public class IoTDBTimeZoneIT {
 
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(tz1);
-        Assert.assertEquals(retArray[cnt], ans);
-        cnt++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(tz1);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      } finally {
+        resultSet.close();
       }
       Assert.assertEquals(13, cnt);
     }

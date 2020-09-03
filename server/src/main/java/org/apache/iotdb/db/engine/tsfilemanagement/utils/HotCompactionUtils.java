@@ -149,6 +149,7 @@ public class HotCompactionUtils {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void merge(TsFileResource targetResource,
       List<TsFileResource> tsFileResources, String storageGroup,
       HotCompactionLogger hotCompactionLogger,

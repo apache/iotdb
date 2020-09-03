@@ -76,46 +76,50 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("select * from root");
       // has an empty time column
       Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
-      while(resultSet.next()) {
-        fail();
-      }
+      try {
+        while (resultSet.next()) {
+          fail();
+        }
 
-      resultSet = statement.executeQuery(
-          "select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
-      // has an empty time column
-      Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
-      while (resultSet.next()) {
-        fail();
-      }
+        resultSet = statement.executeQuery(
+                "select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
+        // has an empty time column
+        Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
+        while (resultSet.next()) {
+          fail();
+        }
 
-      resultSet = statement.executeQuery("select count(*) from root");
-      // has no column
-      Assert.assertEquals(0, resultSet.getMetaData().getColumnCount());
-      while(resultSet.next()) {
-        fail();
-      }
+        resultSet = statement.executeQuery("select count(*) from root");
+        // has no column
+        Assert.assertEquals(0, resultSet.getMetaData().getColumnCount());
+        while (resultSet.next()) {
+          fail();
+        }
 
-      resultSet = statement.executeQuery("select * from root align by device");
-      // has time and device columns
-      Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
-      while(resultSet.next()) {
-        fail();
-      }
+        resultSet = statement.executeQuery("select * from root align by device");
+        // has time and device columns
+        Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
+        while (resultSet.next()) {
+          fail();
+        }
 
-      resultSet = statement.executeQuery("select count(*) from root align by device");
-      // has device column
-      Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
-      while(resultSet.next()) {
-        fail();
-      }
+        resultSet = statement.executeQuery("select count(*) from root align by device");
+        // has device column
+        Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
+        while (resultSet.next()) {
+          fail();
+        }
 
-      resultSet = statement.executeQuery(
-          "select count(*) from root where time >= 1 and time <= 100 "
-              + "group by ([0, 100), 20ms, 20ms) align by device");
-      // has time and device columns
-      Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
-      while (resultSet.next()) {
-        fail();
+        resultSet = statement.executeQuery(
+                "select count(*) from root where time >= 1 and time <= 100 "
+                        + "group by ([0, 100), 20ms, 20ms) align by device");
+        // has time and device columns
+        Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
+        while (resultSet.next()) {
+          fail();
+        }
+      } finally {
+        resultSet.close();
       }
 
       resultSet.close();
@@ -148,9 +152,12 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("show timeseries");
 
       int count = 0;
-
-      while(resultSet.next()) {
-        count++;
+      try {
+        while (resultSet.next()) {
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
 
       Assert.assertEquals(10, count);
@@ -186,9 +193,12 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("show timeseries");
 
       int count = 0;
-
-      while(resultSet.next()) {
-        count++;
+      try {
+        while (resultSet.next()) {
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
 
       Assert.assertEquals(10, count);
@@ -224,9 +234,12 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("show timeseries");
 
       int count = 0;
-
-      while(resultSet.next()) {
-        count++;
+      try {
+        while (resultSet.next()) {
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
 
       Assert.assertEquals(10, count);
@@ -262,9 +275,12 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("show timeseries limit 8");
 
       int count = 0;
-
-      while(resultSet.next()) {
-        count++;
+      try {
+        while (resultSet.next()) {
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
 
       Assert.assertEquals(8, count);
@@ -291,9 +307,12 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("show timeseries limit 2 offset 1");
 
       int count = 0;
-
-      while(resultSet.next()) {
-        Assert.assertEquals(exps[count++], resultSet.getString(1));
+      try {
+        while (resultSet.next()) {
+          Assert.assertEquals(exps[count++], resultSet.getString(1));
+        }
+      } finally {
+        resultSet.close();
       }
 
       Assert.assertEquals(exps.length, count);
@@ -332,9 +351,12 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0 where s0 > 18");
 
       long count = 0;
-
-      while(resultSet.next()) {
-        count++;
+      try {
+        while (resultSet.next()) {
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
 
       Assert.assertEquals(1, count);
@@ -362,9 +384,13 @@ public class IoTDBSimpleQueryIT {
 
       ResultSet resultSet = statement.executeQuery("select s0, s1 from root.sg1.d0");
 
-      while(resultSet.next()) {
-        assertEquals(1, resultSet.getInt("root.sg1.d0.s0"));
-        assertEquals(null, resultSet.getString("root.sg1.d0.s1"));
+      try {
+        while (resultSet.next()) {
+          assertEquals(1, resultSet.getInt("root.sg1.d0.s0"));
+          assertEquals(null, resultSet.getString("root.sg1.d0.s1"));
+        }
+      } finally {
+        resultSet.close();
       }
     }
   }
@@ -436,8 +462,12 @@ public class IoTDBSimpleQueryIT {
 
       long count = 0;
 
-      while(resultSet.next()) {
-        count++;
+      try {
+        while (resultSet.next()) {
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
 
       Assert.assertEquals(4, count);
@@ -477,8 +507,12 @@ public class IoTDBSimpleQueryIT {
 
       long count = 0;
 
-      while(resultSet.next()) {
-        count++;
+      try {
+        while (resultSet.next()) {
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
 
       System.out.println(count);

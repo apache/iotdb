@@ -40,6 +40,7 @@ public class AndNode implements Node {
     this.hasCachedValue = false;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public boolean hasNext() throws IOException {
     if (hasCachedValue) {

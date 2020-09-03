@@ -34,6 +34,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     return filter;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private String mergeSamePathFilter(FilterOperator filter) throws MergeFilterException {
     if (filter.isLeaf()) {
       return filter.getSinglePath();
