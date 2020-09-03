@@ -26,7 +26,8 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
- * A prefix path, suffix path or fullPath generated from SQL
+ * A prefix path, suffix path or fullPath generated from SQL.
+ * Usually used in the IoTDB server module
  */
 public class PartialPath extends Path implements Comparable<Path> {
 
@@ -36,15 +37,30 @@ public class PartialPath extends Path implements Comparable<Path> {
   // alias of time series used in SELECT AS
   private String tsAlias = null;
 
+  /**
+   * Construct the PartialPath using a String, will split the given String into String[]
+   * E.g., path = "root.sg.\"d.1\".\"s.1\""
+   * nodes = {"root", "sg", "\"d.1\"", "\"s.1\""}
+   *
+   * @param path a full String of a time series path
+   * @throws IllegalPathException
+   */
   public PartialPath(String path) throws IllegalPathException {
     this.nodes = MetaUtils.splitPathToDetachedPath(path);
     this.fullPath = path;
   }
 
+  /**
+   * @param partialNodes nodes of a time series path
+   */
   public PartialPath(String[] partialNodes) {
     nodes = partialNodes;
   }
 
+  /**
+   * @param path path
+   * @param needSplit needSplit is basically false, whether need to be split to device and measurement, doesn't support escape character yet.
+   */
   public PartialPath(String path, boolean needSplit) {
     super(path, needSplit);
   }
