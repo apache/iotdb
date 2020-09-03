@@ -136,7 +136,6 @@ public class InsertRowPlan extends InsertPlan {
     isNeedInferType = true;
   }
 
-
   public long getTime() {
     return time;
   }

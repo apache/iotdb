@@ -114,10 +114,6 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     totalPointsNum += insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
-
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-      StatMonitor.globalPointsNum.addAndGet(insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber());
-    }
   }
 
   @Override
