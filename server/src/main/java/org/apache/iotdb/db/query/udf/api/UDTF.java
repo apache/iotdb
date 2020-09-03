@@ -30,9 +30,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public abstract class UDTF implements UDF {
 
-  protected int rowOffset;
-  protected int rowLimit;
-
   protected List<Path> paths;
   protected List<TSDataType> dataTypes;
 
@@ -43,17 +40,7 @@ public abstract class UDTF implements UDF {
 
   public abstract void initializeUDF(UDFParameters parameters, UDTFConfigurations configurations);
 
-  public abstract boolean hasRemainingDataToTransform();
-
-  public abstract void transform(int fetchSize);
-
-  public final void setRowOffset(int rowOffset) {
-    this.rowOffset = rowOffset;
-  }
-
-  public final void setRowLimit(int rowLimit) {
-    this.rowLimit = rowLimit;
-  }
+  public abstract void transform();
 
   public final void setPaths(List<Path> paths) {
     this.paths = paths;

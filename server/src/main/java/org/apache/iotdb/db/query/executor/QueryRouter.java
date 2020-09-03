@@ -235,7 +235,7 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
-      throws StorageEngineException, QueryProcessException {
+      throws StorageEngineException, QueryProcessException, IOException {
     IExpression expression = udtfPlan.getExpression();
     IExpression optimizedExpression;
     try {

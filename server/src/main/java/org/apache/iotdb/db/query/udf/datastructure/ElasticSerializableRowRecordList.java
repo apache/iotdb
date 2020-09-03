@@ -32,6 +32,9 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public class ElasticSerializableRowRecordList implements OverallRowRecordIterator {
 
+  public static final float MEMORY_USAGE_LIMIT_FOR_SINGLE_COLUMN = 100;
+  public static final int CACHE_SIZE_FOR_SINGLE_COLUMN = 3;
+
   protected TSDataType[] dataTypes;
   protected long queryId;
   protected String dataId;
@@ -82,13 +85,23 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
       }
 
       @Override
+      public long currentTime() throws IOException {
+        return getTime(currentRowRecordIndex);
+      }
+
+      @Override
       public RowRecord currentRowRecord() throws IOException {
         return getRowRecord(currentRowRecordIndex);
       }
 
       @Override
-      public long currentTime() throws IOException {
-        return getRowRecord(currentRowRecordIndex).getTimestamp();
+      public long nextTime() throws IOException {
+        return getTime(currentRowRecordIndex + 1);
+      }
+
+      @Override
+      public RowRecord nextRowRecord() throws IOException {
+        return getRowRecord(currentRowRecordIndex + 1);
       }
 
       @Override
@@ -223,6 +236,16 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
       @Override
       public long currentTime() throws IOException {
         return getTime(minIndexInCurrentBatch + currentRowRecordIndex);
+      }
+
+      @Override
+      public RowRecord nextRowRecord() throws IOException {
+        return getRowRecord(minIndexInCurrentBatch + currentRowRecordIndex + 1);
+      }
+
+      @Override
+      public long nextTime() throws IOException {
+        return getTime(minIndexInCurrentBatch + currentRowRecordIndex + 1);
       }
 
       @Override

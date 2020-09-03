@@ -23,6 +23,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class UDFContext {
@@ -31,8 +34,10 @@ public class UDFContext {
   private final Map<String, String> attributes;
   private final List<String> attributeKeysInOriginalOrder;
   private List<Path> paths;
+  private List<TSDataType> dataTypes;
 
-  private String columnParameters;
+  private final List<String> columnsForReaderDeduplication;
+  private String columnParameterPart;
   private String column;
 
   public UDFContext(String name) {
@@ -40,6 +45,7 @@ public class UDFContext {
     attributes = new HashMap<>();
     attributeKeysInOriginalOrder = new ArrayList<>();
     paths = new ArrayList<>();
+    columnsForReaderDeduplication = new ArrayList<>(paths.size());
   }
 
   public UDFContext(String name, Map<String, String> attributes,
@@ -48,6 +54,7 @@ public class UDFContext {
     this.attributes = attributes;
     this.attributeKeysInOriginalOrder = attributeKeysInOriginalOrder;
     this.paths = paths;
+    columnsForReaderDeduplication = new ArrayList<>(paths.size());
   }
 
   public void addAttribute(String key, String value) {
@@ -79,8 +86,18 @@ public class UDFContext {
     return paths;
   }
 
-  public String getColumnParameters() {
-    if (columnParameters == null) {
+  public List<TSDataType> getDataTypes() throws MetadataException {
+    if (dataTypes == null) {
+      dataTypes = new ArrayList<>();
+      for (Path path : paths) {
+        dataTypes.add(IoTDB.metaManager.getSeriesType(path.getFullPath()));
+      }
+    }
+    return dataTypes;
+  }
+
+  public String getColumnParameterPart() {
+    if (columnParameterPart == null) {
       StringBuilder builder = new StringBuilder(paths.get(0).getFullPath());
       for (int i = 1; i < paths.size(); ++i) {
         builder.append(", ").append(paths.get(i).getFullPath());
@@ -90,15 +107,22 @@ public class UDFContext {
         builder.append(", ").append("\"").append(key).append("\"=\"").append(attributes.get(key))
             .append("\"");
       }
-      columnParameters = builder.toString();
+      columnParameterPart = builder.toString();
     }
-    return columnParameters;
+    return columnParameterPart;
   }
 
   public String getColumn() {
     if (column == null) {
-      column = name + "(" + getColumnParameters() + ")";
+      column = name + "(" + getColumnParameterPart() + ")";
     }
     return column;
+  }
+
+  public String getColumnForReaderDeduplication(int index) {
+    if (columnsForReaderDeduplication.get(index) == null) {
+      columnsForReaderDeduplication.set(index, getColumn() + paths.get(index).getFullPath());
+    }
+    return columnsForReaderDeduplication.get(index);
   }
 }

@@ -45,7 +45,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
-public class NonAlignEngineDataSet extends QueryDataSet {
+public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlignDataSet {
 
   private class ReadTask extends WrappedRunnable {
 
@@ -53,7 +53,6 @@ public class NonAlignEngineDataSet extends QueryDataSet {
     private BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue;
     private WatermarkEncoder encoder;
     private int index;
-
 
     public ReadTask(ManagedSeriesReader reader,
         BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue, WatermarkEncoder encoder,
@@ -123,13 +122,10 @@ public class NonAlignEngineDataSet extends QueryDataSet {
                       ReadWriteIOUtils.write(doubleValue, valueBAOS);
                       break;
                     case BOOLEAN:
-                      ReadWriteIOUtils.write(batchData.getBoolean(),
-                          valueBAOS);
+                      ReadWriteIOUtils.write(batchData.getBoolean(), valueBAOS);
                       break;
                     case TEXT:
-                      ReadWriteIOUtils
-                          .write(batchData.getBinary(),
-                              valueBAOS);
+                      ReadWriteIOUtils.write(batchData.getBinary(), valueBAOS);
                       break;
                     default:
                       throw new UnSupportedDataTypeException(
@@ -199,11 +195,8 @@ public class NonAlignEngineDataSet extends QueryDataSet {
       } catch (Exception e) {
         LOGGER.error("Something gets wrong: ", e);
       }
-
     }
-
   }
-
 
   private List<ManagedSeriesReader> seriesReaderWithoutValueFilterList;
 
@@ -229,13 +222,6 @@ public class NonAlignEngineDataSet extends QueryDataSet {
   private boolean[] noMoreDataInQueueArray;
 
   private int fetchSize;
-
-  // indicate that there is no more batch data in the corresponding queue
-  // in case that the consumer thread is blocked on the queue and won't get runnable any more
-  // this field is not same as the `hasRemaining` in SeriesReaderWithoutValueFilter
-  // even though the `hasRemaining` in SeriesReaderWithoutValueFilter is false
-  // noMoreDataInQueue can still be true
-  // its usage is to tell the consumer thread not to call the take() method.
 
   // capacity for blocking queue
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
@@ -286,6 +272,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
   /**
    * for RPC in RawData query between client and server fill time buffers and value buffers
    */
+  @Override
   public TSQueryNonAlignDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
       throws InterruptedException {
     if (!initialized) {
@@ -336,7 +323,6 @@ public class NonAlignEngineDataSet extends QueryDataSet {
     return tsQueryNonAlignDataSet;
   }
 
-
   @Override
   protected boolean hasNextWithoutConstraint() {
     return false;
@@ -346,6 +332,4 @@ public class NonAlignEngineDataSet extends QueryDataSet {
   protected RowRecord nextWithoutConstraint() {
     return null;
   }
-
-
 }

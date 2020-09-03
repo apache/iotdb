@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.executor;
 
 import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator.markFilterdPaths;
 
+import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -44,38 +45,41 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
   }
 
   public QueryDataSet executeWithoutValueFilterAlignByTime(QueryContext context,
-      RawDataQueryPlan queryPlan) throws StorageEngineException, QueryProcessException {
+      RawDataQueryPlan queryPlan)
+      throws StorageEngineException, QueryProcessException, IOException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context, queryPlan);
-    return new UDTFAlignByTimeDataSet(udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
+    return new UDTFAlignByTimeDataSet(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
         readersOfSelectedSeries);
   }
 
   public QueryDataSet executeWithValueFilterAlignByTime(QueryContext context,
-      RawDataQueryPlan queryPlan) throws StorageEngineException, QueryProcessException {
+      RawDataQueryPlan queryPlan)
+      throws StorageEngineException, QueryProcessException, IOException {
     TimeGenerator timestampGenerator = getTimeGenerator(optimizedExpression, context, queryPlan);
     List<Boolean> cached = markFilterdPaths(optimizedExpression, deduplicatedPaths,
         timestampGenerator.hasOrNode());
     List<IReaderByTimestamp> readersOfSelectedSeries = initSeriesReaderByTimestamp(context,
         queryPlan, cached);
-    return new UDTFAlignByTimeDataSet(udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
+    return new UDTFAlignByTimeDataSet(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
         timestampGenerator, readersOfSelectedSeries, cached);
   }
 
   public QueryDataSet executeWithoutValueFilterNonAlign(QueryContext context,
       RawDataQueryPlan queryPlan) throws QueryProcessException, StorageEngineException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context, queryPlan);
-    return new UDTFNonAlignDataSet(udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
+    return new UDTFNonAlignDataSet(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
         readersOfSelectedSeries);
   }
 
   public QueryDataSet executeWithValueFilterNonAlign(QueryContext context,
-      RawDataQueryPlan queryPlan) throws QueryProcessException, StorageEngineException {
+      RawDataQueryPlan queryPlan)
+      throws QueryProcessException, StorageEngineException, IOException {
     TimeGenerator timestampGenerator = getTimeGenerator(optimizedExpression, context, queryPlan);
     List<Boolean> cached = markFilterdPaths(optimizedExpression, deduplicatedPaths,
         timestampGenerator.hasOrNode());
     List<IReaderByTimestamp> readersOfSelectedSeries = initSeriesReaderByTimestamp(context,
         queryPlan, cached);
-    return new UDTFNonAlignDataSet(udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
+    return new UDTFNonAlignDataSet(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
         timestampGenerator, readersOfSelectedSeries, cached);
   }
 }

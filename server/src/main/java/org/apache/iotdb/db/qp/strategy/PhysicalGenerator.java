@@ -722,13 +722,14 @@ public class PhysicalGenerator {
 
       boolean isUdf = paths.get(originalIndex) == null;
 
-      if (isUdf) { // udf
+      if (isUdf) {
+        assert queryPlan instanceof UDAFPlan || queryPlan instanceof UDTFPlan;
         UDFContext context = queryPlan instanceof UDAFPlan
             ? ((UDAFPlan) queryPlan).getExecutor(originalIndex).getContext()
             : ((UDTFPlan) queryPlan).getExecutor(originalIndex).getContext();
         columnForDisplay = context.getColumn();
-        columnForReader = context.getName() + "(" + originalPath.toString() + ")";
-      } else { // non-udf
+        columnForReader = columnForDisplay + originalPath.getFullPath();
+      } else {
         if (originalPath.getAlias() != null) {
           columnForDisplay = originalPath.getFullPathWithAlias();
         } else {
@@ -754,22 +755,32 @@ public class PhysicalGenerator {
 
         columnForReader2DeduplicatedPathIndex
             .put(columnForReader, rawDataQueryPlan.getDeduplicatedPaths().size() - 1);
-      }
 
-      if (!columnForDisplaySet.contains(columnForDisplay)) {
-        rawDataQueryPlan.addPathToIndex(columnForDisplay, index++);
-        columnForDisplaySet.add(columnForDisplay);
+        if (!columnForDisplaySet.contains(columnForDisplay)) {
+          rawDataQueryPlan.addPathToIndex(columnForDisplay, index);
+          columnForDisplaySet.add(columnForDisplay);
+
+          if (queryPlan instanceof UDTFPlan) {
+            ((UDTFPlan) queryPlan).addRawQueryOutputIndex(isUdf ? null : index);
+          }
+          ++index;
+        } else {
+          if (queryPlan instanceof UDTFPlan) {
+            ((UDTFPlan) queryPlan).addRawQueryOutputIndex(null);
+          }
+        }
       }
     }
 
     if (queryPlan instanceof UDFPlan) {
+      assert queryPlan instanceof UDAFPlan || queryPlan instanceof UDTFPlan;
       for (UDFExecutor executor : queryPlan instanceof UDAFPlan
           ? ((UDAFPlan) queryPlan).getDeduplicatedExecutors()
           : ((UDTFPlan) queryPlan).getDeduplicatedExecutors()) {
         List<Path> udfPaths = executor.getContext().getPaths();
         for (int i = 0; i < udfPaths.size(); ++i) {
-          String columnForReader = executor.getUniqueColumnNamesForReaderDeduplication(i);
-          executor.addPath2DeduplicatedPathIndex(udfPaths.get(i),
+          String columnForReader = executor.getContext().getColumnForReaderDeduplication(i);
+          executor.addPathIndex2DeduplicatedPathIndex(
               columnForReader2DeduplicatedPathIndex.get(columnForReader));
         }
       }

@@ -23,34 +23,40 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDAF;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDAFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 
 public class UDAFExecutor extends UDFExecutor {
+
+  protected final UDAF udaf;
 
   protected UDAFConfigurations configurations;
 
   public UDAFExecutor(UDFContext context) throws QueryProcessException {
     super(context);
+    udaf = (UDAF) UDFRegistrationService.getInstance().reflect(context);
   }
 
   @Override
-  public void initializeUDF() {
-    parameters = new UDFParameters(context.getPaths(), context.getAttributes());
+  public void initializeUDF() throws QueryProcessException {
     configurations = new UDAFConfigurations();
-    ((UDAF) udf).initializeUDF(parameters, configurations);
+    udaf.initializeUDF(new UDFParameters(context.getPaths(), context.getAttributes()),
+        configurations);
     configurations.check();
-    isInitialized = true;
   }
 
-  public UDAFConfigurations getConfigurations() throws QueryProcessException {
-    if (!isInitialized) {
-      throw new QueryProcessException("UDAF Executor is not initialized.");
-    }
-    return configurations;
+  public void setupUDF() {
   }
 
   @Override
-  public TSDataType getOutputDataType() throws QueryProcessException {
-    return getConfigurations().getOutputDataType();
+  public void executeUDF() {
+  }
+
+  @Override
+  public void finalizeUDF() {
+    udaf.finalizeUDF();
+  }
+
+  public UDAF getUDAF() {
+    return udaf;
   }
 }

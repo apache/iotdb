@@ -36,9 +36,13 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   protected List<String> deduplicatedColumns;
   protected List<UDTFExecutor> deduplicatedExecutors;
 
+  // reader index -> output index, not null if the query is a raw query
+  protected List<Integer> rawQueryPathOutputIndexes;
+
   public UDTFPlan() {
     super();
     setOperatorType(Operator.OperatorType.UDTF);
+    rawQueryPathOutputIndexes = new ArrayList<>();
   }
 
   @Override
@@ -92,5 +96,17 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
   public List<String> getDeduplicatedColumns() {
     return deduplicatedColumns;
+  }
+
+  public void addRawQueryOutputIndex(Integer outputIndex) {
+    rawQueryPathOutputIndexes.add(outputIndex);
+  }
+
+  /**
+   * @return reader index -> output index, element not null if the corresponding query is a raw
+   * query
+   */
+  public List<Integer> getRawQueryPathOutputIndexes() {
+    return rawQueryPathOutputIndexes;
   }
 }

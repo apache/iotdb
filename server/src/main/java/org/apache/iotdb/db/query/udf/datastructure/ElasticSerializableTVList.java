@@ -24,31 +24,34 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.api.iterator.DataPointBatchIterator;
 import org.apache.iotdb.db.query.udf.api.collector.DataPointCollector;
+import org.apache.iotdb.db.query.udf.api.iterator.DataPointBatchIterator;
 import org.apache.iotdb.db.query.udf.api.iterator.DataPointIterator;
 import org.apache.iotdb.db.query.udf.api.iterator.OverallDataPointIterator;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class ElasticSerializableTVList implements OverallDataPointIterator, DataPointCollector {
 
+  public static final float MEMORY_USAGE_LIMIT_FOR_SINGLE_COLUMN = 100;
+  public static final int CACHE_SIZE_FOR_SINGLE_COLUMN = 3;
+
   protected TSDataType dataType;
   protected long queryId;
-  protected Path path;
+  protected String uniqueId;
   protected int internalTVListCapacity;
   protected LRUCache cache;
   protected List<BatchData> tvLists;
   protected List<Long> minTimestamps;
   protected int size;
 
-  public ElasticSerializableTVList(TSDataType dataType, long queryId, Path path,
+  public ElasticSerializableTVList(TSDataType dataType, long queryId, String uniqueId,
       float memoryLimitInMB, int cacheSize) throws QueryProcessException {
     this.dataType = dataType;
     this.queryId = queryId;
-    this.path = path;
+    this.uniqueId = uniqueId;
     int allocatableCapacity = SerializableTVList.calculateCapacity(dataType, memoryLimitInMB);
     internalTVListCapacity = allocatableCapacity / cacheSize;
     if (internalTVListCapacity == 0) {
@@ -114,6 +117,32 @@ public class ElasticSerializableTVList implements OverallDataPointIterator, Data
         .getBinaryByIndex(index % internalTVListCapacity).getStringValue();
   }
 
+  public void put(long timestamp, Object value) throws IOException {
+    switch (dataType) {
+      case INT32:
+        putInt(timestamp, (Integer) value);
+        break;
+      case INT64:
+        putLong(timestamp, (Long) value);
+        break;
+      case FLOAT:
+        putFloat(timestamp, (Float) value);
+        break;
+      case DOUBLE:
+        putDouble(timestamp, (Double) value);
+        break;
+      case BOOLEAN:
+        putBoolean(timestamp, (Boolean) value);
+        break;
+      case TEXT:
+        putBinary(timestamp, (Binary) value);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType));
+    }
+  }
+
   @Override
   public void putInt(long timestamp, int value) throws IOException {
     checkExpansion(timestamp);
@@ -166,7 +195,7 @@ public class ElasticSerializableTVList implements OverallDataPointIterator, Data
   private void checkExpansion(long timestamp) {
     if (size % internalTVListCapacity == 0) {
       int index = tvLists.size();
-      tvLists.add(SerializableTVList.newSerializableTVList(dataType, queryId, path, index));
+      tvLists.add(SerializableTVList.newSerializableTVList(dataType, queryId, uniqueId, index));
       minTimestamps.add(timestamp);
     }
   }
@@ -274,6 +303,46 @@ public class ElasticSerializableTVList implements OverallDataPointIterator, Data
       @Override
       public String currentString() throws IOException {
         return getString(currentPointIndex);
+      }
+
+      @Override
+      public long nextTime() throws IOException {
+        return getTime(currentPointIndex + 1);
+      }
+
+      @Override
+      public int nextInt() throws IOException {
+        return getInt(currentPointIndex + 1);
+      }
+
+      @Override
+      public long nextLong() throws IOException {
+        return getLong(currentPointIndex + 1);
+      }
+
+      @Override
+      public float nextFloat() throws IOException {
+        return getFloat(currentPointIndex + 1);
+      }
+
+      @Override
+      public double nextDouble() throws IOException {
+        return getDouble(currentPointIndex + 1);
+      }
+
+      @Override
+      public boolean nextBoolean() throws IOException {
+        return getBoolean(currentPointIndex + 1);
+      }
+
+      @Override
+      public Binary nextBinary() throws IOException {
+        return getBinary(currentPointIndex + 1);
+      }
+
+      @Override
+      public String nextString() throws IOException {
+        return getString(currentPointIndex + 1);
       }
 
       @Override
@@ -601,6 +670,46 @@ public class ElasticSerializableTVList implements OverallDataPointIterator, Data
       @Override
       public String currentString() throws IOException {
         return getString(minIndexInCurrentBatch + currentPointIndex);
+      }
+
+      @Override
+      public long nextTime() throws IOException {
+        return getTime(minIndexInCurrentBatch + currentPointIndex + 1);
+      }
+
+      @Override
+      public int nextInt() throws IOException {
+        return getInt(minIndexInCurrentBatch + currentPointIndex + 1);
+      }
+
+      @Override
+      public long nextLong() throws IOException {
+        return getLong(minIndexInCurrentBatch + currentPointIndex + 1);
+      }
+
+      @Override
+      public float nextFloat() throws IOException {
+        return getFloat(minIndexInCurrentBatch + currentPointIndex + 1);
+      }
+
+      @Override
+      public double nextDouble() throws IOException {
+        return getDouble(minIndexInCurrentBatch + currentPointIndex + 1);
+      }
+
+      @Override
+      public boolean nextBoolean() throws IOException {
+        return getBoolean(minIndexInCurrentBatch + currentPointIndex + 1);
+      }
+
+      @Override
+      public Binary nextBinary() throws IOException {
+        return getBinary(minIndexInCurrentBatch + currentPointIndex + 1);
+      }
+
+      @Override
+      public String nextString() throws IOException {
+        return getString(minIndexInCurrentBatch + currentPointIndex + 1);
       }
 
       @Override

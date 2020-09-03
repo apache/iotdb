@@ -42,7 +42,8 @@ import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
+public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
+    DirectAlignByTimeDataSet {
 
   private static class ReadTask extends WrappedRunnable {
 
@@ -96,7 +97,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
         Thread.currentThread().interrupt();
         reader.setHasRemaining(false);
       } catch (IOException e) {
-        putExceptionBatchData(e, String.format("Something gets wrong while reading from the series reader %s: ", pathName));
+        putExceptionBatchData(e, String
+            .format("Something gets wrong while reading from the series reader %s: ", pathName));
       } catch (Exception e) {
         putExceptionBatchData(e, "Something gets wrong: ");
       }
@@ -115,9 +117,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
 
   }
 
-  private List<ManagedSeriesReader> seriesReaderList;
+  protected List<ManagedSeriesReader> seriesReaderList;
 
-  private TreeSet<Long> timeHeap;
+  protected TreeSet<Long> timeHeap;
 
   // Blocking queue list for each batch reader
   private BlockingQueue<BatchData>[] blockingQueueArray;
@@ -128,11 +130,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
   // even though the `hasRemaining` in SeriesReaderWithoutValueFilter is false
   // noMoreDataInQueue can still be true
   // its usage is to tell the consumer thread not to call the take() method.
-  private boolean[] noMoreDataInQueueArray;
+  protected boolean[] noMoreDataInQueueArray;
 
-  private BatchData[] cachedBatchDataArray;
-
-  private static final int FLAG = 0x01;
+  protected BatchData[] cachedBatchDataArray;
 
   // capacity for blocking queue
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
@@ -141,7 +141,6 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
 
   private static final Logger LOGGER = LoggerFactory
       .getLogger(RawQueryDataSetWithoutValueFilter.class);
-
 
   /**
    * constructor of EngineDataSetWithoutValueFilter.
@@ -182,12 +181,13 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     }
   }
 
-
   /**
    * for RPC in RawData query between client and server fill time buffer, value buffers and bitmap
    * buffers
    */
-  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) throws IOException, InterruptedException {
+  @Override
+  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
+      throws IOException, InterruptedException {
     int seriesNum = seriesReaderList.size();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
 
@@ -348,7 +348,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     return tsQueryDataSet;
   }
 
-  private void fillCache(int seriesIndex) throws IOException, InterruptedException {
+  protected void fillCache(int seriesIndex) throws IOException, InterruptedException {
     BatchData batchData = blockingQueueArray[seriesIndex].take();
     // no more batch data in this time series queue
     if (batchData instanceof SignalBatchData) {
@@ -358,9 +358,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
       ExceptionBatchData exceptionBatchData = (ExceptionBatchData) batchData;
       LOGGER.error("exception happened in producer thread", exceptionBatchData.getException());
       if (exceptionBatchData.getException() instanceof IOException) {
-        throw (IOException)exceptionBatchData.getException();
+        throw (IOException) exceptionBatchData.getException();
       } else if (exceptionBatchData.getException() instanceof RuntimeException) {
-        throw (RuntimeException)exceptionBatchData.getException();
+        throw (RuntimeException) exceptionBatchData.getException();
       }
 
     } else {   // there are more batch data in this time series queue
@@ -390,7 +390,6 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     bitmapBuffer.flip();
     bitmapBufferList.add(bitmapBuffer);
   }
-
 
   /**
    * for spark/hadoop/hive integration and test
@@ -446,5 +445,4 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
 
     return record;
   }
-
 }

@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public interface SerializableTVList extends SerializableList {
@@ -73,8 +72,9 @@ public interface SerializableTVList extends SerializableList {
     return size * TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
   }
 
-  static BatchData newSerializableTVList(TSDataType dataType, long queryId, Path path, int index) {
-    SerializationRecorder recorder = new SerializationRecorder(queryId, path.toString(), index);
+  static BatchData newSerializableTVList(TSDataType dataType, long queryId, String uniqueId,
+      int index) {
+    SerializationRecorder recorder = new SerializationRecorder(queryId, uniqueId, index);
     switch (dataType) {
       case INT32:
         return new SerializableIntTVList(recorder);

@@ -17,34 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.core;
+package org.apache.iotdb.db.query.dataset;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import java.io.IOException;
+import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 
-public abstract class UDFExecutor {
+public interface DirectAlignByTimeDataSet {
 
-  protected final UDFContext context;
+  int FLAG = 0x01;
 
-  protected List<Integer> pathIndex2DeduplicatedPathIndex;
-
-  public UDFExecutor(UDFContext context) {
-    this.context = context;
-    pathIndex2DeduplicatedPathIndex = new ArrayList<>();
-  }
-
-  abstract public void initializeUDF() throws QueryProcessException;
-
-  abstract public void executeUDF();
-
-  abstract public void finalizeUDF();
-
-  public void addPathIndex2DeduplicatedPathIndex(int index) {
-    pathIndex2DeduplicatedPathIndex.add(index);
-  }
-
-  public UDFContext getContext() {
-    return context;
-  }
+  TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
+      throws IOException, InterruptedException;
 }

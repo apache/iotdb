@@ -79,8 +79,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
-import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
-import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
+import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -128,7 +128,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * Thrift RPC implementation at server side.
@@ -592,16 +591,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           TracingManager.getInstance().writeQueryInfo(queryId, statement);
         }
       }
-      // put it into the corresponding Set
 
+      // put it into the corresponding Set
       statementId2QueryId.computeIfAbsent(statementId, k -> new HashSet<>()).add(queryId);
 
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
-      if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()
-          && newDataSet instanceof NonAlignEngineDataSet) {
-        TSQueryNonAlignDataSet result = fillRpcNonAlignReturnData(fetchSize, newDataSet, username);
-        resp.setNonAlignQueryDataSet(result);
+      if (newDataSet instanceof DirectNonAlignDataSet) {
+        resp.setNonAlignQueryDataSet(fillRpcNonAlignReturnData(fetchSize, newDataSet, username));
       } else {
         if (plan instanceof ShowPlan && ((ShowPlan) plan).getShowContentType() == TIMESERIES) {
           resp.setColumns(
@@ -609,8 +606,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           resp.setDataTypeList(
               newDataSet.getDataTypes().stream().map(Enum::toString).collect(Collectors.toList()));
         }
-        TSQueryDataSet result = fillRpcReturnData(fetchSize, newDataSet, username);
-        resp.setQueryDataSet(result);
+        resp.setQueryDataSet(fillRpcReturnData(fetchSize, newDataSet, username));
       }
       resp.setQueryId(queryId);
 
@@ -905,53 +901,29 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private TSQueryDataSet fillRpcReturnData(
       int fetchSize, QueryDataSet queryDataSet, String userName)
       throws TException, AuthException, IOException, InterruptedException {
-    IAuthorizer authorizer;
-    try {
-      authorizer = BasicAuthorizer.getInstance();
-    } catch (AuthException e) {
-      throw new TException(e);
-    }
-    TSQueryDataSet result;
-
-    if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(userName)) {
-      WatermarkEncoder encoder;
-      if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
-        encoder = new GroupedLSBWatermarkEncoder(config);
-      } else {
-        throw new UnSupportedDataTypeException(
-            String.format(
-                "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
-      }
-      if (queryDataSet instanceof RawQueryDataSetWithoutValueFilter) {
-        // optimize for query without value filter
-        result = ((RawQueryDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, encoder);
-      } else {
-        result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
-      }
-    } else {
-      if (queryDataSet instanceof RawQueryDataSetWithoutValueFilter) {
-        // optimize for query without value filter
-        result = ((RawQueryDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, null);
-      } else {
-        result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
-      }
-    }
-    return result;
+    WatermarkEncoder encoder = getWatermarkEncoder(userName);
+    return queryDataSet instanceof DirectAlignByTimeDataSet
+        ? ((DirectAlignByTimeDataSet) queryDataSet).fillBuffer(fetchSize, encoder)
+        : QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
   }
 
   private TSQueryNonAlignDataSet fillRpcNonAlignReturnData(
       int fetchSize, QueryDataSet queryDataSet, String userName)
-      throws TException, AuthException, InterruptedException {
+      throws TException, AuthException, InterruptedException, IOException {
+    WatermarkEncoder encoder = getWatermarkEncoder(userName);
+    return ((DirectNonAlignDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
+  }
+
+  private WatermarkEncoder getWatermarkEncoder(String userName) throws TException, AuthException {
     IAuthorizer authorizer;
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
       throw new TException(e);
     }
-    TSQueryNonAlignDataSet result;
 
+    WatermarkEncoder encoder = null;
     if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(userName)) {
-      WatermarkEncoder encoder;
       if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
         encoder = new GroupedLSBWatermarkEncoder(config);
       } else {
@@ -959,11 +931,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             String.format(
                 "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
       }
-      result = ((NonAlignEngineDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
-    } else {
-      result = ((NonAlignEngineDataSet) queryDataSet).fillBuffer(fetchSize, null);
     }
-    return result;
+    return encoder;
   }
 
   /**

@@ -46,5 +46,21 @@ public interface DataPointIterator extends Iterator {
 
   String currentString() throws IOException;
 
+  long nextTime() throws IOException;
+
+  int nextInt() throws IOException;
+
+  long nextLong() throws IOException;
+
+  float nextFloat() throws IOException;
+
+  double nextDouble() throws IOException;
+
+  boolean nextBoolean() throws IOException;
+
+  Binary nextBinary() throws IOException;
+
+  String nextString() throws IOException;
+
   void reset();
 }
