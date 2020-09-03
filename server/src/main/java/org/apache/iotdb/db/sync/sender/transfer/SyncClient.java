@@ -364,7 +364,7 @@ public class SyncClient implements ISyncClient {
         ByteArrayOutputStream bos = new ByteArrayOutputStream(SyncConstant.DATA_CHUNK_SIZE)) {
       schemaFileLinePos = 0;
       while (schemaFileLinePos < schemaPos) {
-        br.readLine();
+        String line = br.readLine();
         schemaFileLinePos++;
       }
       MessageDigest md = MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME);

@@ -58,8 +58,7 @@ public class TsFileSketchTool {
       printlnBoth(pw, "file length: " + length);
 
       // get metadata information
-      TsFileSequenceReader reader = new TsFileSequenceReader(filename);
-      try {
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
         TsFileMetadata tsFileMetaData = reader.readFileMetadata();
         List<ChunkGroupMetadata> allChunkGroupMetadata = new ArrayList<>();
         List<Pair<Long, Long>> versionInfo = new ArrayList<>();
@@ -203,8 +202,6 @@ public class TsFileSketchTool {
 
         printlnBoth(pw,
                 "---------------------------------- TsFile Sketch End ----------------------------------");
-      } finally {
-        reader.close();
       }
     }
   }

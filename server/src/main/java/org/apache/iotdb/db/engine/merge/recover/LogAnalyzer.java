@@ -228,6 +228,7 @@ public class LogAnalyzer {
     }
   }
 
+  @SuppressWarnings("squid:S3776")
   private void analyzeMergedFiles(BufferedReader bufferedReader) throws IOException {
     if (!STR_ALL_TS_END.equals(currLine)) {
       return;

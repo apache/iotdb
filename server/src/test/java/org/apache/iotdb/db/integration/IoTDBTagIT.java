@@ -147,10 +147,15 @@ public class IoTDBTagIT {
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
       statement.execute(sql1);
-      statement.execute(sql2);
+      try {
+        statement.execute(sql2);
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("Alias [temperature] for Path [root.turbine.d3.s2] already exist"));
+      }
       fail();
     } catch (Exception e) {
-      assertTrue(e.getMessage().contains("Alias [temperature] for Path [root.turbine.d3.s2] already exist"));
+      e.printStackTrace();
+      fail();
     }
   }
 
@@ -165,10 +170,15 @@ public class IoTDBTagIT {
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
       statement.execute(sql1);
-      statement.execute(sql2);
+      try {
+        statement.execute(sql2);
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("Path [root.turbine.d4.temperature] already exist"));
+      }
       fail();
     } catch (Exception e) {
-      assertTrue(e.getMessage().contains("Path [root.turbine.d4.temperature] already exist"));
+      e.printStackTrace();
+      fail();
     }
   }
 
@@ -183,11 +193,15 @@ public class IoTDBTagIT {
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
       statement.execute(sql1);
-      statement.execute(sql2);
+      try {
+        statement.execute(sql2);
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("Alias [s1] for Path [root.turbine.d5.s2] already exist"));
+      }
       fail();
     } catch (Exception e) {
-      assertTrue(e.getMessage().contains("Alias [s1] for Path [root.turbine.d5.s2] already exist"));
-    }
+      e.printStackTrace();
+      fail();    }
   }
 
   @Test
@@ -889,10 +903,15 @@ public class IoTDBTagIT {
         statement.execute(sql);
       }
 
-      statement.execute("show timeseries where H_Alarm=90");
+      try {
+        statement.execute("show timeseries where H_Alarm=90");
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("The key H_Alarm is not a tag"));
+      }
       fail();
     } catch (Exception e) {
-      assertTrue(e.getMessage().contains("The key H_Alarm is not a tag"));
+      e.printStackTrace();
+      fail();
     }
   }
 
@@ -924,9 +943,9 @@ public class IoTDBTagIT {
       statement.execute(sql);
       boolean hasResult = statement.execute("show timeseries");
       assertTrue(hasResult);
-      ResultSet resultSet = statement.getResultSet();
+
       int count = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString("timeseries")
                   + "," + resultSet.getString("alias")
@@ -941,16 +960,19 @@ public class IoTDBTagIT {
           assertEquals(ret[count], ans);
           count++;
         }
-      } finally {
-        resultSet.close();
       }
       assertEquals(ret.length, count);
 
       statement.execute("delete storage group root.turbine");
-      statement.execute("show timeseries where tag1=v1");
+      try {
+        statement.execute("show timeseries where tag1=v1");
+      } catch (Exception e) {
+        assertTrue(e.getMessage().contains("The key tag1 is not a tag"));
+      }
       fail();
     } catch (Exception e) {
-      assertTrue(e.getMessage().contains("The key tag1 is not a tag"));
+      e.printStackTrace();
+      fail();
     }
   }
 

@@ -411,7 +411,7 @@ public class MManager {
         int size = seriesNumberInStorageGroups.get(storageGroupPath.getFullPath());
         seriesNumberInStorageGroups.put(storageGroupPath.getFullPath(), size + 1);
         if (size + 1 > maxSeriesNumberAmongStorageGroup) {
-          maxSeriesNumberAmongStorageGroup = size + 1;
+          maxSeriesNumberAmongStorageGroup = size + 1L;
         }
       }
 

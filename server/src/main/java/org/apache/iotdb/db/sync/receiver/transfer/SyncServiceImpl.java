@@ -236,14 +236,11 @@ public class SyncServiceImpl implements SyncService.Iface {
       }
       if (!md5OfSender.equals(md5OfReceiver)) {
         currentFile.get().delete();
-        FileOutputStream fos = new FileOutputStream(currentFile.get());
-        try {
+        try (FileOutputStream fos = new FileOutputStream(currentFile.get())) {
           currentFileWriter.set(fos.getChannel());
           return getErrorResult(String
                   .format("MD5 of the sender is differ from MD5 of the receiver of the file %s.",
                           currentFile.get().getAbsolutePath()));
-        } finally {
-          fos.close();
         }
       } else {
         if (currentFile.get().getName().endsWith(MetadataConstant.METADATA_LOG)) {
@@ -310,6 +307,14 @@ public class SyncServiceImpl implements SyncService.Iface {
     } catch (IOException e) {
       logger.error("Can not end sync", e);
       return getErrorResult(String.format("Can not end sync because %s", e.getMessage()));
+    } finally {
+      syncFolderPath.remove();
+      currentSG.remove();
+      syncLog.remove();
+      senderName.remove();
+      currentFile.remove();
+      currentFileWriter.remove();
+      messageDigest.remove();
     }
     return getSuccessResult();
   }
