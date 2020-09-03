@@ -112,14 +112,14 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
     }
   }
 
-  private static void handleIncorrectRead(int bytesToRead, int bytesActuallyRead) throws IOException {
-    throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
-            bytesToRead, bytesActuallyRead));
-  }
-
   private abstract static class TimeValuePairReader {
 
     public abstract TimeValuePair read(InputStream inputStream) throws IOException;
+
+    private static void handleIncorrectRead(int bytesToRead, int bytesActuallyRead) throws IOException {
+      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+              bytesToRead, bytesActuallyRead));
+    }
 
     private static class BooleanReader
         extends FixLengthIExternalSortFileDeserializer.TimeValuePairReader {

@@ -363,12 +363,12 @@ public class SyncClient implements ISyncClient {
     try (BufferedReader br = new BufferedReader(new FileReader(getSchemaLogFile()));
         ByteArrayOutputStream bos = new ByteArrayOutputStream(SyncConstant.DATA_CHUNK_SIZE)) {
       schemaFileLinePos = 0;
+      String line;
       while (schemaFileLinePos < schemaPos) {
-        String line = br.readLine();
+        line = br.readLine();
         schemaFileLinePos++;
       }
       MessageDigest md = MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME);
-      String line;
       int cntLine = 0;
       while ((line = br.readLine()) != null) {
         schemaFileLinePos++;

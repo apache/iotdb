@@ -339,9 +339,9 @@ public class TsFileProcessor {
     if (!config.isEnableParameterAdapter()) {
       return config.getMemtableSizeThreshold();
     }
-    long memTableSize = (long) ((double) (config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
+    long memTableSize = (long) (config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
         / IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition()
-        / MEMTABLE_NUM_FOR_EACH_PARTITION)
+        / MEMTABLE_NUM_FOR_EACH_PARTITION
         * ActiveTimeSeriesCounter.getInstance()
         .getActiveRatio(storageGroupName));
     return Math.max(memTableSize, config.getMemtableSizeThreshold());
