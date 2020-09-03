@@ -112,6 +112,11 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
     }
   }
 
+  private static void handleIncorrectRead(int bytesToRead, int bytesActuallyRead) throws IOException {
+    throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+            bytesToRead, bytesActuallyRead));
+  }
+
   private abstract static class TimeValuePairReader {
 
     public abstract TimeValuePair read(InputStream inputStream) throws IOException;
@@ -126,11 +131,11 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
       public TimeValuePair read(InputStream inputStream) throws IOException {
         int readLen = inputStream.read(timestampBytes);
         if (readLen != LONG_LEN) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", LONG_LEN, readLen));
+          handleIncorrectRead(LONG_LEN, readLen);
         }
         readLen = inputStream.read(valueBytes);
         if (readLen != BYTE_LEN) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", BYTE_LEN, readLen));
+          handleIncorrectRead(BYTE_LEN, readLen);
         }
         return new TimeValuePair(BytesUtils.bytesToLong(timestampBytes),
             new TsPrimitiveType.TsBoolean(BytesUtils.bytesToBool(valueBytes)));
@@ -147,11 +152,11 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
       public TimeValuePair read(InputStream inputStream) throws IOException {
         int readLen = inputStream.read(timestampBytes);
         if (readLen != LONG_LEN) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", LONG_LEN, readLen));
+          handleIncorrectRead(LONG_LEN, readLen);
         }
         readLen = inputStream.read(valueBytes);
         if (readLen != INT_LEN) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", INT_LEN, readLen));
+          handleIncorrectRead(INT_LEN, readLen);
         }
         return new TimeValuePair(BytesUtils.bytesToLong(timestampBytes),
             new TsPrimitiveType.TsInt(BytesUtils.bytesToInt(valueBytes)));
@@ -168,11 +173,11 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
       public TimeValuePair read(InputStream inputStream) throws IOException {
         int readLen = inputStream.read(timestampBytes);
         if (readLen != LONG_LEN) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", LONG_LEN, readLen));
+          handleIncorrectRead(LONG_LEN, readLen);
         }
         readLen = inputStream.read(valueBytes);
         if (readLen != LONG_LEN) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", LONG_LEN, readLen));
+          handleIncorrectRead(LONG_LEN, readLen);
         }
         return new TimeValuePair(BytesUtils.bytesToLong(timestampBytes),
             new TsPrimitiveType.TsLong(BytesUtils.bytesToLong(valueBytes)));
@@ -189,11 +194,11 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
       public TimeValuePair read(InputStream inputStream) throws IOException {
         int readLen = inputStream.read(timestampBytes);
         if (readLen != LONG_LEN) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", LONG_LEN, readLen));
+          handleIncorrectRead(LONG_LEN, readLen);
         }
         readLen = inputStream.read(valueBytes);
         if (readLen != FLOAT_LEN) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", FLOAT_LEN, readLen));
+          handleIncorrectRead(FLOAT_LEN, readLen);
         }
         return new TimeValuePair(BytesUtils.bytesToLong(timestampBytes),
             new TsPrimitiveType.TsFloat(BytesUtils.bytesToFloat(valueBytes)));
@@ -210,11 +215,11 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
       public TimeValuePair read(InputStream inputStream) throws IOException {
         int readLen = inputStream.read(timestampBytes);
         if (readLen != LONG_LEN) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", LONG_LEN, readLen));
+          handleIncorrectRead(LONG_LEN, readLen);
         }
         readLen = inputStream.read(valueBytes);
         if (readLen != DOUBLE_LEN) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", DOUBLE_LEN, readLen));
+          handleIncorrectRead(DOUBLE_LEN, readLen);
         }
         return new TimeValuePair(BytesUtils.bytesToLong(timestampBytes),
             new TsPrimitiveType.TsDouble(BytesUtils.bytesToDouble(valueBytes)));
@@ -232,17 +237,17 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
       public TimeValuePair read(InputStream inputStream) throws IOException {
         int readLen = inputStream.read(timestampBytes);
         if (readLen != LONG_LEN) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", LONG_LEN, readLen));
+          handleIncorrectRead(LONG_LEN, readLen);
         }
         readLen = inputStream.read(valueLength);
         if (readLen != INT_LEN) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", INT_LEN, readLen));
+          handleIncorrectRead(INT_LEN, readLen);
         }
         int length = BytesUtils.bytesToInt(valueLength);
         valueBytes = new byte[length];
         readLen = inputStream.read(valueBytes);
         if (readLen != length) {
-          throw new IOException(String.format("Intend to read %d bytes but %d are actually returned", length, readLen));
+          handleIncorrectRead(length, readLen);
         }
         return new TimeValuePair(BytesUtils.bytesToLong(timestampBytes),
             new TsPrimitiveType.TsBinary(new Binary(BytesUtils.bytesToString(valueBytes))));
