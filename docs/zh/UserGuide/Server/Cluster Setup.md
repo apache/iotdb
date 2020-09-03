@@ -22,7 +22,7 @@
 # 集群设置
 安装环境请参考[安装环境](../Get%20Started/QuickStart.md)
 ## 集群环境搭建
-用户可以搭建伪分布式模式或是分布式模式，伪分布式模式和分布式模式的主要区别是配置文件中seed_nodes的不同，配置项含义请参考[配置项](#配置项)。
+用户可以搭建伪分布式模式或是分布式模式的集群，伪分布式模式和分布式模式的主要区别是配置文件中seed_nodes的不同，配置项含义请参考[配置项](#配置项)。
 启动其中一个节点的服务，需要执行如下命令：
 
 ```bash
@@ -35,7 +35,6 @@ or
 > nohup sbin/start-node.bat
 or
 > nohup sbin/start-node.bat -c <conf_path> -internal_meta_port 9003
-or
 ```
 
 -c <conf_path>使用conf_path文件夹里面的配置文件覆盖默认配置文件; -internal_meta_port 9003覆盖特定配置项internal_meta_port的配置，
@@ -46,17 +45,17 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 
 为方便IoTDB Server的配置与管理，IoTDB Server为用户提供三种配置项，使得用户可以在启动服务器或服务器运行时对其进行配置。
 
-三种配置项的配置文件均位于IoTDB安装目录：`$IOTDB_HOME/conf`文件夹下,其中涉及server配置的共有2个文件，分别为：`iotdb-cluster.properties`、`iotdb-engine.properties`、`iotdb-env.sh`, 用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
+三种配置项的配置文件均位于IoTDB安装目录：`$IOTDB_HOME/conf`文件夹下,其中涉及server配置的共有3个文件，分别为：`iotdb-cluster.properties`、`iotdb-engine.properties`、`cluster-env.sh`(linux系统)/`cluster-env.bat`(windows系统), 用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
 
 配置文件的说明如下：
 
-* `iotdb-env.sh`：环境配置项的默认配置文件。用户可以在文件中配置JAVA-JVM的相关系统配置项。
+* `cluster-env.sh`/`cluster-env.bat`：环境配置项的默认配置文件。用户可以在文件中配置JAVA-JVM的相关系统配置项。
 
-* `iotdb-engine.properties`：IoTDB引擎层系统配置项的默认配置文件。用户可以在文件中配置IoTDB引擎运行时的相关参数，如JDBC服务监听端口(`rpc_port`)、overflow数据文件存储目录(`overflow_data_dir`)等。此外，用户可以在文件中配置IoTDB存储时TsFile文件的相关信息，如每次将内存中的数据写入到磁盘时的数据大小(`group_size_in_byte`)，内存中每个列打一次包的大小(`page_size_in_byte`)等。
+* `iotdb-engine.properties`：IoTDB引擎层系统配置项的默认配置文件。用户可以在文件中配置IoTDB引擎运行时的相关参数。此外，用户可以在文件中配置IoTDB存储时TsFile文件的相关信息，如每次将内存中的数据写入到磁盘时的数据大小(`group_size_in_byte`)，内存中每个列打一次包的大小(`page_size_in_byte`)等。
 
 * `iotdb-cluster.properties`: IoTDB集群所需要的一些配置。
 
-`iotdb-engine.properties`、`iotdb-env.sh` 两个配置文件详细说明请参考[配置手册](Config%20Manual.md)，下面描述的配置项是在`iotdb-cluster.properties`文件中的。
+`iotdb-engine.properties`、`cluster-env.sh`/`cluster-env.bat` 两个配置文件详细说明请参考[配置手册](Config%20Manual.md)，下面描述的配置项是在`iotdb-cluster.properties`文件中的。
 
 * internal\_meta\_port
 
@@ -98,7 +97,7 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 
 |名字|rpc\_thrift\_compression\_enable|
 |:---:|:---|
-|描述|是否开启thrift压缩通信，**注意这个参数要各个节点保持一致**|
+|描述|是否开启thrift压缩通信，**注意这个参数要各个节点保持一致，同时也要与iotdb-engine.properties中rpc_thrift_compression_enable参数保持一致**|
 |类型| Boolean|
 |默认值|false|
 |改后生效方式|重启服务器生效|
@@ -125,16 +124,7 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 
 |名字|connection\_timeout\_ms|
 |:---:|:---|
-|描述|同一个raft组各个节点之间的连接超时时间，单位毫秒|
-|类型|Int32|
-|默认值|20000|
-|改后生效方式|重启服务器生效|
-
-* write\_operation\_timeout\_ms
-
-|名字|connection\_timeout\_ms|
-|:---:|:---|
-|描述|同一个raft组各个节点之间的连接超时时间，单位毫秒|
+|描述|同一个raft组各个节点之间的心跳超时时间，单位毫秒|
 |类型|Int32|
 |默认值|20000|
 |改后生效方式|重启服务器生效|
@@ -193,24 +183,6 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 |默认值|true|
 |改后生效方式|重启服务器生效|
 
-* enable\_auto\_create\_schema
-
-|名字|enable\_auto\_create\_schema|
-|:---:|:---|
-|描述|是否支持自动创建schema，**这个值会覆盖iotdb-engine.properties中的配置**|
-|类型|BOOLEAN|
-|默认值|true|
-|改后生效方式|重启服务器生效|
-
-* consistency\_level
-
-|名字|consistency\_level|
-|:---:|:---|
-|描述|读一致性，目前支持3种一致性：strong、mid、weak。strong consistency每次操作都会尝试与Leader同步以获取最新的数据，如果失败（超时），则直接向用户返回错误； mid consistency每次操作将首先尝试与Leader进行同步，但是如果失败（超时），它将使用本地当前数据向用户提供服务； weak consistency不会与Leader进行同步，而只是使用本地数据向用户提供服务|
-|类型|strong、mid、weak|
-|默认值|mid|
-|改后生效方式|重启服务器生效|
-
 * consistency\_level
 
 |名字|consistency\_level|
@@ -227,15 +199,6 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 |描述|是否开启raft log持久化|
 |类型|BOOLEAN|
 |默认值|true|
-|改后生效方式|重启服务器生效|
-
-* is\_enable\_raft\_log\_persistence
-
-|名字|is\_enable\_raft\_log\_persistence|
-|:---:|:---|
-|描述|是否开启raft log持久化|
-|类型|BOOLEAN|
-|默认值|false|
 |改后生效方式|重启服务器生效|
 
 ## 开启GC日志
