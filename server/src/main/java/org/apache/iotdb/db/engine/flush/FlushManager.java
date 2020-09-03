@@ -101,7 +101,7 @@ public class FlushManager implements FlushManagerMBean, IService {
       registerTsFileProcessor(tsFileProcessor);
       // update stat monitor cache to system during each flush()
       if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-        StatMonitor.getInstance().updateStatValue();
+        StatMonitor.getInstance().cacheStatValue();
       }
     }
   }

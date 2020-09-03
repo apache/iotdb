@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.monitor;
 
-import java.io.File;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -28,12 +27,8 @@ public class MonitorConstants {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final String INT64 = "INT64";
   public static final String PATH_SEPARATOR = ".";
-  static final String STAT_STORAGE_GROUP_PREFIX = "root.stats";
   // statistic for data inserting module
-  private static final String GLOBAL_NODE = "global";
   public static final String STAT_STORAGE_GROUP_NAME = "root.stats";
-  public static final String STAT_STORAGE_DELTA_NAME =
-      STAT_STORAGE_GROUP_PREFIX + PATH_SEPARATOR + GLOBAL_NODE;
   public static final String[] STAT_STORAGE_GROUP_ARRAY = {"root", "stats"};
   public static final String[] STAT_GLOBAL_ARRAY = {"root", "stats", "global"};
 
@@ -41,11 +36,11 @@ public class MonitorConstants {
   /**
    * Stat information.
    */
-  public enum StatConstants {
+  public enum StatMeasurementConstants {
     TOTAL_POINTS("TOTAL_POINTS"), TOTAL_REQ_SUCCESS("TOTAL_REQ_SUCCESS"),
     TOTAL_REQ_FAIL("TOTAL_REQ_FAIL");
 
-    StatConstants(String measurement) {
+    StatMeasurementConstants(String measurement) {
       this.measurement = measurement;
     }
 
