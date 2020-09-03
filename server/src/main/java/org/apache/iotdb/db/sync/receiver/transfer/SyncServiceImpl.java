@@ -195,13 +195,10 @@ public class SyncServiceImpl implements SyncService.Iface {
       if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
         currentFileWriter.get().close();
       }
-      FileOutputStream fos = new FileOutputStream(file);
-      try {
+      try (FileOutputStream fos = new FileOutputStream(file)) {
         currentFileWriter.set(fos.getChannel());
         syncLog.get().startSyncTsFiles();
         messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
-      } finally {
-        fos.close();
       }
     } catch (IOException | NoSuchAlgorithmException e) {
       logger.error("Can not init sync resource for file {}", filename, e);

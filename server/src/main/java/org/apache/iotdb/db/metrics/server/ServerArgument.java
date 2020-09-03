@@ -292,12 +292,11 @@ public class ServerArgument {
    */
   private long[] readLinuxCpu() throws Exception {
     long[] retn = new long[2];
-    BufferedReader buffer = null;
     long idleCpuTime = 0;
     long totalCpuTime = 0;
-    buffer = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/stat")));
+
     String line = null;
-    try {
+    try (BufferedReader buffer = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/stat")))) {
       while ((line = buffer.readLine()) != null) {
         if (line.startsWith("cpu")) {
           StringTokenizer tokenizer = new StringTokenizer(line);
@@ -313,8 +312,6 @@ public class ServerArgument {
       }
       retn[0] = idleCpuTime;
       retn[1] = totalCpuTime;
-    } finally {
-      buffer.close();
     }
     return retn;
   }

@@ -44,8 +44,7 @@ public class TsFileSequenceRead {
     if (args.length >= 1) {
       filename = args[0];
     }
-    TsFileSequenceReader reader = new TsFileSequenceReader(filename);
-    try {
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
       System.out.println("file length: " + FSFactoryProducer.getFSFactory().getFile(filename).length());
       System.out.println("file magic head: " + reader.readHeadMagic());
       System.out.println("file magic tail: " + reader.readTailMagic());
@@ -117,8 +116,6 @@ public class TsFileSequenceRead {
           }
         }
       }
-    } finally {
-      reader.close();
     }
   }
 }

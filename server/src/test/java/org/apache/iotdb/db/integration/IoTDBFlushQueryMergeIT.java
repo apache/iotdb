@@ -93,14 +93,11 @@ public class IoTDBFlushQueryMergeIT {
       boolean hasResultSet = statement.execute("SELECT * FROM root");
       Assert.assertTrue(hasResultSet);
 
-      ResultSet resultSet = statement.getResultSet();
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
         }
-      } finally {
-        resultSet.close();
       }
       statement.execute("merge");
     } catch (Exception e) {
@@ -144,15 +141,11 @@ public class IoTDBFlushQueryMergeIT {
       statement.execute("FLUSH root.group1 TRUE");
       statement.execute("FLUSH root.group2,root.group3 FALSE");
 
-      ResultSet resultSet = statement.executeQuery("SELECT * FROM root.group1,root.group2,root"
-          + ".group3");
       int i = 0;
-      try {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.group1,root.group2,root" + ".group3")) {
         while (resultSet.next()) {
           i++;
         }
-      } finally {
-        resultSet.close();
       }
       assertEquals(30, i);
 
