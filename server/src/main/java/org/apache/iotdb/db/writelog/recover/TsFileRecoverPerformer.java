@@ -95,6 +95,7 @@ public class TsFileRecoverPerformer {
    * file and the vmfiles are not closed before crash, so these writers can be used to continue
    * writing
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public Pair<RestorableTsFileIOWriter, List<List<RestorableTsFileIOWriter>>> recover()
       throws StorageGroupProcessorException {
 
@@ -331,7 +332,10 @@ public class TsFileRecoverPerformer {
       // otherwise this file is not closed before crush, do nothing so we can continue writing
       // into it
       return res;
-    } catch (IOException | InterruptedException | ExecutionException e) {
+    } catch (IOException | ExecutionException e) {
+      throw new StorageGroupProcessorException(e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new StorageGroupProcessorException(e);
     }
   }

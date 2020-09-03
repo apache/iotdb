@@ -732,6 +732,7 @@ public class MTree implements Serializable {
    * @param timeseriesSchemaList List<timeseriesSchema> result: [name, alias, storage group,
    *                             dataType, encoding, compression, offset, lastTimeStamp]
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void findPath(MNode node, String[] nodes, int idx, List<Pair<PartialPath, String[]>> timeseriesSchemaList,
       boolean hasLimit, boolean needLast, QueryContext queryContext) throws MetadataException {
     if (node instanceof MeasurementMNode && nodes.length <= idx) {
@@ -826,6 +827,7 @@ public class MTree implements Serializable {
    * @param res    store all matched device names
    * @param length expected length of path
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void findChildNodePathInNextLevel(
       MNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
@@ -962,6 +964,7 @@ public class MTree implements Serializable {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static MTree deserializeFrom(File mtreeSnapshot) {
     try (BufferedReader br = new BufferedReader(new FileReader(mtreeSnapshot))) {
       String s;

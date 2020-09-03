@@ -137,6 +137,7 @@ public class QueryResourceManager {
    * Whenever the jdbc request is closed normally or abnormally, this method must be invoked. All
    * query tokens created by this jdbc request must be cleared.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endQuery(long queryId) throws StorageEngineException {
     try {
       if (config.isEnablePerformanceTracing()) {

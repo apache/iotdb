@@ -484,7 +484,7 @@ public class IoTDBConfig {
    * If one merge file selection runs for more than this time, it will be ended and its current
    * selection will be used as final selection. Unit: millis. When < 0, it means time is unbounded.
    */
-  private long mergeFileSelectionTimeBudget = 30 * 1000;
+  private long mergeFileSelectionTimeBudget = 30 * 1000L;
 
   /**
    * When set to true, if some crashed merges are detected during system rebooting, such merges will
