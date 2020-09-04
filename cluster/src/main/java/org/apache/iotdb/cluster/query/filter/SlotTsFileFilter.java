@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.query.filter;
 
 import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -47,7 +47,7 @@ public class SlotTsFileFilter implements TsFileFilter {
     String[] pathSegments = FilePathUtils.splitTsFilePath(res);
     String storageGroupName = pathSegments[pathSegments.length - 3];
     int partitionNum = Integer.parseInt(pathSegments[pathSegments.length - 2]);
-    int slot = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName, partitionNum,
+    int slot = SlotPartitionTable.slotStrategy.calculateSlotByPartitionNum(storageGroupName, partitionNum,
         ClusterConstant.SLOT_NUM);
     boolean contained = nodeSlots.contains(slot);
     logger.debug("The slot of {} is {}, contained: {}", res.getTsFile().getPath(), slot, contained);

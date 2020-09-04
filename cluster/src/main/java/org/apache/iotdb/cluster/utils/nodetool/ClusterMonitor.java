@@ -25,6 +25,7 @@ import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.ClusterMain;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -101,7 +102,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     List<PartitionGroup> localGroups = partitionTable.getLocalGroups();
-    Map<Node, List<Integer>> nodeSlotMap = partitionTable.getAllNodeSlots();
+    Map<Node, List<Integer>> nodeSlotMap = ((SlotPartitionTable) partitionTable).getAllNodeSlots();
     Map<PartitionGroup, Integer> raftGroupMapSlotNum = new HashMap<>();
     for (PartitionGroup group : localGroups) {
       raftGroupMapSlotNum.put(group, nodeSlotMap.get(group.getHeader()).size());
@@ -116,7 +117,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     List<Node> allNodes = partitionTable.getAllNodes();
-    Map<Node, List<Integer>> nodeSlotMap = partitionTable.getAllNodeSlots();
+    Map<Node, List<Integer>> nodeSlotMap = ((SlotPartitionTable) partitionTable).getAllNodeSlots();
     Map<PartitionGroup, Integer> raftGroupMapSlotNum = new HashMap<>();
     for (Node header : allNodes) {
       raftGroupMapSlotNum

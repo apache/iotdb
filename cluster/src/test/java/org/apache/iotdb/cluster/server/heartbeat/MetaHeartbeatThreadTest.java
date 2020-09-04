@@ -26,7 +26,6 @@ import static org.junit.Assert.assertTrue;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -44,9 +43,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 
@@ -57,17 +53,6 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
   private PartitionTable partitionTable = new PartitionTable() {
     @Override
     public PartitionGroup route(String storageGroupName, long timestamp) {
-      return null;
-    }
-
-    @Override
-    public int getPartitionKey(String storageGroupName, long timestamp) {
-      return PartitionUtils
-          .calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
-    }
-
-    @Override
-    public PartitionGroup route(int slot) {
       return null;
     }
 
@@ -109,31 +94,6 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     @Override
     public List<Node> getAllNodes() {
       return null;
-    }
-
-    @Override
-    public Map<Integer, Node> getPreviousNodeMap(Node node) {
-      return null;
-    }
-
-    @Override
-    public List<Integer> getNodeSlots(Node header) {
-      return null;
-    }
-
-    @Override
-    public Map<Node, List<Integer>> getAllNodeSlots() {
-      return null;
-    }
-
-    @Override
-    public int getTotalSlotNumbers() {
-      return 100;
-    }
-
-    @Override
-    public MManager getMManager() {
-      return IoTDB.metaManager;
     }
 
     @Override

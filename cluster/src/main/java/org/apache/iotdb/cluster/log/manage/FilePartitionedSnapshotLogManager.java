@@ -28,9 +28,9 @@ import java.util.Map.Entry;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -149,8 +149,8 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
    */
   private boolean collectTsFiles(Long partitionNum, List<TsFileResource> resourceList,
       String storageGroupName, List<TsFileResource> createdHardlinks) throws IOException {
-    int slotNum = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName,
-        partitionNum, partitionTable.getTotalSlotNumbers());
+    int slotNum = SlotPartitionTable.slotStrategy.calculateSlotByPartitionNum(storageGroupName,
+        partitionNum, ((SlotPartitionTable) partitionTable).getTotalSlotNumbers());
     FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
         s -> new FileSnapshot());
     for (TsFileResource tsFileResource : resourceList) {

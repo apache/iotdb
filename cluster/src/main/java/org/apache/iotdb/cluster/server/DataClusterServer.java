@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -501,7 +502,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         addDataGroupMember(dataGroupMember);
         dataGroupMember.start();
         dataGroupMember
-            .pullNodeAdditionSnapshots(partitionTable.getNodeSlots(node), node);
+            .pullNodeAdditionSnapshots(((SlotPartitionTable) partitionTable).getNodeSlots(node),
+                node);
       }
     }
   }
@@ -565,7 +567,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         } else {
           if (node.equals(thisNode)) {
             // this node is removed, it is no more replica of other groups
-            List<Integer> nodeSlots = partitionTable.getNodeSlots(dataGroupMember.getHeader());
+            List<Integer> nodeSlots =
+                ((SlotPartitionTable) partitionTable).getNodeSlots(dataGroupMember.getHeader());
             dataGroupMember.removeLocalData(nodeSlots);
             entryIterator.remove();
             dataGroupMember.stop();
@@ -598,7 +601,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * which has no data. This is to make that member pull data from other nodes.
    */
   public void pullSnapshots() {
-    List<Integer> slots = partitionTable.getNodeSlots(thisNode);
+    List<Integer> slots = ((SlotPartitionTable) partitionTable).getNodeSlots(thisNode);
     DataGroupMember dataGroupMember = headerGroupMap.get(thisNode);
     dataGroupMember.pullNodeAdditionSnapshots(slots, thisNode);
   }

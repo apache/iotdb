@@ -59,9 +59,10 @@ import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
-import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.slot.SlotNodeAdditionResult;
+import org.apache.iotdb.cluster.partition.slot.SlotNodeRemovalResult;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
@@ -243,7 +244,7 @@ public class DataGroupMemberTest extends MemberTest {
         new PartitionGroup(partitionGroup));
     DataGroupMember lastMember = getDataGroupMember(TestUtils.getNode(90),
         new PartitionGroup(partitionGroup));
-    NodeAdditionResult result = new NodeAdditionResult();
+    SlotNodeAdditionResult result = new SlotNodeAdditionResult();
     result.setLostSlots(new HashMap<>());
 
     try {
@@ -864,7 +865,7 @@ public class DataGroupMemberTest extends MemberTest {
   public void testRemoveLeader() {
     System.out.println("Start testRemoveLeader()");
     Node nodeToRemove = TestUtils.getNode(10);
-    NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable()
+    SlotNodeRemovalResult nodeRemovalResult = (SlotNodeRemovalResult) testMetaMember.getPartitionTable()
         .removeNode(nodeToRemove);
     dataGroupMember.setLeader(nodeToRemove);
     dataGroupMember.start();
@@ -903,7 +904,8 @@ public class DataGroupMemberTest extends MemberTest {
       assertEquals(0, dataGroupMember.getLastHeartbeatReceivedTime());
       assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
       assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
-      List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners().get(TestUtils.getNode(0));
+      List<Integer> newSlots =
+          ((SlotNodeRemovalResult) nodeRemovalResult).getNewSlotOwners().get(TestUtils.getNode(0));
       while (newSlots.size() != pulledSnapshots.size()) {
 
       }

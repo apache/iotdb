@@ -45,6 +45,7 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
 import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
@@ -59,7 +60,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -77,7 +77,6 @@ import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.sync.sender.transfer.SyncClient;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -367,7 +366,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     localDataMember.syncLeaderWithConsistencyCheck();
     try {
       return IoTDB.metaManager.getNodesList(schemaPattern, level,
-          new SlotSgFilter(metaGroupMember.getPartitionTable().getNodeSlots(header)));
+          new SlotSgFilter(((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header)));
     } catch (MetadataException e) {
       logger
           .error("Cannot not get node list of {}@{} from {} locally", schemaPattern, level, group);

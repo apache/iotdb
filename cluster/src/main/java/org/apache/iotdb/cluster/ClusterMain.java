@@ -83,6 +83,7 @@ public class ClusterMain {
       try {
         metaServer = new MetaClusterServer();
         startServerCheck();
+        preStartCustomize();
         metaServer.start();
         metaServer.buildCluster();
       } catch (TTransportException | StartupException | QueryProcessException |
@@ -93,6 +94,7 @@ public class ClusterMain {
     } else if (MODE_ADD.equals(mode)) {
       try {
         metaServer = new MetaClusterServer();
+        preStartCustomize();
         metaServer.start();
         metaServer.joinCluster();
       } catch (TTransportException | StartupException | QueryProcessException | StartUpCheckFailureException | ConfigInconsistentException e) {
@@ -245,5 +247,42 @@ public class ClusterMain {
 
   public static MetaClusterServer getMetaServer() {
     return metaServer;
+  }
+
+  /**
+   * Developers may perform pre-start customizations here for debugging or experiments.
+   *
+   */
+  private static void preStartCustomize() {
+    // customize data distribution
+    // The given example tries to divide storage groups like "root.sg_0", "root.sg_1"... into k
+    // nodes evenly.
+    /*SlotPartitionTable.slotStrategy = new SlotStrategy() {
+      int k = 3;
+      @Override
+      public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
+        int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
+        return maxSlotNum / k * sgSerialNum ;
+      }
+
+      @Override
+      public int calculateSlotByPartitionNum(String storageGroupName, long partitionId,
+          int maxSlotNum) {
+        int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
+        return maxSlotNum / k * sgSerialNum ;
+      }
+
+      private int extractSerialNumInSGName(String storageGroupName) {
+        String[] s = storageGroupName.split("_");
+        if (s.length != 2) {
+          return 0;
+        }
+        try {
+          return Integer.parseInt(s[1]);
+        } catch (NumberFormatException e) {
+          return 0;
+        }
+      }
+    };*/
   }
 }

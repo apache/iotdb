@@ -17,20 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.partition;
+package org.apache.iotdb.cluster.partition.slot;
 
-public class NodeAdditionResult {
+import java.util.Map;
+import java.util.Set;
+import org.apache.iotdb.cluster.partition.NodeAdditionResult;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+
+public class SlotNodeAdditionResult extends NodeAdditionResult {
 
   /**
-   * A new data group headed by the new node.
+   * What slots will the old data groups transfer to the new one.
    */
-  private PartitionGroup newGroup;
+  private Map<Node, Set<Integer>> lostSlots;
 
-  public PartitionGroup getNewGroup() {
-    return newGroup;
+  public Map<Node, Set<Integer>> getLostSlots() {
+    return lostSlots;
   }
 
-  public void setNewGroup(PartitionGroup newGroup) {
-    this.newGroup = newGroup;
+  public void setLostSlots(
+      Map<Node, Set<Integer>> lostSlots) {
+    this.lostSlots = lostSlots;
   }
 }

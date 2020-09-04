@@ -35,7 +35,7 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -88,7 +88,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
       PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();
       for (int i = 1; i < 4; i++) {
         FileSnapshot fileSnapshot =
-            (FileSnapshot) snapshot.getSnapshot(PartitionUtils.calculateStorageGroupSlotByTime(
+            (FileSnapshot) snapshot.getSnapshot(SlotPartitionTable.slotStrategy.calculateSlotByTime(
                 TestUtils.getTestSg(i), 0, ClusterConstant.SLOT_NUM));
         assertEquals(10, fileSnapshot.getTimeseriesSchemas().size());
         assertEquals(5, fileSnapshot.getDataFiles().size());

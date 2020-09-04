@@ -73,8 +73,11 @@ import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
 import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.partition.SlotManager;
-import org.apache.iotdb.cluster.partition.SlotManager.SlotStatus;
+import org.apache.iotdb.cluster.partition.slot.SlotManager;
+import org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus;
+import org.apache.iotdb.cluster.partition.slot.SlotNodeAdditionResult;
+import org.apache.iotdb.cluster.partition.slot.SlotNodeRemovalResult;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
@@ -98,7 +101,6 @@ import org.apache.iotdb.cluster.server.PullSnapshotHintService;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -322,7 +324,7 @@ public class DataGroupMember extends RaftMember {
     }
 
     // mark slots that do not belong to this group any more
-    Set<Integer> lostSlots = result.getLostSlots()
+    Set<Integer> lostSlots = ((SlotNodeAdditionResult) result).getLostSlots()
         .getOrDefault(getHeader(), Collections.emptySet());
     for (Integer lostSlot : lostSlots) {
       slotManager.setToSending(lostSlot);
@@ -590,7 +592,7 @@ public class DataGroupMember extends RaftMember {
   private void applyPartitionedSnapshot(PartitionedSnapshot snapshot)
       throws SnapshotApplicationException {
     synchronized (super.getSnapshotApplyLock()) {
-      List<Integer> slots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+      List<Integer> slots = ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(getHeader());
       for (Integer slot : slots) {
         Snapshot subSnapshot = snapshot.getSnapshot(slot);
         if (subSnapshot != null) {
@@ -890,7 +892,7 @@ public class DataGroupMember extends RaftMember {
     synchronized (logManager) {
       logger.info("{} pulling {} slots from remote", name, slots.size());
       PartitionedSnapshot snapshot = (PartitionedSnapshot) logManager.getSnapshot();
-      Map<Integer, Node> prevHolders = metaGroupMember.getPartitionTable()
+      Map<Integer, Node> prevHolders = ((SlotPartitionTable) metaGroupMember.getPartitionTable())
           .getPreviousNodeMap(newNode);
 
       // group the slots by their owners
@@ -1270,7 +1272,8 @@ public class DataGroupMember extends RaftMember {
       Filter valueFilter, QueryContext context)
       throws StorageEngineException, QueryProcessException {
     ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
-    List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+    List<Integer> nodeSlots =
+        ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(getHeader());
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     return new SeriesReader(path, allSensors, dataType, context, queryDataSource,
@@ -1499,8 +1502,8 @@ public class DataGroupMember extends RaftMember {
     Set<Integer> slotSet = new HashSet<>(slots);
     List<String> allStorageGroupNames = IoTDB.metaManager.getAllStorageGroupNames();
     TimePartitionFilter filter = (storageGroupName, timePartitionId) -> {
-      int slot = PartitionUtils
-          .calculateStorageGroupSlotByPartition(storageGroupName, timePartitionId,
+      int slot = SlotPartitionTable
+          .slotStrategy.calculateSlotByPartitionNum(storageGroupName, timePartitionId,
               ClusterConstant.SLOT_NUM);
       return slotSet.contains(slot);
     };
@@ -1542,7 +1545,7 @@ public class DataGroupMember extends RaftMember {
           }
         }
       }
-      List<Integer> slotsToPull = removalResult.getNewSlotOwners().get(getHeader());
+      List<Integer> slotsToPull = ((SlotNodeRemovalResult) removalResult).getNewSlotOwners().get(getHeader());
       if (slotsToPull != null) {
         // pull the slots that should be taken over
         PullSnapshotTaskDescriptor taskDescriptor = new PullSnapshotTaskDescriptor(
@@ -1705,7 +1708,8 @@ public class DataGroupMember extends RaftMember {
     for (String aggregation : aggregations) {
       results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType));
     }
-    List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+    List<Integer> nodeSlots =
+        ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(getHeader());
     AggregationExecutor.aggregateOneSeries(new Path(path), allSensors, context, timeFilter,
         dataType, results, new SlotTsFileFilter(nodeSlots));
     return results;
@@ -1746,7 +1750,8 @@ public class DataGroupMember extends RaftMember {
     }
 
     ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
-    List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+    List<Integer> nodeSlots = ((SlotPartitionTable) metaGroupMember.getPartitionTable())
+        .getNodeSlots(getHeader());
     LocalGroupByExecutor executor = new LocalGroupByExecutor(path, deviceMeasurements,
         dataType
         , context, timeFilter, new SlotTsFileFilter(nodeSlots));

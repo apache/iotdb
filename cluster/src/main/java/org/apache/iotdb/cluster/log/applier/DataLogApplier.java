@@ -24,9 +24,9 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -117,7 +117,7 @@ public class DataLogApplier extends BaseApplier {
         time = insertTabletPlan.getMinTime();
       }
     }
-    int slotId = PartitionUtils.calculateStorageGroupSlotByTime(sg, time, ClusterConstant.SLOT_NUM);
+    int slotId = SlotPartitionTable.slotStrategy.calculateSlotByTime(sg, time, ClusterConstant.SLOT_NUM);
     // the slot may not be writable because it is pulling file versions, wait until it is done
     dataGroupMember.getSlotManager().waitSlotForWrite(slotId);
     applyPhysicalPlan(plan, dataGroupMember);
