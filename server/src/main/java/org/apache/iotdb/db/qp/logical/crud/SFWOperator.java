@@ -60,7 +60,7 @@ public abstract class SFWOperator extends RootOperator {
     if (!sel.getAggregations().isEmpty()) {
       hasAggregation = true;
     }
-    if (!sel.getUdfList().isEmpty()) {
+    if (sel.isUdfQuery()) {
       hasUdf = true;
     }
     if (sel.isLastQuery()) {

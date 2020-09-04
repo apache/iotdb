@@ -32,7 +32,9 @@ public final class SelectOperator extends Operator {
   private List<Path> suffixList;
   private List<String> aggregations;
   private List<UDFContext> udfList;
+
   private boolean lastQuery;
+  private boolean udfQuery;
 
   /**
    * init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>.
@@ -44,6 +46,7 @@ public final class SelectOperator extends Operator {
     aggregations = new ArrayList<>();
     udfList = new ArrayList<>();
     lastQuery = false;
+    udfQuery = false;
   }
 
   public void addSelectPath(Path suffixPath) {
@@ -80,11 +83,18 @@ public final class SelectOperator extends Operator {
   }
 
   public void addUdf(UDFContext udf) {
+    if (udf != null) {
+      udfQuery = true;
+    }
     udfList.add(udf);
   }
 
   public List<UDFContext> getUdfList() {
     return udfList;
+  }
+
+  public boolean isUdfQuery() {
+    return udfQuery;
   }
 
   public void setUdfList(List<UDFContext> udfList) {
