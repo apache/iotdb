@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import java.io.IOException;
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -38,8 +39,6 @@ import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class IoTDB implements IoTDBMBean {
 
@@ -97,20 +96,13 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
-    registerManager.register(Monitor.getInstance());
+    registerManager.register(StatMonitor.getInstance());
     registerManager.register(Measurement.INSTANCE);
     registerManager.register(ManageDynamicParameters.getInstance());
     registerManager.register(TVListAllocator.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
     registerManager.register(StorageEngine.getInstance());
-
-    // When registering statMonitor, we should start recovering some statistics
-    // with latest values stored
-    // Warn: registMonitor() method should be called after systemDataRecovery()
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-      StatMonitor.getInstance().recovery();
-    }
 
     registerManager.register(RPCService.getInstance());
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
@@ -129,6 +121,13 @@ public class IoTDB implements IoTDBMBean {
         logger.warn("IoTDB failed to set up for:" + e.getMessage());
         return;
       }
+    }
+
+    // When registering statMonitor, we should start recovering some statistics
+    // with latest values stored
+    // Warn: registMonitor() method should be called after systemDataRecovery()
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
+      StatMonitor.getInstance().recovery();
     }
 
     registerManager.register(SyncServerManager.getInstance());

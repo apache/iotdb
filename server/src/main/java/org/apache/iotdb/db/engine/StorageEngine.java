@@ -386,9 +386,9 @@ public class StorageEngine implements IService {
         int successPointsNum =
             insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
         // update to storage group statistics
-        monitor.updateStatValue(storageGroupName, successPointsNum);
+        monitor.updateStatStorageGroupValue(storageGroupName, successPointsNum);
         // update to global statistics
-        monitor.updateStatValue(MonitorConstants.STAT_STORAGE_GROUP_NAME, successPointsNum);
+        monitor.updateStatGlobalValue(successPointsNum);
       }
     } catch (IllegalPathException e) {
       logger.error(e.getMessage());
