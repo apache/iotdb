@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import com.sun.org.slf4j.internal.Logger;
-import com.sun.org.slf4j.internal.LoggerFactory;
 import java.net.*;
 import java.io.*;
 import java.nio.channels.*;
@@ -28,8 +26,6 @@ public class MavenWrapperDownloader {
    */
   private static final String DEFAULT_DOWNLOAD_URL = "https://repo.maven.apache.org/maven2/io/takari/maven-wrapper/"
       + WRAPPER_VERSION + "/maven-wrapper-" + WRAPPER_VERSION + ".jar";
-
-  private static final Logger logger = LoggerFactory.getLogger(MavenWrapperDownloader.class);
 
   /**
    * Path to the maven-wrapper.properties file, which might contain a downloadUrl property to
@@ -93,7 +89,7 @@ public class MavenWrapperDownloader {
       System.exit(0);
     } catch (Throwable e) {
       System.out.println("- Error downloading");
-      logger.error("throws error", e);
+      e.printStackTrace();
       System.exit(1);
     }
   }

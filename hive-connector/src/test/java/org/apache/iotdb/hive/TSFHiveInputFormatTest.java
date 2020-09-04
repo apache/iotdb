@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.hive;
 
-import com.sun.org.slf4j.internal.Logger;
-import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.NullWritable;
@@ -40,7 +38,6 @@ import static org.junit.Assert.*;
 
 public class TSFHiveInputFormatTest {
 
-  private static final Logger logger = LoggerFactory.getLogger(TSFHiveInputFormatTest.class);
   private TSFInputSplit inputSplit;
   private TSFHiveInputFormat inputFormat;
   private JobConf job;
@@ -71,7 +68,7 @@ public class TSFHiveInputFormatTest {
       RecordReader<NullWritable, MapWritable> recordReader = inputFormat.getRecordReader(inputSplit, job, null);
       assertTrue(recordReader instanceof TSFHiveRecordReader);
     } catch (IOException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail();
     }
   }
@@ -84,7 +81,7 @@ public class TSFHiveInputFormatTest {
       assertTrue(inputSplits[0] instanceof TSFInputSplit);
       TSFInputSplit inputSplit = (TSFInputSplit) inputSplits[0];
     } catch (IOException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail();
     }
   }

@@ -48,7 +48,6 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBAggregationIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBAggregationIT.class);
   private static final String TIMESTAMP_STR = "Time";
   private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
 
@@ -160,7 +159,7 @@ public class IoTDBAggregationIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -206,7 +205,7 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -260,7 +259,7 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -323,7 +322,7 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(3, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -370,7 +369,7 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -417,7 +416,7 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -461,7 +460,8 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
+
       fail(e.getMessage());
     }
   }
@@ -539,7 +539,7 @@ public class IoTDBAggregationIT {
             e.getMessage());
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -623,7 +623,7 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(4, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -678,7 +678,7 @@ public class IoTDBAggregationIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 }

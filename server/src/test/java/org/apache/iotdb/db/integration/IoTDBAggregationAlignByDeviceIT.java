@@ -37,8 +37,6 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBAggregationAlignByDeviceIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBAggregationAlignByDeviceIT.class);
-
   private static final String[] dataSet = new String[]{
       "INSERT INTO root.sg1.d1(timestamp,s1,s2,s3) values(1, 1.0, 1.1, 1.2)",
       "INSERT INTO root.sg1.d1(timestamp,s1,s2,s3) values(2, 2.0, 2.1, 2.2)",
@@ -95,7 +93,7 @@ public class IoTDBAggregationAlignByDeviceIT {
         Assert.assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -111,7 +109,7 @@ public class IoTDBAggregationAlignByDeviceIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 }

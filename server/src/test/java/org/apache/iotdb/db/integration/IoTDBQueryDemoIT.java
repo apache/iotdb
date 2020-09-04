@@ -33,13 +33,9 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class IoTDBQueryDemoIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBQueryDemoIT.class);
-  
   private static String[] sqls = new String[]{
       "set storage group to root.ln",
       "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
@@ -134,7 +130,7 @@ public class IoTDBQueryDemoIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -192,7 +188,7 @@ public class IoTDBQueryDemoIT {
         Assert.assertEquals(10, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -282,7 +278,7 @@ public class IoTDBQueryDemoIT {
         Assert.assertEquals(5, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -413,7 +409,7 @@ public class IoTDBQueryDemoIT {
         Assert.assertEquals(3, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

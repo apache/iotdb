@@ -50,7 +50,6 @@ import org.slf4j.LoggerFactory;
 public class MergeTaskTest extends MergeTest {
 
   private File tempSGDir;
-  private static final Logger logger = LoggerFactory.getLogger(MergeTaskTest.class);
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException, MetadataException {
@@ -233,7 +232,7 @@ public class MergeTaskTest extends MergeTest {
               try {
                 seqResources.get(0).removeModFile();
               } catch (IOException e) {
-                logger.error("Error message", e);
+                e.printStackTrace();
               }
             }, "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();

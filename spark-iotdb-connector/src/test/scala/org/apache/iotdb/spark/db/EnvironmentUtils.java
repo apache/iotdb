@@ -57,9 +57,6 @@ import java.util.Locale;
  * </p>
  */
 public class EnvironmentUtils {
-
-  private static final Logger logger = LoggerFactory.getLogger(TSFMRReadExample.class);
-
   private static String[] creationSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
       "SET STORAGE GROUP TO root.vehicle.d1",
@@ -272,7 +269,7 @@ public class EnvironmentUtils {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 }

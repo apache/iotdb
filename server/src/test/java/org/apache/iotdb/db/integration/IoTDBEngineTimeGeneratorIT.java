@@ -59,8 +59,7 @@ import org.slf4j.LoggerFactory;
  * IoTDB server should be defined as integration test.
  */
 public class IoTDBEngineTimeGeneratorIT {
-  
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBEngineTimeGeneratorIT.class);
+
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -162,7 +161,7 @@ public class IoTDBEngineTimeGeneratorIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

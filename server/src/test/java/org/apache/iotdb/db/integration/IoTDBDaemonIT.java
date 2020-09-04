@@ -41,8 +41,6 @@ import static org.junit.Assert.fail;
  */
 public class IoTDBDaemonIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBDaemonIT.class);
-  
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
@@ -128,7 +126,7 @@ public class IoTDBDaemonIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 
@@ -178,7 +176,7 @@ public class IoTDBDaemonIT {
         assertEquals(12, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -218,7 +216,7 @@ public class IoTDBDaemonIT {
         assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -269,7 +267,7 @@ public class IoTDBDaemonIT {
         assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -296,7 +294,7 @@ public class IoTDBDaemonIT {
         assertEquals(6, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -327,7 +325,7 @@ public class IoTDBDaemonIT {
         assertEquals(9, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -356,7 +354,7 @@ public class IoTDBDaemonIT {
         assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -385,7 +383,7 @@ public class IoTDBDaemonIT {
         assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -413,7 +411,7 @@ public class IoTDBDaemonIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

@@ -37,8 +37,6 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBAlignByDeviceIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBAlignByDeviceIT.class);
-  
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle",
@@ -127,7 +125,7 @@ public class IoTDBAlignByDeviceIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 
@@ -190,7 +188,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(19, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -247,7 +245,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(14, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -300,7 +298,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(10, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -356,7 +354,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(14, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -409,7 +407,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(6, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -457,7 +455,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -509,7 +507,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(6, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -556,7 +554,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -642,7 +640,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(3, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -698,7 +696,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(5, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -764,7 +762,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(19, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -830,7 +828,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(19, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -898,7 +896,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(17, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -969,7 +967,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(19, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -1044,7 +1042,7 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(19, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

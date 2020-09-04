@@ -35,8 +35,6 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
@@ -44,7 +42,6 @@ import org.slf4j.LoggerFactory;
  */
 public class IoTDBMultiStatementsIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBMultiStatementsIT.class);
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -108,7 +105,7 @@ public class IoTDBMultiStatementsIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -193,7 +190,7 @@ public class IoTDBMultiStatementsIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
 

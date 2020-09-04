@@ -27,8 +27,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.sql.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.junit.Assert.fail;
 
@@ -39,8 +37,7 @@ import static org.junit.Assert.fail;
 public class IoTDBMetadataFetchIT {
 
   private DatabaseMetaData databaseMetaData;
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBMetadataFetchIT.class);
-  
+
   private static void insertSQL() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
@@ -56,7 +53,7 @@ public class IoTDBMetadataFetchIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -121,7 +118,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
-          logger.error("Error message", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -155,7 +152,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(builder.toString(), standard);
         } catch (SQLException e) {
-          logger.error("Error message", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -173,7 +170,7 @@ public class IoTDBMetadataFetchIT {
       showTimeseriesInJson();
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     } finally {
       if (connection != null) {
@@ -230,7 +227,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(builder.toString(), standard);
         } catch (SQLException e) {
-          logger.error("Error message", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -264,7 +261,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(builder.toString(), standard);
         } catch (SQLException e) {
-          logger.error("Error message", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -298,7 +295,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
-          logger.error("Error message", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -332,7 +329,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(builder.toString(), standard);
         } catch (SQLException e) {
-          logger.error("Error message", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -366,7 +363,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(builder.toString(), standard);
         } catch (SQLException e) {
-          logger.error("Error message", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }

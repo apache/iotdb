@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
-import com.sun.org.slf4j.internal.Logger;
-import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -36,7 +34,6 @@ import static org.junit.Assert.*;
  */
 public class TSFInputSplitTest {
 
-  private static final Logger logger = LoggerFactory.getLogger(TSFInputSplitTest.class);
   private TSFInputSplit wInputSplit;
   private TSFInputSplit rInputSplit;
   private DataInputBuffer dataInputBuffer = new DataInputBuffer();
@@ -69,7 +66,7 @@ public class TSFInputSplitTest {
       assertEquals(wInputSplit.getStart(), rInputSplit.getStart());
       assertEquals(wInputSplit.getLength(), rInputSplit.getLength());
     } catch (IOException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

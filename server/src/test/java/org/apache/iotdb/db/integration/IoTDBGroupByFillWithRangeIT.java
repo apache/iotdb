@@ -39,8 +39,6 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBGroupByFillWithRangeIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBGroupByFillWithRangeIT.class);
-  
   private static String[] dataSet1 = new String[]{
       "SET STORAGE GROUP TO root.ln.wf01.wt01",
       "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -142,7 +140,7 @@ public class IoTDBGroupByFillWithRangeIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -159,7 +157,7 @@ public class IoTDBGroupByFillWithRangeIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 }

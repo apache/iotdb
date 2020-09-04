@@ -39,12 +39,9 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class IoTDBRecoverIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBRecoverIT.class);  
   private static final String TIMESTAMP_STR = "Time";
   private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
   private static String[] creationSqls = new String[]{
@@ -150,7 +147,7 @@ public class IoTDBRecoverIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -160,7 +157,7 @@ public class IoTDBRecoverIT {
     try {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
     EnvironmentUtils.activeDaemon();
 
@@ -204,7 +201,7 @@ public class IoTDBRecoverIT {
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -214,7 +211,7 @@ public class IoTDBRecoverIT {
     try {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
 
     EnvironmentUtils.activeDaemon();
@@ -261,7 +258,7 @@ public class IoTDBRecoverIT {
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -288,7 +285,7 @@ public class IoTDBRecoverIT {
     try {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
     EnvironmentUtils.activeDaemon();
 
@@ -332,7 +329,7 @@ public class IoTDBRecoverIT {
         Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -386,7 +383,7 @@ public class IoTDBRecoverIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 }

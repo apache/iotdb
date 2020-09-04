@@ -47,7 +47,6 @@ import org.slf4j.LoggerFactory;
  */
 public class IoTDBLargeDataIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBLargeDataIT.class);
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -205,7 +204,7 @@ public class IoTDBLargeDataIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -243,7 +242,7 @@ public class IoTDBLargeDataIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -274,7 +273,7 @@ Statement statement = connection.createStatement()) {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -306,7 +305,7 @@ Statement statement = connection.createStatement()) {
         assertEquals(3012, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -339,7 +338,7 @@ Statement statement = connection.createStatement()) {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

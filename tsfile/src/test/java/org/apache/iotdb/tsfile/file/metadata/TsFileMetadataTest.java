@@ -31,12 +31,9 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TsFileMetadataTest {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileMetadataTest.class);
   final String PATH = TestConstant.BASE_OUTPUT_PATH.concat("output1.tsfile");
 
   @Before
@@ -71,13 +68,13 @@ public class TsFileMetadataTest {
       metaData = TsFileMetadata.deserializeFrom(buffer);
       return metaData;
     } catch (IOException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     } finally {
       if (fileInputStream != null) {
         try {
           fileInputStream.close();
         } catch (IOException e) {
-          logger.error("Error message", e);
+          e.printStackTrace();
         }
       }
     }
@@ -94,13 +91,13 @@ public class TsFileMetadataTest {
       fos = new FileOutputStream(file);
       metaData.serializeTo(fos);
     } catch (IOException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     } finally {
       if (fos != null) {
         try {
           fos.close();
         } catch (IOException e) {
-          logger.error("Error message", e);
+          e.printStackTrace();
         }
       }
     }

@@ -34,13 +34,9 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class IoTDBLogFileSizeTest {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBLogFileSizeTest.class);
-  
   private boolean skip = true;
 
   private int groupSize;
@@ -90,7 +86,7 @@ public class IoTDBLogFileSizeTest {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
       } catch (ClassNotFoundException e) {
-        logger.error("Error message", e);
+        e.printStackTrace();
         return;
       }
 
@@ -112,7 +108,7 @@ public class IoTDBLogFileSizeTest {
           }
         }
       } catch (Exception e) {
-        logger.error("Error message", e);
+        e.printStackTrace();
       }
     });
     writeThread.start();
@@ -134,7 +130,7 @@ public class IoTDBLogFileSizeTest {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
       } catch (ClassNotFoundException e) {
-        logger.error("Error message", e);
+        e.printStackTrace();
         return;
       }
       try (Connection connection = DriverManager
@@ -155,7 +151,7 @@ public class IoTDBLogFileSizeTest {
           }
         }
       } catch (Exception e) {
-        logger.error("Error message", e);
+        e.printStackTrace();
       }
     });
     writeThread.start();
@@ -175,7 +171,7 @@ public class IoTDBLogFileSizeTest {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 }

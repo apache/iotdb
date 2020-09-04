@@ -43,8 +43,7 @@ import org.slf4j.LoggerFactory;
  * defined as integration test.
  */
 public class IoTDBCloseIT {
-  
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBCloseIT.class);
+
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
@@ -108,7 +107,7 @@ public class IoTDBCloseIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -196,7 +195,7 @@ public class IoTDBCloseIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
 

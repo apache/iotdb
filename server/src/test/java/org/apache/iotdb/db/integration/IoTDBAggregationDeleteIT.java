@@ -34,7 +34,6 @@ import static org.junit.Assert.*;
 
 public class IoTDBAggregationDeleteIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBAggregationDeleteIT.class);
 
   private static String[] dataSet = new String[]{
       "INSERT INTO root.turbine.d1(timestamp,s1) values(1,1)",
@@ -79,7 +78,7 @@ public class IoTDBAggregationDeleteIT {
       }
 
     } catch (SQLException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail();
     }
   }
@@ -95,7 +94,7 @@ public class IoTDBAggregationDeleteIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 }

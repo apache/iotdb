@@ -41,8 +41,6 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBClearCacheIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBClearCacheIT.class);
-
   private static String[] sqls = new String[]{
       "set storage group to root.ln",
       "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
@@ -138,7 +136,7 @@ public class IoTDBClearCacheIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -171,7 +169,7 @@ public class IoTDBClearCacheIT {
       assertTrue(TimeSeriesMetadataCache.getInstance().isEmpty());
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

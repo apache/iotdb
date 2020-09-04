@@ -41,12 +41,8 @@ import static org.junit.Assert.assertEquals;
 
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DeltaBinaryEncoderLongTest {
-
-  private static final Logger logger = LoggerFactory.getLogger(DeltaBinaryEncoderLongTest.class);
 
   private static int ROW_NUM = 10000;
   private final long BASIC_FACTOR = 1l << 32;
@@ -124,7 +120,7 @@ public class DeltaBinaryEncoderLongTest {
         Date date = dateFormat.parse(dates.get(i));
         data[i] = date.getTime();
       } catch (ParseException e) {
-        logger.error("Error message", e);
+        e.printStackTrace();
       }
     }
 
@@ -158,7 +154,7 @@ public class DeltaBinaryEncoderLongTest {
         Date date = dateFormat.parse(dates.get(i));
         data[j++] = date.getTime();
       } catch (ParseException e) {
-        logger.error("Error message", e);
+        e.printStackTrace();
       }
     }
 

@@ -45,7 +45,6 @@ import org.slf4j.LoggerFactory;
 public class MergeLogTest extends MergeTest {
 
   File tempSGDir;
-  private static final Logger logger = LoggerFactory.getLogger(MergeLogTest.class);
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
@@ -77,7 +76,7 @@ public class MergeLogTest extends MergeTest {
         lineCnt ++;
       }
     } catch (IOException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
     assertEquals(309, lineCnt);

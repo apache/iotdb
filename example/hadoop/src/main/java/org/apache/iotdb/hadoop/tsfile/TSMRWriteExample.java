@@ -47,8 +47,6 @@ import org.slf4j.LoggerFactory;
  */
 public class TSMRWriteExample {
 
-  private static final Logger logger = LoggerFactory.getLogger(TSMRWriteExample.class);
-
   public static void main(String[] args)
       throws IOException, ClassNotFoundException, TSFHadoopException, URISyntaxException {
 
@@ -129,7 +127,7 @@ public class TSMRWriteExample {
     try {
       isSuccess = job.waitForCompletion(true);
     } catch (InterruptedException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
     if (isSuccess) {
       System.out.println("Execute successfully");

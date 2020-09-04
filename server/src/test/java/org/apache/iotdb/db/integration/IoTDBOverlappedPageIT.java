@@ -32,8 +32,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.fail;
@@ -44,7 +42,6 @@ import static org.junit.Assert.fail;
  */
 public class IoTDBOverlappedPageIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBOverlappedPageIT.class);
   private static int beforeMaxNumberOfPointsInPage;
   private static long beforeMemtableSizeThreshold;
 
@@ -100,7 +97,7 @@ public class IoTDBOverlappedPageIT {
         resultSet.close();
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -131,7 +128,7 @@ public class IoTDBOverlappedPageIT {
       }
       statement.execute("flush");
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

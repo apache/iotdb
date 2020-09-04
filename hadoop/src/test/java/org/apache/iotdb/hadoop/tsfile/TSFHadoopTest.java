@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
-import com.sun.org.slf4j.internal.Logger;
-import com.sun.org.slf4j.internal.LoggerFactory;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
@@ -40,8 +38,6 @@ import static org.junit.Assert.*;
 public class TSFHadoopTest {
 
   private TSFInputFormat inputFormat = null;
-
-  private static final Logger logger = LoggerFactory.getLogger(TSFHadoopTest.class);
 
   private String tsfilePath = TestConstant.BASE_OUTPUT_PATH.concat("example_mr.tsfile");
 
@@ -129,7 +125,7 @@ public class TSFHadoopTest {
       }
       reader.close();
     } catch (IOException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

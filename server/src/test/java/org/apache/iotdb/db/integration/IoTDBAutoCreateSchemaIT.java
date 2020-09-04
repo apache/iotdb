@@ -44,7 +44,6 @@ import org.slf4j.LoggerFactory;
  */
 public class IoTDBAutoCreateSchemaIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBAutoCreateSchemaIT.class);
   private static IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
   @Before
@@ -146,7 +145,7 @@ public class IoTDBAutoCreateSchemaIT {
         }
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 }

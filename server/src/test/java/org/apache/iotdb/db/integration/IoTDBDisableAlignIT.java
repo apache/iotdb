@@ -17,7 +17,7 @@
  * under the License.
  */
 package org.apache.iotdb.db.integration;
-;
+
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -33,8 +33,6 @@ import static org.junit.Assert.fail;
 
 public class IoTDBDisableAlignIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBDisableAlignIT.class);
-  
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle",
@@ -122,7 +120,7 @@ public class IoTDBDisableAlignIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
   
@@ -183,7 +181,7 @@ public class IoTDBDisableAlignIT {
         Assert.assertEquals(11, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -238,7 +236,7 @@ public class IoTDBDisableAlignIT {
         Assert.assertEquals(11, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -299,7 +297,7 @@ public class IoTDBDisableAlignIT {
         Assert.assertEquals(10, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -353,7 +351,7 @@ public class IoTDBDisableAlignIT {
         Assert.assertEquals(11, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

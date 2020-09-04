@@ -34,12 +34,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PageHeaderTest {
-
-  private static final Logger logger = LoggerFactory.getLogger(PageHeaderTest.class);
   public static final int UNCOMPRESSED_SIZE = 123456;
   public static final int COMPRESSED_SIZE = 100000;
   public static final int NUM_OF_VALUES = 10000;
@@ -77,13 +73,13 @@ public class PageHeaderTest {
       header = PageHeader.deserializeFrom(fis, DATA_TYPE);
       return header;
     } catch (IOException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     } finally {
       if (fis != null) {
         try {
           fis.close();
         } catch (IOException e) {
-          logger.error("Error message", e);
+          e.printStackTrace();
         }
       }
     }
@@ -100,13 +96,13 @@ public class PageHeaderTest {
       fos = new FileOutputStream(file);
       header.serializeTo(fos);
     } catch (IOException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     } finally {
       if (fos != null) {
         try {
           fos.close();
         } catch (IOException e) {
-          logger.error("Error message", e);
+          e.printStackTrace();
         }
       }
     }

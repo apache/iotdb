@@ -169,7 +169,7 @@ public class IoTDBMergeTest {
       }
       assertEquals(20, cnt);
     } catch (SQLException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

@@ -33,13 +33,9 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class IoTDBTimeZoneIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBTimeZoneIT.class);
-  
   private static String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.timezone",
       "CREATE TIMESERIES root.timezone.tz1 WITH DATATYPE = INT32, ENCODING = PLAIN",};
   private final String TIMESTAMP_STR = "Time";
@@ -138,7 +134,7 @@ public class IoTDBTimeZoneIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

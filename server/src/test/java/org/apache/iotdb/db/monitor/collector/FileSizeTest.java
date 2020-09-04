@@ -31,12 +31,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class FileSizeTest {
 
-  private static final Logger logger = LoggerFactory.getLogger(FileSizeTest.class);
   private static final String TEST_FILE_CONTENT = "FileSize UT test file";
   private static final String TEST_FILE_PATH =
       FileSizeConstants.SYS.getPath() + File.separatorChar + "schemaFile";
@@ -63,7 +60,7 @@ public class FileSizeTest {
         Files.delete(testFile.toPath());
       } catch (IOException e) {
         isWriteSuccess = false;
-        logger.error("Error message", e);
+        e.printStackTrace();
       }
     }
     try {
@@ -71,7 +68,7 @@ public class FileSizeTest {
         isWriteSuccess = false;
       }
     } catch (IOException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
 
     dataSizeBefore = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.SYS);
@@ -82,7 +79,7 @@ public class FileSizeTest {
       fileOutputStream.flush();
     } catch (IOException e) {
       isWriteSuccess = false;
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
     // calculate the delta of data dir file size
     dataSizeAfter = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.SYS);

@@ -38,8 +38,6 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBFlushQueryMergeIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBFlushQueryMergeIT.class);
-
   private static String[] sqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
       "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -83,7 +81,7 @@ public class IoTDBFlushQueryMergeIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 
@@ -108,7 +106,7 @@ public class IoTDBFlushQueryMergeIT {
       }
       statement.execute("merge");
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -161,7 +159,7 @@ public class IoTDBFlushQueryMergeIT {
       assertEquals(30, i);
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

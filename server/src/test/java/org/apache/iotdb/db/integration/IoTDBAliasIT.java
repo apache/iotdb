@@ -38,8 +38,6 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBAliasIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBAliasIT.class);
-
   private static String[] sqls = new String[]{
       "SET STORAGE GROUP TO root.sg",
       "CREATE TIMESERIES root.sg.d1.s1(speed) WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -88,7 +86,7 @@ public class IoTDBAliasIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 
@@ -128,7 +126,7 @@ public class IoTDBAliasIT {
         assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -159,7 +157,7 @@ public class IoTDBAliasIT {
         assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -201,7 +199,7 @@ public class IoTDBAliasIT {
         assertEquals(4, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -233,7 +231,7 @@ public class IoTDBAliasIT {
         assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -274,7 +272,7 @@ public class IoTDBAliasIT {
         assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -334,7 +332,7 @@ public class IoTDBAliasIT {
       }
     } catch (Exception e) {
       fail(e.getMessage());
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 

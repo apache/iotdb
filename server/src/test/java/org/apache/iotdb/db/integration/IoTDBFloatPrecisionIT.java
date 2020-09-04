@@ -47,7 +47,6 @@ import org.slf4j.LoggerFactory;
  */
 public class IoTDBFloatPrecisionIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBFloatPrecisionIT.class);
   private static final String CREATE_TEMPLATE_SQL = "CREATE TIMESERIES root.vehicle.%s.%s WITH DATATYPE=%s, ENCODING=%s, MAX_POINT_NUMBER=%d";
   private static final String INSERT_TEMPLATE_SQL = "insert into root.vehicle.%s(timestamp,%s) values(%d,%s)";
   private static List<String> sqls = new ArrayList<>();
@@ -98,7 +97,7 @@ public class IoTDBFloatPrecisionIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 
@@ -159,7 +158,7 @@ public class IoTDBFloatPrecisionIT {
         Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

@@ -32,13 +32,9 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class FileReaderManagerTest {
 
-  private static final Logger logger = LoggerFactory.getLogger(FileReaderManagerTest.class);
-  
   private static final int MAX_FILE_SIZE = 10;
 
   private IoTDBConfig dbConfig = IoTDBDescriptor.getInstance().getConfig();
@@ -87,7 +83,7 @@ public class FileReaderManagerTest {
         }
 
       } catch (IOException e) {
-        logger.error("Error message", e);
+        e.printStackTrace();
       }
 
     });
@@ -109,7 +105,7 @@ public class FileReaderManagerTest {
         }
 
       } catch (IOException e) {
-        logger.error("Error message", e);
+        e.printStackTrace();
       }
 
     });

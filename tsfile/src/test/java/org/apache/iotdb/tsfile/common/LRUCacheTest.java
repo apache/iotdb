@@ -24,12 +24,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LRUCacheTest {
 
-  private static final Logger logger = LoggerFactory.getLogger(LRUCacheTest.class);
   private LRUCache<Integer, Integer> cache;
 
   @Test
@@ -50,7 +47,7 @@ public class LRUCacheTest {
         Assert.assertEquals((i - 1) * 10, (int) cache.get(i - 1));
       }
     } catch (IOException e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       Assert.fail();
     }
   }

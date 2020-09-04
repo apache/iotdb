@@ -40,12 +40,8 @@ import org.junit.Test;
 
 import org.apache.iotdb.tsfile.encoding.decoder.RegularDataDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.RegularDataEncoder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class RegularDataEncoderLongTest {
-
-  private static final Logger logger = LoggerFactory.getLogger(RegularDataEncoderLongTest.class);
 
   private static int ROW_NUM;
   ByteArrayOutputStream out;
@@ -73,7 +69,7 @@ public class RegularDataEncoderLongTest {
         Date date = dateFormat.parse(dates.get(i));
         data[i] = date.getTime();
       } catch (ParseException e) {
-        logger.error("Error message", e);
+        e.printStackTrace();
       }
     }
 
@@ -154,7 +150,7 @@ public class RegularDataEncoderLongTest {
         Date date = dateFormat.parse(dates.get(i));
         data[j++] = date.getTime();
       } catch (ParseException e) {
-        logger.error("Error message", e);
+        e.printStackTrace();
       }
     }
 

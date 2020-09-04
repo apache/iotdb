@@ -39,8 +39,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -48,8 +46,6 @@ import org.slf4j.LoggerFactory;
  */
 public class IoTDBWatermarkTest {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBWatermarkTest.class);
-  
   private static String filePath1 = TestConstant.BASE_OUTPUT_PATH.concat("watermarked_query_result.csv");
   private static String filePath2 = TestConstant.BASE_OUTPUT_PATH.concat("notWatermarked_query_result.csv");
   private static PrintWriter writer1;
@@ -127,7 +123,7 @@ public class IoTDBWatermarkTest {
         }
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -158,7 +154,7 @@ public class IoTDBWatermarkTest {
         resultSet.close();
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
@@ -197,7 +193,7 @@ public class IoTDBWatermarkTest {
         resultSet.close();
       }
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
 

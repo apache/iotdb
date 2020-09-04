@@ -34,8 +34,6 @@ import static org.junit.Assert.*;
 
 public class IOTDBGroupByInnerIntervalIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IOTDBGroupByInnerIntervalIT.class);
-
   private static String[] dataSet1 = new String[]{
           "SET STORAGE GROUP TO root.ln.wf01.wt01",
           "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
@@ -147,7 +145,7 @@ public class IOTDBGroupByInnerIntervalIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -187,7 +185,7 @@ public class IOTDBGroupByInnerIntervalIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -227,7 +225,7 @@ public class IOTDBGroupByInnerIntervalIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -287,7 +285,7 @@ public class IOTDBGroupByInnerIntervalIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 

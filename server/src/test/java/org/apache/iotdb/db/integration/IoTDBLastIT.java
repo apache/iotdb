@@ -36,8 +36,6 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBLastIT {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBLastIT.class);
-
   private static String[] dataSet1 = new String[]{
       "SET STORAGE GROUP TO root.ln.wf01.wt01",
       "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
@@ -386,7 +384,7 @@ public class IoTDBLastIT {
       }
 
     } catch (Exception e) {
-      logger.error("Error message", e);
+      e.printStackTrace();
     }
   }
 }
