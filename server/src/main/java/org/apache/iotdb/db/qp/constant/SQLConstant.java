@@ -156,6 +156,9 @@ public class SQLConstant {
   public static final int TOK_CREATE_SCHEMA_SNAPSHOT = 89;
   public static final int TOK_TRACING = 91;
 
+  public static final int TOK_FUNCTION_CREATE = 92;
+  public static final int TOK_FUNCTION_DROP = 93;
+
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();

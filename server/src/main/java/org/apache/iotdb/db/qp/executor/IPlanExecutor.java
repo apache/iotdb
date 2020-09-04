@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -54,7 +55,7 @@ public interface IPlanExecutor {
    * @param plan Physical Non-Query Plan
    */
   boolean processNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException;
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, UDFRegistrationException;
 
   /**
    * execute update command and return whether the operator is successful.
@@ -77,9 +78,9 @@ public interface IPlanExecutor {
   /**
    * execute delete command and return whether the operator is successful.
    *
-   * @param path       : delete series seriesPath
+   * @param path      : delete series seriesPath
    * @param startTime start time in delete command
-   * @param endTime end time in delete command
+   * @param endTime   end time in delete command
    */
   void delete(Path path, long startTime, long endTime) throws QueryProcessException;
 

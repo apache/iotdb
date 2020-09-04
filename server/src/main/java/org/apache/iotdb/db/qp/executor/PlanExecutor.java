@@ -69,6 +69,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -100,10 +101,12 @@ import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
@@ -123,6 +126,7 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
@@ -182,7 +186,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public boolean processNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, UDFRegistrationException {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
@@ -260,15 +264,31 @@ public class PlanExecutor implements IPlanExecutor {
             (storageGroupName, partitionId) ->
                 storageGroupName.equals(((DeletePartitionPlan) plan).getStorageGroupName())
                     && p.getPartitionId().contains(partitionId);
-        StorageEngine.getInstance().removePartitions(((DeletePartitionPlan) plan).getStorageGroupName(), filter);
+        StorageEngine.getInstance()
+            .removePartitions(((DeletePartitionPlan) plan).getStorageGroupName(), filter);
         return true;
       case CREATE_SCHEMA_SNAPSHOT:
         operateCreateSnapshot();
         return true;
+      case CREATE_FUNCTION:
+        return operateCreateFunction((CreateFunctionPlan) plan);
+      case DROP_FUNCTION:
+        return operateDropFunction((DropFunctionPlan) plan);
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
     }
+  }
+
+  private boolean operateCreateFunction(CreateFunctionPlan plan) throws UDFRegistrationException {
+    UDFRegistrationService.getInstance()
+        .register(plan.getUdfName(), plan.getClassName(), plan.isTemporary(), true);
+    return true;
+  }
+
+  private boolean operateDropFunction(DropFunctionPlan plan) throws UDFRegistrationException {
+    UDFRegistrationService.getInstance().deregister(plan.getUdfName());
+    return true;
   }
 
   private void operateMerge(MergePlan plan) throws StorageEngineException {
@@ -849,9 +869,10 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
-    throws MetadataException {
-    return mManager.getSeriesSchemasAndReadLockDevice(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
+  protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
+    return mManager
+        .getSeriesSchemasAndReadLockDevice(insertPlan.getDeviceId(), insertPlan.getMeasurements(),
+            insertPlan);
   }
 
   @Override
@@ -985,7 +1006,7 @@ public class PlanExecutor implements IPlanExecutor {
       if (!failedNames.isEmpty()) {
         throw new DeleteFailedException(String.join(",", failedNames));
       }
-    } catch (MetadataException | StorageEngineException e) {
+    } catch (MetadataException | StorageEngineException | UDFRegistrationException e) {
       throw new QueryProcessException(e);
     }
     return true;
@@ -1062,7 +1083,7 @@ public class PlanExecutor implements IPlanExecutor {
    * @param pathList deleted paths
    */
   protected void deleteDataOfTimeSeries(List<Path> pathList)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, UDFRegistrationException {
     for (Path p : pathList) {
       DeletePlan deletePlan = new DeletePlan();
       deletePlan.addPath(p);

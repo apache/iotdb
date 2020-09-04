@@ -32,6 +32,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDF;
 import org.apache.iotdb.db.query.udf.core.UDFContext;
@@ -61,7 +62,7 @@ public class UDFRegistrationService implements IService {
   }
 
   public void register(String functionName, String className, boolean isTemporary,
-      boolean writeToTemporaryLogFile) throws Exception {
+      boolean writeToTemporaryLogFile) throws UDFRegistrationException {
     UDFRegistrationInformation information = registrationInformation.get(functionName);
     if (information != null) {
       if (information.getClassName().equals(className)) {
@@ -76,7 +77,7 @@ public class UDFRegistrationService implements IService {
               information.isTemporary() ? "" : "non-", information.getFunctionName(),
               information.getClassName());
           logger.warn(errorMessage);
-          throw new Exception(errorMessage);
+          throw new UDFRegistrationException(errorMessage);
         }
       } else {
         String errorMessage = String.format(
@@ -84,7 +85,7 @@ public class UDFRegistrationService implements IService {
             functionName, className,
             information.getFunctionName(), information.getClassName());
         logger.warn(errorMessage);
-        throw new Exception(errorMessage);
+        throw new UDFRegistrationException(errorMessage);
       }
     }
 
@@ -96,7 +97,7 @@ public class UDFRegistrationService implements IService {
           "Failed to register UDF %s(%s), because its instance can not be constructed successfully. Exception: %s",
           functionName, className, e.toString());
       logger.warn(errorMessage);
-      throw new Exception(errorMessage);
+      throw new UDFRegistrationException(errorMessage);
     }
 
     registrationInformation
@@ -111,17 +112,17 @@ public class UDFRegistrationService implements IService {
             .format("Failed to append UDF log when registering UDF %s(%s), because %s",
                 functionName, className, e.toString());
         logger.error(errorMessage);
-        throw new Exception(e);
+        throw new UDFRegistrationException(errorMessage, e);
       }
     }
   }
 
-  public void deregister(String functionName) throws Exception {
+  public void deregister(String functionName) throws UDFRegistrationException {
     UDFRegistrationInformation information = registrationInformation.remove(functionName);
     if (information == null) {
       String errorMessage = String.format("UDF %s does not exist.", functionName);
       logger.warn(errorMessage);
-      throw new Exception(errorMessage);
+      throw new UDFRegistrationException(errorMessage);
     }
 
     if (!information.isTemporary()) {
@@ -133,7 +134,7 @@ public class UDFRegistrationService implements IService {
             .format("Failed to append UDF log when deregistering UDF %s, because %s",
                 functionName, e.toString());
         logger.error(errorMessage);
-        throw new Exception(e);
+        throw new UDFRegistrationException(errorMessage, e);
       }
     }
   }
@@ -210,7 +211,7 @@ public class UDFRegistrationService implements IService {
     FileUtils.forceMkdir(file);
   }
 
-  private void recoveryFromLogFile(File logFile) throws Exception {
+  private void recoveryFromLogFile(File logFile) throws IOException, UDFRegistrationException {
     HashMap<String, String> recoveredUDFs = new HashMap<>();
 
     try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {

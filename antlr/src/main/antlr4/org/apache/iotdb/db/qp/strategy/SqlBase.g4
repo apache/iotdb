@@ -85,8 +85,8 @@ statement
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
     | CREATE TEMPORARY? FUNCTION udfName=ID AS className=STRING_LITERAL #createFunction
-    | DROP TEMPORARY? FUNCTION udfName=ID #dropFunction
-    | SHOW TEMPORARY? FUNCTIONS #showFunctions
+    | DROP FUNCTION udfName=ID #dropFunction
+    | SHOW TEMPORARY? FUNCTIONS #showFunctions // not support yet
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA

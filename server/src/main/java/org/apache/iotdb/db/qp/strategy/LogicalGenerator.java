@@ -41,6 +41,10 @@ import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateFunctionOperator;
+import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateFunctionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropFunctionContext;
 import org.apache.iotdb.db.query.udf.core.UDFContext;
 import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
@@ -1665,5 +1669,22 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCreateSnapshot(CreateSnapshotContext ctx) {
     super.enterCreateSnapshot(ctx);
     initializedOperator = new CreateSnapshotOperator(SQLConstant.TOK_CREATE_SCHEMA_SNAPSHOT);
+  }
+
+  @Override
+  public void enterCreateFunction(CreateFunctionContext ctx) {
+    super.enterCreateFunction(ctx);
+    initializedOperator = new CreateFunctionOperator(SQLConstant.TOK_FUNCTION_CREATE);
+    CreateFunctionOperator createFunctionOperator = (CreateFunctionOperator) initializedOperator;
+    createFunctionOperator.setTemporary(ctx.TEMPORARY() != null);
+    createFunctionOperator.setUdfName(ctx.udfName.getText());
+    createFunctionOperator.setClassName(removeStringQuote(ctx.className.getText()));
+  }
+
+  @Override
+  public void enterDropFunction(DropFunctionContext ctx) {
+    super.enterDropFunction(ctx);
+    initializedOperator = new DropFunctionOperator(SQLConstant.TOK_FUNCTION_DROP);
+    ((DropFunctionOperator) initializedOperator).setUdfName(ctx.udfName.getText());
   }
 }
