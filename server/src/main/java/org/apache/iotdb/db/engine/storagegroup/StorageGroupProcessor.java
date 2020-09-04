@@ -1592,7 +1592,9 @@ public class StorageGroupProcessor {
    */
   private void closeHotCompactionMergeCallBack() {
     this.hotCompactionMergeWorking = false;
-    closeStorageGroupCondition.notifyAll();
+    synchronized (closeStorageGroupCondition) {
+      closeStorageGroupCondition.notifyAll();
+    }
   }
 
   /**

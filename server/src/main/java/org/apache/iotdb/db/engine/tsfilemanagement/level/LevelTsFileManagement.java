@@ -260,6 +260,7 @@ public class LevelTsFileManagement extends TsFileManagement {
   }
 
   @Override
+  @SuppressWarnings("squid:S3776")
   public boolean isEmpty(boolean sequence) {
     if (sequence) {
       for (List<TreeSet<TsFileResource>> partitionSequenceTsFileResource : sequenceTsFileResources
@@ -308,6 +309,7 @@ public class LevelTsFileManagement extends TsFileManagement {
    * recover files
    */
   @Override
+  @SuppressWarnings("squid:S3776")
   public void recover() {
     File logFile = FSFactoryProducer.getFSFactory()
         .getFile(storageGroupDir, storageGroupName + HOT_COMPACTION_LOG_NAME);
@@ -447,6 +449,7 @@ public class LevelTsFileManagement extends TsFileManagement {
     merge(forkedUnSequenceTsFileResources, false, timePartition);
   }
 
+  @SuppressWarnings("squid:S3776")
   private void merge(List<List<TsFileResource>> mergeResources, boolean sequence,
       long timePartition) {
     long startTimeMillis = System.currentTimeMillis();

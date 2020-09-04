@@ -58,16 +58,7 @@ public class HotCompactionMergeTaskPoolManager implements IService {
     if (pool != null) {
       pool.shutdownNow();
       logger.info("Waiting for task pool to shut down");
-      long startTime = System.currentTimeMillis();
-      while (!pool.isTerminated()) {
-        // wait
-        long time = System.currentTimeMillis() - startTime;
-        if (time % 60_000 == 0) {
-          logger.warn("HotCompactionManager has wait for {} seconds to stop", time / 1000);
-        }
-      }
-      pool = null;
-      logger.info("HotCompactionManager stopped");
+      waitTermination();
     }
   }
 
@@ -76,17 +67,21 @@ public class HotCompactionMergeTaskPoolManager implements IService {
     if (pool != null) {
       awaitTermination(pool, millseconds);
       logger.info("Waiting for task pool to shut down");
-      long startTime = System.currentTimeMillis();
-      while (!pool.isTerminated()) {
-        // wait
-        long time = System.currentTimeMillis() - startTime;
-        if (time % 60_000 == 0) {
-          logger.warn("HotCompactionManager has wait for {} seconds to stop", time / 1000);
-        }
-      }
-      pool = null;
-      logger.info("HotCompactionManager stopped");
+      waitTermination();
     }
+  }
+
+  private void waitTermination() {
+    long startTime = System.currentTimeMillis();
+    while (!pool.isTerminated()) {
+      // wait
+      long time = System.currentTimeMillis() - startTime;
+      if (time % 60_000 == 0) {
+        logger.warn("HotCompactionManager has wait for {} seconds to stop", time / 1000);
+      }
+    }
+    pool = null;
+    logger.info("HotCompactionManager stopped");
   }
 
   private void awaitTermination(ExecutorService service, long millseconds) {
