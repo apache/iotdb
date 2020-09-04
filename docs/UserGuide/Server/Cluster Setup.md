@@ -21,8 +21,11 @@
 
 # Cluster Setup
 For installation prerequisites, please refer to [Installation Prerequisites](../Get%20Started/QuickStart.md)
-## Cluster environment construction
-Users can build clusters in pseudo-distributed mode or distributed mode. The main difference between pseudo-distributed mode and distributed mode is the difference in `seed_nodes` in the configuration file. For detail descriptions, please refer to [Cluster Configuration Items](#Cluster Configuration Items).
+## Start Service
+Users can build clusters in pseudo-distributed mode or distributed mode. 
+The main difference between pseudo-distributed mode and distributed mode is the difference in `seed_nodes` in the configuration file. 
+For detail descriptions, please refer to [Cluster Configuration Items](#Cluster Configuration Items).
+
 To start the service of one of the nodes, you need to execute the following commands:
 
 ```bash
@@ -37,23 +40,32 @@ or
 > nohup sbin/start-node.bat -c <conf_path> -internal_meta_port 9003
 ```
 
-`-c <conf_path>` use the configuration file in the `conf_path` folder to override the default configuration file; `-internal_meta_port 9003` overrides the specific configuration item `internal_meta_port`,
+`-c <conf_path>` use the configuration file in the `conf_path` folder to override the default configuration file; 
+`-internal_meta_port 9003` overrides the specific configuration item `internal_meta_port`.
 The currently supported items to overwrite the original configurations when starting IoTDB are the followings :
 `internal_meta_port, internal_data_port, cluster_rpc_port, seed_nodes`. 
-
 When both exist, the specified configuration item will overwrite the configurations in the configuration file.
 
 ## Cluster Configuration Items
-Before starting to use IoTDB, you need to config the configuration files first. For your convenience, we have already set the default config in the files.
+Before starting to use IoTDB, you need to config the configuration files first. 
+For your convenience, we have already set the default config in the files.
 
 In total, we provide users four kinds of configurations module: 
 
-* environment configuration file (`iotdb-env.bat`, `iotdb-env.sh`). The default configuration file for the environment configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
-* system configuration file (`iotdb-engine.properties`). The default configuration file for the IoTDB engine layer configuration item. Users can configure the IoTDB engine related parameters in the file, such as the precision of timestamp(`timestamp_precision`), etc. What's more, Users can configure the information about the TsFile, such as the data size written to the disk per time(`group_size_in_byte`). 
+* environment configuration file (`iotdb-env.bat`, `iotdb-env.sh`). 
+The default configuration file for the environment configuration item. 
+Users can configure the relevant system configuration items of JAVA-JVM in the file.
+
+* system configuration file (`iotdb-engine.properties`). The default configuration file for the IoTDB engine layer configuration item. 
+Users can configure the IoTDB engine related parameters in the file, such as the precision of timestamp(`timestamp_precision`), etc. 
+What's more, Users can configure the information about the TsFile, such as the data size written to the disk per time(`group_size_in_byte`). 
+
 * log configuration file (`logback.xml`). The default log configuration file, such as the log level.
+
 * `iotdb-cluster.properties`. Some configuration required by IoTDB cluster. Such as replication number(`default_replica_num`), etc.
 
-For detailed description of the two configuration files `iotdb-engine.properties`, `cluster-env.sh`/`cluster-env.bat`, please refer to [Configuration Manual](Config%20Manual.md). The configuration items described below are in the `iotdb-cluster.properties` file.
+For detailed description of the two configuration files `iotdb-engine.properties`, `cluster-env.sh`/`cluster-env.bat`, please refer to [Configuration Manual](Config%20Manual.md). 
+The configuration items described below are in the `iotdb-cluster.properties` file.
 
 * internal\_meta\_port
 
@@ -62,7 +74,7 @@ For detailed description of the two configuration files `iotdb-engine.properties
 |Description|IoTDB meta service port, **IoTDB will automatically create a heartbeat port for each meta service. The default meta service heartbeat port is `internal_meta_port+1`, please confirm that these two ports are not reserved by the system and are not occupied**|
 |Type|Int32|
 |Default|9003|
-|Effective| After restart system|
+|Effective|After restart system|
 
 * internal\_data\_port
 
@@ -86,7 +98,7 @@ For detailed description of the two configuration files `iotdb-engine.properties
 
 |Name|seed\_nodes|
 |:---:|:---|
-|Description|The address of the nodes in the cluster, {IP/DOMAIN}:internal\_meta\_port:internal\_data\_port format, separated by commas; for the pseudo-distributed mode, you can fill in localhost, or 127.0.0.1 or mixed, But the real ip address cannot appear; for the distributed mode, real ip or hostname is supported, but localhost or 127.0.0.1 cannot appear. when used by start-node.sh(.bat), this configuration means the nodes that will form the initial cluster, so every node that use start-node.sh(.bat) should have the SAME seed_nodes, or the building of the initial cluster will fail. WARNING: if the initial cluster is built, this should not be changed before the environment is cleaned. when used by add-node.sh(.bat), this means the nodes to which that the application of joining the cluster will be sent, as all nodes can respond to a request, this configuration can be any nodes that already in the cluster, unnecessary to be the nodes that were used to build the initial cluster by start-node.sh(.bat). Several nodes will be picked randomly to send the request, the number of nodes picked depends on the number of retries.|
+|Description|The address of the nodes in the cluster, `{IP/DOMAIN}:internal\_meta\_port:internal\_data\_port` format, separated by commas; for the pseudo-distributed mode, you can fill in `localhost`, or `127.0.0.1` or mixed, But the real ip address cannot appear; for the distributed mode, real ip or hostname is supported, but `localhost` or `127.0.0.1` cannot appear. when used by `start-node.sh(.bat)`, this configuration means the nodes that will form the initial cluster, so every node that use `start-node.sh(.bat)` should have the same `seed_nodes`, or the building of the initial cluster will fail. WARNING: if the initial cluster is built, this should not be changed before the environment is cleaned. when used by `add-node.sh(.bat)`, this means the nodes to which that the application of joining the cluster will be sent, as all nodes can respond to a request, this configuration can be any nodes that already in the cluster, unnecessary to be the nodes that were used to build the initial cluster by `start-node.sh(.bat)`. Several nodes will be picked randomly to send the request, the number of nodes picked depends on the number of retries.|
 |Type|String|
 |Default|127.0.0.1:9003:40010,127.0.0.1:9005:40012,127.0.0.1:9007:40014|
 |Effective| After restart system|
@@ -203,7 +215,7 @@ For detailed description of the two configuration files `iotdb-engine.properties
 GC log is off by default.
 For performance tuning, you may want to collect the GC info. 
 
-To enable GC log, just add a parameter "printgc" when you start the server.
+To enable GC log, just add a parameter `printgc` when you start the server.
 
 ```bash
 nohup sbin/start-node.sh printgc >/dev/null 2>&1 &

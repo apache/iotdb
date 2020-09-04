@@ -45,7 +45,7 @@ or
 
 为方便IoTDB Server的配置与管理，IoTDB Server为用户提供三种配置项，使得用户可以在启动服务器或服务器运行时对其进行配置。
 
-三种配置项的配置文件均位于IoTDB安装目录：`$IOTDB_HOME/conf`文件夹下,其中涉及server配置的共有4个文件，分别为：`iotdb-cluster.properties`、`iotdb-engine.properties`、`logback.xml` 和 `cluster-env.sh`(linux系统)/`cluster-env.bat`(windows系统), 用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
+三种配置项的配置文件均位于IoTDB安装目录：`$IOTDB_HOME/conf`文件夹下,其中涉及server配置的共有4个文件，分别为：`iotdb-cluster.properties`、`iotdb-engine.properties`、`logback.xml` 和 `cluster-env.sh`(Unix系统)/`cluster-env.bat`(Windows系统), 用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
 
 配置文件的说明如下：
 
@@ -90,7 +90,7 @@ or
 
 |名字|seed\_nodes|
 |:---:|:---|
-|描述|集群中节点的地址，{IP/DOMAIN}:internal\_meta\_port:internal\_data\_port格式，用逗号分割；对于伪分布式模式，可以都填写localhost，或是127.0.0.1 或是混合填写，但是不能够出现真实的ip地址；对于分布式模式，支持填写real ip 或是hostname，但是不能够出现localhost或是127.0.0.1。当使用start-node.sh(.bat)启动节点时，此配置意味着形成初始群集的节点，每个节点的seed_nodes应该一致，否则群集将初始化失败；当使用add-node.sh(.bat)添加节点到集群中时，此配置项可以是集群中已经存在的任何节点，不需要是用start-node.sh(bat)构建初始集群的节点。|
+|描述|集群中节点的地址，`{IP/DOMAIN}:internal\_meta\_port:internal\_data\_port`格式，用逗号分割；对于伪分布式模式，可以都填写`localhost`，或是`127.0.0.1` 或是混合填写，但是不能够出现真实的ip地址；对于分布式模式，支持填写real ip 或是hostname，但是不能够出现`localhost`或是`127.0.0.1`。当使用`start-node.sh(.bat)`启动节点时，此配置意味着形成初始群集的节点，每个节点的`seed_nodes`应该一致，否则群集将初始化失败；当使用`add-node.sh(.bat)`添加节点到集群中时，此配置项可以是集群中已经存在的任何节点，不需要是用`start-node.sh(bat)`构建初始集群的节点。|
 |类型|String|
 |默认值|127.0.0.1:9003:40010,127.0.0.1:9005:40012,127.0.0.1:9007:40014|
 |改后生效方式|重启服务器生效|
@@ -205,7 +205,7 @@ or
 
 ## 开启GC日志
 GC日志默认是关闭的。为了性能调优，用户可能会需要收集GC信息。
-若要打开GC日志，则需要在启动IoTDB Server的时候加上"printgc"参数：
+若要打开GC日志，则需要在启动IoTDB Server的时候加上`printgc`参数：
 
 ```bash
 nohup sbin/start-node.sh printgc >/dev/null 2>&1 &
