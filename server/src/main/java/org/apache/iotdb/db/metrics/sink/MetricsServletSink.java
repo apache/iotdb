@@ -27,7 +27,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class MetricsServletSink implements Sink {
 
-  public MetricRegistry registry;
+  private final MetricRegistry registry;
 
   public MetricsServletSink(MetricRegistry registry) {
     this.registry = registry;

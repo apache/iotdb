@@ -24,9 +24,9 @@ import com.codahale.metrics.MetricRegistry;
 
 public class MetricsSource implements Source {
 
-  public String sourceName = "iot-metrics";
-  public MetricRegistry metricRegistry;
-  public ServerArgument serverArgument;
+  private final String sourceName = "iot-metrics";
+  private final MetricRegistry metricRegistry;
+  private final ServerArgument serverArgument;
 
   public MetricsSource(ServerArgument serverArgument, MetricRegistry metricRegistry) {
     this.serverArgument = serverArgument;

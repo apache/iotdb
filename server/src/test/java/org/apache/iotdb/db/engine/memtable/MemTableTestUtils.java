@@ -26,12 +26,12 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class MemTableTestUtils {
 
-  public static String deviceId0 = "d0";
+  static final String deviceId0 = "d0";
 
-  public static String measurementId0 = "s0";
+  static final String measurementId0 = "s0";
 
-  public static TSDataType dataType0 = TSDataType.INT32;
-  private static Schema schema = new Schema();
+  static final TSDataType dataType0 = TSDataType.INT32;
+  private static final Schema schema = new Schema();
 
   static {
     schema

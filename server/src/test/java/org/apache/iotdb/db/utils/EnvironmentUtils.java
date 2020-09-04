@@ -58,17 +58,17 @@ public class EnvironmentUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(EnvironmentUtils.class);
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static DirectoryManager directoryManager = DirectoryManager.getInstance();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final DirectoryManager directoryManager = DirectoryManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = 1;
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-  private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
+  private static final long oldTsFileThreshold = config.getTsFileSizeThreshold();
 
-  private static int oldMaxMemTableNumber = config.getMaxMemtableNumber();
+  private static final int oldMaxMemTableNumber = config.getMaxMemtableNumber();
 
-  private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
+  private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
   private static IoTDB daemon;
 

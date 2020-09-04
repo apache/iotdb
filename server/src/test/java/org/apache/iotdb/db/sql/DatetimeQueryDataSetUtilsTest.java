@@ -54,7 +54,7 @@ public class DatetimeQueryDataSetUtilsTest {
     zoneOffset = ZonedDateTime.now().getOffset();
     zoneId = ZoneId.systemDefault();
     if(zoneOffset.toString().equals("Z")){
-      delta = 8 * 3600000;
+      delta = 8 * 3600000L;
     } else {
       delta = (8 - Long.parseLong(zoneOffset.toString().split(":")[0])) * 3600000;
     }
@@ -66,7 +66,7 @@ public class DatetimeQueryDataSetUtilsTest {
   public void test2() throws LogicalOperatorException{
     zoneOffset = ZoneOffset.UTC;
     zoneId = ZoneId.of("Etc/UTC");
-    delta = 8 * 3600000;
+    delta = 8 * 3600000L;
     testConvertDatetimeStrToLongWithoutMS(zoneOffset, zoneId, timestamp - 689 + delta);
     testConvertDatetimeStrToLongWithMS(zoneOffset, zoneId, timestamp + delta);
   }
@@ -75,7 +75,7 @@ public class DatetimeQueryDataSetUtilsTest {
   public void test3() throws LogicalOperatorException{
     zoneOffset = ZoneOffset.UTC;
     zoneId = ZoneId.of("Etc/UTC");
-    delta = 8 * 3600000;
+    delta = 8 * 3600000L;
     testConvertDateStrToLong(zoneOffset, zoneId, timestamp1 + delta);
   }
 

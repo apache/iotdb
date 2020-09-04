@@ -79,7 +79,7 @@ public class SeriesReaderTest {
         assertEquals(TSDataType.INT32, batchData.getDataType());
         assertEquals(20, batchData.length());
         for (int i = 0; i < batchData.length(); i++) {
-          long expectedTime = i + 20 * count;
+          long expectedTime = i + 20L * count;
           assertEquals(expectedTime, batchData.currentTime());
           if (expectedTime < 200) {
             assertEquals(20000 + expectedTime, batchData.getInt());

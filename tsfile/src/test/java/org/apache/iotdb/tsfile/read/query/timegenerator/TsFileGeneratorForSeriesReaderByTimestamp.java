@@ -50,11 +50,11 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
 
   public static final long START_TIMESTAMP = 1480562618000L;
   private static final Logger LOG = LoggerFactory.getLogger(TsFileGeneratorForSeriesReaderByTimestamp.class);
-  public static TsFileWriter innerWriter;
-  public static String inputDataFile;
-  public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("testTsFile.tsfile");
-  public static String errorOutputDataFile;
-  public static Schema schema;
+  private static TsFileWriter innerWriter;
+  private static String inputDataFile;
+  static String outputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("testTsFile.tsfile");
+  private static String errorOutputDataFile;
+  private static Schema schema;
   private static int rowCount;
   private static int chunkGroupSize;
   private static int pageSize;

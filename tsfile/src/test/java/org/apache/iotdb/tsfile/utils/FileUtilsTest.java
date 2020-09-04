@@ -29,7 +29,7 @@ public class FileUtilsTest {
 
   @Test
   public void testConvertUnit() {
-    long kb = 3 * 1024;
+    long kb = 3 * 1024L;
     long mb = kb * 1024;
     long gb = mb * 1024;
     Assert.assertEquals(3.0 * 1024, FileUtils.transformUnit(kb, FileUtils.Unit.B), TestConstant.double_min_delta);

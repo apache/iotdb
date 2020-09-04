@@ -94,14 +94,14 @@ public final class RamUsageEstimator {
   private RamUsageEstimator() {
   }
 
-  public final static int NUM_BYTES_BOOLEAN = 1;
-  public final static int NUM_BYTES_BYTE = 1;
-  public final static int NUM_BYTES_CHAR = 2;
-  public final static int NUM_BYTES_SHORT = 2;
-  public final static int NUM_BYTES_INT = 4;
-  public final static int NUM_BYTES_FLOAT = 4;
-  public final static int NUM_BYTES_LONG = 8;
-  public final static int NUM_BYTES_DOUBLE = 8;
+  public static final int NUM_BYTES_BOOLEAN = 1;
+  public static final int NUM_BYTES_BYTE = 1;
+  public static final int NUM_BYTES_CHAR = 2;
+  public static final int NUM_BYTES_SHORT = 2;
+  public static final int NUM_BYTES_INT = 4;
+  public static final int NUM_BYTES_FLOAT = 4;
+  public static final int NUM_BYTES_LONG = 8;
+  public static final int NUM_BYTES_DOUBLE = 8;
 
   /**
    * Number of bytes this jvm uses to represent an object reference.
@@ -304,7 +304,8 @@ public final class RamUsageEstimator {
   @SuppressWarnings("unused")
   private static final class DummyTwoLongObject {
 
-    public long dummy1, dummy2;
+    public long dummy1;
+    public long dummy2;
   }
 
   /**
@@ -467,11 +468,11 @@ public final class RamUsageEstimator {
    */
   private static long measureObjectSize(Object root) {
     // Objects seen so far.
-    final IdentityHashSet<Object> seen = new IdentityHashSet<Object>();
+    final IdentityHashSet<Object> seen = new IdentityHashSet<>();
     // Class cache with reference Field and precalculated shallow size.
-    final IdentityHashMap<Class<?>, ClassCache> classCache = new IdentityHashMap<Class<?>, ClassCache>();
+    final IdentityHashMap<Class<?>, ClassCache> classCache = new IdentityHashMap<>();
     // Stack of objects pending traversal. Recursion caused stack overflows.
-    final ArrayList<Object> stack = new ArrayList<Object>();
+    final ArrayList<Object> stack = new ArrayList<>();
     stack.add(root);
 
     long totalSize = 0;

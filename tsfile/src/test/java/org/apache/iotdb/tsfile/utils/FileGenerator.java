@@ -42,7 +42,7 @@ public class FileGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(FileGenerator.class);
   public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH
       .concat("perTestOutputData.tsfile");
-  public static Schema schema;
+  private static Schema schema;
   private static int ROW_COUNT = 1000;
   private static TsFileWriter innerWriter;
   private static String inputDataFile;

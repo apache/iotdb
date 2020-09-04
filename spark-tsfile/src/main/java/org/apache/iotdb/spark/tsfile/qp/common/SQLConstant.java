@@ -75,9 +75,9 @@ public class SQLConstant {
   public static final int TOK_PORPERTY_UNLINK = 58;
 
 
-  public static Map<Integer, String> tokenSymbol = new HashMap<Integer, String>();
-  public static Map<Integer, String> tokenNames = new HashMap<Integer, String>();
-  public static Map<Integer, Integer> reverseWords = new HashMap<Integer, Integer>();
+  public static Map<Integer, String> tokenSymbol = new HashMap<>();
+  public static Map<Integer, String> tokenNames = new HashMap<>();
+  public static Map<Integer, Integer> reverseWords = new HashMap<>();
 
   static {
     tokenSymbol.put(KW_AND, "&");
