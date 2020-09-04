@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.monitor;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -35,10 +37,14 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.monitor.MonitorConstants.StatMeasurementConstants;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
@@ -46,6 +52,7 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.slf4j.Logger;
@@ -61,6 +68,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
           getID().getJmxName());
 
   // storage group name -> monitor series of it.
+  // List is used to be maintainable, maybe some metrics will be added
   private Map<String, List<PartialPath>> monitorSeriesMap = new ConcurrentHashMap<>();
   // monitor series -> current value of it.   e.g. root.stats.global.TOTAL_POINTS -> value
   private Map<PartialPath, Long> cachedValueMap = new ConcurrentHashMap<>();
@@ -110,21 +118,22 @@ public class StatMonitor implements StatMonitorMBean, IService {
    * Register monitor time series metadata of each storageGroup into MManager.
    */
   public void registerStatStorageGroupInfo(List<PartialPath> storageGroupNames) {
+    if (storageGroupNames.isEmpty()) {
+      return;
+    }
     try {
-      for (StatMeasurementConstants statConstant : StatMeasurementConstants.values()) {
-        for (PartialPath storageGroupName : storageGroupNames) {
+      for (PartialPath storageGroupName : storageGroupNames) {
+        if (!storageGroupName.equals(MonitorConstants.STAT_STORAGE_GROUP_NAME)) {
+          // for storage group which is not global, only TOTAL_POINTS is registered now
+          PartialPath fullPath = new PartialPath(MonitorConstants.STAT_STORAGE_GROUP_ARRAY)
+              .concatNode("\"" + storageGroupName + "\"")
+              .concatNode(StatMeasurementConstants.TOTAL_POINTS.getMeasurement());
+          registSeriesToMManager(fullPath);
 
-          if (!storageGroupName.equals(MonitorConstants.STAT_STORAGE_GROUP_NAME)) {
-            PartialPath fullPath = new PartialPath(MonitorConstants.STAT_STORAGE_GROUP_ARRAY)
-                .concatNode("\"" + storageGroupName + "\"")
-                .concatNode(statConstant.getMeasurement());
-            registSeriesToMManager(fullPath);
-
-            List<PartialPath> seriesList = monitorSeriesMap
-                .computeIfAbsent(MonitorConstants.STAT_STORAGE_GROUP_NAME, k -> new ArrayList<>());
-            seriesList.add(fullPath);
-            cachedValueMap.putIfAbsent(fullPath, (long) 0);
-          }
+          List<PartialPath> seriesList = monitorSeriesMap
+              .computeIfAbsent(storageGroupName.toString(), k -> new ArrayList<>());
+          seriesList.add(fullPath);
+          cachedValueMap.putIfAbsent(fullPath, (long) 0);
         }
       }
     } catch (MetadataException e) {
@@ -142,8 +151,16 @@ public class StatMonitor implements StatMonitorMBean, IService {
     }
   }
 
-  public void updateStatValue(String storageGroupName, int successPointsNum) {
+  public void updateStatStorageGroupValue(String storageGroupName, int successPointsNum) {
     List<PartialPath> monitorSeries = monitorSeriesMap.get(storageGroupName);
+    // update TOTAL_POINTS of each storage group
+    cachedValueMap.computeIfPresent(monitorSeries.get(0),
+        (key, oldValue) -> oldValue + successPointsNum);
+  }
+
+  public void updateStatGlobalValue(int successPointsNum) {
+    List<PartialPath> monitorSeries = monitorSeriesMap
+        .get(MonitorConstants.STAT_STORAGE_GROUP_NAME);
     for (int i = 0; i < monitorSeries.size() - 1; i++) {
       // 0 -> TOTAL_POINTS, 1 -> REQ_SUCCESS, 2 -> REQ_FAIL
       switch (i) {
@@ -157,6 +174,12 @@ public class StatMonitor implements StatMonitorMBean, IService {
           break;
       }
     }
+  }
+
+  public void updateFailedStatValue() {
+    PartialPath failedSeries = monitorSeriesMap
+        .get(MonitorConstants.STAT_STORAGE_GROUP_NAME).get(2);
+    cachedValueMap.computeIfPresent(failedSeries, (key, oldValue) -> oldValue + 1);
   }
 
   /**
@@ -178,13 +201,52 @@ public class StatMonitor implements StatMonitorMBean, IService {
   }
 
   public void recovery() {
+    try {
+      List<PartialPath> monitorSeries = mManager
+          .getAllTimeseriesPath(new PartialPath(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
+      for (PartialPath oneSeries : monitorSeries) {
+        TimeValuePair timeValuePair = LastQueryExecutor
+            .calculateLastPairForOneSeriesLocally(oneSeries, TSDataType.INT64, new QueryContext(
+                    QueryResourceManager.getInstance().assignQueryId(true)),
+                Collections.singleton(oneSeries.getMeasurement()));
+        if (timeValuePair != null) {
+          cachedValueMap.put(oneSeries, timeValuePair.getValue().getLong());
+        }
+      }
+    } catch (MetadataException e) {
+      logger.error("Can not get monitor series from mManager while recovering.", e);
+    } catch (StorageEngineException | IOException | QueryProcessException e) {
+      logger.error("Load last value from disk error.", e);
+    }
+
+
   }
 
   @Override
   public long getGlobalTotalPointsNum() {
     List<PartialPath> monitorSeries = monitorSeriesMap
         .get(MonitorConstants.STAT_STORAGE_GROUP_NAME);
-    return cachedValueMap.get(monitorSeries.indexOf(0));
+    return cachedValueMap.get(monitorSeries.get(0));
+  }
+
+  @Override
+  public long getGlobalReqSuccessNum() {
+    List<PartialPath> monitorSeries = monitorSeriesMap
+        .get(MonitorConstants.STAT_STORAGE_GROUP_NAME);
+    return cachedValueMap.get(monitorSeries.get(1));
+  }
+
+  @Override
+  public long getGlobalReqFailNum() {
+    List<PartialPath> monitorSeries = monitorSeriesMap
+        .get(MonitorConstants.STAT_STORAGE_GROUP_NAME);
+    return cachedValueMap.get(monitorSeries.get(2));
+  }
+
+  @Override
+  public long getStorageGroupTotalPointsNum(String storageGroupName) {
+    List<PartialPath> monitorSeries = monitorSeriesMap.get(storageGroupName);
+    return cachedValueMap.get(monitorSeries.get(0));
   }
 
   @Override

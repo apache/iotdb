@@ -104,13 +104,6 @@ public class IoTDB implements IoTDBMBean {
     JMXService.registerMBean(getInstance(), mbeanName);
     registerManager.register(StorageEngine.getInstance());
 
-    // When registering statMonitor, we should start recovering some statistics
-    // with latest values stored
-    // Warn: registMonitor() method should be called after systemDataRecovery()
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-      StatMonitor.getInstance().recovery();
-    }
-
     registerManager.register(RPCService.getInstance());
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
       registerManager.register(MetricsService.getInstance());
@@ -128,6 +121,13 @@ public class IoTDB implements IoTDBMBean {
         logger.warn("IoTDB failed to set up for:" + e.getMessage());
         return;
       }
+    }
+
+    // When registering statMonitor, we should start recovering some statistics
+    // with latest values stored
+    // Warn: registMonitor() method should be called after systemDataRecovery()
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
+      StatMonitor.getInstance().recovery();
     }
 
     registerManager.register(SyncServerManager.getInstance());
