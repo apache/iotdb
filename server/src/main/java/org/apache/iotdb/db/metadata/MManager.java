@@ -232,6 +232,20 @@ public class MManager {
     String[] args = cmd.trim().split(",", -1);
     switch (args[0]) {
       case MetadataOperationType.CREATE_TIMESERIES:
+        if (args.length > 8) {
+          String[] tmpArgs = new String[8];
+          tmpArgs[0] = args[0];
+          int i = 1;
+          tmpArgs[1] = "";
+          for (; i < args.length - 7; i++) {
+            tmpArgs[1] += args[i] + ",";
+          }
+          tmpArgs[1] += args[i++];
+          for (int j = 2; j < 8; j++) {
+            tmpArgs[j] = args[i++];
+          }
+          args = tmpArgs;
+        }
         Map<String, String> props = new HashMap<>();
         if (!args[5].isEmpty()) {
           String[] keyValues = args[5].split("&");
@@ -261,6 +275,14 @@ public class MManager {
         createTimeseries(plan, offset);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
+        if (args.length > 2) {
+          String tmp = "";
+          for (int i = 1; i < args.length - 1; i++) {
+            tmp += args[i] + ",";
+          }
+          tmp += args[args.length];
+          args[1] = tmp;
+        }
         String failedTimeseries = deleteTimeseries(args[1]);
         if (!failedTimeseries.isEmpty()) {
           throw new DeleteFailedException(failedTimeseries);
