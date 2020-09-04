@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tsfile;
 
+import com.sun.org.slf4j.internal.Logger;
+import com.sun.org.slf4j.internal.LoggerFactory;
 import java.io.File;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -35,6 +37,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  * addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
  */
 public class TsFileWriteWithTSRecord {
+
+  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteWithTSRecord.class);
 
   public static void main(String args[]) {
     try {
@@ -74,7 +78,7 @@ public class TsFileWriteWithTSRecord {
         tsFileWriter.close();
       }
     } catch (Throwable e) {
-      e.printStackTrace();
+      logger.error("Error message", e);
       System.out.println(e.getMessage());
     }
   }
