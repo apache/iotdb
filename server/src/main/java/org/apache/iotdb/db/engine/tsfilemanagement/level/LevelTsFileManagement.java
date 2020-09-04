@@ -59,12 +59,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * First map is partition list; Second list is level list; Third list is file list in level;
+ * The TsFileManagement for LEVEL_STRATEGY, use level struct to manage TsFile list
  */
 public class LevelTsFileManagement extends TsFileManagement {
 
   private static final Logger logger = LoggerFactory.getLogger(LevelTsFileManagement.class);
   private int maxLevelNum = IoTDBDescriptor.getInstance().getConfig().getMaxLevelNum();
+  // First map is partition list; Second list is level list; Third list is file list in level;
   private final Map<Long, List<TreeSet<TsFileResource>>> sequenceTsFileResources = new ConcurrentSkipListMap<>();
   private final Map<Long, List<List<TsFileResource>>> unSequenceTsFileResources = new ConcurrentSkipListMap<>();
   private final List<List<TsFileResource>> forkedSequenceTsFileResources = new ArrayList<>();
@@ -127,7 +128,7 @@ public class LevelTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public List<TsFileResource> getMergeTsFileList(boolean sequence) {
+  public List<TsFileResource> getStableTsFileList(boolean sequence) {
     List<TsFileResource> result = new ArrayList<>();
     if (sequence) {
       for (List<TreeSet<TsFileResource>> sequenceTsFileList : sequenceTsFileResources.values()) {

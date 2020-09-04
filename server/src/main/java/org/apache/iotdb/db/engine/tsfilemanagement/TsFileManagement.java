@@ -42,17 +42,17 @@ public abstract class TsFileManagement {
   }
 
   /**
-   * get the TsFile list for other merges
+   * get the TsFile list which has been completed hot compacted
    */
-  public abstract List<TsFileResource> getMergeTsFileList(boolean sequence);
+  public abstract List<TsFileResource> getStableTsFileList(boolean sequence);
 
   /**
-   * get the TsFile list from 0 to maxLevelNum-1 in sequence
+   * get the TsFile list in sequence
    */
   public abstract List<TsFileResource> getTsFileList(boolean sequence);
 
   /**
-   * get the TsFile list iterator from 0 to maxLevelNum-1 in sequence
+   * get the TsFile list iterator in sequence
    */
   public abstract Iterator<TsFileResource> getIterator(boolean sequence);
 
@@ -102,7 +102,7 @@ public abstract class TsFileManagement {
   public abstract void recover();
 
   /**
-   * call this before merge to copy current TsFile list
+   * fork current TsFile list (call this before merge)
    */
   public abstract void forkCurrentFileList(long timePartition);
 

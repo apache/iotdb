@@ -1677,8 +1677,8 @@ public class StorageGroupProcessor {
       logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
           fullMerge);
 
-      List<TsFileResource> seqMergeList = tsFileManagement.getMergeTsFileList(true);
-      List<TsFileResource> unSeqMergeList = tsFileManagement.getMergeTsFileList(false);
+      List<TsFileResource> seqMergeList = tsFileManagement.getStableTsFileList(true);
+      List<TsFileResource> unSeqMergeList = tsFileManagement.getStableTsFileList(false);
       if (seqMergeList.isEmpty() || unSeqMergeList.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
         return;
