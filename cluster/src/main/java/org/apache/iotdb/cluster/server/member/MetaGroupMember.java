@@ -3144,10 +3144,11 @@ public class MetaGroupMember extends RaftMember {
    * @return
    */
   private MetaMemberReport genMemberReport() {
+    long prevLastLogIndex = lastReportedLogIndex;
+    lastReportedLogIndex = logManager.getLastLogIndex();
     return new MetaMemberReport(character, leader, term.get(),
-        logManager.getLastLogTerm(), logManager.getLastLogIndex(), logManager.getCommitLogIndex()
-        , logManager.getCommitLogTerm(), readOnly,
-        lastHeartbeatReceivedTime);
+        logManager.getLastLogTerm(), lastReportedLogIndex, logManager.getCommitLogIndex()
+        , logManager.getCommitLogTerm(), readOnly, lastHeartbeatReceivedTime, lastReportedLogIndex);
   }
 
   /**

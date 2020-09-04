@@ -1563,11 +1563,13 @@ public class DataGroupMember extends RaftMember {
    * @return
    */
   public DataMemberReport genReport() {
+    long prevLastLogIndex = lastReportedLogIndex;
+    lastReportedLogIndex = logManager.getLastLogIndex();
     return new DataMemberReport(character, leader, term.get(),
-        logManager.getLastLogTerm(), logManager.getLastLogIndex(), logManager.getCommitLogIndex(),
+        logManager.getLastLogTerm(), lastReportedLogIndex, logManager.getCommitLogIndex(),
         logManager.getCommitLogTerm(), getHeader(), readOnly,
         QueryCoordinator.getINSTANCE()
-            .getLastResponseLatency(getHeader()), lastHeartbeatReceivedTime);
+            .getLastResponseLatency(getHeader()), lastHeartbeatReceivedTime, prevLastLogIndex);
   }
 
   @TestOnly

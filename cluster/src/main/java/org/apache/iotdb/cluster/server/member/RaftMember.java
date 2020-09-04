@@ -176,6 +176,12 @@ public abstract class RaftMember {
    */
   private final Object snapshotApplyLock = new Object();
 
+  /**
+   * lastLogIndex when generating previous member report, to show the log ingestion rate of the
+   * member.
+   */
+  long lastReportedLogIndex;
+
   public RaftMember() {
   }
 
