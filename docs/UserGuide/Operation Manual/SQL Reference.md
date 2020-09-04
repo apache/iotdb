@@ -614,6 +614,53 @@ For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result 
 
 ```
 
+* As Statement
+
+As statement assigns an alias to time seires queried in SELECT statement
+
+```
+You can use as statement in all query type.
+
+1. Raw data query
+select s1 as speed, s2 as temperature from root.sg.d1
+
+The result set will be like：
+| Time | speed | temperature |
+|  ... |  ...  |     ....    |
+
+2. Aggregation query
+select count(s1) as s1_num, max_value(s2) as s2_max from root.sg.d1
+
+3. Down-frequence query
+select count(s1) as s1_num from root.sg.d1 group by ([100,500), 80ms)
+
+4. Align by device query
+select s1 as speed, s2 as temperature from root.sg.d1 align by device
+
+select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg.d2 align by device
+
+5. Last query
+select last s1 as speed, s2 from root.sg.d1
+
+Rules：
+1. In addition to Align by device query，each AS statement has to corresponding to one time series exactly.
+
+E.g. select s1 as temperature from root.sg.*
+
+At this time if `root.sg.*` includes more than one device，then an exception will be thrown。
+
+2. In align by device query，the prefix path that each AS statement corresponding to can includes multiple device, but the suffix path can only be single sensor.
+
+E.g. select s1 as temperature from root.sg.*
+
+In this situation, it will be show correctly even if multiple devices are selected.
+
+E.g. select * as temperature from root.sg.d1
+
+In this situation, it will throws an exception if * corresponds to multiple sensors.
+
+```
+
 ## Database Management Statement
 
 * Create User

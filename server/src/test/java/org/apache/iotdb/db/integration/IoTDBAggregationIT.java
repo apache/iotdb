@@ -474,12 +474,9 @@ public class IoTDBAggregationIT {
       try {
         statement.execute("SELECT avg(s3)" +
             "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
-        ResultSet resultSet = statement.getResultSet();
-        try {
+        try (ResultSet resultSet = statement.getResultSet()) {
           resultSet.next();
           fail();
-        } finally {
-          resultSet.close();
         }
       } catch (Exception e) {
         Assert.assertEquals("500: Unsupported data type in aggregation AVG : TEXT", e.getMessage());
@@ -487,12 +484,9 @@ public class IoTDBAggregationIT {
       try {
         statement.execute("SELECT sum(s3)" +
             "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
-        ResultSet resultSet = statement.getResultSet();
-        try {
+        try (ResultSet resultSet = statement.getResultSet()) {
           resultSet.next();
           fail();
-        } finally {
-          resultSet.close();
         }
       } catch (Exception e) {
         Assert.assertEquals("500: Unsupported data type in aggregation SUM : TEXT", e.getMessage());
@@ -500,12 +494,9 @@ public class IoTDBAggregationIT {
       try {
         statement.execute("SELECT avg(s4)" +
             "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
-        ResultSet resultSet = statement.getResultSet();
-        try {
+        try (ResultSet resultSet = statement.getResultSet()) {
           resultSet.next();
           fail();
-        } finally {
-          resultSet.close();
         }
       } catch (Exception e) {
         Assert.assertEquals("500: Unsupported data type in aggregation AVG : BOOLEAN",
@@ -514,12 +505,9 @@ public class IoTDBAggregationIT {
       try {
         statement.execute("SELECT sum(s4)" +
             "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
-        ResultSet resultSet = statement.getResultSet();
-        try {
+        try (ResultSet resultSet = statement.getResultSet()) {
           resultSet.next();
           fail();
-        } finally {
-          resultSet.close();
         }
       } catch (Exception e) {
         Assert.assertEquals("500: Unsupported data type in aggregation SUM : BOOLEAN",
@@ -527,12 +515,9 @@ public class IoTDBAggregationIT {
       }
       try {
         statement.execute("SELECT avg(status) FROM root.ln.wf01.wt01");
-        ResultSet resultSet = statement.getResultSet();
-        try {
+        try (ResultSet resultSet = statement.getResultSet()) {
           resultSet.next();
           fail();
-        } finally {
-          resultSet.close();
         }
       } catch (Exception e) {
         Assert.assertEquals("500: Boolean statistics does not support: avg",

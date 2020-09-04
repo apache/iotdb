@@ -135,7 +135,7 @@
             title="Flexible deployment"
             width="400"
             trigger="hover"
-            content="Apache IoTDB (incubating) can provide users one-click installation tool on the cloud, terminal tool on desktop and the bridge tool between cloud platform and on premise machine (Data Synchronization Tool)."
+            content="Apache IoTDB (incubating) can provide users one-click installation on the cloud, terminal tool on desktop and the bridge tool between cloud platform and on premise machine (Data Synchronization Tool)."
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon5.png" style="width:40px;height:40px;">
@@ -148,7 +148,7 @@
             title="Intense integration with Open Source Ecosystem"
             width="400"
             trigger="hover"
-            content="Apache IoTDB (incubating) can support analysis ecosystems, for example, Hadoop, Spark, Flink and Grafana as visualization tool."
+            content="Apache IoTDB (incubating) can support analysis ecosystems, for example, Hadoop, Spark, Flink and Grafana （visualization tool）."
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon6.png" style="width:40px;height:40px;">

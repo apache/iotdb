@@ -89,6 +89,7 @@ public class LastPointReader {
   }
 
   /** Pick up and cache the last sequence TimeseriesMetadata that satisfies timeFilter */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private TimeValuePair retrieveValidLastPointFromSeqFiles() throws IOException {
     List<TsFileResource> seqFileResource = dataSource.getSeqResources();
     TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);

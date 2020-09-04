@@ -381,6 +381,7 @@ public class StorageGroupProcessor {
    * use old seq file to update latestTimeForEachDevice, globalLatestFlushedTimeForEachDevice,
    * partitionLatestFlushedTimeForEachDevice and timePartitionIdVersionControllerMap
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void updateLastestFlushedTime() throws IOException {
 
     VersionController versionController = new SimpleFileVersionController(
@@ -439,6 +440,7 @@ public class StorageGroupProcessor {
         });
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
       throws IOException {
     List<File> tsFiles = new ArrayList<>();
@@ -539,6 +541,7 @@ public class StorageGroupProcessor {
     return new Pair<>(ret, upgradeRet);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Map<String, List<List<TsFileResource>>> getAllVms(List<String> folders)
       throws IOException {
     List<File> vmFiles = new ArrayList<>();
@@ -603,6 +606,7 @@ public class StorageGroupProcessor {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void recoverTsFiles(List<TsFileResource> tsFiles,
       Map<String, List<List<TsFileResource>>> vmFiles, boolean isSeq)
       throws StorageGroupProcessorException {
@@ -748,6 +752,7 @@ public class StorageGroupProcessor {
    *
    * @throws BatchInsertionException if some of the rows failed to be inserted
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws BatchInsertionException {
     writeLock();
     try {
@@ -1295,6 +1300,7 @@ public class StorageGroupProcessor {
       } catch (InterruptedException e) {
         logger.error("CloseFileNodeCondition error occurs while waiting for closing the storage "
             + "group {}", storageGroupName, e);
+        Thread.currentThread().interrupt();
       }
     }
   }

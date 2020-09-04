@@ -39,13 +39,13 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
 public class TsFileSequenceRead {
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void main(String[] args) throws IOException {
     String filename = "test.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
-    TsFileSequenceReader reader = new TsFileSequenceReader(filename);
-    try {
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
       System.out.println("file length: " + FSFactoryProducer.getFSFactory().getFile(filename).length());
       System.out.println("file magic head: " + reader.readHeadMagic());
       System.out.println("file magic tail: " + reader.readTailMagic());
@@ -117,8 +117,6 @@ public class TsFileSequenceRead {
           }
         }
       }
-    } finally {
-      reader.close();
     }
   }
 }

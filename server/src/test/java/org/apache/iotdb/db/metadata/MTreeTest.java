@@ -186,9 +186,9 @@ public class MTreeTest {
       List<PartialPath> result2 = root.getAllTimeseriesPathWithAlias(new PartialPath("root.a.*.s0"));
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.s0", result2.get(0).getFullPath());
-      assertNull(result2.get(0).getAlias());
+      assertNull(result2.get(0).getMeasurementAlias());
       assertEquals("root.a.d1.s0", result2.get(1).getFullPath());
-      assertNull(result2.get(1).getAlias());
+      assertNull(result2.get(1).getMeasurementAlias());
 
       result2 = root.getAllTimeseriesPathWithAlias(new PartialPath("root.a.*.temperature"));
       assertEquals(2, result2.size());

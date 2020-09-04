@@ -673,6 +673,7 @@ public class TsFileProcessor {
   /**
    * recover vm processor and files
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void recover() {
     File logFile = FSFactoryProducer.getFSFactory()
         .getFile(tsFileResource.getTsFile().getParent(),
@@ -768,6 +769,7 @@ public class TsFileProcessor {
    * Take the first MemTable from the flushingMemTables and flush it. Called by a flush thread of
    * the flush manager pool
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void flushOneMemTable() {
     IMemTable memTableToFlush;
     memTableToFlush = flushingMemTables.getFirst();
@@ -1015,6 +1017,7 @@ public class TsFileProcessor {
    * @param dataType      data type
    * @param encoding      encoding
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void query(String deviceId, String measurementId, TSDataType dataType, TSEncoding encoding,
       Map<String, String> props, QueryContext context,
       List<TsFileResource> tsfileResourcesForQuery) throws IOException {
@@ -1155,6 +1158,7 @@ public class TsFileProcessor {
     }
 
     @Override
+    @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
     public void run() {
       long startTimeMillis = System.currentTimeMillis();
       try {

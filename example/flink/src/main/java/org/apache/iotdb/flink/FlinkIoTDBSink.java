@@ -22,6 +22,7 @@ import java.security.SecureRandom;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 

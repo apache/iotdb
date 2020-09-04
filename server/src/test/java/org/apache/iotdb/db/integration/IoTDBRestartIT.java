@@ -53,7 +53,6 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
-      e.printStackTrace();
       Assert.fail();
     }
 
@@ -67,7 +66,6 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
-      e.printStackTrace();
       Assert.fail();
     }
 
@@ -84,16 +82,13 @@ public class IoTDBRestartIT {
           "2,1.0",
           "3,1.0"
       };
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
           assertEquals(exp[cnt], result);
           cnt++;
         }
-      } finally {
-        resultSet.close();
       }
     }
 
@@ -119,7 +114,6 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
-      e.printStackTrace();
       Assert.fail();
     }
 
@@ -184,7 +178,6 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
-      e.printStackTrace();
       Assert.fail();
     }
 
@@ -199,7 +192,6 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
-      e.printStackTrace();
       Assert.fail();
     }
 
@@ -213,16 +205,13 @@ public class IoTDBRestartIT {
       String[] exp = new String[]{
           "4,2.0",
       };
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
           assertEquals(exp[cnt], result);
           cnt++;
         }
-      } finally {
-        resultSet.close();
       }
       assertEquals(1, cnt);
 
@@ -250,7 +239,6 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
-      e.printStackTrace();
       Assert.fail();
     }
 
@@ -265,7 +253,6 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
-      e.printStackTrace();
       Assert.fail();
     }
 
@@ -280,12 +267,13 @@ public class IoTDBRestartIT {
           "1,1.0",
           "2,2.0"
       };
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      while (resultSet.next()) {
-        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-        assertEquals(exp[cnt], result);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
       }
       assertEquals(2, cnt);
 

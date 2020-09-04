@@ -239,6 +239,7 @@ public class MergeMultiChunkTask {
     return ret;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean mergeChunks(final List<ChunkMetadata>[] seqChunkMeta, boolean isLastFile,
       TsFileSequenceReader reader, final IPointReader[] unseqReaders,
       RestorableTsFileIOWriter mergeFileWriter, TsFileResource currFile)

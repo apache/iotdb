@@ -203,6 +203,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     return false;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean readAndCalcFromPage(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
     while (reader.hasNextPage()) {

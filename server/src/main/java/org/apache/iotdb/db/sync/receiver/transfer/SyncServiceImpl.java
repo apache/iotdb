@@ -195,13 +195,10 @@ public class SyncServiceImpl implements SyncService.Iface {
       if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
         currentFileWriter.get().close();
       }
-      FileOutputStream fos = new FileOutputStream(file);
-      try {
+      try (FileOutputStream fos = new FileOutputStream(file)) {
         currentFileWriter.set(fos.getChannel());
         syncLog.get().startSyncTsFiles();
         messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
-      } finally {
-        fos.close();
       }
     } catch (IOException | NoSuchAlgorithmException e) {
       logger.error("Can not init sync resource for file {}", filename, e);
@@ -215,8 +212,9 @@ public class SyncServiceImpl implements SyncService.Iface {
   @Override
   public SyncStatus syncData(ByteBuffer buff) {
     try {
+      int pos = buff.position();
       currentFileWriter.get().write(buff);
-      buff.flip();
+      buff.position(pos);
       messageDigest.get().update(buff);
     } catch (IOException e) {
       logger.error("Can not sync data for file {}", currentFile.get().getAbsoluteFile(), e);
@@ -236,14 +234,11 @@ public class SyncServiceImpl implements SyncService.Iface {
       }
       if (!md5OfSender.equals(md5OfReceiver)) {
         currentFile.get().delete();
-        FileOutputStream fos = new FileOutputStream(currentFile.get());
-        try {
+        try (FileOutputStream fos = new FileOutputStream(currentFile.get())) {
           currentFileWriter.set(fos.getChannel());
           return getErrorResult(String
                   .format("MD5 of the sender is differ from MD5 of the receiver of the file %s.",
                           currentFile.get().getAbsolutePath()));
-        } finally {
-          fos.close();
         }
       } else {
         if (currentFile.get().getName().endsWith(MetadataConstant.METADATA_LOG)) {
@@ -310,6 +305,14 @@ public class SyncServiceImpl implements SyncService.Iface {
     } catch (IOException e) {
       logger.error("Can not end sync", e);
       return getErrorResult(String.format("Can not end sync because %s", e.getMessage()));
+    } finally {
+      syncFolderPath.remove();
+      currentSG.remove();
+      syncLog.remove();
+      senderName.remove();
+      currentFile.remove();
+      currentFileWriter.remove();
+      messageDigest.remove();
     }
     return getSuccessResult();
   }

@@ -583,7 +583,8 @@ public class IoTDBAuthorizationIT {
     try (Connection adminCon = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement adminStmt = adminCon.createStatement();
-         PreparedStatement adminPreparedStatement = adminCon.prepareStatement("INSERT INTO root.a(timestamp, b0) VALUES (?" + ", 100)")) {
+         PreparedStatement adminPreparedStatement = adminCon.prepareStatement(
+                 "INSERT INTO root.a(timestamp, b0) VALUES (?" + ", 100)")) {
 
       adminStmt.execute("CREATE USER tempuser 'temppw'");
       adminStmt.execute("SET STORAGE GROUP TO root.a");
@@ -594,7 +595,8 @@ public class IoTDBAuthorizationIT {
       }
       try (Connection userCon = DriverManager
               .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser", "temppw");
-          PreparedStatement userPreparedStatement = userCon.prepareStatement("INSERT INTO root.a(timestamp, b" + (privilegeCnt - 1) + ") VALUES (?" + ", 100)")) {
+          PreparedStatement userPreparedStatement = userCon.prepareStatement(
+                  "INSERT INTO root.a(timestamp, b" + (privilegeCnt - 1) + ") VALUES (?" + ", 100)")) {
 
         int insertCnt = 20000;
         int batchSize = 500;
@@ -634,13 +636,12 @@ public class IoTDBAuthorizationIT {
   @Test
   public void testListUser() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection adminCon = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    Statement adminStmt = adminCon.createStatement();
-    PreparedStatement adminPreparedStatementCreat = adminCon.prepareStatement("CREATE USER user?" + " 'password ?" + "'");
-    PreparedStatement adminPreparedStatementDrop = adminCon.prepareStatement("DROP USER user?");
+    try (Connection adminCon = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement adminStmt = adminCon.createStatement();
+         PreparedStatement adminPreparedStatementCreat = adminCon.prepareStatement("CREATE USER user?" + " 'password ?" + "'");
+         PreparedStatement adminPreparedStatementDrop = adminCon.prepareStatement("DROP USER user?")) {
 
-    try {
       ResultSet resultSet = adminStmt.executeQuery("LIST USER");
       String ans = String.format("root,\n");
       try {
@@ -682,21 +683,18 @@ public class IoTDBAuthorizationIT {
       } finally {
         resultSet.close();
       }
-    } finally {
-      adminCon.close();
     }
   }
 
   @Test
   public void testListRole() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection adminCon = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    Statement adminStmt = adminCon.createStatement();
-    PreparedStatement adminPreparedStatementCreate = adminCon.prepareStatement("CREATE ROLE role?");
-    PreparedStatement adminPreparedStatementDrop = adminCon.prepareStatement("DROP ROLE role?");
+    try (Connection adminCon = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement adminStmt = adminCon.createStatement();
+         PreparedStatement adminPreparedStatementCreate = adminCon.prepareStatement("CREATE ROLE role?");
+         PreparedStatement adminPreparedStatementDrop = adminCon.prepareStatement("DROP ROLE role?")) {
 
-    try {
       ResultSet resultSet = adminStmt.executeQuery("LIST ROLE");
       String ans = "";
       try {
@@ -736,20 +734,15 @@ public class IoTDBAuthorizationIT {
       } finally {
         resultSet.close();
       }
-    } finally {
-      adminStmt.close();
-      adminCon.close();
     }
   }
 
   @Test
   public void testListUserPrivileges() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection adminCon = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    Statement adminStmt = adminCon.createStatement();
-
-    try {
+    try (Connection adminCon = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER user1 'password1'");
       adminStmt.execute("GRANT USER user1 PRIVILEGES 'READ_TIMESERIES' ON root.a.b");
       adminStmt.execute("CREATE ROLE role1");
@@ -788,20 +781,16 @@ public class IoTDBAuthorizationIT {
       } finally {
         resultSet.close();
       }
-    } finally {
-      adminStmt.close();
-      adminCon.close();
     }
   }
 
   @Test
   public void testListRolePrivileges() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection adminCon = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    Statement adminStmt = adminCon.createStatement();
 
-    try {
+    try (Connection adminCon = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE ROLE role1");
       adminStmt.execute(
           "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.a.b.c");
@@ -832,20 +821,16 @@ public class IoTDBAuthorizationIT {
       } finally {
         resultSet.close();
       }
-    } finally {
-      adminStmt.close();
-      adminCon.close();
     }
   }
 
   @Test
   public void testListUserRoles() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection adminCon = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    Statement adminStmt = adminCon.createStatement();
 
-    try {
+    try (Connection adminCon = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER chenduxiu 'orange'");
 
       adminStmt.execute("CREATE ROLE xijing");
@@ -880,20 +865,16 @@ public class IoTDBAuthorizationIT {
       } finally {
         resultSet.close();
       }
-    } finally {
-      adminStmt.close();
-      adminCon.close();
     }
   }
 
   @Test
   public void testListRoleUsers() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection adminCon = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    Statement adminStmt = adminCon.createStatement();
 
-    try {
+    try (Connection adminCon = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE ROLE dalao");
       adminStmt.execute("CREATE ROLE zhazha");
 
@@ -940,9 +921,6 @@ public class IoTDBAuthorizationIT {
         resultSet.close();
       }
 
-    } finally {
-      adminStmt.close();
-      adminCon.close();
     }
   }
 

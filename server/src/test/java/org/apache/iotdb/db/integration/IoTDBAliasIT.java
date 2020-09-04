@@ -291,8 +291,7 @@ public class IoTDBAliasIT {
       statement.execute("ALTER timeseries root.sg.d2.s3 UPSERT ALIAS=powerNew");
       boolean hasResult = statement.execute("show timeseries root.sg.d2.s3");
       assertTrue(hasResult);
-      ResultSet resultSet = statement.getResultSet();
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString("timeseries")
                   + "," + resultSet.getString("alias")
@@ -302,14 +301,12 @@ public class IoTDBAliasIT {
                   + "," + resultSet.getString("compression");
           assertEquals(ret, ans);
         }
-      } finally {
-        resultSet.close();
       }
 
       hasResult = statement.execute("select powerNew from root.sg.d2");
       assertTrue(hasResult);
-      resultSet = statement.getResultSet();
-      try {
+
+      try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -327,8 +324,6 @@ public class IoTDBAliasIT {
           cnt++;
         }
         assertEquals(retArray.length, cnt);
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       fail(e.getMessage());

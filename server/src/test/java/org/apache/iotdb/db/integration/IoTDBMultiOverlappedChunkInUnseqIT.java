@@ -66,14 +66,11 @@ public class IoTDBMultiOverlappedChunkInUnseqIT {
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
       String sql = "select count(s0) from root.vehicle.d0 where time < 1000000";
-      ResultSet resultSet = statement.executeQuery(sql);
-      try {
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
         while (resultSet.next()) {
           String ans = resultSet.getString(count("root.vehicle.d0.s0"));
           assertEquals("1000", ans);
         }
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();

@@ -63,6 +63,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
       this.index = index;
     }
 
+    @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
     @Override
     public void runMayThrow() {
       PublicBAOS timeBAOS = new PublicBAOS();

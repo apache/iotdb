@@ -43,9 +43,8 @@ public class TsFileWriteWithTSRecord {
       if (f.exists()) {
         f.delete();
       }
-      TsFileWriter tsFileWriter = new TsFileWriter(f);
 
-      try {
+      try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
         // add measurements into file schema
         for (int i = 0; i < 4; i++) {
           // add measurements into file schema
@@ -70,8 +69,6 @@ public class TsFileWriteWithTSRecord {
           // write TSRecord
           tsFileWriter.write(tsRecord);
         }
-      } finally {
-        tsFileWriter.close();
       }
     } catch (Throwable e) {
       e.printStackTrace();

@@ -168,16 +168,13 @@ public class OpenFileNumUtil {
       String command = String.format(SEARCH_OPEN_DATA_FILE_BY_PID, pid);
       COMMAND_TEMPLATE[2] = command;
       pro = r.exec(COMMAND_TEMPLATE);
-      BufferedReader in = new BufferedReader(new InputStreamReader(pro.getInputStream()));
       String line;
 
-      try {
+      try (BufferedReader in = new BufferedReader(new InputStreamReader(pro.getInputStream()))) {
         while ((line = in.readLine()) != null) {
           lineCount++;
           countOneFile(line, pid, resultMap);
         }
-      } finally {
-        in.close();
       }
       if (lineCount < OpenFileNumStatistics.values().length) {
         isOutputValid = false;

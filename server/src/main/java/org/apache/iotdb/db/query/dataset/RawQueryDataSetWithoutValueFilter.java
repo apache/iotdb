@@ -188,6 +188,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
    * for RPC in RawData query between client and server fill time buffer, value buffers and bitmap
    * buffers
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) throws IOException, InterruptedException {
     int seriesNum = seriesReaderList.size();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
@@ -404,6 +405,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
   /**
    * for spark/hadoop/hive integration and test
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   protected RowRecord nextWithoutConstraint() throws IOException {
     int seriesNum = seriesReaderList.size();

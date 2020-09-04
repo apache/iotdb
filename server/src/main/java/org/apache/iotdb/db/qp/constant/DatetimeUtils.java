@@ -430,7 +430,7 @@ public class DatetimeUtils {
         if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
           // adjustment can reduce the loss of the division
           long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000);
-          long adjustment = instant.getNano() / 1000 - 1;
+          long adjustment = instant.getNano() / 1000 - 1L;
           return Math.addExact(millis, adjustment);
         } else {
           long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000);
