@@ -37,21 +37,23 @@ or
 > nohup sbin/start-node.bat -c <conf_path> -internal_meta_port 9003
 ```
 
--c <conf_path>使用conf_path文件夹里面的配置文件覆盖默认配置文件; -internal_meta_port 9003覆盖特定配置项internal_meta_port的配置，
+`-c <conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件; `-internal_meta_port 9003`覆盖特定配置项`internal_meta_port`的配置，
 目前支持的启动覆盖原有配置的配置项有：
-internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两者都存在的时候，指定配置项的配置会覆盖配置文件中的配置。
+`internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes`。当两者都存在的时候，指定配置项的配置会覆盖配置文件中的配置。
 
 ## 配置项
 
 为方便IoTDB Server的配置与管理，IoTDB Server为用户提供三种配置项，使得用户可以在启动服务器或服务器运行时对其进行配置。
 
-三种配置项的配置文件均位于IoTDB安装目录：`$IOTDB_HOME/conf`文件夹下,其中涉及server配置的共有3个文件，分别为：`iotdb-cluster.properties`、`iotdb-engine.properties`、`cluster-env.sh`(linux系统)/`cluster-env.bat`(windows系统), 用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
+三种配置项的配置文件均位于IoTDB安装目录：`$IOTDB_HOME/conf`文件夹下,其中涉及server配置的共有4个文件，分别为：`iotdb-cluster.properties`、`iotdb-engine.properties`、`logback.xml` 和 `cluster-env.sh`(linux系统)/`cluster-env.bat`(windows系统), 用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
 
 配置文件的说明如下：
 
 * `cluster-env.sh`/`cluster-env.bat`：环境配置项的默认配置文件。用户可以在文件中配置JAVA-JVM的相关系统配置项。
 
 * `iotdb-engine.properties`：IoTDB引擎层系统配置项的默认配置文件。用户可以在文件中配置IoTDB引擎运行时的相关参数。此外，用户可以在文件中配置IoTDB存储时TsFile文件的相关信息，如每次将内存中的数据写入到磁盘时的数据大小(`group_size_in_byte`)，内存中每个列打一次包的大小(`page_size_in_byte`)等。
+
+* `logback.xml`: 日志配置文件，比如日志级别等。
 
 * `iotdb-cluster.properties`: IoTDB集群所需要的一些配置。
 
@@ -61,7 +63,7 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 
 |名字|internal\_meta\_port|
 |:---:|:---|
-|描述|IoTDB meta服务端口，**IoTDB将为每个meta服务自动创建心跳端口。默认meta服务心跳端口为internal_meta_port+1，请确认这两个端口不是系统保留端口并且未被占用**|
+|描述|IoTDB meta服务端口，**IoTDB将为每个meta服务自动创建心跳端口。默认meta服务心跳端口为`internal_meta_port+1`，请确认这两个端口不是系统保留端口并且未被占用**|
 |类型|Int32|
 |默认值|9003|
 |改后生效方式|重启服务器生效|
@@ -70,7 +72,7 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 
 |名字|internal\_data\_port|
 |:---:|:---|
-|描述|IoTDB data服务端口，**IoTDB将为每个data服务自动创建心跳端口。默认的data服务心跳端口为internal_data_port+1。请确认这两个端口不是系统保留端口并且未被占用**|
+|描述|IoTDB data服务端口，**IoTDB将为每个data服务自动创建心跳端口。默认的data服务心跳端口为`internal_data_port+1`。请确认这两个端口不是系统保留端口并且未被占用**|
 |类型|Int32|
 |默认值|40010|
 |改后生效方式|重启服务器生效|
@@ -88,16 +90,16 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 
 |名字|seed\_nodes|
 |:---:|:---|
-|描述|集群中最初节点的地址，{IP/DOMAIN}:internal\_meta\_port:internal\_data\_port格式，用逗号分割；对于伪分布式模式，可以都填写localhost，或是127.0.0.1 或是混合填写，但是不能够出现真实的ip地址；对于分布式模式，支持填写real ip 或是hostname，但是不能够出现localhost或是127.0.0.1|
+|描述|集群中节点的地址，{IP/DOMAIN}:internal\_meta\_port:internal\_data\_port格式，用逗号分割；对于伪分布式模式，可以都填写localhost，或是127.0.0.1 或是混合填写，但是不能够出现真实的ip地址；对于分布式模式，支持填写real ip 或是hostname，但是不能够出现localhost或是127.0.0.1。当使用start-node.sh(.bat)启动节点时，此配置意味着形成初始群集的节点，每个节点的seed_nodes应该一致，否则群集将初始化失败；当使用add-node.sh(.bat)添加节点到集群中时，此配置项可以是集群中已经存在的任何节点，不需要是用start-node.sh(bat)构建初始集群的节点。|
 |类型|String|
-|默认值|seed_nodes=127.0.0.1:9003:40010,127.0.0.1:9005:40012,127.0.0.1:9007:40014|
+|默认值|127.0.0.1:9003:40010,127.0.0.1:9005:40012,127.0.0.1:9007:40014|
 |改后生效方式|重启服务器生效|
 
 * rpc\_thrift\_compression\_enable
 
 |名字|rpc\_thrift\_compression\_enable|
 |:---:|:---|
-|描述|是否开启thrift压缩通信，**注意这个参数要各个节点保持一致，也要与客户端保持一致，同时也要与iotdb-engine.properties中rpc_thrift_compression_enable参数保持一致**|
+|描述|是否开启thrift压缩通信，**注意这个参数要各个节点保持一致，也要与客户端保持一致，同时也要与`iotdb-engine.properties`中`rpc_thrift_compression_enable`参数保持一致**|
 |类型| Boolean|
 |默认值|false|
 |改后生效方式|重启服务器生效|
@@ -151,7 +153,7 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 
 |名字|min\_num\_of\_logs\_in\_mem|
 |:---:|:---|
-|描述|每次删除日志后，内存中保留的最多的提交的日志的数量。增大这个值将减少在CatchUp使用快照的机会，但也会增加内存占用量|
+|描述|删除日志操作执行后，内存中保留的最多的提交的日志的数量。增大这个值将减少在CatchUp使用快照的机会，但也会增加内存占用量|
 |类型|Int32|
 |默认值|100|
 |改后生效方式|重启服务器生效|
@@ -178,7 +180,7 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 
 |名字|enable\_auto\_create\_schema|
 |:---:|:---|
-|描述|是否支持自动创建schema，**这个值会覆盖iotdb-engine.properties中的配置**|
+|描述|是否支持自动创建schema，**这个值会覆盖`iotdb-engine.properties`中`enable_auto_create_schema`的配置**|
 |类型|BOOLEAN|
 |默认值|true|
 |改后生效方式|重启服务器生效|
