@@ -376,6 +376,7 @@ public class MManager {
     createTimeseries(plan, -1);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     lock.writeLock().lock();
     try {
@@ -416,7 +417,7 @@ public class MManager {
         int size = seriesNumberInStorageGroups.get(storageGroupPath.getFullPath());
         seriesNumberInStorageGroups.put(storageGroupPath.getFullPath(), size + 1);
         if (size + 1 > maxSeriesNumberAmongStorageGroup) {
-          maxSeriesNumberAmongStorageGroup = size + 1;
+          maxSeriesNumberAmongStorageGroup = size + 1L;
         }
       }
 
@@ -511,6 +512,7 @@ public class MManager {
   /**
    * remove the node from the tag inverted index
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void removeFromTagInvertedIndex(MeasurementMNode node) throws IOException {
     if (node.getOffset() < 0) {
       return;
@@ -850,6 +852,7 @@ public class MManager {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan,
       QueryContext context) throws MetadataException {
     lock.readLock().lock();
@@ -1279,6 +1282,7 @@ public class MManager {
    * @param attributesMap newly added attributes map
    * @param fullPath      timeseries
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void upsertTagsAndAttributes(String alias, Map<String, String> tagsMap,
       Map<String, String> attributesMap, PartialPath fullPath) throws MetadataException, IOException {
     lock.writeLock().lock();
@@ -1478,6 +1482,7 @@ public class MManager {
    * @param keySet   tags key or attributes key
    * @param fullPath timeseries path
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException {
     lock.writeLock().lock();
@@ -1549,6 +1554,7 @@ public class MManager {
    * @param alterMap the new tags or attributes key-value
    * @param fullPath timeseries
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
     lock.writeLock().lock();
@@ -1628,6 +1634,7 @@ public class MManager {
    * @param newKey   new key of tag or attribute
    * @param fullPath timeseries
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
     lock.writeLock().lock();
@@ -1905,6 +1912,7 @@ public class MManager {
    *
    * @throws MetadataException
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(PartialPath deviceId,
       String[] measurementList, InsertPlan plan) throws MetadataException {
     MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];

@@ -98,6 +98,7 @@ public class SessionPool {
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
   //TODO: we can add a mechanism that if the user waits too long time, throw exception.
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Session getSession() throws IoTDBConnectionException {
     Session session = queue.poll();
     if (session != null) {

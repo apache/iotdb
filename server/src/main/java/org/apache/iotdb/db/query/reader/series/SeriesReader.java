@@ -312,6 +312,7 @@ public class SeriesReader {
    * This method should be called after hasNextChunk() until no next page, make sure that all
    * overlapped pages are consumed
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
 
     /*
@@ -488,6 +489,7 @@ public class SeriesReader {
    * read overlapped data till currentLargestEndTime in mergeReader, if current batch does not
    * contain data, read till next currentLargestEndTime again
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean hasNextOverlappedPage() throws IOException {
 
     if (hasCachedNextOverlappedPage) {
@@ -616,6 +618,7 @@ public class SeriesReader {
    * the chunks at once, which may cause OOM, so we can only unpack one file at a time when needed.
    * This approach is likely to be ubiquitous, but it keeps the system running smoothly
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void tryToUnpackAllOverlappedFilesToTimeSeriesMetadata() throws IOException {
     /*
      * Fill sequence TimeSeriesMetadata List until it is not empty

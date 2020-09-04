@@ -46,23 +46,23 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   private ScheduledExecutorService executorService;
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final void forceTask(){
-        if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-          logger.warn("system mode is read-only, the force flush WAL task is stopped");
-          return;
-        }
-        if (Thread.interrupted()) {
-          logger.info("WAL force thread exits.");
-          return;
-        }
+  private final void forceTask() {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      logger.warn("system mode is read-only, the force flush WAL task is stopped");
+      return;
+    }
+    if (Thread.interrupted()) {
+      logger.info("WAL force thread exits.");
+      return;
+    }
 
-        for (WriteLogNode node : nodeMap.values()) {
-          try {
-            node.forceSync();
-          } catch (IOException e) {
-            logger.error("Cannot force {}, because ", node, e);
-          }
-        }
+    for (WriteLogNode node : nodeMap.values()) {
+      try {
+        node.forceSync();
+      } catch (IOException e) {
+        logger.error("Cannot force {}, because ", node, e);
+      }
+    }
   }
 
   private MultiFileLogNodeManager() {
@@ -117,7 +117,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       }
       if (config.getForceWalPeriodInMs() > 0) {
         executorService = Executors.newSingleThreadScheduledExecutor();
-        executorService.scheduleAtFixedRate(this::forceTask, config.getForceWalPeriodInMs(),
+        executorService.scheduleWithFixedDelay(this::forceTask, config.getForceWalPeriodInMs(),
             config.getForceWalPeriodInMs(), TimeUnit.MILLISECONDS);
       }
     } catch (Exception e) {

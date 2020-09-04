@@ -141,6 +141,7 @@ public class VmMergeUtils {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void merge(RestorableTsFileIOWriter writer,
       List<RestorableTsFileIOWriter> vmWriters, String storageGroup, VmLogger vmLogger,
       Set<String> devices, boolean sequence) throws IOException {

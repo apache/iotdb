@@ -93,6 +93,7 @@ public class UpgradeUtils {
         + File.separator + firstPartitionId + File.separator+ oldTsFile.getName();
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void recoverUpgrade() {
     if (FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath()).exists()) {
       try (BufferedReader upgradeLogReader = new BufferedReader(

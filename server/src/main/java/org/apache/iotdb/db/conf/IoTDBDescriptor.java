@@ -132,6 +132,7 @@ public class IoTDBDescriptor {
   /**
    * load an property file and set TsfileDBConfig variables.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
     URL url = getPropsUrl();
     if(url == null) {
@@ -716,10 +717,12 @@ public class IoTDBDescriptor {
         proportionSum += Integer.parseInt(proportion.trim());
       }
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
-      conf.setAllocateMemoryForWrite(
-          maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-      conf.setAllocateMemoryForRead(
-          maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      if (proportionSum != 0) {
+        conf.setAllocateMemoryForWrite(
+                maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+        conf.setAllocateMemoryForRead(
+                maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      }
     }
 
     logger.info("allocateMemoryForRead = " + conf.getAllocateMemoryForRead());
@@ -738,18 +741,20 @@ public class IoTDBDescriptor {
         proportionSum += Integer.parseInt(proportion.trim());
       }
       long maxMemoryAvailable = conf.getAllocateMemoryForRead();
-      try {
-        conf.setAllocateMemoryForChunkMetaDataCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-        conf.setAllocateMemoryForChunkCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-        conf.setAllocateMemoryForTimeSeriesMetaDataCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
-                + " should be an integer, which is "
-                + queryMemoryAllocateProportion);
+      if (proportionSum != 0) {
+        try {
+          conf.setAllocateMemoryForChunkMetaDataCache(
+                  maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+          conf.setAllocateMemoryForChunkCache(
+                  maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+          conf.setAllocateMemoryForTimeSeriesMetaDataCache(
+                  maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+        } catch (Exception e) {
+          throw new RuntimeException(
+                  "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
+                          + " should be an integer, which is "
+                          + queryMemoryAllocateProportion);
+        }
       }
 
     }

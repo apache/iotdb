@@ -177,7 +177,10 @@ public class StorageEngine implements IService {
     for (Future future : futures) {
       try {
         future.get();
-      } catch (InterruptedException | ExecutionException e) {
+      } catch (ExecutionException e) {
+        throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
       }
     }
@@ -238,6 +241,8 @@ public class StorageEngine implements IService {
         ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         logger.warn("TTL check thread still doesn't exit after 30s");
+        Thread.currentThread().interrupt();
+        throw new StorageEngineFailureException("StorageEngine failed to stop.", e);
       }
     }
     recoveryThreadPool.shutdownNow();
