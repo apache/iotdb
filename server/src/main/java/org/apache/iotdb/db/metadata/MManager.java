@@ -1937,11 +1937,11 @@ public class MManager {
 
         if (measurementSchema.getType() != insertDataType) {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-            measurementList[i], insertDataType, measurementSchema.getType());
+              measurementList[i], insertDataType, measurementSchema.getType());
           if (!config.isEnablePartialInsert()) {
             throw new MetadataException(String.format(
-              "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
-              measurementList[i], insertDataType, measurementSchema.getType()));
+                "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
+                measurementList[i], insertDataType, measurementSchema.getType()));
           } else {
             // mark failed measurement
             plan.markFailedMeasurementInsertion(i, new MetadataException(String.format(

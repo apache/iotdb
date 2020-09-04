@@ -105,12 +105,12 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   private class DataLogConsumer implements Runnable, Consumer<Log> {
+
     private BlockingQueue<Log> logQueue = new LinkedBlockingQueue<>();
 
     public boolean isEmpty() {
       return logQueue.isEmpty();
     }
-
 
     @Override
     public void run() {
@@ -128,7 +128,7 @@ public class AsyncDataLogApplier implements LogApplier {
 
     @Override
     public void accept(Log log) {
-      if(!logQueue.offer(log)) {
+      if (!logQueue.offer(log)) {
         logger.error("Cannot insert log into queue");
       }
     }

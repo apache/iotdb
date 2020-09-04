@@ -80,7 +80,6 @@ public class LogCatchUpTask implements Callable<Boolean> {
   }
 
   void doLogCatchUp() throws TException, InterruptedException, LeaderUnknownException {
-
     AppendEntryRequest request = new AppendEntryRequest();
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());
@@ -210,8 +209,10 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
       ByteBuffer logData = logs.get(i).serialize();
       int logSize = logData.array().length;
-      if (logSize > IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
-        logger.warn("the frame size {} of thrift is too small", IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
+      if (logSize > IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()
+          - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
+        logger.warn("the frame size {} of thrift is too small",
+            IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
         abort = true;
         return;
       }
@@ -220,7 +221,8 @@ public class LogCatchUpTask implements Callable<Boolean> {
       // we should send logs who's size is smaller than the max frame size of thrift
       // left 200 byte for other fields of AppendEntriesRequest
       if (totalLogSize >
-          IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
+          IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()
+              - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
         // batch oversize, send previous batch and add the log to a new batch
         sendBatchLogs(logList, firstLogPos);
         logList.add(logData);

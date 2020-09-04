@@ -179,6 +179,7 @@ public class CatchUpTaskTest {
     }
     sender.getLogManager().append(logList);
     sender.getLogManager().commitTo(9, false);
+    sender.getLogManager().setMaxHaveAppliedCommitIndex(sender.getLogManager().getCommitLogIndex());
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
@@ -203,6 +204,7 @@ public class CatchUpTaskTest {
     }
     sender.getLogManager().append(logList);
     sender.getLogManager().commitTo(9, false);
+    sender.getLogManager().setMaxHaveAppliedCommitIndex(sender.getLogManager().getCommitLogIndex());
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);

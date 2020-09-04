@@ -411,7 +411,8 @@ public class MetaGroupMember extends RaftMember {
     // initialize allNodes
     for (String seedUrl : seedUrls) {
       Node node = generateNode(seedUrl);
-      if (node != null && (!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode.getMetaPort())
+      if (node != null && (!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode
+          .getMetaPort())
           && !allNodes.contains(node)) {
         // do not add the local node since it is added in `setThisNode()`
         allNodes.add(node);
@@ -1893,7 +1894,8 @@ public class MetaGroupMember extends RaftMember {
    * @param header   to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header) throws IOException {
+  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header)
+      throws IOException {
     RaftService.AsyncClient client = getAsyncDataClient(receiver,
         RaftServer.getWriteOperationTimeoutMS());
     try {
@@ -1991,7 +1993,8 @@ public class MetaGroupMember extends RaftMember {
 
       }
       if (!partitionGroup.getHeader().equals(ignoredGroup)) {
-        partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>()).add(prefixPath);
+        partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>())
+            .add(prefixPath);
       }
     }
 

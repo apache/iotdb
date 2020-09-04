@@ -63,6 +63,7 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.AsyncDataLogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
+import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
@@ -108,6 +109,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -140,6 +142,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
@@ -212,7 +215,7 @@ public class DataGroupMember extends RaftMember {
       applier = new AsyncDataLogApplier(applier);
     }
     logManager = new FilePartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable(),
-        allNodes.get(0), thisNode);
+        allNodes.get(0), thisNode, this);
     initPeerMap();
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
@@ -1026,6 +1029,59 @@ public class DataGroupMember extends RaftMember {
       logger.error("Cannot close partition {}#{} seq:{}", storageGroupName, partitionId, isSeq, e);
     }
   }
+
+  public boolean flushFileWhenDoSnapshot(
+      Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions) {
+    if (character != NodeCharacter.LEADER) {
+      return false;
+    }
+
+    Map<Path, List<Pair<Long, Boolean>>> localDataMemberStorageGroupPartitions = new HashMap<>();
+    for (Entry<String, List<Pair<Long, Boolean>>> entry : storageGroupPartitions.entrySet()) {
+      List<Pair<Long, Boolean>> localListPair = new ArrayList<>();
+
+      String storageGroupName = entry.getKey();
+      List<Pair<Long, Boolean>> tmpPairList = entry.getValue();
+      for (Pair<Long, Boolean> pair : tmpPairList) {
+        long partitionId = pair.left;
+        Node header = metaGroupMember.getPartitionTable().routeToHeaderByTime(storageGroupName,
+            partitionId * StorageEngine.getTimePartitionInterval());
+        DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+        if (localDataMember.getHeader().equals(this.getHeader())) {
+          localListPair.add(new Pair<Long, Boolean>(partitionId, pair.right));
+        }
+      }
+      localDataMemberStorageGroupPartitions.put(new Path(storageGroupName), localListPair);
+    }
+
+    if (localDataMemberStorageGroupPartitions.size() <= 0) {
+      logger.info("{}: have no data to flush", name);
+      return true;
+    }
+    FlushPlan flushPlan = new FlushPlan(null, true, localDataMemberStorageGroupPartitions);
+    PhysicalPlanLog log = new PhysicalPlanLog();
+    // assign term and index to the new log and append it
+    synchronized (logManager) {
+      log.setCurrLogTerm(getTerm().get());
+      long blockIndex = logManager.getLastLogIndex() + 1;
+      log.setCurrLogIndex(blockIndex);
+
+      log.setPlan(flushPlan);
+      logManager.append(log);
+      logManager.setBlockAppliedCommitIndex(blockIndex);
+    }
+    try {
+      boolean result = appendLogInGroup(log);
+      if (!result) {
+        logger.error("{}: append log in group failed when do snapshot", name);
+      }
+      return result;
+    } catch (LogExecutionException e) {
+      logger.error("{}, flush file failed when do snapshot", name, e);
+      return false;
+    }
+  }
+
 
   /**
    * Execute a non-query plan. If the member is a leader, a log for the plan will be created and

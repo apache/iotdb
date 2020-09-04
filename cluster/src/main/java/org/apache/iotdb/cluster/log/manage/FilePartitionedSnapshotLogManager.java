@@ -29,9 +29,11 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,22 +49,41 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       .getLogger(FilePartitionedSnapshotLogManager.class);
 
   public FilePartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
-      Node header, Node thisNode) {
-    super(logApplier, partitionTable, header, thisNode, FileSnapshot::new);
+      Node header, Node thisNode, DataGroupMember dataGroupMember) {
+    super(logApplier, partitionTable, header, thisNode, FileSnapshot::new, dataGroupMember);
+  }
+
+  /**
+   * send FlushPlan to all nodes in one dataGroup
+   */
+  public void syncFlushAllProcessor() {
+    logger.info("{}: Start flush all storage group processor in one data group", getName());
+    Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions = StorageEngine.getInstance()
+        .getStorageGroupPartitions();
+    if (storageGroupPartitions.size() == 0) {
+      logger.info("{}: no need to flush processor", getName());
+      return;
+    }
+    dataGroupMember.flushFileWhenDoSnapshot(storageGroupPartitions);
   }
 
   @Override
   public void takeSnapshot() throws IOException {
-    logger.info("Taking snapshots, flushing IoTDB");
-    StorageEngine.getInstance().syncCloseAllProcessor();
-    logger.info("Taking snapshots, IoTDB is flushed");
-    // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
-    synchronized (this) {
-      collectTimeseriesSchemas();
-      snapshotLastLogIndex = getCommitLogIndex();
-      snapshotLastLogTerm = getCommitLogTerm();
-      collectTsFilesAndFillTimeseriesSchemas();
-      logger.info("Snapshot is taken");
+    try {
+      logger.info("{}: Taking snapshots, flushing IoTDB", getName());
+      syncFlushAllProcessor();
+      logger.info("{}: Taking snapshots, IoTDB is flushed", getName());
+      // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
+      synchronized (this) {
+        super.takeSnapshot();
+        collectTimeseriesSchemas();
+        snapshotLastLogIndex = getCommitLogIndex();
+        snapshotLastLogTerm = getCommitLogTerm();
+        collectTsFilesAndFillTimeseriesSchemas();
+        logger.info("{}: Snapshot is taken", getName());
+      }
+    } finally {
+      super.setBlockAppliedCommitIndex(-1);
     }
   }
 
@@ -138,7 +159,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
         return false;
       }
       createdHardlinks.add(hardlink);
-      logger.debug("File {} is put into snapshot #{}", tsFileResource, slotNum);
+      logger.debug("{}: File {} is put into snapshot #{}", getName(), tsFileResource, slotNum);
       snapshot.addFile(hardlink, thisNode);
     }
     return true;

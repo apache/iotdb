@@ -42,9 +42,9 @@ public class TestLogApplier implements LogApplier {
     } else if (log instanceof CloseFileLog) {
       CloseFileLog closeFileLog = ((CloseFileLog) log);
       try {
-        StorageEngine.getInstance().asyncCloseProcessor(closeFileLog.getStorageGroupName(),
+        StorageEngine.getInstance().closeProcessor(closeFileLog.getStorageGroupName(),
             closeFileLog.getPartitionId(),
-            closeFileLog.isSeq());
+            closeFileLog.isSeq(), false);
       } catch (StorageGroupNotSetException e) {
         throw new QueryProcessException(e);
       }

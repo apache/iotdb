@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
+import java.io.IOException;
 import java.util.Map;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -53,9 +54,10 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
   }
 
   @Override
-  public void takeSnapshot() {
+  public void takeSnapshot() throws IOException {
     // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
     synchronized (this) {
+      super.takeSnapshot();
       storageGroupTTLMap = IoTDB.metaManager.getStorageGroupsTTL();
       try {
         IAuthorizer authorizer = BasicAuthorizer.getInstance();
@@ -71,7 +73,11 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
 
   @Override
   public Snapshot getSnapshot() {
-    takeSnapshot();
+    try {
+      takeSnapshot();
+    } catch (IOException e) {
+      logger.error("take snapshot failed", e);
+    }
     MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot(storageGroupTTLMap, userMap, roleMap,
         metaGroupMember.getPartitionTable().serialize());
     snapshot.setLastLogIndex(commitIndex);

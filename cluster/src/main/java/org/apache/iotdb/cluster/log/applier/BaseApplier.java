@@ -56,7 +56,6 @@ abstract class BaseApplier implements LogApplier {
   }
 
   /**
-   *
    * @param plan
    * @param dataGroupMember the data group member that is applying the log, null if the log is
    *                        applied by a meta group member
@@ -68,7 +67,7 @@ abstract class BaseApplier implements LogApplier {
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if (plan instanceof InsertPlan) {
       processPlanWithTolerance((InsertPlan) plan, dataGroupMember);
-    } else if (plan!= null && !plan.isQuery()) {
+    } else if (plan != null && !plan.isQuery()) {
       try {
         getQueryExecutor().processNonQuery(plan);
       } catch (QueryProcessException e) {
@@ -89,7 +88,6 @@ abstract class BaseApplier implements LogApplier {
   }
 
   /**
-   *
    * @param plan
    * @param dataGroupMember the data group member that is applying the log, null if the log is
    *                        applied by a meta group member
@@ -128,12 +126,12 @@ abstract class BaseApplier implements LogApplier {
   }
 
   /**
-   *
    * @param plan
    * @param ignoredGroup do not pull schema from the group to avoid backward dependency
    * @throws QueryProcessException
    */
-  private void pullTimeseriesSchema(InsertPlan plan, Node ignoredGroup) throws QueryProcessException {
+  private void pullTimeseriesSchema(InsertPlan plan, Node ignoredGroup)
+      throws QueryProcessException {
     try {
       String path = plan.getDeviceId();
       metaGroupMember

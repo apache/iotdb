@@ -1106,6 +1106,27 @@ public class StorageGroupProcessor {
         + FILE_NAME_SEPARATOR + mergeCnt + TSFILE_SUFFIX;
   }
 
+  public void syncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
+    synchronized (closeStorageGroupCondition) {
+      try {
+        asyncCloseOneTsFileProcessor(sequence, tsFileProcessor);
+        long startTime = System.currentTimeMillis();
+        while (closingSequenceTsFileProcessor.contains(tsFileProcessor)
+            || closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
+          closeStorageGroupCondition.wait(60_000);
+          if (System.currentTimeMillis() - startTime > 60_000) {
+            logger
+                .warn("{} has spent {}s to wait for closing one tsfile.", this.storageGroupName,
+                    (System.currentTimeMillis() - startTime) / 1000);
+          }
+        }
+      } catch (InterruptedException e) {
+        logger
+            .error("syncCloseOneTsFileProcessor error occurs while waiting for closing the storage "
+                + "group {}", storageGroupName, e);
+      }
+    }
+  }
 
   /**
    * thread-safety should be ensured by caller
@@ -1298,8 +1319,9 @@ public class StorageGroupProcessor {
           }
         }
       } catch (InterruptedException e) {
-        logger.error("CloseFileNodeCondition error occurs while waiting for closing the storage "
-            + "group {}", storageGroupName, e);
+        logger.error(
+            "syncCloseAllWorkingTsFileProcessors error occurs while waiting for closing the storage "
+                + "group {}", storageGroupName, e);
       }
     }
   }
