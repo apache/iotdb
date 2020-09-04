@@ -19,12 +19,8 @@
 
 package org.apache.iotdb.db.monitor;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
 public class MonitorConstants {
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final String INT64 = "INT64";
   public static final String PATH_SEPARATOR = ".";
   // statistic for data inserting module

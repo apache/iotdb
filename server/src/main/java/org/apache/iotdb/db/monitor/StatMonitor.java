@@ -16,18 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.monitor;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -187,9 +186,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
    */
   public void cacheStatValue() {
     StorageEngine storageEngine = StorageEngine.getInstance();
+    long insertTime = System.currentTimeMillis();
     for (Entry<PartialPath, Long> cachedValue : cachedValueMap.entrySet()) {
-      TSRecord tsRecord = new TSRecord(System.currentTimeMillis(),
-          cachedValue.getKey().getDevice());
+      TSRecord tsRecord = new TSRecord(insertTime, cachedValue.getKey().getDevice());
       tsRecord.addTuple(
           new LongDataPoint(cachedValue.getKey().getMeasurement(), cachedValue.getValue()));
       try {
@@ -218,9 +217,8 @@ public class StatMonitor implements StatMonitorMBean, IService {
     } catch (StorageEngineException | IOException | QueryProcessException e) {
       logger.error("Load last value from disk error.", e);
     }
-
-
   }
+
 
   @Override
   public long getGlobalTotalPointsNum() {
@@ -258,6 +256,25 @@ public class StatMonitor implements StatMonitorMBean, IService {
       logger.error("meet error while trying to get base dir.", e);
       return "Unavailable";
     }
+  }
+
+  @Override
+  public long getDataSizeInByte() {
+    try {
+      long totalSize = 0;
+      for (String dataDir : config.getDataDirs()) {
+        totalSize += FileUtils.sizeOfDirectory(SystemFileFactory.INSTANCE.getFile(dataDir));
+      }
+      return totalSize;
+    } catch (Exception e) {
+      logger.error("meet error while trying to get data size.", e);
+      return -1;
+    }
+  }
+
+  @Override
+  public boolean getWriteAheadLogStatus() {
+    return config.isEnableWal();
   }
 
   @Override
