@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.session;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -32,11 +39,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.*;
 
 public class SessionUT {
 
@@ -89,7 +91,7 @@ public class SessionUT {
         sensor[2] = 2;
         tablet.rowSize = 3;
 
-        session.sortTablet(tablet);
+        SessionConnection.sortTablet(tablet);
         
         /*
         After sorting, if the tablet data is sorted according to the timestamps,
