@@ -97,7 +97,7 @@ internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes。当两
 
 |名字|rpc\_thrift\_compression\_enable|
 |:---:|:---|
-|描述|是否开启thrift压缩通信，**注意这个参数要各个节点保持一致，同时也要与iotdb-engine.properties中rpc_thrift_compression_enable参数保持一致**|
+|描述|是否开启thrift压缩通信，**注意这个参数要各个节点保持一致，也要与客户端保持一致，同时也要与iotdb-engine.properties中rpc_thrift_compression_enable参数保持一致**|
 |类型| Boolean|
 |默认值|false|
 |改后生效方式|重启服务器生效|
