@@ -68,6 +68,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -788,6 +789,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
         }
         seriesTypes = getSeriesTypesByPath(paths, aggregations);
+        break;
+      case UDTF:
+        UDTFPlan udtfPlan = (UDTFPlan) plan;
+        respColumns.addAll(udtfPlan.getDeduplicatedColumns());
+        seriesTypes = udtfPlan.getDeduplicatedDataTypes();
         break;
       default:
         throw new TException("unsupported query type: " + plan.getOperatorType());
