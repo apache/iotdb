@@ -42,6 +42,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.thrift.TException;
@@ -148,6 +149,8 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       } catch (TException e1) {
         resultHandler.onError(e1);
       }
+    } catch (IllegalPathException e) {
+      resultHandler.onError(e);
     }
   }
 
@@ -296,7 +299,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(dataGroupMember.previousFill(request));
-    } catch (QueryProcessException | StorageEngineException | IOException e) {
+    } catch (QueryProcessException | StorageEngineException | IOException | IllegalPathException e) {
       resultHandler.onError(e);
     }
   }
@@ -305,7 +308,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   public void last(LastQueryRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(dataGroupMember.last(request));
-    } catch (CheckConsistencyException | QueryProcessException | IOException | StorageEngineException e) {
+    } catch (CheckConsistencyException | QueryProcessException | IOException | StorageEngineException | IllegalPathException e) {
       resultHandler.onError(e);
     }
   }

@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
 /**
@@ -36,7 +38,7 @@ import org.apache.iotdb.db.utils.SerializeUtils;
  */
 public class MetaSimpleSnapshot extends SimpleSnapshot {
 
-  private Map<String, Long> storageGroupTTLMap;
+  private Map<PartialPath, Long> storageGroupTTLMap;
   private Map<String, User> userMap;
   private Map<String, Role> roleMap;
   private ByteBuffer partitionTableBuffer;
@@ -49,7 +51,7 @@ public class MetaSimpleSnapshot extends SimpleSnapshot {
   }
 
   public MetaSimpleSnapshot(
-      Map<String, Long> storageGroupTTLMap,
+      Map<PartialPath, Long> storageGroupTTLMap,
       Map<String, User> userMap,
       Map<String, Role> roleMap,
       ByteBuffer partitionTableBuffer) {
@@ -59,7 +61,7 @@ public class MetaSimpleSnapshot extends SimpleSnapshot {
     this.partitionTableBuffer = partitionTableBuffer;
   }
 
-  public Map<String, Long> getStorageGroupTTLMap() {
+  public Map<PartialPath, Long> getStorageGroupTTLMap() {
     return storageGroupTTLMap;
   }
 
@@ -81,8 +83,8 @@ public class MetaSimpleSnapshot extends SimpleSnapshot {
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
     try {
       dataOutputStream.writeInt(storageGroupTTLMap.size());
-      for (Map.Entry<String, Long> entry : storageGroupTTLMap.entrySet()) {
-        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+      for (Map.Entry<PartialPath, Long> entry : storageGroupTTLMap.entrySet()) {
+        SerializeUtils.serialize(entry.getKey().getFullPath(), dataOutputStream);
         dataOutputStream.writeLong(entry.getValue());
       }
 
@@ -110,7 +112,12 @@ public class MetaSimpleSnapshot extends SimpleSnapshot {
     int storageGroupTTLMapSize = buffer.getInt();
     storageGroupTTLMap = new HashMap<>(storageGroupTTLMapSize);
     for (int i = 0; i < storageGroupTTLMapSize; i++) {
-      storageGroupTTLMap.put(SerializeUtils.deserializeString(buffer), buffer.getLong());
+      try {
+        storageGroupTTLMap.put(new PartialPath(SerializeUtils.deserializeString(buffer)),
+            buffer.getLong());
+      } catch (IllegalPathException e) {
+        // ignore
+      }
     }
 
     int userMapSize = buffer.getInt();

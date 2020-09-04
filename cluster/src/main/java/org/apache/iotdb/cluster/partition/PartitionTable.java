@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 
 /**
@@ -97,10 +98,10 @@ public interface PartitionTable {
    * @return
    * @throws StorageGroupNotSetException
    */
-  default PartitionGroup partitionByPathTime(String path, long timestamp)
+  default PartitionGroup partitionByPathTime(PartialPath path, long timestamp)
       throws MetadataException {
-    String storageGroup = IoTDB.metaManager.getStorageGroupName(path);
-    return this.route(storageGroup, timestamp);
+    PartialPath storageGroup = IoTDB.metaManager.getStorageGroupPath(path);
+    return this.route(storageGroup.getFullPath(), timestamp);
   }
 
   /**
@@ -109,19 +110,19 @@ public interface PartitionTable {
    * @return (startTime, endTime) - partitionGroup pair
    * @UsedBy NodeTool
    */
-  default MultiKeyMap<Long, PartitionGroup> partitionByPathRangeTime(String path,
+  default MultiKeyMap<Long, PartitionGroup> partitionByPathRangeTime(PartialPath path,
       long startTime, long endTime) throws MetadataException {
     long partitionInterval = StorageEngine.getTimePartitionInterval();
 
     MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
-    String storageGroup = IoTDB.metaManager.getStorageGroupName(path);
+    PartialPath storageGroup = IoTDB.metaManager.getStorageGroupPath(path);
     startTime = StorageEngine.convertMilliWithPrecision(startTime);
     endTime = StorageEngine.convertMilliWithPrecision(endTime);
     while (startTime <= endTime) {
       long nextTime = (startTime / partitionInterval + 1)
           * partitionInterval;
       timeRangeMapRaftGroup.put(startTime, Math.min(nextTime - 1, endTime),
-          this.route(storageGroup, startTime));
+          this.route(storageGroup.getFullPath(), startTime));
       startTime = nextTime;
     }
     return timeRangeMapRaftGroup;

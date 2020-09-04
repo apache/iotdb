@@ -49,10 +49,12 @@ import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -76,7 +78,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -144,13 +145,13 @@ public class SlotPartitionTableTest {
   private void initMockMManager(int id, MManager mmanager, String[] storageGroups, List<String> ownedSGs)
       throws MetadataException {
     for (String sg : storageGroups) {
-      mmanager.setStorageGroup(sg);
+      mmanager.setStorageGroup(new PartialPath(sg));
     }
     for (String sg : ownedSGs) {
       //register 4 series;
       for (int i = 0; i < 4; i ++) {
         try {
-          mmanager.createTimeseries(String.format(sg + ".ld.l1.d%d.s%d", i/2, i%2),
+          mmanager.createTimeseries(new PartialPath(String.format(sg + ".ld.l1.d%d.s%d", i/2, i%2)),
               TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY, Collections.EMPTY_MAP);
         } catch (Exception e) {
           e.printStackTrace();
@@ -292,7 +293,7 @@ public class SlotPartitionTableTest {
   }
 
   @Test
-  public void testPhysicalPlan() throws QueryProcessException {
+  public void testPhysicalPlan() throws QueryProcessException, IllegalPathException {
     PhysicalPlan deletePlan = new DeletePlan();
     assertTrue(PartitionUtils.isGlobalDataPlan(deletePlan));
     PhysicalPlan updatePlan = new UpdatePlan();
@@ -308,9 +309,10 @@ public class SlotPartitionTableTest {
       e.printStackTrace();
     }
     try {
-      PhysicalPlan authorPlan = new AuthorPlan(AuthorType.CREATE_ROLE, "test", "test", "test", "test", new String[]{},  new Path("root.sg.l2.l3.l4.28.ld.l1.d0"));
+      PhysicalPlan authorPlan = new AuthorPlan(AuthorType.CREATE_ROLE, "test", "test", "test",
+          "test", new String[]{},  new PartialPath("root.sg.l2.l3.l4.28.ld.l1.d0"));
       assertTrue(PartitionUtils.isGlobalMetaPlan(authorPlan));
-    } catch (AuthException e) {
+    } catch (AuthException | IllegalPathException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -326,15 +328,17 @@ public class SlotPartitionTableTest {
 
     PhysicalPlan setStorageGroupPlan = new SetStorageGroupPlan();
     assertTrue(PartitionUtils.isGlobalMetaPlan(setStorageGroupPlan));
-    PhysicalPlan setTTLPlan = new SetTTLPlan("");
+    PhysicalPlan setTTLPlan = new SetTTLPlan(new PartialPath("root.group"));
     assertTrue(PartitionUtils.isGlobalMetaPlan(setTTLPlan));
 
   }
 
   // @Test
-  public void testInsertPlan() {
-    PhysicalPlan insertPlan1 = new InsertRowPlan("root.sg.l2.l3.l4.28.ld.l1.d0", 1, new String[]{"s0", "s1"}, new String[]{"0", "1"});
-    PhysicalPlan insertPlan2 = new InsertRowPlan("root.sg.l2.l3.l4.28.ld.l1.d0", 1 + StorageEngine.getTimePartitionInterval(), new String[]{"s0", "s1"}, new String[]{"0", "1"});
+  public void testInsertPlan() throws IllegalPathException {
+    PhysicalPlan insertPlan1 = new InsertRowPlan(new PartialPath("root.sg.l2.l3.l4.28.ld.l1.d0"),
+        1, new String[]{"s0", "s1"}, new String[]{"0", "1"});
+    PhysicalPlan insertPlan2 = new InsertRowPlan(new PartialPath("root.sg.l2.l3.l4.28.ld.l1.d0"),
+        1 + StorageEngine.getTimePartitionInterval(), new String[]{"s0", "s1"}, new String[]{"0", "1"});
     PartitionGroup group1, group2;
     assertFalse(insertPlan1.canBeSplit());
     ClusterPlanRouter router = new ClusterPlanRouter(localTable);
@@ -349,12 +353,15 @@ public class SlotPartitionTableTest {
   }
 
   // @Test
-  public void testCreateTimeSeriesPlan() {
-    PhysicalPlan createTimeSeriesPlan1 = new CreateTimeSeriesPlan(new Path("root.sg.l2.l3.l4.28.ld.l1.d1"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
+  public void testCreateTimeSeriesPlan() throws IllegalPathException {
+    PhysicalPlan createTimeSeriesPlan1 = new CreateTimeSeriesPlan(new PartialPath("root.sg.l2.l3.l4.28.ld"
+        + ".l1.d1"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
         .emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
-    PhysicalPlan createTimeSeriesPlan2 = new CreateTimeSeriesPlan(new Path("root.sg.l2.l3.l4.28.ld.l1.d2"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
+    PhysicalPlan createTimeSeriesPlan2 = new CreateTimeSeriesPlan(new PartialPath("root.sg.l2.l3.l4.28.ld"
+        + ".l1.d2"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
         .emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
-    PhysicalPlan createTimeSeriesPlan3 = new CreateTimeSeriesPlan(new Path("root.sg.l2.l3.l4.29.ld.l1.d2"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
+    PhysicalPlan createTimeSeriesPlan3 = new CreateTimeSeriesPlan(new PartialPath("root.sg.l2.l3.l4.29.ld"
+        + ".l1.d2"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
         .emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
     assertFalse(createTimeSeriesPlan1.canBeSplit());
     ClusterPlanRouter router = new ClusterPlanRouter(localTable);
@@ -372,8 +379,9 @@ public class SlotPartitionTableTest {
   }
 
   // @Test
-  public void testInsertTabletPlan() {
-    PhysicalPlan batchInertPlan = new InsertTabletPlan("root.sg.l2.l3.l4.28.ld.l1.d0", new String[]{"s0", "s1"}, Arrays.asList(0, 1));
+  public void testInsertTabletPlan() throws IllegalPathException {
+    PhysicalPlan batchInertPlan = new InsertTabletPlan(new PartialPath("root.sg.l2.l3.l4.28.ld.l1"
+        + ".d0"), new String[]{"s0", "s1"}, Arrays.asList(0, 1));
     assertTrue(batchInertPlan.canBeSplit());
     //(String deviceId, String[] measurements, List<Integer> dataTypes)
     long[] times = new long[9];
@@ -419,12 +427,16 @@ public class SlotPartitionTableTest {
   }
 
   // @Test
-  public void testCountPlan() {
-    PhysicalPlan countPlan1 = new CountPlan(ShowContentType.COUNT_TIMESERIES,new Path("root.sg.*.l3.l4.28.*"));
-    PhysicalPlan countPlan2 = new CountPlan(ShowContentType.COUNT_TIMESERIES,new Path("root.sg.*.l3.*"));
-    PhysicalPlan countPlan3 = new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,new Path("root.sg.l2.l3.l4.28"));
-    PhysicalPlan countPlan4 = new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,new Path("root.sg.l2.l3"), 6);
-    PhysicalPlan countPlan5 = new CountPlan(ShowContentType.COUNT_NODES,new Path("root.sg.l2.l3"), 5);
+  public void testCountPlan() throws IllegalPathException {
+    PhysicalPlan countPlan1 = new CountPlan(ShowContentType.COUNT_TIMESERIES,new PartialPath("root.sg.*.l3"
+        + ".l4.28.*"));
+    PhysicalPlan countPlan2 = new CountPlan(ShowContentType.COUNT_TIMESERIES,new PartialPath("root.sg.*.l3"
+        + ".*"));
+    PhysicalPlan countPlan3 = new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,new PartialPath("root.sg"
+        + ".l2.l3.l4.28"));
+    PhysicalPlan countPlan4 = new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,new PartialPath("root.sg"
+        + ".l2.l3"), 6);
+    PhysicalPlan countPlan5 = new CountPlan(ShowContentType.COUNT_NODES,new PartialPath("root.sg.l2.l3"), 5);
     try {
       ClusterPlanRouter router = new ClusterPlanRouter(localTable);
       assertTrue(countPlan1.canBeSplit());
@@ -447,9 +459,11 @@ public class SlotPartitionTableTest {
   }
 
    // @Test
-  public void testShowChildPathsPlan() {
-    PhysicalPlan showChildPathsPlan1 = new ShowChildPathsPlan(ShowContentType.CHILD_PATH, new Path("root.sg.l2.l3.l4.28"));
-    PhysicalPlan showChildPathsPlan2 = new ShowChildPathsPlan(ShowContentType.CHILD_PATH, new Path("root.sg.l2.l3.l4"));
+  public void testShowChildPathsPlan() throws IllegalPathException {
+    PhysicalPlan showChildPathsPlan1 = new ShowChildPathsPlan(ShowContentType.CHILD_PATH, new PartialPath(
+        "root.sg.l2.l3.l4.28"));
+    PhysicalPlan showChildPathsPlan2 = new ShowChildPathsPlan(ShowContentType.CHILD_PATH, new PartialPath(
+        "root.sg.l2.l3.l4"));
     try {
       assertFalse(showChildPathsPlan1.canBeSplit());
       ClusterPlanRouter router = new ClusterPlanRouter(localTable);

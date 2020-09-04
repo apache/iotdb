@@ -26,12 +26,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -57,7 +58,7 @@ public class InsertTabletPlan extends InsertPlan {
   // cached values
   private Long maxTime = null;
   private Long minTime = null;
-  private List<Path> paths;
+  private List<PartialPath> paths;
   private int start;
   private int end;
   private List<Integer> range;
@@ -69,21 +70,21 @@ public class InsertTabletPlan extends InsertPlan {
     super(OperatorType.BATCHINSERT);
   }
 
-  public InsertTabletPlan(String deviceId, List<String> measurements) {
+  public InsertTabletPlan(PartialPath deviceId, List<String> measurements) {
     super(OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements.toArray(new String[0]);
     this.canBeSplit = true;
   }
 
-  public InsertTabletPlan(String deviceId, String[] measurements) {
+  public InsertTabletPlan(PartialPath deviceId, String[] measurements) {
     super(OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements;
     this.canBeSplit = true;
   }
 
-  public InsertTabletPlan(String deviceId, String[] measurements, List<Integer> dataTypes) {
+  public InsertTabletPlan(PartialPath deviceId, String[] measurements, List<Integer> dataTypes) {
     super(OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements;
@@ -118,13 +119,14 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     if (paths != null) {
       return paths;
     }
-    List<Path> ret = new ArrayList<>();
+    List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
-      ret.add(new Path(deviceId, m));
+      PartialPath fullPath = deviceId.concatNode(m);
+      ret.add(fullPath);
     }
     paths = ret;
     return ret;
@@ -134,14 +136,14 @@ public class InsertTabletPlan extends InsertPlan {
   public List<String> getPathsStrings() {
     if (paths != null) {
       List<String> ret = new ArrayList<>();
-      for (Path path : paths) {
+      for (PartialPath path : paths) {
         ret.add(path.getFullPath());
       }
       return ret;
     }
     List<String> ret = new ArrayList<>();
     for (String m : measurements) {
-      ret.add(deviceId + IoTDBConstant.PATH_SEPARATOR + m);
+      ret.add(deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + m);
     }
     return ret;
   }
@@ -151,7 +153,7 @@ public class InsertTabletPlan extends InsertPlan {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     stream.writeByte((byte) type);
 
-    putString(stream, deviceId);
+    putString(stream, deviceId.getFullPath());
 
     stream.writeInt(
         measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
@@ -203,7 +205,7 @@ public class InsertTabletPlan extends InsertPlan {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     buffer.put((byte) type);
 
-    putString(buffer, deviceId);
+    putString(buffer, deviceId.getFullPath());
 
     buffer
         .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
@@ -373,8 +375,8 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) {
-    this.deviceId = readString(buffer);
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+    this.deviceId = new PartialPath(readString(buffer));
 
     int measurementSize = buffer.getInt();
     this.measurements = new String[measurementSize];

@@ -89,6 +89,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
@@ -1319,7 +1320,8 @@ public abstract class RaftMember {
    *
    * @param request
    */
-  public TSStatus executeNonQueryPlan(ExecutNonQueryReq request) throws IOException {
+  public TSStatus executeNonQueryPlan(ExecutNonQueryReq request)
+      throws IOException, IllegalPathException {
     // process the plan locally
     PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
     TSStatus answer = executeNonQuery(plan);

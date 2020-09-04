@@ -216,11 +216,11 @@ public class TsFileProcessor {
     }
 
     // update start time of this memtable
-    tsFileResource.updateStartTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
+    tsFileResource.updateStartTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
-      tsFileResource.updateEndTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
+      tsFileResource.updateEndTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
   }
 
@@ -260,14 +260,14 @@ public class TsFileProcessor {
     }
 
     tsFileResource
-        .updateStartTime(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[start]);
+        .updateStartTime(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[start]);
 
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource
           .updateEndTime(
-              insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
+              insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
   }
 
@@ -673,6 +673,7 @@ public class TsFileProcessor {
   /**
    * recover vm processor and files
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void recover() {
     File logFile = FSFactoryProducer.getFSFactory()
         .getFile(tsFileResource.getTsFile().getParent(),
@@ -768,6 +769,7 @@ public class TsFileProcessor {
    * Take the first MemTable from the flushingMemTables and flush it. Called by a flush thread of
    * the flush manager pool
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void flushOneMemTable() {
     IMemTable memTableToFlush;
     memTableToFlush = flushingMemTables.getFirst();
@@ -1015,6 +1017,7 @@ public class TsFileProcessor {
    * @param dataType      data type
    * @param encoding      encoding
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void query(String deviceId, String measurementId, TSDataType dataType, TSEncoding encoding,
       Map<String, String> props, QueryContext context,
       List<TsFileResource> tsfileResourcesForQuery) throws IOException {
@@ -1155,6 +1158,7 @@ public class TsFileProcessor {
     }
 
     @Override
+    @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
     public void run() {
       long startTimeMillis = System.currentTimeMillis();
       try {

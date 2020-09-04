@@ -56,11 +56,11 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
@@ -123,7 +123,7 @@ public class MemberTest {
 
     for (int i = 0; i < 10; i++) {
       try {
-        IoTDB.metaManager.setStorageGroup(TestUtils.getTestSg(i));
+        IoTDB.metaManager.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
         for (int j = 0; j < 20; j++) {
           SchemaUtils.registerTimeseries(TestUtils.getTestTimeSeriesSchema(i, j));
         }
@@ -215,24 +215,24 @@ public class MemberTest {
   private MetaGroupMember newMetaGroupMember(Node node) {
     MetaGroupMember ret = new TestMetaGroupMember() {
       @Override
-      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<Path> paths,
+      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<PartialPath> paths,
           List<String> aggregations)
           throws MetadataException {
-        return new Pair<>(SchemaUtils.getSeriesTypesByPath(paths, aggregations),
-            SchemaUtils.getSeriesTypesByPath(paths, (List<String>) null));
+        return new Pair<>(SchemaUtils.getSeriesTypesByPaths(paths, aggregations),
+            SchemaUtils.getSeriesTypesByPaths(paths, (List<String>) null));
       }
 
       @Override
-      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByString(List<String> pathStrs,
+      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPaths(List<PartialPath> pathStrs,
           String aggregation)
           throws MetadataException {
-        return new Pair<>(SchemaUtils.getSeriesTypesByString(pathStrs, aggregation),
-            SchemaUtils.getSeriesTypesByString(pathStrs, null));
+        return new Pair<>(SchemaUtils.getSeriesTypesByPaths(pathStrs, aggregation),
+            SchemaUtils.getSeriesTypesByPaths(pathStrs, (List<String>) null));
       }
 
       @Override
-      public List<String> getMatchedPaths(String pathPattern) throws MetadataException {
-        return IoTDB.metaManager.getAllTimeseriesName(pathPattern);
+      public List<PartialPath> getMatchedPaths(PartialPath pathPattern) throws MetadataException {
+        return IoTDB.metaManager.getAllTimeseriesPath(pathPattern);
       }
 
       @Override

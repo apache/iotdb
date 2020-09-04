@@ -33,6 +33,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -45,7 +46,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,12 +93,12 @@ public class ClusterPlanRouter {
 
   private PartitionGroup routePlan(CreateTimeSeriesPlan plan)
       throws MetadataException {
-    return partitionTable.partitionByPathTime(plan.getPath().getFullPath(), 0);
+    return partitionTable.partitionByPathTime(plan.getPath(), 0);
   }
 
   private PartitionGroup routePlan(ShowChildPathsPlan plan) {
     try {
-      return partitionTable.route(getMManager().getStorageGroupName(plan.getPath().getFullPath())
+      return partitionTable.route(getMManager().getStorageGroupPath(plan.getPath()).getFullPath()
           , 0);
     } catch (MetadataException e) {
       //the path is too short to have no a storage group name, e.g., "root"
@@ -144,21 +144,21 @@ public class ClusterPlanRouter {
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(AlterTimeSeriesPlan plan)
       throws MetadataException {
     PartitionGroup partitionGroup =
-        partitionTable.partitionByPathTime(plan.getPath().getFullPath(), 0);
+        partitionTable.partitionByPathTime(plan.getPath(), 0);
     return Collections.singletonMap(plan, partitionGroup);
   }
 
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateTimeSeriesPlan plan)
       throws MetadataException {
     PartitionGroup partitionGroup =
-        partitionTable.partitionByPathTime(plan.getPath().getFullPath(), 0);
+        partitionTable.partitionByPathTime(plan.getPath(), 0);
     return Collections.singletonMap(plan, partitionGroup);
   }
 
   @SuppressWarnings("SuspiciousSystemArraycopy")
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertTabletPlan plan)
       throws MetadataException {
-    String storageGroup = getMManager().getStorageGroupName(plan.getDeviceId());
+    PartialPath storageGroup = getMManager().getStorageGroupPath(plan.getDeviceId());
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
     long[] times = plan.getTimes();
     if (times.length == 0) {
@@ -174,7 +174,7 @@ public class ClusterPlanRouter {
     for (int i = 1; i < times.length; i++) {// times are sorted in session API.
       if (times[i] >= endTime) {
         // a new range.
-        PartitionGroup group = partitionTable.route(storageGroup, startTime);
+        PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), startTime);
         List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
         ranges.add(startLoc);//include
         ranges.add(i);//excluded
@@ -187,7 +187,7 @@ public class ClusterPlanRouter {
       }
     }
     //the final range
-    PartitionGroup group = partitionTable.route(storageGroup, startTime);
+    PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), startTime);
     List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
     ranges.add(startLoc);//includec
     ranges.add(times.length);//excluded
@@ -259,7 +259,7 @@ public class ClusterPlanRouter {
     //CountPlan is quite special because it has the behavior of wildcard at the tail of the path
     // even though there is no wildcard
     Map<String, String> sgPathMap = getMManager()
-        .determineStorageGroup(plan.getPath().getFullPath() + ".*");
+        .determineStorageGroup(plan.getPath());
     if (sgPathMap.isEmpty()) {
       throw new StorageGroupNotSetException(plan.getPath().getFullPath());
     }
@@ -268,7 +268,7 @@ public class ClusterPlanRouter {
       //support wildcard
       for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
         CountPlan plan1 = new CountPlan(ShowContentType.COUNT_TIMESERIES,
-            new Path(entry.getValue()), plan.getLevel());
+            new PartialPath(entry.getValue()), plan.getLevel());
         result.put(plan1, partitionTable.route(entry.getKey(), 0));
       }
     } else {
@@ -284,7 +284,7 @@ public class ClusterPlanRouter {
         // we have to remove it.
         for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
           CountPlan plan1 = new CountPlan(ShowContentType.COUNT_TIMESERIES,
-              new Path(entry.getValue().substring(0, entry.getValue().lastIndexOf(".*"))),
+              new PartialPath(entry.getValue().substring(0, entry.getValue().lastIndexOf(".*"))),
               plan.getLevel());
           result.put(plan1, partitionTable.route(entry.getKey(), 0));
         }

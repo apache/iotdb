@@ -61,6 +61,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
@@ -152,11 +153,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetaUtils;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -1318,7 +1321,7 @@ public class MetaGroupMember extends RaftMember {
       // 0. first delete all storage groups
       try {
         IoTDB.metaManager
-            .deleteStorageGroups(IoTDB.metaManager.getAllStorageGroupNames());
+            .deleteStorageGroups(IoTDB.metaManager.getAllStorageGroupPaths());
       } catch (MetadataException e) {
         logger.error("{}: first delete all local storage groups failed, errMessage:{}",
             name,
@@ -1326,9 +1329,10 @@ public class MetaGroupMember extends RaftMember {
       }
 
       // 2.  register all storage groups
-      for (Map.Entry<String, Long> entry : snapshot.getStorageGroupTTLMap().entrySet()) {
+      for (Map.Entry<PartialPath, Long> entry : snapshot.getStorageGroupTTLMap().entrySet()) {
+        PartialPath sgPath = entry.getKey();
         try {
-          IoTDB.metaManager.setStorageGroup(entry.getKey());
+          IoTDB.metaManager.setStorageGroup(sgPath);
         } catch (MetadataException e) {
           logger.error("{}: Cannot add storage group {} in snapshot, errMessage:{}", name,
               entry.getKey(),
@@ -1337,8 +1341,8 @@ public class MetaGroupMember extends RaftMember {
 
         // 3. register ttl in the snapshot
         try {
-          IoTDB.metaManager.setTTL(entry.getKey(), entry.getValue());
-          StorageEngine.getInstance().setTTL(entry.getKey(), entry.getValue());
+          IoTDB.metaManager.setTTL(sgPath, entry.getValue());
+          StorageEngine.getInstance().setTTL(sgPath, entry.getValue());
         } catch (MetadataException | StorageEngineException | IOException e) {
           logger
               .error("{}: Cannot set ttl in storage group {} , errMessage: {}", name,
@@ -1489,15 +1493,12 @@ public class MetaGroupMember extends RaftMember {
 
   private void convertToFullPaths(PhysicalPlan plan)
       throws PathNotExistException {
-    Pair<List<String>, List<String>> getMatchedPathsRet = getMatchedPaths(plan.getPathsStrings());
-    List<String> fullPathsStrings = getMatchedPathsRet.left;
-    List<String> nonExistPathsStrings = getMatchedPathsRet.right;
-    if (!nonExistPathsStrings.isEmpty()) {
-      throw new PathNotExistException(new ArrayList<>(nonExistPathsStrings));
-    }
-    List<Path> fullPaths = new ArrayList<>();
-    for (String pathStr : fullPathsStrings) {
-      fullPaths.add(new Path(pathStr));
+    Pair<List<PartialPath>, List<PartialPath>> getMatchedPathsRet = getMatchedPaths(plan.getPaths());
+    List<PartialPath> fullPaths = getMatchedPathsRet.left;
+    List<PartialPath> nonExistPath = getMatchedPathsRet.right;
+    if (!nonExistPath.isEmpty()) {
+      throw new PathNotExistException(nonExistPath.stream().map(PartialPath::getFullPath).collect(
+          Collectors.toList()));
     }
     plan.setPaths(fullPaths);
   }
@@ -1567,18 +1568,18 @@ public class MetaGroupMember extends RaftMember {
 
   private void autoCreateSchema(PhysicalPlan plan) throws MetadataException {
     // try to set storage group
-    String deviceId;
+    PartialPath deviceId;
     if (plan instanceof InsertPlan) {
       deviceId = ((InsertPlan) plan).getDeviceId();
     } else {
-      deviceId = ((CreateTimeSeriesPlan) plan).getPath().toString();
+      deviceId = ((CreateTimeSeriesPlan) plan).getPath();
     }
 
-    String storageGroupName = MetaUtils
-        .getStorageGroupNameByLevel(deviceId, IoTDBDescriptor.getInstance()
+    PartialPath storageGroupName = MetaUtils
+        .getStorageGroupPathByLevel(deviceId, IoTDBDescriptor.getInstance()
             .getConfig().getDefaultStorageGroupLevel());
     SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(
-        new Path(storageGroupName));
+        storageGroupName);
     TSStatus setStorageGroupResult = processNonPartitionedMetaPlan(setStorageGroupPlan);
     if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() &&
         setStorageGroupResult.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR
@@ -1764,11 +1765,11 @@ public class MetaGroupMember extends RaftMember {
    */
   private boolean autoCreateTimeseries(InsertPlan insertPlan) {
     List<String> seriesList = new ArrayList<>();
-    String deviceId = insertPlan.getDeviceId();
-    String storageGroupName;
+    PartialPath deviceId = insertPlan.getDeviceId();
+    PartialPath storageGroupName;
     try {
       storageGroupName = MetaUtils
-          .getStorageGroupNameByLevel(deviceId, IoTDBDescriptor.getInstance()
+          .getStorageGroupPathByLevel(deviceId, IoTDBDescriptor.getInstance()
               .getConfig().getDefaultStorageGroupLevel());
     } catch (MetadataException e) {
       logger.error("Failed to infer storage group from deviceId {}", deviceId);
@@ -1776,10 +1777,11 @@ public class MetaGroupMember extends RaftMember {
     }
     for (String measurementId : insertPlan.getMeasurements()) {
       seriesList.add(
-          new StringContainer(new String[]{deviceId, measurementId}, TsFileConstant.PATH_SEPARATOR)
+          new StringContainer(new String[]{deviceId.getFullPath(), measurementId},
+              TsFileConstant.PATH_SEPARATOR)
               .toString());
     }
-    PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
+    PartitionGroup partitionGroup = partitionTable.route(storageGroupName.getFullPath(), 0);
     List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
     for (String seriesPath : unregisteredSeriesList) {
       int index = seriesList.indexOf(seriesPath);
@@ -1793,8 +1795,13 @@ public class MetaGroupMember extends RaftMember {
       }
       TSEncoding encoding = getDefaultEncoding(dataType);
       CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
-      CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(new Path(seriesPath),
-          dataType, encoding, compressionType, null, null, null, null);
+      CreateTimeSeriesPlan createTimeSeriesPlan = null;
+      try {
+        createTimeSeriesPlan = new CreateTimeSeriesPlan(new PartialPath(seriesPath),
+            dataType, encoding, compressionType, null, null, null, null);
+      } catch (IllegalPathException e) {
+        // ignore
+      }
       // TODO-Cluster: add executeNonQueryBatch()
       TSStatus result;
       try {
@@ -1966,14 +1973,14 @@ public class MetaGroupMember extends RaftMember {
    *
    * @param ignoredGroup do not pull schema from the group to avoid backward dependency
    */
-  public void pullTimeSeriesSchemas(List<String> prefixPaths,
+  public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths,
       Node ignoredGroup)
       throws MetadataException {
     logger.debug("{}: Pulling timeseries schemas of {}", name, prefixPaths);
     // split the paths by the data groups that will hold them
     Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
-    for (String prefixPath : prefixPaths) {
-      if (SQLConstant.RESERVED_TIME.equalsIgnoreCase(prefixPath)) {
+    for (PartialPath prefixPath : prefixPaths) {
+      if (SQLConstant.RESERVED_TIME.equalsIgnoreCase(prefixPath.getFullPath())) {
         continue;
       }
       PartitionGroup partitionGroup;
@@ -1994,7 +2001,7 @@ public class MetaGroupMember extends RaftMember {
       }
       if (!partitionGroup.getHeader().equals(ignoredGroup)) {
         partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>())
-            .add(prefixPath);
+            .add(prefixPath.getFullPath());
       }
     }
 
@@ -2107,7 +2114,7 @@ public class MetaGroupMember extends RaftMember {
    * @return
    * @throws MetadataException
    */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<Path> paths,
+  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<PartialPath> paths,
       List<String> aggregations) throws
       MetadataException {
     try {
@@ -2118,11 +2125,10 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathLocally(List<Path> paths,
+  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathLocally(List<PartialPath> paths,
       List<String> aggregations) throws MetadataException {
     // try locally first
-    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPath(paths,
-        (List<String>) null);
+    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPath(paths);
     // if the aggregation function is null, the type of column in result set
     // is equal to the real type of the measurement
     if (aggregations == null) {
@@ -2130,19 +2136,15 @@ public class MetaGroupMember extends RaftMember {
     } else {
       // if the aggregation function is not null,
       // we should recalculate the type of column in result set
-      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
       return new Pair<>(columnDataTypes, measurementDataTypes);
     }
   }
 
-  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathRemotely(List<Path> paths,
+  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathRemotely(List<PartialPath> paths,
       List<String> aggregations) throws MetadataException {
-    List<String> pathStr = new ArrayList<>();
-    for (Path path : paths) {
-      pathStr.add(path.getFullPath());
-    }
     // pull schemas remotely and cache them
-    pullTimeSeriesSchemas(pathStr, null);
+    pullTimeSeriesSchemas(paths, null);
 
     return getSeriesTypesByPathLocally(paths, aggregations);
   }
@@ -2157,12 +2159,13 @@ public class MetaGroupMember extends RaftMember {
    * @return
    * @throws MetadataException
    */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByString(List<String> pathStrs,
+  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPaths(List<PartialPath> pathStrs,
       String aggregation) throws
       MetadataException {
     try {
       // try locally first
-      List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByString(pathStrs, null);
+      List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(pathStrs,
+          (String) null);
       // if the aggregation function is null, the type of column in result set
       // is equal to the real type of the measurement
       if (aggregation == null) {
@@ -2171,14 +2174,15 @@ public class MetaGroupMember extends RaftMember {
         // if the aggregation function is not null,
         // we should recalculate the type of column in result set
         List<TSDataType> columnDataTypes = SchemaUtils
-            .getSeriesTypesByString(pathStrs, aggregation);
+            .getSeriesTypesByPaths(pathStrs, aggregation);
         return new Pair<>(columnDataTypes, measurementDataTypes);
       }
     } catch (PathNotExistException e) {
       // pull schemas remotely and cache them
       pullTimeSeriesSchemas(pathStrs, null);
 
-      List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByString(pathStrs, null);
+      List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(pathStrs,
+          (String) null);
       // if the aggregation function is null, the type of column in result set
       // is equal to the real type of the measurement
       if (aggregation == null) {
@@ -2187,7 +2191,7 @@ public class MetaGroupMember extends RaftMember {
         // if the aggregation function is not null,
         // we should recalculate the type of column in result set
         List<TSDataType> columnDataTypes = SchemaUtils
-            .getSeriesTypesByString(pathStrs, aggregation);
+            .getSeriesTypesByPaths(pathStrs, aggregation);
         return new Pair<>(columnDataTypes, measurementDataTypes);
       }
     }
@@ -2203,7 +2207,7 @@ public class MetaGroupMember extends RaftMember {
    * @return
    * @throws StorageEngineException
    */
-  public IReaderByTimestamp getReaderByTimestamp(Path path,
+  public IReaderByTimestamp getReaderByTimestamp(PartialPath path,
       Set<String> deviceMeasurements, TSDataType dataType,
       QueryContext context)
       throws StorageEngineException, QueryProcessException {
@@ -2239,7 +2243,7 @@ public class MetaGroupMember extends RaftMember {
    * @return
    * @throws StorageEngineException
    */
-  private IReaderByTimestamp getSeriesReaderByTime(PartitionGroup partitionGroup, Path path,
+  private IReaderByTimestamp getSeriesReaderByTime(PartitionGroup partitionGroup, PartialPath path,
       Set<String> deviceMeasurements, QueryContext context, TSDataType dataType)
       throws StorageEngineException, QueryProcessException {
     if (partitionGroup.contains(thisNode)) {
@@ -2309,7 +2313,7 @@ public class MetaGroupMember extends RaftMember {
    * @return
    * @throws StorageEngineException
    */
-  public ManagedSeriesReader getSeriesReader(Path path,
+  public ManagedSeriesReader getSeriesReader(PartialPath path,
       Set<String> deviceMeasurements, TSDataType dataType,
       Filter timeFilter,
       Filter valueFilter, QueryContext context)
@@ -2350,7 +2354,7 @@ public class MetaGroupMember extends RaftMember {
    * @return
    * @throws StorageEngineException
    */
-  public List<AggregateResult> getAggregateResult(Path path,
+  public List<AggregateResult> getAggregateResult(PartialPath path,
       Set<String> deviceMeasurements, List<String> aggregations,
       TSDataType dataType, Filter timeFilter,
       QueryContext context) throws StorageEngineException {
@@ -2506,13 +2510,13 @@ public class MetaGroupMember extends RaftMember {
    * @return
    * @throws StorageEngineException
    */
-  private List<PartitionGroup> routeFilter(Filter filter, Path path) throws
+  private List<PartitionGroup> routeFilter(Filter filter, PartialPath path) throws
       StorageEngineException {
     Intervals intervals = PartitionUtils.extractTimeInterval(filter);
     return routeIntervals(intervals, path);
   }
 
-  private List<PartitionGroup> routeIntervals(Intervals intervals, Path path)
+  private List<PartitionGroup> routeIntervals(Intervals intervals, PartialPath path)
       throws StorageEngineException {
     List<PartitionGroup> partitionGroups = new ArrayList<>();
     long firstLB = intervals.getLowerBound(0);
@@ -2526,12 +2530,12 @@ public class MetaGroupMember extends RaftMember {
       // compute the related data groups of all intervals
       // TODO-Cluster#690: change to a broadcast when the computation is too expensive
       try {
-        String storageGroupName = IoTDB.metaManager
-            .getStorageGroupName(path.getFullPath());
+        PartialPath storageGroupName = IoTDB.metaManager
+            .getStorageGroupPath(path);
         Set<Node> groupHeaders = new HashSet<>();
         for (int i = 0; i < intervals.getIntervalSize(); i++) {
           // compute the headers of groups involved in every interval
-          PartitionUtils.getIntervalHeaders(storageGroupName, intervals.getLowerBound(i),
+          PartitionUtils.getIntervalHeaders(storageGroupName.getFullPath(), intervals.getLowerBound(i),
               intervals.getUpperBound(i), partitionTable, groupHeaders);
         }
         // translate the headers to groups
@@ -2562,7 +2566,7 @@ public class MetaGroupMember extends RaftMember {
    * @throws IOException
    * @throws StorageEngineException
    */
-  private IPointReader getSeriesReader(PartitionGroup partitionGroup, Path path,
+  private IPointReader getSeriesReader(PartitionGroup partitionGroup, PartialPath path,
       Set<String> deviceMeasurements, Filter timeFilter, Filter valueFilter,
       QueryContext context, TSDataType dataType)
       throws IOException,
@@ -2657,7 +2661,7 @@ public class MetaGroupMember extends RaftMember {
    * @param originPath a path potentially with wildcard
    * @return all paths after removing wildcards in the path
    */
-  public List<String> getMatchedPaths(String originPath) throws MetadataException {
+  public List<PartialPath> getMatchedPaths(PartialPath originPath) throws MetadataException {
     // make sure this node knows all storage groups
     try {
       syncLeaderWithConsistencyCheck();
@@ -2669,9 +2673,10 @@ public class MetaGroupMember extends RaftMember {
     // added, e.g:
     // "root.*" will be translated into:
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(originPath);
+    Map<String, String> sgPathMap =
+        IoTDB.metaManager.determineStorageGroup(originPath);
     logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
-    List<String> ret = getMatchedPaths(sgPathMap);
+    List<PartialPath> ret = getMatchedPaths(sgPathMap);
     logger.debug("The paths of path {} are {}", originPath, ret);
     return ret;
   }
@@ -2683,15 +2688,15 @@ public class MetaGroupMember extends RaftMember {
    * @return a pair of path lists, the first are the existing full paths, the second are invalid
    * original paths
    */
-  private Pair<List<String>, List<String>> getMatchedPaths(List<String> originalPaths) {
-    ConcurrentSkipListSet<String> fullPaths = new ConcurrentSkipListSet<>();
-    ConcurrentSkipListSet<String> nonExistPaths = new ConcurrentSkipListSet<>();
+  private Pair<List<PartialPath>, List<PartialPath>> getMatchedPaths(List<PartialPath> originalPaths) {
+    ConcurrentSkipListSet<PartialPath> fullPaths = new ConcurrentSkipListSet<>();
+    ConcurrentSkipListSet<PartialPath> nonExistPaths = new ConcurrentSkipListSet<>();
     ExecutorService getAllPathsService = Executors
         .newFixedThreadPool(partitionTable.getGlobalGroups().size());
-    for (String pathStr : originalPaths) {
+    for (PartialPath pathStr : originalPaths) {
       getAllPathsService.submit(() -> {
         try {
-          List<String> fullPathStrs = getMatchedPaths(pathStr);
+          List<PartialPath> fullPathStrs = getMatchedPaths(pathStr);
           if (fullPathStrs.isEmpty()) {
             nonExistPaths.add(pathStr);
             logger.error("Path {} is not found.", pathStr);
@@ -2721,7 +2726,7 @@ public class MetaGroupMember extends RaftMember {
    * @param originPath a path potentially with wildcard
    * @return all paths after removing wildcards in the path
    */
-  public Set<String> getMatchedDevices(String originPath) throws MetadataException {
+  public Set<PartialPath> getMatchedDevices(PartialPath originPath) throws MetadataException {
     // make sure this node knows all storage groups
     try {
       syncLeaderWithConsistencyCheck();
@@ -2733,9 +2738,10 @@ public class MetaGroupMember extends RaftMember {
     // added, e.g:
     // "root.*" will be translated into:
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(originPath);
+    Map<String, String> sgPathMap =
+        IoTDB.metaManager.determineStorageGroup(originPath);
     logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
-    Set<String> ret = getMatchedDevices(sgPathMap);
+    Set<PartialPath> ret = getMatchedDevices(sgPathMap);
     logger.debug("The devices of path {} are {}", originPath, ret);
 
     return ret;
@@ -2749,27 +2755,27 @@ public class MetaGroupMember extends RaftMember {
    * @return a collection of all queried paths
    * @throws MetadataException
    */
-  private List<String> getMatchedPaths(Map<String, String> sgPathMap)
+  private List<PartialPath> getMatchedPaths(Map<String, String> sgPathMap)
       throws MetadataException {
-    List<String> result = new ArrayList<>();
+    List<PartialPath> result = new ArrayList<>();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
     for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
       String storageGroupName = sgPathEntry.getKey();
-      String pathUnderSG = sgPathEntry.getValue();
+      PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
       // find the data group that should hold the timeseries schemas of the storage group
       PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
       if (partitionGroup.contains(thisNode)) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         getLocalDataMember(partitionGroup.getHeader()).syncLeader();
-        List<String> allTimeseriesName = IoTDB.metaManager.getAllTimeseriesName(pathUnderSG);
+        List<PartialPath> allTimeseriesName = IoTDB.metaManager.getAllTimeseriesPath(pathUnderSG);
         logger.debug("{}: get matched paths of {} locally, result {}", name, partitionGroup,
             allTimeseriesName);
         result.addAll(allTimeseriesName);
       } else {
         // batch the queries of the same group to reduce communication
-        groupPathMap.computeIfAbsent(partitionGroup, p -> new ArrayList<>()).add(pathUnderSG);
+        groupPathMap.computeIfAbsent(partitionGroup, p -> new ArrayList<>()).add(pathUnderSG.getFullPath());
       }
     }
 
@@ -2783,13 +2789,13 @@ public class MetaGroupMember extends RaftMember {
     return result;
   }
 
-  private List<String> getMatchedPaths(PartitionGroup partitionGroup, List<String> pathsToQuery)
+  private List<PartialPath> getMatchedPaths(PartitionGroup partitionGroup, List<String> pathsToQuery)
       throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        List<String> paths = getMatchedPaths(node, partitionGroup.getHeader(), pathsToQuery);
+        List<PartialPath> paths = getMatchedPaths(node, partitionGroup.getHeader(), pathsToQuery);
         if (logger.isDebugEnabled()) {
           logger.debug("{}: get matched paths of {} and other {} paths from {} in {}, result {}",
               name, pathsToQuery.get(0), pathsToQuery.size() - 1, node, partitionGroup.getHeader(),
@@ -2810,7 +2816,7 @@ public class MetaGroupMember extends RaftMember {
     return Collections.emptyList();
   }
 
-  private List<String> getMatchedPaths(Node node, Node header, List<String> pathsToQuery)
+  private List<PartialPath> getMatchedPaths(Node node, Node header, List<String> pathsToQuery)
       throws IOException, TException, InterruptedException {
     List<String> paths;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -2823,7 +2829,15 @@ public class MetaGroupMember extends RaftMember {
       paths = syncDataClient.getAllPaths(header, pathsToQuery);
       putBackSyncClient(syncDataClient);
     }
-    return paths;
+    List<PartialPath> partialPaths = new ArrayList<>();
+    for (String path : paths) {
+      try {
+        partialPaths.add(new PartialPath(path));
+      } catch (IllegalPathException e) {
+        // ignore
+      }
+    }
+    return partialPaths;
   }
 
   /**
@@ -2834,27 +2848,27 @@ public class MetaGroupMember extends RaftMember {
    * @return a collection of all queried devices
    * @throws MetadataException
    */
-  private Set<String> getMatchedDevices(Map<String, String> sgPathMap)
+  private Set<PartialPath> getMatchedDevices(Map<String, String> sgPathMap)
       throws MetadataException {
-    Set<String> result = new HashSet<>();
+    Set<PartialPath> result = new HashSet<>();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
     for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
       String storageGroupName = sgPathEntry.getKey();
-      String pathUnderSG = sgPathEntry.getValue();
+      PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
       // find the data group that should hold the timeseries schemas of the storage group
       PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
       if (partitionGroup.contains(thisNode)) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         getLocalDataMember(partitionGroup.getHeader()).syncLeader();
-        Set<String> allDevices = IoTDB.metaManager.getDevices(pathUnderSG);
+        Set<PartialPath> allDevices = IoTDB.metaManager.getDevices(pathUnderSG);
         logger.debug("{}: get matched paths of {} locally, result {}", name, partitionGroup,
             allDevices);
         result.addAll(allDevices);
       } else {
         // batch the queries of the same group to reduce communication
-        groupPathMap.computeIfAbsent(partitionGroup, p -> new ArrayList<>()).add(pathUnderSG);
+        groupPathMap.computeIfAbsent(partitionGroup, p -> new ArrayList<>()).add(pathUnderSG.getFullPath());
       }
     }
 
@@ -2869,7 +2883,7 @@ public class MetaGroupMember extends RaftMember {
     return result;
   }
 
-  private Set<String> getMatchedDevices(PartitionGroup partitionGroup, List<String> pathsToQuery)
+  private Set<PartialPath> getMatchedDevices(PartitionGroup partitionGroup, List<String> pathsToQuery)
       throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
@@ -2880,7 +2894,11 @@ public class MetaGroupMember extends RaftMember {
             node, paths);
         if (paths != null) {
           // query next group
-          return paths;
+          Set<PartialPath> partialPaths = new HashSet<>();
+          for (String path : paths) {
+            partialPaths.add(new PartialPath(path));
+          }
+          return partialPaths;
         }
       } catch (IOException | TException e) {
         throw new MetadataException(e);
@@ -2909,10 +2927,10 @@ public class MetaGroupMember extends RaftMember {
     return paths;
   }
 
-  public List<String> getAllStorageGroupNames() {
+  public List<PartialPath> getAllStorageGroupNames() {
     // make sure this node knows all storage groups
     syncLeader();
-    return IoTDB.metaManager.getAllStorageGroupNames();
+    return IoTDB.metaManager.getAllStorageGroupPaths();
   }
 
   public List<StorageGroupMNode> getAllStorageGroupNodes() {
@@ -3239,7 +3257,7 @@ public class MetaGroupMember extends RaftMember {
    * @return
    * @throws StorageEngineException
    */
-  public List<GroupByExecutor> getGroupByExecutors(Path path,
+  public List<GroupByExecutor> getGroupByExecutors(PartialPath path,
       Set<String> deviceMeasurements, TSDataType dataType,
       QueryContext context, Filter timeFilter, List<Integer> aggregationTypes)
       throws StorageEngineException, QueryProcessException {
@@ -3280,7 +3298,7 @@ public class MetaGroupMember extends RaftMember {
    * @return
    * @throws StorageEngineException
    */
-  private GroupByExecutor getGroupByExecutor(Path path,
+  private GroupByExecutor getGroupByExecutor(PartialPath path,
       Set<String> deviceMeasurements, PartitionGroup partitionGroup,
       Filter timeFilter, QueryContext context, TSDataType dataType,
       List<Integer> aggregationTypes) throws StorageEngineException, QueryProcessException {
@@ -3388,7 +3406,7 @@ public class MetaGroupMember extends RaftMember {
   }
 
 
-  public TimeValuePair performPreviousFill(Path path, TSDataType dataType, long queryTime,
+  public TimeValuePair performPreviousFill(PartialPath path, TSDataType dataType, long queryTime,
       long beforeRange, Set<String> deviceMeasurements, QueryContext context)
       throws StorageEngineException {
     // make sure the partition table is new

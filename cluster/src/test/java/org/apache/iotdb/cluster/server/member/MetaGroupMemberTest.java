@@ -95,10 +95,12 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -113,7 +115,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -255,7 +256,7 @@ public class MetaGroupMemberTest extends MemberTest {
     try {
       for (String prefixPath : prefixPaths) {
         if (!prefixPath.equals(TestUtils.getTestSeries(10, 0))) {
-          IoTDB.metaManager.collectSeries(prefixPath, schemas);
+          IoTDB.metaManager.collectSeries(new PartialPath(prefixPath), schemas);
           dataOutputStream.writeInt(schemas.size());
           for (MeasurementSchema schema : schemas) {
             schema.serializeTo(dataOutputStream);
@@ -265,7 +266,7 @@ public class MetaGroupMemberTest extends MemberTest {
           TestUtils.getTestMeasurementSchema(0).serializeTo(dataOutputStream);
         }
       }
-    } catch (IOException e) {
+    } catch (IOException | IllegalPathException e) {
       // ignore
     }
     PullSchemaResp resp = new PullSchemaResp();
@@ -399,7 +400,7 @@ public class MetaGroupMemberTest extends MemberTest {
                   PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
                   planExecutor.processNonQuery(plan);
                   resultHandler.onComplete(StatusUtils.OK);
-                } catch (IOException | QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
+                } catch (IOException | QueryProcessException | StorageGroupNotSetException | StorageEngineException | IllegalPathException e) {
                   resultHandler.onError(e);
                 }
               }).start();
@@ -463,12 +464,12 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testClosePartition()
-      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
+      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException, IllegalPathException {
     System.out.println("Start testClosePartition()");
     // the operation is accepted
     dummyResponse.set(Response.RESPONSE_AGREE);
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(TestUtils.getTestSg(0));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -489,7 +490,7 @@ public class MetaGroupMemberTest extends MemberTest {
     testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
 
     StorageGroupProcessor processor =
-        StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
+        StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertTrue(processor.getWorkSequenceTsFileProcessors().isEmpty());
 
     int prevTimeout = RaftServer.getConnectionTimeoutInMS();
@@ -612,17 +613,17 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testSendSnapshot() {
+  public void testSendSnapshot() throws IllegalPathException {
     System.out.println("Start testSendSnapshot()");
     SendSnapshotRequest request = new SendSnapshotRequest();
 
     // 1. prepare storage group and its tll
-    Map<String, Long> storageGroupTTL = new HashMap<>();
+    Map<PartialPath, Long> storageGroupTTL = new HashMap<>();
     long baseTTL = 3600;
     for (int i = 0; i <= 10; i++) {
-      storageGroupTTL.put(TestUtils.getTestSg(i), baseTTL + i * 100);
+      storageGroupTTL.put(new PartialPath(TestUtils.getTestSg(i)), baseTTL + i * 100);
       if (i >= 5) {
-        storageGroupTTL.put(TestUtils.getTestSg(i), Long.MAX_VALUE);
+        storageGroupTTL.put(new PartialPath(TestUtils.getTestSg(i)), Long.MAX_VALUE);
       }
     }
 
@@ -681,7 +682,7 @@ public class MetaGroupMemberTest extends MemberTest {
             reference));
 
     // 6. check whether the snapshot applied or not
-    Map<String, Long> localStorageGroupTTL = IoTDB.metaManager.getStorageGroupsTTL();
+    Map<PartialPath, Long> localStorageGroupTTL = IoTDB.metaManager.getStorageGroupsTTL();
     assertNotNull(localStorageGroupTTL);
     assertEquals(storageGroupTTL, localStorageGroupTTL);
 
@@ -707,7 +708,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testProcessNonQuery() {
+  public void testProcessNonQuery() throws IllegalPathException {
     System.out.println("Start testProcessNonQuery()");
     mockDataClusterServer = true;
     // as a leader
@@ -716,20 +717,20 @@ public class MetaGroupMemberTest extends MemberTest {
     for (int i = 10; i < 20; i++) {
       // process a non partitioned plan
       SetStorageGroupPlan setStorageGroupPlan =
-          new SetStorageGroupPlan(new Path(TestUtils.getTestSg(i)));
+          new SetStorageGroupPlan(new PartialPath(TestUtils.getTestSg(i)));
       TSStatus status = testMetaMember.executeNonQuery(setStorageGroupPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
-      assertTrue(IoTDB.metaManager.isPathExist(TestUtils.getTestSg(i)));
+      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSg(i))));
 
       // process a partitioned plan
       TimeseriesSchema schema = TestUtils.getTestTimeSeriesSchema(i, 0);
       CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
-          new Path(schema.getFullPath()), schema.getType(),
+          new PartialPath(schema.getFullPath()), schema.getType(),
           schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
           Collections.emptyMap(), Collections.emptyMap(), null);
       status = testMetaMember.executeNonQuery(createTimeSeriesPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
-      assertTrue(IoTDB.metaManager.isPathExist(TestUtils.getTestSeries(i, 0)));
+      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSeries(i, 0))));
     }
     testThreadPool.shutdownNow();
   }
@@ -738,10 +739,10 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testPullTimeseriesSchema() throws MetadataException {
     System.out.println("Start testPullTimeseriesSchema()");
     for (int i = 0; i < 10; i++) {
-      testMetaMember.pullTimeSeriesSchemas(Collections.singletonList(TestUtils.getTestSg(i)),
+      testMetaMember.pullTimeSeriesSchemas(Collections.singletonList(new PartialPath(TestUtils.getTestSg(i))),
           null);
       for (int j = 0; j < 10; j++) {
-        assertTrue(IoTDB.metaManager.isPathExist(TestUtils.getTestSeries(i, j)));
+        assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSeries(i, j))));
       }
     }
   }
@@ -752,25 +753,25 @@ public class MetaGroupMemberTest extends MemberTest {
     // a local series
     assertEquals(Collections.singletonList(TSDataType.DOUBLE),
         testMetaMember
-            .getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(0, 0)),
+            .getSeriesTypesByPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 0))),
                 null).left);
     // a remote series that can be fetched
     assertEquals(Collections.singletonList(TSDataType.DOUBLE),
         testMetaMember
-            .getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(9, 0)),
+            .getSeriesTypesByPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(9, 0))),
                 null).left);
     // a non-existent series
-    IoTDB.metaManager.setStorageGroup(TestUtils.getTestSg(10));
+    IoTDB.metaManager.setStorageGroup(new PartialPath(TestUtils.getTestSg(10)));
     try {
-      testMetaMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(10
-          , 100)), null);
+      testMetaMember.getSeriesTypesByPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(10
+          , 100))), null);
     } catch (PathNotExistException e) {
       assertEquals("Path [root.test10.s100] does not exist", e.getMessage());
     }
     // a non-existent group
     try {
-      testMetaMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(11
-          , 100)), null);
+      testMetaMember.getSeriesTypesByPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(11
+          , 100))), null);
     } catch (StorageGroupNotSetException e) {
       assertEquals("Storage group is not set for current seriesPath: [root.test11.s100]",
           e.getMessage());
@@ -780,7 +781,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testGetReaderByTimestamp()
-      throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException {
+      throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException, IllegalPathException {
     System.out.println("Start testGetReaderByTimestamp()");
     mockDataClusterServer = true;
     InsertRowPlan insertPlan = new InsertRowPlan();
@@ -788,10 +789,11 @@ public class MetaGroupMemberTest extends MemberTest {
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
-      insertPlan.setDeviceId(TestUtils.getTestSg(i));
+      insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
       MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
-        IoTDB.metaManager.createTimeseries(schema.getMeasurementId(), schema.getType()
+        IoTDB.metaManager.createTimeseries(new PartialPath(schema.getMeasurementId()),
+            schema.getType()
             , schema.getEncodingType(), schema.getCompressor(), schema.getProps());
       } catch (MetadataException e) {
         // ignore
@@ -811,7 +813,7 @@ public class MetaGroupMemberTest extends MemberTest {
     try {
       for (int i = 0; i < 10; i++) {
         IReaderByTimestamp readerByTimestamp = testMetaMember
-            .getReaderByTimestamp(new Path(TestUtils.getTestSeries(i, 0)),
+            .getReaderByTimestamp(new PartialPath(TestUtils.getTestSeries(i, 0)),
                 Collections.singleton(TestUtils.getTestMeasurement(0)), TSDataType.DOUBLE,
                 context);
         for (int j = 0; j < 10; j++) {
@@ -825,7 +827,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testGetReader()
-      throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException {
+      throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException, IllegalPathException {
     System.out.println("Start testGetReader()");
     mockDataClusterServer = true;
     InsertRowPlan insertPlan = new InsertRowPlan();
@@ -834,11 +836,11 @@ public class MetaGroupMemberTest extends MemberTest {
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
 
     for (int i = 0; i < 10; i++) {
-      insertPlan.setDeviceId(TestUtils.getTestSg(i));
+      insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
       MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
-        IoTDB.metaManager.createTimeseries(schema.getMeasurementId(), schema.getType()
-            , schema.getEncodingType(), schema.getCompressor(), schema.getProps());
+        IoTDB.metaManager.createTimeseries(new PartialPath(schema.getMeasurementId()),
+            schema.getType(), schema.getEncodingType(), schema.getCompressor(), schema.getProps());
       } catch (MetadataException e) {
         // ignore
       }
@@ -857,7 +859,7 @@ public class MetaGroupMemberTest extends MemberTest {
     try {
       for (int i = 0; i < 10; i++) {
         ManagedSeriesReader reader = testMetaMember
-            .getSeriesReader(new Path(TestUtils.getTestSeries(i, 0)),
+            .getSeriesReader(new PartialPath(TestUtils.getTestSeries(i, 0)),
                 Collections.singleton(TestUtils.getTestMeasurement(0)), TSDataType.DOUBLE,
                 TimeFilter.gtEq(5),
                 ValueFilter.ltEq(8.0), context);
@@ -880,14 +882,14 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testGetMatchedPaths() throws MetadataException {
     System.out.println("Start testGetMatchedPaths()");
-    List<String> matchedPaths = testMetaMember
-        .getMatchedPaths(TestUtils.getTestSg(0) + ".*");
+    List<PartialPath> matchedPaths = testMetaMember
+        .getMatchedPaths(new PartialPath(TestUtils.getTestSg(0) + ".*"));
     assertEquals(20, matchedPaths.size());
     for (int j = 0; j < 10; j++) {
-      assertTrue(matchedPaths.contains(TestUtils.getTestSeries(0, j)));
+      assertTrue(matchedPaths.contains(new PartialPath(TestUtils.getTestSeries(0, j))));
     }
     matchedPaths = testMetaMember
-        .getMatchedPaths(TestUtils.getTestSg(10) + ".*");
+        .getMatchedPaths(new PartialPath(TestUtils.getTestSg(10) + ".*"));
     assertTrue(matchedPaths.isEmpty());
   }
 

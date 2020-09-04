@@ -76,6 +76,7 @@ public class SyncReceiverLogAnalyzer implements ISyncReceiverLogAnalyzer {
         Thread.sleep(FileLoader.WAIT_TIME << 1);
       } catch (InterruptedException e) {
         LOGGER.error("Thread is interrupted from waiting for ending sync in recovery.");
+        Thread.currentThread().interrupt();
       }
     } else {
       scanLogger(FileLoader.createFileLoader(senderFolder),

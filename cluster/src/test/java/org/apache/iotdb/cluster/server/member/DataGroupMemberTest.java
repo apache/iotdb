@@ -86,8 +86,10 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -99,7 +101,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -398,7 +399,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testApplySnapshot()
-      throws StorageEngineException, IOException, WriteProcessException, SnapshotApplicationException, QueryProcessException {
+      throws StorageEngineException, IOException, WriteProcessException, SnapshotApplicationException, QueryProcessException, IllegalPathException {
     System.out.println("Start testStartElection()");
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> schemaList = new ArrayList<>();
@@ -427,9 +428,9 @@ public class DataGroupMemberTest extends MemberTest {
 
     // create a local resource1
     StorageGroupProcessor processor = StorageEngine.getInstance()
-        .getProcessor(TestUtils.getTestSg(0));
+        .getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(TestUtils.getTestSg(0));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setTime(0);
     insertPlan.setMeasurements(new String[]{"s0"});
     insertPlan.setNeedInferType(true);
@@ -447,7 +448,7 @@ public class DataGroupMemberTest extends MemberTest {
     dataGroupMember.applySnapshot(snapshot, 0);
     assertEquals(2, processor.getSequenceFileTreeSet().size());
     assertEquals(1, processor.getUnSequenceFileList().size());
-    Deletion deletion = new Deletion(new Path(TestUtils.getTestSg(0)), 0, 0);
+    Deletion deletion = new Deletion(new PartialPath(TestUtils.getTestSg(0)), 0, 0);
     assertTrue(processor.getUnSequenceFileList().get(0).getModFile().getModifications()
         .contains(deletion));
   }
@@ -490,22 +491,22 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testFollowerExecuteNonQuery() {
+  public void testFollowerExecuteNonQuery() throws IllegalPathException {
     System.out.println("Start testFollowerExecuteNonQuery()");
     dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
     TimeseriesSchema timeseriesSchema = TestUtils.getTestTimeSeriesSchema(0, 100);
     CreateTimeSeriesPlan createTimeSeriesPlan =
-        new CreateTimeSeriesPlan(new Path(timeseriesSchema.getFullPath()),
+        new CreateTimeSeriesPlan(new PartialPath(timeseriesSchema.getFullPath()),
             timeseriesSchema.getType(), timeseriesSchema.getEncodingType(),
             timeseriesSchema.getCompressor(), timeseriesSchema.getProps(),
             Collections.emptyMap(), Collections.emptyMap(), null);
     assertEquals(200, dataGroupMember.executeNonQuery(createTimeSeriesPlan).code);
-    assertTrue(IoTDB.metaManager.isPathExist(timeseriesSchema.getFullPath()));
+    assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
   }
 
   @Test
-  public void testLeaderExecuteNonQuery() throws QueryProcessException {
+  public void testLeaderExecuteNonQuery() throws QueryProcessException, IllegalPathException {
     System.out.println("Start testLeaderExecuteNonQuery()");
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
@@ -514,7 +515,7 @@ public class DataGroupMemberTest extends MemberTest {
 
     TimeseriesSchema timeseriesSchema = TestUtils.getTestTimeSeriesSchema(0, 100);
     CreateTimeSeriesPlan createTimeSeriesPlan =
-        new CreateTimeSeriesPlan(new Path(timeseriesSchema.getFullPath()),
+        new CreateTimeSeriesPlan(new PartialPath(timeseriesSchema.getFullPath()),
             timeseriesSchema.getType(), timeseriesSchema.getEncodingType(),
             timeseriesSchema.getCompressor(), timeseriesSchema.getProps(),
             Collections.emptyMap(), Collections.emptyMap(), null);
@@ -524,7 +525,7 @@ public class DataGroupMemberTest extends MemberTest {
         getLogManager(partitionTable.getHeaderGroup(TestUtils.getNode(0)), dataGroupMember));
     dataGroupMember.getLogManager().setLogApplierExecutor(Executors.newSingleThreadExecutor());
     assertEquals(200, dataGroupMember.executeNonQuery(createTimeSeriesPlan).code);
-    assertTrue(IoTDB.metaManager.isPathExist(timeseriesSchema.getFullPath()));
+    assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     testThreadPool.shutdownNow();
   }
 
@@ -568,10 +569,10 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testQuerySingleSeries()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, IllegalPathException {
     System.out.println("Start testQuerySingleSeries()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(TestUtils.getTestSg(0));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -626,10 +627,10 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testQuerySingleSeriesWithValueFilter()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, IllegalPathException {
     System.out.println("Start testQuerySingleSeriesWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(TestUtils.getTestSg(0));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -684,10 +685,10 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testQuerySingleSeriesByTimestamp()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestamp()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(TestUtils.getTestSg(0));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -739,10 +740,10 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testQuerySingleSeriesByTimestampWithValueFilter()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(TestUtils.getTestSg(0));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -842,7 +843,7 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   private TsFileResource prepareResource(long serialNum, boolean withModification)
-      throws IOException {
+      throws IOException, IllegalPathException {
     TsFileResource resource = new RemoteTsFileResource();
     File file = new File("target" + File.separator + TestUtils.getTestSg(0) + File.separator + "0",
         "0-" + serialNum + "-0.tsfile");
@@ -854,7 +855,7 @@ public class DataGroupMemberTest extends MemberTest {
     resource.updateStartTime(TestUtils.getTestSg(0), serialNum * 100);
     resource.updateEndTime(TestUtils.getTestSg(0), (serialNum + 1) * 100 - 1);
     if (withModification) {
-      Deletion deletion = new Deletion(new Path(TestUtils.getTestSg(0)), 0, 0);
+      Deletion deletion = new Deletion(new PartialPath(TestUtils.getTestSg(0)), 0, 0);
       resource.getModFile().write(deletion);
       resource.getModFile().close();
     }
@@ -919,7 +920,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testGroupBy()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, IllegalPathException {
     System.out.println("Start testGroupBy()");
     TestUtils.prepareData();
 

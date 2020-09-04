@@ -131,8 +131,8 @@ public class IoTDB implements IoTDBMBean {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
+        logger.warn("IoTDB failed to set up for:" + e.getMessage());
         Thread.currentThread().interrupt();
-        logger.warn("IoTDB failed to set up for: {}", e.getMessage());
         return;
       }
     }

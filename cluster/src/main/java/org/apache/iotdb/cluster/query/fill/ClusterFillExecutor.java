@@ -23,19 +23,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.FillQueryExecutor;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ClusterFillExecutor extends FillQueryExecutor {
 
   private MetaGroupMember metaGroupMember;
 
-  public ClusterFillExecutor(List<Path> selectedSeries,
+  public ClusterFillExecutor(List<PartialPath> selectedSeries,
       List<TSDataType> dataTypes,
       long queryTime,
       Map<TSDataType, IFill> typeIFillMap,
@@ -45,7 +45,7 @@ public class ClusterFillExecutor extends FillQueryExecutor {
   }
 
   @Override
-  protected IFill configureFill(IFill fill, Path path, TSDataType dataType, long queryTime,
+  protected IFill configureFill(IFill fill, PartialPath path, TSDataType dataType, long queryTime,
       Set<String> deviceMeasurements, QueryContext context) {
     if (fill instanceof LinearFill) {
       IFill clusterFill = new ClusterLinearFill((LinearFill) fill, metaGroupMember);

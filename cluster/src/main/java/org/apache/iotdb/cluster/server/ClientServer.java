@@ -47,6 +47,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -54,7 +55,6 @@ import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -237,7 +237,8 @@ public class ClientServer extends TSServiceImpl {
    * @throws MetadataException
    */
   @Override
-  protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
+  protected List<TSDataType> getSeriesTypesByPaths(List<PartialPath> paths,
+      List<String> aggregations)
       throws MetadataException {
     return metaGroupMember.getSeriesTypesByPath(paths, aggregations).left;
   }
@@ -251,10 +252,9 @@ public class ClientServer extends TSServiceImpl {
    * @return the data types of "paths" (using the aggregation)
    * @throws MetadataException
    */
-  @Override
-  protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
+  protected List<TSDataType> getSeriesTypesByString(List<PartialPath> paths, String aggregation)
       throws MetadataException {
-    return metaGroupMember.getSeriesTypesByString(paths, aggregation).left;
+    return metaGroupMember.getSeriesTypesByPaths(paths, aggregation).left;
   }
 
   /**

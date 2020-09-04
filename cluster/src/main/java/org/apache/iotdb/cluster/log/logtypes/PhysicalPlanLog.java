@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,7 +71,7 @@ public class PhysicalPlanLog extends Log {
 
     try {
       plan = PhysicalPlan.Factory.create(buffer);
-    } catch (IOException e) {
+    } catch (IOException | IllegalPathException e) {
       logger.error("Cannot parse a physical plan", e);
     }
   }

@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -34,7 +35,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
@@ -53,9 +53,9 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
   }
 
   @Override
-  protected List<AggregateResult> aggregateOneSeries(Entry<Path, List<Integer>> pathToAggrIndexes,
+  protected List<AggregateResult> aggregateOneSeries(Entry<PartialPath, List<Integer>> pathToAggrIndexes,
       Set<String> deviceMeasurements, Filter timeFilter, QueryContext context) throws StorageEngineException {
-    Path seriesPath = pathToAggrIndexes.getKey();
+    PartialPath seriesPath = pathToAggrIndexes.getKey();
     TSDataType tsDataType = dataTypes.get(pathToAggrIndexes.getValue().get(0));
     List<String> aggregationNames = new ArrayList<>();
 
@@ -74,7 +74,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
   }
 
   @Override
-  protected IReaderByTimestamp getReaderByTime(Path path,
+  protected IReaderByTimestamp getReaderByTime(PartialPath path,
       RawDataQueryPlan dataQueryPlan, TSDataType dataType,
       QueryContext context)
       throws StorageEngineException, QueryProcessException {

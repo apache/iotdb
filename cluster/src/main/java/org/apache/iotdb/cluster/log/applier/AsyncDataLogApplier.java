@@ -35,6 +35,7 @@ import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -46,7 +47,7 @@ public class AsyncDataLogApplier implements LogApplier {
   private static final Logger logger = LoggerFactory.getLogger(AsyncDataLogApplier.class);
   private static final int CONCURRENT_CONSUMER_NUM = 64;
   private LogApplier embeddedApplier;
-  private Map<String, DataLogConsumer> consumerMap;
+  private Map<PartialPath, DataLogConsumer> consumerMap;
   private ExecutorService consumerPool = new ThreadPoolExecutor(CONCURRENT_CONSUMER_NUM,
       Integer.MAX_VALUE, 0, TimeUnit.SECONDS, new SynchronousQueue<>(),
       new ThreadFactoryBuilder().setNameFormat("ApplierThread%d").build());
@@ -66,8 +67,8 @@ public class AsyncDataLogApplier implements LogApplier {
       if (plan instanceof InsertPlan) {
         // decide the consumer by deviceId
         InsertPlan insertPlan = (InsertPlan) plan;
-        String deviceId = insertPlan.getDeviceId();
-        consumerMap.computeIfAbsent(IoTDB.metaManager.getStorageGroupName(deviceId), d -> {
+        PartialPath deviceId = insertPlan.getDeviceId();
+        consumerMap.computeIfAbsent(IoTDB.metaManager.getStorageGroupPath(deviceId), d -> {
           DataLogConsumer dataLogConsumer = new DataLogConsumer();
           consumerPool.submit(dataLogConsumer);
           return dataLogConsumer;

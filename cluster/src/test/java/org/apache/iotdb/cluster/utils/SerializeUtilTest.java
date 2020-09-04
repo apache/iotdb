@@ -33,14 +33,12 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.transport.TIOStreamTransport;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 
 public class SerializeUtilTest {
@@ -56,7 +54,8 @@ public class SerializeUtilTest {
   }
 
   @Test
-  public void testInsertTabletPlanLog() throws UnknownLogTypeException, IOException {
+  public void testInsertTabletPlanLog()
+      throws UnknownLogTypeException, IOException, IllegalPathException {
     long[] times = new long[]{110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());
@@ -76,7 +75,7 @@ public class SerializeUtilTest {
       ((boolean[]) columns[3])[r] = false;
     }
 
-    InsertTabletPlan tabletPlan = new InsertTabletPlan("root.test",
+    InsertTabletPlan tabletPlan = new InsertTabletPlan(new PartialPath("root.test"),
         new String[]{"s1", "s2", "s3", "s4"}, dataTypes);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);

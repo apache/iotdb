@@ -5,6 +5,9 @@
 **/data/**
 **/raft/**
 
+# Python runtime file
+**/__pycache__/**
+
 # Eclipse IDE files
 **/.classpath
 **/.project
@@ -92,3 +95,8 @@ remote/
 .theia/
 
 classes/
+
+### Cmake files ###
+*.cmake
+Makefile
+**/CMakeFiles/

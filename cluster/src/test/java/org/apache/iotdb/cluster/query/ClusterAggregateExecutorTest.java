@@ -28,14 +28,15 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
@@ -50,14 +51,14 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
   @Test
   public void testNoFilter()
-      throws QueryProcessException, StorageEngineException, IOException {
+      throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     AggregationPlan plan = new AggregationPlan();
-    List<Path> paths = Arrays.asList(
-        new Path(TestUtils.getTestSeries(0, 0)),
-        new Path(TestUtils.getTestSeries(0, 1)),
-        new Path(TestUtils.getTestSeries(0, 2)),
-        new Path(TestUtils.getTestSeries(0, 3)),
-        new Path(TestUtils.getTestSeries(0, 4)));
+    List<PartialPath> paths = Arrays.asList(
+        new PartialPath(TestUtils.getTestSeries(0, 0)),
+        new PartialPath(TestUtils.getTestSeries(0, 1)),
+        new PartialPath(TestUtils.getTestSeries(0, 2)),
+        new PartialPath(TestUtils.getTestSeries(0, 3)),
+        new PartialPath(TestUtils.getTestSeries(0, 4)));
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE,
         TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE);
     List<String> aggregations = Arrays.asList(SQLConstant.MIN_TIME, SQLConstant.MAX_VALUE,
@@ -85,14 +86,14 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
   @Test
   public void testFilter()
-      throws StorageEngineException, IOException, QueryProcessException {
+      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
     AggregationPlan plan = new AggregationPlan();
-    List<Path> paths = Arrays.asList(
-        new Path(TestUtils.getTestSeries(0, 0)),
-        new Path(TestUtils.getTestSeries(0, 1)),
-        new Path(TestUtils.getTestSeries(0, 2)),
-        new Path(TestUtils.getTestSeries(0, 3)),
-        new Path(TestUtils.getTestSeries(0, 4)));
+    List<PartialPath> paths = Arrays.asList(
+        new PartialPath(TestUtils.getTestSeries(0, 0)),
+        new PartialPath(TestUtils.getTestSeries(0, 1)),
+        new PartialPath(TestUtils.getTestSeries(0, 2)),
+        new PartialPath(TestUtils.getTestSeries(0, 3)),
+        new PartialPath(TestUtils.getTestSeries(0, 4)));
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE,
         TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE);
     List<String> aggregations = Arrays.asList(SQLConstant.MIN_TIME, SQLConstant.MAX_VALUE,
@@ -104,9 +105,9 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
     plan.setAggregations(aggregations);
     plan.setDeduplicatedAggregations(aggregations);
     plan.setExpression(BinaryExpression.and(
-        new SingleSeriesExpression(new Path(TestUtils.getTestSeries(0, 0)),
+        new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)),
         ValueFilter.ltEq(8.0)),
-        new SingleSeriesExpression(new Path(TestUtils.getTestSeries(0, 0)),
+        new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)),
             TimeFilter.gtEq(3))));
 
     QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));

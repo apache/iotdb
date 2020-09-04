@@ -30,14 +30,15 @@ import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.reader.EmptyReader;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.junit.Test;
@@ -45,8 +46,9 @@ import org.junit.Test;
 public class RemoteGroupByExecutorTest extends BaseQueryTest {
 
   @Test
-  public void testNoTimeFilter() throws QueryProcessException, IOException, StorageEngineException {
-    Path path = new Path(TestUtils.getTestSeries(0, 0));
+  public void testNoTimeFilter()
+      throws QueryProcessException, IOException, StorageEngineException, IllegalPathException {
+    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
@@ -96,8 +98,9 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
   }
 
   @Test
-  public void testTimeFilter() throws QueryProcessException, IOException, StorageEngineException {
-    Path path = new Path(TestUtils.getTestSeries(0, 0));
+  public void testTimeFilter()
+      throws QueryProcessException, IOException, StorageEngineException, IllegalPathException {
+    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));

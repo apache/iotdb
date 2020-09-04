@@ -43,6 +43,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
@@ -108,8 +109,10 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -138,7 +141,6 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
@@ -527,9 +529,9 @@ public class DataGroupMember extends RaftMember {
       int segSize = pathSegments.length;
       String storageGroupName = pathSegments[segSize - 3];
       try {
-        StorageEngine.getInstance().setPartitionVersionToMax(storageGroupName,
+        StorageEngine.getInstance().setPartitionVersionToMax(new PartialPath(storageGroupName),
             remoteTsFileResource.getTimePartition(), remoteTsFileResource.getMaxVersion());
-      } catch (StorageEngineException e) {
+      } catch (StorageEngineException | IllegalPathException e) {
         throw new SnapshotApplicationException(e);
       }
     }
@@ -547,8 +549,12 @@ public class DataGroupMember extends RaftMember {
     List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
     // pull file
     for (RemoteTsFileResource resource : remoteTsFileResources) {
-      if (!isFileAlreadyPulled(resource)) {
-        loadRemoteFile(resource);
+      try {
+        if (!isFileAlreadyPulled(resource)) {
+          loadRemoteFile(resource);
+        }
+      } catch (IllegalPathException e) {
+        throw new PullFileException(resource.getTsFilePath(), resource.getSource(), e);
       }
     }
     // all files are loaded, the slot can be queried without accessing the previous holder
@@ -572,14 +578,14 @@ public class DataGroupMember extends RaftMember {
    * @param resource
    * @return
    */
-  private boolean isFileAlreadyPulled(RemoteTsFileResource resource) {
+  private boolean isFileAlreadyPulled(RemoteTsFileResource resource) throws IllegalPathException {
     String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
     // <storageGroupName>/<partitionNum>/<fileName>
     String storageGroupName = pathSegments[segSize - 3];
     long partitionNumber = Long.parseLong(pathSegments[segSize - 2]);
     return StorageEngine.getInstance()
-        .isFileAlreadyExist(resource, storageGroupName, partitionNumber);
+        .isFileAlreadyExist(resource, new PartialPath(storageGroupName), partitionNumber);
   }
 
   /**
@@ -631,6 +637,8 @@ public class DataGroupMember extends RaftMember {
         return;
       } catch (IOException e) {
         logger.error("{}: Cannot serialize {}", name, resource, e);
+      } catch (IllegalPathException e) {
+        logger.error("Illegal path when loading file {}", resource, e);
       }
     }
     logger.error("{}: Cannot load remote file {} from node {}", name, resource, sourceNode);
@@ -644,12 +652,12 @@ public class DataGroupMember extends RaftMember {
    *
    * @param resource
    */
-  private void loadRemoteResource(RemoteTsFileResource resource) {
+  private void loadRemoteResource(RemoteTsFileResource resource) throws IllegalPathException {
     // the new file is stored at:
     // remote/<nodeIdentifier>/<storageGroupName>/<partitionNum>/<fileName>
     String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
-    String storageGroupName = pathSegments[segSize - 3];
+    PartialPath storageGroupName = new PartialPath(pathSegments[segSize - 3]);
     File remoteModFile =
         new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
     try {
@@ -1038,7 +1046,7 @@ public class DataGroupMember extends RaftMember {
       return false;
     }
 
-    Map<Path, List<Pair<Long, Boolean>>> localDataMemberStorageGroupPartitions = new HashMap<>();
+    Map<PartialPath, List<Pair<Long, Boolean>>> localDataMemberStorageGroupPartitions = new HashMap<>();
     for (Entry<String, List<Pair<Long, Boolean>>> entry : storageGroupPartitions.entrySet()) {
       List<Pair<Long, Boolean>> localListPair = new ArrayList<>();
 
@@ -1053,7 +1061,11 @@ public class DataGroupMember extends RaftMember {
           localListPair.add(new Pair<Long, Boolean>(partitionId, pair.right));
         }
       }
-      localDataMemberStorageGroupPartitions.put(new Path(storageGroupName), localListPair);
+      try {
+        localDataMemberStorageGroupPartitions.put(new PartialPath(storageGroupName), localListPair);
+      } catch (IllegalPathException e) {
+        // ignore
+      }
     }
 
     if (localDataMemberStorageGroupPartitions.size() <= 0) {
@@ -1162,7 +1174,7 @@ public class DataGroupMember extends RaftMember {
    * @param request
    */
   public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request)
-      throws CheckConsistencyException {
+      throws CheckConsistencyException, IllegalPathException {
     // try to synchronize with the leader first in case that some schema logs are accepted but
     // not committed yet
     syncLeaderWithConsistencyCheck();
@@ -1172,7 +1184,7 @@ public class DataGroupMember extends RaftMember {
     List<String> prefixPaths = request.getPrefixPaths();
     List<MeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String prefixPath : prefixPaths) {
-      IoTDB.metaManager.collectSeries(prefixPath, measurementSchemas);
+      IoTDB.metaManager.collectSeries(new PartialPath(prefixPath), measurementSchemas);
     }
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Collected {} schemas for {} and other {} paths", name,
@@ -1207,7 +1219,7 @@ public class DataGroupMember extends RaftMember {
    * @return
    * @throws StorageEngineException
    */
-  IPointReader getSeriesPointReader(Path path, Set<String> allSensors, TSDataType dataType,
+  IPointReader getSeriesPointReader(PartialPath path, Set<String> allSensors, TSDataType dataType,
       Filter timeFilter,
       Filter valueFilter, QueryContext context)
       throws StorageEngineException, QueryProcessException {
@@ -1235,7 +1247,7 @@ public class DataGroupMember extends RaftMember {
    * @return an IBatchReader or null if there is no satisfying data
    * @throws StorageEngineException
    */
-  private IBatchReader getSeriesBatchReader(Path path, Set<String> allSensors, TSDataType dataType,
+  private IBatchReader getSeriesBatchReader(PartialPath path, Set<String> allSensors, TSDataType dataType,
       Filter timeFilter,
       Filter valueFilter, QueryContext context)
       throws StorageEngineException, QueryProcessException {
@@ -1266,7 +1278,7 @@ public class DataGroupMember extends RaftMember {
    * @return
    * @throws StorageEngineException
    */
-  private SeriesReader getSeriesReader(Path path, Set<String> allSensors, TSDataType
+  private SeriesReader getSeriesReader(PartialPath path, Set<String> allSensors, TSDataType
       dataType,
       Filter timeFilter,
       Filter valueFilter, QueryContext context)
@@ -1290,7 +1302,7 @@ public class DataGroupMember extends RaftMember {
    * @return an IReaderByTimestamp or null if there is no satisfying data
    * @throws StorageEngineException
    */
-  IReaderByTimestamp getReaderByTimestamp(Path path, Set<String> allSensors, TSDataType
+  IReaderByTimestamp getReaderByTimestamp(PartialPath path, Set<String> allSensors, TSDataType
       dataType,
       QueryContext context)
       throws StorageEngineException, QueryProcessException {
@@ -1322,7 +1334,12 @@ public class DataGroupMember extends RaftMember {
         request.getPath(), request.getQueryId());
     syncLeaderWithConsistencyCheck();
 
-    Path path = new Path(request.getPath());
+    PartialPath path = null;
+    try {
+      path = new PartialPath(request.getPath());
+    } catch (IllegalPathException e) {
+      // ignore
+    }
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     Filter valueFilter = null;
@@ -1376,7 +1393,12 @@ public class DataGroupMember extends RaftMember {
             request.getPath(), request.getQueryId());
     syncLeaderWithConsistencyCheck();
 
-    Path path = new Path(request.getPath());
+    PartialPath path = null;
+    try {
+      path = new PartialPath(request.getPath());
+    } catch (IllegalPathException e) {
+      // ignore
+    }
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
@@ -1472,7 +1494,8 @@ public class DataGroupMember extends RaftMember {
   public List<String> getAllPaths(List<String> paths) throws MetadataException {
     List<String> ret = new ArrayList<>();
     for (String path : paths) {
-      ret.addAll(IoTDB.metaManager.getAllTimeseriesName(path));
+      IoTDB.metaManager.getAllTimeseriesPath(
+          new PartialPath(path)).stream().map(PartialPath::getFullPath).forEach(ret::add);
     }
     return ret;
   }
@@ -1485,7 +1508,8 @@ public class DataGroupMember extends RaftMember {
   public Set<String> getAllDevices(List<String> paths) throws MetadataException {
     Set<String> results = new HashSet<>();
     for (String path : paths) {
-      results.addAll(IoTDB.metaManager.getDevices(path));
+      IoTDB.metaManager.getAllTimeseriesPath(
+          new PartialPath(path)).stream().map(PartialPath::getFullPath).forEach(results::add);
     }
     return results;
   }
@@ -1500,14 +1524,14 @@ public class DataGroupMember extends RaftMember {
     }
 
     Set<Integer> slotSet = new HashSet<>(slots);
-    List<String> allStorageGroupNames = IoTDB.metaManager.getAllStorageGroupNames();
+    List<PartialPath> allStorageGroupNames = IoTDB.metaManager.getAllStorageGroupPaths();
     TimePartitionFilter filter = (storageGroupName, timePartitionId) -> {
       int slot = SlotPartitionTable
           .slotStrategy.calculateSlotByPartitionNum(storageGroupName, timePartitionId,
               ClusterConstant.SLOT_NUM);
       return slotSet.contains(slot);
     };
-    for (String sg : allStorageGroupNames) {
+    for (PartialPath sg : allStorageGroupNames) {
       try {
         StorageEngine.getInstance().removePartitions(sg, filter);
       } catch (StorageEngineException e) {
@@ -1587,13 +1611,14 @@ public class DataGroupMember extends RaftMember {
   public List<String> getNodeList(String path, int nodeLevel)
       throws CheckConsistencyException, MetadataException {
     syncLeaderWithConsistencyCheck();
-    return IoTDB.metaManager.getNodesList(path, nodeLevel);
+    return IoTDB.metaManager.getNodesList(new PartialPath(path), nodeLevel).stream().map(PartialPath::getFullPath).collect(
+        Collectors.toList());
   }
 
   public Set<String> getChildNodePathInNextLevel(String path)
       throws CheckConsistencyException, MetadataException {
     syncLeaderWithConsistencyCheck();
-    return IoTDB.metaManager.getChildNodePathInNextLevel(path);
+    return IoTDB.metaManager.getChildNodePathInNextLevel(new PartialPath(path));
   }
 
   public ByteBuffer getAllMeasurementSchema(ByteBuffer planBuffer)
@@ -1669,7 +1694,7 @@ public class DataGroupMember extends RaftMember {
     List<String> result = new ArrayList<>();
     for (String seriesPath : timeseriesList) {
       try {
-        List<String> path = IoTDB.metaManager.getAllTimeseriesName(seriesPath);
+        List<PartialPath> path = IoTDB.metaManager.getAllTimeseriesPath(new PartialPath(seriesPath));
         if (path.size() != 1) {
           throw new MetadataException(
               String.format("Timeseries number of the name [%s] is not 1.", seriesPath));
@@ -1712,8 +1737,12 @@ public class DataGroupMember extends RaftMember {
     }
     List<Integer> nodeSlots =
         ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(getHeader());
-    AggregationExecutor.aggregateOneSeries(new Path(path), allSensors, context, timeFilter,
-        dataType, results, new SlotTsFileFilter(nodeSlots));
+    try {
+      AggregationExecutor.aggregateOneSeries(new PartialPath(path), allSensors, context, timeFilter,
+          dataType, results, new SlotTsFileFilter(nodeSlots));
+    } catch (IllegalPathException e) {
+      //ignore
+    }
     return results;
   }
 
@@ -1739,7 +1768,7 @@ public class DataGroupMember extends RaftMember {
    * @return
    * @throws StorageEngineException
    */
-  public LocalGroupByExecutor getGroupByExecutor(Path path,
+  public LocalGroupByExecutor getGroupByExecutor(PartialPath path,
       Set<String> deviceMeasurements, TSDataType dataType,
       Filter timeFilter,
       List<Integer> aggregationTypes, QueryContext context)
@@ -1754,8 +1783,8 @@ public class DataGroupMember extends RaftMember {
     ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
     List<Integer> nodeSlots = ((SlotPartitionTable) metaGroupMember.getPartitionTable())
         .getNodeSlots(getHeader());
-    LocalGroupByExecutor executor = new LocalGroupByExecutor(path, deviceMeasurements,
-        dataType
+    LocalGroupByExecutor executor = new LocalGroupByExecutor(path,
+        deviceMeasurements, dataType
         , context, timeFilter, new SlotTsFileFilter(nodeSlots));
     for (Integer aggregationType : aggregationTypes) {
       executor.addAggregateResult(AggregateResultFactory
@@ -1774,7 +1803,12 @@ public class DataGroupMember extends RaftMember {
    */
   public long getGroupByExecutor(GroupByRequest request)
       throws QueryProcessException, StorageEngineException {
-    Path path = new Path(request.getPath());
+    PartialPath path;
+    try {
+      path = new PartialPath(request.getPath());
+    } catch (IllegalPathException e) {
+      throw new QueryProcessException(e);
+    }
     List<Integer> aggregationTypeOrdinals = request.getAggregationTypeOrdinals();
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
@@ -1835,8 +1869,8 @@ public class DataGroupMember extends RaftMember {
   }
 
   public ByteBuffer previousFill(PreviousFillRequest request)
-      throws QueryProcessException, StorageEngineException, IOException {
-    Path path = new Path(request.getPath());
+      throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
+    PartialPath path = new PartialPath(request.getPath());
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     long queryId = request.getQueryId();
     long queryTime = request.getQueryTime();
@@ -1867,7 +1901,7 @@ public class DataGroupMember extends RaftMember {
    * @throws StorageEngineException
    * @throws IOException
    */
-  TimeValuePair localPreviousFill(Path path, TSDataType dataType, long queryTime,
+  TimeValuePair localPreviousFill(PartialPath path, TSDataType dataType, long queryTime,
       long beforeRange, Set<String> deviceMeasurements, QueryContext context)
       throws QueryProcessException, StorageEngineException, IOException {
     try {
@@ -1882,12 +1916,12 @@ public class DataGroupMember extends RaftMember {
   }
 
   public ByteBuffer last(LastQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException {
+      throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException, IllegalPathException {
     syncLeaderWithConsistencyCheck();
 
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), request.getQueryId());
-    Path path = new Path(request.getPath());
+    PartialPath path = new PartialPath(request.getPath());
     ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
     TimeValuePair timeValuePair = LastQueryExecutor
         .calculateLastPairForOneSeriesLocally(path,
@@ -1906,9 +1940,9 @@ public class DataGroupMember extends RaftMember {
     int count = 0;
     for (String s : pathsToQuery) {
       if (level == -1) {
-        count += IoTDB.metaManager.getAllTimeseriesCount(s);
+        count += IoTDB.metaManager.getAllTimeseriesCount(new PartialPath(s));
       } else {
-        count += IoTDB.metaManager.getNodesCountInGivenLevel(s, level);
+        count += IoTDB.metaManager.getNodesCountInGivenLevel(new PartialPath(s), level);
       }
     }
     return count;

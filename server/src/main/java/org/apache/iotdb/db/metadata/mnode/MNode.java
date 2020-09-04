@@ -24,6 +24,8 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -33,6 +35,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.rescon.CachedStringPool;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -49,20 +53,16 @@ public class MNode implements Serializable {
 
   protected MNode parent;
 
+  private static Map<String, String> cachedPathPool = CachedStringPool.getInstance().getCachedPool();
+
   /**
    * from root to this node, only be set when used once for InternalMNode
    */
   protected String fullPath;
 
-  /**
-   * IMPORTANT, the children should be thread-safe
-   */
-  transient Map<String, MNode> children;
 
-  /**
-   * IMPORTANT, the aliasChildren should be thread-safe
-   */
-  transient Map<String, MNode> aliasChildren;
+  transient Map<String, MNode> children = null;
+  private transient Map<String, MNode> aliasChildren = null;
 
   protected transient ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -165,11 +165,27 @@ public class MNode implements Serializable {
    * get full path
    */
   public String getFullPath() {
-    if (fullPath != null) {
-      return fullPath;
+    if (fullPath == null) {
+      fullPath = concatFullPath();
+      String cachedFullPath = cachedPathPool.get(fullPath);
+      if (cachedFullPath == null) {
+        cachedPathPool.put(fullPath, fullPath);
+      } else {
+        fullPath = cachedFullPath;
+      }
     }
-    fullPath = concatFullPath();
     return fullPath;
+  }
+
+  public PartialPath getPartialPath() {
+    List<String> detachedPath = new ArrayList<>();
+    MNode temp = this;
+    detachedPath.add(temp.getName());
+    while (temp.getParent() != null) {
+      temp = temp.getParent();
+      detachedPath.add(0, temp.getName());
+    }
+    return new PartialPath(detachedPath.toArray(new String[0]));
   }
 
   String concatFullPath() {
@@ -217,10 +233,9 @@ public class MNode implements Serializable {
   public void serializeTo(BufferedWriter bw) throws IOException {
     serializeChildren(bw);
 
-    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.MNODE_TYPE));
-    s.append(",").append(name).append(",");
-    s.append(children == null ? "0" : children.size());
-    bw.write(s.toString());
+    String s = String.valueOf(MetadataConstant.MNODE_TYPE) + "," + name + ","
+        + (children == null ? "0" : children.size());
+    bw.write(s);
     bw.newLine();
   }
 

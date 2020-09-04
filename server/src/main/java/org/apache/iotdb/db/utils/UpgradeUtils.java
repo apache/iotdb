@@ -80,7 +80,7 @@ public class UpgradeUtils {
    * Since one old TsFile may be upgraded to multiple upgraded files, 
    * this method is for getting the name of one of the upgraded file. 
    * 
-   * @param old TsFile resource to be upgraded
+   * @param upgradeResource TsFile resource to be upgraded
    * @return name of upgraded file
    * 
    */
@@ -93,6 +93,7 @@ public class UpgradeUtils {
         + File.separator + firstPartitionId + File.separator+ oldTsFile.getName();
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void recoverUpgrade() {
     if (FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath()).exists()) {
       try (BufferedReader upgradeLogReader = new BufferedReader(

@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
@@ -426,4 +427,8 @@ public abstract class Statistics<T> {
     return o != null && getClass() == o.getClass();
   }
 
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), count, startTime, endTime);
+  }
 }

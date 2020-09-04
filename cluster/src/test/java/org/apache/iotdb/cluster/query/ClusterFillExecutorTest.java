@@ -28,7 +28,9 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.fill.ClusterFillExecutor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -36,17 +38,17 @@ import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.Test;
 
 public class ClusterFillExecutorTest extends BaseQueryTest {
 
   @Test
-  public void testPreviousFill() throws QueryProcessException, StorageEngineException, IOException {
+  public void testPreviousFill()
+      throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
     plan.setDeduplicatedPaths(Collections.singletonList(
-        new Path(TestUtils.getTestSeries(0, 10))));
+        new PartialPath(TestUtils.getTestSeries(0, 10))));
     plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
     plan.setPaths(plan.getDeduplicatedPaths());
     plan.setDataTypes(plan.getDeduplicatedDataTypes());
@@ -76,10 +78,11 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
   }
 
   @Test
-  public void testLinearFill() throws QueryProcessException, StorageEngineException, IOException {
+  public void testLinearFill()
+      throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
     plan.setDeduplicatedPaths(Collections.singletonList(
-        new Path(TestUtils.getTestSeries(0, 10))));
+        new PartialPath(TestUtils.getTestSeries(0, 10))));
     plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
     plan.setPaths(plan.getDeduplicatedPaths());
     plan.setDataTypes(plan.getDeduplicatedDataTypes());

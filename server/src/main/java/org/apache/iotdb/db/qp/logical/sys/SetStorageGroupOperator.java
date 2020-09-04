@@ -18,23 +18,23 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class SetStorageGroupOperator extends RootOperator {
 
-  private Path path;
+  private PartialPath path;
   
   public SetStorageGroupOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.SET_STORAGE_GROUP;
   }
   
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
   
-  public void setPath(Path path) {
+  public void setPath(PartialPath path) {
     this.path = path;
   }
 

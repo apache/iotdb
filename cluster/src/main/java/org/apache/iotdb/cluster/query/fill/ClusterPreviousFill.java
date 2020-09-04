@@ -22,11 +22,11 @@ package org.apache.iotdb.cluster.query.fill;
 import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +42,8 @@ public class ClusterPreviousFill extends PreviousFill {
   }
 
   @Override
-  public void configureFill(Path path, TSDataType dataType, long queryTime, Set<String> deviceMeasurements,
+  public void configureFill(PartialPath path, TSDataType dataType, long queryTime,
+      Set<String> deviceMeasurements,
       QueryContext context)  {
     try {
       fillResult = metaGroupMember.performPreviousFill(path, dataType, queryTime, getBeforeRange(),

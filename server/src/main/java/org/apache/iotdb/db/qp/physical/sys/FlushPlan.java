@@ -27,18 +27,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FlushPlan extends PhysicalPlan {
 
+  private static final Logger logger = LoggerFactory.getLogger(FlushPlan.class);
   /**
    * key-> storage group, value->list of pair, Pair<PartitionId, isSequence>
    */
-  private Map<Path, List<Pair<Long, Boolean>>> storageGroupPartitionIds;
+  private Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds;
 
   private Boolean isSeq;
 
@@ -51,13 +55,13 @@ public class FlushPlan extends PhysicalPlan {
     super(false, OperatorType.FLUSH);
   }
 
-  public FlushPlan(Boolean isSeq, List<Path> storageGroups) {
+  public FlushPlan(Boolean isSeq, List<PartialPath> storageGroups) {
     super(false, OperatorType.FLUSH);
     if (storageGroups == null) {
       this.storageGroupPartitionIds = null;
     } else {
       this.storageGroupPartitionIds = new ConcurrentHashMap<>();
-      for (Path path : storageGroups) {
+      for (PartialPath path : storageGroups) {
         this.storageGroupPartitionIds.put(path, null);
       }
     }
@@ -66,7 +70,7 @@ public class FlushPlan extends PhysicalPlan {
   }
 
   public FlushPlan(Boolean isSeq, boolean isSync,
-      Map<Path, List<Pair<Long, Boolean>>> storageGroupPartitionIds) {
+      Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds) {
     super(false, OperatorType.FLUSH);
     this.storageGroupPartitionIds = storageGroupPartitionIds;
     this.isSeq = isSeq;
@@ -82,12 +86,12 @@ public class FlushPlan extends PhysicalPlan {
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     if (storageGroupPartitionIds == null) {
       return null;
     }
-    List<Path> ret = new ArrayList<>();
-    for (Entry<Path, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds.entrySet()) {
+    List<PartialPath> ret = new ArrayList<>();
+    for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds.entrySet()) {
       ret.add(entry.getKey());
     }
     return ret;
@@ -96,13 +100,13 @@ public class FlushPlan extends PhysicalPlan {
   @Override
   public List<String> getPathsStrings() {
     List<String> ret = new ArrayList<>();
-    for (Entry<Path, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds.entrySet()) {
+    for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds.entrySet()) {
       ret.add(entry.getKey().getFullPath());
     }
     return ret;
   }
 
-  public Map<Path, List<Pair<Long, Boolean>>> getStorageGroupPartitionIds() {
+  public Map<PartialPath, List<Pair<Long, Boolean>>> getStorageGroupPartitionIds() {
     return storageGroupPartitionIds;
   }
 
@@ -117,7 +121,7 @@ public class FlushPlan extends PhysicalPlan {
     } else {
       stream.write((byte) 1);
       stream.writeInt(storageGroupPartitionIds.size());
-      for (Entry<Path, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds.entrySet()) {
+      for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey().getFullPath(), stream);
         if (entry.getValue() == null) {
           // null value
@@ -147,7 +151,7 @@ public class FlushPlan extends PhysicalPlan {
       // null value
       buffer.put((byte) 1);
       buffer.putInt(storageGroupPartitionIds.size());
-      for (Entry<Path, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds.entrySet()) {
+      for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey().getFullPath(), buffer);
         if (entry.getValue() == null) {
           // null value
@@ -175,7 +179,12 @@ public class FlushPlan extends PhysicalPlan {
       int storageGroupsMapSize = buffer.getInt();
       this.storageGroupPartitionIds = new HashMap<>(storageGroupsMapSize);
       for (int i = 0; i < storageGroupsMapSize; i++) {
-        Path tmpPath = new Path(ReadWriteIOUtils.readString(buffer));
+        PartialPath tmpPath = null;
+        try {
+          tmpPath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+        } catch (IllegalPathException e) {
+          logger.error("Illegal path found during FlushPlan serialization:", e);
+        }
         flag = buffer.get();
         if (flag == 0) {
           storageGroupPartitionIds.put(tmpPath, null);
@@ -202,4 +211,5 @@ public class FlushPlan extends PhysicalPlan {
         + ", isSync=" + isSync
         + "}";
   }
+
 }

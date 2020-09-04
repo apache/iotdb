@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
@@ -112,13 +113,13 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
   private void collectTsFiles() throws IOException {
     slotSnapshots.clear();
-    Map<String, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
+    Map<PartialPath, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
         .getInstance().getAllClosedStorageGroupTsFile();
     List<TsFileResource> createdHardlinks = new ArrayList<>();
     // group the TsFiles by their slots
-    for (Entry<String, Map<Long, List<TsFileResource>>> entry :
+    for (Entry<PartialPath, Map<Long, List<TsFileResource>>> entry :
         allClosedStorageGroupTsFile.entrySet()) {
-      String storageGroupName = entry.getKey();
+      PartialPath storageGroupName = entry.getKey();
       Map<Long, List<TsFileResource>> storageGroupsFiles = entry.getValue();
       for (Entry<Long, List<TsFileResource>> storageGroupFiles : storageGroupsFiles.entrySet()) {
         Long partitionNum = storageGroupFiles.getKey();
@@ -148,8 +149,8 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
    * @throws IOException
    */
   private boolean collectTsFiles(Long partitionNum, List<TsFileResource> resourceList,
-      String storageGroupName, List<TsFileResource> createdHardlinks) throws IOException {
-    int slotNum = SlotPartitionTable.slotStrategy.calculateSlotByPartitionNum(storageGroupName,
+      PartialPath storageGroupName, List<TsFileResource> createdHardlinks) throws IOException {
+    int slotNum = SlotPartitionTable.slotStrategy.calculateSlotByPartitionNum(storageGroupName.getFullPath(),
         partitionNum, ((SlotPartitionTable) partitionTable).getTotalSlotNumbers());
     FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
         s -> new FileSnapshot());

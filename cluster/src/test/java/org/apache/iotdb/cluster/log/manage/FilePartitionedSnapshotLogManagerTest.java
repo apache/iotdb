@@ -38,9 +38,9 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Test;
@@ -66,11 +66,11 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
       manager.commitTo(10, false);
       manager.setMaxHaveAppliedCommitIndex(manager.getCommitLogIndex());
 
-      Map<Path, List<Pair<Long, Boolean>>> storageGroupPartitionIds = new HashMap<>();
+      Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds = new HashMap<>();
       // create files for sgs
       for (int i = 1; i < 4; i++) {
-        String sg = TestUtils.getTestSg(i);
-        storageGroupPartitionIds.put(new Path(sg), null);
+        PartialPath sg = new PartialPath(TestUtils.getTestSg(i));
+        storageGroupPartitionIds.put(sg, null);
         for (int j = 0; j < 4; j++) {
           // closed files
           prepareData(i, j * 10, 10);

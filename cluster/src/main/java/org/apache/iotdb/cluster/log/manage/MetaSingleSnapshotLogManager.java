@@ -31,6 +31,7 @@ import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,7 @@ import org.slf4j.LoggerFactory;
 public class MetaSingleSnapshotLogManager extends RaftLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaSingleSnapshotLogManager.class);
-  private Map<String, Long> storageGroupTTLMap;
+  private Map<PartialPath, Long> storageGroupTTLMap;
   private Map<String, User> userMap;
   private Map<String, Role> roleMap;
   private MetaGroupMember metaGroupMember;
