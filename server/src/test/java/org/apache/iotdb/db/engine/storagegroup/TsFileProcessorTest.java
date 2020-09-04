@@ -59,7 +59,7 @@ public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
   private String storageGroup = "storage_group1";
-  private StorageGroupInfo sgInfo = new StorageGroupInfo();
+  private StorageGroupInfo sgInfo = new StorageGroupInfo(null);
   private String filePath = TestConstant.OUTPUT_DATA_DIR
       .concat("testUnsealedTsFileProcessor.tsfile");
   private String deviceId = "root.vehicle.d0";

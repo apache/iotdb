@@ -29,6 +29,7 @@ import org.apache.iotdb.db.rescon.SystemInfo;
  */
 public class StorageGroupInfo {
 
+  private StorageGroupProcessor storageGroupProcessor;
   /**
    * Report the SG memory cost to SystemInfo if the memory cost increasing more
    * than this threshold.
@@ -60,13 +61,18 @@ public class StorageGroupInfo {
    */
   private Set<TsFileProcessor> reportedTsps = new HashSet<>();
 
-  public StorageGroupInfo() {
+  public StorageGroupInfo(StorageGroupProcessor storageGroupProcessor) {
+    this.storageGroupProcessor = storageGroupProcessor;
     storageGroupReportThreshold = IoTDBDescriptor.getInstance().getConfig()
         .getStorageGroupMemBlockSize();
     unsealedResourceMemCost = 0;
     bytesMemCost = 0;
     chunkMetadataMemCost = 0;
     walMemCost = 0;
+  }
+
+  public StorageGroupProcessor getStorageGroupProcessor() {
+    return storageGroupProcessor;
   }
 
   /**

@@ -41,10 +41,10 @@ public interface TsFileFlushPolicy {
     public void apply(StorageGroupProcessor storageGroupProcessor, TsFileProcessor tsFileProcessor,
         boolean isSeq) {
       if (tsFileProcessor.shouldClose()) {
-        storageGroupProcessor.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor, false);
+        storageGroupProcessor.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
         logger.info("Async close tsfile: {}",
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
-      } else if (tsFileProcessor.shouldFlush()) {
+      } else {
         tsFileProcessor.asyncFlush();
         logger.info("Async flush a memtable to tsfile: {}",
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());

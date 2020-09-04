@@ -376,13 +376,13 @@ public class StorageEngine implements IService {
           // to avoid concurrent modification problem, we need a new array list
           for (TsFileProcessor tsfileProcessor : new ArrayList<>(
               processor.getWorkSequenceTsFileProcessors())) {
-            processor.asyncCloseOneTsFileProcessor(true, tsfileProcessor, true);
+            processor.asyncCloseOneTsFileProcessor(true, tsfileProcessor);
           }
         } else {
           // to avoid concurrent modification problem, we need a new array list
           for (TsFileProcessor tsfileProcessor : new ArrayList<>(
               processor.getWorkUnsequenceTsFileProcessors())) {
-            processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor, true);
+            processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
           }
         }
       } finally {
@@ -407,7 +407,7 @@ public class StorageEngine implements IService {
       try {
         for (TsFileProcessor tsfileProcessor : processors) {
           if (tsfileProcessor.getTimeRangeId() == partitionId) {
-            processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor, true);
+            processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
             break;
           }
         }

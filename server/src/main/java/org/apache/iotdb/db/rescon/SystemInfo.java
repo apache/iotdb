@@ -132,7 +132,7 @@ public class SystemInfo {
    */
   public synchronized void reportIncreasingArraySize(int increasingArraySize) {
     this.arrayPoolMemCost += increasingArraySize;
-    logger.debug("Report Array Pool size to system. "
+    logger.info("Report Array Pool size to system. "
         + "Current total array pool mem cost is {}, sg mem cost is {}.",
         arrayPoolMemCost, totalSgMemCost);
   }
@@ -194,8 +194,15 @@ public class SystemInfo {
     // get the tsFile processor which has the max work MemTable size
     TsFileProcessor processor = getLargestTsFileProcessor();
 
-    if (processor != null) {
-      processor.asyncFlush();
+    if (processor != null && processor.getWorkMemTableSize() != 0) {
+      logger.info("Current buffed array size {}, OOB size {}", PrimitiveArrayManager.getBufferedArraysSize(),
+          PrimitiveArrayManager.getOOBSize());
+      if (processor.shouldClose()) {
+        processor.startClose();
+      }
+      else {
+        processor.asyncFlush();
+      }
     }
   }
 

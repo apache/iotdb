@@ -272,8 +272,6 @@ public class PrimitiveArrayManager {
               dataType, replacedDataType);
         }
         bringBackBufferedArray(dataType, dataArray);
-        bufferedArraysSize.addAndGet(
-            ARRAY_SIZE * (dataType.getDataTypeSize() - replacedDataType.getDataTypeSize()));
       } else {
         // or else bring back the original array as OOB array
         bringBackOOBArray(dataType, ARRAY_SIZE);
@@ -306,6 +304,7 @@ public class PrimitiveArrayManager {
       bufferedArraysMap.get(dataType).add(dataArray);
       bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
     }
+    bufferedArraysSize.addAndGet(-ARRAY_SIZE * dataType.getDataTypeSize());
   }
 
   /**
@@ -351,6 +350,14 @@ public class PrimitiveArrayManager {
     }
     return total != 0 && bufferedArraysNumMap.getOrDefault(dataType, 0) / total >
         bufferedArraysNumRatio.getOrDefault(dataType, 0.0);
+  }
+
+  public static int getBufferedArraysSize() {
+    return bufferedArraysSize.get();
+  }
+
+  public static int getOOBSize() {
+    return outOfBufferArraysSize.get();
   }
 
   public static void close() {

@@ -70,6 +70,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -498,7 +499,7 @@ public class TsFileProcessor {
     }
     synchronized (flushingMemTables) {
       try {
-        asyncClose(true);
+        asyncClose();
         long startTime = System.currentTimeMillis();
         while (!flushingMemTables.isEmpty()) {
           flushingMemTables.wait(60_000);
@@ -524,7 +525,7 @@ public class TsFileProcessor {
   }
 
 
-  void asyncClose(boolean flushNow) {
+  void asyncClose() {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
       logger
@@ -566,9 +567,7 @@ public class TsFileProcessor {
       try {
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
-        if (flushNow) {
-          addAMemtableIntoFlushingList(tmpMemTable);
-        }
+        addAMemtableIntoFlushingList(tmpMemTable);
         shouldClose = true;
         tsFileResource.setCloseFlag();
       } catch (Exception e) {
@@ -717,8 +716,9 @@ public class TsFileProcessor {
       logger.debug("before release a memtable, current Array cost {}, sg cost {}",
           SystemInfo.getInstance().getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
       memTable.release();
-      logger.debug("after release a memtable, current Array cost {}, sg cost {}",
-          SystemInfo.getInstance().getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
+      logger.debug("after release a memtable, current Buffered Array cost {}, oob {}, sg cost {}",
+          PrimitiveArrayManager.getBufferedArraysSize(), PrimitiveArrayManager.getOOBSize(), 
+          SystemInfo.getInstance().getTotalSgMemCost());
       if (tsFileProcessorInfo.getBytesMemCost() > 0) {
         // For text type data, reset the mem cost in tsFileProcessorInfo
         tsFileProcessorInfo.clearBytesMemCost();
@@ -1290,6 +1290,16 @@ public class TsFileProcessor {
 
   public long getWorkMemTableSize() {
     return workMemTable != null ? workMemTable.memSize() : 0;
+  }
+
+  public boolean isSequence() {
+    return sequence;
+  }
+
+  public void startClose() {
+    storageGroupInfo.getStorageGroupProcessor().asyncCloseOneTsFileProcessor(sequence, this);
+    logger.info("Async close tsfile: {}",
+        getTsFileResource().getTsFile().getAbsolutePath());
   }
 
   class VmMergeTask implements Runnable {

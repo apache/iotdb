@@ -260,7 +260,7 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
 
-  private StorageGroupInfo storageGroupInfo = new StorageGroupInfo();
+  private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
 
   public StorageGroupProcessor(String systemDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
@@ -900,7 +900,9 @@ public class StorageGroupProcessor {
     }
 
     // check memtable size and may async try to flush the work memtable
-    fileFlushPolicy.apply(this, tsFileProcessor, sequence);
+    if (tsFileProcessor.shouldFlush()) {
+      fileFlushPolicy.apply(this, tsFileProcessor, sequence);
+    }
     return true;
   }
 
@@ -957,7 +959,9 @@ public class StorageGroupProcessor {
     tryToUpdateInsertLastCache(insertRowPlan, globalLatestFlushTime);
 
     // check memtable size and may asyncTryToFlush the work memtable
-    fileFlushPolicy.apply(this, tsFileProcessor, sequence);
+    if (tsFileProcessor.shouldFlush()) {
+      fileFlushPolicy.apply(this, tsFileProcessor, sequence);
+    }
   }
 
   private void tryToUpdateInsertLastCache(InsertRowPlan plan, Long latestFlushedTime) {
@@ -1040,7 +1044,7 @@ public class StorageGroupProcessor {
               sequence, tsFileProcessorTreeMap.size(),
               IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition(),
               storageGroupName);
-          asyncCloseOneTsFileProcessor(sequence, processorEntry.getValue(), true);
+          asyncCloseOneTsFileProcessor(sequence, processorEntry.getValue());
         }
 
         // build new processor
@@ -1115,14 +1119,13 @@ public class StorageGroupProcessor {
   /**
    * thread-safety should be ensured by caller
    */
-  public void asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor,
-      boolean flushMemTableNow) {
+  public void asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
     //for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     //for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
       updateEndTimeMap(tsFileProcessor);
-      tsFileProcessor.asyncClose(flushMemTableNow);
+      tsFileProcessor.asyncClose();
 
       workSequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
       // if unsequence files don't contain this time range id, we should remove it's version controller
@@ -1132,7 +1135,7 @@ public class StorageGroupProcessor {
       logger.info("close a sequence tsfile processor {}", storageGroupName);
     } else {
       closingUnSequenceTsFileProcessor.add(tsFileProcessor);
-      tsFileProcessor.asyncClose(flushMemTableNow);
+      tsFileProcessor.asyncClose();
 
       workUnsequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
       // if sequence files don't contain this time range id, we should remove it's version controller
@@ -1317,12 +1320,12 @@ public class StorageGroupProcessor {
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor : new ArrayList<>(
           workSequenceTsFileProcessors.values())) {
-        asyncCloseOneTsFileProcessor(true, tsFileProcessor, true);
+        asyncCloseOneTsFileProcessor(true, tsFileProcessor);
       }
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor : new ArrayList<>(
           workUnsequenceTsFileProcessors.values())) {
-        asyncCloseOneTsFileProcessor(false, tsFileProcessor, true);
+        asyncCloseOneTsFileProcessor(false, tsFileProcessor);
       }
     } finally {
       writeUnlock();
