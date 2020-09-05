@@ -53,151 +53,7 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
 public class SeriesReader {
 
-  public interface TimeOrderUtils {
-
-    long getOrderTime(Statistics statistics);
-
-    long getOrderTime(TsFileResource fileResource);
-
-    long getOverlapCheckTime(Statistics range);
-
-    boolean isOverlapped(Statistics left, Statistics right);
-
-    boolean isOverlapped(long time, Statistics right);
-
-    boolean isOverlapped(long time, TsFileResource right);
-
-    TsFileResource getNextSeqFileResource(List<TsFileResource> seqResources, boolean isDelete);
-
-    <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor);
-
-    boolean isExcessEndpoint(long time, long endpointTime);
-
-    boolean getAscending();
-  }
-
-
-  class DescTimeOrderUtils implements TimeOrderUtils {
-
-    @Override
-    public long getOrderTime(Statistics statistics) {
-      return statistics.getEndTime();
-    }
-
-    @Override
-    public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getEndTime(seriesPath.getDevice());
-    }
-
-    @Override
-    public long getOverlapCheckTime(Statistics range) {
-      return range.getStartTime();
-    }
-
-    @Override
-    public boolean isOverlapped(Statistics left, Statistics right) {
-      return left.getStartTime() <= right.getEndTime();
-    }
-
-    @Override
-    public boolean isOverlapped(long time, Statistics right) {
-      return time <= right.getEndTime();
-    }
-
-    @Override
-    public boolean isOverlapped(long time, TsFileResource right) {
-      return time <= right.getStartTime(seriesPath.getDevice());
-    }
-
-    @Override
-    public TsFileResource getNextSeqFileResource(List<TsFileResource> seqResources,
-        boolean isDelete) {
-      if (isDelete) {
-        return seqResources.remove(seqResources.size() - 1);
-      }
-      return seqResources.get(seqResources.size() - 1);
-    }
-
-    @Override
-    public <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor) {
-      Objects.requireNonNull(keyExtractor);
-      return (Comparator<T> & Serializable)
-          (c1, c2) -> Long.compare(keyExtractor.applyAsLong(c2), keyExtractor.applyAsLong(c1));
-    }
-
-
-    @Override
-    public boolean isExcessEndpoint(long time, long endpointTime) {
-      return time < endpointTime;
-    }
-
-    @Override
-    public boolean getAscending() {
-      return false;
-    }
-  }
-
-
-  class AscTimeOrderUtils implements TimeOrderUtils {
-
-    @Override
-    public long getOrderTime(Statistics statistics) {
-      return statistics.getStartTime();
-    }
-
-    @Override
-    public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getStartTime(seriesPath.getDevice());
-    }
-
-    @Override
-    public long getOverlapCheckTime(Statistics range) {
-      return range.getEndTime();
-    }
-
-    @Override
-    public boolean isOverlapped(Statistics left, Statistics right) {
-      return left.getEndTime() >= right.getStartTime();
-    }
-
-    @Override
-    public boolean isOverlapped(long time, Statistics right) {
-      return time >= right.getStartTime();
-    }
-
-    @Override
-    public boolean isOverlapped(long time, TsFileResource right) {
-      return time >= right.getStartTime(seriesPath.getDevice());
-    }
-
-    @Override
-    public TsFileResource getNextSeqFileResource(List<TsFileResource> seqResources,
-        boolean isDelete) {
-      if (isDelete) {
-        return seqResources.remove(0);
-      }
-      return seqResources.get(0);
-    }
-
-    @Override
-    public <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor) {
-      Objects.requireNonNull(keyExtractor);
-      return (Comparator<T> & Serializable)
-          (c1, c2) -> Long.compare(keyExtractor.applyAsLong(c1), keyExtractor.applyAsLong(c2));
-    }
-
-    @Override
-    public boolean isExcessEndpoint(long time, long endpointTime) {
-      return time > endpointTime;
-    }
-
-    @Override
-    public boolean getAscending() {
-      return true;
-    }
-  }
-
-
+  // inner class of SeriesReader for order purpose
   private TimeOrderUtils orderUtils;
 
   private final PartialPath seriesPath;
@@ -934,4 +790,150 @@ public class SeriesReader {
       return data.isModified();
     }
   }
+
+
+  public interface TimeOrderUtils {
+
+    long getOrderTime(Statistics statistics);
+
+    long getOrderTime(TsFileResource fileResource);
+
+    long getOverlapCheckTime(Statistics range);
+
+    boolean isOverlapped(Statistics left, Statistics right);
+
+    boolean isOverlapped(long time, Statistics right);
+
+    boolean isOverlapped(long time, TsFileResource right);
+
+    TsFileResource getNextSeqFileResource(List<TsFileResource> seqResources, boolean isDelete);
+
+    <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor);
+
+    boolean isExcessEndpoint(long time, long endpointTime);
+
+    boolean getAscending();
+  }
+
+
+  class DescTimeOrderUtils implements TimeOrderUtils {
+
+    @Override
+    public long getOrderTime(Statistics statistics) {
+      return statistics.getEndTime();
+    }
+
+    @Override
+    public long getOrderTime(TsFileResource fileResource) {
+      return fileResource.getEndTime(seriesPath.getDevice());
+    }
+
+    @Override
+    public long getOverlapCheckTime(Statistics range) {
+      return range.getStartTime();
+    }
+
+    @Override
+    public boolean isOverlapped(Statistics left, Statistics right) {
+      return left.getStartTime() <= right.getEndTime();
+    }
+
+    @Override
+    public boolean isOverlapped(long time, Statistics right) {
+      return time <= right.getEndTime();
+    }
+
+    @Override
+    public boolean isOverlapped(long time, TsFileResource right) {
+      return time <= right.getStartTime(seriesPath.getDevice());
+    }
+
+    @Override
+    public TsFileResource getNextSeqFileResource(List<TsFileResource> seqResources,
+        boolean isDelete) {
+      if (isDelete) {
+        return seqResources.remove(seqResources.size() - 1);
+      }
+      return seqResources.get(seqResources.size() - 1);
+    }
+
+    @Override
+    public <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor) {
+      Objects.requireNonNull(keyExtractor);
+      return (Comparator<T> & Serializable)
+          (c1, c2) -> Long.compare(keyExtractor.applyAsLong(c2), keyExtractor.applyAsLong(c1));
+    }
+
+
+    @Override
+    public boolean isExcessEndpoint(long time, long endpointTime) {
+      return time < endpointTime;
+    }
+
+    @Override
+    public boolean getAscending() {
+      return false;
+    }
+  }
+
+
+  class AscTimeOrderUtils implements TimeOrderUtils {
+
+    @Override
+    public long getOrderTime(Statistics statistics) {
+      return statistics.getStartTime();
+    }
+
+    @Override
+    public long getOrderTime(TsFileResource fileResource) {
+      return fileResource.getStartTime(seriesPath.getDevice());
+    }
+
+    @Override
+    public long getOverlapCheckTime(Statistics range) {
+      return range.getEndTime();
+    }
+
+    @Override
+    public boolean isOverlapped(Statistics left, Statistics right) {
+      return left.getEndTime() >= right.getStartTime();
+    }
+
+    @Override
+    public boolean isOverlapped(long time, Statistics right) {
+      return time >= right.getStartTime();
+    }
+
+    @Override
+    public boolean isOverlapped(long time, TsFileResource right) {
+      return time >= right.getStartTime(seriesPath.getDevice());
+    }
+
+    @Override
+    public TsFileResource getNextSeqFileResource(List<TsFileResource> seqResources,
+        boolean isDelete) {
+      if (isDelete) {
+        return seqResources.remove(0);
+      }
+      return seqResources.get(0);
+    }
+
+    @Override
+    public <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor) {
+      Objects.requireNonNull(keyExtractor);
+      return (Comparator<T> & Serializable)
+          (c1, c2) -> Long.compare(keyExtractor.applyAsLong(c1), keyExtractor.applyAsLong(c2));
+    }
+
+    @Override
+    public boolean isExcessEndpoint(long time, long endpointTime) {
+      return time > endpointTime;
+    }
+
+    @Override
+    public boolean getAscending() {
+      return true;
+    }
+  }
+
 }

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.series.DescSeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
@@ -96,7 +97,9 @@ public class AggregationExecutor {
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap = groupAggregationsBySeries(selectedSeries);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
     for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-      List<AggregateResult> aggregateResults = aggregateOneSeries(entry, aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()), timeFilter, context, aggregationPlan.isAscending());
+      List<AggregateResult> aggregateResults = aggregateOneSeries(entry,
+          aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()), timeFilter,
+          context, aggregationPlan.isAscending());
       int index = 0;
       for (int i : entry.getValue()) {
         aggregateResultList[i] = aggregateResults.get(index);
@@ -295,10 +298,12 @@ public class AggregationExecutor {
 
   protected IReaderByTimestamp getReaderByTime(PartialPath path, RawDataQueryPlan queryPlan, TSDataType dataType,
       QueryContext context) throws StorageEngineException, QueryProcessException {
-    return new SeriesReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()),
-        dataType, context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null,
-        ascending);
+    return ascending ? new SeriesReaderByTimestamp(path,
+        queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null) :
+        new DescSeriesReaderByTimestamp(path,
+            queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
+            QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
   }
 
   /**

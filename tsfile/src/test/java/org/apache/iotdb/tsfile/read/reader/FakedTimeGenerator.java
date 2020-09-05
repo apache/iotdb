@@ -56,6 +56,10 @@ public class FakedTimeGenerator extends TimeGenerator {
     return new FakedMultiBatchReader(10, 10, expression.getFilter());
   }
 
+  @Override
+  protected boolean isAscending() {
+    return true;
+  }
 
   @Test
   public void testTimeGenerator() throws IOException {

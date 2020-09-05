@@ -69,7 +69,7 @@ public class SeriesReaderByTimestampTest {
 
     SeriesReaderByTimestamp seriesReader = new SeriesReaderByTimestamp(
       new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"), allSensors,
-      TSDataType.INT32, new QueryContext(), dataSource, null, true);
+      TSDataType.INT32, new QueryContext(), dataSource, null);
 
     for (int time = 0; time < 500; time++) {
       Integer value = (Integer) seriesReader.getValueInTimestamp(time);

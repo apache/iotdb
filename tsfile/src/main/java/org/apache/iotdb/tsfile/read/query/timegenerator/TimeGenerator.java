@@ -108,7 +108,5 @@ public abstract class TimeGenerator {
     return hasOrNode;
   }
 
-  protected boolean isAscending() {
-    return true;
-  }
+  protected abstract boolean isAscending();
 }

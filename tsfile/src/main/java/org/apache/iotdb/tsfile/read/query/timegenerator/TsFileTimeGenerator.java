@@ -48,4 +48,9 @@ public class TsFileTimeGenerator extends TimeGenerator {
         .getChunkMetaDataList(expression.getSeriesPath());
     return new FileSeriesReader(chunkLoader, chunkMetadataList, expression.getFilter());
   }
+
+  @Override
+  protected boolean isAscending() {
+    return true;
+  }
 }

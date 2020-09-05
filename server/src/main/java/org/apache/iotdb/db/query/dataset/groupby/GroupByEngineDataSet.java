@@ -63,17 +63,19 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.startTime = groupByTimePlan.getStartTime();
     this.endTime = groupByTimePlan.getEndTime();
     this.leftCRightO = groupByTimePlan.isLeftCRightO();
-    // init group by time partition
-    this.hasCachedTimeInterval = false;
     this.ascending = groupByTimePlan.isAscending();
-    this.curStartTime = this.startTime - slidingStep;
-    this.curEndTime = -1;
-    if (!groupByTimePlan.isAscending()) {
-      long number = endTime - startTime;
-      this.curSteps = number % slidingStep == 0 ? number / slidingStep : number / slidingStep + 1;
+    // init group by time partition
+    if (ascending) {
+      this.curStartTime = this.startTime - slidingStep;
+      this.curEndTime = -1;
+      this.hasCachedTimeInterval = false;
+    } else {
+      long queryRange = endTime - startTime;
+      this.curSteps =
+          queryRange % slidingStep == 0 ? queryRange / slidingStep : queryRange / slidingStep + 1;
       this.curStartTime = slidingStep * (curSteps - 1) + startTime;
       this.curEndTime = Math.min(curStartTime + interval, this.endTime);
-      hasCachedTimeInterval = true;
+      this.hasCachedTimeInterval = true;
     }
   }
 

@@ -84,7 +84,9 @@ public class ServerTimeGenerator extends TimeGenerator {
     // get the TimeFilter part in SingleSeriesExpression
     Filter timeFilter = getTimeFilter(valueFilter);
 
-    return new SeriesRawDataBatchReader(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource, timeFilter, valueFilter, null, queryPlan.isAscending());
+    return new SeriesRawDataBatchReader(path,
+        queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource,
+        timeFilter, valueFilter, null, queryPlan.isAscending());
   }
 
   /**

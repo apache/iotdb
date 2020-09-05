@@ -77,15 +77,15 @@ public class QueryRouter implements IQueryRouter {
     RawDataQueryExecutor rawDataQueryExecutor = getRawDataQueryExecutor(queryPlan);
 
     if (!queryPlan.isAlignByTime()) {
-      return rawDataQueryExecutor.executeNonAlign(context, queryPlan);
+      return rawDataQueryExecutor.executeNonAlign(context);
     }
 
     if (optimizedExpression != null
         && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME) {
-      return rawDataQueryExecutor.executeWithValueFilter(context, queryPlan);
+      return rawDataQueryExecutor.executeWithValueFilter(context);
 
     }
-    return rawDataQueryExecutor.executeWithoutValueFilter(context, queryPlan);
+    return rawDataQueryExecutor.executeWithoutValueFilter(context);
   }
 
   protected RawDataQueryExecutor getRawDataQueryExecutor(RawDataQueryPlan queryPlan) {

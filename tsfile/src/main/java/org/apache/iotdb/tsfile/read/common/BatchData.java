@@ -594,6 +594,10 @@ public class BatchData implements Serializable {
     return readCurArrayIndex;
   }
 
+  /**
+   * When put data, the writeIndex increases while the readIndex remains 0.
+   * For ascending read, we could read from 0 to writeIndex. So no need to flip.
+   */
   public BatchData flip() {
     return this;
   }

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.universal;
 
-import java.util.Comparator;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import java.io.IOException;
@@ -30,7 +29,8 @@ import java.util.PriorityQueue;
  */
 public class PriorityMergeReader implements IPointReader {
 
-  // largest end time of all added readers
+  // max time of all added readers in PriorityMergeReader
+  // or min time of all added readers in DescPriorityMergeReader
   protected long currentReadStopTime;
 
   protected PriorityQueue<Element> heap;
@@ -43,6 +43,7 @@ public class PriorityMergeReader implements IPointReader {
     });
   }
 
+  // only used in external sort, need to refactor later
   public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority)
       throws IOException {
     heap = new PriorityQueue<>((o1, o2) -> {

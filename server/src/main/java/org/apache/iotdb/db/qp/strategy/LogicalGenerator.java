@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
@@ -893,6 +894,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
     queryOp.setStartTime(startTime);
     queryOp.setEndTime(endTime);
+    if (startTime >= endTime) {
+      throw new SQLParserException("start time should be smaller than endTime in GroupBy");
+    }
   }
 
   @Override
