@@ -215,7 +215,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   private RowRecord constructRowRecord(List<AggregateResult> aggregateResultList) {
     RowRecord record;
-    if (leftCRightO) {
+    if (plan.isLeftCRightO()) {
       record = new RowRecord(curStartTime);
     } else {
       record = new RowRecord(curEndTime - 1);

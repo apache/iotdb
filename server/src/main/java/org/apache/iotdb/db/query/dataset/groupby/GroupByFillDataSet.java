@@ -133,7 +133,7 @@ public class GroupByFillDataSet extends QueryDataSet {
             !fillTypes.containsKey(dataTypes.get(i))
                 || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange() < 0
                 || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange()
-                >= groupByEngineDataSet.interval) && rowRecord.getTimestamp() >= previousTime[i]) {
+                >= groupByEngineDataSet.plan.getInterval()) && rowRecord.getTimestamp() >= previousTime[i]) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
         } else if (!ascending) {
           Pair<Long, Object> data = groupByEngineDataSet.peekNextNotNullValue(paths.get(i), i);
