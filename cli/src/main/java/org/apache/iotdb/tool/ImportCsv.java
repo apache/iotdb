@@ -307,7 +307,7 @@ public class ImportCsv extends AbstractCsvTool {
         ResultSet resultSet = statement.getResultSet();
         try {
           if (resultSet.next()) {
-            timeseriesDataType.put(strHeadInfo[i], resultSet.getString(2));
+            timeseriesDataType.put(strHeadInfo[i], resultSet.getString(4));
           } else {
             String errorInfo = String.format("Database cannot find %s in %s, stop import!",
                     strHeadInfo[i], file.getAbsolutePath());
@@ -378,7 +378,12 @@ public class ImportCsv extends AbstractCsvTool {
         continue;
       }
       if (timeseriesToType.get(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
-        sbd.append(", \'").append(data[colIndex.get(j) + 1]).append("\'");
+        if ((data[colIndex.get(j) + 1].startsWith("'") && data[colIndex.get(j) + 1].endsWith("'")) ||
+                (data[colIndex.get(j) + 1].startsWith("\"") && data[colIndex.get(j) + 1].endsWith("\""))) {
+          sbd.append(",").append(data[colIndex.get(j) + 1]);
+        } else {
+          sbd.append(", \'").append(data[colIndex.get(j) + 1]).append("\'");
+        }
       } else {
         sbd.append(",").append(data[colIndex.get(j) + 1]);
       }
