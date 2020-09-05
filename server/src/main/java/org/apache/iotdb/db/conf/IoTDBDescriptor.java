@@ -540,6 +540,10 @@ public class IoTDBDescriptor {
         .parseLong(properties.getProperty("force_wal_period_in_ms",
             Long.toString(conf.getForceWalPeriodInMs()))));
 
+    conf.setEnableDiscardOutOfOrderData(Boolean.parseBoolean(
+        properties.getProperty("enable_discard_out_of_order_data",
+        Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
+
   }
 
   private void loadAutoCreateSchemaProps(Properties properties) {

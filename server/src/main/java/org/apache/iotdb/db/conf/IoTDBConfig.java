@@ -145,6 +145,8 @@ public class IoTDBConfig {
 
   private volatile boolean readOnly = false;
 
+  private boolean enable_discard_out_of_order_data = false;
+
   /**
    * When a certain amount of write ahead logs is reached, they will be flushed to the disk. It is
    * possible to lose at most flush_wal_threshold operations.
@@ -856,6 +858,14 @@ public class IoTDBConfig {
 
   public void setEnableWal(boolean enableWal) {
     this.enableWal = enableWal;
+  }
+
+  public boolean isEnableDiscardOutOfOrderData() {
+    return enable_discard_out_of_order_data;
+  }
+
+  public void setEnableDiscardOutOfOrderData(boolean enable_discard_out_of_order_data) {
+    this.enable_discard_out_of_order_data =  enable_discard_out_of_order_data;
   }
 
   public int getFlushWalThreshold() {
