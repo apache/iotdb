@@ -61,7 +61,7 @@ public class PairTest {
     p2 = new Pair<String, Integer>("a", null);
     assertTrue(p1.equals(p2));
     assertTrue(p1.equals(p1));
-    assertFalse(p1.equals(new Integer(1)));
+    assertFalse(p1.equals(1));
   }
 
   @Test

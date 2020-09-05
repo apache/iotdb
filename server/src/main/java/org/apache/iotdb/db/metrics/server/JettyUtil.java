@@ -74,7 +74,7 @@ public class JettyUtil {
 
   public static ServletContextHandler createStaticHandler() {
     ServletContextHandler contextHandler = new ServletContextHandler(ServletContextHandler.SESSIONS);
-    URL res = JettyUtil.class.getClassLoader().getResource("iotdb/ui/static");
+    URL res = Thread.currentThread().getContextClassLoader().getResource("iotdb/ui/static");
     HttpServlet servlet = new DefaultServlet();
     ServletHolder holder = new ServletHolder(servlet);
     holder.setInitParameter("resourceBase", res.toString());

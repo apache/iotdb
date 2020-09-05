@@ -126,12 +126,12 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
           if (d >= 1) { //we only need the fraction digits
             d = d - (long) d;
           }
-          if (d == 0) { //nothing to count
+          if (Double.compare(d, 0d) == 0) { //nothing to count
             return 0;
           }
           d *= 10; //shifts 1 digit to left
           int count = 1;
-          while (d - (long) d != 0) { //keeps shifting until there are no more fractions
+          while (Double.compare(d - (long) d, 0d) == 0) { //keeps shifting until there are no more fractions
             d *= 10;
             count++;
           }

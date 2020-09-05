@@ -48,7 +48,7 @@ public class MetricsPage {
     String html = "";
     String tmpStr = "";
     try {
-      URL resource = MetricsPage.class.getClassLoader().getResource("iotdb/ui/static/index.html");
+      URL resource = Thread.currentThread().getContextClassLoader().getResource("iotdb/ui/static/index.html");
       try (InputStream is = resource.openStream();
            BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
         while ((tmpStr = br.readLine()) != null) {

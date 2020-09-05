@@ -64,9 +64,9 @@ public class DirectoryManager {
     try {
       strategyName = IoTDBDescriptor.getInstance().getConfig().getMultiDirStrategyClassName();
       Class<?> clazz = Class.forName(strategyName);
-      sequenceStrategy = (DirectoryStrategy) clazz.newInstance();
+      sequenceStrategy = (DirectoryStrategy) clazz.getDeclaredConstructor().newInstance();
       sequenceStrategy.setFolders(sequenceFileFolders);
-      unsequenceStrategy = (DirectoryStrategy) clazz.newInstance();
+      unsequenceStrategy = (DirectoryStrategy) clazz.getDeclaredConstructor().newInstance();
       unsequenceStrategy.setFolders(unsequenceFileFolders);
     } catch (DiskSpaceInsufficientException e) {
       logger.error("All disks of folders are full.", e);
@@ -102,9 +102,9 @@ public class DirectoryManager {
     try {
       strategyName = IoTDBDescriptor.getInstance().getConfig().getMultiDirStrategyClassName();
       Class<?> clazz = Class.forName(strategyName);
-      sequenceStrategy = (DirectoryStrategy) clazz.newInstance();
+      sequenceStrategy = (DirectoryStrategy) clazz.getDeclaredConstructor().newInstance();
       sequenceStrategy.setFolders(sequenceFileFolders);
-      unsequenceStrategy = (DirectoryStrategy) clazz.newInstance();
+      unsequenceStrategy = (DirectoryStrategy) clazz.getDeclaredConstructor().newInstance();
       unsequenceStrategy.setFolders(unsequenceFileFolders);
       logger.info("Success to update directory strategy.");
     } catch (Exception e) {

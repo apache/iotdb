@@ -314,11 +314,6 @@ public class HDFSFile extends File {
   }
 
   @Override
-  public URL toURL() throws MalformedURLException {
-    throw new UnsupportedOperationException("Unsupported operation.");
-  }
-
-  @Override
   public URI toURI() {
     throw new UnsupportedOperationException("Unsupported operation.");
   }

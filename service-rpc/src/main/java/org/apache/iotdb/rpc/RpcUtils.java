@@ -34,7 +34,7 @@ public class RpcUtils {
   public static final TSStatus SUCCESS_STATUS = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
   public static TSIService.Iface newSynchronizedClient(TSIService.Iface client) {
-    return (TSIService.Iface) Proxy.newProxyInstance(RpcUtils.class.getClassLoader(),
+    return (TSIService.Iface) Proxy.newProxyInstance(Thread.currentThread().getContextClassLoader(),
         new Class[]{TSIService.Iface.class}, new SynchronizedHandler(client));
   }
 

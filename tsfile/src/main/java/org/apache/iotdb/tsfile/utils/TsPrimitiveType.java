@@ -344,7 +344,7 @@ public abstract class TsPrimitiveType implements Serializable {
       }
       if (anObject instanceof TsFloat) {
         TsFloat anotherTs = (TsFloat) anObject;
-        return value == anotherTs.value;
+        return (Float.compare(value, anotherTs.value) == 0);
       }
       return false;
     }
@@ -400,7 +400,7 @@ public abstract class TsPrimitiveType implements Serializable {
       }
       if (anObject instanceof TsDouble) {
         TsDouble anotherTs = (TsDouble) anObject;
-        return value == anotherTs.value;
+        return (Double.compare(value, anotherTs.value) == 0);
       }
       return false;
     }

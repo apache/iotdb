@@ -878,7 +878,7 @@ public class TsFileProcessor {
                 writer.getFile().getAbsolutePath(), compressionRatio, totalMemTableSize,
                 writer.getPos());
           }
-          if (compressionRatio == 0 && !memTableToFlush.isSignalMemTable()) {
+          if ((Double.compare(compressionRatio, 0d) == 0) && !memTableToFlush.isSignalMemTable()) {
             logger.error(
                 "{} The compression ratio of tsfile {} is 0, totalMemTableSize: {}, the file size: {}",
                 storageGroupName, writer.getFile().getAbsolutePath(), totalMemTableSize,
