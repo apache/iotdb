@@ -197,7 +197,7 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 
 |Name|consistency\_level|
 |:---:|:---|
-|Description|Consistency level, now three consistency levels are supported: strong, mid, and weak. Strong consistency means the server will first try to synchronize with the leader to get the newest meta data, if failed(timeout), directly report an error to the user; While mid consistency means the server will first try to synchronize with the leader, but if failed(timeout), it will give up and just use current data it has cached before; Weak consistency does not synchronize with the leader and simply use the local data|
+|Description|Consistency level, now three consistency levels are supported: strong, mid, and weak. Strong consistency means the server will first try to synchronize with the leader to get the newest data, if failed(timeout), directly report an error to the user; While mid consistency means the server will first try to synchronize with the leader, but if failed(timeout), it will give up and just use current data it has cached before; Weak consistency does not synchronize with the leader and simply use the local data|
 |Type|strong, mid, weak|
 |Default|mid|
 |Effective| After restart system|
