@@ -103,8 +103,9 @@ statement
 selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
-    | stringLiteral (COMMA stringLiteral)* #selectConstElement
     | lastClause #lastElement
+    | asClause (COMMA asClause)* #asElement
+    | functionAsClause (COMMA functionAsClause)* #functionAsElement
     ;
 
 functionCall
@@ -123,8 +124,17 @@ functionName
     | LAST_VALUE
     ;
 
+functionAsClause
+    : functionCall (AS ID)?
+    ;
+
 lastClause
     : LAST suffixPath (COMMA suffixPath)*
+    | LAST asClause (COMMA asClause)*
+    ;
+
+asClause
+    : suffixPath (AS ID)?
     ;
 
 alias
@@ -1064,6 +1074,10 @@ ALIGN
 
 COMPRESSION
     : C O M P R E S S I O N
+    ;
+
+AS
+    : A S
     ;
 
 TIME

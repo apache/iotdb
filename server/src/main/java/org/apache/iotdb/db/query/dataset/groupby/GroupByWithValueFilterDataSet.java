@@ -112,6 +112,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
           QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   protected RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedTimeInterval) {

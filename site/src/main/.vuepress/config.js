@@ -444,7 +444,8 @@ var config = {
 							['Client/Programming - Other Languages','Other Languages'],
 							['Client/Programming - TsFile API','TsFile API'],
 							['Client/Programming - MQTT','MQTT'],
-							['Client/Status Codes','Status Codes']
+							['Client/Status Codes','Status Codes'],
+							['Client/Native API Update(0.9-0.10)','Native API Update(0.9-0.10)']
 						]
 					},
 					{
@@ -965,7 +966,8 @@ var config = {
 							['Client/Programming - Other Languages','其他语言'],
 							['Client/Programming - TsFile API','TsFile API'],
 							['Client/Programming - MQTT','MQTT'],
-							['Client/Status Codes','状态码']
+							['Client/Status Codes','状态码'],
+							['Client/Native API Update(0.9-0.10)','0.9-0.10的原生接口更新']
 						]
 					},
 					{

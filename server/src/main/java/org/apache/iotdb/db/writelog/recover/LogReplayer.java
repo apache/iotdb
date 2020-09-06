@@ -130,6 +130,7 @@ public class LogReplayer {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void replayInsert(InsertPlan plan) throws WriteProcessException, QueryProcessException {
     if (currentTsFileResource != null) {
       long minTime, maxTime;

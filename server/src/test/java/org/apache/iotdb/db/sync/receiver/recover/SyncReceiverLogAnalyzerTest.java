@@ -195,6 +195,8 @@ public class SyncReceiverLogAnalyzerTest {
       }
     } catch (InterruptedException e) {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
+      Thread.currentThread().interrupt();
+      throw e;
     }
 
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.LOAD_LOG_NAME).exists());

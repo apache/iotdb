@@ -103,6 +103,7 @@ public class PageReader implements IPageReader {
   /**
    * @return the returned BatchData may be empty, but never be null
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
 

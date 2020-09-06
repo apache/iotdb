@@ -98,11 +98,9 @@ public class IoTDBWatermarkTest {
   private static void insertData()
       throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
+    try (Connection connection = DriverManager
           .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+        Statement statement = connection.createStatement()) {
 
       String[] create_sql = new String[]{"SET STORAGE GROUP TO root.vehicle",
           "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -124,14 +122,9 @@ public class IoTDBWatermarkTest {
           statement.execute(sql);
         }
       }
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -140,32 +133,29 @@ public class IoTDBWatermarkTest {
       throws IOException, ClassNotFoundException, SQLException, LogicalOperatorException {
     // Watermark Embedding
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
+    try (Connection connection = DriverManager
           .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+          Statement statement = connection.createStatement()) {
       statement.execute("GRANT WATERMARK_EMBEDDING TO root");
       boolean hasResultSet = statement.execute("SELECT s0,s1,s2 FROM root.vehicle.d0");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
-      while (resultSet.next()) {
-        String ans =
-            resultSet.getString(TestConstant.TIMESTAMP_STR)
-                + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0)
-                + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1)
-                + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s2);
-        writer1.println(ans);
+      try {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TestConstant.TIMESTAMP_STR)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s2);
+          writer1.println(ans);
+        }
+        writer1.close();
+      } finally {
+        resultSet.close();
       }
-      writer1.close();
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
 
     // Watermark Detection
@@ -182,32 +172,29 @@ public class IoTDBWatermarkTest {
       throws IOException, ClassNotFoundException, SQLException, LogicalOperatorException {
     // No Watermark Embedding
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = null;
-    try {
-      connection = DriverManager
+    try (Connection connection = DriverManager
           .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement();
+        Statement statement = connection.createStatement()) {
       statement.execute("REVOKE WATERMARK_EMBEDDING FROM root");
       boolean hasResultSet = statement.execute("SELECT s0,s1,s2 FROM root.vehicle.d0");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
-      while (resultSet.next()) {
-        String ans =
-            resultSet.getString(TestConstant.TIMESTAMP_STR)
-                + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0)
-                + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1)
-                + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s2);
-        writer2.println(ans);
+      try {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TestConstant.TIMESTAMP_STR)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s2);
+          writer2.println(ans);
+        }
+        writer2.close();
+      } finally {
+        resultSet.close();
       }
-      writer2.close();
-      statement.close();
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
 
     // Watermark Detection

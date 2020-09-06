@@ -160,42 +160,43 @@ public class IoTDBFillIT {
       Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
+      ResultSet resultSet = statement.getResultSet();
+      cnt = 0;
+      try {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
-              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+                  + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
-      }
 
-      hasResultSet = statement.execute("select temperature,status, hardware "
-          + "from root.ln.wf01.wt01 where time = 70 Fill(int32[linear, 500ms, 500ms], "
-          + "double[linear, 500ms, 500ms], boolean[previous, 500ms])");
+        hasResultSet = statement.execute("select temperature,status, hardware "
+                + "from root.ln.wf01.wt01 where time = 70 Fill(int32[linear, 500ms, 500ms], "
+                + "double[linear, 500ms, 500ms], boolean[previous, 500ms])");
 
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(hasResultSet);
+        resultSet = statement.getResultSet();
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
-              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+                  + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
-      }
 
-      hasResultSet = statement.execute("select temperature,status, hardware "
-          + "from root.ln.wf01.wt01 where time = 70 Fill(int32[linear], "
-          + "double[linear], boolean[previous])");
+        hasResultSet = statement.execute("select temperature,status, hardware "
+                + "from root.ln.wf01.wt01 where time = 70 Fill(int32[linear], "
+                + "double[linear], boolean[previous])");
 
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(hasResultSet);
+        resultSet = statement.getResultSet();
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
-              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+                  + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
+      } finally {
+        resultSet.close();
       }
 
     } catch (Exception e) {
@@ -222,41 +223,42 @@ public class IoTDBFillIT {
 
       int cnt = 0;
       Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      ResultSet resultSet = statement.getResultSet();
+      try {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
-              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+                  + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
-      }
 
-      hasResultSet = statement.execute("select temperature,status, hardware "
-          + "from root.ln.wf01.wt01 where time = 80 "
-          + "Fill(int32[linear, 25ms, 25ms], double[linear, 25ms, 25ms], boolean[previous, 5ms])");
+        hasResultSet = statement.execute("select temperature,status, hardware "
+                + "from root.ln.wf01.wt01 where time = 80 "
+                + "Fill(int32[linear, 25ms, 25ms], double[linear, 25ms, 25ms], boolean[previous, 5ms])");
 
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(hasResultSet);
+        resultSet = statement.getResultSet();
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
-              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+                  + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
-      }
 
-      hasResultSet = statement.execute("select temperature,status, hardware "
-          + "from root.ln.wf01.wt01 where time = 625 "
-          + "Fill(int32[linear, 25ms, 25ms], double[linear, 25ms, 25ms], boolean[previous, 5ms])");
+        hasResultSet = statement.execute("select temperature,status, hardware "
+                + "from root.ln.wf01.wt01 where time = 625 "
+                + "Fill(int32[linear, 25ms, 25ms], double[linear, 25ms, 25ms], boolean[previous, 5ms])");
 
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(hasResultSet);
+        resultSet = statement.getResultSet();
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
-              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+                  + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
+      } finally {
+        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -281,43 +283,44 @@ public class IoTDBFillIT {
 
       Assert.assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      ResultSet resultSet = statement.getResultSet();
+      try {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
-              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+                  + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
-      }
 
-      hasResultSet = statement.execute("select temperature,status, hardware "
-          + "from root.ln.wf01.wt01 where time = 70 "
-          + "Fill(int32[previous, 500ms], double[previous, 500ms], boolean[previous, 500ms])");
+        hasResultSet = statement.execute("select temperature,status, hardware "
+                + "from root.ln.wf01.wt01 where time = 70 "
+                + "Fill(int32[previous, 500ms], double[previous, 500ms], boolean[previous, 500ms])");
 
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(hasResultSet);
+        resultSet = statement.getResultSet();
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
-              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+                  + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
-      }
 
-      hasResultSet = statement.execute("select temperature,status, hardware "
-          + "from root.ln.wf01.wt01 where time = 70 "
-          + "Fill(int32[previous, 15ms], double[previous, 15ms], boolean[previous, 5ms])");
+        hasResultSet = statement.execute("select temperature,status, hardware "
+                + "from root.ln.wf01.wt01 where time = 70 "
+                + "Fill(int32[previous, 15ms], double[previous, 15ms], boolean[previous, 5ms])");
 
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(hasResultSet);
+        resultSet = statement.getResultSet();
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
-              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+                  + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(retArray1.length, cnt);
+      } finally {
+        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -333,36 +336,37 @@ public class IoTDBFillIT {
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select temperature,status, hardware "
           + "from root.ln.wf01.wt01 where time = 3 "
           + "Fill(int32[linear], double[linear], boolean[previous])");
 
       Assert.assertTrue(hasResultSet);
-      int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
+      int cnt = 0;
+      ResultSet resultSet = statement.getResultSet();
+      try {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
-              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+                  + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
-      }
 
-      hasResultSet = statement.execute("select temperature,status, hardware "
-          + "from root.ln.wf01.wt01 where time = 70 "
-          + "Fill(int32[linear], double[linear], boolean[previous])");
+        hasResultSet = statement.execute("select temperature,status, hardware "
+                + "from root.ln.wf01.wt01 where time = 70 "
+                + "Fill(int32[linear], double[linear], boolean[previous])");
 
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(hasResultSet);
+        resultSet = statement.getResultSet();
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
-              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+                  + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
+      } finally {
+        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -384,23 +388,27 @@ Statement statement = connection.createStatement()) {
           + "from root.ln.wf01.wt02 where time = 1050 Fill(double[previous])");
 
       int cnt = 0;
-      while (resultSet.next()) {
-        String ans =
-            resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
-                + "," + resultSet.getString(STATUS_STR_2);
-        Assert.assertEquals(retArray[cnt], ans);
-        cnt++;
-      }
+      try {
+        while (resultSet.next()) {
+          String ans =
+                  resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
+                          + "," + resultSet.getString(STATUS_STR_2);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
 
-      resultSet = statement.executeQuery("select temperature,status "
-          + "from root.ln.wf01.wt02 where time = 800 Fill(double[previous])");
+        resultSet = statement.executeQuery("select temperature,status "
+                + "from root.ln.wf01.wt02 where time = 800 Fill(double[previous])");
 
-      while (resultSet.next()) {
-        String ans =
-            resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
-                + "," + resultSet.getString(STATUS_STR_2);
-        Assert.assertEquals(retArray[cnt], ans);
-        cnt++;
+        while (resultSet.next()) {
+          String ans =
+                  resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
+                          + "," + resultSet.getString(STATUS_STR_2);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      } finally {
+        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -430,29 +438,33 @@ Statement statement = connection.createStatement()) {
       int cnt = 0;
       ResultSet resultSet = statement.executeQuery("select temperature,status "
               + "from root.ln.wf01.wt02 where time = 58 Fill(double[previous])");
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
-            + "," + resultSet.getString(STATUS_STR_2);
-        Assert.assertEquals(retArray[cnt], ans);
-        cnt++;
-      }
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
+                  + "," + resultSet.getString(STATUS_STR_2);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
 
-      resultSet = statement.executeQuery("select temperature,status "
-              + "from root.ln.wf01.wt02 where time = 40 Fill(double[previous])");
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
-            + "," + resultSet.getString(STATUS_STR_2);
-        Assert.assertEquals(retArray[cnt], ans);
-        cnt++;
-      }
+        resultSet = statement.executeQuery("select temperature,status "
+                + "from root.ln.wf01.wt02 where time = 40 Fill(double[previous])");
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
+                  + "," + resultSet.getString(STATUS_STR_2);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
 
-      resultSet = statement.executeQuery("select temperature,status "
-              + "from root.ln.wf01.wt02 where time = 80 Fill(double[previous])");
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
-            + "," + resultSet.getString(STATUS_STR_2);
-        Assert.assertEquals(retArray[cnt], ans);
-        cnt++;
+        resultSet = statement.executeQuery("select temperature,status "
+                + "from root.ln.wf01.wt02 where time = 80 Fill(double[previous])");
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
+                  + "," + resultSet.getString(STATUS_STR_2);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      } finally {
+        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -477,26 +489,29 @@ Statement statement = connection.createStatement()) {
       int cnt = 0;
       ResultSet resultSet = statement.executeQuery("select temperature,status "
           + "from root.ln.wf01.wt02 where time = 59 Fill(double[previous])");
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
-            + "," + resultSet.getString(STATUS_STR_2);
-        Assert.assertEquals(retArray[cnt], ans);
-        cnt++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
+                  + "," + resultSet.getString(STATUS_STR_2);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+
+        statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp,temperature,status) values(25, 102.15, true)");
+        statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp,temperature,status) values(50, 32.2, false)");
+        statement.execute("flush");
+
+        resultSet = statement.executeQuery("select temperature,status "
+                + "from root.ln.wf01.wt02 where time = 52 Fill(double[previous])");
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
+                  + "," + resultSet.getString(STATUS_STR_2);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      } finally {
+        resultSet.close();
       }
-
-      statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp,temperature,status) values(25, 102.15, true)");
-      statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp,temperature,status) values(50, 32.2, false)");
-      statement.execute("flush");
-
-      resultSet = statement.executeQuery("select temperature,status "
-          + "from root.ln.wf01.wt02 where time = 52 Fill(double[previous])");
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_2)
-            + "," + resultSet.getString(STATUS_STR_2);
-        Assert.assertEquals(retArray[cnt], ans);
-        cnt++;
-      }
-
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -523,11 +538,10 @@ Statement statement = connection.createStatement()) {
       statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp,temperature,status) values(890, 22.82, false)");
       statement.execute("flush");
 
-      {
-        ResultSet resultSet = statement.executeQuery(
-                "select temperature,status from root.ln.wf01.wt02 where time = 886 "
-                    + "Fill(double[previous])");
-
+      ResultSet resultSet = statement.executeQuery(
+              "select temperature,status from root.ln.wf01.wt02 where time = 886 "
+                  + "Fill(double[previous])");
+      try {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
                   + resultSet.getString(TEMPERATURE_STR_2) + ","
@@ -535,10 +549,8 @@ Statement statement = connection.createStatement()) {
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
-      }
 
-      {
-        ResultSet resultSet = statement.executeQuery(
+        resultSet = statement.executeQuery(
                 "select temperature,status from root.ln.wf01.wt02 where time = 730 "
                     + "Fill(double[previous])");
 
@@ -550,6 +562,8 @@ Statement statement = connection.createStatement()) {
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
+      } finally {
+        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -580,11 +594,10 @@ Statement statement = connection.createStatement()) {
       statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp,temperature,status) values(620, 125.1, true)");
       statement.execute("flush");
 
-      {
-        ResultSet resultSet = statement.executeQuery(
+      ResultSet resultSet = statement.executeQuery(
             "select temperature,status from root.ln.wf01.wt02 where time = 990 "
                 + "Fill(double[previous])");
-
+      try {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
               + resultSet.getString(TEMPERATURE_STR_2) + ","
@@ -592,10 +605,8 @@ Statement statement = connection.createStatement()) {
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
-      }
 
-      {
-        ResultSet resultSet = statement.executeQuery(
+        resultSet = statement.executeQuery(
             "select temperature,status from root.ln.wf01.wt02 where time = 925 "
                 + "Fill(double[previous])");
 
@@ -607,6 +618,8 @@ Statement statement = connection.createStatement()) {
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
+      } finally {
+        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -632,11 +645,10 @@ Statement statement = connection.createStatement()) {
       statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp,status) values(980, true)");
       statement.execute("flush");
 
-      {
-        ResultSet resultSet = statement.executeQuery(
+      ResultSet resultSet = statement.executeQuery(
             "select temperature,status from root.ln.wf01.wt02 where time = 990 "
                 + "Fill(double[previous])");
-
+      try {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
               + resultSet.getString(TEMPERATURE_STR_2) + ","
@@ -644,6 +656,8 @@ Statement statement = connection.createStatement()) {
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
+      } finally {
+        resultSet.close();
       }
 
     } catch (Exception e) {
@@ -671,11 +685,10 @@ Statement statement = connection.createStatement()) {
       statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp,temperature,status) values(980, 47.22, true)");
       statement.execute("flush");
 
-      {
-        ResultSet resultSet = statement.executeQuery(
+      ResultSet resultSet = statement.executeQuery(
             "select temperature,status from root.ln.wf01.wt02 where time = 1080 "
                 + "Fill(double[previous])");
-
+      try {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
               + resultSet.getString(TEMPERATURE_STR_2) + ","
@@ -683,6 +696,8 @@ Statement statement = connection.createStatement()) {
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
+      } finally {
+        resultSet.close();
       }
 
     } catch (Exception e) {

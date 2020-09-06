@@ -157,6 +157,7 @@ public class InsertRowPlan extends InsertPlan {
    * if inferType is true, transfer String[] values to specific data types (Integer, Long, Float,
    * Double, Binary)
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setSchemasAndTransferType(MeasurementSchema[] schemas) throws QueryProcessException {
     this.schemas = schemas;
     if (isNeedInferType) {
