@@ -32,16 +32,13 @@ import java.io.IOException;
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected long queryId;
+  protected GroupByTimePlan plan;
 
   // current interval [curStartTime, curEndTime)
   protected long curStartTime;
   protected long curEndTime;
   protected boolean hasCachedTimeInterval;
 
-  // cur interval index, used in descending query
-  protected long curIntervalIndex;
-
-  protected GroupByTimePlan plan;
 
   public GroupByEngineDataSet() {
   }
@@ -59,11 +56,9 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       curStartTime = plan.getStartTime();
     } else {
       long queryRange = plan.getEndTime() - plan.getStartTime();
-      // calculate the max interval index
-      curIntervalIndex =
-          queryRange % plan.getSlidingStep() == 0 ? queryRange / plan.getSlidingStep()
-              : queryRange / plan.getSlidingStep() + 1;
-      curStartTime = plan.getSlidingStep() * (curIntervalIndex - 1) + plan.getStartTime();
+      // calculate the total interval number
+      long intervalNum = (long) Math.ceil(queryRange / (double) plan.getSlidingStep());
+      curStartTime = plan.getSlidingStep() * (intervalNum - 1) + plan.getStartTime();
     }
     curEndTime = Math.min(curStartTime + plan.getInterval(), plan.getEndTime());
     this.hasCachedTimeInterval = true;

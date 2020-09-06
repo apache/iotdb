@@ -157,7 +157,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       if (groupByTimePlan.isAscending() && timestamp >= curEndTime) {
         hasCachedTimestamp = true;
         break;
-      } else if (!groupByTimePlan.isAscending() && timestamp <= curStartTime) {
+      } else if (!groupByTimePlan.isAscending() && timestamp < curStartTime) {
         hasCachedTimestamp = true;
         break;
       }

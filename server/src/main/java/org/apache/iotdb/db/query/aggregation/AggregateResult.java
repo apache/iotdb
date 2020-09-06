@@ -78,7 +78,7 @@ public abstract class AggregateResult {
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
    *
    * @param dataInThisPage the data in Page
-   * @param minBound       calculate points whose time > bound
+   * @param minBound       calculate points whose time >= bound
    * @param maxBound       calculate points whose time < bound
    */
   public abstract void updateResultFromPageData(BatchData dataInThisPage, long minBound,

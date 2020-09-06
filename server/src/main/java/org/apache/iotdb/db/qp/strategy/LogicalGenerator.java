@@ -1058,11 +1058,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterOrderByTimeClause(OrderByTimeClauseContext ctx) {
     super.enterOrderByTimeClause(ctx);
     queryOp.setColumn(ctx.TIME().getText());
-    if (ctx.ASC() == null) {
+    if (ctx.DESC() != null) {
       queryOp.setAscending(false);
-    }
-    if (ctx.DESC() == null) {
-      queryOp.setAscending(true);
     }
   }
 

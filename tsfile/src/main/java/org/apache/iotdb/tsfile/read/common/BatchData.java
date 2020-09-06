@@ -564,6 +564,10 @@ public class BatchData implements Serializable {
     return getTimeByIndex(length() - 1);
   }
 
+  public long getMinTimestamp() {
+    return getTimeByIndex(0);
+  }
+
   public TimeColumn getTimeColumn() {
     return new TimeColumn(timeRet, count, capacity);
   }

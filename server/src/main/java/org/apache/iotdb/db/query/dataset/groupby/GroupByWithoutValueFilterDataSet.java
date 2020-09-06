@@ -145,22 +145,20 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   @Override
   public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
     Pair<Long, Object> result = null;
-    long nextStartTime, nextEndTime, steps;
+    long nextStartTime, nextEndTime;
     nextStartTime = curStartTime;
-    steps = curIntervalIndex;
     do {
       if (ascending) {
-        nextStartTime = nextStartTime + plan.getSlidingStep();
+        nextStartTime += plan.getSlidingStep();
         if (nextStartTime < plan.getEndTime()) {
           nextEndTime = Math.min(nextStartTime + plan.getInterval(), plan.getEndTime());
         } else {
           return null;
         }
       } else {
-        steps--;
-        if (steps > 0) {
-          nextStartTime = plan.getSlidingStep() * (steps - 1) + plan.getStartTime();
-          nextEndTime = nextStartTime + plan.getInterval();
+        nextStartTime -= plan.getSlidingStep();
+        if (nextStartTime >= plan.getStartTime()) {
+          nextEndTime = Math.min(nextStartTime + plan.getInterval(), plan.getEndTime());
         } else {
           return null;
         }

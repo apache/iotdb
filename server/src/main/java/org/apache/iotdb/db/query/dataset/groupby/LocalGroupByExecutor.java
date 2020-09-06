@@ -91,17 +91,21 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     return true;
   }
 
+
+  /**
+   * @return if already get the result
+   */
   private boolean calcFromCacheData(long curStartTime, long curEndTime) throws IOException {
     calcFromBatch(preCachedData, curStartTime, curEndTime);
     // The result is calculated from the cache
     return (preCachedData != null && (ascending ? preCachedData.getMaxTimestamp() >= curEndTime
-        : preCachedData.getTimeByIndex(0) <= curStartTime)) || isEndCalc();
+        : preCachedData.getMinTimestamp() < curStartTime)) || isEndCalc();
   }
 
   private void calcFromBatch(BatchData batchData, long curStartTime, long curEndTime)
       throws IOException {
-    // is error data
-    if (isErrorData(batchData, curStartTime, curEndTime)) {
+    // check if the batchData does not contain points in current interval
+    if (!satisfied(batchData, curStartTime, curEndTime)) {
       return;
     }
 
@@ -135,21 +139,21 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     }
   }
 
-  private boolean isErrorData(BatchData batchData, long curStartTime, long curEndTime) {
+  private boolean satisfied(BatchData batchData, long curStartTime, long curEndTime) {
     if (batchData == null || !batchData.hasCurrent()) {
-      return true;
+      return false;
     }
 
     if (ascending && (batchData.getMaxTimestamp() < curStartTime
         || batchData.currentTime() >= curEndTime)) {
-      return true;
+      return false;
     }
-    if (!ascending && (batchData.getTimeByIndex(0) > curEndTime
+    if (!ascending && (batchData.getTimeByIndex(0) >= curEndTime
         || batchData.currentTime() < curStartTime)) {
       preCachedData = batchData;
-      return true;
+      return false;
     }
-    return false;
+    return true;
   }
 
   private void calcFromStatistics(Statistics pageStatistics) throws QueryProcessException {
