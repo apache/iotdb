@@ -39,6 +39,7 @@ public class DescPriorityMergeReader extends PriorityMergeReader {
    * @param endTime
    * @throws IOException
    */
+  @Override
   public void addReader(IPointReader reader, long priority, long endTime) throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));

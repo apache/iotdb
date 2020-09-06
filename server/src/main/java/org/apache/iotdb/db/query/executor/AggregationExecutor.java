@@ -139,8 +139,10 @@ public class AggregationExecutor {
     return aggregateResultList;
   }
 
-  public static void aggregateOneSeries(PartialPath seriesPath, Set<String> measurements, QueryContext context, Filter timeFilter,
-      TSDataType tsDataType, List<AggregateResult> aggregateResultList, TsFileFilter fileFilter,boolean ascending)
+  public static void aggregateOneSeries(PartialPath seriesPath, Set<String> measurements,
+      QueryContext context, Filter timeFilter,
+      TSDataType tsDataType, List<AggregateResult> aggregateResultList, TsFileFilter fileFilter,
+      boolean ascending)
       throws StorageEngineException, IOException, QueryProcessException {
 
     // construct series reader without value filter

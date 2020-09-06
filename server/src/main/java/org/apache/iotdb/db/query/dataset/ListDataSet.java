@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.dataset;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

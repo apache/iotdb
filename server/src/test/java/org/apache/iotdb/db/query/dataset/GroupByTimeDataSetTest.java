@@ -183,10 +183,8 @@ public class GroupByTimeDataSetTest {
 
     // not count
     try {
-      queryPlan = (QueryPlan) processor
-          .parseSQLToPhysicalPlan(
-              "select sum(s0) from root.test.* group by ([0,200), 1ms), level=6");
-      dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+      processor.parseSQLToPhysicalPlan(
+          "select sum(s0) from root.test.* group by ([0,200), 1ms), level=6");
       fail();
     } catch (Exception e) {
       assertEquals("group by level only support count now.", e.getMessage());
@@ -201,35 +199,35 @@ public class GroupByTimeDataSetTest {
         .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
-    assertEquals(dataSet.next().toString(), "19\t0");
+    assertEquals("19\t0", dataSet.next().toString());
     assertTrue(dataSet.hasNext());
-    assertEquals(dataSet.next().toString(), "18\t0");
+    assertEquals("18\t0", dataSet.next().toString());
     for (int i = 0; i < 17; i++) {
       dataSet.hasNext();
       dataSet.next();
     }
     assertTrue(dataSet.hasNext());
-    assertEquals(dataSet.next().toString(), "0\t0");
+    assertEquals("0\t0", dataSet.next().toString());
 
     queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan(
         "select count(s1) from root.test.* group by ([0,20), 1ms),level=6 order by time desc");
     dataSet = queryExecutor
         .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     assertTrue(dataSet.hasNext());
-    assertEquals(dataSet.next().toString(), "19\t0");
+    assertEquals("19\t0", dataSet.next().toString());
     assertTrue(dataSet.hasNext());
-    assertEquals(dataSet.next().toString(), "18\t0");
+    assertEquals("18\t0", dataSet.next().toString());
     for (int i = 0; i < 14; i++) {
       dataSet.hasNext();
       dataSet.next();
     }
     assertTrue(dataSet.hasNext());
-    assertEquals(dataSet.next().toString(), "3\t0");
+    assertEquals("3\t0", dataSet.next().toString());
     assertTrue(dataSet.hasNext());
-    assertEquals(dataSet.next().toString(), "2\t1");
+    assertEquals("2\t1", dataSet.next().toString());
     assertTrue(dataSet.hasNext());
-    assertEquals(dataSet.next().toString(), "1\t0");
+    assertEquals("1\t0", dataSet.next().toString());
     assertTrue(dataSet.hasNext());
-    assertEquals(dataSet.next().toString(), "0\t0");
+    assertEquals("0\t0", dataSet.next().toString());
   }
 }

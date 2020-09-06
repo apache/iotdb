@@ -102,6 +102,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         : preCachedData.getMinTimestamp() < curStartTime)) || isEndCalc();
   }
 
+  @SuppressWarnings("squid:S3776")
   private void calcFromBatch(BatchData batchData, long curStartTime, long curEndTime)
       throws IOException {
     // check if the batchData does not contain points in current interval

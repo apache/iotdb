@@ -145,8 +145,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   @Override
   public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
     Pair<Long, Object> result = null;
-    long nextStartTime, nextEndTime;
-    nextStartTime = curStartTime;
+    long nextStartTime = curStartTime;
+    long nextEndTime;
     do {
       if (ascending) {
         nextStartTime += plan.getSlidingStep();

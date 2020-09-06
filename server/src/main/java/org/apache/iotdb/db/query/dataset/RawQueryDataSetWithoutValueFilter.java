@@ -168,7 +168,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
 
   private void init() throws IOException, InterruptedException {
     timeHeap = new TreeSet<>(
-        super.ascending ? Long::compareTo : (Comparator<Long>) (o1, o2) -> Long.compare(o2, o1));
+        super.ascending ? Long::compareTo : (o1, o2) -> Long.compare(o2, o1));
     for (int i = 0; i < seriesReaderList.size(); i++) {
       ManagedSeriesReader reader = seriesReaderList.get(i);
       reader.setHasRemaining(true);

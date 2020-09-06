@@ -23,6 +23,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class BatchDataFactory {
 
+  private BatchDataFactory() {
+    throw new IllegalStateException("Factory class");
+  }
+
   public static BatchData createBatchData(TSDataType dataType, boolean ascending) {
     if (ascending) {
       return new BatchData(dataType);

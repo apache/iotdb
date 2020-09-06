@@ -111,6 +111,7 @@ public class GroupByFillDataSet extends QueryDataSet {
   }
 
   @Override
+  @SuppressWarnings("squid:S3776")
   protected RowRecord nextWithoutConstraint() throws IOException {
     RowRecord rowRecord = groupByEngineDataSet.nextWithoutConstraint();
 
