@@ -60,6 +60,7 @@ import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
@@ -98,6 +99,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
@@ -232,7 +234,8 @@ public class PhysicalGenerator {
                 showTimeSeriesOperator.getValue(), showTimeSeriesOperator.getLimit(),
                 showTimeSeriesOperator.getOffset(), showTimeSeriesOperator.isOrderByHeat());
           case SQLConstant.TOK_STORAGE_GROUP:
-            return new ShowPlan(ShowContentType.STORAGE_GROUP);
+            return new ShowStorageGroupPlan(
+                ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());
           case SQLConstant.TOK_DEVICES:
             return new ShowDevicesPlan(
                 ShowContentType.DEVICES, ((ShowDevicesOperator) operator).getPath());
@@ -441,7 +444,8 @@ public class PhysicalGenerator {
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
 
         // if const measurement
-        if (suffixPath.getMeasurement().startsWith("'") || suffixPath.getMeasurement().startsWith("\"")) {
+        if (suffixPath.getMeasurement().startsWith("'") || suffixPath.getMeasurement()
+            .startsWith("\"")) {
           measurements.add(suffixPath.getMeasurement());
           measurementTypeMap.put(suffixPath.getMeasurement(), MeasurementType.Constant);
           continue;
@@ -457,13 +461,15 @@ public class PhysicalGenerator {
               if (actualPaths.size() == 1) {
                 String columnName = actualPaths.get(0).getMeasurement();
                 if (originAggregations != null && !originAggregations.isEmpty()) {
-                  measurementAliasMap.put(originAggregations.get(i) + "(" + columnName + ")", suffixPath.getTsAlias());
+                  measurementAliasMap.put(originAggregations.get(i) + "(" + columnName + ")",
+                      suffixPath.getTsAlias());
                 } else {
                   measurementAliasMap.put(columnName, suffixPath.getTsAlias());
                 }
               } else if (actualPaths.size() >= 2) {
                 throw new QueryProcessException(
-                    "alias '" + suffixPath.getTsAlias() + "' can only be matched with one time series");
+                    "alias '" + suffixPath.getTsAlias()
+                        + "' can only be matched with one time series");
               }
             }
 
@@ -623,7 +629,8 @@ public class PhysicalGenerator {
         for (int i = 0; i < filterPathList.size(); i++) {
           pathTSDataTypeHashMap.put(filterPathList.get(i), seriesTypes.get(i));
         }
-        deviceToFilterMap.put(device.getFullPath(), newOperator.transformToExpression(pathTSDataTypeHashMap));
+        deviceToFilterMap
+            .put(device.getFullPath(), newOperator.transformToExpression(pathTSDataTypeHashMap));
         filterPaths.clear();
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
@@ -649,7 +656,8 @@ public class PhysicalGenerator {
     return retDevices;
   }
 
-  private void concatFilterPath(PartialPath prefix, FilterOperator operator, Set<PartialPath> filterPaths) {
+  private void concatFilterPath(PartialPath prefix, FilterOperator operator,
+      Set<PartialPath> filterPaths) {
     if (!operator.isLeaf()) {
       for (FilterOperator child : operator.getChildren()) {
         concatFilterPath(prefix, child, filterPaths);
@@ -660,7 +668,8 @@ public class PhysicalGenerator {
     PartialPath filterPath = basicOperator.getSinglePath();
 
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
-    if (SQLConstant.isReservedPath(filterPath) || filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
+    if (SQLConstant.isReservedPath(filterPath) || filterPath.getFirstNode()
+        .startsWith(SQLConstant.ROOT)) {
       filterPaths.add(filterPath);
       return;
     }
@@ -690,7 +699,8 @@ public class PhysicalGenerator {
         PartialPath path = paths.get(i);
         String column = path.getTsAlias();
         if (column == null) {
-          column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.toString();
+          column =
+              path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.toString();
         }
         if (!columnSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
@@ -713,8 +723,9 @@ public class PhysicalGenerator {
     for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
       String column = indexedPath.left.getTsAlias();
       if (column == null) {
-        column = indexedPath.left.getMeasurementAlias() != null ? indexedPath.left.getFullPathWithAlias()
-            : indexedPath.left.toString();
+        column =
+            indexedPath.left.getMeasurementAlias() != null ? indexedPath.left.getFullPathWithAlias()
+                : indexedPath.left.toString();
         if (queryPlan instanceof AggregationPlan) {
           column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";
         }

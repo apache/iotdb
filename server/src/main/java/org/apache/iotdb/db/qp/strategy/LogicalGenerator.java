@@ -71,6 +71,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
@@ -209,7 +210,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCountTimeseries(CountTimeseriesContext ctx) {
     super.enterCountTimeseries(ctx);
     PrefixPathContext pathContext = ctx.prefixPath();
-    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext) : new PartialPath(SQLConstant.getSingleRootArray()));
+    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext)
+        : new PartialPath(SQLConstant.getSingleRootArray()));
     if (ctx.INT() != null) {
       initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODE_TIMESERIES,
           path, Integer.parseInt(ctx.INT().getText()));
@@ -301,7 +303,13 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterShowStorageGroup(ShowStorageGroupContext ctx) {
     super.enterShowStorageGroup(ctx);
-    initializedOperator = new ShowOperator(SQLConstant.TOK_STORAGE_GROUP);
+    if (ctx.prefixPath() != null) {
+      initializedOperator = new ShowStorageGroupOperator(SQLConstant.TOK_STORAGE_GROUP,
+          parsePrefixPath(ctx.prefixPath()));
+    } else {
+      initializedOperator = new ShowStorageGroupOperator(SQLConstant.TOK_STORAGE_GROUP,
+          new PartialPath(SQLConstant.getSingleRootArray()));
+    }
   }
 
   @Override
@@ -382,7 +390,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES,
           parsePrefixPath(ctx.prefixPath()), orderByHeat);
     } else {
-      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES, new PartialPath(SQLConstant.getSingleRootArray()),
+      initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES,
+          new PartialPath(SQLConstant.getSingleRootArray()),
           orderByHeat);
     }
   }

@@ -767,6 +767,22 @@ public class MManager {
   }
 
   /**
+   * Get all storage group under given prefixPath.
+   *
+   * @param prefixPath a prefix of a full path. if the wildcard is not at the tail, then each
+   *                   wildcard can only match one level, otherwise it can match to the tail.
+   * @return A ArrayList instance which stores storage group paths with given prefixPath.
+   */
+  public List<PartialPath> getStorageGroupPaths(PartialPath prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupPaths(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * Get all storage group MNodes
    */
   public List<StorageGroupMNode> getAllStorageGroupNodes() {
