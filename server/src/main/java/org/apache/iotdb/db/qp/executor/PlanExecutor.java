@@ -25,6 +25,9 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COUNT;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CREATED_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_TEMPORARY;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
@@ -115,6 +118,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -126,6 +130,7 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.AuthUtils;
@@ -399,6 +404,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processCountNodes((CountPlan) showPlan);
       case MERGE_STATUS:
         return processShowMergeStatus();
+      case FUNCTIONS:
+        return processShowFunctions((ShowFunctionsPlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -658,6 +665,25 @@ public class PlanExecutor implements IPlanExecutor {
         timestamp,
         "number of waiting flush tasks",
         Integer.toString(FlushTaskPoolManager.getInstance().getWaitingTasksNumber()));
+    return listDataSet;
+  }
+
+  private QueryDataSet processShowFunctions(ShowFunctionsPlan showPlan) {
+    ListDataSet listDataSet = new ListDataSet(Arrays
+        .asList(new Path(COLUMN_FUNCTION_NAME), new Path(COLUMN_FUNCTION_CLASS),
+            new Path(COLUMN_FUNCTION_TEMPORARY)),
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.BOOLEAN));
+    for (UDFRegistrationInformation info : UDFRegistrationService.getInstance()
+        .getRegistrationInformation()) {
+      if (showPlan.showTemporary() && !info.isTemporary()) {
+        continue;
+      }
+      RowRecord rowRecord = new RowRecord(0); // ignore timestamp
+      rowRecord.addField(info.getFunctionName(), TSDataType.TEXT);
+      rowRecord.addField(info.getClassName(), TSDataType.TEXT);
+      rowRecord.addField(info.isTemporary(), TSDataType.BOOLEAN);
+      listDataSet.putRecord(rowRecord);
+    }
     return listDataSet;
   }
 

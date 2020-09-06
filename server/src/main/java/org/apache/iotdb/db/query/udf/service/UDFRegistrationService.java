@@ -178,6 +178,10 @@ public class UDFRegistrationService implements IService {
     }
   }
 
+  public UDFRegistrationInformation[] getRegistrationInformation() {
+    return (UDFRegistrationInformation[]) registrationInformation.values().toArray();
+  }
+
   @Override
   public void start() throws StartupException {
     try {

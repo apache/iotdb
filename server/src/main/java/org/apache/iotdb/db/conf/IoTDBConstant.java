@@ -84,6 +84,10 @@ public class IoTDBConstant {
   public static final String COLUMN_CANCELLED = "cancelled";
   public static final String COLUMN_DONE = "done";
 
+  public static final String COLUMN_FUNCTION_NAME = "UDF name";
+  public static final String COLUMN_FUNCTION_CLASS = "class name";
+  public static final String COLUMN_FUNCTION_TEMPORARY = "temporary";
+
   public static final String PATH_WILDCARD = "*";
 
   // data folder name

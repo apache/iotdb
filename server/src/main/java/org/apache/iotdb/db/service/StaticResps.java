@@ -26,6 +26,9 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COUNT;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CREATED_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_TEMPORARY;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
@@ -41,6 +44,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VERSION;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -132,8 +136,14 @@ class StaticResps {
       Arrays.asList(COLUMN_STORAGE_GROUP, COLUMN_TASK_NAME, COLUMN_CREATED_TIME, COLUMN_PROGRESS,
           COLUMN_CANCELLED, COLUMN_DONE),
       Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString(),
-          TSDataType.TEXT.toString(),
-          TSDataType.TEXT.toString(), TSDataType.BOOLEAN.toString(), TSDataType.BOOLEAN.toString()));
+          TSDataType.TEXT.toString(), TSDataType.TEXT.toString(), TSDataType.BOOLEAN.toString(),
+          TSDataType.BOOLEAN.toString()));
+
+  static final TSExecuteStatementResp SHOW_FUNCTIONS_RESP = getNoTimeExecuteResp(
+      Arrays.asList(COLUMN_FUNCTION_NAME, COLUMN_FUNCTION_CLASS, COLUMN_FUNCTION_TEMPORARY),
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString(),
+          TSDataType.BOOLEAN.toString())
+  );
 
   private static TSExecuteStatementResp getNoTimeExecuteResp(List<String> columns,
       List<String> dataTypes) {

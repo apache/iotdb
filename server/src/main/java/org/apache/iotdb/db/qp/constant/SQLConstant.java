@@ -158,6 +158,7 @@ public class SQLConstant {
 
   public static final int TOK_FUNCTION_CREATE = 92;
   public static final int TOK_FUNCTION_DROP = 93;
+  public static final int TOK_SHOW_FUNCTIONS = 94;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -231,6 +232,10 @@ public class SQLConstant {
     tokenNames.put(TOK_DELETE_PARTITION, "TOK_DELETE_PARTITION");
 
     tokenNames.put(TOK_TRACING, "TOK_TRACING");
+
+    tokenNames.put(TOK_FUNCTION_CREATE, "TOK_FUNCTION_CREATE");
+    tokenNames.put(TOK_FUNCTION_DROP, "TOK_FUNCTION_DROP");
+    tokenNames.put(TOK_SHOW_FUNCTIONS, "TOK_SHOW_FUNCTIONS");
   }
 
   static {
@@ -246,6 +251,5 @@ public class SQLConstant {
 
   public static boolean isReservedPath(Path pathStr) {
     return pathStr.equals(SQLConstant.RESERVED_TIME);
-
   }
 }
