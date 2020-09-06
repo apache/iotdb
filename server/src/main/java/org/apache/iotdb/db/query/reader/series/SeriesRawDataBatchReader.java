@@ -55,6 +55,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
   }
 
   @TestOnly
+  @SuppressWarnings("squid:S107")
   public SeriesRawDataBatchReader(PartialPath seriesPath, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
       Filter timeFilter, Filter valueFilter, boolean ascending) {

@@ -139,6 +139,7 @@ public class AggregationExecutor {
     return aggregateResultList;
   }
 
+  @SuppressWarnings("squid:S107")
   public static void aggregateOneSeries(PartialPath seriesPath, Set<String> measurements,
       QueryContext context, Filter timeFilter,
       TSDataType tsDataType, List<AggregateResult> aggregateResultList, TsFileFilter fileFilter,
