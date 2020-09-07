@@ -32,8 +32,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;

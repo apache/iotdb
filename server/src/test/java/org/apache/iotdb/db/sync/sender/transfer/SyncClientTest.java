@@ -22,7 +22,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.google.common.primitives.Ints;
 import java.io.File;
 import java.io.IOException;
 import java.security.SecureRandom;
@@ -43,6 +42,7 @@ import org.apache.iotdb.db.sync.sender.recover.ISyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,7 +76,7 @@ public class SyncClientTest {
   public void makeFileSnapshot() throws IOException {
     Map<String, Set<File>> allFileList = new HashMap<>();
 
-    SecureRandom r = new SecureRandom(Ints.toByteArray(0));
+    SecureRandom r = new SecureRandom(BytesUtils.intToBytes(0));
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         if (!allFileList.containsKey(String.valueOf(i))) {

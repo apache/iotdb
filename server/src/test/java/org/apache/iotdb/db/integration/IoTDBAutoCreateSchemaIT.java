@@ -35,8 +35,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be

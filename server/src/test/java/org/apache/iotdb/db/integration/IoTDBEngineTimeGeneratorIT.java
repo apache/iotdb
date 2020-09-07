@@ -51,8 +51,6 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the

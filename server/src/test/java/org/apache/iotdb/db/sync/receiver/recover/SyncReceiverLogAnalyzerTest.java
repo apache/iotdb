@@ -22,7 +22,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.google.common.primitives.Ints;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -52,6 +51,7 @@ import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderTest;
 import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -103,7 +103,7 @@ public class SyncReceiverLogAnalyzerTest {
     Map<String, Set<File>> correctSequenceLoadedFileMap = new HashMap<>();
 
     // add some new tsfiles
-    SecureRandom r = new SecureRandom(Ints.toByteArray(0));
+    SecureRandom r = new SecureRandom(BytesUtils.intToBytes(0));
     receiverLogger.startSyncTsFiles();
     Set<String> toBeSyncedFiles = new HashSet<>();
     for (int i = 0; i < 3; i++) {

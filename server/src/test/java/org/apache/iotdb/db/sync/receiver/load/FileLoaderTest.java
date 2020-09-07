@@ -22,7 +22,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.google.common.primitives.Ints;
 import java.io.File;
 import java.io.IOException;
 import java.security.SecureRandom;
@@ -49,6 +48,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -94,7 +94,7 @@ public class FileLoaderTest {
     Map<String, Set<String>> correctSequenceLoadedFileMap = new HashMap<>();
 
     // add some new tsfiles
-    SecureRandom r = new SecureRandom(Ints.toByteArray(0));
+    SecureRandom r = new SecureRandom(BytesUtils.intToBytes(0));
     long time = System.currentTimeMillis();
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 10; j++) {
@@ -190,7 +190,7 @@ public class FileLoaderTest {
     Map<String, Set<String>> correctLoadedFileMap = new HashMap<>();
 
     // add some tsfiles
-    SecureRandom r = new SecureRandom(Ints.toByteArray(0));
+    SecureRandom r = new SecureRandom(BytesUtils.intToBytes(0));
     long time = System.currentTimeMillis();
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 25; j++) {

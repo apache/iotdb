@@ -22,13 +22,12 @@ import static org.junit.Assert.assertEquals;
 
 import com.clearspring.analytics.stream.cardinality.HyperLogLog;
 import com.clearspring.analytics.stream.cardinality.ICardinality;
-import com.google.common.primitives.Ints;
 import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import org.junit.Ignore;
+
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.junit.Test;
 
 public class HyperLogLogTest {
@@ -37,7 +36,7 @@ public class HyperLogLogTest {
   public void testStreamLibHll() {
     final int seed = 12345;
     // data on which to calculate distinct count
-    SecureRandom random = new SecureRandom(Ints.toByteArray(seed));
+    SecureRandom random = new SecureRandom(BytesUtils.intToBytes(seed));
     int sampleSize = 10000;
     double[] floor = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0};
     String[] avgErrors = new String[floor.length];

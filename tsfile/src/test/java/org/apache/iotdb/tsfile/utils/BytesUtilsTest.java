@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.constant.TestConstant;
 
 public class BytesUtilsTest {
 
-  private SecureRandom r = new SecureRandom();
+  private SecureRandom r = new SecureRandom(BytesUtils.longToBytes(System.currentTimeMillis(), 8));
 
   @Test
   public void testIntToBytes() {

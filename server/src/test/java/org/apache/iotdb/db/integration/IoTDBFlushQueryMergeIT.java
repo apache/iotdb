@@ -26,15 +26,12 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Locale;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class IoTDBFlushQueryMergeIT {
 
@@ -95,14 +92,11 @@ public class IoTDBFlushQueryMergeIT {
       boolean hasResultSet = statement.execute("SELECT * FROM root");
       Assert.assertTrue(hasResultSet);
 
-      ResultSet resultSet = statement.getResultSet();
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
         }
-      } finally {
-        resultSet.close();
       }
       statement.execute("merge");
     } catch (Exception e) {

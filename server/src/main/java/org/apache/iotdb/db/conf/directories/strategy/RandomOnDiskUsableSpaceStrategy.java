@@ -18,17 +18,16 @@
  */
 package org.apache.iotdb.db.conf.directories.strategy;
 
-import com.google.common.primitives.Bytes;
-import com.google.common.primitives.Longs;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 public class RandomOnDiskUsableSpaceStrategy extends DirectoryStrategy {
 
-  private SecureRandom random = new SecureRandom(Longs.toByteArray(System.currentTimeMillis()));
+  private SecureRandom random = new SecureRandom(BytesUtils.longToBytes(System.currentTimeMillis(), 8));
 
   @Override
   public int nextFolderIndex() throws DiskSpaceInsufficientException {

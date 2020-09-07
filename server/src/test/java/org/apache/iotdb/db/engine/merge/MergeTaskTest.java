@@ -44,8 +44,6 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class MergeTaskTest extends MergeTest {
 

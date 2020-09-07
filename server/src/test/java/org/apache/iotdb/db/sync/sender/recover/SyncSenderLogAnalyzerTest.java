@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.sync.sender.recover;
 
-import com.google.common.primitives.Ints;
 import java.security.SecureRandom;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -26,7 +25,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -38,6 +36,7 @@ import org.apache.iotdb.db.sync.sender.manage.SyncFileManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SyncUtils;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -86,7 +85,7 @@ public class SyncSenderLogAnalyzerTest {
     for (int i = 0; i < 3; i++) {
       IoTDB.metaManager.setStorageGroup(new PartialPath(getSgName(i)));
     }
-    SecureRandom r = new SecureRandom(Ints.toByteArray(0));
+    SecureRandom r = new SecureRandom(BytesUtils.intToBytes(0));
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>()).computeIfAbsent(0L, k -> new HashSet<>());

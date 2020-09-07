@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tsfile.constant;
 
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+
 import java.io.File;
 import java.security.SecureRandom;
 
@@ -26,6 +28,6 @@ public class TestConstant {
   public static final String BASE_OUTPUT_PATH = "target".concat(File.separator);
   public static final float float_min_delta = 0.00001f;
   public static final double double_min_delta = 0.00001d;
-  public static final SecureRandom random = new SecureRandom();
+  public static final SecureRandom random = new SecureRandom(BytesUtils.longToBytes(System.currentTimeMillis(), 8));
 
 }
