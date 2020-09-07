@@ -1,6 +1,5 @@
 package org.apache.iotdb.cluster.server;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Timer {
@@ -48,6 +47,29 @@ public class Timer {
   public static AtomicLong logDispatcherLogInQueueMS = new AtomicLong(0);
   public static AtomicLong logDispatcherLogInQueueCounter = new AtomicLong(0);
 
+  class Statistic {
+
+    String name;
+    AtomicLong sum = new AtomicLong(0);
+    AtomicLong counter = new AtomicLong(0);
+    long scale;
+
+    Statistic(String name, long scale) {
+      this.name = name;
+      this.scale = scale;
+    }
+
+    void add(long val) {
+      sum.addAndGet(val);
+      counter.incrementAndGet();
+    }
+
+    @Override
+    public String toString() {
+      return getOneLine(name, sum, counter, scale);
+    }
+  }
+
 
   private static final String dataGroupMemberProcessPlanLocallyMSString = "Data group member - process plan locally : ";
   private static final String dataGroupMemberWaitLeaderMSString = "Data group member - wait leader: ";
@@ -72,11 +94,11 @@ public class Timer {
   private static final String logDispatcherLogInQueueString = "Log dispatcher - in queue: ";
 
 
-  public static String getOneLine(String name, AtomicLong period, AtomicLong counter) {
+  public static String getOneLine(String name, AtomicLong period, AtomicLong counter, long scale) {
     return name
-        + period.get() / 1000000L + ", "
+        + period.get() / scale + ", "
         + counter + ", "
-        + (double) period.get() / 1000000L
+        + (double) period.get() / scale
         / counter.get();
   }
 
@@ -84,64 +106,64 @@ public class Timer {
     String result = "\n";
     result +=
         getOneLine(dataGroupMemberProcessPlanLocallyMSString, dataGroupMemberProcessPlanLocallyMS,
-            dataGroupMemberProcessPlanLocallyCounter)
+            dataGroupMemberProcessPlanLocallyCounter, 1000000L)
             + "\n";
     result += getOneLine(dataGroupMemberWaitLeaderMSString, dataGroupMemberWaitLeaderMS,
-        dataGroupMemberWaitLeaderCounter)
+        dataGroupMemberWaitLeaderCounter, 1000000L)
         + "\n";
     result += getOneLine(metaGroupMemberExecuteNonQueryMSString, metaGroupMemberExecuteNonQueryMS,
-        metaGroupMemberExecuteNonQueryCounter)
+        metaGroupMemberExecuteNonQueryCounter, 1000000L)
         + "\n";
     result += getOneLine(metaGroupMemberExecuteNonQueryInLocalGroupMSString,
         metaGroupMemberExecuteNonQueryInLocalGroupMS,
-        metaGroupMemberExecuteNonQueryInLocalGroupCounter)
+        metaGroupMemberExecuteNonQueryInLocalGroupCounter, 1000000L)
         + "\n";
     result += getOneLine(metaGroupMemberExecuteNonQueryInRemoteGroupMSString,
         metaGroupMemberExecuteNonQueryInRemoteGroupMS,
-        metaGroupMemberExecuteNonQueryInRemoteGroupCounter)
+        metaGroupMemberExecuteNonQueryInRemoteGroupCounter, 1000000L)
         + "\n";
     result +=
-        getOneLine(raftMemberAppendLogMSString, raftMemberAppendLogMS, raftMemberAppendLogCounter)
+        getOneLine(raftMemberAppendLogMSString, raftMemberAppendLogMS, raftMemberAppendLogCounter, 1000000L)
             + "\n";
     result += getOneLine(raftMemberSendLogToFollowerMSString, raftMemberSendLogToFollowerMS,
-        raftMemberSendLogToFollowerCounter)
+        raftMemberSendLogToFollowerCounter,1000000L)
         + "\n";
     result +=
-        getOneLine(raftMemberCommitLogMSString, raftMemberCommitLogMS, raftMemberCommitLogCounter)
+        getOneLine(raftMemberCommitLogMSString, raftMemberCommitLogMS, raftMemberCommitLogCounter,1000000L)
             + "\n";
     result += getOneLine(raftFollowerAppendEntryString, raftFollowerAppendEntryMS,
-        raftFollowerAppendEntryCounter)
+        raftFollowerAppendEntryCounter, 1000000L)
         + "\n";
     result += getOneLine(dataGroupMemberForwardPlanString, dataGroupMemberForwardPlanMS,
-        dataGroupMemberForwardPlanCounter)
+        dataGroupMemberForwardPlanCounter, 1000000L)
         + "\n";
     result += getOneLine(raftMemberWaitForPrevLogString, raftMemberWaitForPrevLogMS,
-        raftMemberWaitForPrevLogCounter)
+        raftMemberWaitForPrevLogCounter, 1000000L)
         + "\n";
     result += getOneLine(raftMemberSendLogAyncString, raftMemberSendLogAyncMS,
-        raftMemberSendLogAyncCounter)
+        raftMemberSendLogAyncCounter,1000000L)
         + "\n";
     result += getOneLine(raftMemberVoteCounterString, raftMemberVoteCounterMS,
-        raftMemberVoteCounterCounter)
+        raftMemberVoteCounterCounter, 1000000L)
         + "\n";
-    result += getOneLine(raftMemberLogParseString, raftMemberLogParseMS, raftMemberLogParseCounter)
+    result += getOneLine(raftMemberLogParseString, raftMemberLogParseMS, raftMemberLogParseCounter, 1000000L)
         + "\n";
     result += getOneLine(rafTMemberReceiverWaitForPrevLogString, rafTMemberReceiverWaitForPrevLogMS,
-        rafTMemberReceiverWaitForPrevLogCounter)
+        rafTMemberReceiverWaitForPrevLogCounter, 1000000L)
         + "\n";
     result += getOneLine(rafTMemberMayBeAppendString, rafTMemberMayBeAppendMS,
-        rafTMemberMayBeAppendCounter)
+        rafTMemberMayBeAppendCounter, 1000000L)
         + "\n";
-    result += getOneLine(rafTMemberOfferLogString, raftMemberOfferLogMS, raftMemberOfferLogCounter)
+    result += getOneLine(rafTMemberOfferLogString, raftMemberOfferLogMS, raftMemberOfferLogCounter, 1000000L)
         + "\n";
     result += getOneLine(raftMemberAppendLogResultString, raftMemberAppendLogResultMS,
-        raftMemberAppendLogResultCounter)
+        raftMemberAppendLogResultCounter, 1000000L)
         + "\n";
     result += getOneLine(raftMemberCommitLogResultString, raftMemberCommitLogResultMS,
-        raftMemberCommitLogResultCounter)
+        raftMemberCommitLogResultCounter, 1000000L)
         + "\n";
     result += getOneLine(logDispatcherLogInQueueString, logDispatcherLogInQueueMS,
-        logDispatcherLogInQueueCounter)
+        logDispatcherLogInQueueCounter, 1000000L)
         + "\n";
     result += indexDiffString
         + indexDiff.get() + ", "

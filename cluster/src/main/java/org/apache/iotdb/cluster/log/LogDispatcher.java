@@ -122,9 +122,6 @@ public class LogDispatcher {
       try {
         while (!Thread.interrupted()) {
           SendLogRequest poll = logBlockingDeque.take();
-          long inQueueTime = System.nanoTime() - poll.enqueueTime;
-          Timer.logDispatcherLogInQueueCounter.incrementAndGet();
-          Timer.logDispatcherLogInQueueMS.addAndGet(inQueueTime);
           currBatch.add(poll);
           logBlockingDeque.drainTo(currBatch);
           if (logger.isDebugEnabled()) {
@@ -144,6 +141,9 @@ public class LogDispatcher {
     }
 
     private void sendLog(SendLogRequest logRequest) {
+      long inQueueTime = System.nanoTime() - logRequest.enqueueTime;
+      Timer.logDispatcherLogInQueueCounter.incrementAndGet();
+      Timer.logDispatcherLogInQueueMS.addAndGet(inQueueTime);
       member.sendLogToFollower(logRequest.log, logRequest.voteCounter, receiver,
           logRequest.leaderShipStale, logRequest.newLeaderTerm, logRequest.appendEntryRequest);
     }
