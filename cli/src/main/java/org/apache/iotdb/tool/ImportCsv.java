@@ -48,6 +48,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 
 /**
@@ -216,7 +217,7 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       int[] result = statement.executeBatch();
       for (int i = 0; i < result.length; i++) {
-        if (result[i] != Statement.SUCCESS_NO_INFO && i < tmp.size()) {
+        if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode() && i < tmp.size()) {
           bw.write(tmp.get(i));
           bw.newLine();
           errorFlag = false;
@@ -307,6 +308,15 @@ public class ImportCsv extends AbstractCsvTool {
         ResultSet resultSet = statement.getResultSet();
         try {
           if (resultSet.next()) {
+            /*
+             * now the resultSet is like following, so the index of dataType is 4
+             * +--------------+-----+-------------+--------+--------+-----------+
+               |    timeseries|alias|storage group|dataType|encoding|compression|
+               +--------------+-----+-------------+--------+--------+-----------+
+               |root.fit.d1.s1| null|  root.fit.d1|   INT32|     RLE|     SNAPPY|
+               |root.fit.d1.s2| null|  root.fit.d1|    TEXT|   PLAIN|     SNAPPY|
+               +--------------+-----+-------------+--------+--------+-----------+
+             */
             timeseriesDataType.put(strHeadInfo[i], resultSet.getString(4));
           } else {
             String errorInfo = String.format("Database cannot find %s in %s, stop import!",
