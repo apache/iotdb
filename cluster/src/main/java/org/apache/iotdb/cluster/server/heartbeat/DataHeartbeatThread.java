@@ -51,7 +51,7 @@ public class DataHeartbeatThread extends HeartbeatThread {
    */
   @Override
   void startElection() {
-    if (dataGroupMember.getThisNode() != dataGroupMember.getHeader()) {
+    if (!dataGroupMember.getThisNode().equals(dataGroupMember.getHeader())) {
       if (number % 60 != 0) {
         number++;
         return;
