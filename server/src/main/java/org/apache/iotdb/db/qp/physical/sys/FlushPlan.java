@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -60,7 +59,7 @@ public class FlushPlan extends PhysicalPlan {
     if (storageGroups == null) {
       this.storageGroupPartitionIds = null;
     } else {
-      this.storageGroupPartitionIds = new ConcurrentHashMap<>();
+      this.storageGroupPartitionIds = new HashMap<>();
       for (PartialPath path : storageGroups) {
         this.storageGroupPartitionIds.put(path, null);
       }

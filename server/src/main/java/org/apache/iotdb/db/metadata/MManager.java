@@ -1991,6 +1991,7 @@ public class MManager {
         }
       }
     }
+    plan.setDeviceMNode(deviceNode);
     return schemas;
   }
 
