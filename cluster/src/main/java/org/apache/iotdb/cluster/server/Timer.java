@@ -69,30 +69,25 @@ public class Timer {
   public static final String indexDiffString = "Raft member - index diff: ";
 
 
+  public static String getOneLine(String name, AtomicLong period, AtomicLong counter){
+    return name
+        + period.get()/1000000L + ", "
+        + counter + ", "
+        + (double) period.get()/1000000L
+        / counter.get();
+  }
 
   public static String getReport() {
     String result = "\n";
-    result += dataGroupMemberProcessPlanLocallyMSString
-        + dataGroupMemberProcessPlanLocallyMS.get()/1000000L + ", "
-        + dataGroupMemberProcessPlanLocallyCounter + ", "
-        + (double) dataGroupMemberProcessPlanLocallyMS.get()/1000000L
-        / dataGroupMemberProcessPlanLocallyCounter.get()
+    result += getOneLine(dataGroupMemberProcessPlanLocallyMSString, dataGroupMemberProcessPlanLocallyMS, dataGroupMemberProcessPlanLocallyCounter)
         + "\n";
-    result += dataGroupMemberWaitLeaderMSString
-        + dataGroupMemberWaitLeaderMS.get()/1000000L + ", "
-        + dataGroupMemberWaitLeaderCounter + ", "
-        + (double) dataGroupMemberWaitLeaderMS.get()/1000000L / dataGroupMemberWaitLeaderCounter.get()
+    result += getOneLine(dataGroupMemberWaitLeaderMSString,dataGroupMemberWaitLeaderMS,dataGroupMemberWaitLeaderCounter)
         + "\n";
-    result += metaGroupMemberExecuteNonQueryMSString
-        + metaGroupMemberExecuteNonQueryMS.get()/1000000L + ", "
-        + metaGroupMemberExecuteNonQueryCounter + ", "
-        + (double) metaGroupMemberExecuteNonQueryMS.get()/1000000L / metaGroupMemberExecuteNonQueryCounter
-        .get() + "\n";
-    result += metaGroupMemberExecuteNonQueryInLocalGroupMSString
-        + metaGroupMemberExecuteNonQueryInLocalGroupMS.get()/1000000L + ", "
-        + metaGroupMemberExecuteNonQueryInLocalGroupCounter + ", "
-        + (double) metaGroupMemberExecuteNonQueryInLocalGroupMS.get()/1000000L
-        / metaGroupMemberExecuteNonQueryInLocalGroupCounter.get() + "\n";
+    result += getOneLine(metaGroupMemberExecuteNonQueryMSString, metaGroupMemberExecuteNonQueryMS, metaGroupMemberExecuteNonQueryCounter)
+        +"\n";
+    result += getOneLine(metaGroupMemberExecuteNonQueryInLocalGroupMSString, metaGroupMemberExecuteNonQueryInLocalGroupMS, metaGroupMemberExecuteNonQueryInLocalGroupCounter)
+        +"\n";
+
     result += metaGroupMemberExecuteNonQueryInRemoteGroupMSString
         + metaGroupMemberExecuteNonQueryInRemoteGroupMS.get()/1000000L + ", "
         + metaGroupMemberExecuteNonQueryInRemoteGroupCounter + ", "
@@ -157,9 +152,9 @@ public class Timer {
         + (double) raftMemberCommitLogResultMS.get()/1000000L / raftMemberCommitLogResultCounter.get() + "\n";
 
     result += indexDiffString
-        + indexDiff.get()/1000000L + ", "
+        + indexDiff.get()+ ", "
         + indexDiffCounter + ", "
-        + (double) indexDiff.get()/1000000L / indexDiffCounter.get() + "\n";
+        + (double) indexDiff.get()/ indexDiffCounter.get() + "\n";
 
 
     return result;
