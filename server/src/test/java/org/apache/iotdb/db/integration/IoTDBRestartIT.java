@@ -281,4 +281,73 @@ public class IoTDBRestartIT {
 
     EnvironmentUtils.cleanEnv();
   }
+
+  @Test
+  public void testRecoverWALMismatchDataType() throws Exception {
+    EnvironmentUtils.envSetUp();
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()){
+      statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
+      statement.execute("delete timeseries root.turbine1.d1.s1");
+      statement.execute("create timeseries root.turbine1.d1.s1 with datatype=INT32, encoding=RLE, compression=SNAPPY");
+    }
+
+    EnvironmentUtils.restartDaemon();
+
+
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()){
+
+      boolean hasResultSet = statement.execute("select * from root");
+      assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      assertEquals(1, cnt);
+    }
+
+    EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void testRecoverWALDeleteSchema() throws Exception {
+    EnvironmentUtils.envSetUp();
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()){
+      statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
+      statement.execute("delete timeseries root.turbine1.d1.s1");
+    }
+
+    EnvironmentUtils.restartDaemon();
+
+
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()){
+
+      boolean hasResultSet = statement.execute("select * from root");
+      assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      assertEquals(1, cnt);
+    }
+
+    EnvironmentUtils.cleanEnv();
+  }
 }
