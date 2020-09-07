@@ -49,11 +49,14 @@ public class TemporaryQueryDataFileService implements IService {
   }
 
   public RandomAccessFile register(SerializationRecorder recorder) throws IOException {
-    String dirName = getDirName(recorder.getQueryId(), recorder.getDataId());
+    long queryId = recorder.getQueryId();
+    String dirName = getDirName(queryId, recorder.getDataId());
     makeDirIfNecessary(dirName);
     String fileName = getFileName(dirName, recorder.getIndex());
-    recorders.putIfAbsent(recorder.getQueryId(), new ConcurrentHashMap<>())
-        .putIfAbsent(fileName, recorder);
+    if (!recorders.containsKey(queryId)) {
+      recorders.put(queryId, new ConcurrentHashMap<>());
+    }
+    recorders.get(queryId).putIfAbsent(fileName, recorder);
     return new RandomAccessFile(SystemFileFactory.INSTANCE.getFile(fileName), "rw");
   }
 

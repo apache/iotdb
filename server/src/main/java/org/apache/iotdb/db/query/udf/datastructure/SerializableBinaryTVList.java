@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -41,13 +40,8 @@ public class SerializableBinaryTVList extends BatchData implements SerializableT
     int size = length();
     serializationRecorder.setSerializedElementSize(size);
     int serializedByteLength = 0;
-    int lastOffset = size * (ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.LONG_LEN);
     for (int i = 0; i < size; ++i) {
       serializedByteLength += ReadWriteIOUtils.write(getTimeByIndex(i), outputStream);
-      serializedByteLength += ReadWriteIOUtils.write(lastOffset, outputStream);
-      lastOffset += getBinaryByIndex(i).getLength();
-    }
-    for (int i = 0; i < size; ++i) {
       serializedByteLength += ReadWriteIOUtils.write(getBinaryByIndex(i), outputStream);
     }
     serializationRecorder.setSerializedByteLength(serializedByteLength);
@@ -57,13 +51,7 @@ public class SerializableBinaryTVList extends BatchData implements SerializableT
   public void deserialize(ByteBuffer byteBuffer) {
     int serializedElementSize = serializationRecorder.getSerializedElementSize();
     for (int i = 0; i < serializedElementSize; ++i) {
-      long timestamp = ReadWriteIOUtils.readLong(byteBuffer);
-      int offset = ReadWriteIOUtils.readInt(byteBuffer);
-      int oldPosition = byteBuffer.position();
-      byteBuffer.position(offset);
-      Binary value = ReadWriteIOUtils.readBinary(byteBuffer);
-      byteBuffer.position(oldPosition);
-      putBinary(timestamp, value);
+      putBinary(ReadWriteIOUtils.readLong(byteBuffer), ReadWriteIOUtils.readBinary(byteBuffer));
     }
   }
 

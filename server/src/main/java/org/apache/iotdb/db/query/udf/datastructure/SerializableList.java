@@ -147,7 +147,7 @@ public interface SerializableList {
       byteBuffer.put(outputStream.getBuf(), 0, outputStream.size());
       byteBuffer.flip();
       recorder.getFileChannel().write(byteBuffer);
-      recorder.closeFileChannel();
+      recorder.closeFile();
       if (this instanceof SerializableTVList) {
         ((BatchData) this).init(((BatchData) this).getDataType());
       } else if (this instanceof SerializableRowRecordList) {
@@ -165,8 +165,9 @@ public interface SerializableList {
       }
       ByteBuffer byteBuffer = ByteBuffer.allocate(recorder.getSerializedByteLength());
       recorder.getFileChannel().read(byteBuffer);
-      recorder.closeFileChannel();
+      byteBuffer.flip();
       deserialize(byteBuffer);
+      recorder.closeFile();
       recorder.markAsNotSerialized();
     }
   }
