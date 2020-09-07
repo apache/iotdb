@@ -116,6 +116,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     return pathsNum;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   protected boolean hasNextWithoutConstraint() throws IOException {
     if (curDataSetInitialized && currentDataSet.hasNext()) {
       return true;

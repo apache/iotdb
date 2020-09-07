@@ -146,8 +146,11 @@ public class WalCheckerTest {
         subDir.mkdir();
 
         FileOutputStream fileOutputStream = new FileOutputStream(new File(subDir, WAL_FILE_NAME));
-        fileOutputStream.write(i);
-        fileOutputStream.close();
+        try {
+          fileOutputStream.write(i);
+        } finally {
+          fileOutputStream.close();
+        }
       }
 
       WalChecker checker = new WalChecker(tempRoot.getAbsolutePath());

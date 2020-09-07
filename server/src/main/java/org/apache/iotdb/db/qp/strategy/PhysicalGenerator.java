@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -59,6 +60,7 @@ import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
@@ -97,6 +99,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
@@ -112,6 +115,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
  */
 public class PhysicalGenerator {
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
     List<PartialPath> paths;
     switch (operator.getType()) {
@@ -171,9 +175,11 @@ public class PhysicalGenerator {
       case INSERT:
         InsertOperator insert = (InsertOperator) operator;
         paths = insert.getSelectedPaths();
-        if (paths.size() != 1) {
-          throw new LogicalOperatorException(
-              "For Insert command, cannot specified more than one seriesPath: " + paths);
+        if (insert.getMeasurementList().length != insert.getValueList().length) {
+          throw new SQLParserException(
+              String.format(
+                  "the measurementList's size %d is not consistent with the valueList's size %d",
+                  insert.getMeasurementList().length, insert.getValueList().length));
         }
 
         return new InsertRowPlan(paths.get(0), insert.getTime(),
@@ -228,7 +234,8 @@ public class PhysicalGenerator {
                 showTimeSeriesOperator.getValue(), showTimeSeriesOperator.getLimit(),
                 showTimeSeriesOperator.getOffset(), showTimeSeriesOperator.isOrderByHeat());
           case SQLConstant.TOK_STORAGE_GROUP:
-            return new ShowPlan(ShowContentType.STORAGE_GROUP);
+            return new ShowStorageGroupPlan(
+                ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());
           case SQLConstant.TOK_DEVICES:
             return new ShowDevicesPlan(
                 ShowContentType.DEVICES, ((ShowDevicesOperator) operator).getPath());
@@ -316,6 +323,7 @@ public class PhysicalGenerator {
     return SchemaUtils.getSeriesTypesByPath(paths);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private PhysicalPlan transformQuery(QueryOperator queryOperator) throws QueryProcessException {
     QueryPlan queryPlan;
 
@@ -419,6 +427,7 @@ public class PhysicalGenerator {
 
       // to record result measurement columns
       List<String> measurements = new ArrayList<>();
+      Map<String, String> measurementAliasMap = new HashMap<>();
       // to check the same measurement of different devices having the same datatype
       // record the data type of each column of result set
       Map<String, TSDataType> columnDataTypeMap = new HashMap<>();
@@ -447,6 +456,20 @@ public class PhysicalGenerator {
           try {
             // remove stars in SELECT to get actual paths
             List<PartialPath> actualPaths = getMatchedTimeseries(fullPath);
+            if (suffixPath.getTsAlias() != null) {
+              if (actualPaths.size() == 1) {
+                String columnName = actualPaths.get(0).getMeasurement();
+                if (originAggregations != null && !originAggregations.isEmpty()) {
+                  measurementAliasMap.put(originAggregations.get(i) + "(" + columnName + ")", suffixPath.getTsAlias());
+                } else {
+                  measurementAliasMap.put(columnName, suffixPath.getTsAlias());
+                }
+              } else if (actualPaths.size() >= 2) {
+                throw new QueryProcessException(
+                    "alias '" + suffixPath.getTsAlias() + "' can only be matched with one time series");
+              }
+            }
+
             // for actual non exist path
             if (originAggregations != null && actualPaths.isEmpty() && originAggregations
                 .isEmpty()) {
@@ -503,6 +526,7 @@ public class PhysicalGenerator {
                   || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
                 measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
               }
+
               // update paths
               paths.add(path);
             }
@@ -534,6 +558,7 @@ public class PhysicalGenerator {
 
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
+      alignByDevicePlan.setMeasurementAliasMap(measurementAliasMap);
       alignByDevicePlan.setDevices(devices);
       alignByDevicePlan.setColumnDataTypeMap(columnDataTypeMap);
       alignByDevicePlan.setMeasurementTypeMap(measurementTypeMap);
@@ -648,6 +673,7 @@ public class PhysicalGenerator {
     basicOperator.setSinglePath(concatPath);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void deduplicate(QueryPlan queryPlan) throws MetadataException {
     // generate dataType first
     List<PartialPath> paths = queryPlan.getPaths();
@@ -665,11 +691,9 @@ public class PhysicalGenerator {
     if (queryPlan instanceof LastQueryPlan) {
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = paths.get(i);
-        String column;
-        if (path.getAlias() != null) {
-          column = path.getFullPathWithAlias();
-        } else {
-          column = path.getFullPath();
+        String column = path.getTsAlias();
+        if (column == null) {
+          column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.toString();
         }
         if (!columnSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
@@ -690,14 +714,13 @@ public class PhysicalGenerator {
 
     int index = 0;
     for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
-      String column;
-      if (indexedPath.left.getAlias() != null) {
-        column = indexedPath.left.getFullPathWithAlias();
-      } else {
-        column = indexedPath.left.getFullPath();
-      }
-      if (queryPlan instanceof AggregationPlan) {
-        column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";
+      String column = indexedPath.left.getTsAlias();
+      if (column == null) {
+        column = indexedPath.left.getMeasurementAlias() != null ? indexedPath.left.getFullPathWithAlias()
+            : indexedPath.left.toString();
+        if (queryPlan instanceof AggregationPlan) {
+          column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";
+        }
       }
       if (!columnSet.contains(column)) {
         TSDataType seriesType = dataTypes.get(indexedPath.right);

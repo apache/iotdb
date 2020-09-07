@@ -150,6 +150,7 @@ public class AggregationExecutor {
     aggregateFromReader(seriesReader, aggregateResultList);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static void aggregateFromReader(IAggregateReader seriesReader,
       List<AggregateResult> aggregateResultList) throws QueryProcessException, IOException {
     int remainingToCalculate = aggregateResultList.size();
@@ -220,6 +221,7 @@ public class AggregationExecutor {
     return newRemainingToCalculate;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static int aggregatePages(IAggregateReader seriesReader,
       List<AggregateResult> aggregateResultList, boolean[] isCalculatedArray, int remainingToCalculate)
       throws IOException, QueryProcessException {

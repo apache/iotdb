@@ -130,6 +130,7 @@ public class LogReplayer {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void replayInsert(InsertPlan plan) throws WriteProcessException, QueryProcessException {
     if (currentTsFileResource != null) {
       long minTime, maxTime;
@@ -164,11 +165,17 @@ public class LogReplayer {
     }
     if (plan instanceof InsertRowPlan) {
       InsertRowPlan tPlan = (InsertRowPlan) plan;
+      //only infer type when users pass a String value
+      //WAL already serializes the real data type, so no need to infer type
+      ((InsertRowPlan) plan).setNeedInferType(false);
       tPlan.setSchemasAndTransferType(schemas);
+      //mark failed plan manually 
+      checkDataTypeAndMarkFailed(schemas, tPlan);
       recoverMemTable.insert(tPlan);
     } else {
       InsertTabletPlan tPlan = (InsertTabletPlan) plan;
       tPlan.setSchemas(schemas);
+      checkDataTypeAndMarkFailed(schemas, tPlan);
       recoverMemTable.insertTablet(tPlan, 0, tPlan.getRowCount());
     }
   }
@@ -177,5 +184,13 @@ public class LogReplayer {
   private void replayUpdate(UpdatePlan updatePlan) {
     // TODO: support update
     throw new UnsupportedOperationException("Update not supported");
+  }
+
+  private void checkDataTypeAndMarkFailed(final MeasurementSchema[] schemas, InsertPlan tPlan) {
+    for (int i = 0; i < schemas.length; i++) {
+      if (schemas[i] == null || schemas[i].getType() != tPlan.getDataTypes()[i]) {
+        tPlan.markFailedMeasurementInsertion(i);
+      }
+    }
   }
 }
