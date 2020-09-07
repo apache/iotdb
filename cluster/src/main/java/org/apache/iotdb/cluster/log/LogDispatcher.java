@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Peer;
+import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +64,7 @@ public class LogDispatcher {
   public void offer(SendLogRequest log) {
     for (BlockingQueue<SendLogRequest> nodeLogQueue : nodeLogQueues) {
       nodeLogQueue.offer(log);
+      log.enqueueTime = System.nanoTime();
     }
     if (logger.isDebugEnabled()) {
       logger.debug("{} is enqueued in {} queues", log.log, nodeLogQueues.size());
@@ -86,6 +88,7 @@ public class LogDispatcher {
     public AtomicBoolean leaderShipStale;
     public AtomicLong newLeaderTerm;
     public AppendEntryRequest appendEntryRequest;
+    public long enqueueTime;
 
     public SendLogRequest(Log log, AtomicInteger voteCounter,
         AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm,
@@ -119,6 +122,9 @@ public class LogDispatcher {
       try {
         while (!Thread.interrupted()) {
           SendLogRequest poll = logBlockingDeque.take();
+          long inQueueTime = System.nanoTime() - poll.enqueueTime;
+          Timer.logDispatcherLogInQueueCounter.incrementAndGet();
+          Timer.logDispatcherLogInQueueMS.addAndGet(inQueueTime);
           currBatch.add(poll);
           logBlockingDeque.drainTo(currBatch);
           if (logger.isDebugEnabled()) {
