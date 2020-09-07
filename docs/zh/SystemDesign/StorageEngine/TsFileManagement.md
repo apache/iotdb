@@ -29,9 +29,9 @@
 - tsfile_manage_strategy 内置两个策略：LevelStrategy 和 NormalStrategy
 - LevelStrategy 即开启热合并并使用层级合并方法，NormalStrategy 即关闭热合并
 - iotdb-engine.properties 中加 merge_chunk_point_number：最大的chunk大小限制，LevelStrategy 时，当达到该参数就合并到最后一层
-- iotdb-engine.properties 加一个参数 max_level_num：LevelStrategy 时最大层数
+- iotdb-engine.properties 加一个参数 max_level_num：LevelStrategy 时最大层数，例如：当 max_level_num=3，则文件结构有 第0层、第1层、第2层 其中第2层为稳定层（不再进行热合并）
 - 新建一个 TsFileManagement 类，专门管理StorageGroupProcessor中的seqFileList和unSeqFileList，在这里写热合并的主体逻辑，对外抽象对seqFileList和unSeqFileList的一系列所需接口
-- 对于普通 merge 会调用 TsFileManagement 的 getStableTsFileList() 来获取准备进行文件合并的文件列表，这里对于 LevelStrategy 来说就是返回第 {max_level_num} 层的文件，对于 NormalStrategy 来说就是返回所有文件列表
+- 对于普通 merge 会调用 TsFileManagement 的 getStableTsFileList() 来获取准备进行文件合并的文件列表，这里对于 LevelStrategy 来说就是返回第 {max_level_num - 1} 层的文件，对于 NormalStrategy 来说就是返回所有文件列表
 
 ## TsFileManagement 对外提供的接口和类
 
