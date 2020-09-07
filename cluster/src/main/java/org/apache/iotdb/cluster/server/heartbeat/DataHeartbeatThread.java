@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 public class DataHeartbeatThread extends HeartbeatThread {
 
   private DataGroupMember dataGroupMember;
+  int number = 1;
 
   public DataHeartbeatThread(DataGroupMember raftMember) {
     super(raftMember);
@@ -55,6 +56,12 @@ public class DataHeartbeatThread extends HeartbeatThread {
     electionRequest.setLastLogIndex(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogIndex());
     electionRequest.setDataLogLastIndex(dataGroupMember.getLogManager().getLastLogIndex());
     electionRequest.setDataLogLastTerm(dataGroupMember.getLogManager().getLastLogTerm());
+    if(dataGroupMember.getThisNode() != dataGroupMember.getHeader()){
+      if(number%4 != 0){
+        number++;
+        return;
+      }
+    }
     super.startElection();
   }
 }
