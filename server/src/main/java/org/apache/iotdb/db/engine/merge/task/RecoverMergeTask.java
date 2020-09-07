@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.merge.recover.LogAnalyzer.Status;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -94,7 +95,7 @@ public class RecoverMergeTask extends MergeTask {
     }
   }
 
-  private void resumeAfterFilesLogged(boolean continueMerge) throws IOException {
+  private void resumeAfterFilesLogged(boolean continueMerge) throws IOException, IllegalPathException {
     if (continueMerge) {
       resumeMergeProgress();
       calculateConcurrentSeriesNum();
@@ -115,7 +116,7 @@ public class RecoverMergeTask extends MergeTask {
     cleanUp(continueMerge);
   }
 
-  private void resumeAfterAllTsMerged(boolean continueMerge) throws IOException {
+  private void resumeAfterAllTsMerged(boolean continueMerge) throws IOException, IllegalPathException {
     if (continueMerge) {
       resumeMergeProgress();
       MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,

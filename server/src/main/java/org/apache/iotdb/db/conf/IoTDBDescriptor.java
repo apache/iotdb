@@ -517,6 +517,14 @@ public class IoTDBDescriptor {
       conf.setDebugState(Boolean.parseBoolean(properties
           .getProperty("debug_state", String.valueOf(conf.isDebugOn()))));
 
+      conf.setEnableDeviceIndexer((Boolean.parseBoolean(
+        properties.getProperty(
+          "enable_device_indexer", String.valueOf(conf.isEnableDeviceIndexer())))));
+
+      conf.setDeviceIndexerType((Integer.parseInt(
+        properties.getProperty(
+          "device_indexer_type", String.valueOf(conf.getDeviceIndexerType())))));
+
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
         conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
