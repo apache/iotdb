@@ -117,9 +117,9 @@ public class IoTDBDescriptor {
     else if(!urlString.endsWith(".properties")) {
       urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
-    // If the url doesn't contain a ":" it's provided as a normal path.
-    // So we need to add the prefix "file:" to make it a real URL.
-    if(!urlString.contains(":")) {
+    // If the url doesn't start with "file:" it's provided as a normal path.
+    // So we need to add it to make it a real URL.
+    if(!urlString.startsWith("file:")) {
       urlString = "file:" + urlString;
     }
     try {
