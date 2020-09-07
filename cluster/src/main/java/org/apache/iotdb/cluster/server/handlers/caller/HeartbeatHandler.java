@@ -69,6 +69,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
           .computeIfAbsent(follower, k -> new Peer(localMember.getLogManager().getLastLogIndex()));
       if (!peer.isCatchUp() || !localMember.getLogManager()
           .isLogUpToDate(lastLogTerm, lastLogIdx)) {
+        // the follower is not up-to-date
         peer.setNextIndex(lastLogIdx + 1);
         logger.debug("{}: catching up node {}, index-term: {}-{}/{}-{}, peer nextIndex {}, peer "
                 + "match index {}",
@@ -77,14 +78,25 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
             localLastLogIdx, localLastLogTerm,
             peer.getNextIndex(), peer.getMatchIndex());
 
-        int inconsistentNum = peer.incInconsistentHeartbeatNum();
-        if (inconsistentNum >= 5) {
-          localMember.catchUp(follower);
+        // only start a catch up when the follower's lastLogIndex remains stall and unchanged for 5
+        // heartbeats
+        if (lastLogIdx == peer.getLastHeartBeatIndex()) {
+          // the follower's lastLogIndex is unchanged, increase inconsistent counter
+          int inconsistentNum = peer.incInconsistentHeartbeatNum();
+          if (inconsistentNum >= 5) {
+            localMember.catchUp(follower);
+          }
+        } else {
+          // the follower's lastLogIndex is changed, which means the follower is not down yet, we
+          // reset the counter to see if it can eventually catch up by itself
+          peer.resetInconsistentHeartbeatNum();
         }
       } else {
+        // the follower is up-to-date
         peer.setMatchIndex(Math.max(peer.getMatchIndex(), lastLogIdx));
         peer.resetInconsistentHeartbeatNum();
       }
+      peer.setLastHeartBeatIndex(lastLogIdx);
     } else {
       // current leadership is invalid because the follower has a larger term
       synchronized (localMember.getTerm()) {

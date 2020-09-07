@@ -118,6 +118,13 @@ public abstract class RaftLogManager {
 
   private ExecutorService logApplierExecutor;
 
+  /**
+   * Each time new logs are appended, this condition will be notified so logs that have larger
+   * indices but arrived earlier can proceed.
+   */
+  private final Object logUpdateCondition = new Object();
+
+
   public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
     this.name = name;
@@ -414,6 +421,9 @@ public abstract class RaftLogManager {
       return -1;
     }
     getUnCommittedEntryManager().truncateAndAppend(entries);
+    synchronized (logUpdateCondition) {
+      logUpdateCondition.notifyAll();
+    }
     return getLastLogIndex();
   }
 
@@ -431,6 +441,9 @@ public abstract class RaftLogManager {
       return -1;
     }
     getUnCommittedEntryManager().truncateAndAppend(entry);
+    synchronized (logUpdateCondition) {
+      logUpdateCondition.notifyAll();
+    }
     return getLastLogIndex();
   }
 
@@ -887,5 +900,9 @@ public abstract class RaftLogManager {
 
   public String getName() {
     return name;
+  }
+
+  public Object getLogUpdateCondition() {
+    return logUpdateCondition;
   }
 }
