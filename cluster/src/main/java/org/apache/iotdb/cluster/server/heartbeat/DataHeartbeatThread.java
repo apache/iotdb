@@ -60,6 +60,8 @@ public class DataHeartbeatThread extends HeartbeatThread {
       if(number%4 != 0){
         number++;
         return;
+      }else{
+        number = 1;
       }
     }
     super.startElection();
