@@ -71,6 +71,13 @@ public class UDAFPlan extends AggregationPlan implements UDFPlan {
     }
   }
 
+  @Override
+  public void finalizeUDFExecutors() {
+    for (UDAFExecutor executor : deduplicatedExecutors) {
+      executor.finalizeUDF();
+    }
+  }
+
   public UDAFExecutor getExecutor(int index) {
     Integer executorIndex = columnIndex2DeduplicatedExecutorIndex.get(index);
     return executorIndex == null ? null : deduplicatedExecutors.get(executorIndex);

@@ -26,4 +26,6 @@ import org.apache.iotdb.db.query.udf.core.UDFContext;
 public interface UDFPlan {
 
   void initializeUdfExecutors(List<UDFContext> udfContexts) throws QueryProcessException;
+
+  void finalizeUDFExecutors();
 }

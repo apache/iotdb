@@ -75,6 +75,13 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     }
   }
 
+  @Override
+  public void finalizeUDFExecutors() {
+    for (UDTFExecutor executor : deduplicatedExecutors) {
+      executor.finalizeUDF();
+    }
+  }
+
   public UDTFExecutor getExecutor(int index) {
     Integer executorIndex = columnIndex2DeduplicatedExecutorIndex.get(index);
     return executorIndex == null ? null : deduplicatedExecutors.get(executorIndex);
