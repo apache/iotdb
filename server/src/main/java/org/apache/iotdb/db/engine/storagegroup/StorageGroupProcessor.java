@@ -88,7 +88,7 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.timeIndex.IndexerManager;
-import org.apache.iotdb.db.timeIndex.device.DeviceTimeIndexer;
+import org.apache.iotdb.db.timeIndex.TimeIndexer;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -262,8 +262,8 @@ public class StorageGroupProcessor {
    * unseqDeviceTimeIndexer manage the device Index of unseq tsfiles
    *
    */
-  private DeviceTimeIndexer seqDeviceTimeIndexer;
-  private DeviceTimeIndexer unseqDeviceTimeIndexer;
+  private TimeIndexer seqTimeIndexer;
+  private TimeIndexer unseqTimeIndexer;
 
   public StorageGroupProcessor(String systemDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
@@ -378,11 +378,15 @@ public class StorageGroupProcessor {
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
       // init TimeIndexer
-      seqDeviceTimeIndexer = IndexerManager.getInstance().getSeqIndexer(storageGroupName);
-      unseqDeviceTimeIndexer = IndexerManager.getInstance().getUnseqIndexer(storageGroupName);
-      if (seqDeviceTimeIndexer != null) {
-        seqDeviceTimeIndexer.init();
-        unseqDeviceTimeIndexer.init();
+      try {
+        seqTimeIndexer = IndexerManager.getInstance().getSeqIndexer(storageGroupName);
+        unseqTimeIndexer = IndexerManager.getInstance().getUnseqIndexer(storageGroupName);
+        if (seqTimeIndexer != null) {
+          seqTimeIndexer.init();
+          unseqTimeIndexer.init();
+        }
+      } catch (IllegalPathException e) {
+        throw new StorageGroupProcessorException(e);
       }
     }
   }
@@ -1185,21 +1189,19 @@ public class StorageGroupProcessor {
           tsFileManagement.remove(resource, isSeq);
           if (isSeq) {
             if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
-              DeviceTimeIndexer deviceTimeIndexer = IndexerManager.getInstance().getSeqIndexer(resource.getStorageGroupName());
-              if (deviceTimeIndexer != null) {
-                deviceTimeIndexer.deleteIndexForDevices(resource.getDeviceToIndexMap(), resource.getStartTimes(),
-                    resource.getEndTimes(), resource.getTsFilePath());
-              }
+              TimeIndexer timeIndexer = IndexerManager.getInstance().getSeqIndexer(resource.getStorageGroupName());
+              timeIndexer.deleteIndexForPaths(resource.getDeviceToIndexMap(), resource.getStartTimes(),
+                  resource.getEndTimes(), resource.getTsFilePath());
             }
           } else {
             if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
-              DeviceTimeIndexer deviceTimeIndexer = IndexerManager.getInstance().getUnseqIndexer(resource.getStorageGroupName());
-              if (deviceTimeIndexer != null) {
-                deviceTimeIndexer.deleteIndexForDevices(resource.getDeviceToIndexMap(), resource.getStartTimes(),
+              TimeIndexer timeIndexer = IndexerManager.getInstance().getUnseqIndexer(resource.getStorageGroupName());
+              timeIndexer.deleteIndexForPaths(resource.getDeviceToIndexMap(), resource.getStartTimes(),
                     resource.getEndTimes(), resource.getTsFilePath());
-              }
             }
           }
+        } catch (IllegalPathException e) {
+          logger.error("Fail to get DeviceTimeIndexer for storage group {}, err:{}", resource.getStorageGroupName(), e.getMessage());
         } finally {
           resource.writeUnlock();
         }
@@ -1289,8 +1291,8 @@ public class StorageGroupProcessor {
     tsFileManagement.readLock();
     try {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
-        seqResources = seqDeviceTimeIndexer.filterByOneDevice(deviceId, timeFilter);
-        unseqResources = unseqDeviceTimeIndexer.filterByOneDevice(deviceId, timeFilter);
+        seqResources = seqTimeIndexer.filterByPath(deviceId, timeFilter);
+        unseqResources = unseqTimeIndexer.filterByPath(deviceId, timeFilter);
         List<TsFileResource> unsealedSeqFiles = getUnSealedListResourceForQuery(
           tsFileManagement.getTsFileList(true),
           deviceId, measurementId, context, timeFilter, true);
@@ -1301,7 +1303,7 @@ public class StorageGroupProcessor {
         unsealedSeqFiles.addAll(unsealedUnseqFiles);
       } else {
         seqResources = getFileResourceListForQuery(tsFileManagement.getTsFileList(true),
-            upgradeSeqFileList, deviceId, measurementId, context, timeFilter, true);
+          upgradeSeqFileList, deviceId, measurementId, context, timeFilter, true);
         unseqResources = getFileResourceListForQuery(tsFileManagement.getTsFileList(false),
           upgradeUnseqFileList, deviceId, measurementId, context, timeFilter, false);
       }
@@ -1946,16 +1948,16 @@ public class StorageGroupProcessor {
         updateLatestTimeMap(newTsFileResource);
       }
       if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
-        DeviceTimeIndexer deviceTimeIndexer = null;
+        TimeIndexer timeIndexer = null;
         if (newTsFileResource.isSeq()) {
-          deviceTimeIndexer = IndexerManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
+          timeIndexer = IndexerManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
         } else {
-          deviceTimeIndexer = IndexerManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
+          timeIndexer = IndexerManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
         }
-        deviceTimeIndexer.addIndexForDevices(newTsFileResource.getDeviceToIndexMap(), newTsFileResource.getStartTimes(),
-          newTsFileResource.getEndTimes(), newTsFileResource.getTsFilePath());
+        timeIndexer.addIndexForPaths(newTsFileResource.getDeviceToIndexMap(), newTsFileResource.getStartTimes(),
+            newTsFileResource.getEndTimes(), newTsFileResource.getTsFilePath());
       }
-    } catch (DiskSpaceInsufficientException e) {
+    } catch (DiskSpaceInsufficientException | IllegalPathException e) {
       logger.error(
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(), tsfileToBeInserted.getParentFile().getName());
@@ -2018,14 +2020,20 @@ public class StorageGroupProcessor {
       }
 
       if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
-        DeviceTimeIndexer deviceTimeIndexer = null;
-        if (newTsFileResource.isSeq()) {
-          deviceTimeIndexer = IndexerManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
-        } else {
-          deviceTimeIndexer = IndexerManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
+        try {
+          TimeIndexer timeIndexer = null;
+          if (newTsFileResource.isSeq()) {
+            timeIndexer = IndexerManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
+          } else {
+            timeIndexer = IndexerManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
+          }
+          timeIndexer.addIndexForPaths(newTsFileResource.getDeviceToIndexMap(), newTsFileResource.getStartTimes(),
+              newTsFileResource.getEndTimes(), newTsFileResource.getTsFilePath());
+        } catch (IllegalPathException e) {
+          logger.error("Fail to get DeviceTimeIndexer for storage group {}, err:{}", newTsFileResource.getStorageGroupName(), e.getMessage());
+          IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+          throw new LoadFileException(e);
         }
-        deviceTimeIndexer.addIndexForDevices(newTsFileResource.getDeviceToIndexMap(), newTsFileResource.getStartTimes(),
-          newTsFileResource.getEndTimes(), newTsFileResource.getTsFilePath());
       }
 
       // update latest time map
@@ -2430,17 +2438,21 @@ public class StorageGroupProcessor {
     try {
       tsFileResourceToBeDeleted.remove();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
-          DeviceTimeIndexer deviceTimeIndexer = null;
+        try {
+          TimeIndexer timeIndexer = null;
           if (tsFileResourceToBeDeleted.isSeq()) {
-            deviceTimeIndexer = IndexerManager.getInstance().getSeqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
+            timeIndexer = IndexerManager.getInstance().getSeqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
           } else {
-            deviceTimeIndexer = IndexerManager.getInstance().getUnseqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
+            timeIndexer = IndexerManager.getInstance().getUnseqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
           }
-          if (deviceTimeIndexer != null) {
-            deviceTimeIndexer.deleteIndexForDevices(tsFileResourceToBeDeleted.getDeviceToIndexMap(),
+          if (timeIndexer != null) {
+            timeIndexer.deleteIndexForPaths(tsFileResourceToBeDeleted.getDeviceToIndexMap(),
                 tsFileResourceToBeDeleted.getStartTimes(), tsFileResourceToBeDeleted.getEndTimes(),
                 tsFileResourceToBeDeleted.getTsFilePath());
           }
+        } catch (IllegalPathException e) {
+          return false;
+        }
       }
       logger.info("Delete tsfile {} successfully.", tsFileResourceToBeDeleted.getTsFile());
     } finally {

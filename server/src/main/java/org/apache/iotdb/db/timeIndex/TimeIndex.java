@@ -16,25 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.timeIndex.device;
+package org.apache.iotdb.db.timeIndex;
 
 import org.apache.iotdb.db.metadata.PartialPath;
 
 /**
- * Device Index, like [(deviceId, startTime, endTime, TsFilePath)] to accelerate query
+ * Time Index, like deviceIndexer: [(deviceId, startTime, endTime, TsFilePath)] to accelerate query
  */
-public class DeviceIndex {
-  private PartialPath[] deviceIds;
+public class TimeIndex {
+  private PartialPath[] paths;
   private long[] startTimes;
   private long[] endTimes;
   private String tsFilePath;
 
-  public PartialPath[] getDeviceIds() {
-    return deviceIds;
+  public PartialPath[] getPaths() {
+    return paths;
   }
 
-  public void setDeviceIds(PartialPath[] deviceIds) {
-    this.deviceIds = deviceIds;
+  public void setPaths(PartialPath[] paths) {
+    this.paths = paths;
   }
 
   public long[] getStartTimes() {

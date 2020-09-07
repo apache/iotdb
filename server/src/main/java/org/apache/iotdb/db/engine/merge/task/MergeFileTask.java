@@ -36,12 +36,11 @@ import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.timeIndex.device.DeviceIndex;
-import org.apache.iotdb.db.timeIndex.device.DeviceTimeIndexer;
 import org.apache.iotdb.db.timeIndex.IndexerManager;
-import org.apache.iotdb.db.timeIndex.device.UpdateIndexsParam;
+import org.apache.iotdb.db.timeIndex.TimeIndexer;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -83,7 +82,7 @@ class MergeFileTask {
     this.unmergedFiles = unmergedSeqFiles;
   }
 
-  void mergeFiles() throws IOException {
+  void mergeFiles() throws IOException, IllegalPathException {
     // decide whether to write the unmerged chunks to the merge files or to move the merged chunks
     // back to the origin seqFile's
     if (logger.isInfoEnabled()) {
@@ -141,7 +140,7 @@ class MergeFileTask {
         currentMergeIndex + 1, unmergedFiles.size());
   }
 
-  private void moveMergedToOld(TsFileResource seqFile) throws IOException {
+  private void moveMergedToOld(TsFileResource seqFile) throws IOException, IllegalPathException {
     int mergedChunkNum = context.getMergedChunkCnt().getOrDefault(seqFile, 0);
     if (mergedChunkNum == 0) {
       resource.removeFileAndWriter(seqFile);
@@ -199,8 +198,9 @@ class MergeFileTask {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
         // add new device index
         // may Indexer need delete old index background
-        DeviceTimeIndexer deviceTimeIndexer = IndexerManager.getInstance().getSeqIndexer(seqFile.getStorageGroupName());
-        deviceTimeIndexer.addIndexForDevices(seqFile.getDeviceToIndexMap(), seqFile.getStartTimes(), seqFile.getEndTimes(), seqFile.getTsFilePath());
+        TimeIndexer timeIndexer = IndexerManager.getInstance().getSeqIndexer(seqFile.getStorageGroupName());
+        timeIndexer.addIndexForPaths(seqFile.getDeviceToIndexMap(),
+            seqFile.getStartTimes(), seqFile.getEndTimes(), seqFile.getTsFilePath());
       }
     } catch (Exception e) {
       restoreOldFile(seqFile);
@@ -331,8 +331,8 @@ class MergeFileTask {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
         // add new device index
         // may Indexer need delete old index background
-        DeviceTimeIndexer deviceTimeIndexer = IndexerManager.getInstance().getSeqIndexer(seqFile.getStorageGroupName());
-        deviceTimeIndexer.addIndexForDevices(seqFile.getDeviceToIndexMap(), seqFile.getStartTimes(), seqFile.getEndTimes(), seqFile.getTsFilePath());
+        TimeIndexer timeIndexer = IndexerManager.getInstance().getSeqIndexer(seqFile.getStorageGroupName());
+        timeIndexer.addIndexForPaths(seqFile.getDeviceToIndexMap(), seqFile.getStartTimes(), seqFile.getEndTimes(), seqFile.getTsFilePath());
       }
     } catch (Exception e) {
       logger.error(e.getMessage(), e);

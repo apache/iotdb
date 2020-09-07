@@ -21,7 +21,6 @@ package org.apache.iotdb.db.timeIndex;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.timeIndex.device.DeviceTimeIndexer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,8 +31,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class IndexerManager {
   private String indexerFilePath;
-  private Map<PartialPath, DeviceTimeIndexer> seqIndexers;
-  private Map<PartialPath, DeviceTimeIndexer> unseqIndexers;
+  private Map<PartialPath, TimeIndexer> seqIndexers;
+  private Map<PartialPath, TimeIndexer> unseqIndexers;
   private ReentrantReadWriteLock lock;
   private static final Logger logger = LoggerFactory.getLogger(IndexerManager.class);
 
@@ -69,31 +68,43 @@ public class IndexerManager {
     return true;
   }
 
-  public void addSeqIndexer(PartialPath storageGroup, DeviceTimeIndexer deviceTimeIndexer) {
+  public void addSeqIndexer(PartialPath storageGroup, TimeIndexer TimeIndexer) {
     lock.writeLock().lock();
-    seqIndexers.put(storageGroup, deviceTimeIndexer);
-    lock.writeLock().unlock();
+    try {
+      seqIndexers.put(storageGroup, TimeIndexer);
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
-  public void addUnseqIndexer(PartialPath storageGroup, DeviceTimeIndexer deviceTimeIndexer) {
+  public void addUnseqIndexer(PartialPath storageGroup, TimeIndexer TimeIndexer) {
     lock.writeLock().lock();
-    unseqIndexers.put(storageGroup, deviceTimeIndexer);
-    lock.writeLock().unlock();
+    try {
+      unseqIndexers.put(storageGroup, TimeIndexer);
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   public void deleteSeqIndexer(PartialPath storageGroup) {
     lock.writeLock().lock();
-    seqIndexers.remove(storageGroup);
-    lock.writeLock().unlock();
+    try {
+      seqIndexers.remove(storageGroup);
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   public void deleteUnseqIndexer(PartialPath storageGroup) {
     lock.writeLock().lock();
-    unseqIndexers.remove(storageGroup);
-    lock.writeLock().unlock();
+    try {
+      unseqIndexers.remove(storageGroup);
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
-  public DeviceTimeIndexer getSeqIndexer(PartialPath storageGroup) {
+  public TimeIndexer getSeqIndexer(PartialPath storageGroup) {
     lock.readLock().lock();
     try {
       return seqIndexers.get(storageGroup);
@@ -102,13 +113,13 @@ public class IndexerManager {
     }
   }
 
-  public DeviceTimeIndexer getSeqIndexer(String storageGroup) {
+  public TimeIndexer getSeqIndexer(String storageGroup) throws IllegalPathException {
     PartialPath sgName;
     try {
       sgName = new PartialPath(storageGroup);
     } catch (IllegalPathException e) {
-      logger.warn("Fail to get DeviceTimeIndexer for storage group {}, err:{}", storageGroup, e.getMessage());
-      return null;
+      logger.warn("Fail to get TimeIndexer for storage group {}, err:{}", storageGroup, e.getMessage());
+      throw e;
     }
     lock.readLock().lock();
     try {
@@ -118,7 +129,7 @@ public class IndexerManager {
     }
   }
 
-  public DeviceTimeIndexer getUnseqIndexer(PartialPath storageGroup) {
+  public TimeIndexer getUnseqIndexer(PartialPath storageGroup) {
     lock.readLock().lock();
     try {
       return unseqIndexers.get(storageGroup);
@@ -127,13 +138,13 @@ public class IndexerManager {
     }
   }
 
-  public DeviceTimeIndexer getUnseqIndexer(String storageGroup) {
+  public TimeIndexer getUnseqIndexer(String storageGroup) throws IllegalPathException {
     PartialPath sgName;
     try {
       sgName = new PartialPath(storageGroup);
     } catch (IllegalPathException e) {
-      logger.warn("Fail to get DeviceTimeIndexer for storage group {}, err:{}", storageGroup, e.getMessage());
-      return null;
+      logger.warn("Fail to get TimeIndexer for storage group {}, err:{}", storageGroup, e.getMessage());
+      throw e;
     }
     lock.readLock().lock();
     try {

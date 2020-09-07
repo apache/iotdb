@@ -20,12 +20,14 @@ package org.apache.iotdb.db.timeIndex.device;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.timeIndex.TimeIndexer;
+import org.apache.iotdb.db.timeIndex.UpdateIndexsParam;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
 import java.util.Map;
 
-public class RocksDBDeviceTimeIndexer implements DeviceTimeIndexer {
+public class RocksDBDeviceTimeIndexer implements TimeIndexer {
   @Override
   public boolean init() {
     return false;
@@ -42,42 +44,42 @@ public class RocksDBDeviceTimeIndexer implements DeviceTimeIndexer {
   }
 
   @Override
-  public boolean addIndexForDevice(PartialPath deviceId, long startTime, long endTime, String tsFilePath) {
+  public boolean addIndexForPath(PartialPath path, long startTime, long endTime, String tsFilePath) {
     return false;
   }
 
   @Override
-  public boolean addIndexForDevice(String deviceId, long startTime, long endTime, String tsFilePath) {
+  public boolean addIndexForPath(String path, long startTime, long endTime, String tsFilePath) {
     return false;
   }
 
   @Override
-  public boolean addIndexForDevices(Map<String, Integer> deviceIds, long[] startTimes, long[] endTimes, String tsFilePath) {
+  public boolean addIndexForPaths(Map<String, Integer> paths, long[] startTimes, long[] endTimes, String tsFilePath) {
     return false;
   }
 
   @Override
-  public boolean deleteIndexForDevice(PartialPath deviceId, long startTime, long endTime, String tsFilePath) {
+  public boolean deleteIndexForPath(PartialPath path, long startTime, long endTime, String tsFilePath) {
     return false;
   }
 
   @Override
-  public boolean deleteIndexForDevice(String deviceId, long startTime, long endTime, String tsFilePath) {
+  public boolean deleteIndexForPath(String path, long startTime, long endTime, String tsFilePath) {
     return false;
   }
 
   @Override
-  public boolean deleteIndexForDevices(Map<String, Integer> deviceIds, long[] startTimes, long[] endTimes, String tsFilePath) {
+  public boolean deleteIndexForPaths(Map<String, Integer> deviceIds, long[] startTimes, long[] endTimes, String tsFilePath) {
     return false;
   }
 
   @Override
-  public boolean updateIndexForDevices(UpdateIndexsParam updateIndexsParam) {
+  public boolean updateIndexForPaths(UpdateIndexsParam updateIndexsParam) {
     return false;
   }
 
   @Override
-  public List<TsFileResource> filterByOneDevice(PartialPath deviceId, Filter timeFilter) {
+  public List<TsFileResource> filterByPath(PartialPath path, Filter timeFilter) {
     return null;
   }
 }

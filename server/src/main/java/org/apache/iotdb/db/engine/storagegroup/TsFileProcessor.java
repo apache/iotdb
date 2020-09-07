@@ -48,13 +48,14 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTi
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
-import org.apache.iotdb.db.timeIndex.device.DeviceTimeIndexer;
 import org.apache.iotdb.db.timeIndex.IndexerManager;
+import org.apache.iotdb.db.timeIndex.TimeIndexer;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -651,12 +652,18 @@ public class TsFileProcessor {
     long closeStartTime = System.currentTimeMillis();
     if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
       // update device index
-      if (sequence) {
-        DeviceTimeIndexer seqIndexer = IndexerManager.getInstance().getSeqIndexer(storageGroupName);
-        seqIndexer.addIndexForDevices(tsFileResource.deviceToIndex, tsFileResource.startTimes, tsFileResource.endTimes, tsFileResource.getTsFilePath());
-      } else {
-        DeviceTimeIndexer unseqIndexer = IndexerManager.getInstance().getUnseqIndexer(storageGroupName);
-        unseqIndexer.addIndexForDevices(tsFileResource.deviceToIndex, tsFileResource.startTimes, tsFileResource.endTimes, tsFileResource.getTsFilePath());
+      try {
+        TimeIndexer timeIndexer = null;
+        if (sequence) {
+          timeIndexer = IndexerManager.getInstance().getSeqIndexer(storageGroupName);
+        } else {
+          timeIndexer = IndexerManager.getInstance().getUnseqIndexer(storageGroupName);
+        }
+        timeIndexer.addIndexForPaths(tsFileResource.deviceToIndex, tsFileResource.startTimes,
+            tsFileResource.endTimes, tsFileResource.getTsFilePath());
+      } catch (IllegalPathException e) {
+        logger.error("Failed to endFile {} for storage group {}, err:{}", tsFileResource.getTsFile(),
+            tsFileResource.getStorageGroupName(), e.getMessage());
       }
     }
     tsFileResource.serialize();

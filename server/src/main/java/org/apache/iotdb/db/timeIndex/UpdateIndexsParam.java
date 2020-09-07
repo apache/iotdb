@@ -16,28 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.timeIndex.device;
+package org.apache.iotdb.db.timeIndex;
 
 /**
- * to atomic update indexs for device
+ * to atomic update indexs for path
  */
 public class UpdateIndexsParam {
-  private DeviceIndex[] oldIndexs;
-  private DeviceIndex newIndex;
+  private TimeIndex[] oldIndexs;
+  private TimeIndex newIndex;
 
-  public DeviceIndex[] getOldIndexs() {
+  public TimeIndex[] getOldIndexs() {
     return oldIndexs;
   }
 
-  public void setOldIndexs(DeviceIndex[] oldIndexs) {
+  public void setOldIndexs(TimeIndex[] oldIndexs) {
     this.oldIndexs = oldIndexs;
   }
 
-  public DeviceIndex getNewIndex() {
+  public TimeIndex getNewIndex() {
     return newIndex;
   }
 
-  public void setNewIndex(DeviceIndex newIndex) {
+  public void setNewIndex(TimeIndex newIndex) {
     this.newIndex = newIndex;
   }
 }
