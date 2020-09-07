@@ -48,6 +48,7 @@ public abstract class PhysicalPlan {
 
   private static final String SERIALIZATION_UNIMPLEMENTED = "serialization unimplemented";
 
+  protected String userName;
   private boolean isQuery;
   private Operator.OperatorType operatorType;
   private static final int NULL_VALUE_LEN = -1;
@@ -149,6 +150,14 @@ public abstract class PhysicalPlan {
       return null;
     }
     return ReadWriteIOUtils.readStringWithLength(buffer, valueLen);
+  }
+
+  public String getUserName() {
+    return userName;
+  }
+
+  public void setUserName(String userName) {
+    this.userName = userName;
   }
 
   public static class Factory {

@@ -524,6 +524,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
       }
 
+      physicalPlan.setUserName(sessionIdUsernameMap.get(req.sessionId));
       return internalExecuteQueryStatement(statement, req.statementId, physicalPlan, req.fetchSize,
           sessionIdUsernameMap.get(req.getSessionId()));
 
@@ -598,7 +599,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       statementId2QueryId.computeIfAbsent(statementId, k -> new HashSet<>()).add(queryId);
 
       // create and cache dataset
-      QueryDataSet newDataSet = createQueryDataSet(queryId, plan, username);
+      QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()
           && newDataSet instanceof NonAlignEngineDataSet) {
         TSQueryNonAlignDataSet result = fillRpcNonAlignReturnData(fetchSize, newDataSet, username);
@@ -979,12 +980,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * create QueryDataSet and buffer it for fetchResults
    */
-  private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan, String username)
+  private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
       IOException, MetadataException, SQLException, TException, InterruptedException {
 
     QueryContext context = genQueryContext(queryId);
-    QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context, username);
+    QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryId2DataSet.put(queryId, queryDataSet);
     return queryDataSet;
   }

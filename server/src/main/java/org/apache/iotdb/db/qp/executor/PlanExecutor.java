@@ -165,13 +165,13 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context, String username)
+  public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException,
       QueryProcessException, MetadataException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
-      return processAuthorQuery((AuthorPlan) queryPlan,username);
+      return processAuthorQuery((AuthorPlan) queryPlan);
     } else if (queryPlan instanceof ShowPlan) {
       return processShowQuery((ShowPlan) queryPlan, context);
     } else {
@@ -1059,7 +1059,7 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
   
-  protected QueryDataSet processAuthorQuery(AuthorPlan plan, String username)
+  protected QueryDataSet processAuthorQuery(AuthorPlan plan)
       throws QueryProcessException {
     AuthorType authorType = plan.getAuthorType();
     String userName = plan.getUserName();
@@ -1074,7 +1074,7 @@ public class PlanExecutor implements IPlanExecutor {
           dataSet = executeListRole();
           break;
         case LIST_USER:
-          dataSet = executeListUser(plan, username);
+          dataSet = executeListUser(plan);
           break;
         case LIST_ROLE_USERS:
           dataSet = executeListRoleUsers(roleName);
@@ -1115,12 +1115,12 @@ public class PlanExecutor implements IPlanExecutor {
     return dataSet;
   }
 
-  private ListDataSet executeListUser(AuthorPlan plan, String username) throws AuthException {
+  private ListDataSet executeListUser(AuthorPlan plan) throws AuthException {
     List<PartialPath> paths = new ArrayList<>();
     paths.add(plan.getNodeName());
     // check if current user is granted list_user privilege
     boolean hasListUserPrivilege = AuthorityChecker
-        .check(username, paths, plan.getOperatorType(), username);
+        .check(plan.getUserName(), paths, plan.getOperatorType(), plan.getUserName());
 
     List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();

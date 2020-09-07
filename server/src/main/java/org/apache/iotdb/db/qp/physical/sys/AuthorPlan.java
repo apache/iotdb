@@ -39,7 +39,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 public class AuthorPlan extends PhysicalPlan {
 
   private AuthorOperator.AuthorType authorType;
-  private String userName;
   private String roleName;
   private String password;
   private String newPassword;
@@ -185,10 +184,6 @@ public class AuthorPlan extends PhysicalPlan {
 
   public AuthorOperator.AuthorType getAuthorType() {
     return authorType;
-  }
-
-  public String getUserName() {
-    return userName;
   }
 
   public String getRoleName() {

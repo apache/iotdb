@@ -43,9 +43,10 @@ public interface IPlanExecutor {
    * @param queryPlan QueryPlan
    * @return QueryDataSet
    */
-  QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context, String username)
+  QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException,
       QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException, TException, InterruptedException;
+
   /**
    * Process Non-Query Physical plan, including insert/update/delete operation of
    * data/metadata/Privilege
