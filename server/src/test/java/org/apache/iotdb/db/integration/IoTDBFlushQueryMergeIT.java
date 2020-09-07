@@ -26,7 +26,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Locale;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -142,7 +141,8 @@ public class IoTDBFlushQueryMergeIT {
       statement.execute("FLUSH root.group2,root.group3 FALSE");
 
       int i = 0;
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.group1,root.group2,root" + ".group3")) {
+      try (ResultSet resultSet = statement
+          .executeQuery("SELECT * FROM root.group1,root.group2,root" + ".group3")) {
         while (resultSet.next()) {
           i++;
         }
@@ -154,4 +154,24 @@ public class IoTDBFlushQueryMergeIT {
       fail(e.getMessage());
     }
   }
+
+  // bug fix test, https://issues.apache.org/jira/browse/IOTDB-875
+  @Test
+  public void testFlushGivenGroupNoData() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.nodatagroup1");
+      statement.execute("SET STORAGE GROUP TO root.nodatagroup2");
+      statement.execute("SET STORAGE GROUP TO root.nodatagroup3");
+      statement.execute("FLUSH root.nodatagroup1");
+      statement.execute("FLUSH root.nodatagroup2");
+      statement.execute("FLUSH root.nodatagroup3");
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
 }
