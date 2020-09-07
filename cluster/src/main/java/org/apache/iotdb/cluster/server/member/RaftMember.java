@@ -475,7 +475,7 @@ public abstract class RaftMember {
     alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
       synchronized (logUpdateCondition) {
         try {
-          logUpdateCondition.wait(100);
+          logUpdateCondition.wait();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           return false;
