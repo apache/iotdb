@@ -107,15 +107,16 @@ public class TsFileInputFormat<T> extends FileInputFormat<T> implements ResultTy
 		} catch (URISyntaxException e) {
 			throw new FlinkRuntimeException(e);
 		}
-		TsFileSequenceReader reader = new TsFileSequenceReader(in);
-		readTsFile = new ReadOnlyTsFile(reader);
-		queryDataSet = readTsFile.query(
-			// The query method call will change the content of the param query expression,
-			// the original query expression should not be passed to the query method as it may
-			// be used several times.
-			QueryExpression.create(expression.getSelectedSeries(), expression.getExpression()),
-			currentSplit.getStart(),
-			currentSplit.getStart() + currentSplit.getLength());
+		try (TsFileSequenceReader reader = new TsFileSequenceReader(in)) {
+			readTsFile = new ReadOnlyTsFile(reader);
+			queryDataSet = readTsFile.query(
+					// The query method call will change the content of the param query expression,
+					// the original query expression should not be passed to the query method as it may
+					// be used several times.
+					QueryExpression.create(expression.getSelectedSeries(), expression.getExpression()),
+					currentSplit.getStart(),
+					currentSplit.getStart() + currentSplit.getLength());
+		}
 	}
 
 	@Override

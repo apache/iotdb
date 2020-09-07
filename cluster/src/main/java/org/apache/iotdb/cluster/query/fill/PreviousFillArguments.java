@@ -20,8 +20,8 @@
 package org.apache.iotdb.cluster.query.fill;
 
 import java.util.Set;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * PreviousFillParameter records necessary parameters of a previous fill over a single
@@ -29,13 +29,13 @@ import org.apache.iotdb.tsfile.read.common.Path;
  * flexibility.
  */
 public class PreviousFillArguments {
-  private Path path;
+  private PartialPath path;
   private TSDataType dataType;
   private long queryTime;
   private long beforeRange;
   private Set<String> deviceMeasurements;
 
-  public PreviousFillArguments(Path path,
+  public PreviousFillArguments(PartialPath path,
       TSDataType dataType, long queryTime, long beforeRange,
       Set<String> deviceMeasurements) {
     this.path = path;
@@ -45,7 +45,7 @@ public class PreviousFillArguments {
     this.deviceMeasurements = deviceMeasurements;
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
 

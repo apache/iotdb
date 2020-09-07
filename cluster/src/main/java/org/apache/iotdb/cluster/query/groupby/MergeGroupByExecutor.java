@@ -26,11 +26,11 @@ import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +41,7 @@ public class MergeGroupByExecutor implements GroupByExecutor {
 
   private List<AggregateResult> results = new ArrayList<>();
   private List<Integer> aggregationTypes = new ArrayList<>();
-  private Path path;
+  private PartialPath path;
   private Set<String> deviceMeasurements;
   private TSDataType dataType;
   private QueryContext context;
@@ -50,7 +50,7 @@ public class MergeGroupByExecutor implements GroupByExecutor {
 
   private List<GroupByExecutor> groupByExecutors;
 
-  MergeGroupByExecutor(Path path, Set<String> deviceMeasurements, TSDataType dataType,
+  MergeGroupByExecutor(PartialPath path, Set<String> deviceMeasurements, TSDataType dataType,
       QueryContext context, Filter timeFilter,
       MetaGroupMember metaGroupMember) {
     this.path = path;

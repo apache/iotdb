@@ -23,7 +23,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
+import java.net.URL;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -32,13 +32,13 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,27 +54,23 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<String> paths,
+  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<PartialPath> paths,
       String aggregation) throws MetadataException {
-    return metaGroupMember.getSeriesTypesByString(paths, aggregation);
+    return metaGroupMember.getSeriesTypesByPaths(paths, aggregation);
   }
 
   @Override
-  protected List<TSDataType> getSeriesTypes(List<Path> paths) throws MetadataException {
-    List<String> pathStrs = new ArrayList<>(paths.size());
-    for (Path path : paths) {
-      pathStrs.add(path.getFullPath());
-    }
-    return metaGroupMember.getSeriesTypesByString(pathStrs, null).left;
+  protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
+    return metaGroupMember.getSeriesTypesByPaths(paths, null).left;
   }
 
   @Override
-  protected List<String> getMatchedTimeseries(String path) throws MetadataException {
+  protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
     return metaGroupMember.getMatchedPaths(path);
   }
 
   @Override
-  protected Set<String> getMatchedDevices(String path) throws MetadataException {
+  protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
     return metaGroupMember.getMatchedDevices(path);
   }
 
@@ -85,8 +81,8 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
     if (type == LoadConfigurationOperatorType.GLOBAL) {
       Properties[] properties = new Properties[2];
       properties[0] = new Properties();
-      String iotdbEnginePropertiesUrl = IoTDBDescriptor.getInstance().getPropsUrl();
-      try (InputStream inputStream = new FileInputStream(new File(iotdbEnginePropertiesUrl))) {
+      URL iotdbEnginePropertiesUrl = IoTDBDescriptor.getInstance().getPropsUrl();
+      try (InputStream inputStream = new FileInputStream(new File(iotdbEnginePropertiesUrl.toString()))) {
         properties[0].load(inputStream);
       } catch (IOException e) {
         logger.warn("Fail to find config file {}", iotdbEnginePropertiesUrl, e);

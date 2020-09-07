@@ -21,10 +21,11 @@ package org.apache.iotdb.cluster.utils;
 
 import java.util.Collections;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ClusterQueryUtils {
 
@@ -38,12 +39,16 @@ public class ClusterQueryUtils {
    * @param metaGroupMember
    * @throws QueryProcessException
    */
-  public static void checkPathExistence(Path path, MetaGroupMember metaGroupMember)
+  public static void checkPathExistence(String path, MetaGroupMember metaGroupMember)
       throws QueryProcessException {
-    checkPathExistence(path.getFullPath(), metaGroupMember);
+    try {
+      checkPathExistence(new PartialPath(path), metaGroupMember);
+    } catch (IllegalPathException e) {
+      throw new QueryProcessException(e);
+    }
   }
 
-  public static void checkPathExistence(String path, MetaGroupMember metaGroupMember)
+  public static void checkPathExistence(PartialPath path, MetaGroupMember metaGroupMember)
       throws QueryProcessException {
     if (!IoTDB.metaManager.isPathExist(path)) {
       try {

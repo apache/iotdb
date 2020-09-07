@@ -295,6 +295,13 @@
           id: 'zhaoxinyi',
           date: '2018/11/18'
         },
+        {
+          avatar:'/img/contributor-avatar/user.svg',
+          name: 'Chao Wang',
+          role: 'Committer',
+          id: 'chaow',
+          date: '2020/09/04'
+        },
         ]
       }
     },

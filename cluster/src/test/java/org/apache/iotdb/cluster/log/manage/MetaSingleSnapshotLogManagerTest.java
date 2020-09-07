@@ -29,11 +29,13 @@ import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
-import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,7 +46,7 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
 
   @Override
   @Before
-  public void setUp() throws QueryProcessException, StartupException {
+  public void setUp() throws QueryProcessException, StartupException, IllegalPathException {
     super.setUp();
     MetaGroupMember metaGroupMember = new MetaGroupMember();
     metaGroupMember.setPartitionTable(new SlotPartitionTable(new Node()));
@@ -65,17 +67,18 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
     List<Log> testLogs = TestUtils.prepareTestLogs(10);
     logManager.append(testLogs);
     logManager.commitTo(4, false);
+    logManager.setMaxHaveAppliedCommitIndex(logManager.getCommitLogIndex());
 
     logManager.takeSnapshot();
     MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) logManager.getSnapshot();
-    Map<String, Long> storageGroupTTLMap = snapshot.getStorageGroupTTLMap();
-    String[] storageGroups = storageGroupTTLMap.keySet()
-        .toArray(new String[storageGroupTTLMap.size()]);
+    Map<PartialPath, Long> storageGroupTTLMap = snapshot.getStorageGroupTTLMap();
+    PartialPath[] storageGroups = storageGroupTTLMap.keySet()
+        .toArray(new PartialPath[0]);
     Arrays.sort(storageGroups);
 
     assertEquals(10, storageGroups.length);
     for (int i = 0; i < 10; i++) {
-      assertEquals(TestUtils.getTestSg(i), storageGroups[i]);
+      assertEquals(new PartialPath(TestUtils.getTestSg(i)), storageGroups[i]);
     }
     assertEquals(4, snapshot.getLastLogIndex());
     assertEquals(4, snapshot.getLastLogTerm());

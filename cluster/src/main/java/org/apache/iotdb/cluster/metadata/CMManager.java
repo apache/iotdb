@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MeasurementMeta;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
@@ -74,7 +75,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public String deleteTimeseries(String prefixPath) throws MetadataException {
+  public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
     cacheLock.writeLock().lock();
     mRemoteMetaCache.removeItem(prefixPath);
     cacheLock.writeLock().unlock();
@@ -82,9 +83,9 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public void deleteStorageGroups(List<String> storageGroups) throws MetadataException {
+  public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     cacheLock.writeLock().lock();
-    for (String storageGroup : storageGroups) {
+    for (PartialPath storageGroup : storageGroups) {
       mRemoteMetaCache.removeItem(storageGroup);
     }
     cacheLock.writeLock().unlock();
@@ -92,7 +93,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public TSDataType getSeriesType(String path) throws MetadataException {
+  public TSDataType getSeriesType(PartialPath path) throws MetadataException {
     // try remote cache first
     try {
       cacheLock.readLock().lock();
@@ -131,7 +132,7 @@ public class CMManager extends MManager {
    * @throws MetadataException
    */
   @Override
-  public MeasurementSchema[] getSchemas(String deviceId, String[] measurements) throws MetadataException {
+  public MeasurementSchema[] getSchemas(PartialPath deviceId, String[] measurements) throws MetadataException {
     try {
       return super.getSchemas(deviceId, measurements);
     } catch (MetadataException e) {
@@ -149,7 +150,7 @@ public class CMManager extends MManager {
       // try again
       failedMeasurementIndex = getSchemasLocally(deviceId, measurements, measurementSchemas);
       if (failedMeasurementIndex != -1) {
-        throw new MetadataException(deviceId + IoTDBConstant.PATH_SEPARATOR
+        throw new MetadataException(deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR
           + measurements[failedMeasurementIndex] + " is not found");
       }
       return measurementSchemas;
@@ -160,12 +161,14 @@ public class CMManager extends MManager {
    *
    * @return -1 if all schemas are found, or the first index of the non-exist schema
    */
-  private int getSchemasLocally(String deviceId, String[] measurements, MeasurementSchema[] measurementSchemas) {
+  private int getSchemasLocally(PartialPath deviceId, String[] measurements,
+      MeasurementSchema[] measurementSchemas) {
     int failedMeasurementIndex = -1;
     cacheLock.readLock().lock();
     try {
       for (int i = 0; i < measurements.length && failedMeasurementIndex == -1; i++) {
-        MeasurementMeta measurementMeta = mRemoteMetaCache.get(deviceId + IoTDBConstant.PATH_SEPARATOR  + measurements[i]);
+        MeasurementMeta measurementMeta =
+            mRemoteMetaCache.get(deviceId.concatNode(measurements[i]));
         if (measurementMeta == null) {
           failedMeasurementIndex = i;
         } else {
@@ -178,28 +181,30 @@ public class CMManager extends MManager {
     return failedMeasurementIndex;
   }
 
-  private void pullSeriesSchemas(String deviceId, String[] measurementList)
+  private void pullSeriesSchemas(PartialPath deviceId, String[] measurementList)
     throws MetadataException {
-    List<String> schemasToPull = new ArrayList<>();
+    List<PartialPath> schemasToPull = new ArrayList<>();
     for (String s : measurementList) {
-      schemasToPull.add(deviceId + IoTDBConstant.PATH_SEPARATOR + s);
+      schemasToPull.add(deviceId.concatNode(s));
     }
     List<MeasurementSchema> schemas = metaPuller.pullMeasurementSchemas(schemasToPull);
     for (MeasurementSchema schema : schemas) {
-      cacheMeta(deviceId + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), new MeasurementMeta(schema));
+      cacheMeta(deviceId.concatNode(schema.getMeasurementId()),
+          new MeasurementMeta(schema));
     }
     logger.debug("Pulled {}/{} schemas from remote", schemas.size(), measurementList.length);
   }
 
   @Override
-  public void cacheMeta(String seriesPath, MeasurementMeta meta) {
+  public void cacheMeta(PartialPath seriesPath, MeasurementMeta meta) {
     cacheLock.writeLock().lock();
     mRemoteMetaCache.put(seriesPath, meta);
     cacheLock.writeLock().unlock();
   }
 
   @Override
-  public void updateLastCache(String seriesPath, TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime,
+  public void updateLastCache(PartialPath seriesPath, TimeValuePair timeValuePair,
+      boolean highPriorityUpdate, Long latestFlushedTime,
       MeasurementMNode node) {
     cacheLock.writeLock().lock();
     try {
@@ -216,7 +221,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public TimeValuePair getLastCache(String seriesPath) {
+  public TimeValuePair getLastCache(PartialPath seriesPath) {
     MeasurementMeta measurementMeta = mRemoteMetaCache.get(seriesPath);
     if (measurementMeta != null) {
       return measurementMeta.getTimeValuePair();
@@ -226,7 +231,8 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(String deviceId, String[] measurementList, InsertPlan plan) throws MetadataException {
+  public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(PartialPath deviceId,
+      String[] measurementList, InsertPlan plan) throws MetadataException {
     MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurementList.length];
     int nonExistSchemaIndex = getSchemasLocally(deviceId, measurementList, measurementSchemas);
     if (nonExistSchemaIndex == -1) {
@@ -238,7 +244,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public MeasurementSchema getSeriesSchema(String device, String measurement) throws MetadataException {
+  public MeasurementSchema getSeriesSchema(PartialPath device, String measurement) throws MetadataException {
     try {
       MeasurementSchema measurementSchema = super.getSeriesSchema(device, measurement);
       if (measurementSchema != null) {
@@ -251,7 +257,7 @@ public class CMManager extends MManager {
     // try cache
     cacheLock.readLock().lock();
     try {
-      MeasurementMeta measurementMeta = mRemoteMetaCache.get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
+      MeasurementMeta measurementMeta = mRemoteMetaCache.get(device.concatNode(measurement));
       if (measurementMeta != null) {
         return measurementMeta.getMeasurementSchema();
       }
@@ -265,7 +271,8 @@ public class CMManager extends MManager {
     // try again
     cacheLock.readLock().lock();
     try {
-      MeasurementMeta measurementMeta = mRemoteMetaCache.get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
+      MeasurementMeta measurementMeta =
+          mRemoteMetaCache.get(device.concatNode(measurement));
       if (measurementMeta != null) {
         return measurementMeta.getMeasurementSchema();
       }
@@ -275,24 +282,24 @@ public class CMManager extends MManager {
     return super.getSeriesSchema(device, measurement);
   }
 
-  private static class RemoteMetaCache extends LRUCache<String, MeasurementMeta> {
+  private static class RemoteMetaCache extends LRUCache<PartialPath, MeasurementMeta> {
 
     RemoteMetaCache(int cacheSize) {
       super(cacheSize);
     }
 
     @Override
-    protected MeasurementMeta loadObjectByKey(String key) {
+    protected MeasurementMeta loadObjectByKey(PartialPath key) {
       return null;
     }
 
     @Override
-    public synchronized void removeItem(String key) {
-      cache.keySet().removeIf(s -> s.startsWith(key));
+    public synchronized void removeItem(PartialPath key) {
+      cache.keySet().removeIf(s -> s.getFullPath().startsWith(key.getFullPath()));
     }
 
     @Override
-    public synchronized MeasurementMeta get(String key) {
+    public synchronized MeasurementMeta get(PartialPath key) {
       try {
         return super.get(key);
       } catch (IOException e) {

@@ -33,10 +33,10 @@ The following describes four common data manipulation operations, which are inse
 * Main entrance: ```public void insert(InsertRowPlan insertRowPlan)```   StorageEngine.java
   * Find the corresponding StorageGroupProcessor
   * Find the corresponding TsFileProcessor according to the time of writing the data and the last time stamp of the current device order
-  * Pre-write log
-  * Typo in mestable corresponding to TsFileProcessor
+  * Write to the corresponding memtable of TsFileProcessor
       * If the file is out of order, update the endTimeMap in tsfileResource
-      * If there is no information about the device in tsfile, then update the startTimeMap in tsfileResource
+      * If there is no information about the device in tsfile, or the time of inserted data newly is less than startTime stored, then update the startTimeMap in tsfileResource
+  * Pre-write log
   * Determine whether to trigger asynchronous persistent memtable operation based on memtable size
       * If it is a sequential file and the flashing action is performed, the endTimeMap in tsfileResource is updated
   * Determine whether to trigger a file close operation based on the size of the current disk TsFile
@@ -49,10 +49,10 @@ The following describes four common data manipulation operations, which are inse
 * Main entrance: ```public void insertTablet(InsertTabletPlan insertTabletPlan)```  StorageEngine.java
     * Find the corresponding StorageGroupProcessor
 	* According to the time of this batch of data and the last timestamp of the current device order, this batch of data is divided into small batches, which correspond to a TsFileProcessor
-	* Pre-write log
 	* Write each small batch to the corresponding memtable of TsFileProcessor
 	    * If the file is out of order, update the endTimeMap in tsfileResource
-	    * If there is no information about the device in tsfile, then update the startTimeMap in tsfileResource
+	    * If there is no information about the device in tsfile, or the time of inserted data newly is less than startTime stored, then update the startTimeMap in tsfileResource
+	* Pre-write log
 	* Determine whether to trigger asynchronous persistent memtable operation based on memtable size
 	    * If it is a sequential file and the flashing action is performed, the endTimeMap in tsfileResource is updated
 	* Determine whether to trigger a file close operation based on the size of the current disk TsFile

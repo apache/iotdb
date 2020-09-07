@@ -90,7 +90,6 @@ public class CatchUpTask implements Runnable {
       logger.error("Unexpected error in logManager's getEntries during matchIndexCheck", e);
     }
 
-
     int index = logs.size() - 1;
     // if index < 0 then send Snapshot and all the logs in logManager
     // if index >= 0 but there is no matched log, still send Snapshot and all the logs in logManager

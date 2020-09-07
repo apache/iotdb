@@ -22,23 +22,23 @@ package org.apache.iotdb.db.qp.physical.crud;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class DeletePartitionPlan extends PhysicalPlan {
 
-  private String storageGroupName;
+  private PartialPath storageGroupName;
   private Set<Long> partitionId;
 
-  public DeletePartitionPlan(String storageGroupName, Set<Long> partitionId) {
+  public DeletePartitionPlan(PartialPath storageGroupName, Set<Long> partitionId) {
     super(false, OperatorType.DELETE_PARTITION);
     this.storageGroupName = storageGroupName;
     this.partitionId = partitionId;
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
 
@@ -47,7 +47,7 @@ public class DeletePartitionPlan extends PhysicalPlan {
     return Collections.emptyList();
   }
 
-  public String getStorageGroupName() {
+  public PartialPath getStorageGroupName() {
     return storageGroupName;
   }
 

@@ -31,8 +31,9 @@ import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.service.IoTDB;
@@ -56,15 +57,17 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   PartitionTable partitionTable;
   private Node header;
   Node thisNode;
+  DataGroupMember dataGroupMember;
 
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
-      Node header, Node thisNode, SnapshotFactory<T> factory) {
+      Node header, Node thisNode, SnapshotFactory<T> factory, DataGroupMember dataGroupMember) {
     super(new SyncLogDequeSerializer(header.nodeIdentifier), logApplier, header.toString());
     this.partitionTable = partitionTable;
     this.header = header;
     this.factory = factory;
     this.thisNode = thisNode;
+    this.dataGroupMember = dataGroupMember;
   }
 
   @Override
@@ -86,13 +89,13 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     List<StorageGroupMNode> allSgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
-      int slot = PartitionUtils.calculateStorageGroupSlotByTime(storageGroupName, 0,
-          partitionTable.getTotalSlotNumbers());
+      int slot = SlotPartitionTable.slotStrategy.calculateSlotByTime(storageGroupName, 0,
+          ((SlotPartitionTable) partitionTable).getTotalSlotNumbers());
 
       Collection<TimeseriesSchema> schemas = slotTimeseries.computeIfAbsent(slot,
           s -> new HashSet<>());
       IoTDB.metaManager.collectTimeseriesSchema(sgNode, schemas);
-      logger.debug("{} timeseries are snapshot in slot {}", schemas.size(), slot);
+      logger.debug("{}: {} timeseries are snapshot in slot {}", getName(), schemas.size(), slot);
     }
   }
 }

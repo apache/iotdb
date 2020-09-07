@@ -32,6 +32,7 @@ import java.util.List;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Test;
 
@@ -41,10 +42,10 @@ public class LocalTextModificationAccessorTest {
   public void readMyWrite() {
     String tempFileName = TestConstant.BASE_OUTPUT_PATH.concat("mod.temp");
     Modification[] modifications = new Modification[]{
-        new Deletion(new Path("d1", "s1"), 1, 1),
-        new Deletion(new Path("d1", "s2"), 2, 2),
-        new Deletion(new Path("d1", "s3"), 3, 3),
-        new Deletion(new Path("d1", "s4"), 4, 4),
+        new Deletion(new PartialPath(new String[]{"d1","s1"}), 1, 1),
+        new Deletion(new PartialPath(new String[]{"d1", "s2"}), 2, 2),
+        new Deletion(new PartialPath(new String[]{"d1", "s3"}), 3, 3),
+        new Deletion(new PartialPath(new String[]{"d1", "s4"}), 4, 4),
     };
     try (LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName)) {
       for (int i = 0; i < 2; i++) {

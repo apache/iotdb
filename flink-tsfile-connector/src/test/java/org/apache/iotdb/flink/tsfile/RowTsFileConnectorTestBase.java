@@ -65,7 +65,7 @@ public abstract class RowTsFileConnectorTestBase {
 	};
 	protected List<Path> paths = Arrays.stream(filedNames)
 		.filter(s -> !s.equals(QueryConstant.RESERVED_TIME))
-		.map(Path::new)
+		.map(s -> new Path(s, true))
 		.collect(Collectors.toList());
 	protected RowTypeInfo rowTypeInfo = new RowTypeInfo(typeInformations, filedNames);
 

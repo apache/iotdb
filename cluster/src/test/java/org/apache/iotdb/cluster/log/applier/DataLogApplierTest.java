@@ -40,7 +40,7 @@ import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -55,16 +55,17 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MeasurementMeta;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -91,17 +92,17 @@ public class DataLogApplierTest extends IoTDBTest {
     }
 
     @Override
-    public void pullTimeSeriesSchemas(List<String> prefixPaths,
+    public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths,
         Node ignoredGroup)
       throws StorageGroupNotSetException {
-      for (String prefixPath : prefixPaths) {
-        if (prefixPath.startsWith(TestUtils.getTestSg(4))) {
+      for (PartialPath prefixPath : prefixPaths) {
+        if (prefixPath.getFullPath().startsWith(TestUtils.getTestSg(4))) {
           for (int i = 0; i < 10; i++) {
             IoTDB.metaManager.cacheMeta(prefixPath,
                 new MeasurementMeta(TestUtils.getTestMeasurementSchema(i)));
           }
-        } else if (!prefixPath.startsWith(TestUtils.getTestSg(5))) {
-          throw new StorageGroupNotSetException(prefixPath);
+        } else if (!prefixPath.getFullPath().startsWith(TestUtils.getTestSg(5))) {
+          throw new StorageGroupNotSetException(prefixPath.getFullPath());
         }
       }
     }
@@ -153,7 +154,8 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Override
   @Before
-  public void setUp() throws org.apache.iotdb.db.exception.StartupException, QueryProcessException {
+  public void setUp()
+      throws org.apache.iotdb.db.exception.StartupException, QueryProcessException, IllegalPathException {
     IoTDB.setMetaManager(CMManager.getInstance());
     MetaPuller.getInstance().init(testMetaGroupMember);
     super.setUp();
@@ -194,7 +196,7 @@ public class DataLogApplierTest extends IoTDBTest {
     log.setPlan(insertPlan);
 
     // this series is already created
-    insertPlan.setDeviceId(TestUtils.getTestSg(1));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(1)));
     insertPlan.setTime(1);
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
@@ -214,7 +216,7 @@ public class DataLogApplierTest extends IoTDBTest {
     assertFalse(dataSet.hasNext());
 
     // this series is not created but can be fetched
-    insertPlan.setDeviceId(TestUtils.getTestSg(4));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(4)));
     applier.apply(log);
     dataSet = query(Collections.singletonList(TestUtils.getTestSeries(4, 0)), null);
     assertTrue(dataSet.hasNext());
@@ -225,7 +227,7 @@ public class DataLogApplierTest extends IoTDBTest {
     assertFalse(dataSet.hasNext());
 
     // this series does not exists any where
-    insertPlan.setDeviceId(TestUtils.getTestSg(5));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(5)));
     try {
       applier.apply(log);
       fail("exception should be thrown");
@@ -236,7 +238,7 @@ public class DataLogApplierTest extends IoTDBTest {
     }
 
     // this storage group is not even set
-    insertPlan.setDeviceId(TestUtils.getTestSg(6));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(6)));
     try {
       applier.apply(log);
       fail("exception should be thrown");
@@ -251,7 +253,7 @@ public class DataLogApplierTest extends IoTDBTest {
   public void testApplyDeletion()
     throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException, TException, InterruptedException {
     DeletePlan deletePlan = new DeletePlan();
-    deletePlan.setPaths(Collections.singletonList(new Path(TestUtils.getTestSeries(0, 0))));
+    deletePlan.setPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 0))));
     deletePlan.setDeleteEndTime(50);
     applier.apply(new PhysicalPlanLog(deletePlan));
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(0, 0)), null);
@@ -267,9 +269,9 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyCloseFile()
-    throws StorageEngineException, QueryProcessException, StorageGroupNotSetException {
+      throws StorageEngineException, QueryProcessException, StorageGroupNotSetException, IllegalPathException {
     StorageGroupProcessor storageGroupProcessor =
-      StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
+      StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     TestCase.assertFalse(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
 
     CloseFileLog closeFileLog = new CloseFileLog(TestUtils.getTestSg(0), 0, true);

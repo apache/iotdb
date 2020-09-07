@@ -25,14 +25,15 @@ import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.junit.Test;
@@ -40,8 +41,8 @@ import org.junit.Test;
 public class MergeGroupByExecutorTest extends BaseQueryTest {
 
   @Test
-  public void testNoTimeFilter() throws QueryProcessException, IOException {
-    Path path = new Path(TestUtils.getTestSeries(0, 0));
+  public void testNoTimeFilter() throws QueryProcessException, IOException, IllegalPathException {
+    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
@@ -68,8 +69,8 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
   }
 
   @Test
-  public void testTimeFilter() throws QueryProcessException, IOException {
-    Path path = new Path(TestUtils.getTestSeries(0, 0));
+  public void testTimeFilter() throws QueryProcessException, IOException, IllegalPathException {
+    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));

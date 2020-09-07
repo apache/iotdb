@@ -28,10 +28,11 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
@@ -41,18 +42,18 @@ import org.junit.Test;
 public class ClusterTimeGeneratorTest extends BaseQueryTest {
 
   @Test
-  public void test() throws StorageEngineException, IOException {
+  public void test() throws StorageEngineException, IOException, IllegalPathException {
     RawDataQueryPlan dataQueryPlan = new RawDataQueryPlan();
     QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     IExpression expression =
         BinaryExpression.and(
-            new SingleSeriesExpression(new Path(TestUtils.getTestSeries(0, 0)),
+            new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)),
                 ValueFilter.gtEq(3.0)),
-            new SingleSeriesExpression(new Path(TestUtils.getTestSeries(1, 1)),
+            new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(1, 1)),
                 ValueFilter.ltEq(8.0)));
     dataQueryPlan.setExpression(expression);
-    dataQueryPlan.addDeduplicatedPaths(new Path(TestUtils.getTestSeries(0, 0)));
-    dataQueryPlan.addDeduplicatedPaths(new Path(TestUtils.getTestSeries(1, 1)));
+    dataQueryPlan.addDeduplicatedPaths(new PartialPath(TestUtils.getTestSeries(0, 0)));
+    dataQueryPlan.addDeduplicatedPaths(new PartialPath(TestUtils.getTestSeries(1, 1)));
 
     ClusterTimeGenerator timeGenerator = new ClusterTimeGenerator(expression, context,
         testMetaMember, dataQueryPlan);

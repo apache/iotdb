@@ -28,27 +28,29 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Test;
 
 public class ClusterGroupByNoVFilterDataSetTest extends BaseQueryTest {
 
   @Test
-  public void test() throws StorageEngineException, IOException, QueryProcessException {
+  public void test()
+      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     GroupByTimePlan groupByPlan = new GroupByTimePlan();
-    List<Path> pathList = new ArrayList<>();
+    List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     List<String> aggregations = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      pathList.add(new Path(TestUtils.getTestSeries(i, 0)));
+      pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
       dataTypes.add(TSDataType.DOUBLE);
       aggregations.add(SQLConstant.COUNT);
     }

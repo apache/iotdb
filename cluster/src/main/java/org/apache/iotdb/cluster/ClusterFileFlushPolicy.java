@@ -42,10 +42,10 @@ public class ClusterFileFlushPolicy implements TsFileFlushPolicy {
     this.metaGroupMember = metaGroupMember;
     this.closePartitionExecutor = new ThreadPoolExecutor(16, 1024, 0, TimeUnit.SECONDS,
         new LinkedBlockingDeque<>(), r -> {
-          Thread thread = new Thread(r);
-          thread.setName("ClusterFileFlushPolicy-" + thread.getId());
-          return thread;
-        });
+      Thread thread = new Thread(r);
+      thread.setName("ClusterFileFlushPolicy-" + thread.getId());
+      return thread;
+    });
   }
 
   @Override
@@ -57,8 +57,9 @@ public class ClusterFileFlushPolicy implements TsFileFlushPolicy {
     if (processor.shouldClose()) {
       // find the related DataGroupMember and close the processor through it
       // we execute it in another thread to avoid deadlocks
-      closePartitionExecutor.submit(() -> metaGroupMember.closePartition(storageGroupProcessor.getStorageGroupName(),
-          processor.getTimeRangeId(), isSeq));
+      closePartitionExecutor
+          .submit(() -> metaGroupMember.closePartition(storageGroupProcessor.getStorageGroupName(),
+              processor.getTimeRangeId(), isSeq));
     }
     // flush the memtable anyway to avoid the insertion trigger the policy again
     processor.asyncFlush();

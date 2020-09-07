@@ -30,10 +30,10 @@ import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.server.member.MemberTest;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.After;
@@ -47,7 +47,7 @@ import org.junit.Before;
  */
 public class BaseQueryTest extends MemberTest {
 
-  List<Path> pathList;
+  List<PartialPath> pathList;
   List<TSDataType> dataTypes;
 
   protected static void checkAggregations(List<AggregateResult> aggregationResults
@@ -71,7 +71,7 @@ public class BaseQueryTest extends MemberTest {
     pathList = new ArrayList<>();
     dataTypes = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      pathList.add(new Path(TestUtils.getTestSeries(i, 0)));
+      pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
       dataTypes.add(TSDataType.DOUBLE);
     }
     QueryCoordinator.getINSTANCE().setMetaGroupMember(testMetaMember);

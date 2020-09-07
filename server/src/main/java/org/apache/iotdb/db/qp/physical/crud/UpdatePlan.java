@@ -24,9 +24,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
@@ -34,7 +34,7 @@ public class UpdatePlan extends PhysicalPlan {
 
   private List<Pair<Long, Long>> intervals = new ArrayList<>();
   private String value;
-  private Path path;
+  private PartialPath path;
 
   public UpdatePlan() {
     super(false, Operator.OperatorType.UPDATE);
@@ -48,7 +48,7 @@ public class UpdatePlan extends PhysicalPlan {
    * @param value     -value
    * @param path      -path
    */
-  public UpdatePlan(long startTime, long endTime, String value, Path path) {
+  public UpdatePlan(long startTime, long endTime, String value, PartialPath path) {
     super(false, Operator.OperatorType.UPDATE);
     setValue(value);
     setPath(path);
@@ -62,7 +62,7 @@ public class UpdatePlan extends PhysicalPlan {
    * @param value -value
    * @param path  -path
    */
-  public UpdatePlan(List<Pair<Long, Long>> list, String value, Path path) {
+  public UpdatePlan(List<Pair<Long, Long>> list, String value, PartialPath path) {
     super(false, Operator.OperatorType.UPDATE);
     setValue(value);
     setPath(path);
@@ -89,16 +89,16 @@ public class UpdatePlan extends PhysicalPlan {
     this.value = value;
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
 
-  public void setPath(Path path) {
+  public void setPath(PartialPath path) {
     this.path = path;
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return path != null ? Collections.singletonList(path) : Collections.emptyList();
   }
 
@@ -112,7 +112,7 @@ public class UpdatePlan extends PhysicalPlan {
     StringContainer sc = new StringContainer();
     String preSpace = "  ";
     sc.addTail("UpdatePlan:");
-    sc.addTail(preSpace, "paths:  ", path.toString(), LINE_FEED_SIGNAL);
+    sc.addTail(preSpace, "paths:  ", path.getFullPath(), LINE_FEED_SIGNAL);
     sc.addTail(preSpace, "value:", value, LINE_FEED_SIGNAL);
     sc.addTail(preSpace, "filter: ", LINE_FEED_SIGNAL);
     intervals.forEach(p -> sc.addTail(preSpace, preSpace, p.left, p.right, LINE_FEED_SIGNAL));

@@ -26,6 +26,7 @@ import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -62,9 +63,9 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
 
   @Test
   public void testMatchPaths() throws MetadataException {
-    List<String> allMatchedPaths = queryExecutor.getPathsName("root.*.s0");
+    List<PartialPath> allMatchedPaths = queryExecutor.getPathsName(new PartialPath("root.*.s0"));
     for (int i = 0; i < allMatchedPaths.size(); i++) {
-      assertEquals(pathList.get(i).getFullPath(), allMatchedPaths.get(i));
+      assertEquals(pathList.get(i), allMatchedPaths.get(i));
     }
   }
 
@@ -78,7 +79,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
 
   @Test
   public void testGetAllStorageGroupNames() {
-    List<String> allStorageGroupNames = queryExecutor.getAllStorageGroupNames();
+    List<PartialPath> allStorageGroupNames = queryExecutor.getAllStorageGroupNames();
     for (int i = 0; i < allStorageGroupNames.size(); i++) {
       assertEquals(testMetaMember.getAllStorageGroupNames().get(i), allStorageGroupNames.get(i));
     }

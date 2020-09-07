@@ -49,7 +49,11 @@ You have to install thrift (>=0.13) before using the package.
 
 ## How to use (Example)
 
-You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/incubator-iotdb/blob/release%2F0.10.0/client-py/src/client_example.py)
+First, download the package: `pip3 install apache-iotdb`
+
+You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/incubator-iotdb/blob/rel/0.10/client-py/src/SessionExample.py)
+
+(you need to add `import iotdb` in the head of the file)
 
 # DISCLAIMER
 

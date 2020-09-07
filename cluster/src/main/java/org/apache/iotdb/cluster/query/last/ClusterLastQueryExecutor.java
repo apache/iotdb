@@ -44,6 +44,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
@@ -69,7 +70,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
   }
 
   @Override
-  protected TimeValuePair calculateLastPairForOneSeries(Path seriesPath, TSDataType tsDataType,
+  protected TimeValuePair calculateLastPairForOneSeries(PartialPath seriesPath, TSDataType tsDataType,
       QueryContext context, Set<String> deviceMeasurements)
       throws IOException {
     // calculate the global last from all data groups
@@ -105,12 +106,12 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
   class GroupLastTask implements Callable<TimeValuePair> {
 
     private PartitionGroup group;
-    private Path seriesPath;
+    private PartialPath seriesPath;
     private TSDataType dataType;
     private QueryContext queryContext;
     private Set<String> deviceMeasurements;
 
-    GroupLastTask(PartitionGroup group, Path seriesPath,
+    GroupLastTask(PartitionGroup group, PartialPath seriesPath,
         TSDataType dataType, QueryContext queryContext,
         Set<String> deviceMeasurements) {
       this.group = group;
@@ -125,7 +126,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       return calculateSeriesLast(group, seriesPath, queryContext);
     }
 
-    private TimeValuePair calculateSeriesLast(PartitionGroup group, Path seriesPath
+    private TimeValuePair calculateSeriesLast(PartitionGroup group, PartialPath seriesPath
         , QueryContext context)
         throws QueryProcessException, StorageEngineException, IOException {
       if (group.contains(metaGroupMember.getThisNode())) {
@@ -136,7 +137,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       }
     }
 
-    private TimeValuePair calculateSeriesLastLocally(PartitionGroup group, Path seriesPath,
+    private TimeValuePair calculateSeriesLastLocally(PartitionGroup group, PartialPath seriesPath,
         QueryContext context)
         throws StorageEngineException, QueryProcessException, IOException {
       DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());

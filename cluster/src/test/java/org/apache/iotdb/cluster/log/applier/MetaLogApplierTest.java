@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertTrue;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -29,23 +36,15 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertTrue;
 
 public class MetaLogApplierTest extends IoTDBTest {
 
@@ -84,18 +83,19 @@ public class MetaLogApplierTest extends IoTDBTest {
   public void testApplyMetadataCreation()
       throws QueryProcessException, MetadataException, StorageEngineException {
     PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog();
-    SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(new Path("root.applyMeta"));
+    SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(new PartialPath("root.applyMeta"));
     physicalPlanLog.setPlan(setStorageGroupPlan);
 
     applier.apply(physicalPlanLog);
-    assertTrue(IoTDB.metaManager.isPathExist("root.applyMeta"));
+    assertTrue(IoTDB.metaManager.isPathExist(new PartialPath("root.applyMeta")));
 
-    CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(new Path("root.applyMeta"
+    CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(new PartialPath("root.applyMeta"
         + ".s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
         Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
     physicalPlanLog.setPlan(createTimeSeriesPlan);
     applier.apply(physicalPlanLog);
-    assertTrue(IoTDB.metaManager.isPathExist("root.applyMeta.s1"));
-    assertEquals(TSDataType.DOUBLE, IoTDB.metaManager.getSeriesType("root.applyMeta.s1"));
+    assertTrue(IoTDB.metaManager.isPathExist(new PartialPath("root.applyMeta.s1")));
+    assertEquals(TSDataType.DOUBLE, IoTDB.metaManager.getSeriesType(new PartialPath("root"
+        + ".applyMeta.s1")));
   }
 }

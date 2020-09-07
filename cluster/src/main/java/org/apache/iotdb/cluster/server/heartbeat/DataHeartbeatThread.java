@@ -51,11 +51,6 @@ public class DataHeartbeatThread extends HeartbeatThread {
    */
   @Override
   void startElection() {
-    electionRequest.setHeader(dataGroupMember.getHeader());
-    electionRequest.setLastLogTerm(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogTerm());
-    electionRequest.setLastLogIndex(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogIndex());
-    electionRequest.setDataLogLastIndex(dataGroupMember.getLogManager().getLastLogIndex());
-    electionRequest.setDataLogLastTerm(dataGroupMember.getLogManager().getLastLogTerm());
     if(dataGroupMember.getThisNode() != dataGroupMember.getHeader()){
       if(number%4 != 0){
         number++;
@@ -64,6 +59,12 @@ public class DataHeartbeatThread extends HeartbeatThread {
         number = 1;
       }
     }
+    electionRequest.setHeader(dataGroupMember.getHeader());
+    electionRequest.setLastLogTerm(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogTerm());
+    electionRequest.setLastLogIndex(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogIndex());
+    electionRequest.setDataLogLastIndex(dataGroupMember.getLogManager().getLastLogIndex());
+    electionRequest.setDataLogLastTerm(dataGroupMember.getLogManager().getLastLogTerm());
+
     super.startElection();
   }
 }

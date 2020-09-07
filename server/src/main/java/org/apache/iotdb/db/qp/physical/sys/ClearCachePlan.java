@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ClearCachePlan extends PhysicalPlan {
 
@@ -32,7 +31,7 @@ public class ClearCachePlan extends PhysicalPlan {
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
 

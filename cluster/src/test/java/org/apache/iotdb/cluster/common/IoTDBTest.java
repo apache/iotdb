@@ -25,12 +25,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -41,7 +44,6 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -59,7 +61,7 @@ public abstract class IoTDBTest {
   private boolean prevUseAsyncServer;
 
   @Before
-  public void setUp() throws StartupException, QueryProcessException {
+  public void setUp() throws StartupException, QueryProcessException, IllegalPathException {
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     prevEnableAutoSchema = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
@@ -96,9 +98,10 @@ public abstract class IoTDBTest {
     }
   }
 
-  protected void prepareData(int sgNum, int timeOffset, int size) throws QueryProcessException {
+  protected void prepareData(int sgNum, int timeOffset, int size)
+      throws QueryProcessException, IllegalPathException {
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(TestUtils.getTestSg(sgNum));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(sgNum)));
     String[] measurements = new String[10];
     for (int i = 0; i < measurements.length; i++) {
       measurements[i] = TestUtils.getTestMeasurement(i);
@@ -123,8 +126,8 @@ public abstract class IoTDBTest {
 
   protected void setStorageGroup(String storageGroupName) {
     try {
-      planExecutor.setStorageGroup(new SetStorageGroupPlan(new Path(storageGroupName)));
-    } catch (QueryProcessException e) {
+      planExecutor.setStorageGroup(new SetStorageGroupPlan(new PartialPath(storageGroupName)));
+    } catch (QueryProcessException | IllegalPathException e) {
       // ignore
     }
   }
@@ -132,11 +135,12 @@ public abstract class IoTDBTest {
   private void createTimeSeries(int sgNum, int seriesNum) {
     try {
       MeasurementSchema schema = TestUtils.getTestMeasurementSchema(seriesNum);
-      planExecutor.processNonQuery(new CreateTimeSeriesPlan(new Path(TestUtils.getTestSg(sgNum),
+      planExecutor.processNonQuery(new CreateTimeSeriesPlan(new PartialPath(TestUtils.getTestSg(sgNum) +
+          IoTDBConstant.PATH_SEPARATOR +
           schema.getMeasurementId()),
           schema.getType(), schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
           Collections.emptyMap(), Collections.emptyMap(), null));
-    } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
+    } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException | IllegalPathException e) {
       // ignore
     }
   }
@@ -146,15 +150,15 @@ public abstract class IoTDBTest {
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setExpression(expression);
-    List<Path> paths = new ArrayList<>();
+    List<PartialPath> paths = new ArrayList<>();
     for (String pathStr : pathStrs) {
-      paths.add(new Path(pathStr));
+      paths.add(new PartialPath(pathStr));
     }
     queryPlan.setDeduplicatedPaths(paths);
     queryPlan.setPaths(paths);
     List<TSDataType> dataTypes = new ArrayList<>();
-    for (Path path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path.getFullPath()));
+    for (PartialPath path : paths) {
+      dataTypes.add(IoTDB.metaManager.getSeriesType(path));
     }
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDataTypes(dataTypes);

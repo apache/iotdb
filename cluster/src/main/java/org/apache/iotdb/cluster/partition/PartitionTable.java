@@ -21,13 +21,13 @@ package org.apache.iotdb.cluster.partition;
 
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Map;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 
 /**
  * PartitionTable manages the map whose key is the StorageGroupName with a time interval and the
@@ -46,8 +46,6 @@ public interface PartitionTable {
    */
   PartitionGroup route(String storageGroupName, long timestamp);
 
-  PartitionGroup route(int hashKey);
-
   /**
    * Given the storageGroupName and the timestamp, return the header node of the partitionGroup by
    * which the storage group and the corresponding time interval is managed.
@@ -57,16 +55,6 @@ public interface PartitionTable {
    * @return
    */
   Node routeToHeaderByTime(String storageGroupName, long timestamp);
-
-  /**
-   * get a unicode value for a sg and a timestamp.
-   *
-   * @param storageGroupName
-   * @param timestamp
-   * @return
-   */
-  int getPartitionKey(String storageGroupName, long timestamp);
-
 
   /**
    * Add a new node to update the partition table.
@@ -101,23 +89,6 @@ public interface PartitionTable {
 
   List<Node> getAllNodes();
 
-  /**
-   * @return each slot's previous holder after the node's addition.
-   */
-  Map<Integer, Node> getPreviousNodeMap(Node node);
-
-  /**
-   * @param header
-   * @return the slots held by the header.
-   */
-  List<Integer> getNodeSlots(Node header);
-
-  Map<Node, List<Integer>> getAllNodeSlots();
-
-  int getTotalSlotNumbers();
-
-  MManager getMManager();
-
   List<PartitionGroup> getGlobalGroups();
 
   /**
@@ -127,10 +98,10 @@ public interface PartitionTable {
    * @return
    * @throws StorageGroupNotSetException
    */
-  default PartitionGroup partitionByPathTime(String path, long timestamp)
+  default PartitionGroup partitionByPathTime(PartialPath path, long timestamp)
       throws MetadataException {
-    String storageGroup = getMManager().getStorageGroupName(path);
-    return this.route(storageGroup, timestamp);
+    PartialPath storageGroup = IoTDB.metaManager.getStorageGroupPath(path);
+    return this.route(storageGroup.getFullPath(), timestamp);
   }
 
   /**
@@ -139,23 +110,21 @@ public interface PartitionTable {
    * @return (startTime, endTime) - partitionGroup pair
    * @UsedBy NodeTool
    */
-  default MultiKeyMap<Long, PartitionGroup> partitionByPathRangeTime(String path,
+  default MultiKeyMap<Long, PartitionGroup> partitionByPathRangeTime(PartialPath path,
       long startTime, long endTime) throws MetadataException {
     long partitionInterval = StorageEngine.getTimePartitionInterval();
 
     MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
-    String storageGroup = getMManager().getStorageGroupName(path);
+    PartialPath storageGroup = IoTDB.metaManager.getStorageGroupPath(path);
     startTime = StorageEngine.convertMilliWithPrecision(startTime);
     endTime = StorageEngine.convertMilliWithPrecision(endTime);
     while (startTime <= endTime) {
       long nextTime = (startTime / partitionInterval + 1)
           * partitionInterval;
       timeRangeMapRaftGroup.put(startTime, Math.min(nextTime - 1, endTime),
-          this.route(storageGroup, startTime));
+          this.route(storageGroup.getFullPath(), startTime));
       startTime = nextTime;
     }
     return timeRangeMapRaftGroup;
   }
-
-
 }
