@@ -208,7 +208,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
             .calculateLastPairForOneSeriesLocally(oneSeries, TSDataType.INT64, new QueryContext(
                     QueryResourceManager.getInstance().assignQueryId(true)),
                 Collections.singleton(oneSeries.getMeasurement()));
-        if (timeValuePair != null) {
+        if (timeValuePair.getValue() != null) {
           cachedValueMap.put(oneSeries, timeValuePair.getValue().getLong());
         }
       }
