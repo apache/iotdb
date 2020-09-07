@@ -39,7 +39,10 @@ public class FlushPlan extends PhysicalPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(FlushPlan.class);
   /**
-   * key-> storage group, value->list of pair, Pair<PartitionId, isSequence>
+   * key-> storage group, value->list of pair, Pair<PartitionId, isSequence>,
+   * <p>
+   * Notice, the value maybe null, so do not use {@link java.util.concurrent.ConcurrentHashMap} when
+   * initializing as ConcurrentMap dose not support null key and value
    */
   private Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds;
 
@@ -90,7 +93,8 @@ public class FlushPlan extends PhysicalPlan {
       return null;
     }
     List<PartialPath> ret = new ArrayList<>();
-    for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds.entrySet()) {
+    for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds
+        .entrySet()) {
       ret.add(entry.getKey());
     }
     return ret;
@@ -99,7 +103,8 @@ public class FlushPlan extends PhysicalPlan {
   @Override
   public List<String> getPathsStrings() {
     List<String> ret = new ArrayList<>();
-    for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds.entrySet()) {
+    for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds
+        .entrySet()) {
       ret.add(entry.getKey().getFullPath());
     }
     return ret;
@@ -120,7 +125,8 @@ public class FlushPlan extends PhysicalPlan {
     } else {
       stream.write((byte) 1);
       stream.writeInt(storageGroupPartitionIds.size());
-      for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds.entrySet()) {
+      for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds
+          .entrySet()) {
         ReadWriteIOUtils.write(entry.getKey().getFullPath(), stream);
         if (entry.getValue() == null) {
           // null value
@@ -150,7 +156,8 @@ public class FlushPlan extends PhysicalPlan {
       // null value
       buffer.put((byte) 1);
       buffer.putInt(storageGroupPartitionIds.size());
-      for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds.entrySet()) {
+      for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds
+          .entrySet()) {
         ReadWriteIOUtils.write(entry.getKey().getFullPath(), buffer);
         if (entry.getValue() == null) {
           // null value
