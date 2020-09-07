@@ -134,11 +134,6 @@ public class IoTDBDescriptor {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    try {
-      Thread.sleep(3000);
-    } catch (Exception e) {
-
-    }
     URL url = getPropsUrl();
     if(url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
