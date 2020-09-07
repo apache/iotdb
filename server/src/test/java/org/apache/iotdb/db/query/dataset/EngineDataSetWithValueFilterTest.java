@@ -101,7 +101,7 @@ public class EngineDataSetWithValueFilterTest {
   public void testHasNextAndNext() throws Exception {
     QueryPlan queryPlan = (QueryPlan) processor
         .parseSQLToPhysicalPlan("select test.d0.s1 from root where root.vehicle.d0.s0 > 100");
-    QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT, "");
     assertTrue(dataSet.hasNext());
     assertEquals("16\t109", dataSet.next().toString());
     assertTrue(dataSet.hasNext());
@@ -111,7 +111,7 @@ public class EngineDataSetWithValueFilterTest {
 
     queryPlan = (QueryPlan) processor
         .parseSQLToPhysicalPlan("select vehicle.d0.s1 from root where root.vehicle.d0.s0 > 100");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT, "");
     assertTrue(dataSet.hasNext());
     assertEquals("12\t102", dataSet.next().toString());
     assertTrue(dataSet.hasNext());

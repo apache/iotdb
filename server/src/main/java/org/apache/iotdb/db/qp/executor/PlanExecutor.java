@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
@@ -164,13 +165,13 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
+  public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context, String username)
       throws IOException, StorageEngineException, QueryFilterOptimizationException,
       QueryProcessException, MetadataException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
-      return processAuthorQuery((AuthorPlan) queryPlan);
+      return processAuthorQuery((AuthorPlan) queryPlan,username);
     } else if (queryPlan instanceof ShowPlan) {
       return processShowQuery((ShowPlan) queryPlan, context);
     } else {
@@ -1058,7 +1059,7 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
   
-  protected QueryDataSet processAuthorQuery(AuthorPlan plan)
+  protected QueryDataSet processAuthorQuery(AuthorPlan plan, String username)
       throws QueryProcessException {
     AuthorType authorType = plan.getAuthorType();
     String userName = plan.getUserName();
@@ -1073,7 +1074,7 @@ public class PlanExecutor implements IPlanExecutor {
           dataSet = executeListRole();
           break;
         case LIST_USER:
-          dataSet = executeListUser();
+          dataSet = executeListUser(plan, username);
           break;
         case LIST_ROLE_USERS:
           dataSet = executeListRoleUsers(roleName);
@@ -1114,14 +1115,26 @@ public class PlanExecutor implements IPlanExecutor {
     return dataSet;
   }
 
-  private ListDataSet executeListUser() {
-    List<String> userList = authorizer.listAllUsers();
+  private ListDataSet executeListUser(AuthorPlan plan, String username) throws AuthException {
+    List<PartialPath> paths = new ArrayList<>();
+    paths.add(plan.getNodeName());
+    // check if current user is granted list_user privilege
+    boolean hasListUserPrivilege = AuthorityChecker
+        .check(username, paths, plan.getOperatorType(), username);
+
     List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new PartialPath(COLUMN_USER, false));
     typeList.add(TSDataType.TEXT);
-    int index = 0;
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
+
+    if (!hasListUserPrivilege) {
+      return dataSet;
+    }
+
+    List<String> userList = authorizer.listAllUsers();
+    int index = 0;
+
     for (String user : userList) {
       RowRecord record = new RowRecord(index++);
       Field field = new Field(TSDataType.TEXT);
