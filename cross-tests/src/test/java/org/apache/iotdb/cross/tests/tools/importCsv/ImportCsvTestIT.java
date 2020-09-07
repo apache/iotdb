@@ -97,16 +97,17 @@ public class ImportCsvTestIT extends AbstractScript {
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
         dir + File.separator + "tools" + File.separator + "import-csv.bat",
-        "-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-f", this.getClass().getClassLoader().getResource("test.csv").getFile());
+        "-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-f",
+        this.getClass().getClassLoader().getResource("test.csv").getFile());
     testOutput(builder, output);
   }
 
   @Override
   protected void testOnUnix() throws IOException {
     final String[] output = {
-            "````````````````````````````````````````````````",
+            "------------------------------------------",
             "Starting IoTDB Client Import Script",
-            "````````````````````````````````````````````````",
+            "------------------------------------------",
             "Start to import data from: test.csv",
             "",
             "Import from: test.csv   0%",
@@ -115,8 +116,8 @@ public class ImportCsvTestIT extends AbstractScript {
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("sh",
         dir + File.separator + "tools" + File.separator + "import-csv.sh",
-        "-h",
-        "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-f", "./");
+        "-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-f",
+        this.getClass().getClassLoader().getResource("test.csv").getFile());
     testOutput(builder, output);
   }
 }

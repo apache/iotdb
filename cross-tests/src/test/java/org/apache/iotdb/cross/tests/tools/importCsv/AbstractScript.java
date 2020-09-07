@@ -46,6 +46,8 @@ public abstract class AbstractScript {
     p.destroy();
 
     for (int i = 0; i < output.length; i++) {
+      System.out.println("output:" + output[i]);
+      System.out.println("outputList:" + outputList.get(i));
       assertTrue(outputList.get(i).startsWith(output[i]));
     }
   }
