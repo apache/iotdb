@@ -455,15 +455,13 @@ public abstract class RaftMember {
     long start = System.nanoTime();
     long lastLogIndex = logManager.getLastLogIndex();
     if (lastLogIndex < prevLogIndex) {
-      Timer.indexDiffCounter.incrementAndGet();
-      Timer.indexDiff.addAndGet(prevLogIndex - lastLogIndex);
+      Timer.indexDiff.add(prevLogIndex - lastLogIndex);
       if (!waitForPrevLog(prevLogIndex)) {
         return Response.RESPONSE_LOG_MISMATCH;
       }
     }
 
-    Timer.rafTMemberReceiverWaitForPrevLogMS.addAndGet(System.nanoTime() - start);
-    Timer.rafTMemberReceiverWaitForPrevLogCounter.incrementAndGet();
+    Timer.rafTMemberReceiverWaitForPrevLog.add(System.nanoTime() - start);
 
     start = System.nanoTime();
     synchronized (logManager) {
@@ -476,8 +474,7 @@ public abstract class RaftMember {
         resp = Response.RESPONSE_LOG_MISMATCH;
       }
     }
-    Timer.rafTMemberMayBeAppendMS.addAndGet(System.nanoTime() - start);
-    Timer.rafTMemberMayBeAppendCounter.incrementAndGet();
+    Timer.rafTMemberMayBeAppend.add(System.nanoTime() - start);
     return resp;
   }
 
@@ -517,8 +514,7 @@ public abstract class RaftMember {
 
     long start1 = System.nanoTime();
     Log log = LogParser.getINSTANCE().parse(request.entry);
-    Timer.raftMemberLogParseMS.addAndGet(System.nanoTime() - start1);
-    Timer.raftMemberLogParseCounter.incrementAndGet();
+    Timer.raftMemberLogParse.add(System.nanoTime() - start1);
 
 //    if (log instanceof PhysicalPlanLog) {
 //      PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
@@ -532,8 +528,7 @@ public abstract class RaftMember {
         log);
     logger.debug("{} AppendEntryRequest of {} completed", name, log);
 
-    Timer.raftFollowerAppendEntryMS.addAndGet(System.nanoTime() - start);
-    Timer.raftFollowerAppendEntryCounter.incrementAndGet();
+    Timer.raftFollowerAppendEntry.add(System.nanoTime() - start);
     return result;
   }
 
@@ -703,8 +698,7 @@ public abstract class RaftMember {
         }
       }
     }
-    Timer.raftMemberVoteCounterMS.addAndGet(System.nanoTime() - start);
-    Timer.raftMemberVoteCounterCounter.incrementAndGet();
+    Timer.raftMemberVoteCounter.add(System.nanoTime() - start);
 
     // some node has a larger term than the local node, this node is no longer a valid leader
     if (leaderShipStale.get()) {
@@ -735,8 +729,7 @@ public abstract class RaftMember {
       logger.warn("{}: node {} timed out when appending {}", name, node, log);
       return;
     }
-    Timer.raftMemberWaitForPrevLogMS.addAndGet(System.nanoTime() - start);
-    Timer.raftMemberWaitForPrevLogCounter.incrementAndGet();
+    Timer.raftMemberWaitForPrevLog.add(System.nanoTime() - start);
 
     if (character != NodeCharacter.LEADER) {
       return;
@@ -748,8 +741,7 @@ public abstract class RaftMember {
     } else {
       sendLogSync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
     }
-    Timer.raftMemberSendLogAyncMS.addAndGet(System.nanoTime() - start);
-    Timer.raftMemberSendLogAyncCounter.incrementAndGet();
+    Timer.raftMemberSendLogAync.add(System.nanoTime() - start);
 
   }
 
@@ -1295,8 +1287,7 @@ public abstract class RaftMember {
       log.setPlan(plan);
       logManager.append(log);
     }
-    Timer.raftMemberAppendLogMS.addAndGet(System.nanoTime() - start);
-    Timer.raftMemberAppendLogCounter.incrementAndGet();
+    Timer.raftMemberAppendLog.add(System.nanoTime() - start);
 
     try {
       if (appendLogInGroup(log)) {
@@ -1328,8 +1319,7 @@ public abstract class RaftMember {
       sendLogRequest = buildSendLogRequest(log);
       getLogDispatcher().offer(sendLogRequest);
     }
-    Timer.raftMemberOfferLogMS.addAndGet(System.nanoTime() - start);
-    Timer.raftMemberOfferLogCounter.incrementAndGet();
+    Timer.raftMemberOfferLog.add(System.nanoTime() - start);
 
 
     try {
@@ -1337,16 +1327,14 @@ public abstract class RaftMember {
       AppendLogResult appendLogResult = waitAppendResult(sendLogRequest.voteCounter,
           sendLogRequest.leaderShipStale,
           sendLogRequest.newLeaderTerm);
-      Timer.raftMemberAppendLogResultMS.addAndGet(System.nanoTime() - start);
-      Timer.raftMemberAppendLogResultCounter.incrementAndGet();
+      Timer.raftMemberAppendLogResult.add(System.nanoTime() - start);
 
       switch (appendLogResult) {
         case OK:
           logger.debug("{}: log {} is accepted", name, log);
           start = System.nanoTime();
           commitLog(log);
-          Timer.raftMemberCommitLogResultMS.addAndGet(System.nanoTime() - start);
-          Timer.raftMemberCommitLogResultCounter.incrementAndGet();
+          Timer.raftMemberCommitLogResult.add(System.nanoTime() - start);
           return StatusUtils.OK;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
@@ -1434,15 +1422,13 @@ public abstract class RaftMember {
       long start = System.nanoTime();
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
       AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
-      Timer.raftMemberSendLogToFollowerMS.addAndGet(System.nanoTime() - start);
-      Timer.raftMemberSendLogToFollowerCounter.incrementAndGet();
+      Timer.raftMemberSendLogToFollower.add(System.nanoTime() - start);
       switch (result) {
         case OK:
           start = System.nanoTime();
           logger.debug("{}: log {} is accepted", name, log);
           commitLog(log);
-          Timer.raftMemberCommitLogMS.addAndGet(System.nanoTime() - start);
-          Timer.raftMemberCommitLogCounter.incrementAndGet();
+          Timer.raftMemberCommitLog.add(System.nanoTime() - start);
           return true;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);

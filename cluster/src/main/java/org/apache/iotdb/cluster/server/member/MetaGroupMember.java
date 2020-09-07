@@ -1414,8 +1414,7 @@ public class MetaGroupMember extends RaftMember {
         result = status;
       }
     }
-    Timer.metaGroupMemberExecuteNonQueryMS.addAndGet(System.nanoTime() - start);
-    Timer.metaGroupMemberExecuteNonQueryCounter.incrementAndGet();
+    Timer.metaGroupMemberExecuteNonQuery.add(System.nanoTime() - start);
     return result;
   }
 
@@ -1695,8 +1694,7 @@ public class MetaGroupMember extends RaftMember {
           entry.getValue().getHeader());
       result = getLocalDataMember(entry.getValue().getHeader())
           .executeNonQuery(entry.getKey());
-      Timer.metaGroupMemberExecuteNonQueryInLocalGroupMS.addAndGet(System.nanoTime() - start);
-      Timer.metaGroupMemberExecuteNonQueryInLocalGroupCounter.incrementAndGet();
+      Timer.metaGroupMemberExecuteNonQueryInLocalGroup.add(System.nanoTime() - start);
 
     } else {
       // forward the query to the group that should handle it
@@ -1704,8 +1702,7 @@ public class MetaGroupMember extends RaftMember {
       logger.debug("Forward {} to a remote group of {}", entry.getKey(),
           entry.getValue().getHeader());
       result = forwardPlan(entry.getKey(), entry.getValue());
-      Timer.metaGroupMemberExecuteNonQueryInRemoteGroupMS.addAndGet(System.nanoTime() - start);
-      Timer.metaGroupMemberExecuteNonQueryInRemoteGroupCounter.incrementAndGet();
+      Timer.metaGroupMemberExecuteNonQueryInRemoteGroup.add(System.nanoTime() - start);
     }
     return result;
   }

@@ -1110,23 +1110,20 @@ public class DataGroupMember extends RaftMember {
     if (character == NodeCharacter.LEADER) {
       long start = System.nanoTime();
       TSStatus status = processPlanLocally(plan);
-      Timer.dataGroupMemberProcessPlanLocallyMS.addAndGet(System.nanoTime() - start);
-      Timer.dataGroupMemberProcessPlanLocallyCounter.incrementAndGet();
+      Timer.dataGroupMemberForwardPlan.add(System.nanoTime() - start);
       if (status != null) {
         return status;
       }
     } else if (leader != null) {
       long  start = System.nanoTime();
       TSStatus result =  forwardPlan(plan, leader, getHeader());
-      Timer.dataGroupMemberForwardPlanMS.addAndGet(System.nanoTime() - start);
-      Timer.dataGroupMemberForwardPlanCounter.incrementAndGet();
+      Timer.dataGroupMemberForwardPlan.add(System.nanoTime() - start);
       return  result;
     }
 
     long start = System.nanoTime();
     waitLeader();
-    Timer.dataGroupMemberWaitLeaderMS.addAndGet(System.nanoTime() - start);
-    Timer.dataGroupMemberWaitLeaderCounter.incrementAndGet();
+    Timer.dataGroupMemberWaitLeader.add(System.nanoTime() - start);
     // the leader can be itself after waiting
     if (character == NodeCharacter.LEADER) {
       TSStatus status = processPlanLocally(plan);

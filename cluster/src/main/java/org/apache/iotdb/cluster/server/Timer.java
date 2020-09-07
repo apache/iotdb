@@ -42,12 +42,53 @@ public class Timer {
   public static AtomicLong raftMemberCommitLogResultCounter = new AtomicLong(0);
   public static AtomicLong raftMemberAppendLogResultMS = new AtomicLong(0);
   public static AtomicLong raftMemberAppendLogResultCounter = new AtomicLong(0);
-  public static AtomicLong indexDiff = new AtomicLong(0);
+//  public static AtomicLong indexDiff = new AtomicLong(0);
   public static AtomicLong indexDiffCounter = new AtomicLong(0);
   public static AtomicLong logDispatcherLogInQueueMS = new AtomicLong(0);
   public static AtomicLong logDispatcherLogInQueueCounter = new AtomicLong(0);
 
-  class Statistic {
+  public static Statistic dataGroupMemberProcessPlanLocally = new Statistic(
+      "Data group member - process plan locally: ", 1000000L);
+  public static Statistic dataGroupMemberWaitLeader = new Statistic(
+      "Data group member - wait leader: ", 1000000L);
+  public static Statistic metaGroupMemberExecuteNonQuery = new Statistic(
+      "Meta group member - execute non query: ", 1000000L);
+  public static Statistic metaGroupMemberExecuteNonQueryInLocalGroup = new Statistic(
+      "Meta group member - execute in local group: ", 1000000L);
+  public static Statistic metaGroupMemberExecuteNonQueryInRemoteGroup = new Statistic(
+      "Meta group member - execute in remote group: ", 1000000L);
+  public static Statistic raftMemberAppendLog = new Statistic("Raft member - append log: ",
+      1000000L);
+  public static Statistic raftMemberSendLogToFollower = new Statistic(
+      "Raft member - send log to follower: ", 1000000L);
+  public static Statistic raftMemberCommitLog = new Statistic("Raft member - commit log: ",
+      1000000L);
+  public static Statistic raftFollowerAppendEntry = new Statistic(
+      "Raft member - follower append entry: ", 1000000L);
+  public static Statistic dataGroupMemberForwardPlan = new Statistic(
+      "Data group member - forward plan: ", 1000000L);
+  public static Statistic raftMemberWaitForPrevLog = new Statistic(
+      "Raft member - wait for prev log: ", 1000000L);
+  public static Statistic raftMemberSendLogAync = new Statistic("Raft member - send log aync: ",
+      1000000L);
+  public static Statistic raftMemberVoteCounter = new Statistic("Raft member - vote counter: ",
+      1000000L);
+  public static Statistic raftMemberLogParse = new Statistic("Raft member - log parse: ", 1000000L);
+  public static Statistic rafTMemberReceiverWaitForPrevLog = new Statistic(
+      "Raft member - receiver wait for prev log: ", 1000000L);
+  public static Statistic rafTMemberMayBeAppend = new Statistic("rafTMemberMayBeAppendMS",
+      1000000L);
+  public static Statistic raftMemberOfferLog = new Statistic("Raft member - offer log: ", 1000000L);
+  public static Statistic raftMemberCommitLogResult = new Statistic(
+      "aft member - commit log result: ", 1000000L);
+  public static Statistic raftMemberAppendLogResult = new Statistic(
+      "Raft member - append log result: ", 1000000L);
+  public static Statistic indexDiff = new Statistic("Raft member - index diff: ", 1L);
+  public static Statistic logDispatcherLogInQueue = new Statistic("Log dispatcher - in queue: ",
+      1000000L);
+
+
+  public static class Statistic {
 
     String name;
     AtomicLong sum = new AtomicLong(0);
@@ -59,116 +100,44 @@ public class Timer {
       this.scale = scale;
     }
 
-    void add(long val) {
+    public void add(long val) {
       sum.addAndGet(val);
       counter.incrementAndGet();
     }
 
     @Override
     public String toString() {
-      return getOneLine(name, sum, counter, scale);
+      return name
+          + sum.get() / scale + ", "
+          + counter + ", "
+          + (double) sum.get() / scale
+          / counter.get();
     }
-  }
-
-
-  private static final String dataGroupMemberProcessPlanLocallyMSString = "Data group member - process plan locally : ";
-  private static final String dataGroupMemberWaitLeaderMSString = "Data group member - wait leader: ";
-  private static final String metaGroupMemberExecuteNonQueryMSString = "Meta group member - execute non query: ";
-  private static final String metaGroupMemberExecuteNonQueryInLocalGroupMSString = "Meta group member - execute in local group: ";
-  private static final String metaGroupMemberExecuteNonQueryInRemoteGroupMSString = "Meta group member - execute in remote group: ";
-  private static final String raftMemberAppendLogMSString = "Raft member - append log: ";
-  private static final String raftMemberSendLogToFollowerMSString = "Raft member - send log to follower: ";
-  private static final String raftMemberCommitLogMSString = "Raft member - commit log: ";
-  private static final String raftFollowerAppendEntryString = "Raft member - follower append entry: ";
-  private static final String dataGroupMemberForwardPlanString = "Data group member - forward plan: ";
-  private static final String raftMemberWaitForPrevLogString = "Raft member - wait for prev log: ";
-  private static final String raftMemberSendLogAyncString = "Raft member - send log aync: ";
-  private static final String raftMemberVoteCounterString = "Raft member - vote counter: ";
-  private static final String raftMemberLogParseString = "Raft member - log parse: ";
-  private static final String rafTMemberReceiverWaitForPrevLogString = "Raft member - receiver wait for prev log: ";
-  private static final String rafTMemberMayBeAppendString = "Raft member - maybe append: ";
-  private static final String rafTMemberOfferLogString = "Raft member - offer log: ";
-  private static final String raftMemberCommitLogResultString = "Raft member - commit log result: ";
-  private static final String raftMemberAppendLogResultString = "Raft member - append log result: ";
-  private static final String indexDiffString = "Raft member - index diff: ";
-  private static final String logDispatcherLogInQueueString = "Log dispatcher - in queue: ";
-
-
-  public static String getOneLine(String name, AtomicLong period, AtomicLong counter, long scale) {
-    return name
-        + period.get() / scale + ", "
-        + counter + ", "
-        + (double) period.get() / scale
-        / counter.get();
   }
 
   public static String getReport() {
     String result = "\n";
-    result +=
-        getOneLine(dataGroupMemberProcessPlanLocallyMSString, dataGroupMemberProcessPlanLocallyMS,
-            dataGroupMemberProcessPlanLocallyCounter, 1000000L)
-            + "\n";
-    result += getOneLine(dataGroupMemberWaitLeaderMSString, dataGroupMemberWaitLeaderMS,
-        dataGroupMemberWaitLeaderCounter, 1000000L)
-        + "\n";
-    result += getOneLine(metaGroupMemberExecuteNonQueryMSString, metaGroupMemberExecuteNonQueryMS,
-        metaGroupMemberExecuteNonQueryCounter, 1000000L)
-        + "\n";
-    result += getOneLine(metaGroupMemberExecuteNonQueryInLocalGroupMSString,
-        metaGroupMemberExecuteNonQueryInLocalGroupMS,
-        metaGroupMemberExecuteNonQueryInLocalGroupCounter, 1000000L)
-        + "\n";
-    result += getOneLine(metaGroupMemberExecuteNonQueryInRemoteGroupMSString,
-        metaGroupMemberExecuteNonQueryInRemoteGroupMS,
-        metaGroupMemberExecuteNonQueryInRemoteGroupCounter, 1000000L)
-        + "\n";
-    result +=
-        getOneLine(raftMemberAppendLogMSString, raftMemberAppendLogMS, raftMemberAppendLogCounter, 1000000L)
-            + "\n";
-    result += getOneLine(raftMemberSendLogToFollowerMSString, raftMemberSendLogToFollowerMS,
-        raftMemberSendLogToFollowerCounter,1000000L)
-        + "\n";
-    result +=
-        getOneLine(raftMemberCommitLogMSString, raftMemberCommitLogMS, raftMemberCommitLogCounter,1000000L)
-            + "\n";
-    result += getOneLine(raftFollowerAppendEntryString, raftFollowerAppendEntryMS,
-        raftFollowerAppendEntryCounter, 1000000L)
-        + "\n";
-    result += getOneLine(dataGroupMemberForwardPlanString, dataGroupMemberForwardPlanMS,
-        dataGroupMemberForwardPlanCounter, 1000000L)
-        + "\n";
-    result += getOneLine(raftMemberWaitForPrevLogString, raftMemberWaitForPrevLogMS,
-        raftMemberWaitForPrevLogCounter, 1000000L)
-        + "\n";
-    result += getOneLine(raftMemberSendLogAyncString, raftMemberSendLogAyncMS,
-        raftMemberSendLogAyncCounter,1000000L)
-        + "\n";
-    result += getOneLine(raftMemberVoteCounterString, raftMemberVoteCounterMS,
-        raftMemberVoteCounterCounter, 1000000L)
-        + "\n";
-    result += getOneLine(raftMemberLogParseString, raftMemberLogParseMS, raftMemberLogParseCounter, 1000000L)
-        + "\n";
-    result += getOneLine(rafTMemberReceiverWaitForPrevLogString, rafTMemberReceiverWaitForPrevLogMS,
-        rafTMemberReceiverWaitForPrevLogCounter, 1000000L)
-        + "\n";
-    result += getOneLine(rafTMemberMayBeAppendString, rafTMemberMayBeAppendMS,
-        rafTMemberMayBeAppendCounter, 1000000L)
-        + "\n";
-    result += getOneLine(rafTMemberOfferLogString, raftMemberOfferLogMS, raftMemberOfferLogCounter, 1000000L)
-        + "\n";
-    result += getOneLine(raftMemberAppendLogResultString, raftMemberAppendLogResultMS,
-        raftMemberAppendLogResultCounter, 1000000L)
-        + "\n";
-    result += getOneLine(raftMemberCommitLogResultString, raftMemberCommitLogResultMS,
-        raftMemberCommitLogResultCounter, 1000000L)
-        + "\n";
-    result += getOneLine(logDispatcherLogInQueueString, logDispatcherLogInQueueMS,
-        logDispatcherLogInQueueCounter, 1000000L)
-        + "\n";
-    result += indexDiffString
-        + indexDiff.get() + ", "
-        + indexDiffCounter + ", "
-        + (double) indexDiff.get() / indexDiffCounter.get() + "\n";
+    result += dataGroupMemberProcessPlanLocally.toString() + "\n";
+    result += dataGroupMemberWaitLeader.toString() + "\n";
+    result += metaGroupMemberExecuteNonQuery.toString() + "\n";
+    result += metaGroupMemberExecuteNonQueryInLocalGroup.toString() + "\n";
+    result += metaGroupMemberExecuteNonQueryInRemoteGroup.toString() + "\n";
+    result += raftMemberAppendLog.toString() + "\n";
+    result += raftMemberSendLogToFollower.toString() + "\n";
+    result += raftMemberCommitLog.toString() + "\n";
+    result += raftFollowerAppendEntry.toString() + "\n";
+    result += dataGroupMemberForwardPlan.toString() + "\n";
+    result += raftMemberWaitForPrevLog.toString() + "\n";
+    result += raftMemberSendLogAync.toString() + "\n";
+    result += raftMemberVoteCounter.toString() + "\n";
+    result += raftMemberLogParse.toString() + "\n";
+    result += rafTMemberReceiverWaitForPrevLog.toString() + "\n";
+    result += rafTMemberMayBeAppend.toString() + "\n";
+    result += raftMemberOfferLog.toString() + "\n";
+    result += raftMemberAppendLogResult.toString() + "\n";
+    result += raftMemberCommitLogResult.toString() + "\n";
+    result += logDispatcherLogInQueue.toString() + "\n";
+    result += indexDiff.toString() + "\n";
     return result;
   }
 }
