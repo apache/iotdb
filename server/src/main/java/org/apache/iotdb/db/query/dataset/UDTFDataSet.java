@@ -206,4 +206,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
       throw new QueryProcessException(e.toString());
     }
   }
+
+  public UDTFPlan getUDTFPlan() {
+    return udtfPlan;
+  }
 }

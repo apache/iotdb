@@ -83,6 +83,8 @@ import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
+import org.apache.iotdb.db.query.dataset.UDTFDataSet;
+import org.apache.iotdb.db.query.udf.core.UDTFExecutor;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -324,8 +326,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    */
   protected void releaseQueryResource(long queryId) throws StorageEngineException {
     // remove the corresponding Physical Plan
-    queryId2DataSet.remove(queryId);
+    QueryDataSet dataSet = queryId2DataSet.remove(queryId);
+    if (dataSet instanceof UDTFDataSet) {
+      finalizeUDFExecutors((UDTFDataSet) dataSet);
+    }
     QueryResourceManager.getInstance().endQuery(queryId);
+  }
+
+  protected void finalizeUDFExecutors(UDTFDataSet dataSet) {
+    for (UDTFExecutor executor : dataSet.getUDTFPlan().getDeduplicatedExecutors()) {
+      executor.finalizeUDF();
+    }
   }
 
   @Override
