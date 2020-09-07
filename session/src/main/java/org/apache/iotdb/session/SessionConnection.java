@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
@@ -180,19 +181,19 @@ public class SessionConnection {
     return resp.getTimeZone();
   }
 
-  protected void setStorageGroup(String storageGroupId)
-      throws IoTDBConnectionException, StatementExecutionException {
+  protected void setStorageGroup(String storageGroup)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     try {
-      RpcUtils.verifySuccess(client.setStorageGroup(sessionId, storageGroupId));
+      RpcUtils.verifySuccessWithRedirection(client.setStorageGroup(sessionId, storageGroup));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
   }
 
-  protected void deleteStorageGroups(List<String> storageGroup)
-      throws IoTDBConnectionException, StatementExecutionException {
+  protected void deleteStorageGroups(List<String> storageGroups)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     try {
-      RpcUtils.verifySuccess(client.deleteStorageGroups(sessionId, storageGroup));
+      RpcUtils.verifySuccessWithRedirection(client.deleteStorageGroups(sessionId, storageGroups));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -299,11 +300,12 @@ public class SessionConnection {
 
   protected void insertRecord(String deviceId, long time, List<String> measurements,
       List<TSDataType> types,
-      List<Object> values) throws IoTDBConnectionException, StatementExecutionException {
+      List<Object> values)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
 
     try {
-      RpcUtils.verifySuccess(client.insertRecord(request));
+      RpcUtils.verifySuccessWithRedirection(client.insertRecord(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -325,12 +327,13 @@ public class SessionConnection {
   }
 
   protected void insertRecord(String deviceId, long time, List<String> measurements,
-      List<String> values) throws IoTDBConnectionException, StatementExecutionException {
+      List<String> values)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     TSInsertStringRecordReq request = genTSInsertStringRecordReq(deviceId, time, measurements,
         values);
 
     try {
-      RpcUtils.verifySuccess(client.insertStringRecord(request));
+      RpcUtils.verifySuccessWithRedirection(client.insertStringRecord(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -420,11 +423,11 @@ public class SessionConnection {
   }
 
   protected void insertTablet(Tablet tablet, boolean sorted)
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
 
     try {
-      RpcUtils.verifySuccess(client.insertTablet(request));
+      RpcUtils.verifySuccessWithRedirection(client.insertTablet(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }

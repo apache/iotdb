@@ -183,9 +183,7 @@ public class MetaGroupMemberTest extends MemberTest {
           planExecutor.processNonQuery(plan);
           return StatusUtils.OK;
         } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
-          TSStatus status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-          status.setMessage(e.getMessage());
-          return status;
+          return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,e.getMessage());
         }
       }
 

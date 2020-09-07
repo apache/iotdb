@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.rpc;
 
-public class IoTDBConnectionException extends Exception{
+public class IoTDBConnectionException extends Exception {
 
   private static final long serialVersionUID = -1268775292265203036L;
 

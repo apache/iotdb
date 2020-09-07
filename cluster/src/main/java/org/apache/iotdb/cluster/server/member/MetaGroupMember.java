@@ -1404,9 +1404,7 @@ public class MetaGroupMember extends RaftMember {
       try {
         return processPartitionedPlan(plan);
       } catch (UnsupportedPlanException e) {
-        TSStatus status = StatusUtils.UNSUPPORTED_OPERATION.deepCopy();
-        status.setMessage(e.getMessage());
-        return status;
+        return StatusUtils.getStatus(StatusUtils.UNSUPPORTED_OPERATION, e.getMessage());
       }
     }
   }
@@ -1447,7 +1445,7 @@ public class MetaGroupMember extends RaftMember {
     } else if (leader != null) {
       TSStatus result = forwardPlan(plan, leader, null);
       if (!StatusUtils.NO_LEADER.equals(result)) {
-        result.setRedirectNode(new EndPoint(leader.ip, leader.clientPort));
+        result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
         return result;
       }
     }
@@ -1462,7 +1460,7 @@ public class MetaGroupMember extends RaftMember {
     }
     TSStatus result = forwardPlan(plan, leader, null);
     if (!StatusUtils.NO_LEADER.equals(result)) {
-      result.setRedirectNode(new EndPoint(leader.ip, leader.clientPort));
+      result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
     }
     return result;
   }
@@ -1481,9 +1479,7 @@ public class MetaGroupMember extends RaftMember {
       try {
         convertToFullPaths(plan);
       } catch (PathNotExistException e) {
-        TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-        tsStatus.setMessage(e.getMessage());
-        return tsStatus;
+        return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
     }
     try {
@@ -1534,9 +1530,8 @@ public class MetaGroupMember extends RaftMember {
     try {
       planGroupMap = splitPlan(plan);
     } catch (CheckConsistencyException checkConsistencyException) {
-      TSStatus status = StatusUtils.CONSISTENCY_FAILURE.deepCopy();
-      status.setMessage(checkConsistencyException.getMessage());
-      return status;
+      return StatusUtils
+          .getStatus(StatusUtils.CONSISTENCY_FAILURE, checkConsistencyException.getMessage());
     }
 
     // the storage group is not found locally
@@ -1687,14 +1682,14 @@ public class MetaGroupMember extends RaftMember {
     if (noFailure) {
       status = StatusUtils.OK;
       if (allRedirect) {
-        status.setRedirectNode(endPoint);
+        status = StatusUtils.getStatus(status, endPoint);
       }
     } else if (isBatchFailure) {
       //noinspection ConstantConditions, subStatus is never null in this case
       status = RpcUtils.getStatus(Arrays.asList(subStatus));
     } else {
-      status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-      status.setMessage(MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+      status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
+          MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
     }
     return status;
   }
@@ -1737,11 +1732,11 @@ public class MetaGroupMember extends RaftMember {
     if (errorCodePartitionGroups.isEmpty()) {
       status = StatusUtils.OK;
       if (allRedirect) {
-        status.setRedirectNode(endPoint);
+        status = StatusUtils.getStatus(status, endPoint);
       }
     } else {
-      status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-      status.setMessage(MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+      status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
+          MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
     }
     return status;
   }
@@ -1780,8 +1775,8 @@ public class MetaGroupMember extends RaftMember {
     if (errorCodePartitionGroups.isEmpty()) {
       status = StatusUtils.OK;
     } else {
-      status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-      status.setMessage(MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+      status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
+          MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
     }
     logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;
@@ -1904,12 +1899,11 @@ public class MetaGroupMember extends RaftMember {
           status = forwardDataPlanSync(plan, node, group.getHeader());
         }
       } catch (IOException e) {
-        status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-        status.setMessage(e.getMessage());
+        status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
       if (!StatusUtils.TIME_OUT.equals(status)) {
         if (!status.isSetRedirectNode()) {
-          status.setRedirectNode(new EndPoint(node.ip, node.clientPort));
+          status.setRedirectNode(new EndPoint(node.getIp(), node.getClientPort()));
         }
         return status;
       } else {
@@ -1940,11 +1934,9 @@ public class MetaGroupMember extends RaftMember {
       }
       return tsStatus;
     } catch (IOException | TException e) {
-      TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
-      status.setMessage(e.getMessage());
       logger
           .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
-      return status;
+      return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("{}: forward {} to {} interrupted", name, plan, receiver);
@@ -1971,21 +1963,18 @@ public class MetaGroupMember extends RaftMember {
       }
       return tsStatus;
     } catch (IOException e) {
-      TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
-      status.setMessage(e.getMessage());
       logger
           .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
-      return status;
+      return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
     } catch (TException e) {
       TSStatus status;
       if (e.getCause() instanceof SocketTimeoutException) {
         status = StatusUtils.TIME_OUT;
         logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       } else {
-        status = StatusUtils.INTERNAL_ERROR.deepCopy();
-        status.setMessage(e.getMessage());
         logger
             .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
+        status = StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
       }
       client.getInputProtocol().getTransport().close();
       return status;

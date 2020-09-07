@@ -1045,9 +1045,7 @@ public class DataGroupMember extends RaftMember {
     } else if (leader != null) {
       TSStatus result = forwardPlan(plan, leader, getHeader());
       if (!StatusUtils.NO_LEADER.equals(result)) {
-        if (!result.isSetRedirectNode()) {
-          result.setRedirectNode(new EndPoint(leader.ip, leader.clientPort));
-        }
+        result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
         return result;
       }
     }
@@ -1062,9 +1060,7 @@ public class DataGroupMember extends RaftMember {
     }
     TSStatus result = forwardPlan(plan, leader, getHeader());
     if (!StatusUtils.NO_LEADER.equals(result)) {
-      if (!result.isSetRedirectNode()) {
-        result.setRedirectNode(new EndPoint(leader.ip, leader.clientPort));
-      }
+      result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
     }
     return result;
   }

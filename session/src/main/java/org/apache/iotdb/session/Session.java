@@ -20,9 +20,11 @@ package org.apache.iotdb.session;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -47,8 +49,9 @@ public class Session {
   private SessionConnection defaultSessionConnection;
   private boolean isClosed = true;
 
-//  private Map<String, EndPoint> deviceIdToEndpoint;
-//  private Map<EndPoint, SessionClient> endPointToSessionClient;
+  private SessionConnection metaSessionConnection;
+  private Map<String, EndPoint> deviceIdToEndpoint;
+  private Map<EndPoint, SessionConnection> endPointToSessionConnection;
 
 
   public Session(String host, int port) {
@@ -87,7 +90,14 @@ public class Session {
     this.connectionTimeoutInMs = connectionTimeoutInMs;
 
     defaultSessionConnection = new SessionConnection(this, defaultEndPoint);
+    metaSessionConnection = defaultSessionConnection;
     isClosed = false;
+    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+      deviceIdToEndpoint = new HashMap<>();
+      endPointToSessionConnection = new HashMap<EndPoint, SessionConnection>() {{
+        put(defaultEndPoint, defaultSessionConnection);
+      }};
+    }
   }
 
   public synchronized void close() throws IoTDBConnectionException {
@@ -95,7 +105,13 @@ public class Session {
       return;
     }
     try {
-      defaultSessionConnection.close();
+      if (Config.DEFAULT_CACHE_LEADER_MODE) {
+        for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
+          sessionConnection.close();
+        }
+      } else {
+        defaultSessionConnection.close();
+      }
     } finally {
       isClosed = true;
     }
@@ -113,20 +129,37 @@ public class Session {
 
   public void setStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.setStorageGroup(storageGroup);
+    try {
+      metaSessionConnection.setStorageGroup(storageGroup);
+    } catch (RedirectException e) {
+      logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
+      metaSessionConnection = new SessionConnection(this, e.getEndPoint());
+      endPointToSessionConnection.putIfAbsent(e.getEndPoint(), metaSessionConnection);
+    }
   }
-
 
   public void deleteStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.deleteStorageGroups(new ArrayList<String>() {{
-      add(storageGroup);
-    }});
+    try {
+      metaSessionConnection.deleteStorageGroups(new ArrayList<String>() {{
+        add(storageGroup);
+      }});
+    } catch (RedirectException e) {
+      logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
+      metaSessionConnection = new SessionConnection(this, e.getEndPoint());
+      endPointToSessionConnection.putIfAbsent(e.getEndPoint(), metaSessionConnection);
+    }
   }
 
-  public void deleteStorageGroups(List<String> storageGroup)
+  public void deleteStorageGroups(List<String> storageGroups)
       throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.deleteStorageGroups(storageGroup);
+    try {
+      metaSessionConnection.deleteStorageGroups(storageGroups);
+    } catch (RedirectException e) {
+      logger.debug(e.getMessage());
+      metaSessionConnection = new SessionConnection(this, e.getEndPoint());
+      endPointToSessionConnection.putIfAbsent(e.getEndPoint(), metaSessionConnection);
+    }
   }
 
   public void createTimeseries(String path, TSDataType dataType,
@@ -192,7 +225,21 @@ public class Session {
       List<TSDataType> types,
       Object... values) throws IoTDBConnectionException, StatementExecutionException {
     List<Object> valuesList = new ArrayList<>(Arrays.asList(values));
-    defaultSessionConnection.insertRecord(deviceId, time, measurements, types, valuesList);
+    EndPoint endPoint;
+    try {
+      if (Config.DEFAULT_CACHE_LEADER_MODE
+          && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
+        endPointToSessionConnection.get(endPoint)
+            .insertRecord(deviceId, time, measurements, types, valuesList);
+      } else {
+        defaultSessionConnection.insertRecord(deviceId, time, measurements, types, valuesList);
+      }
+    } catch (RedirectException e) {
+      logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
+      deviceIdToEndpoint.put(deviceId, e.getEndPoint());
+      endPointToSessionConnection
+          .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+    }
   }
 
   /**
@@ -205,7 +252,21 @@ public class Session {
   public void insertRecord(String deviceId, long time, List<String> measurements,
       List<TSDataType> types,
       List<Object> values) throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.insertRecord(deviceId, time, measurements, types, values);
+    EndPoint endPoint;
+    try {
+      if (Config.DEFAULT_CACHE_LEADER_MODE
+          && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
+        endPointToSessionConnection.get(endPoint)
+            .insertRecord(deviceId, time, measurements, types, values);
+      } else {
+        defaultSessionConnection.insertRecord(deviceId, time, measurements, types, values);
+      }
+    } catch (RedirectException e) {
+      logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
+      deviceIdToEndpoint.put(deviceId, e.getEndPoint());
+      endPointToSessionConnection
+          .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+    }
   }
 
   /**
@@ -217,7 +278,21 @@ public class Session {
    */
   public void insertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.insertRecord(deviceId, time, measurements, values);
+    EndPoint endPoint;
+    try {
+      if (Config.DEFAULT_CACHE_LEADER_MODE
+          && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
+        endPointToSessionConnection.get(endPoint)
+            .insertRecord(deviceId, time, measurements, values);
+      } else {
+        defaultSessionConnection.insertRecord(deviceId, time, measurements, values);
+      }
+    } catch (RedirectException e) {
+      logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
+      deviceIdToEndpoint.put(deviceId, e.getEndPoint());
+      endPointToSessionConnection
+          .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+    }
   }
 
   /**
@@ -263,7 +338,21 @@ public class Session {
    */
   public void insertTablet(Tablet tablet)
       throws StatementExecutionException, IoTDBConnectionException {
-    defaultSessionConnection.insertTablet(tablet, false);
+    EndPoint endPoint;
+    try {
+      if (Config.DEFAULT_CACHE_LEADER_MODE
+          && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
+        endPointToSessionConnection.get(endPoint)
+            .insertTablet(tablet, false);
+      } else {
+        defaultSessionConnection.insertTablet(tablet, false);
+      }
+    } catch (RedirectException e) {
+      logger.debug("DeviceId[{}]:{}", tablet.deviceId, e.getMessage());
+      deviceIdToEndpoint.put(tablet.deviceId, e.getEndPoint());
+      endPointToSessionConnection
+          .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+    }
   }
 
   /**
@@ -274,9 +363,22 @@ public class Session {
    */
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.insertTablet(tablet, sorted);
+    EndPoint endPoint;
+    try {
+      if (Config.DEFAULT_CACHE_LEADER_MODE
+          && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
+        endPointToSessionConnection.get(endPoint)
+            .insertTablet(tablet, sorted);
+      } else {
+        defaultSessionConnection.insertTablet(tablet, sorted);
+      }
+    } catch (RedirectException e) {
+      logger.debug("DeviceId[{}]:{}", tablet.deviceId, e.getMessage());
+      deviceIdToEndpoint.put(tablet.deviceId, e.getEndPoint());
+      endPointToSessionConnection
+          .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+    }
   }
-
 
   /**
    * insert the data of several deivces. Given a deivce, for each timestamp, the number of

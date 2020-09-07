@@ -41,7 +41,7 @@ public class SessionExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, BatchExecutionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
+    session = new Session("127.0.0.1", 55560, "root", "root");
     session.open(false);
 
     try {

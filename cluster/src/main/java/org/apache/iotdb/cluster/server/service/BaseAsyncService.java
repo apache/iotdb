@@ -35,6 +35,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -134,7 +135,9 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
     }
 
     try {
-      resultHandler.onComplete(member.executeNonQueryPlan(request));
+      TSStatus status = member.executeNonQueryPlan(request);
+      resultHandler.onComplete(StatusUtils.getStatus(status,
+          new EndPoint(member.getThisNode().getIp(), member.getThisNode().getClientPort())));
     } catch (Exception e) {
       resultHandler.onError(e);
     }

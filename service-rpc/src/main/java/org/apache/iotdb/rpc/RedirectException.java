@@ -16,32 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
-public class StatementExecutionException extends Exception {
+public class RedirectException extends Exception {
 
-  private int statusCode;
+  private EndPoint endPoint;
 
-  public StatementExecutionException(TSStatus status) {
-    super(String.format("%d: %s", status.code, status.message));
-    this.statusCode = status.code;
+  public RedirectException(EndPoint endpoint) {
+    super("later request in same group will be redirected to " + endpoint.toString());
+    this.endPoint = endpoint;
   }
 
-  public StatementExecutionException(String reason) {
-    super(reason);
+  public EndPoint getEndPoint() {
+    return this.endPoint;
   }
 
-  public StatementExecutionException(Throwable cause) {
-    super(cause);
-  }
-
-  public StatementExecutionException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public int getStatusCode() {
-    return statusCode;
-  }
 }
