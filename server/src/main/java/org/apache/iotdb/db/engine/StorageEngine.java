@@ -415,9 +415,14 @@ public class StorageEngine implements IService {
     } else {
       // bug fix, for storage group do does not have data
       // https://issues.apache.org/jira/browse/IOTDB-875
-      List<PartialPath> allStorageGroupPaths = MManager.getInstance()
-          .getAllStorageGroupPaths();
-      for (PartialPath partialPath : allStorageGroupPaths) {
+      List<PartialPath> storageGroupPaths = null;
+      try {
+        storageGroupPaths = MManager.getInstance().getStorageGroupPaths(storageGroupPath);
+      } catch (MetadataException e) {
+        logger.error("get storage group path={} failed", storageGroupPath);
+        throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+      }
+      for (PartialPath partialPath : storageGroupPaths) {
         if (partialPath.equals(storageGroupPath)) {
           return;
         }
