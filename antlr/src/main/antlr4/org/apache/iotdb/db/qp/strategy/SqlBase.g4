@@ -218,10 +218,10 @@ fromClause
     ;
 
 specialClause
-    : specialLimit? orderByTimeClause?
+    : specialLimit
+    | orderByTimeClause specialLimit?
     | groupByTimeClause specialLimit? orderByTimeClause?
     | groupByFillClause specialLimit? orderByTimeClause?
-    | orderByTimeClause? specialLimit?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
     | groupByLevelClause specialLimit? orderByTimeClause?
@@ -234,7 +234,7 @@ specialLimit
     ;
 
 orderByTimeClause
-    : ORDER BY TIME (DESC | ASC)
+    : ORDER BY TIME (DESC | ASC)?
     ;
 
 
