@@ -220,11 +220,11 @@ fromClause
 specialClause
     : specialLimit
     | orderByTimeClause specialLimit?
-    | groupByTimeClause specialLimit? orderByTimeClause?
-    | groupByFillClause specialLimit? orderByTimeClause?
+    | groupByTimeClause orderByTimeClause? specialLimit?
+    | groupByFillClause orderByTimeClause? specialLimit?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
-    | groupByLevelClause specialLimit? orderByTimeClause?
+    | groupByLevelClause orderByTimeClause? specialLimit?
     ;
 
 specialLimit
@@ -266,8 +266,8 @@ disableAlign
     ;
 
 alignByDeviceClauseOrDisableAlign
-    : alignByDeviceClause orderByTimeClause ?
-    | disableAlign orderByTimeClause ?
+    : alignByDeviceClause
+    | disableAlign
     ;
 
 fillClause

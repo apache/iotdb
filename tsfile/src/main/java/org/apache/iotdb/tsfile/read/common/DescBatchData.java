@@ -49,10 +49,11 @@ public class DescBatchData extends BatchData {
 
 
   /**
-   * When put data, the writeIndex increases while the readIndex remains 0.
-   * For descending read, we need to read from writeIndex to 0 (set the readIndex to writeIndex)
+   * When put data, the writeIndex increases while the readIndex remains 0. For descending read, we
+   * need to read from writeIndex to 0 (set the readIndex to writeIndex)
    */
-  @Override public BatchData flip() {
+  @Override
+  public BatchData flip() {
     super.readCurArrayIndex = writeCurArrayIndex - 1;
     super.readCurListIndex = writeCurListIndex;
     return this;
