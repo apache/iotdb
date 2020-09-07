@@ -455,6 +455,8 @@ public abstract class RaftMember {
     long start = System.nanoTime();
     long lastLogIndex = logManager.getLastLogIndex();
     if (lastLogIndex < prevLogIndex) {
+      Timer.indexDiffCounter.incrementAndGet();
+      Timer.indexDiff.addAndGet(prevLogIndex - lastLogIndex);
       if (!waitForPrevLog(prevLogIndex)) {
         return Response.RESPONSE_LOG_MISMATCH;
       }
@@ -518,13 +520,13 @@ public abstract class RaftMember {
     Timer.raftMemberLogParseMS.addAndGet(System.nanoTime() - start1);
     Timer.raftMemberLogParseCounter.incrementAndGet();
 
-    if (log instanceof PhysicalPlanLog) {
-      PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
-      PhysicalPlan plan = physicalPlanLog.getPlan();
-      if (plan instanceof InsertPlan) {
-        physicalPlanLog.setPlan(null);
-      }
-    }
+//    if (log instanceof PhysicalPlanLog) {
+//      PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
+//      PhysicalPlan plan = physicalPlanLog.getPlan();
+//      if (plan instanceof InsertPlan) {
+//        physicalPlanLog.setPlan(null);
+//      }
+//    }
 
     long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
         log);

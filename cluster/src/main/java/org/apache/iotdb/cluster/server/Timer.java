@@ -43,6 +43,8 @@ public class Timer {
   public static AtomicLong raftMemberCommitLogResultCounter = new AtomicLong(0);
   public static AtomicLong raftMemberAppendLogResultMS = new AtomicLong(0);
   public static AtomicLong raftMemberAppendLogResultCounter = new AtomicLong(0);
+  public static AtomicLong indexDiff = new AtomicLong(0);
+  public static AtomicLong indexDiffCounter = new AtomicLong(0);
 
 
   private static final String dataGroupMemberProcessPlanLocallyMSString = "Data group member - process plan locally : ";
@@ -64,6 +66,7 @@ public class Timer {
   private static final String rafTMemberOfferLogString = "Raft member - offer log: ";
   private static final String raftMemberCommitLogResultString = "Raft member - commit log result: ";
   private static final String raftMemberAppendLogResultString = "Raft member - append log result: ";
+  public static final String indexDiffString = "Raft member - index diff: ";
 
 
 
@@ -153,6 +156,10 @@ public class Timer {
         + raftMemberCommitLogResultCounter + ", "
         + (double) raftMemberCommitLogResultMS.get()/1000000L / raftMemberCommitLogResultCounter.get() + "\n";
 
+    result += indexDiffString
+        + indexDiff.get()/1000000L + ", "
+        + indexDiffCounter + ", "
+        + (double) indexDiff.get()/1000000L / indexDiffCounter.get() + "\n";
 
 
     return result;

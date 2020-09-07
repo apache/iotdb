@@ -29,6 +29,8 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.Response;
@@ -257,7 +259,7 @@ public class ClusterMain {
     // customize data distribution
     // The given example tries to divide storage groups like "root.sg_0", "root.sg_1"... into k
     // nodes evenly.
-    /*SlotPartitionTable.slotStrategy = new SlotStrategy() {
+    SlotPartitionTable.slotStrategy = new SlotStrategy() {
       int k = 3;
       @Override
       public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
@@ -283,6 +285,6 @@ public class ClusterMain {
           return 0;
         }
       }
-    };*/
+    };
   }
 }
