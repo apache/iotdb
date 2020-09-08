@@ -88,7 +88,7 @@ public class LogDispatcher {
   private BlockingQueue<SendLogRequest> createQueueAndBindingThread(Node node) {
     BlockingQueue<SendLogRequest> logBlockingQueue =
         new ArrayBlockingQueue<>(4096);
-    int bindingThreadNum = 2;
+    int bindingThreadNum = 1;
     for (int i = 0; i < bindingThreadNum; i++) {
       executorService.submit(new DispatcherThread(node, logBlockingQueue));
     }
