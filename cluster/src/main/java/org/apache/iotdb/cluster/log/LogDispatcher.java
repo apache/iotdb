@@ -175,6 +175,11 @@ public class LogDispatcher {
     }
 
     private void appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch) {
+      if (!member.waitForPrevLog(peer, currBatch.get(0).log)) {
+        logger.warn("{}: node {} timed out when appending {}", member.getName(), receiver, currBatch.get(0).log);
+        return;
+      }
+
       Client client = member.getSyncClient(receiver);
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
       try {

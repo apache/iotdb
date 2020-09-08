@@ -752,7 +752,7 @@ public abstract class RaftMember {
     return logDispatcher;
   }
 
-  private boolean waitForPrevLog(Peer peer, Log log) {
+  public boolean waitForPrevLog(Peer peer, Log log) {
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
     // if the peer falls behind too much, wait until it catches up, otherwise there may be too
