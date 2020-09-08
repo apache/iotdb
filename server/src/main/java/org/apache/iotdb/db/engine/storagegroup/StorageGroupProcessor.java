@@ -832,7 +832,8 @@ public class StorageGroupProcessor {
 
     // try to update the latest time of the device of this tsRecord
     if (latestTimeForEachDevice.get(timePartitionId)
-        .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE) < insertRowPlan.getTime()) {
+        .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE) < insertRowPlan
+        .getTime()) {
       latestTimeForEachDevice.get(timePartitionId)
           .put(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
@@ -1242,6 +1243,7 @@ public class StorageGroupProcessor {
       QueryFileManager filePathsManager, Filter timeFilter) throws QueryProcessException {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
+    tsFileManagement.readLock();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(
           tsFileManagement.getTsFileList(true),
@@ -1262,8 +1264,9 @@ public class StorageGroupProcessor {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      insertLock.readLock().unlock();
+      tsFileManagement.readUnLock();
       mergeLock.readLock().unlock();
+      insertLock.readLock().unlock();
     }
   }
 
@@ -1282,7 +1285,8 @@ public class StorageGroupProcessor {
    */
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources, List<TsFileResource> upgradeTsFileResources,
-      PartialPath deviceId, String measurementId, QueryContext context, Filter timeFilter, boolean isSeq)
+      PartialPath deviceId, String measurementId, QueryContext context, Filter timeFilter,
+      boolean isSeq)
       throws MetadataException {
 
     MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(deviceId, measurementId);
@@ -1302,7 +1306,8 @@ public class StorageGroupProcessor {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
           tsFileResource.getUnsealedFileProcessor()
-              .query(deviceId.getFullPath(), measurementId, schema.getType(), schema.getEncodingType(),
+              .query(deviceId.getFullPath(), measurementId, schema.getType(),
+                  schema.getEncodingType(),
                   schema.getProps(), context, tsfileResourcesForQuery);
         }
       } catch (IOException e) {
@@ -1367,7 +1372,7 @@ public class StorageGroupProcessor {
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
     writeLock();
     mergeLock.writeLock().lock();
-    tsFileManagement.hotCompactionMergeLock.writeLock().lock();
+    tsFileManagement.writeLock();
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
@@ -1391,7 +1396,8 @@ public class StorageGroupProcessor {
       logDeletion(startTime, endTime, deviceId, measurementId);
       // delete Last cache record if necessary
       tryToDeleteLastCache(deviceId, measurementId, startTime, endTime);
-      Deletion deletion = new Deletion(deviceId.concatNode(measurementId),MERGE_MOD_START_VERSION_NUM, startTime, endTime);
+      Deletion deletion = new Deletion(deviceId.concatNode(measurementId),
+          MERGE_MOD_START_VERSION_NUM, startTime, endTime);
       if (mergingModification != null) {
         mergingModification.write(deletion);
         updatedModFiles.add(mergingModification);
@@ -1407,9 +1413,9 @@ public class StorageGroupProcessor {
       }
       throw new IOException(e);
     } finally {
-      writeUnlock();
+      tsFileManagement.writeUnlock();
       mergeLock.writeLock().unlock();
-      tsFileManagement.hotCompactionMergeLock.writeLock().unlock();
+      writeUnlock();
     }
   }
 
@@ -1630,7 +1636,7 @@ public class StorageGroupProcessor {
     }
     insertLock.writeLock().lock();
     mergeLock.writeLock().lock();
-    tsFileManagement.hotCompactionMergeLock.writeLock().lock();
+    tsFileManagement.writeLock();
     if (tsFileResource.isSeq()) {
       tsFileManagement.addAll(upgradedResources, true);
       upgradeSeqFileList.remove(tsFileResource);
@@ -1638,7 +1644,7 @@ public class StorageGroupProcessor {
       tsFileManagement.addAll(upgradedResources, false);
       upgradeUnseqFileList.remove(tsFileResource);
     }
-    tsFileManagement.hotCompactionMergeLock.writeLock().lock();
+    tsFileManagement.writeUnlock();
     mergeLock.writeLock().unlock();
     insertLock.writeLock().unlock();
 
@@ -1744,12 +1750,12 @@ public class StorageGroupProcessor {
   }
 
   private void removeUnseqFiles(List<TsFileResource> unseqFiles) {
-    tsFileManagement.hotCompactionMergeLock.writeLock().lock();
     mergeLock.writeLock().lock();
+    tsFileManagement.writeLock();
     try {
       tsFileManagement.removeAll(unseqFiles, false);
     } finally {
-      tsFileManagement.hotCompactionMergeLock.writeLock().unlock();
+      tsFileManagement.writeUnlock();
       mergeLock.writeLock().unlock();
     }
 
@@ -1830,7 +1836,7 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * acquire the write locks of the resource and the merge lock
+   * acquire the write locks of the resource , the merge lock and the hot compaction lock
    */
   private void doubleWriteLock(TsFileResource seqFile) {
     boolean fileLockGot;
@@ -1839,29 +1845,30 @@ public class StorageGroupProcessor {
     while (true) {
       fileLockGot = seqFile.tryWriteLock();
       mergeLockGot = mergeLock.writeLock().tryLock();
-      hotCompactionLockGot = tsFileManagement.hotCompactionMergeLock.writeLock().tryLock();
+      hotCompactionLockGot = tsFileManagement.tryWriteLock();
 
-      if (fileLockGot && mergeLockGot) {
+      if (fileLockGot && mergeLockGot && hotCompactionLockGot) {
         break;
       } else {
         // did not get all of them, release the gotten one and retry
-        if (fileLockGot) {
-          seqFile.writeUnlock();
+        if (hotCompactionLockGot) {
+          tsFileManagement.writeUnlock();
         }
         if (mergeLockGot) {
           mergeLock.writeLock().unlock();
         }
-        if (hotCompactionLockGot) {
-          tsFileManagement.hotCompactionMergeLock.writeLock().unlock();
+        if (fileLockGot) {
+          seqFile.writeUnlock();
         }
       }
     }
   }
 
   /**
-   * release the write locks of the resource and the merge lock
+   * release the write locks of the resource , the merge lock and the hot compaction lock
    */
   private void doubleWriteUnlock(TsFileResource seqFile) {
+    tsFileManagement.writeUnlock();
     mergeLock.writeLock().unlock();
     seqFile.writeUnlock();
   }
@@ -1883,7 +1890,7 @@ public class StorageGroupProcessor {
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock();
     mergeLock.writeLock().lock();
-    tsFileManagement.hotCompactionMergeLock.writeLock().lock();
+    tsFileManagement.writeLock();
     try {
       if (loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
           newFilePartitionId)) {
@@ -1896,7 +1903,7 @@ public class StorageGroupProcessor {
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
     } finally {
-      tsFileManagement.hotCompactionMergeLock.writeLock().unlock();
+      tsFileManagement.writeUnlock();
       mergeLock.writeLock().unlock();
       writeUnlock();
     }
@@ -1921,7 +1928,7 @@ public class StorageGroupProcessor {
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock();
     mergeLock.writeLock().lock();
-    tsFileManagement.hotCompactionMergeLock.writeLock().lock();
+    tsFileManagement.writeLock();
     try {
       List<TsFileResource> sequenceList = tsFileManagement.getTsFileList(true);
 
@@ -1965,7 +1972,7 @@ public class StorageGroupProcessor {
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
     } finally {
-      tsFileManagement.hotCompactionMergeLock.writeLock().unlock();
+      tsFileManagement.writeUnlock();
       mergeLock.writeLock().unlock();
       writeUnlock();
     }
@@ -2318,7 +2325,7 @@ public class StorageGroupProcessor {
   public boolean deleteTsfile(File tsfieToBeDeleted) {
     writeLock();
     mergeLock.writeLock().lock();
-    tsFileManagement.hotCompactionMergeLock.writeLock().lock();
+    tsFileManagement.writeLock();
     TsFileResource tsFileResourceToBeDeleted = null;
     try {
       Iterator<TsFileResource> sequenceIterator = tsFileManagement.getIterator(true);
@@ -2342,7 +2349,7 @@ public class StorageGroupProcessor {
         }
       }
     } finally {
-      tsFileManagement.hotCompactionMergeLock.writeLock().unlock();
+      tsFileManagement.writeUnlock();
       mergeLock.writeLock().unlock();
       writeUnlock();
     }
@@ -2378,7 +2385,7 @@ public class StorageGroupProcessor {
   public boolean moveTsfile(File fileToBeMoved, File targetDir) {
     writeLock();
     mergeLock.writeLock().lock();
-    tsFileManagement.hotCompactionMergeLock.writeLock().lock();
+    tsFileManagement.writeLock();
     TsFileResource tsFileResourceToBeMoved = null;
     try {
       Iterator<TsFileResource> sequenceIterator = tsFileManagement.getIterator(true);
@@ -2402,7 +2409,7 @@ public class StorageGroupProcessor {
         }
       }
     } finally {
-      tsFileManagement.hotCompactionMergeLock.writeLock().unlock();
+      tsFileManagement.writeUnlock();
       mergeLock.writeLock().unlock();
       writeUnlock();
     }

@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -35,6 +39,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
@@ -57,6 +63,8 @@ class MergeFileTask {
   private MergeLogger mergeLogger;
   private MergeResource resource;
   private List<TsFileResource> unmergedFiles;
+
+  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   private int currentMergeIndex;
   private String currMergeFile;
@@ -178,7 +186,10 @@ class MergeFileTask {
       mergeLogger.logFileMergeEnd();
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
 
-      newFileWriter.getFile().delete();
+      File newMergedFile = newFileWriter.getFile();
+      newMergedFile.delete();
+      fsFactory.moveFile(seqFile.getTsFile(), newMergedFile);
+      seqFile.setFile(newMergedFile);
     } catch (Exception e) {
       restoreOldFile(seqFile);
       throw e;
@@ -188,10 +199,8 @@ class MergeFileTask {
   }
 
   /**
-   * Restore an old seq file which is being written new chunks when exceptions occur or the task
-   * is aborted.
-   * @param seqFile
-   * @throws IOException
+   * Restore an old seq file which is being written new chunks when exceptions occur or the task is
+   * aborted.
    */
   private void restoreOldFile(TsFileResource seqFile) throws IOException {
     RestorableTsFileIOWriter oldFileRecoverWriter = new RestorableTsFileIOWriter(
@@ -205,9 +214,6 @@ class MergeFileTask {
 
   /**
    * Open an appending writer for an old seq file so we can add new chunks to it.
-   * @param seqFile
-   * @return
-   * @throws IOException
    */
   private TsFileIOWriter getOldFileWriter(TsFileResource seqFile) throws IOException {
     TsFileIOWriter oldFileWriter;
@@ -304,7 +310,11 @@ class MergeFileTask {
       resource.removeFileReader(seqFile);
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      seqFile.getTsFile().delete();
+
+      File newMergeFile = seqFile.getTsFile();
+      newMergeFile.delete();
+      fsFactory.moveFile(fileWriter.getFile(), newMergeFile);
+      seqFile.setFile(newMergeFile);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {
@@ -337,4 +347,12 @@ class MergeFileTask {
     return maxVersion;
   }
 
+  private File getNextMergeVersionFile(File seqFile) {
+    String[] splits = seqFile.getName().replace(TSFILE_SUFFIX, "")
+        .split(IoTDBConstant.FILE_NAME_SEPARATOR);
+    int mergeVersion = Integer.parseInt(splits[2]) + 1;
+    return fsFactory.getFile(seqFile.getParentFile(),
+        splits[0] + IoTDBConstant.FILE_NAME_SEPARATOR + splits[1]
+            + IoTDBConstant.FILE_NAME_SEPARATOR + mergeVersion + TSFILE_SUFFIX);
+  }
 }

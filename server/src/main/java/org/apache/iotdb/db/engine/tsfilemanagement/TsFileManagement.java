@@ -34,7 +34,7 @@ public abstract class TsFileManagement {
    * hotCompactionMergeLock is used to wait for TsFile list change in hot compaction merge
    * processor.
    */
-  public final ReadWriteLock hotCompactionMergeLock = new ReentrantReadWriteLock();
+  private final ReadWriteLock hotCompactionMergeLock = new ReentrantReadWriteLock();
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -105,6 +105,26 @@ public abstract class TsFileManagement {
    * fork current TsFile list (call this before merge)
    */
   public abstract void forkCurrentFileList(long timePartition);
+
+  public void readLock() {
+    hotCompactionMergeLock.readLock().lock();
+  }
+
+  public void readUnLock() {
+    hotCompactionMergeLock.readLock().unlock();
+  }
+
+  public void writeLock() {
+    hotCompactionMergeLock.writeLock().lock();
+  }
+
+  public void writeUnlock() {
+    hotCompactionMergeLock.writeLock().unlock();
+  }
+
+  public boolean tryWriteLock() {
+    return hotCompactionMergeLock.writeLock().tryLock();
+  }
 
   protected abstract void merge(long timePartition);
 

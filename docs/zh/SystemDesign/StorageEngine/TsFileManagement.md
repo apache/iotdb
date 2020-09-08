@@ -30,16 +30,17 @@
 - LevelStrategy 即开启热合并并使用层级合并方法，NormalStrategy 即关闭热合并
 - iotdb-engine.properties 中加 merge_chunk_point_number：最大的chunk大小限制，LevelStrategy 时，当达到该参数就合并到最后一层
 - iotdb-engine.properties 加一个参数 max_level_num：LevelStrategy 时最大层数
-- 新建一个 TsFileManagement 类，专门管理StorageGroupProcessor中的seqFileList和unSeqFileList，在这里写热合并的主体逻辑，对外抽象对seqFileList和unSeqFileList的一系列所需接口
-- 对于普通 merge 会调用 TsFileManagement 的 getStableTsFileList() 来获取准备进行文件合并的文件列表，这里对于 LevelStrategy 来说就是返回第 {max_level_num} 层的文件，对于 NormalStrategy 来说就是返回所有文件列表
+- 新建一个 TsFileManagement 类，专门管理 StorageGroupProcessor 中的 seqFileList 和 unSeqFileList ，在这里写热合并的主体逻辑，对外抽象对seqFileList和unSeqFileList的一系列所需接口
+- 对于普通 merge 会调用 TsFileManagement 的 getStableTsFileList() 来获取准备进行文件合并的文件列表，这里对于 LevelStrategy 来说就是返回第 {max_level_num - 1} 层的文件，对于 NormalStrategy 来说就是返回所有文件列表
+- 每一次热合并会取第一个被合并文件的时间戳作为新文件的时间戳，即 {firstFileTimestamp}-{version}-{mergeVerion + 1}.tsfiles
 
 ## TsFileManagement 对外提供的接口和类
 
 - TsFileManagement 也管理未封口文件
 - TsFileManagement 同时管理 Seq 和 UnSeq 文件列表，在 StorageGroupProcessor 中只创建一个 TsFileManagement
-- List\<TsFileResource\> getStableTsFileList() 对外提供已经完成热合并的稳定的 TsFileResource 列表
-- List\<TsFileResource\> getTsFileList(boolean sequence) 对外提供顺序的 TsFileResource 列表
-- Iterator\<TsFileResource\> getIterator(boolean sequence) 对外提供顺序的 TsFileResource 迭代器
+- List\<TsFileResource\> getStableTsFileList() 对外提供稳定的 TsFileResource 列表
+- List\<TsFileResource\> getTsFileList(boolean sequence) 对外提供按插入顺序的 TsFileResource 列表
+- Iterator\<TsFileResource\> getIterator(boolean sequence) 对外提供按插入顺序的 TsFileResource 迭代器
 - void remove(TsFileResource tsFileResource, boolean sequence) 删除对应的 TsFileResource 文件
 - void removeAll(List\<TsFileResource\> tsfileReourceList, boolean sequence) 删除对应的 TsFileResource 列表
 - void addAll(List\<TsFileResource\> tsfileReourceList, boolean sequence) 批量加入 TsFileResource 列表
@@ -85,3 +86,36 @@
 			* 继续层级合并
 * 如果日志文件不存在
 	* 无需恢复
+
+## LevelStrategy 例子
+
+设置 max_file_num_in_each_level = 3，tsfile_manage_strategy = LevelStrategy， max_level_num = 3，此时文件结构为，第0层、第1层、第2层，其中第2层是不再做热合并的稳定的文件列表
+
+### 完全根据 level 合并的情况
+假设此时整个系统中有5个文件，最后一个文件没有关闭,则其结构及顺序分布如下
+2 3 4
+0 1
+当最后一个文件关闭，按如下方式合并（第0层的2、3、4文件合并到了第1层的2'文件）
+2 3 4
+\ \ |
+  \ |
+0 1 2'
+合并后发现第1层合并后也满了，则继续合并到第2层，最后整个系统只剩下了第2层的0'文件
+2 3 4
+\ \ |
+  \ |
+0 1 2'
+| / /
+| /
+0'
+
+### 中途满足 merge_chunk_point_number 的情况
+假设此时整个系统中有4个文件，最后一个文件没有关闭,则其结构及顺序分布如下
+2 3
+0 1
+当最后一个文件关闭，但是0、1、2、3文件的 chunk point 数量加起来已经满足 merge_chunk_point_number，则做如下合并，即直接将所有文件合并到第2层（稳定层）
+2 3
+| |
+0 1
+| /
+0'

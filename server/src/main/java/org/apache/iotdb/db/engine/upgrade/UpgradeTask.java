@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
@@ -42,6 +43,7 @@ public class UpgradeTask extends WrappedRunnable {
   private TsFileResource upgradeResource;
   private static final Logger logger = LoggerFactory.getLogger(UpgradeTask.class);
   private static final String COMMA_SEPERATOR = ",";
+  private static final int maxLevelNum = IoTDBDescriptor.getInstance().getConfig().getMaxLevelNum();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -90,7 +92,7 @@ public class UpgradeTask extends WrappedRunnable {
           }
           // rename all files to 0 level
           upgradedFile = upgradedResource.getTsFile();
-          File zeroMergeVersionFile = getZeroMergeVersionFile(upgradedFile);
+          File zeroMergeVersionFile = getMaxMergeVersionFile(upgradedFile);
           fsFactory.moveFile(upgradedFile, zeroMergeVersionFile);
           fsFactory.moveFile(
               fsFactory.getFile(upgradedFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
@@ -143,12 +145,12 @@ public class UpgradeTask extends WrappedRunnable {
     return upgradedResources;
   }
 
-  private File getZeroMergeVersionFile(File seqFile) {
+  private File getMaxMergeVersionFile(File seqFile) {
     String[] splits = seqFile.getName().replace(TSFILE_SUFFIX, "")
         .split(IoTDBConstant.FILE_NAME_SEPARATOR);
     return fsFactory.getFile(seqFile.getParentFile(),
         splits[0] + IoTDBConstant.FILE_NAME_SEPARATOR + splits[1]
-            + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + TSFILE_SUFFIX);
+            + IoTDBConstant.FILE_NAME_SEPARATOR + (maxLevelNum - 1) + TSFILE_SUFFIX);
   }
 
 }

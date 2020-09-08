@@ -41,7 +41,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.locks.ReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -64,7 +63,9 @@ import org.slf4j.LoggerFactory;
 public class LevelTsFileManagement extends TsFileManagement {
 
   private static final Logger logger = LoggerFactory.getLogger(LevelTsFileManagement.class);
-  private int maxLevelNum = IoTDBDescriptor.getInstance().getConfig().getMaxLevelNum();
+  private final int maxLevelNum = IoTDBDescriptor.getInstance().getConfig().getMaxLevelNum();
+  private final int maxFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
+      .getMaxFileNumInEachLevel();
   // First map is partition list; Second list is level list; Third list is file list in level;
   private final Map<Long, List<TreeSet<TsFileResource>>> sequenceTsFileResources = new ConcurrentSkipListMap<>();
   private final Map<Long, List<List<TsFileResource>>> unSequenceTsFileResources = new ConcurrentSkipListMap<>();
@@ -105,8 +106,7 @@ public class LevelTsFileManagement extends TsFileManagement {
 
   private void flushAllFilesToLastLevel(long timePartitionId,
       List<List<TsFileResource>> currMergeFiles,
-      HotCompactionLogger hotCompactionLogger, boolean sequence,
-      ReadWriteLock hotCompactionMergeLock) throws IOException {
+      HotCompactionLogger hotCompactionLogger, boolean sequence) throws IOException {
     TsFileResource sourceFile = currMergeFiles.get(0).get(0);
     File newTargetFile = createNewTsFileName(sourceFile.getTsFile(), maxLevelNum - 1);
     TsFileResource targetResource = new TsFileResource(newTargetFile);
@@ -119,11 +119,11 @@ public class LevelTsFileManagement extends TsFileManagement {
     hotCompactionLogger.logFullMerge();
     hotCompactionLogger.logSequence(sequence);
     hotCompactionLogger.logFile(TARGET_NAME, newTargetFile);
-    hotCompactionMergeLock.writeLock().lock();
+    writeLock();
     for (int i = 0; i < maxLevelNum - 1; i++) {
       deleteLevelFiles(timePartitionId, currMergeFiles.get(i));
     }
-    hotCompactionMergeLock.writeLock().unlock();
+    writeUnlock();
     hotCompactionLogger.logMergeFinish();
   }
 
@@ -403,45 +403,42 @@ public class LevelTsFileManagement extends TsFileManagement {
 
   @Override
   public void forkCurrentFileList(long timePartition) {
-    forkSeqTsFileList(forkedSequenceTsFileResources,
+    forkTsFileList(forkedSequenceTsFileResources,
         sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources));
-    forkUnSeqTsFileList(forkedUnSequenceTsFileResources,
+    forkTsFileList(forkedUnSequenceTsFileResources,
         unSequenceTsFileResources
             .computeIfAbsent(timePartition, this::newUnSequenceTsFileResources));
   }
 
-  private void forkSeqTsFileList(List<List<TsFileResource>> forkedTsFileResources,
-      List<TreeSet<TsFileResource>> rawTsFileResources) {
+  private void forkTsFileList(List<List<TsFileResource>> forkedTsFileResources,
+      List rawTsFileResources) {
     forkedTsFileResources.clear();
+    // just fork part of the TsFile list, controlled by max_file_num_in_each_level
+    int count = 0;
     for (int i = 0; i < maxLevelNum - 1; i++) {
-      forkTsFileList(i, forkedTsFileResources, rawTsFileResources.get(i));
-    }
-  }
-
-  private void forkUnSeqTsFileList(List<List<TsFileResource>> forkedTsFileResources,
-      List<List<TsFileResource>> rawTsFileResources) {
-    forkedTsFileResources.clear();
-    for (int i = 0; i < maxLevelNum - 1; i++) {
-      forkTsFileList(i, forkedTsFileResources, rawTsFileResources.get(i));
-    }
-  }
-
-  private void forkTsFileList(int level, List<List<TsFileResource>> forkedTsFileResources,
-      Collection<TsFileResource> tsFileResources) {
-    // first level may have unclosed files, filter these files
-    if (level == 0) {
-      List<TsFileResource> forkedFirstLevelTsFileResources = new ArrayList<>();
-      for (TsFileResource tsFileResource : tsFileResources) {
-        if (tsFileResource.isClosed()) {
-          forkedFirstLevelTsFileResources.add(tsFileResource);
-        } else {
-          break;
-        }
+      List<TsFileResource> forkedLevelTsFileResources = new ArrayList<>();
+      Collection<TsFileResource> levelRawTsFileResources = (Collection<TsFileResource>) rawTsFileResources
+          .get(i);
+      count = forkLevelTsFileList(count, forkedLevelTsFileResources, levelRawTsFileResources);
+      if (count >= maxFileNumInEachLevel) {
+        break;
       }
-      forkedTsFileResources.add(forkedFirstLevelTsFileResources);
-    } else {
-      forkedTsFileResources.add(new ArrayList<>(tsFileResources));
+      forkedTsFileResources.add(forkedLevelTsFileResources);
     }
+  }
+
+  private int forkLevelTsFileList(int count, List<TsFileResource> forkedLevelTsFileResources,
+      Collection<TsFileResource> tsFileResources) {
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (tsFileResource.isClosed()) {
+        forkedLevelTsFileResources.add(tsFileResource);
+        count++;
+      }
+      if (count >= maxFileNumInEachLevel) {
+        break;
+      }
+    }
+    return count;
   }
 
   @Override
@@ -500,8 +497,7 @@ public class LevelTsFileManagement extends TsFileManagement {
         // merge all tsfile to last level
         logger.info("{} merge {} level tsfiles to next level", storageGroupName,
             mergeResources.size());
-        flushAllFilesToLastLevel(timePartition, mergeResources, hotCompactionLogger, sequence,
-            hotCompactionMergeLock);
+        flushAllFilesToLastLevel(timePartition, mergeResources, hotCompactionLogger, sequence);
       } else {
         for (int i = 0; i < maxLevelNum - 1; i++) {
           if (IoTDBDescriptor.getInstance().getConfig().getMaxFileNumInEachLevel() <= mergeResources
@@ -520,7 +516,7 @@ public class LevelTsFileManagement extends TsFileManagement {
             HotCompactionUtils
                 .merge(newResource, mergeResources.get(i), storageGroupName, hotCompactionLogger,
                     new HashSet<>(), sequence);
-            hotCompactionMergeLock.writeLock().lock();
+            writeLock();
             try {
               deleteLevelFiles(timePartition, mergeResources.get(i));
               hotCompactionLogger.logMergeFinish();
@@ -533,7 +529,7 @@ public class LevelTsFileManagement extends TsFileManagement {
                 mergeResources.get(i + 1).add(newResource);
               }
             } finally {
-              hotCompactionMergeLock.writeLock().unlock();
+              writeUnlock();
             }
           }
         }
