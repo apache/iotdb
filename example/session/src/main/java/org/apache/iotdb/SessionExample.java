@@ -58,10 +58,10 @@ public class SessionExample {
     insertTablet();
     insertTablets();
     insertRecords();
-//    nonQuery();
-//    query();
+    nonQuery();
+    query();
     rawDataQuery();
-//    queryByIterator();
+    queryByIterator();
     deleteData();
     deleteTimeseries();
     session.close();
