@@ -60,7 +60,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -388,8 +387,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void asyncCloseProcessor(PartialPath storageGroupPath, boolean isSeq)
-      throws StorageGroupNotSetException {
+  public void asyncCloseProcessor(PartialPath storageGroupPath, boolean isSeq) {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor != null) {
       logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupPath,
@@ -412,22 +410,6 @@ public class StorageEngine implements IService {
       } finally {
         processor.writeUnlock();
       }
-    } else {
-      // bug fix, for storage group do does not have data
-      // https://issues.apache.org/jira/browse/IOTDB-875
-      List<PartialPath> storageGroupPaths = null;
-      try {
-        storageGroupPaths = MManager.getInstance().getStorageGroupPaths(storageGroupPath);
-      } catch (MetadataException e) {
-        logger.error("get storage group path={} failed", storageGroupPath);
-        throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
-      }
-      for (PartialPath partialPath : storageGroupPaths) {
-        if (partialPath.equals(storageGroupPath)) {
-          return;
-        }
-      }
-      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
     }
   }
 
