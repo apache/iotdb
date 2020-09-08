@@ -29,6 +29,7 @@ import java.net.SocketTimeoutException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -543,17 +544,21 @@ public abstract class RaftMember {
 
     long response;
     List<Log> logs = new ArrayList<>();
+    long start = System.nanoTime();
     for (ByteBuffer buffer : request.getEntries()) {
       buffer.mark();
       Log log;
       try {
         log = LogParser.getINSTANCE().parse(buffer);
+
       } catch (BufferUnderflowException e) {
         buffer.reset();
         throw e;
       }
       logs.add(log);
     }
+
+    Timer.raftMemberLogParse.add(System.nanoTime() - start);
 
     response = appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
         logs);
@@ -579,15 +584,19 @@ public abstract class RaftMember {
     }
 
     long lastLogIndex = logManager.getLastLogIndex();
+    long start = System.nanoTime();
     if (lastLogIndex < prevLogIndex) {
       if (!waitForPrevLog(prevLogIndex)) {
         return Response.RESPONSE_LOG_MISMATCH;
       }
     }
+    Timer.rafTMemberReceiverWaitForPrevLog.add(System.nanoTime() - start);
 
     long resp;
     synchronized (logManager) {
+      start = System.nanoTime();
       resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, logs);
+      Timer.raftFollowerAppendEntry.add(System.nanoTime() - start);
       if (resp != -1) {
         if (logger.isDebugEnabled()) {
           logger.debug("{} append a new log list {}, commit to {}", name, logs, leaderCommit);
