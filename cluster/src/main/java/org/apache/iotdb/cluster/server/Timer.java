@@ -49,8 +49,8 @@ public class Timer {
   public static Statistic raftMemberFromCreateToAppendLog = new Statistic("Raft member - from create to append log: ", 1000000L);
   public static Statistic logDispatcherFromCreateToEnd= new Statistic("Log dispatcher - from create to end: ", 1000000L);
 
-  public static int[] queueHisto = new int[21];
-  public static int[] currentBatchHisto = new int[21];
+  public static int[] queueHisto = new int[42];
+  public static int[] currentBatchHisto = new int[42];
 
   static Statistic[] statistics = new Statistic[]{dataGroupMemberProcessPlanLocally,
       dataGroupMemberWaitLeader,
