@@ -91,6 +91,9 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     testOrderedAccessByDataPointIterator(dataType);
     testOrderedAccessBySizeLimitedDataPointBatchIterator(dataType, 0);
     testOrderedAccessBySizeLimitedDataPointBatchIterator(dataType, ITERATION_TIMES / 2);
+    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, 0, ITERATION_TIMES);
+    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, (int) (0.25 * ITERATION_TIMES),
+        (int) (0.75 * ITERATION_TIMES));
   }
 
   private void initESTVList(TSDataType dataType) {
@@ -265,16 +268,40 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
 
   private void testOrderedAccessBySizeLimitedDataPointBatchIterator(TSDataType dataType,
       int displayWindowBegin) {
-    assert 0 <= displayWindowBegin;
     int iterationTimes = ITERATION_TIMES - displayWindowBegin;
-    assert iterationTimes % BATCH_SIZE == 0;
 
     int total = 0;
     try {
-      DataPointBatchIterator batchIterator = displayWindowBegin == 0
+      // test different constructors
+      DataPointBatchIterator batchIterator = iterationTimes == ITERATION_TIMES
           ? tvList.getSizeLimitedBatchIterator(BATCH_SIZE)
-          : tvList.getSizeLimitedBatchIterator(BATCH_SIZE,
-              displayWindowBegin); // test different constructors
+          : tvList.getSizeLimitedBatchIterator(BATCH_SIZE, displayWindowBegin);
+      int batchCount = 0;
+      while (batchIterator.hasNextBatch()) {
+        batchIterator.next();
+        testRandomAccessByIndexInDataPointBatch(dataType, displayWindowBegin + total,
+            batchIterator);
+        total = testDataPointIteratorGeneratedByDataPointBatchIterator(dataType, displayWindowBegin,
+            total, batchIterator.currentBatch());
+        ++batchCount;
+      }
+      assertEquals(iterationTimes / BATCH_SIZE, batchCount);
+    } catch (IOException | QueryProcessException e) {
+      fail(e.toString());
+    }
+    assertEquals(iterationTimes, total);
+  }
+
+  private void testOrderedAccessByTimeWindowDataPointBatchIterator(TSDataType dataType,
+      int displayWindowBegin, int displayWindowEnd) {
+    int iterationTimes = displayWindowEnd - displayWindowBegin;
+
+    int total = 0;
+    try {
+      DataPointBatchIterator batchIterator = iterationTimes == ITERATION_TIMES
+          ? tvList.getTimeWindowBatchIterator(BATCH_SIZE, BATCH_SIZE)
+          : tvList.getTimeWindowBatchIterator(displayWindowBegin, displayWindowEnd,
+              BATCH_SIZE, BATCH_SIZE); // test different constructors
       int batchCount = 0;
       while (batchIterator.hasNextBatch()) {
         batchIterator.next();
