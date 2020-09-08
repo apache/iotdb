@@ -44,8 +44,8 @@ public class Timer {
   public static Statistic indexDiff = new Statistic("Raft member - index diff: ", 1L);
   public static Statistic logDispatcherLogInQueue = new Statistic("Log dispatcher - in queue: ",
       1000000L);
-  public static Statistic raftMemberFromCreateToAppendLog = new Statistic("Raft member - from create to append log", 1000000L);
-  public static Statistic logDispatcherFromCreateToEnd= new Statistic("Log dispatcher - from create to end", 1000000L);
+  public static Statistic raftMemberFromCreateToAppendLog = new Statistic("Raft member - from create to append log: ", 1000000L);
+  public static Statistic logDispatcherFromCreateToEnd= new Statistic("Log dispatcher - from create to end: ", 1000000L);
 
   static Statistic[] statistics = new Statistic[]{dataGroupMemberProcessPlanLocally,
       dataGroupMemberWaitLeader,

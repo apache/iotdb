@@ -142,8 +142,7 @@ public class LogDispatcher {
     }
 
     private void sendLog(SendLogRequest logRequest) {
-      long inQueueTime = System.nanoTime() - logRequest.enqueueTime;
-      Timer.logDispatcherLogInQueue.add(inQueueTime);
+      Timer.logDispatcherLogInQueue.add(System.nanoTime() - logRequest.createTime);
       member.sendLogToFollower(logRequest.log, logRequest.voteCounter, receiver,
           logRequest.leaderShipStale, logRequest.newLeaderTerm, logRequest.appendEntryRequest);
       Timer.logDispatcherFromCreateToEnd.add(System.nanoTime() - logRequest.createTime);
