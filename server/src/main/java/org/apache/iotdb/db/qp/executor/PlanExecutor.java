@@ -372,6 +372,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processCountTimeSeries((CountPlan) showPlan);
       case COUNT_NODE_TIMESERIES:
         return processCountNodeTimeSeries((CountPlan) showPlan);
+      case COUNT_DEVICES:
+        return processCountDevices((CountPlan) showPlan);
       case COUNT_NODES:
         return processCountNodes((CountPlan) showPlan);
       case MERGE_STATUS:
@@ -414,6 +416,24 @@ public class PlanExecutor implements IPlanExecutor {
       listDataSet.putRecord(record);
     }
     return listDataSet;
+  }
+
+  private QueryDataSet processCountDevices(CountPlan countPlan) throws MetadataException {
+    int num = getDevicesNum(countPlan.getPath());
+    SingleDataSet singleDataSet =
+        new SingleDataSet(
+            Collections.singletonList(new PartialPath(COLUMN_DEVICES, false)),
+            Collections.singletonList(TSDataType.INT32));
+    Field field = new Field(TSDataType.INT32);
+    field.setIntV(num);
+    RowRecord record = new RowRecord(0);
+    record.addField(field);
+    singleDataSet.setRecord(record);
+    return singleDataSet;
+  }
+
+  private int getDevicesNum(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getDevicesNum(path);
   }
 
   protected int getPathsNum(PartialPath path) throws MetadataException {

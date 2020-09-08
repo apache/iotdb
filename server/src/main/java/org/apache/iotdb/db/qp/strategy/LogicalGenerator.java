@@ -84,6 +84,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AsElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountDevicesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountNodesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
@@ -218,6 +219,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
           path);
     }
+  }
+
+  @Override
+  public void enterCountDevices(CountDevicesContext ctx) {
+    super.enterCountDevices(ctx);
+    PrefixPathContext pathContext = ctx.prefixPath();
+    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext) : new PartialPath(SQLConstant.getSingleRootArray()));
+    initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_DEVICES, path);
   }
 
   @Override
