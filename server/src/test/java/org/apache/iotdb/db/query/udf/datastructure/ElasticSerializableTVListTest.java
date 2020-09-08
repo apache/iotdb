@@ -20,9 +20,14 @@
 package org.apache.iotdb.db.query.udf.datastructure;
 
 import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.api.iterator.DataPointBatchIterator;
 import org.apache.iotdb.db.query.udf.api.iterator.DataPointIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -34,6 +39,8 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
 
   private static final float MEMORY_USAGE_LIMIT_IN_MB = 1f;
   private static final int CACHE_SIZE = 3;
+
+  private static final int BATCH_SIZE = 100;
 
   private ElasticSerializableTVList tvList;
 
@@ -82,6 +89,8 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     testPut(dataType);
     testOrderedAccessByIndex(dataType);
     testOrderedAccessByDataPointIterator(dataType);
+    testOrderedAccessBySizeLimitedDataPointBatchIterator(dataType, 0);
+    testOrderedAccessBySizeLimitedDataPointBatchIterator(dataType, ITERATION_TIMES / 2);
   }
 
   private void initESTVList(TSDataType dataType) {
@@ -252,5 +261,193 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
       fail(e.toString());
     }
     assertEquals(ITERATION_TIMES, count);
+  }
+
+  private void testOrderedAccessBySizeLimitedDataPointBatchIterator(TSDataType dataType,
+      int displayWindowBegin) {
+    assert 0 <= displayWindowBegin;
+    int iterationTimes = ITERATION_TIMES - displayWindowBegin;
+    assert iterationTimes % BATCH_SIZE == 0;
+
+    int total = 0;
+    try {
+      DataPointBatchIterator batchIterator = displayWindowBegin == 0
+          ? tvList.getSizeLimitedBatchIterator(BATCH_SIZE)
+          : tvList.getSizeLimitedBatchIterator(BATCH_SIZE,
+              displayWindowBegin); // test different constructors
+      int batchCount = 0;
+      while (batchIterator.hasNextBatch()) {
+        batchIterator.next();
+        testRandomAccessByIndexInDataPointBatch(dataType, displayWindowBegin + total,
+            batchIterator);
+        total = testDataPointIteratorGeneratedByDataPointBatchIterator(dataType, displayWindowBegin,
+            total, batchIterator.currentBatch());
+        ++batchCount;
+      }
+      assertEquals(iterationTimes / BATCH_SIZE, batchCount);
+    } catch (IOException | QueryProcessException e) {
+      fail(e.toString());
+    }
+    assertEquals(iterationTimes, total);
+  }
+
+  private int testDataPointIteratorGeneratedByDataPointBatchIterator(TSDataType dataType,
+      int initialIndex, int total, DataPointIterator dataPointIterator) {
+    int dataPointCount = 0;
+    try {
+      switch (dataType) {
+        case INT32:
+          while (dataPointIterator.hasNextPoint()) {
+            int expected = initialIndex + total;
+            assertEquals(expected, dataPointIterator.nextTime());
+            assertEquals(expected, dataPointIterator.nextInt());
+            dataPointIterator.next();
+            assertEquals(expected, dataPointIterator.currentTime());
+            assertEquals(expected, dataPointIterator.currentInt());
+            ++total;
+            ++dataPointCount;
+          }
+          assertEquals(BATCH_SIZE, dataPointCount);
+          break;
+        case INT64:
+          while (dataPointIterator.hasNextPoint()) {
+            int expected = initialIndex + total;
+            assertEquals(expected, dataPointIterator.nextTime());
+            assertEquals(expected, dataPointIterator.nextLong());
+            dataPointIterator.next();
+            assertEquals(expected, dataPointIterator.currentTime());
+            assertEquals(expected, dataPointIterator.currentLong());
+            ++total;
+            ++dataPointCount;
+          }
+          assertEquals(BATCH_SIZE, dataPointCount);
+          break;
+        case FLOAT:
+          while (dataPointIterator.hasNextPoint()) {
+            int expected = initialIndex + total;
+            assertEquals(expected, dataPointIterator.nextTime());
+            assertEquals(expected, dataPointIterator.nextFloat(), 0);
+            dataPointIterator.next();
+            assertEquals(expected, dataPointIterator.currentTime());
+            assertEquals(expected, dataPointIterator.currentFloat(), 0);
+            ++total;
+            ++dataPointCount;
+          }
+          assertEquals(BATCH_SIZE, dataPointCount);
+          break;
+        case DOUBLE:
+          while (dataPointIterator.hasNextPoint()) {
+            int expected = initialIndex + total;
+            assertEquals(expected, dataPointIterator.nextTime());
+            assertEquals(expected, dataPointIterator.nextDouble(), 0);
+            dataPointIterator.next();
+            assertEquals(expected, dataPointIterator.currentTime());
+            assertEquals(expected, dataPointIterator.currentDouble(), 0);
+            ++total;
+            ++dataPointCount;
+          }
+          assertEquals(BATCH_SIZE, dataPointCount);
+          break;
+        case BOOLEAN:
+          while (dataPointIterator.hasNextPoint()) {
+            int expected = initialIndex + total;
+            assertEquals(expected, dataPointIterator.nextTime());
+            assertEquals(expected % 2 == 0, dataPointIterator.nextBoolean());
+            dataPointIterator.next();
+            assertEquals(expected, dataPointIterator.currentTime());
+            assertEquals(expected % 2 == 0, dataPointIterator.currentBoolean());
+            ++total;
+            ++dataPointCount;
+          }
+          break;
+        case TEXT:
+          while (dataPointIterator.hasNextPoint()) {
+            int expected = initialIndex + total;
+            Binary value = Binary.valueOf(String.valueOf(expected));
+            assertEquals(expected, dataPointIterator.nextTime());
+            assertEquals(value, dataPointIterator.nextBinary());
+            assertEquals(value.getStringValue(), dataPointIterator.nextString());
+            dataPointIterator.next();
+            assertEquals(expected, dataPointIterator.currentTime());
+            assertEquals(value, dataPointIterator.currentBinary());
+            assertEquals(value.getStringValue(), dataPointIterator.currentString());
+            ++total;
+            ++dataPointCount;
+          }
+          assertEquals(BATCH_SIZE, dataPointCount);
+          break;
+      }
+    } catch (IOException e) {
+      fail(e.toString());
+    }
+    return total;
+  }
+
+  private void testRandomAccessByIndexInDataPointBatch(TSDataType dataType, int initialIndex,
+      DataPointBatchIterator batchIterator) {
+    int batchSize = batchIterator.currentBatchSize();
+    List<Integer> accessOrder = new ArrayList<>(batchSize);
+    for (int i = 0; i < batchSize; ++i) {
+      accessOrder.add(i);
+    }
+    Collections.shuffle(accessOrder);
+
+    try {
+      switch (dataType) {
+        case INT32:
+          for (int i = 0; i < batchSize; ++i) {
+            int accessIndex = accessOrder.get(i);
+            int expected = initialIndex + accessIndex;
+            assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
+            assertEquals(expected, batchIterator.getIntInCurrentBatch(accessIndex));
+          }
+          break;
+        case INT64:
+          for (int i = 0; i < batchSize; ++i) {
+            int accessIndex = accessOrder.get(i);
+            int expected = initialIndex + accessIndex;
+            assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
+            assertEquals(expected, batchIterator.getLongInCurrentBatch(accessIndex));
+          }
+          break;
+        case FLOAT:
+          for (int i = 0; i < batchSize; ++i) {
+            int accessIndex = accessOrder.get(i);
+            int expected = initialIndex + accessIndex;
+            assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
+            assertEquals(expected, batchIterator.getFloatInCurrentBatch(accessIndex), 0);
+          }
+          break;
+        case DOUBLE:
+          for (int i = 0; i < batchSize; ++i) {
+            int accessIndex = accessOrder.get(i);
+            int expected = initialIndex + accessIndex;
+            assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
+            assertEquals(expected, batchIterator.getDoubleInCurrentBatch(accessIndex), 0);
+          }
+          break;
+        case BOOLEAN:
+          for (int i = 0; i < batchSize; ++i) {
+            int accessIndex = accessOrder.get(i);
+            int expected = initialIndex + accessIndex;
+            assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
+            assertEquals(expected % 2 == 0, batchIterator.getBooleanInCurrentBatch(accessIndex));
+          }
+          break;
+        case TEXT:
+          for (int i = 0; i < batchSize; ++i) {
+            int accessIndex = accessOrder.get(i);
+            int expected = initialIndex + accessIndex;
+            Binary value = Binary.valueOf(String.valueOf(expected));
+            assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
+            assertEquals(value, batchIterator.getBinaryInCurrentBatch(accessIndex));
+            assertEquals(value.getStringValue(),
+                batchIterator.getStringInCurrentBatch(accessIndex));
+          }
+          break;
+      }
+    } catch (IOException e) {
+      fail(e.toString());
+    }
   }
 }
