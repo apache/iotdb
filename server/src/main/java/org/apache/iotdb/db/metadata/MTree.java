@@ -716,7 +716,7 @@ public class MTree implements Serializable {
     int cnt = 0;
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChild(nodeReg)) {
-        if (node.getChild(nodeReg) instanceof MeasurementMNode) {
+        if (node.getChild(nodeReg) instanceof MeasurementMNode && idx >= nodes.length) {
           cnt++;
         } else {
           cnt += getDevicesCount(node.getChild(nodeReg), nodes, idx + 1);
@@ -725,7 +725,7 @@ public class MTree implements Serializable {
     } else {
       boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
-        if (child instanceof MeasurementMNode && !deviceAdded) {
+        if (child instanceof MeasurementMNode && !deviceAdded && idx >= nodes.length) {
           cnt++;
           deviceAdded = true;
         }
