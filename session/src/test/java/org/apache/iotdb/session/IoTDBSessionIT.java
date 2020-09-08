@@ -625,7 +625,7 @@ public class IoTDBSessionIT {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
-    Tablet tablet = new Tablet(deviceId, schemaList, 100);
+    Tablet tablet = new Tablet(deviceId, schemaList, 200);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
     for (int time = 1; time <= 100; time++) {
@@ -633,6 +633,17 @@ public class IoTDBSessionIT {
       for (int i = 0; i < 3; i++) {
         long[] sensor = (long[]) values[i];
         sensor[time - 1] = i;
+      }
+      tablet.rowSize++;
+    }
+
+    for (int time = 101; time <= 200; time++) {
+      int rowIndex = time - 1;
+      tablet.addTimestamp(rowIndex, time);
+      long value = 0;
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
       }
       tablet.rowSize++;
     }
@@ -827,6 +838,25 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
 
+    for (long time = 0; time < 100; time++) {
+      int rowIndex = tablet.rowSize++;
+      long value = 0;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -875,19 +905,23 @@ public class IoTDBSessionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      final int colCount = metaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
-      }
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
+      try {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int colCount = metaData.getColumnCount();
+        StringBuilder resultStr = new StringBuilder();
+        for (int i = 0; i < colCount; i++) {
+          resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
         }
-        resultStr.append("\n");
+        while (resultSet.next()) {
+          for (int i = 1; i <= colCount; i++) {
+            resultStr.append(resultSet.getString(i)).append(",");
+          }
+          resultStr.append("\n");
+        }
+        Assert.assertEquals(resultStr.toString(), standard);
+      } finally {
+        resultSet.close();
       }
-      Assert.assertEquals(resultStr.toString(), standard);
     }
   }
 
@@ -911,10 +945,7 @@ public class IoTDBSessionIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      //System.out.println(sb.toString());
     }
-    Assert.assertEquals(900, count);
-    sessionDataSet.closeOperationHandle();
   }
 
   private void queryForAlignByDevice()
@@ -932,7 +963,7 @@ public class IoTDBSessionIT {
       }
       Assert.assertEquals("root.sg1.d1,\'11\',0,\'11\',", sb.toString());
     }
-    Assert.assertEquals(1000, count);
+    Assert.assertEquals(2000, count);
     sessionDataSet.closeOperationHandle();
   }
 
@@ -951,7 +982,7 @@ public class IoTDBSessionIT {
       }
       Assert.assertEquals("root.sg1.d1,'11',0,'11',null,0,null,", sb.toString());
     }
-    Assert.assertEquals(1000, count);
+    Assert.assertEquals(2000, count);
     sessionDataSet.closeOperationHandle();
   }
 
@@ -965,19 +996,23 @@ public class IoTDBSessionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      final int colCount = metaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
-      }
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
+      try {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int colCount = metaData.getColumnCount();
+        StringBuilder resultStr = new StringBuilder();
+        for (int i = 0; i < colCount; i++) {
+          resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
         }
-        resultStr.append("\n");
+        while (resultSet.next()) {
+          for (int i = 1; i <= colCount; i++) {
+            resultStr.append(resultSet.getString(i)).append(",");
+          }
+          resultStr.append("\n");
+        }
+        Assert.assertEquals(resultStr.toString(), standard);
+      } finally {
+        resultSet.close();
       }
-      Assert.assertEquals(resultStr.toString(), standard);
     }
   }
 
@@ -1001,19 +1036,23 @@ public class IoTDBSessionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      final int colCount = metaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
-      }
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
+      try {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int colCount = metaData.getColumnCount();
+        StringBuilder resultStr = new StringBuilder();
+        for (int i = 0; i < colCount; i++) {
+          resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
         }
-        resultStr.append("\n");
+        while (resultSet.next()) {
+          for (int i = 1; i <= colCount; i++) {
+            resultStr.append(resultSet.getString(i)).append(",");
+          }
+          resultStr.append("\n");
+        }
+        Assert.assertEquals(standard, resultStr.toString());
+      } finally {
+        resultSet.close();
       }
-      Assert.assertEquals(standard, resultStr.toString());
       List<String> storageGroups = new ArrayList<>();
       storageGroups.add("root.sg1.d1");
       storageGroups.add("root.sg2");
@@ -1128,6 +1167,25 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 256);
 
+    for (long time = 1000; time < 2000; time++) {
+      int rowIndex = tablet.rowSize++;
+      long value = 0;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -1159,6 +1217,25 @@ public class IoTDBSessionIT {
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 200);
+
+    for (long time = 500; time < 1500; time++) {
+      int rowIndex = tablet.rowSize++;
+      long value = 0;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
 
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
@@ -1197,6 +1274,25 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 1000);
 
+    for (long time = begin; time < count + begin; time++) {
+      int rowIndex = tablet.rowSize++;
+      long value = 0;
+      tablet.addTimestamp(rowIndex, time);
+      for (int i = 0; i < 6; i++) {
+        tablet.addValue(schemaList.get(i).getMeasurementId(), rowIndex, value);
+        value++;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -1217,7 +1313,6 @@ public class IoTDBSessionIT {
       session.insertTablet(tablet);
       tablet.reset();
     }
-
   }
 
   private void queryForBatch() throws ClassNotFoundException, SQLException {
@@ -1229,22 +1324,26 @@ public class IoTDBSessionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      final int colCount = metaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
-      }
-
-      int count = 0;
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          count++;
+      try {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int colCount = metaData.getColumnCount();
+        StringBuilder resultStr = new StringBuilder();
+        for (int i = 0; i < colCount; i++) {
+          resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
         }
+
+        int count = 0;
+        while (resultSet.next()) {
+          for (int i = 1; i <= colCount; i++) {
+            count++;
+          }
+        }
+        Assert.assertEquals(standard, resultStr.toString());
+        // d1 and d2 will align
+        Assert.assertEquals(14000, count);
+      } finally {
+        resultSet.close();
       }
-      Assert.assertEquals(standard, resultStr.toString());
-      // d1 and d2 will align
-      Assert.assertEquals(7000, count);
     }
   }
 
@@ -1257,34 +1356,38 @@ public class IoTDBSessionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "192.168.130.18:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("SELECT s_0 FROM root.group_0.d_0 LIMIT 10000");
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      final int colCount = metaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
-      }
+      try {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int colCount = metaData.getColumnCount();
+        StringBuilder resultStr = new StringBuilder();
+        for (int i = 0; i < colCount; i++) {
+          resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
+        }
 
-      int count = 0;
-      long beforeTime = 0;
-      int errorCount = 0;
-      while (resultSet.next()) {
-        long curTime = resultSet.getLong(1);
-        if (beforeTime < curTime) {
-          beforeTime = curTime;
-        } else {
-          errorCount++;
-          if (errorCount > 10) {
-            System.exit(-1);
+        int count = 0;
+        long beforeTime = 0;
+        int errorCount = 0;
+        while (resultSet.next()) {
+          long curTime = resultSet.getLong(1);
+          if (beforeTime < curTime) {
+            beforeTime = curTime;
+          } else {
+            errorCount++;
+            if (errorCount > 10) {
+              System.exit(-1);
+            }
+          }
+
+          for (int i = 1; i <= colCount; i++) {
+            count++;
           }
         }
-
-        for (int i = 1; i <= colCount; i++) {
-          count++;
-        }
+        Assert.assertEquals(standard, resultStr.toString());
+        // d1 and d2 will align
+        Assert.assertEquals(7000, count);
+      } finally {
+        resultSet.close();
       }
-      Assert.assertEquals(standard, resultStr.toString());
-      // d1 and d2 will align
-      Assert.assertEquals(7000, count);
     }
   }
 
@@ -1297,22 +1400,26 @@ public class IoTDBSessionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      final int colCount = metaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
-      }
-
-      int count = 0;
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          count++;
+      try {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int colCount = metaData.getColumnCount();
+        StringBuilder resultStr = new StringBuilder();
+        for (int i = 0; i < colCount; i++) {
+          resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
         }
+
+        int count = 0;
+        while (resultSet.next()) {
+          for (int i = 1; i <= colCount; i++) {
+            count++;
+          }
+        }
+        Assert.assertEquals(standard, resultStr.toString());
+        // d1 and d2 will align
+        Assert.assertEquals(14000, count);
+      } finally {
+        resultSet.close();
       }
-      Assert.assertEquals(standard, resultStr.toString());
-      // d1 and d2 will align
-      Assert.assertEquals(10500, count);
     }
   }
 
