@@ -148,7 +148,7 @@ public class LogDispatcher {
           for (SendLogRequest request : currBatch) {
             logList.add(request.appendEntryRequest.entry);
           }
-          AppendEntriesRequest appendEntriesReques = prepareRequest(logList, 0, currBatch);
+          AppendEntriesRequest appendEntriesReques = prepareRequest(logList, currBatch);
           if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
             appendEntriesAsync(logList, appendEntriesReques, new ArrayList<>(currBatch));
           } else {
@@ -196,7 +196,7 @@ public class LogDispatcher {
       }
     }
 
-    private AppendEntriesRequest prepareRequest(List<ByteBuffer> logList, int startPos, List<SendLogRequest> currBatch) {
+    private AppendEntriesRequest prepareRequest(List<ByteBuffer> logList, List<SendLogRequest> currBatch) {
       AppendEntriesRequest request = new AppendEntriesRequest();
 
       if (member.getHeader() != null) {
@@ -211,16 +211,11 @@ public class LogDispatcher {
 
       request.setEntries(logList);
       // set index for raft
-      request.setPrevLogIndex(currBatch.get(startPos).log.getCurrLogIndex() - 1);
-      if (startPos != 0) {
-        request.setPrevLogTerm(currBatch.get(startPos - 1).log.getCurrLogTerm());
-      } else {
-        try {
-          request.setPrevLogTerm(
-              member.getLogManager().getTerm(currBatch.get(0).log.getCurrLogIndex() - 1));
-        } catch (Exception e) {
-          logger.error("getTerm failed for newly append entries", e);
-        }
+      request.setPrevLogIndex(currBatch.get(0).log.getCurrLogIndex() - 1);
+      try {
+        request.setPrevLogTerm(currBatch.get(0).appendEntryRequest.prevLogTerm);
+      } catch (Exception e) {
+        logger.error("getTerm failed for newly append entries", e);
       }
       return request;
     }
