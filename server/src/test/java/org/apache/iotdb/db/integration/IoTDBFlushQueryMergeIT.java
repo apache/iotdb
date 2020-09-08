@@ -188,11 +188,10 @@ public class IoTDBFlushQueryMergeIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.nodatagroup1");
-      statement.execute("SET STORAGE GROUP TO root.nodatagroup2");
-      statement.execute("SET STORAGE GROUP TO root.nodatagroup3");
+      statement.execute("SET STORAGE GROUP TO root.noexist.nodatagroup1");
       try {
-        statement.execute("FLUSH root.nodatagroup1,root.notExistGroup1,root.notExistGroup2");
+        statement
+            .execute("FLUSH root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2");
       } catch (SQLException sqe) {
         StorageGroupNotSetException tmpsgnse = new StorageGroupNotSetException(
             "root.notExistGroup1,root.notExistGroup2");
