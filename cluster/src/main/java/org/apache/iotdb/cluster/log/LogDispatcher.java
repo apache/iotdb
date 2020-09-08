@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log;
 
 import static org.apache.iotdb.cluster.server.Timer.currentBatchHisto;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -30,11 +31,19 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Timer;
+import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpInBatchHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.jdbc.Config;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,8 +141,16 @@ public class LogDispatcher {
             logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
           }
           Timer.currentBatchHisto[currBatch.size()]++;
+
+          List<ByteBuffer> logList = new ArrayList<>();;
           for (SendLogRequest request : currBatch) {
-            sendLog(request);
+            logList.add(request.appendEntryRequest.entry);
+          }
+          AppendEntriesRequest appendEntriesReques = prepareRequest(logList, 0, currBatch);
+          if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+            appendEntriesAsync(logList, appendEntriesReques);
+          } else {
+            appendEntriesSync(logList, appendEntriesReques);
           }
           currBatch.clear();
         }
@@ -143,6 +160,82 @@ public class LogDispatcher {
         logger.error("Unexpected error in log dispatcher", e);
       }
       logger.info("Dispatcher exits");
+    }
+
+    private boolean appendEntriesAsync(List<ByteBuffer> logList, AppendEntriesRequest request)
+        throws TException, InterruptedException {
+      AtomicBoolean appendSucceed = new AtomicBoolean(false);
+
+      LogCatchUpInBatchHandler handler = new LogCatchUpInBatchHandler();
+      handler.setAppendSucceed(appendSucceed);
+      handler.setRaftMember(member);
+      handler.setFollower(receiver);
+      handler.setLogs(logList);
+      synchronized (appendSucceed) {
+        appendSucceed.set(false);
+        AsyncClient client = member.getAsyncClient(receiver);
+        if (logger.isDebugEnabled()) {
+          logger.debug("{}: Catching up {} with {} logs", member.getName(), receiver, logList.size());
+        }
+        client.appendEntries(request, handler);
+        appendSucceed.wait(ClusterDescriptor.getInstance().getConfig().getWriteOperationTimeoutMS());
+      }
+      return appendSucceed.get();
+    }
+
+    private boolean appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request) {
+      AtomicBoolean appendSucceed = new AtomicBoolean(false);
+
+      LogCatchUpInBatchHandler handler = new LogCatchUpInBatchHandler();
+      handler.setAppendSucceed(appendSucceed);
+      handler.setRaftMember(member);
+      handler.setFollower(receiver);
+      handler.setLogs(logList);
+
+      Client client = member.getSyncClient(receiver);
+      try {
+        if (logger.isDebugEnabled()) {
+          logger.debug("{}: Catching up {} with {} logs", member.getName(), receiver, logList.size());
+        }
+        long result = client.appendEntries(request);
+        handler.onComplete(result);
+        return appendSucceed.get();
+      } catch (TException e) {
+        handler.onError(e);
+        logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
+        return false;
+      } finally {
+        member.putBackSyncClient(client);
+      }
+    }
+
+    private AppendEntriesRequest prepareRequest(List<ByteBuffer> logList, int startPos, List<SendLogRequest> currBatch) {
+      AppendEntriesRequest request = new AppendEntriesRequest();
+
+      if (member.getHeader() != null) {
+        request.setHeader(member.getHeader());
+      }
+      request.setLeader(member.getThisNode());
+      request.setLeaderCommit(member.getLogManager().getCommitLogIndex());
+
+      synchronized (member.getTerm()) {
+        request.setTerm(member.getTerm().get());
+      }
+
+      request.setEntries(logList);
+      // set index for raft
+      request.setPrevLogIndex(currBatch.get(startPos).log.getCurrLogIndex() - 1);
+      if (startPos != 0) {
+        request.setPrevLogTerm(currBatch.get(startPos - 1).log.getCurrLogTerm());
+      } else {
+        try {
+          request.setPrevLogTerm(
+              member.getLogManager().getTerm(currBatch.get(0).log.getCurrLogIndex() - 1));
+        } catch (Exception e) {
+          logger.error("getTerm failed for newly append entries", e);
+        }
+      }
+      return request;
     }
 
     private void sendLog(SendLogRequest logRequest) {
