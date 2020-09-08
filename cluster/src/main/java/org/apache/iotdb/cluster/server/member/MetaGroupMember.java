@@ -1970,6 +1970,7 @@ public class MetaGroupMember extends RaftMember {
       }
 
       TSStatus tsStatus = client.executeNonQueryPlan(req);
+
       if (tsStatus == null) {
         tsStatus = StatusUtils.TIME_OUT;
         logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);

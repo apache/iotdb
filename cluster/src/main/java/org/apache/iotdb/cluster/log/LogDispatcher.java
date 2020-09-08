@@ -164,39 +164,28 @@ public class LogDispatcher {
       logger.info("Dispatcher exits");
     }
 
-    private boolean appendEntriesAsync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch)
-        throws TException, InterruptedException {
-      AtomicBoolean appendSucceed = new AtomicBoolean(false);
-
+    private void appendEntriesAsync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch)
+        throws TException {
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
-      synchronized (appendSucceed) {
-        appendSucceed.set(false);
-        AsyncClient client = member.getAsyncClient(receiver);
-        if (logger.isDebugEnabled()) {
-          logger.debug("{}: Catching up {} with {} logs", member.getName(), receiver, logList.size());
-        }
-        client.appendEntries(request, handler);
-        appendSucceed.wait(ClusterDescriptor.getInstance().getConfig().getWriteOperationTimeoutMS());
+      AsyncClient client = member.getAsyncClient(receiver);
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: Catching up {} with {} logs", member.getName(), receiver, logList.size());
       }
-      return appendSucceed.get();
+      client.appendEntries(request, handler);
     }
 
-    private boolean appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch) {
-      AtomicBoolean appendSucceed = new AtomicBoolean(false);
-
+    private void appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch) {
       Client client = member.getSyncClient(receiver);
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
       try {
-        if (logger.isDebugEnabled()) {
-          logger.debug("{}: Catching up {} with {} logs", member.getName(), receiver, logList.size());
-        }
         long result = client.appendEntries(request);
+        if (logger.isInfoEnabled()) {
+          logger.info("{}: Append {} logs to {}, resp: {}", member.getName(), logList.size(), receiver, result);
+        }
         handler.onComplete(result);
-        return appendSucceed.get();
       } catch (TException e) {
         handler.onError(e);
         logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
-        return false;
       } finally {
         member.putBackSyncClient(client);
       }
