@@ -27,16 +27,19 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.sql.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.Assert.fail;
 
 /**
- * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
- * defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
+ * IoTDB server should be defined as integration test.
  */
 public class IoTDBMetadataFetchIT {
 
   private DatabaseMetaData databaseMetaData;
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBMetadataFetchIT.class);
 
   private static void insertSQL() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -53,7 +56,7 @@ public class IoTDBMetadataFetchIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("insertSQL failed", e);
       fail(e.getMessage());
     }
   }
@@ -94,7 +97,7 @@ public class IoTDBMetadataFetchIT {
               + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
           "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-                  + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
           "",
 
@@ -118,7 +121,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
-          e.printStackTrace();
+          logger.error("showTimeseriesTest failed", e);
           fail(e.getMessage());
         }
       }
@@ -152,7 +155,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(builder.toString(), standard);
         } catch (SQLException e) {
-          e.printStackTrace();
+          logger.error("showStorageGroupTest failed", e);
           fail(e.getMessage());
         }
       }
@@ -170,7 +173,7 @@ public class IoTDBMetadataFetchIT {
       showTimeseriesInJson();
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("databaseMetaDataTest failed", e);
       fail(e.getMessage());
     } finally {
       if (connection != null) {
@@ -188,8 +191,8 @@ public class IoTDBMetadataFetchIT {
       String sql = "show version";
       try {
         boolean hasResultSet = statement.execute(sql);
-        if(hasResultSet) {
-          try(ResultSet resultSet = statement.getResultSet()) {
+        if (hasResultSet) {
+          try (ResultSet resultSet = statement.getResultSet()) {
             resultSet.next();
             Assert.assertEquals(resultSet.getString(1), IoTDBConstant.VERSION);
           }
@@ -227,7 +230,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(builder.toString(), standard);
         } catch (SQLException e) {
-          e.printStackTrace();
+          logger.error("showDevices failed", e);
           fail(e.getMessage());
         }
       }
@@ -261,7 +264,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(builder.toString(), standard);
         } catch (SQLException e) {
-          e.printStackTrace();
+          logger.error("showChildPaths failed", e);
           fail(e.getMessage());
         }
       }
@@ -295,7 +298,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
-          e.printStackTrace();
+          logger.error("showCountTimeSeries failed", e);
           fail(e.getMessage());
         }
       }
@@ -329,7 +332,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
-          e.printStackTrace();
+          logger.error("showCountDevices failed", e);
           fail(e.getMessage());
         }
       }
@@ -363,7 +366,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(builder.toString(), standard);
         } catch (SQLException e) {
-          e.printStackTrace();
+          logger.error("showCountTimeSeriesGroupBy failed", e);
           fail(e.getMessage());
         }
       }
@@ -397,14 +400,12 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(builder.toString(), standard);
         } catch (SQLException e) {
-          e.printStackTrace();
+          logger.error("showCountNodes failed", e);
           fail(e.getMessage());
         }
       }
     }
   }
-
-
 
 
   /**
