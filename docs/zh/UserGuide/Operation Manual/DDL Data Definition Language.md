@@ -302,6 +302,19 @@ IoTDB> unset ttl to root.ln
 
 取消设置TTL后，存储组`root.ln`中所有的数据都会被保存。
 
+## 显示 TTL
+
+显示TTL的SQL语句如下所示：
+
+```
+IoTDB> SHOW ALL TTL
+IoTDB> SHOW TTL ON StorageGroupNames
+```
+
+SHOW ALL TTL这个例子会给出所有存储组的TTL。
+SHOW TTL ON root.group1,root.group2,root.group3这个例子会显示指定的三个存储组的TTL。
+注意: 没有设置TTL的存储组的TTL将显示为null。
+
 ## FLUSH
 
 将指定存储组的内存缓存区Memory Table的数据持久化到磁盘上，并将数据文件封口。
