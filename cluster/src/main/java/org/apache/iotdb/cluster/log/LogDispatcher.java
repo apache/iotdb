@@ -40,10 +40,12 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Timer;
+import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpInBatchHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.thrift.TException;
+import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -148,9 +150,9 @@ public class LogDispatcher {
           }
           AppendEntriesRequest appendEntriesReques = prepareRequest(logList, 0, currBatch);
           if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-            appendEntriesAsync(logList, appendEntriesReques);
+            appendEntriesAsync(logList, appendEntriesReques, new ArrayList<>(currBatch));
           } else {
-            appendEntriesSync(logList, appendEntriesReques);
+            appendEntriesSync(logList, appendEntriesReques, currBatch);
           }
           currBatch.clear();
         }
@@ -162,15 +164,11 @@ public class LogDispatcher {
       logger.info("Dispatcher exits");
     }
 
-    private boolean appendEntriesAsync(List<ByteBuffer> logList, AppendEntriesRequest request)
+    private boolean appendEntriesAsync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch)
         throws TException, InterruptedException {
       AtomicBoolean appendSucceed = new AtomicBoolean(false);
 
-      LogCatchUpInBatchHandler handler = new LogCatchUpInBatchHandler();
-      handler.setAppendSucceed(appendSucceed);
-      handler.setRaftMember(member);
-      handler.setFollower(receiver);
-      handler.setLogs(logList);
+      AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
       synchronized (appendSucceed) {
         appendSucceed.set(false);
         AsyncClient client = member.getAsyncClient(receiver);
@@ -183,16 +181,11 @@ public class LogDispatcher {
       return appendSucceed.get();
     }
 
-    private boolean appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request) {
+    private boolean appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch) {
       AtomicBoolean appendSucceed = new AtomicBoolean(false);
 
-      LogCatchUpInBatchHandler handler = new LogCatchUpInBatchHandler();
-      handler.setAppendSucceed(appendSucceed);
-      handler.setRaftMember(member);
-      handler.setFollower(receiver);
-      handler.setLogs(logList);
-
       Client client = member.getSyncClient(receiver);
+      AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
       try {
         if (logger.isDebugEnabled()) {
           logger.debug("{}: Catching up {} with {} logs", member.getName(), receiver, logList.size());
@@ -244,5 +237,49 @@ public class LogDispatcher {
           logRequest.leaderShipStale, logRequest.newLeaderTerm, logRequest.appendEntryRequest);
       Timer.logDispatcherFromCreateToEnd.add(System.nanoTime() - logRequest.createTime);
     }
+
+    class AppendEntriesHandler implements AsyncMethodCallback<Long> {
+
+      private final List<AsyncMethodCallback<Long>> singleEntryHandlers;
+
+      private AppendEntriesHandler(List<SendLogRequest> batch) {
+        singleEntryHandlers = new ArrayList<>(batch.size());
+        for (SendLogRequest sendLogRequest : batch) {
+          AppendNodeEntryHandler handler = getAppendNodeEntryHandler(sendLogRequest.log, sendLogRequest.voteCounter
+              , receiver,
+              sendLogRequest.leaderShipStale, sendLogRequest.newLeaderTerm, peer);
+          singleEntryHandlers.add(handler);
+        }
+      }
+
+      @Override
+      public void onComplete(Long aLong) {
+        for (AsyncMethodCallback<Long> singleEntryHandler : singleEntryHandlers) {
+          singleEntryHandler.onComplete(aLong);
+        }
+      }
+
+      @Override
+      public void onError(Exception e) {
+        for (AsyncMethodCallback<Long> singleEntryHandler : singleEntryHandlers) {
+          singleEntryHandler.onError(e);
+        }
+      }
+    }
+  }
+
+
+
+  public AppendNodeEntryHandler getAppendNodeEntryHandler(Log log, AtomicInteger voteCounter,
+      Node node, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, Peer peer) {
+    AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+    handler.setReceiver(node);
+    handler.setVoteCounter(voteCounter);
+    handler.setLeaderShipStale(leaderShipStale);
+    handler.setLog(log);
+    handler.setMember(member);
+    handler.setPeer(peer);
+    handler.setReceiverTerm(newLeaderTerm);
+    return handler;
   }
 }
