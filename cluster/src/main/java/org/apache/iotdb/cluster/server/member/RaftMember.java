@@ -595,8 +595,8 @@ public abstract class RaftMember {
         resp = Response.RESPONSE_AGREE;
       } else {
         // the incoming log points to an illegal position, reject it
-        logger.warn("{}: Log mismatch, local last index {}, appending first index {}",
-            name, logManager.getLastLogIndex(), logs.get(0).getCurrLogIndex());
+        logger.warn("{}: Log mismatch, local last index-term {}-{}, appending prev index-term {}-{}",
+            name, logManager.getLastLogIndex(), logManager.getLastLogTerm(), prevLogIndex, prevLogTerm);
         resp = Response.RESPONSE_LOG_MISMATCH;
       }
     }
