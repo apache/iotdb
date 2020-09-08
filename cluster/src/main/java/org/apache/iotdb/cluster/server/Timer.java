@@ -1,6 +1,8 @@
 package org.apache.iotdb.cluster.server;
 
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 
 public class Timer {
@@ -46,6 +48,9 @@ public class Timer {
       1000000L);
   public static Statistic raftMemberFromCreateToAppendLog = new Statistic("Raft member - from create to append log: ", 1000000L);
   public static Statistic logDispatcherFromCreateToEnd= new Statistic("Log dispatcher - from create to end: ", 1000000L);
+
+  public static int[] queueHisto = new int[21];
+  public static int[] currentBatchHisto = new int[21];
 
   static Statistic[] statistics = new Statistic[]{dataGroupMemberProcessPlanLocally,
       dataGroupMemberWaitLeader,
@@ -103,6 +108,8 @@ public class Timer {
     for (Statistic s : statistics) {
       result += s.toString() + "\n";
     }
+    result += Arrays.toString(queueHisto) + "\n";
+    result += Arrays.toString(currentBatchHisto) + "\n";
     return result;
   }
 }
