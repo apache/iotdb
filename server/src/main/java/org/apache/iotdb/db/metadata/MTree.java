@@ -528,7 +528,7 @@ public class MTree implements Serializable {
    */
   private void findStorageGroupPaths(MNode node, String[] nodes, int idx, String parent,
       List<PartialPath> storageGroupPaths) {
-    if (node instanceof StorageGroupMNode) {
+    if (node instanceof StorageGroupMNode && idx >= nodes.length) {
       storageGroupPaths.add(node.getPartialPath());
       return;
     }
@@ -930,7 +930,7 @@ public class MTree implements Serializable {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChild(nodeReg)) {
-        if (node.getChild(nodeReg) instanceof MeasurementMNode) {
+        if (node.getChild(nodeReg) instanceof MeasurementMNode && idx >= nodes.length) {
           res.add(node.getPartialPath());
         } else {
           findDevices(node.getChild(nodeReg), nodes, idx + 1, res);
@@ -939,7 +939,7 @@ public class MTree implements Serializable {
     } else {
       boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
-        if (child instanceof MeasurementMNode && !deviceAdded) {
+        if (child instanceof MeasurementMNode && !deviceAdded && idx >= nodes.length) {
           res.add(node.getPartialPath());
           deviceAdded = true;
         }
