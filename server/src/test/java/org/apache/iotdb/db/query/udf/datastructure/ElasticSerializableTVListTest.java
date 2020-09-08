@@ -86,14 +86,38 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
 
   private void testESTVList(TSDataType dataType) {
     initESTVList(dataType);
+
     testPut(dataType);
+
     testOrderedAccessByIndex(dataType);
+
     testOrderedAccessByDataPointIterator(dataType);
+
     testOrderedAccessBySizeLimitedDataPointBatchIterator(dataType, 0);
     testOrderedAccessBySizeLimitedDataPointBatchIterator(dataType, ITERATION_TIMES / 2);
-    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, 0, ITERATION_TIMES);
+
+    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, 0, ITERATION_TIMES, BATCH_SIZE,
+        BATCH_SIZE);
     testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, (int) (0.25 * ITERATION_TIMES),
-        (int) (0.75 * ITERATION_TIMES));
+        (int) (0.75 * ITERATION_TIMES), BATCH_SIZE, BATCH_SIZE);
+
+    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, 0, ITERATION_TIMES,
+        BATCH_SIZE / 2, 2 * BATCH_SIZE);
+    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, (int) (0.25 * ITERATION_TIMES),
+        (int) (0.75 * ITERATION_TIMES), BATCH_SIZE / 2, 2 * BATCH_SIZE);
+
+    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, 0, ITERATION_TIMES,
+        2 * BATCH_SIZE, BATCH_SIZE / 2);
+    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, (int) (0.25 * ITERATION_TIMES),
+        (int) (0.75 * ITERATION_TIMES), 2 * BATCH_SIZE, BATCH_SIZE / 2);
+
+    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, 0, 0, 2 * BATCH_SIZE,
+        BATCH_SIZE / 2);
+
+    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, (int) (0.25 * ITERATION_TIMES),
+        (int) (0.6 * ITERATION_TIMES), 3 * BATCH_SIZE, (int) (0.3 * BATCH_SIZE));
+    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, (int) (0.25 * ITERATION_TIMES),
+        (int) (0.6 * ITERATION_TIMES), (int) (0.3 * BATCH_SIZE), 3 * BATCH_SIZE);
   }
 
   private void initESTVList(TSDataType dataType) {
@@ -192,8 +216,15 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
   }
 
   private void testOrderedAccessByDataPointIterator(TSDataType dataType) {
-    int count = 0;
     DataPointIterator iterator = tvList.getDataPointIterator();
+    testOrderedAccessByDataPointIteratorOnce(dataType, iterator);
+    iterator.reset();
+    testOrderedAccessByDataPointIteratorOnce(dataType, iterator);
+  }
+
+  private void testOrderedAccessByDataPointIteratorOnce(TSDataType dataType,
+      DataPointIterator iterator) {
+    int count = 0;
     try {
       switch (dataType) {
         case INT32:
@@ -269,127 +300,183 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
   private void testOrderedAccessBySizeLimitedDataPointBatchIterator(TSDataType dataType,
       int displayWindowBegin) {
     int iterationTimes = ITERATION_TIMES - displayWindowBegin;
-
-    int total = 0;
+    int totalInFirstExecution = 0;
+    int totalInSecondExecution = 0;
     try {
       // test different constructors
       DataPointBatchIterator batchIterator = iterationTimes == ITERATION_TIMES
           ? tvList.getSizeLimitedBatchIterator(BATCH_SIZE)
           : tvList.getSizeLimitedBatchIterator(BATCH_SIZE, displayWindowBegin);
+
       int batchCount = 0;
       while (batchIterator.hasNextBatch()) {
         batchIterator.next();
-        testRandomAccessByIndexInDataPointBatch(dataType, displayWindowBegin + total,
-            batchIterator);
-        total = testDataPointIteratorGeneratedByDataPointBatchIterator(dataType, displayWindowBegin,
-            total, batchIterator.currentBatch());
+        testRandomAccessByIndexInDataPointBatch(dataType,
+            displayWindowBegin + totalInFirstExecution, batchIterator);
+        totalInFirstExecution = testDataPointIteratorGeneratedByDataPointBatchIterator(dataType,
+            displayWindowBegin + batchIterator.currentBatchIndex() * BATCH_SIZE,
+            batchIterator.currentBatch(), BATCH_SIZE, totalInFirstExecution);
         ++batchCount;
       }
       assertEquals(iterationTimes / BATCH_SIZE, batchCount);
+
+      batchIterator.reset();
+
+      batchCount = 0;
+      while (batchIterator.hasNextBatch()) {
+        batchIterator.next();
+        testRandomAccessByIndexInDataPointBatch(dataType,
+            displayWindowBegin + totalInSecondExecution, batchIterator);
+        totalInSecondExecution = testDataPointIteratorGeneratedByDataPointBatchIterator(dataType,
+            displayWindowBegin + batchIterator.currentBatchIndex() * BATCH_SIZE,
+            batchIterator.currentBatch(), BATCH_SIZE, totalInSecondExecution);
+        ++batchCount;
+      }
+      assertEquals(iterationTimes / BATCH_SIZE, batchCount);
+
+      assertEquals(totalInFirstExecution, totalInSecondExecution);
     } catch (IOException | QueryProcessException e) {
       fail(e.toString());
     }
-    assertEquals(iterationTimes, total);
+    assertEquals(iterationTimes, totalInFirstExecution);
   }
 
   private void testOrderedAccessByTimeWindowDataPointBatchIterator(TSDataType dataType,
-      int displayWindowBegin, int displayWindowEnd) {
-    int iterationTimes = displayWindowEnd - displayWindowBegin;
-
-    int total = 0;
+      int displayWindowBegin, int displayWindowEnd, int timeInterval, int slidingStep) {
+    int timeWindow = displayWindowEnd - displayWindowBegin;
     try {
-      DataPointBatchIterator batchIterator = iterationTimes == ITERATION_TIMES
-          ? tvList.getTimeWindowBatchIterator(BATCH_SIZE, BATCH_SIZE)
+      DataPointBatchIterator batchIterator = timeWindow == ITERATION_TIMES
+          ? tvList.getTimeWindowBatchIterator(timeInterval, slidingStep)
           : tvList.getTimeWindowBatchIterator(displayWindowBegin, displayWindowEnd,
-              BATCH_SIZE, BATCH_SIZE); // test different constructors
-      int batchCount = 0;
-      while (batchIterator.hasNextBatch()) {
-        batchIterator.next();
-        testRandomAccessByIndexInDataPointBatch(dataType, displayWindowBegin + total,
-            batchIterator);
-        total = testDataPointIteratorGeneratedByDataPointBatchIterator(dataType, displayWindowBegin,
-            total, batchIterator.currentBatch());
-        ++batchCount;
-      }
-      assertEquals(iterationTimes / BATCH_SIZE, batchCount);
+              timeInterval, slidingStep); // test different constructors
+
+      testOrderedAccessByTimeWindowDataPointBatchIteratorOnce(dataType, displayWindowBegin,
+          displayWindowEnd, timeInterval, slidingStep, batchIterator);
+      batchIterator.reset();
+      testOrderedAccessByTimeWindowDataPointBatchIteratorOnce(dataType, displayWindowBegin,
+          displayWindowEnd, timeInterval, slidingStep, batchIterator);
     } catch (IOException | QueryProcessException e) {
       fail(e.toString());
     }
-    assertEquals(iterationTimes, total);
+  }
+
+  private void testOrderedAccessByTimeWindowDataPointBatchIteratorOnce(TSDataType dataType,
+      int displayWindowBegin, int displayWindowEnd, int timeInterval, int slidingStep,
+      DataPointBatchIterator batchIterator) throws IOException {
+    int timeWindow = displayWindowEnd - displayWindowBegin;
+    int expectedTotal = 0;
+    int actualTotal = 0;
+    int batchCount = 0;
+
+    while (batchIterator.hasNextBatch()) {
+      batchIterator.next();
+      int initialIndex = displayWindowBegin + batchIterator.currentBatchIndex() * slidingStep;
+      testRandomAccessByIndexInDataPointBatch(dataType, initialIndex, batchIterator);
+      int expectedBatchSize = displayWindowEnd < initialIndex + timeInterval
+          ? displayWindowEnd - initialIndex : timeInterval;
+
+      DataPointIterator dataPointIterator = batchIterator.currentBatch();
+      int actualTotalInFirstExecution = testDataPointIteratorGeneratedByDataPointBatchIterator(
+          dataType, initialIndex, dataPointIterator, expectedBatchSize, actualTotal);
+      dataPointIterator.reset();
+      actualTotal = testDataPointIteratorGeneratedByDataPointBatchIterator(dataType, initialIndex,
+          dataPointIterator, expectedBatchSize, actualTotal);
+      assertEquals(actualTotalInFirstExecution, actualTotal);
+
+      expectedTotal += expectedBatchSize;
+      ++batchCount;
+    }
+
+    assertEquals((int) Math.ceil((float) timeWindow / slidingStep), batchCount);
+    assertEquals(expectedTotal, actualTotal);
   }
 
   private int testDataPointIteratorGeneratedByDataPointBatchIterator(TSDataType dataType,
-      int initialIndex, int total, DataPointIterator dataPointIterator) {
-    int dataPointCount = 0;
+      int initialIndex, DataPointIterator dataPointIterator, int expectedDataPointCount,
+      int total) {
+    int totalInFirstExecution = testDataPointIteratorGeneratedByDataPointBatchIteratorOnce(dataType,
+        initialIndex, dataPointIterator, expectedDataPointCount, total);
+    dataPointIterator.reset();
+    total = testDataPointIteratorGeneratedByDataPointBatchIteratorOnce(dataType, initialIndex,
+        dataPointIterator, expectedDataPointCount, total);
+    assertEquals(totalInFirstExecution, total);
+    return total;
+  }
+
+  private int testDataPointIteratorGeneratedByDataPointBatchIteratorOnce(TSDataType dataType,
+      int initialIndex, DataPointIterator dataPointIterator, int expectedDataPointCount,
+      int total) {
+    int actualDataPointCount = 0;
     try {
       switch (dataType) {
         case INT32:
           while (dataPointIterator.hasNextPoint()) {
-            int expected = initialIndex + total;
+            int expected = initialIndex + actualDataPointCount;
             assertEquals(expected, dataPointIterator.nextTime());
             assertEquals(expected, dataPointIterator.nextInt());
             dataPointIterator.next();
             assertEquals(expected, dataPointIterator.currentTime());
             assertEquals(expected, dataPointIterator.currentInt());
             ++total;
-            ++dataPointCount;
+            ++actualDataPointCount;
           }
-          assertEquals(BATCH_SIZE, dataPointCount);
+          assertEquals(expectedDataPointCount, actualDataPointCount);
           break;
         case INT64:
           while (dataPointIterator.hasNextPoint()) {
-            int expected = initialIndex + total;
+            int expected = initialIndex + actualDataPointCount;
             assertEquals(expected, dataPointIterator.nextTime());
             assertEquals(expected, dataPointIterator.nextLong());
             dataPointIterator.next();
             assertEquals(expected, dataPointIterator.currentTime());
             assertEquals(expected, dataPointIterator.currentLong());
             ++total;
-            ++dataPointCount;
+            ++actualDataPointCount;
           }
-          assertEquals(BATCH_SIZE, dataPointCount);
+          assertEquals(String.valueOf(initialIndex), expectedDataPointCount, actualDataPointCount);
           break;
         case FLOAT:
           while (dataPointIterator.hasNextPoint()) {
-            int expected = initialIndex + total;
+            int expected = initialIndex + actualDataPointCount;
             assertEquals(expected, dataPointIterator.nextTime());
             assertEquals(expected, dataPointIterator.nextFloat(), 0);
             dataPointIterator.next();
             assertEquals(expected, dataPointIterator.currentTime());
             assertEquals(expected, dataPointIterator.currentFloat(), 0);
             ++total;
-            ++dataPointCount;
+            ++actualDataPointCount;
           }
-          assertEquals(BATCH_SIZE, dataPointCount);
+          assertEquals(expectedDataPointCount, actualDataPointCount);
           break;
         case DOUBLE:
           while (dataPointIterator.hasNextPoint()) {
-            int expected = initialIndex + total;
+            int expected = initialIndex + actualDataPointCount;
             assertEquals(expected, dataPointIterator.nextTime());
             assertEquals(expected, dataPointIterator.nextDouble(), 0);
             dataPointIterator.next();
             assertEquals(expected, dataPointIterator.currentTime());
             assertEquals(expected, dataPointIterator.currentDouble(), 0);
             ++total;
-            ++dataPointCount;
+            ++actualDataPointCount;
           }
-          assertEquals(BATCH_SIZE, dataPointCount);
+          assertEquals(expectedDataPointCount, actualDataPointCount);
           break;
         case BOOLEAN:
           while (dataPointIterator.hasNextPoint()) {
-            int expected = initialIndex + total;
+            int expected = initialIndex + actualDataPointCount;
             assertEquals(expected, dataPointIterator.nextTime());
             assertEquals(expected % 2 == 0, dataPointIterator.nextBoolean());
             dataPointIterator.next();
             assertEquals(expected, dataPointIterator.currentTime());
             assertEquals(expected % 2 == 0, dataPointIterator.currentBoolean());
             ++total;
-            ++dataPointCount;
+            ++actualDataPointCount;
           }
+          assertEquals(expectedDataPointCount, actualDataPointCount);
           break;
         case TEXT:
           while (dataPointIterator.hasNextPoint()) {
-            int expected = initialIndex + total;
+            int expected = initialIndex + actualDataPointCount;
             Binary value = Binary.valueOf(String.valueOf(expected));
             assertEquals(expected, dataPointIterator.nextTime());
             assertEquals(value, dataPointIterator.nextBinary());
@@ -399,9 +486,9 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
             assertEquals(value, dataPointIterator.currentBinary());
             assertEquals(value.getStringValue(), dataPointIterator.currentString());
             ++total;
-            ++dataPointCount;
+            ++actualDataPointCount;
           }
-          assertEquals(BATCH_SIZE, dataPointCount);
+          assertEquals(expectedDataPointCount, actualDataPointCount);
           break;
       }
     } catch (IOException e) {

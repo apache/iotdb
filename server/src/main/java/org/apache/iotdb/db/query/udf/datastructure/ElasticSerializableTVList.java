@@ -422,7 +422,7 @@ public class ElasticSerializableTVList implements OverallDataPointIterator, Data
 
     @Override
     public DataPointIterator currentBatch() {
-      return getDataPointIteratorInBatch(batchSize, minIndexInCurrentBatch);
+      return getDataPointIteratorInBatch(currentBatchSize, minIndexInCurrentBatch);
     }
 
     @Override
@@ -486,7 +486,7 @@ public class ElasticSerializableTVList implements OverallDataPointIterator, Data
     try {
       if (0 < size) {
         displayWindowBegin = getTime(0);
-        displayWindowEnd = getTime(size - 1);
+        displayWindowEnd = getTime(size - 1) + 1; // +1 for right open interval
       }
     } catch (IOException e) {
       throw new QueryProcessException(e.toString());
@@ -535,7 +535,8 @@ public class ElasticSerializableTVList implements OverallDataPointIterator, Data
         ++currentBatchIndex;
         long minTimeInCurrentBatch = minTimeInNextBatch;
         minIndexInCurrentBatch = minIndexInNextBatch;
-        long maxTimeInCurrentBatch = minTimeInCurrentBatch + timeInterval;
+        long maxTimeInCurrentBatch = Math
+            .min(minTimeInCurrentBatch + timeInterval, displayWindowEnd);
         int maxIndexInCurrentBatch = findIndexByTimestamp(maxTimeInCurrentBatch);
         currentBatchSize = maxIndexInCurrentBatch - minIndexInCurrentBatch;
 
