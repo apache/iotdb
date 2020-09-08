@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log;
 
-import static org.apache.iotdb.cluster.server.Timer.currentBatchHisto;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -77,7 +76,7 @@ public class LogDispatcher {
   public void offer(SendLogRequest log) {
     for (BlockingQueue<SendLogRequest> nodeLogQueue : nodeLogQueues) {
       nodeLogQueue.offer(log);
-      Timer.queueHisto[nodeLogQueue.size()]++;
+//      Timer.queueHisto[nodeLogQueue.size()]++;
       log.enqueueTime = System.nanoTime();
     }
     if (logger.isDebugEnabled()) {
@@ -142,7 +141,7 @@ public class LogDispatcher {
           if (logger.isDebugEnabled()) {
             logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
           }
-          Timer.currentBatchHisto[currBatch.size()]++;
+//          Timer.currentBatchHisto[currBatch.size()]++;
 
           List<ByteBuffer> logList = new ArrayList<>();;
           for (SendLogRequest request : currBatch) {

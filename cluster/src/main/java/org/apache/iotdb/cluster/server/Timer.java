@@ -49,8 +49,8 @@ public class Timer {
   public static Statistic raftMemberFromCreateToAppendLog = new Statistic("Raft member - from create to append log: ", 1000000L);
   public static Statistic logDispatcherFromCreateToEnd= new Statistic("Log dispatcher - from create to end: ", 1000000L);
 
-  public static int[] queueHisto = new int[180];
-  public static int[] currentBatchHisto = new int[180];
+//  public static int[] queueHisto = new int[180];
+//  public static int[] currentBatchHisto = new int[180];
 
   static Statistic[] statistics = new Statistic[]{dataGroupMemberProcessPlanLocally,
       dataGroupMemberWaitLeader,
@@ -108,8 +108,8 @@ public class Timer {
     for (Statistic s : statistics) {
       result += s.toString() + "\n";
     }
-    result += Arrays.toString(queueHisto) + "\n";
-    result += Arrays.toString(currentBatchHisto) + "\n";
+//    result += Arrays.toString(queueHisto) + "\n";
+//    result += Arrays.toString(currentBatchHisto) + "\n";
     return result;
   }
 }
