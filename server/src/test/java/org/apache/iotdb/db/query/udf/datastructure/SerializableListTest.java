@@ -19,20 +19,21 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-import org.junit.Test;
+import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 
-public abstract class SerializableTVListTest extends SerializableListTest {
+public abstract class SerializableListTest {
 
-  @Test
-  public void serializeAndDeserializeTest() {
-    for (int i = 0; i < ITERATION_TIMES; ++i) {
-      generateData(i);
-    }
-    serializeAndDeserializeOnce();
-    serializeAndDeserializeOnce();
+  protected final static int ITERATION_TIMES = 1000000; // make sure to trigger serialize() & deserialize()
+
+  protected final static long QUERY_ID = 0;
+  protected final static String UNIQUE_ID = "unique_id";
+  protected final static int INDEX = 0;
+
+  public void setUp() throws Exception {
+    TemporaryQueryDataFileService.getInstance().start();
   }
 
-  protected abstract void generateData(int index);
-
-  protected abstract void serializeAndDeserializeOnce();
+  public void tearDown() {
+    TemporaryQueryDataFileService.getInstance().stop();
+  }
 }

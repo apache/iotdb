@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.MB;
+
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -32,31 +34,33 @@ public interface SerializableTVList extends SerializableList {
       throws QueryProcessException {
     final int MIN_OBJECT_HEADER_SIZE = 8;
     final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
-    int size;
+
     memoryLimitInMB /= 2; // half for SerializableTVList and half for its serialization
+    float memoryLimitInB = memoryLimitInMB * MB;
+    int size;
     switch (dataType) {
       case INT32: // times + values
-        size = (int) (memoryLimitInMB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
+        size = (int) (memoryLimitInB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
             * (ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.INT_LEN)));
         break;
       case INT64: // times + values
-        size = (int) (memoryLimitInMB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
+        size = (int) (memoryLimitInB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
             * (ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.LONG_LEN)));
         break;
       case FLOAT: // times + values
-        size = (int) (memoryLimitInMB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
+        size = (int) (memoryLimitInB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
             * (ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.FLOAT_LEN)));
         break;
       case DOUBLE: // times + values
-        size = (int) (memoryLimitInMB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
+        size = (int) (memoryLimitInB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
             * (ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.DOUBLE_LEN)));
         break;
       case BOOLEAN: // times + values
-        size = (int) (memoryLimitInMB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
+        size = (int) (memoryLimitInB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
             * (ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.BOOLEAN_LEN)));
         break;
       case TEXT: // times + offsets + values
-        size = (int) (memoryLimitInMB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
+        size = (int) (memoryLimitInB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
             * (ReadWriteIOUtils.LONG_LEN
             + ReadWriteIOUtils.LONG_LEN
             + MIN_OBJECT_HEADER_SIZE // Binary header
