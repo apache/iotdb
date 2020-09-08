@@ -1,6 +1,7 @@
 package org.apache.iotdb.cluster.server;
 
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 
 public class Timer {
 
@@ -43,6 +44,8 @@ public class Timer {
   public static Statistic indexDiff = new Statistic("Raft member - index diff: ", 1L);
   public static Statistic logDispatcherLogInQueue = new Statistic("Log dispatcher - in queue: ",
       1000000L);
+  public static Statistic raftMemberFromCreateToAppendLog = new Statistic("Raft member - from create to append log", 1000000L);
+  public static Statistic logDispatcherFromCreateToEnd= new Statistic("Log dispatcher - from create to end", 1000000L);
 
   static Statistic[] statistics = new Statistic[]{dataGroupMemberProcessPlanLocally,
       dataGroupMemberWaitLeader,
@@ -64,7 +67,9 @@ public class Timer {
       raftMemberCommitLogResult,
       raftMemberAppendLogResult,
       indexDiff,
-      logDispatcherLogInQueue};
+      logDispatcherLogInQueue,
+      raftMemberFromCreateToAppendLog,
+      logDispatcherFromCreateToEnd};
 
   public static class Statistic {
 

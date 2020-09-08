@@ -89,6 +89,7 @@ public class LogDispatcher {
     public AtomicLong newLeaderTerm;
     public AppendEntryRequest appendEntryRequest;
     public long enqueueTime;
+    public long createTime;
 
     public SendLogRequest(Log log, AtomicInteger voteCounter,
         AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm,
@@ -145,6 +146,7 @@ public class LogDispatcher {
       Timer.logDispatcherLogInQueue.add(inQueueTime);
       member.sendLogToFollower(logRequest.log, logRequest.voteCounter, receiver,
           logRequest.leaderShipStale, logRequest.newLeaderTerm, logRequest.appendEntryRequest);
+      Timer.logDispatcherFromCreateToEnd.add(System.nanoTime() - logRequest.createTime);
     }
   }
 }

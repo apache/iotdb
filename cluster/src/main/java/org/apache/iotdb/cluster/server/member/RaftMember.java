@@ -1317,6 +1317,7 @@ public abstract class RaftMember {
       logManager.append(log);
 
       sendLogRequest = buildSendLogRequest(log);
+      sendLogRequest.createTime = System.nanoTime();
       getLogDispatcher().offer(sendLogRequest);
     }
     Timer.raftMemberOfferLog.add(System.nanoTime() - start);
@@ -1328,13 +1329,14 @@ public abstract class RaftMember {
           sendLogRequest.leaderShipStale,
           sendLogRequest.newLeaderTerm);
       Timer.raftMemberAppendLogResult.add(System.nanoTime() - start);
-
+      Timer.raftMemberFromCreateToAppendLog.add(System.nanoTime() - sendLogRequest.createTime);
       switch (appendLogResult) {
         case OK:
           logger.debug("{}: log {} is accepted", name, log);
           start = System.nanoTime();
           commitLog(log);
           Timer.raftMemberCommitLogResult.add(System.nanoTime() - start);
+
           return StatusUtils.OK;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
