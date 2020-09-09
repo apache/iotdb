@@ -123,14 +123,10 @@ public class IoTDBDescriptor {
     // If the url doesn't start with "file:" or other protocols, it's provided as a normal path.
     // If valid, we return a URL converted from this file path.
     File confFile = new File(urlString);
-    if (confFile.exists()) {
-      try {
-        return confFile.toURI().toURL();
-      } catch (MalformedURLException e) {
-        return null;
-      }
-    }
     try {
+      if (confFile.exists()) {
+        return confFile.toURI().toURL();
+      }
       return new URL(urlString);
     } catch (MalformedURLException e) {
       return null;
@@ -142,11 +138,6 @@ public class IoTDBDescriptor {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    try {
-      Thread.sleep(3000);
-    } catch (Exception e) {
-
-    }
     URL url = getPropsUrl();
     if(url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
