@@ -84,7 +84,7 @@ public class User {
     return privilegeList;
   }
 
-  public void setPrivilegeList(final List<PathPrivilege> privilegeList) {
+  public void setPrivilegeList(List<PathPrivilege> privilegeList) {
     this.privilegeList = privilegeList;
   }
 
@@ -92,7 +92,7 @@ public class User {
     return roleList;
   }
 
-  public void setRoleList(final List<String> roleList) {
+  public void setRoleList(List<String> roleList) {
     this.roleList = roleList;
   }
 

@@ -89,7 +89,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     return childOperators;
   }
 
-  public void setChildren(final List<FilterOperator> children) {
+  public void setChildren(List<FilterOperator> children) {
     this.childOperators = children;
   }
 

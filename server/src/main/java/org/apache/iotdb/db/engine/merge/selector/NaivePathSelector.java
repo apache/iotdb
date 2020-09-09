@@ -29,7 +29,7 @@ public class NaivePathSelector implements IMergePathSelector {
   private int idx;
   private int maxSeriesNum;
 
-  public NaivePathSelector(final List<PartialPath> paths, int maxSeriesNum) {
+  public NaivePathSelector(List<PartialPath> paths, int maxSeriesNum) {
     this.paths = paths;
     this.maxSeriesNum = maxSeriesNum;
   }

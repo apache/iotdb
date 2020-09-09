@@ -220,7 +220,7 @@ public class MergeResource {
     return seqFiles;
   }
 
-  public void setSeqFiles(final List<TsFileResource> seqFiles) {
+  public void setSeqFiles(List<TsFileResource> seqFiles) {
     this.seqFiles = seqFiles;
   }
 
@@ -228,7 +228,8 @@ public class MergeResource {
     return unseqFiles;
   }
 
-  public void setUnseqFiles(final List<TsFileResource> unseqFiles) {
+  public void setUnseqFiles(
+      List<TsFileResource> unseqFiles) {
     this.unseqFiles = unseqFiles;
   }
 
@@ -250,7 +251,7 @@ public class MergeResource {
     this.cacheDeviceMeta = cacheDeviceMeta;
   }
 
-  public void setMeasurementSchemaMap(final Map<PartialPath, MeasurementSchema> measurementSchemaMap) {
+  public void setMeasurementSchemaMap(Map<PartialPath, MeasurementSchema> measurementSchemaMap) {
     this.measurementSchemaMap = measurementSchemaMap;
   }
 

@@ -35,7 +35,7 @@ public class Binary implements Comparable<Binary>, Serializable {
   /**
    * if the bytes v is modified, the modification is visible to this binary.
    */
-  public Binary(final byte[] v) {
+  public Binary(byte[] v) {
     this.values = v;
   }
 
@@ -117,7 +117,7 @@ public class Binary implements Comparable<Binary>, Serializable {
     return values;
   }
 
-  public void setValues(final byte[] values) {
+  public void setValues(byte[] values) {
     this.values = values;
   }
 }

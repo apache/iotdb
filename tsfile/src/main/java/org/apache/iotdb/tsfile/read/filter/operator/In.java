@@ -50,7 +50,7 @@ public class In<T extends Comparable<T>> implements Filter {
   public In() {
   }
 
-  public In(final Set<T> values, FilterType filterType, boolean not) {
+  public In(Set<T> values, FilterType filterType, boolean not) {
     this.values = values;
     this.filterType = filterType;
     this.not = not;

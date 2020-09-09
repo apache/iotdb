@@ -31,7 +31,7 @@ public class TSQueryPlan {
   private FilterOperator timeFilterOperator;
   private FilterOperator valueFilterOperator;
 
-  public TSQueryPlan(final List<String> paths, FilterOperator timeFilter, FilterOperator valueFilter) {
+  public TSQueryPlan(List<String> paths, FilterOperator timeFilter, FilterOperator valueFilter) {
     this.paths = paths;
     this.timeFilterOperator = timeFilter;
     this.valueFilterOperator = valueFilter;

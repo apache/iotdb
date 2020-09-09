@@ -32,8 +32,8 @@ public class Event {
   private List<TSDataType> types;
   private List<Object> values;
 
-  public Event(String device, final Long timestamp, final List<String> measurements, final List<TSDataType> types,
-      final List<Object> values) {
+  public Event(String device, Long timestamp, List<String> measurements, List<TSDataType> types,
+      List<Object> values) {
     this.device = device;
     this.timestamp = timestamp;
     this.measurements = measurements;
@@ -45,7 +45,7 @@ public class Event {
     return types;
   }
 
-  public void setTypes(final List<TSDataType> types) {
+  public void setTypes(List<TSDataType> types) {
     this.types = types;
   }
 

@@ -40,7 +40,7 @@ public class IoTDBOptions implements Serializable {
     }
 
     public IoTDBOptions(String host, int port, String user, String password,
-                        String storageGroup, final List<TimeseriesOption> timeseriesOptionList) {
+                        String storageGroup, List<TimeseriesOption> timeseriesOptionList) {
         this.host = host;
         this.port = port;
         this.user = user;
@@ -93,7 +93,7 @@ public class IoTDBOptions implements Serializable {
         return timeseriesOptionList;
     }
 
-    public void setTimeseriesOptionList(final List<TimeseriesOption> timeseriesOptionList) {
+    public void setTimeseriesOptionList(List<TimeseriesOption> timeseriesOptionList) {
         this.timeseriesOptionList = timeseriesOptionList;
     }
 

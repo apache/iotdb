@@ -50,7 +50,7 @@ public class AlignByDevicePlan extends QueryPlan {
     super();
   }
 
-  public void setMeasurements(final List<String> measurements) {
+  public void setMeasurements(List<String> measurements) {
     this.measurements = measurements;
   }
 
@@ -67,7 +67,7 @@ public class AlignByDevicePlan extends QueryPlan {
     return measurementAliasMap;
   }
 
-  public void setDevices(final List<PartialPath> devices) {
+  public void setDevices(List<PartialPath> devices) {
     this.devices = devices;
   }
 
@@ -75,7 +75,8 @@ public class AlignByDevicePlan extends QueryPlan {
     return devices;
   }
 
-  public void setColumnDataTypeMap(final Map<String, TSDataType> columnDataTypeMap) {
+  public void setColumnDataTypeMap(
+      Map<String, TSDataType> columnDataTypeMap) {
     this.columnDataTypeMap = columnDataTypeMap;
   }
 
@@ -87,7 +88,7 @@ public class AlignByDevicePlan extends QueryPlan {
     return deviceToFilterMap;
   }
 
-  public void setDeviceToFilterMap(final Map<String, IExpression> deviceToFilterMap) {
+  public void setDeviceToFilterMap(Map<String, IExpression> deviceToFilterMap) {
     this.deviceToFilterMap = deviceToFilterMap;
   }
 
@@ -95,7 +96,8 @@ public class AlignByDevicePlan extends QueryPlan {
     return measurementTypeMap;
   }
 
-  public void setMeasurementTypeMap(final Map<String, MeasurementType> measurementTypeMap) {
+  public void setMeasurementTypeMap(
+      Map<String, MeasurementType> measurementTypeMap) {
     this.measurementTypeMap = measurementTypeMap;
   }
 
@@ -103,7 +105,7 @@ public class AlignByDevicePlan extends QueryPlan {
     return measurementDataTypeMap;
   }
 
-  public void setMeasurementDataTypeMap(final Map<String, TSDataType> measurementDataTypeMap) {
+  public void setMeasurementDataTypeMap(Map<String, TSDataType> measurementDataTypeMap) {
     this.measurementDataTypeMap = measurementDataTypeMap;
   }
 

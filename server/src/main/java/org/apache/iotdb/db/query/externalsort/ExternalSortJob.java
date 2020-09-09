@@ -30,7 +30,7 @@ class ExternalSortJob {
 
   private List<ExternalSortJobPart> partList;
 
-  ExternalSortJob(final List<ExternalSortJobPart> partList) {
+  ExternalSortJob(List<ExternalSortJobPart> partList) {
     this.partList = partList;
   }
 

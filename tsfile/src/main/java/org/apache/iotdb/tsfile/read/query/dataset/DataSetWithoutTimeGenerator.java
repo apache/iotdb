@@ -58,8 +58,8 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
    * @param readers   readers in List(FileSeriesReaderByTimestamp) structure
    * @throws IOException IOException
    */
-  public DataSetWithoutTimeGenerator(final List<Path> paths, final List<TSDataType> dataTypes,
-      final List<AbstractFileSeriesReader> readers)
+  public DataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
+      List<AbstractFileSeriesReader> readers)
       throws IOException {
     super(paths, dataTypes);
     this.readers = readers;

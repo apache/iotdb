@@ -125,7 +125,7 @@ public class RegularDataEncoderLongTest {
     shouldReadAndWrite(data, ROW_NUM);
   }
 
-  private long[] getMissingPointData(final List<String> originalData, int missingPointInterval) {
+  private long[] getMissingPointData(List<String> originalData, int missingPointInterval) {
     List<String> dates = originalData;
 
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");

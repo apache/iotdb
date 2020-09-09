@@ -82,7 +82,7 @@ public class PreviousFill extends IFill {
 
   @Override
   public void configureFill(
-      PartialPath path, TSDataType dataType, long queryTime, final Set<String> sensors, QueryContext context) {
+      PartialPath path, TSDataType dataType, long queryTime, Set<String> sensors, QueryContext context) {
     this.seriesPath = path;
     this.dataType = dataType;
     this.context = context;

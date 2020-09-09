@@ -32,7 +32,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   /**
    * Constructor of IoTDBResultMetadata.
    */
-  public IoTDBResultMetadata(final List<String> columnInfoList, final List<String> columnTypeList, boolean ignoreTimestamp) {
+  public IoTDBResultMetadata(List<String> columnInfoList, List<String> columnTypeList, boolean ignoreTimestamp) {
     this.columnInfoList = columnInfoList;
     this.columnTypeList = columnTypeList;
     this.ignoreTimestamp = ignoreTimestamp;

@@ -34,7 +34,7 @@ public class MultiFileLogReader implements ILogReader {
   private File[] files;
   private int fileIdx = 0;
 
-  public MultiFileLogReader(final File[] files) {
+  public MultiFileLogReader(File[] files) {
     this.files = files;
   }
 

@@ -2224,7 +2224,7 @@ public class StorageGroupProcessor {
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
-      long timePartitionId, final List<TsFileResource> sequenceList) {
+      long timePartitionId, List<TsFileResource> sequenceList) {
     long currentTsFileTime = Long
         .parseLong(tsfileName.split(FILE_NAME_SEPARATOR)[0]);
     long preTime;

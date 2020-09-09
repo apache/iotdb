@@ -68,7 +68,7 @@ public class RawDataQueryPlan extends QueryPlan {
    * used for AlignByDevice Query, the query is executed by each device, So we only maintain
    * measurements of current device.
    */
-  public void setDeduplicatedPaths(final List<PartialPath> deduplicatedPaths) {
+  public void setDeduplicatedPaths(List<PartialPath> deduplicatedPaths) {
     deviceToMeasurements.clear();
     deduplicatedPaths.forEach(
         path -> deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>())
@@ -84,7 +84,8 @@ public class RawDataQueryPlan extends QueryPlan {
     this.deduplicatedDataTypes.add(dataType);
   }
 
-  public void setDeduplicatedDataTypes(final List<TSDataType> deduplicatedDataTypes) {
+  public void setDeduplicatedDataTypes(
+      List<TSDataType> deduplicatedDataTypes) {
     this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
 

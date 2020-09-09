@@ -60,7 +60,7 @@ public class LastQueryExecutor {
     this.dataTypes = lastQueryPlan.getDeduplicatedDataTypes();
   }
 
-  public LastQueryExecutor(final List<PartialPath> selectedSeries, final List<TSDataType> dataTypes) {
+  public LastQueryExecutor(List<PartialPath> selectedSeries, List<TSDataType> dataTypes) {
     this.selectedSeries = selectedSeries;
     this.dataTypes = dataTypes;
   }
@@ -108,7 +108,7 @@ public class LastQueryExecutor {
   }
 
   protected TimeValuePair calculateLastPairForOneSeries(
-      PartialPath seriesPath, TSDataType tsDataType, QueryContext context, final Set<String> deviceMeasurements)
+      PartialPath seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
       throws IOException, QueryProcessException, StorageEngineException {
     return calculateLastPairForOneSeriesLocally(seriesPath, tsDataType, context,
         deviceMeasurements);
@@ -122,7 +122,7 @@ public class LastQueryExecutor {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TimeValuePair calculateLastPairForOneSeriesLocally(
-      PartialPath seriesPath, TSDataType tsDataType, QueryContext context, final Set<String> deviceMeasurements)
+      PartialPath seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
       throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode

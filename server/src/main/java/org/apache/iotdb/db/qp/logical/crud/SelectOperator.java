@@ -60,11 +60,11 @@ public final class SelectOperator extends Operator {
     return this.aggregations;
   }
 
-  public void setAggregations(final List<String> aggregations) {
+  public void setAggregations(List<String> aggregations) {
     this.aggregations = aggregations;
   }
 
-  public void setSuffixPathList(final List<PartialPath> suffixPaths) {
+  public void setSuffixPathList(List<PartialPath> suffixPaths) {
     suffixList = suffixPaths;
   }
 

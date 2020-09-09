@@ -105,7 +105,7 @@ public class SeriesReader {
   private boolean hasCachedNextOverlappedPage;
   private BatchData cachedBatchData;
 
-  public SeriesReader(PartialPath seriesPath, final Set<String> allSensors, TSDataType dataType,
+  public SeriesReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType,
       QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
     this.seriesPath = seriesPath;
@@ -120,8 +120,8 @@ public class SeriesReader {
   }
 
   @TestOnly
-  SeriesReader(PartialPath seriesPath, final Set<String> allSensors, TSDataType dataType, QueryContext context,
-      final List<TsFileResource> seqFileResource, final List<TsFileResource> unseqFileResource,
+  SeriesReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType, QueryContext context,
+      List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
       Filter timeFilter, Filter valueFilter) {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;

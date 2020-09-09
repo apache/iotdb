@@ -35,7 +35,7 @@ public class DeleteStorageGroupOperator extends RootOperator {
     return deletePathList;
   }
 
-  public void setDeletePathList(final List<PartialPath> deletePathList) {
+  public void setDeletePathList(List<PartialPath> deletePathList) {
     this.deletePathList = deletePathList;
   }
 

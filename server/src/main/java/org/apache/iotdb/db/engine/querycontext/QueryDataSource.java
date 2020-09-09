@@ -36,7 +36,7 @@ public class QueryDataSource {
    */
   private long dataTTL = Long.MAX_VALUE;
 
-  public QueryDataSource(final PartialPath seriesPath, final List<TsFileResource> seqResources, final List<TsFileResource> unseqResources) {
+  public QueryDataSource(PartialPath seriesPath, List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seriesPath = seriesPath;
     this.seqResources = seqResources;
     this.unseqResources = unseqResources;

@@ -40,7 +40,7 @@ public class QueryExpression implements Serializable {
     return new QueryExpression();
   }
 
-  public static QueryExpression create(final List<Path> selectedSeries,
+  public static QueryExpression create(List<Path> selectedSeries,
       IExpression expression) {
     QueryExpression ret = new QueryExpression();
     ret.selectedSeries = selectedSeries;
@@ -54,7 +54,7 @@ public class QueryExpression implements Serializable {
     return this;
   }
 
-  public QueryExpression setSelectSeries(final List<Path> selectedSeries) {
+  public QueryExpression setSelectSeries(List<Path> selectedSeries) {
     this.selectedSeries = selectedSeries;
     return this;
   }
@@ -91,7 +91,7 @@ public class QueryExpression implements Serializable {
     return dataTypes;
   }
 
-  public QueryExpression setDataTypes(final List<TSDataType> dataTypes) {
+  public QueryExpression setDataTypes(List<TSDataType> dataTypes) {
     this.dataTypes = dataTypes;
     return this;
   }

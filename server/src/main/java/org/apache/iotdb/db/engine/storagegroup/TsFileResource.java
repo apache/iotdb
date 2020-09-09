@@ -190,7 +190,7 @@ public class TsFileResource {
   /**
    * unsealed TsFile
    */
-  public TsFileResource(final File file, final TsFileProcessor processor) {
+  public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
     this.deviceToIndex = new ConcurrentHashMap<>();
     this.startTimes = new long[INIT_ARRAY_SIZE];
@@ -203,9 +203,9 @@ public class TsFileResource {
   /**
    * unsealed TsFile
    */
-  public TsFileResource(final File file, final Map<String, Integer> deviceToIndex, final long[] startTimes,
-      final long[] endTimes, final List<ReadOnlyMemChunk> readOnlyMemChunk,
-      final List<ChunkMetadata> chunkMetadataList, final TsFileResource originTsFileResource)
+  public TsFileResource(File file, Map<String, Integer> deviceToIndex, long[] startTimes,
+      long[] endTimes, List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<ChunkMetadata> chunkMetadataList, TsFileResource originTsFileResource)
       throws IOException {
     this.file = file;
     this.deviceToIndex = deviceToIndex;
@@ -368,7 +368,7 @@ public class TsFileResource {
     return modFile;
   }
 
-  public void setFile(final File file) {
+  public void setFile(File file) {
     this.file = file;
   }
 
@@ -450,7 +450,7 @@ public class TsFileResource {
     endTimes[index] = endTime;
   }
 
-  private long[] enLargeArray(final long[] array, long defaultValue) {
+  private long[] enLargeArray(long[] array, long defaultValue) {
     long[] tmp = new long[(int) (array.length * 1.5)];
     initTimes(tmp, defaultValue);
     System.arraycopy(array, 0, tmp, 0, array.length);
@@ -576,7 +576,7 @@ public class TsFileResource {
     fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
   }
 
-  void moveTo(final File targetDir) {
+  void moveTo(File targetDir) {
     fsFactory.moveFile(file, fsFactory.getFile(targetDir, file.getName()));
     fsFactory.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
         fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX));
@@ -589,7 +589,7 @@ public class TsFileResource {
   }
 
   @Override
-  public boolean equals(final Object o) {
+  public boolean equals(Object o) {
     if (this == o) {
       return true;
     }
@@ -641,11 +641,11 @@ public class TsFileResource {
     return false;
   }
 
-  protected void setStartTimes(final long[] startTimes) {
+  protected void setStartTimes(long[] startTimes) {
     this.startTimes = startTimes;
   }
 
-  protected void setEndTimes(final long[] endTimes) {
+  protected void setEndTimes(long[] endTimes) {
     this.endTimes = endTimes;
   }
 

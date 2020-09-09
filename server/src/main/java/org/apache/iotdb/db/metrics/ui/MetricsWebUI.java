@@ -47,7 +47,7 @@ public class MetricsWebUI {
     return handlers;
   }
 
-  public void setHandlers(final List<ServletContextHandler> handlers) {
+  public void setHandlers(List<ServletContextHandler> handlers) {
     this.handlers = handlers;
   }
 

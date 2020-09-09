@@ -26,7 +26,7 @@ public class DataAuthOperator extends RootOperator {
 
   private final List<String> users;
 
-  public DataAuthOperator(int tokenIntType, final List<String> users) {
+  public DataAuthOperator(int tokenIntType, List<String> users) {
     super(tokenIntType);
     if (tokenIntType == SQLConstant.TOK_GRANT_WATERMARK_EMBEDDING) {
       operatorType = OperatorType.GRANT_WATERMARK_EMBEDDING;

@@ -32,7 +32,7 @@ public class RowRecord {
     this.fields = new ArrayList<>();
   }
 
-  public RowRecord(long timestamp, final List<Field> fields){
+  public RowRecord(long timestamp, List<Field> fields){
     this.timestamp = timestamp;
     this.fields = fields;
   }
@@ -68,7 +68,7 @@ public class RowRecord {
     return fields;
   }
 
-  public void setFields(final List<Field> fields) {
+  public void setFields(List<Field> fields) {
     this.fields = fields;
   }
 

@@ -60,7 +60,7 @@ public class DeletePlan extends PhysicalPlan {
    * @param endTime delete time range end
    * @param paths time series paths in List structure
    */
-  public DeletePlan(long startTime, long endTime, final List<PartialPath> paths) {
+  public DeletePlan(long startTime, long endTime, List<PartialPath> paths) {
     super(false, Operator.OperatorType.DELETE);
     this.deleteStartTime = startTime;
     this.deleteEndTime = endTime;
@@ -87,7 +87,7 @@ public class DeletePlan extends PhysicalPlan {
     this.paths.add(path);
   }
 
-  public void addPaths(final List<PartialPath> paths) {
+  public void addPaths(List<PartialPath> paths) {
     this.paths.addAll(paths);
   }
 
@@ -96,7 +96,7 @@ public class DeletePlan extends PhysicalPlan {
     return paths;
   }
 
-  public void setPaths(final List<PartialPath> paths) {
+  public void setPaths(List<PartialPath> paths) {
     this.paths = paths;
   }
 

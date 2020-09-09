@@ -52,7 +52,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     private BlockingQueue<BatchData> blockingQueue;
 
     public ReadTask(ManagedSeriesReader reader,
-        final BlockingQueue<BatchData> blockingQueue, String pathName) {
+        BlockingQueue<BatchData> blockingQueue, String pathName) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
       this.pathName = pathName;
@@ -151,8 +151,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
    * @param dataTypes time series data type
    * @param readers   readers in List(IPointReader) structure
    */
-  public RawQueryDataSetWithoutValueFilter(final List<PartialPath> paths, final List<TSDataType> dataTypes,
-      final List<ManagedSeriesReader> readers) throws IOException, InterruptedException {
+  public RawQueryDataSetWithoutValueFilter(List<PartialPath> paths, List<TSDataType> dataTypes,
+      List<ManagedSeriesReader> readers) throws IOException, InterruptedException {
     super(new ArrayList<>(paths), dataTypes);
     this.seriesReaderList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
@@ -385,7 +385,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     }
   }
 
-  private void putPBOSToBuffer(final PublicBAOS[] bitmapBAOSList, final List<ByteBuffer> bitmapBufferList,
+  private void putPBOSToBuffer(PublicBAOS[] bitmapBAOSList, List<ByteBuffer> bitmapBufferList,
       int tsIndex) {
     ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapBAOSList[tsIndex].size());
     bitmapBuffer.put(bitmapBAOSList[tsIndex].getBuf(), 0, bitmapBAOSList[tsIndex].size());
