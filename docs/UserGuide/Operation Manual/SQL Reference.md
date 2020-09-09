@@ -190,6 +190,7 @@ Eg: show timeseries root.ln where unit='c' limit 10 offset 10
 ```
 SHOW STORAGE GROUP
 Eg: IoTDB > SHOW STORAGE GROUP
+Eg: IoTDB > SHOW STORAGE GROUP root.ln
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
