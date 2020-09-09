@@ -415,7 +415,7 @@ public class IoTDBConfig {
   /**
    * register time series as which type when receiving an integer string "67"
    */
-  private TSDataType integerStringInferType = TSDataType.FLOAT;
+  private TSDataType integerStringInferType = TSDataType.INT32;
 
   /**
    * register time series as which type when receiving a floating number string "6.7"
