@@ -90,6 +90,10 @@ public class SerializableRowRecordList implements SerializableList {
     rowRecords = new ArrayList<>();
   }
 
+  public boolean isEmpty() {
+    return rowRecords.isEmpty();
+  }
+
   public int size() {
     return rowRecords.size();
   }
@@ -115,13 +119,8 @@ public class SerializableRowRecordList implements SerializableList {
     int size = rowRecords.size();
     serializationRecorder.setSerializedElementSize(size);
     int serializedByteLength = 0;
-    int lastOffset = size * (ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.LONG_LEN);
     for (RowRecord rowRecord : rowRecords) {
       serializedByteLength += ReadWriteIOUtils.write(rowRecord.getTimestamp(), outputStream);
-      serializedByteLength += ReadWriteIOUtils.write(lastOffset, outputStream);
-      lastOffset += calculateFieldsLength(rowRecord);
-    }
-    for (RowRecord rowRecord : rowRecords) {
       serializedByteLength += writeFields(rowRecord, outputStream);
     }
     serializationRecorder.setSerializedByteLength(serializedByteLength);
@@ -132,80 +131,39 @@ public class SerializableRowRecordList implements SerializableList {
     int serializedElementSize = serializationRecorder.getSerializedElementSize();
     for (int i = 0; i < serializedElementSize; ++i) {
       long timestamp = ReadWriteIOUtils.readLong(byteBuffer);
-
-      int offset = ReadWriteIOUtils.readInt(byteBuffer);
-      int oldPosition = byteBuffer.position();
-      byteBuffer.position(offset);
       List<Field> fields = readFields(byteBuffer);
-
-      byteBuffer.position(oldPosition);
       put(new RowRecord(timestamp, fields));
     }
   }
 
   private int writeFields(RowRecord rowRecord, PublicBAOS outputStream) throws IOException {
     int serializedByteLength = 0;
+    List<Field> fields = rowRecord.getFields();
     for (int i = 0; i < dataTypes.length; ++i) {
       switch (dataTypes[i]) {
         case INT32:
-          serializedByteLength += ReadWriteIOUtils
-              .write(rowRecord.getFields().get(i).getIntV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write(fields.get(i).getIntV(), outputStream);
           break;
         case INT64:
-          serializedByteLength += ReadWriteIOUtils
-              .write(rowRecord.getFields().get(i).getLongV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write(fields.get(i).getLongV(), outputStream);
           break;
         case FLOAT:
-          serializedByteLength += ReadWriteIOUtils
-              .write(rowRecord.getFields().get(i).getFloatV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write(fields.get(i).getFloatV(), outputStream);
           break;
         case DOUBLE:
-          serializedByteLength += ReadWriteIOUtils
-              .write(rowRecord.getFields().get(i).getDoubleV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write(fields.get(i).getDoubleV(), outputStream);
           break;
         case BOOLEAN:
-          serializedByteLength += ReadWriteIOUtils
-              .write(rowRecord.getFields().get(i).getBoolV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write(fields.get(i).getBoolV(), outputStream);
           break;
         case TEXT:
-          serializedByteLength += ReadWriteIOUtils
-              .write(rowRecord.getFields().get(i).getBinaryV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write(fields.get(i).getBinaryV(), outputStream);
           break;
         default:
           throw new UnSupportedDataTypeException(dataTypes[i].toString());
       }
     }
     return serializedByteLength;
-  }
-
-  private int calculateFieldsLength(RowRecord rowRecord) {
-    int length = 0;
-    for (int i = 0; i < dataTypes.length; ++i) {
-      switch (dataTypes[i]) {
-        case INT32:
-          length += ReadWriteIOUtils.INT_LEN;
-          break;
-        case INT64:
-          length += ReadWriteIOUtils.LONG_LEN;
-          break;
-        case FLOAT:
-          length += ReadWriteIOUtils.FLOAT_LEN;
-          break;
-        case DOUBLE:
-          length += ReadWriteIOUtils.DOUBLE_LEN;
-          break;
-        case BOOLEAN:
-          length += ReadWriteIOUtils.BOOLEAN_LEN;
-          break;
-        case TEXT:
-          length += ReadWriteIOUtils.INT_LEN;
-          length += rowRecord.getFields().get(i).getBinaryV().getLength();
-          break;
-        default:
-          throw new UnSupportedDataTypeException(dataTypes[i].toString());
-      }
-    }
-    return length;
   }
 
   private List<Field> readFields(ByteBuffer byteBuffer) {
@@ -232,6 +190,7 @@ public class SerializableRowRecordList implements SerializableList {
         case BOOLEAN:
           field = new Field(TSDataType.BOOLEAN);
           field.setBoolV(ReadWriteIOUtils.readBool(byteBuffer));
+          break;
         case TEXT:
           field = new Field(TSDataType.TEXT);
           field.setBinaryV(ReadWriteIOUtils.readBinary(byteBuffer));
