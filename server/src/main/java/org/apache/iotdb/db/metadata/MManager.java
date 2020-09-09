@@ -653,7 +653,7 @@ public class MManager {
    * @param path Format: root.node.(node)*
    * @apiNote :for cluster
    */
-  boolean isStorageGroup(PartialPath path) {
+  public boolean isStorageGroup(PartialPath path) {
     lock.readLock().lock();
     try {
       return mtree.isStorageGroup(path);

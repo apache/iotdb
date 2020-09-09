@@ -66,6 +66,7 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 public class Session {
 
@@ -927,6 +928,36 @@ public class Session {
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
+  }
+
+  /**
+   * query eg. select * from paths where time >= startTime and time < endTime
+   * time interval include startTime and exclude endTime
+   * @param paths
+   * @param startTime included
+   * @param endTime excluded
+   * @return
+   * @throws StatementExecutionException
+   * @throws IoTDBConnectionException
+   */
+
+  public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSRawDataQueryReq execReq = new TSRawDataQueryReq(sessionId, paths, startTime, endTime);
+    execReq.setFetchSize(fetchSize);
+
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.executeRawDataQuery(execReq);
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet("", execResp.getColumns(), execResp.getDataTypeList(),
+        execResp.columnNameIndexMap,
+        execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
+        execResp.isIgnoreTimeStamp());
   }
 
   /**
