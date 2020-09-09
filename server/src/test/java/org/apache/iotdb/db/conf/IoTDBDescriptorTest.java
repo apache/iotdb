@@ -25,6 +25,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class IoTDBDescriptorTest {
   private final String confPath = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
@@ -49,7 +51,7 @@ public class IoTDBDescriptorTest {
 
     System.setProperty(IoTDBConstant.IOTDB_CONF, pathString);
     URL confURL = desc.getPropsUrl();
-    Assert.assertEquals(confURL.toString(), pathString + File.separatorChar + IoTDBConfig.CONFIG_NAME);
+    Assert.assertTrue(confURL.toString().startsWith(pathString));
   }
 
   @Test
@@ -59,12 +61,12 @@ public class IoTDBDescriptorTest {
     String pathString = "ftp://root/path";
     System.setProperty(IoTDBConstant.IOTDB_CONF, pathString);
     URL confURL = desc.getPropsUrl();
-    Assert.assertEquals(confURL.toString(), pathString + File.separatorChar + IoTDBConfig.CONFIG_NAME);
+    Assert.assertTrue(confURL.toString().startsWith(pathString));
 
     pathString = "https://github.com/apache/incubator-iotdb.git";
     System.setProperty(IoTDBConstant.IOTDB_CONF, pathString);
     confURL = desc.getPropsUrl();
-    Assert.assertEquals(confURL.toString(), pathString + File.separatorChar + IoTDBConfig.CONFIG_NAME);
+    Assert.assertTrue(confURL.toString().startsWith(pathString));
   }
 
   @Test
