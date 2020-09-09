@@ -90,19 +90,23 @@ public class QueryCoordinator {
         || nodeStatus.getStatus() == null) {
 
       try {
-        long startTime = System.nanoTime();
+        long startTime;
+        long responseTime;
         TNodeStatus status;
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncMetaClient asyncMetaClient = (AsyncMetaClient) metaGroupMember.getAsyncClient(node);
+          startTime = System.nanoTime();
           status = SyncClientAdaptor.queryNodeStatus(asyncMetaClient);
+          responseTime = System.nanoTime() - startTime;
         } else {
           SyncMetaClient syncMetaClient = (SyncMetaClient) metaGroupMember.getSyncClient(node);
+          startTime = System.nanoTime();
           status = syncMetaClient.queryNodeStatus();
+          responseTime = System.nanoTime() - startTime;
           metaGroupMember.putBackSyncClient(syncMetaClient);
         }
 
         if (status != null) {
-          long responseTime = System.nanoTime() - startTime;
           nodeStatus.setStatus(status);
           nodeStatus.setLastUpdateTime(System.currentTimeMillis());
           nodeStatus.setLastResponseLatency(responseTime);
