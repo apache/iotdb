@@ -139,7 +139,7 @@ level-2: t0-2
 	* 将所有文件的 mergeVersion 置为 {max_level_num - 1}
 	* 即老版本的文件不会被重复合并
 假设整个系统中有5个文件，此时恢复后的文件结构为：
-level-0: t0-0 t1-0 t2-0 t3-0 t4-0
+level-2: t0-2 t1-2 t2-2 t3-2 t4-2
 
 * 提高 max_level_num
 	* 此时因为不会改变任何文件的原 level，所以 recover 时文件还会被放到原来的层上，或超出 {max_level_num - 1} 的文件被放在最后一层（考虑到多次调整的情况）
@@ -201,7 +201,7 @@ level-2: t0-2
 	* 此时因为因为删去了原始合并的 {mergeVersion + 1} 策略，所以所有文件将全部被放到0层
 	* 每一次热合并会最多取出满足 {merge_chunk_point_number} 的文件进行合并，直到将所有多余的文件热合并完，进入正常的热合并流程
 假设整个系统中有5个文件，此时恢复后的文件结构为：
-level-0: t0-0 t1-0 t2-0 t3-0 t4-0
+level-2: t0-0 t1-0 t2-0 t3-0 t4-0
 假设 {size(t0-0)+size(t1-0)>=merge_chunk_point_number}，则进行第一次合并的过程如下
 level-0: t0-0 t1-0 t2-0 t3-0 t4-0 t5-0(新增了文件才会触发合并检查)
            |   /
