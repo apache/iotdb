@@ -299,8 +299,12 @@ public class UDTFExecutor extends UDFExecutor {
   }
 
   @Override
-  public void executeUDF() {
-    udtf.transform();
+  public void executeUDF() throws QueryProcessException {
+    try {
+      udtf.transform();
+    } catch (Exception e) {
+      throw new QueryProcessException(e.toString());
+    }
   }
 
   @Override

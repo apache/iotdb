@@ -36,7 +36,7 @@ public abstract class UDFExecutor {
 
   abstract public void initializeUDF() throws QueryProcessException;
 
-  abstract public void executeUDF();
+  abstract public void executeUDF() throws QueryProcessException;
 
   abstract public void finalizeUDF();
 

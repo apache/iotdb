@@ -57,7 +57,7 @@ public abstract class SFWOperator extends RootOperator {
    */
   public void setSelectOperator(SelectOperator sel) {
     this.selectOperator = sel;
-    if (!sel.getAggregations().isEmpty()) {
+    if (sel.hasAggregation()) {
       hasAggregation = true;
     }
     if (sel.isUdfQuery()) {

@@ -35,6 +35,7 @@ public final class SelectOperator extends Operator {
 
   private boolean lastQuery;
   private boolean udfQuery;
+  private boolean hasBuiltinAggregation;
 
   /**
    * init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>.
@@ -47,6 +48,7 @@ public final class SelectOperator extends Operator {
     udfList = new ArrayList<>();
     lastQuery = false;
     udfQuery = false;
+    hasBuiltinAggregation = false;
   }
 
   public void addSelectPath(Path suffixPath) {
@@ -56,6 +58,9 @@ public final class SelectOperator extends Operator {
   public void addClusterPath(Path suffixPath, String aggregation) {
     suffixList.add(suffixPath);
     aggregations.add(aggregation);
+    if (aggregation != null) {
+      hasBuiltinAggregation = true;
+    }
   }
 
   public boolean isLastQuery() {
@@ -72,6 +77,10 @@ public final class SelectOperator extends Operator {
 
   public void setAggregations(List<String> aggregations) {
     this.aggregations = aggregations;
+  }
+
+  public boolean hasAggregation() {
+    return hasBuiltinAggregation; // todo: hasBuiltinAggregation || hasUDAF
   }
 
   public void setSuffixPathList(List<Path> suffixPaths) {

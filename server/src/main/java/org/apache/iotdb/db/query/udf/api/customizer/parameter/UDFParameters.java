@@ -49,23 +49,53 @@ public class UDFParameters {
     return attributes.get(key);
   }
 
-  public boolean getBoolean(String key) {
-    return Boolean.parseBoolean(attributes.get(key));
+  public Boolean getBoolean(String key) {
+    String value = attributes.get(key);
+    return value == null ? null : Boolean.parseBoolean(value);
   }
 
-  public int getInt(String key) {
-    return Integer.parseInt(attributes.get(key));
+  public Integer getInt(String key) {
+    String value = attributes.get(key);
+    return value == null ? null : Integer.parseInt(value);
   }
 
-  public long getLong(String key) {
-    return Long.parseLong(attributes.get(key));
+  public Long getLong(String key) {
+    String value = attributes.get(key);
+    return value == null ? null : Long.parseLong(value);
   }
 
-  public float getFloat(String key) {
-    return Float.parseFloat(attributes.get(key));
+  public Float getFloat(String key) {
+    String value = attributes.get(key);
+    return value == null ? null : Float.parseFloat(value);
   }
 
-  public double getDouble(String key) {
-    return Double.parseDouble(attributes.get(key));
+  public Double getDouble(String key) {
+    String value = attributes.get(key);
+    return value == null ? null : Double.parseDouble(value);
+  }
+
+  public boolean getBooleanOrDefault(String key, boolean defaultValue) {
+    String value = attributes.get(key);
+    return value == null ? defaultValue : Boolean.parseBoolean(value);
+  }
+
+  public int getIntOrDefault(String key, int defaultValue) {
+    String value = attributes.get(key);
+    return value == null ? defaultValue : Integer.parseInt(value);
+  }
+
+  public long getLongOrDefault(String key, long defaultValue) {
+    String value = attributes.get(key);
+    return value == null ? defaultValue : Long.parseLong(value);
+  }
+
+  public float getFloatOrDefault(String key, float defaultValue) {
+    String value = attributes.get(key);
+    return value == null ? defaultValue : Float.parseFloat(value);
+  }
+
+  public double getDoubleOrDefault(String key, double defaultValue) {
+    String value = attributes.get(key);
+    return value == null ? defaultValue : Double.parseDouble(value);
   }
 }

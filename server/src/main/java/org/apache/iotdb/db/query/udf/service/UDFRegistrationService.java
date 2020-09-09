@@ -66,19 +66,20 @@ public class UDFRegistrationService implements IService {
     UDFRegistrationInformation information = registrationInformation.get(functionName);
     if (information != null) {
       if (information.getClassName().equals(className)) {
+        String errorMessage;
         if (information.isTemporary() == isTemporary) {
-          logger.info(String.format("UDF %s(%s) has already been registered successfully.",
-              functionName, className));
-          return;
+          errorMessage = String
+              .format("UDF %s(%s) has already been registered successfully.",
+                  functionName, className);
         } else {
-          String errorMessage = String.format(
+          errorMessage = String.format(
               "Failed to register %sTEMPORARY UDF %s(%s), because a %sTEMPORARY UDF %s(%s) with the same function name and the class name has already been registered.",
               isTemporary ? "" : "non-", functionName, className,
               information.isTemporary() ? "" : "non-", information.getFunctionName(),
               information.getClassName());
-          logger.warn(errorMessage);
-          throw new UDFRegistrationException(errorMessage);
         }
+        logger.warn(errorMessage);
+        throw new UDFRegistrationException(errorMessage);
       } else {
         String errorMessage = String.format(
             "Failed to register UDF %s(%s), because a UDF %s(%s) with the same function name but a different class name has already been registered.",

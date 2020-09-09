@@ -36,7 +36,6 @@ public class UDFContext {
   private List<Path> paths;
   private List<TSDataType> dataTypes;
 
-  private final List<String> columnsForReaderDeduplication;
   private String columnParameterPart;
   private String column;
 
@@ -45,7 +44,6 @@ public class UDFContext {
     attributes = new HashMap<>();
     attributeKeysInOriginalOrder = new ArrayList<>();
     paths = new ArrayList<>();
-    columnsForReaderDeduplication = new ArrayList<>(paths.size());
   }
 
   public UDFContext(String name, Map<String, String> attributes,
@@ -54,7 +52,6 @@ public class UDFContext {
     this.attributes = attributes;
     this.attributeKeysInOriginalOrder = attributeKeysInOriginalOrder;
     this.paths = paths;
-    columnsForReaderDeduplication = new ArrayList<>(paths.size());
   }
 
   public void addAttribute(String key, String value) {
@@ -120,9 +117,6 @@ public class UDFContext {
   }
 
   public String getColumnForReaderDeduplication(int index) {
-    if (columnsForReaderDeduplication.get(index) == null) {
-      columnsForReaderDeduplication.set(index, getColumn() + paths.get(index).getFullPath());
-    }
-    return columnsForReaderDeduplication.get(index);
+    return getColumn() + paths.get(index).getFullPath();
   }
 }

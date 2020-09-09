@@ -19,18 +19,47 @@
 package org.apache.iotdb.db.qp.plan;
 
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -49,19 +78,13 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-
-import static org.junit.Assert.*;
-
 public class PhysicalPlanTest {
 
-  private Planner processor = new Planner();
+  private final Planner processor = new Planner();
 
   @Before
   public void before() throws MetadataException {
-    IoTDB.metaManager.init();
+    EnvironmentUtils.envSetUp();
     IoTDB.metaManager.setStorageGroup("root.vehicle");
     IoTDB.metaManager
         .createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
@@ -109,7 +132,9 @@ public class PhysicalPlanTest {
     System.out.println(metadata.length());
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
+    assertEquals(
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY",
+        plan.toString());
   }
 
   @Test
@@ -240,8 +265,8 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill1() {
     String sqlStr =
-            "select last_value(s1) " + " from root.vehicle.d1 "
-                    + "group by([8,737), 3ms) fill(int32[previous])";
+        "select last_value(s1) " + " from root.vehicle.d1 "
+            + "group by([8,737), 3ms) fill(int32[previous])";
     try {
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
       if (!plan.isQuery()) {
@@ -258,7 +283,8 @@ public class PhysicalPlanTest {
       assertEquals(1, groupByFillPlan.getFillType().size());
       assertTrue(groupByFillPlan.getFillType().containsKey(TSDataType.INT32));
       assertTrue(groupByFillPlan.getFillType().get(TSDataType.INT32) instanceof PreviousFill);
-      PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(TSDataType.INT32);
+      PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType()
+          .get(TSDataType.INT32);
       assertFalse(previousFill.isUntilLast());
     } catch (Exception e) {
       e.printStackTrace();
@@ -269,8 +295,8 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill2() {
     String sqlStr =
-            "select last_value(s1) " + " from root.vehicle.d1 "
-                    + "group by([8,737), 3ms) fill(ALL[previousuntillast])";
+        "select last_value(s1) " + " from root.vehicle.d1 "
+            + "group by([8,737), 3ms) fill(ALL[previousuntillast])";
     try {
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
       if (!plan.isQuery()) {
@@ -300,8 +326,8 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill3() {
     String sqlStr =
-            "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
-                    + "group by([8,737), 3ms) fill(int32[previousuntillast], int64[previous])";
+        "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
+            + "group by([8,737), 3ms) fill(int32[previousuntillast], int64[previous])";
     try {
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
       if (!plan.isQuery()) {
@@ -320,7 +346,8 @@ public class PhysicalPlanTest {
 
       assertTrue(groupByFillPlan.getFillType().containsKey(TSDataType.INT32));
       assertTrue(groupByFillPlan.getFillType().get(TSDataType.INT32) instanceof PreviousFill);
-      PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(TSDataType.INT32);
+      PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType()
+          .get(TSDataType.INT32);
       assertTrue(previousFill.isUntilLast());
 
       assertTrue(groupByFillPlan.getFillType().containsKey(TSDataType.INT64));
@@ -336,8 +363,8 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill4() {
     String sqlStr =
-            "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
-                    + "group by([8,737), 3ms) fill(int32[linear])";
+        "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
+            + "group by([8,737), 3ms) fill(int32[linear])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
@@ -352,8 +379,8 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill5() {
     String sqlStr =
-            "select last_value(d1.s1), count(d2.s1)" + " from root.vehicle "
-                    + "group by([8,737), 3ms) fill(int32[previous])";
+        "select last_value(d1.s1), count(d2.s1)" + " from root.vehicle "
+            + "group by([8,737), 3ms) fill(int32[previous])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
@@ -368,8 +395,8 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill6() {
     String sqlStr =
-            "select count(s1)" + "from root.vehicle.d1 "
-                    + "group by([8,737), 3ms, 5ms) fill(int32[previous])";
+        "select count(s1)" + "from root.vehicle.d1 "
+            + "group by([8,737), 3ms, 5ms) fill(int32[previous])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
@@ -397,6 +424,137 @@ public class PhysicalPlanTest {
     } catch (Exception e) {
       e.printStackTrace();
       fail();
+    }
+  }
+
+  @Test
+  public void testCreateFunctionPlan1() { // create function
+    try {
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(
+          "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
+        fail();
+      }
+      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
+      UDFRegistrationService.getInstance()
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
+              createFunctionPlan.isTemporary(), true);
+      UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
+    } catch (UDFRegistrationException | QueryProcessException e) {
+      fail(e.toString());
+    }
+  }
+
+  @Test
+  public void testCreateFunctionPlan2() { // create temporary function
+    try {
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(
+          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
+        fail();
+      }
+      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
+      UDFRegistrationService.getInstance()
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
+              createFunctionPlan.isTemporary(), true);
+      UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
+    } catch (UDFRegistrationException | QueryProcessException e) {
+      fail(e.toString());
+    }
+  }
+
+  @Test(expected = UDFRegistrationException.class)
+  public void testCreateFunctionPlan3()
+      throws UDFRegistrationException { // create function twice
+    try {
+      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
+          "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      UDFRegistrationService.getInstance()
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
+              createFunctionPlan.isTemporary(), true);
+      createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
+          "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      UDFRegistrationService.getInstance()
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
+              createFunctionPlan.isTemporary(), true);
+    } catch (QueryProcessException e) {
+      fail(e.toString());
+    }
+  }
+
+  @Test(expected = UDFRegistrationException.class)
+  public void testCreateFunctionPlan4()
+      throws UDFRegistrationException { // create temporary function twice
+    try {
+      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
+          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      UDFRegistrationService.getInstance()
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
+              createFunctionPlan.isTemporary(), true);
+      createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
+          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      UDFRegistrationService.getInstance()
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
+              createFunctionPlan.isTemporary(), true);
+    } catch (QueryProcessException e) {
+      fail(e.toString());
+    }
+  }
+
+  @Test(expected = UDFRegistrationException.class)
+  public void testCreateFunctionPlan5()
+      throws UDFRegistrationException { // create temporary function + create function
+    try {
+      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
+          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      UDFRegistrationService.getInstance()
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
+              createFunctionPlan.isTemporary(), true);
+      createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
+          "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      UDFRegistrationService.getInstance()
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
+              createFunctionPlan.isTemporary(), true);
+    } catch (QueryProcessException e) {
+      fail(e.toString());
+    }
+  }
+
+  @Test
+  public void testUDTFQuery1() {
+    try {
+      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
+          "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      UDFRegistrationService.getInstance()
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
+              createFunctionPlan.isTemporary(), true);
+
+      String sqlStr = "select udf(d2.s1, d1.s1), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d1.s1, d2.s1), udf(d2.s1, d1.s1), d1.s1, d2.s1 from root.vehicle";
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+      if (!(plan instanceof UDTFPlan)) {
+        fail();
+      }
+    } catch (Exception e) {
+      fail(e.toString());
+    }
+  }
+
+  @Test
+  public void testUDTFQuery2() {
+    try {
+      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
+          "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      UDFRegistrationService.getInstance()
+          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
+              createFunctionPlan.isTemporary(), true);
+
+      String sqlStr = "select udf(d2.s1, d1.s1, \"addend\"=\"100\"), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d2.s1, d1.s1) from root.vehicle";
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+      if (!(plan instanceof UDTFPlan)) {
+        fail();
+      }
+    } catch (Exception e) {
+      fail(e.toString());
     }
   }
 

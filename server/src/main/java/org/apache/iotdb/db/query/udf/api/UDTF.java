@@ -53,7 +53,7 @@ public abstract class UDTF implements UDF {
   /**
    *
    */
-  public abstract void transform();
+  public abstract void transform() throws Exception;
 
   public final DataPointIterator getDataPointIterator(int index) {
     return (DataPointIterator) dataPointIterators.get(index);
