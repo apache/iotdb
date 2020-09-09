@@ -78,12 +78,4 @@ public class IoTDBDescriptorTest {
     Assert.assertEquals(confURL.toString(), path.toString());
   }
 
-  @Test
-  public void testConfigURLWithDefaultPath() {
-    IoTDBDescriptor desc = IoTDBDescriptor.getInstance();
-    URL path = IoTDBConfig.class.getResource("/" + IoTDBConfig.CONFIG_NAME);
-    URL confURL = desc.getPropsUrl();
-    Assert.assertEquals(confURL.toString(), path.toString());
-  }
-
 }
