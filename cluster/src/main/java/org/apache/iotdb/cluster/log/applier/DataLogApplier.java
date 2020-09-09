@@ -35,8 +35,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +63,7 @@ public class DataLogApplier extends BaseApplier {
       PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
       PhysicalPlan plan = physicalPlanLog.getPlan();
       if (plan instanceof InsertPlan) {
-        applyInsert(plan);
+        applyInsert((InsertPlan) plan);
       } else {
         applyPhysicalPlan(plan, dataGroupMember);
       }
@@ -86,21 +84,13 @@ public class DataLogApplier extends BaseApplier {
     log.setApplied(true);
   }
 
-  private void applyInsert(PhysicalPlan plan)
+  private void applyInsert(InsertPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     // check if the corresponding slot is being pulled
     PartialPath sg;
-    long time;
+    long time = plan.getMinTime();
     try {
-      if (plan instanceof InsertRowPlan) {
-        InsertRowPlan insertPlan = (InsertRowPlan) plan;
-        sg = IoTDB.metaManager.getStorageGroupPath(insertPlan.getDeviceId());
-        time = insertPlan.getTime();
-      } else {
-        InsertTabletPlan insertTabletPlan = (InsertTabletPlan) plan;
-        sg = IoTDB.metaManager.getStorageGroupPath(insertTabletPlan.getDeviceId());
-        time = insertTabletPlan.getMinTime();
-      }
+      sg = IoTDB.metaManager.getStorageGroupPath(plan.getDeviceId());
     } catch (StorageGroupNotSetException e) {
       // the sg may not exist because the node does not catch up with the leader, retry after
       // synchronization
@@ -109,17 +99,9 @@ public class DataLogApplier extends BaseApplier {
       } catch (CheckConsistencyException ce) {
         throw new QueryProcessException(ce.getMessage());
       }
-      if (plan instanceof InsertRowPlan) {
-        InsertRowPlan insertPlan = (InsertRowPlan) plan;
-        sg = IoTDB.metaManager.getStorageGroupPath(insertPlan.getDeviceId());
-        time = insertPlan.getTime();
-      } else {
-        InsertTabletPlan insertTabletPlan = (InsertTabletPlan) plan;
-        sg = IoTDB.metaManager.getStorageGroupPath(insertTabletPlan.getDeviceId());
-        time = insertTabletPlan.getMinTime();
-      }
+      sg = IoTDB.metaManager.getStorageGroupPath(plan.getDeviceId());
     }
-    int slotId = SlotPartitionTable.slotStrategy.calculateSlotByTime(sg.getFullPath(), time,
+    int slotId = SlotPartitionTable.getSlotStrategy().calculateSlotByTime(sg.getFullPath(), time,
         ClusterConstant.SLOT_NUM);
     // the slot may not be writable because it is pulling file versions, wait until it is done
     dataGroupMember.getSlotManager().waitSlotForWrite(slotId);

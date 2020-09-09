@@ -416,7 +416,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     return logFile;
   }
 
-  @SuppressWarnings("unused") // to support serialization of uncommitted logs
   public void truncateLog(int count, LogManagerMeta meta) {
     truncateLogIntern(count);
     serializeMeta(meta);

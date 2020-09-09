@@ -172,7 +172,7 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testIoTDBTabletWriteAndSyncClose()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws QueryProcessException, IllegalPathException {
 
     String[] measurements = new String[2];
     measurements[0] = "s0";

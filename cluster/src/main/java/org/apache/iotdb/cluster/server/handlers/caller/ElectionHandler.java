@@ -50,7 +50,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
   private AtomicInteger failingVoteCounter;
 
   public ElectionHandler(RaftMember raftMember, Node voter, long currTerm, AtomicInteger requiredVoteNum,
-      AtomicBoolean terminated, AtomicBoolean electionValid, AtomicInteger falingVoteCounter) {
+      AtomicBoolean terminated, AtomicBoolean electionValid, AtomicInteger failingVoteCounter) {
     this.raftMember = raftMember;
     this.voter = voter;
     this.currTerm = currTerm;
@@ -58,7 +58,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
     this.terminated = terminated;
     this.electionValid = electionValid;
     this.memberName = raftMember.getName();
-    this.failingVoteCounter = falingVoteCounter;
+    this.failingVoteCounter = failingVoteCounter;
   }
 
   @Override

@@ -192,6 +192,11 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @Override
+  public long getMinTime() {
+    return getTime();
+  }
+
+  @Override
   public void markFailedMeasurementInsertion(int index, Exception e) {
     if (measurements[index] == null) {
       return;

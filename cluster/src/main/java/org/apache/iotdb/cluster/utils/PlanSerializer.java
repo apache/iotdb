@@ -11,12 +11,16 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PlanSerializer {
+
+  private static final Logger logger = LoggerFactory.getLogger(PlanSerializer.class);
   private static final int DEFAULT_BAOS_SIZE = CommonUtils.getCpuCores() * 4;
   private BlockingDeque<ByteArrayOutputStream> baosBlockingDeque = new LinkedBlockingDeque<>();
 
-  public static PlanSerializer instance = new PlanSerializer();
+  private static final PlanSerializer instance = new PlanSerializer();
 
   private PlanSerializer() {
     for (int i = 0; i < DEFAULT_BAOS_SIZE; i++) {
@@ -24,16 +28,24 @@ public class PlanSerializer {
     }
   }
 
+  public static PlanSerializer getInstance() {
+    return instance;
+  }
+
   public byte[] serialize(PhysicalPlan plan) throws IOException {
     ByteArrayOutputStream poll = baosBlockingDeque.poll();
     poll.reset();
-    DataOutputStream dataOutputStream = new DataOutputStream(poll);
 
-    try {
+    try (DataOutputStream dataOutputStream = new DataOutputStream(poll)) {
       plan.serialize(dataOutputStream);
       return poll.toByteArray();
     } finally {
-      baosBlockingDeque.offer(poll);
+      try {
+        baosBlockingDeque.put(poll);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("Putting byte array output stream back interrupted");
+      }
     }
   }
 }

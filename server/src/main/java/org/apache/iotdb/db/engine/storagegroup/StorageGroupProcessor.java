@@ -1021,6 +1021,7 @@ public class StorageGroupProcessor {
           }
         }
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         logger
             .error("syncCloseOneTsFileProcessor error occurs while waiting for closing the storage "
                 + "group {}", storageGroupName, e);

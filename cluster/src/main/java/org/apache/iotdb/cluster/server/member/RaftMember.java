@@ -448,10 +448,8 @@ public abstract class RaftMember {
     long resp;
 
     long lastLogIndex = logManager.getLastLogIndex();
-    if (lastLogIndex < prevLogIndex) {
-      if (!waitForPrevLog(prevLogIndex)) {
-        return Response.RESPONSE_LOG_MISMATCH;
-      }
+    if (lastLogIndex < prevLogIndex && !waitForPrevLog(prevLogIndex)) {
+      return Response.RESPONSE_LOG_MISMATCH;
     }
 
     synchronized (logManager) {
@@ -661,16 +659,20 @@ public abstract class RaftMember {
     return waitAppendResult(voteCounter, leaderShipStale, newLeaderTerm);
   }
 
-  public AppendLogResult waitAppendResult(AtomicInteger voteCounter,
+  @SuppressWarnings({"java:S2445"}) // safe synchronized
+  private AppendLogResult waitAppendResult(AtomicInteger voteCounter,
       AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm) {
     synchronized (voteCounter) {
-      if (voteCounter.get() > 0) {
+      long waitStart = System.currentTimeMillis();
+      long alreadyWait = 0;
+      while (voteCounter.get() > 0 && alreadyWait < RaftServer.getWriteOperationTimeoutMS()) {
         try {
           voteCounter.wait(RaftServer.getWriteOperationTimeoutMS());
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Unexpected interruption when sending a log", e);
         }
+        alreadyWait = System.currentTimeMillis() - waitStart;
       }
     }
 
@@ -714,13 +716,14 @@ public abstract class RaftMember {
     }
   }
 
-  public synchronized LogDispatcher getLogDispatcher() {
+  private synchronized LogDispatcher getLogDispatcher() {
     if (logDispatcher == null) {
       logDispatcher = new LogDispatcher(this);
     }
     return logDispatcher;
   }
 
+  @SuppressWarnings("java:S2445") // safe synchronized
   private boolean waitForPrevLog(Peer peer, Log log) {
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
@@ -1194,7 +1197,7 @@ public abstract class RaftMember {
     try {
 
       ExecutNonQueryReq req = new ExecutNonQueryReq();
-      req.setPlanBytes(PlanSerializer.instance.serialize(plan));
+      req.setPlanBytes(PlanSerializer.getInstance().serialize(plan));
       if (header != null) {
         req.setHeader(header);
       }
@@ -1267,7 +1270,7 @@ public abstract class RaftMember {
   }
 
 
-  TSStatus processPlanLocallyV2(PhysicalPlan plan) {
+  private TSStatus processPlanLocallyV2(PhysicalPlan plan) {
     logger.debug("{}: Processing plan {}", name, plan);
     if (readOnly) {
       return StatusUtils.NODE_READ_ONLY;
@@ -1287,9 +1290,9 @@ public abstract class RaftMember {
     }
 
     try {
-      AppendLogResult appendLogResult = waitAppendResult(sendLogRequest.voteCounter,
-          sendLogRequest.leaderShipStale,
-          sendLogRequest.newLeaderTerm);
+      AppendLogResult appendLogResult = waitAppendResult(sendLogRequest.getVoteCounter(),
+          sendLogRequest.getLeaderShipStale(),
+          sendLogRequest.getNewLeaderTerm());
 
       switch (appendLogResult) {
         case OK:
@@ -1297,9 +1300,10 @@ public abstract class RaftMember {
           commitLog(log);
           return StatusUtils.OK;
         case TIME_OUT:
-          logger.debug("{}: log {} timed out, retrying...", name, log);
+          logger.debug("{}: log {} timed out...", name, log);
+          break;
         case LEADERSHIP_STALE:
-          // abort the appending, the new leader will fix the local logs by catch-up
+          // abort the appending, the new leader will fix sthe local logs by catch-up
         default:
           break;
       }

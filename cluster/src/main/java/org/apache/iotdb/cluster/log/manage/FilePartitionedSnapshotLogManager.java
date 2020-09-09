@@ -150,7 +150,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
    */
   private boolean collectTsFiles(Long partitionNum, List<TsFileResource> resourceList,
       PartialPath storageGroupName, List<TsFileResource> createdHardlinks) throws IOException {
-    int slotNum = SlotPartitionTable.slotStrategy.calculateSlotByPartitionNum(storageGroupName.getFullPath(),
+    int slotNum = SlotPartitionTable.getSlotStrategy().calculateSlotByPartitionNum(storageGroupName.getFullPath(),
         partitionNum, ((SlotPartitionTable) partitionTable).getTotalSlotNumbers());
     FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
         s -> new FileSnapshot());

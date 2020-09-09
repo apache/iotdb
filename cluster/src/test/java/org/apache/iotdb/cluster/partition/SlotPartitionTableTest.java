@@ -81,11 +81,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.internal.util.reflection.Whitebox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Ignore // need maintenance
 public class SlotPartitionTableTest {
   Logger logger = LoggerFactory.getLogger(SlotPartitionTableTest.class);
   SlotPartitionTable localTable;

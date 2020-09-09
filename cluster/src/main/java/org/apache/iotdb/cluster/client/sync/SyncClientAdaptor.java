@@ -333,7 +333,7 @@ public class SyncClientAdaptor {
 
     AtomicReference<TSStatus> status = new AtomicReference<>();
     ExecutNonQueryReq req = new ExecutNonQueryReq();
-    req.planBytes = ByteBuffer.wrap(PlanSerializer.instance.serialize(plan));
+    req.planBytes = ByteBuffer.wrap(PlanSerializer.getInstance().serialize(plan));
     if (header != null) {
       req.setHeader(header);
     }

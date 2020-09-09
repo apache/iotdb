@@ -39,7 +39,6 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
-import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -86,7 +85,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     }
   }
 
-  private void forwardPullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
+  private void forwardPullSnapshot(PullSnapshotRequest request, AsyncMethodCallback<PullSnapshotResp> resultHandler) {
     // if this node has been set readOnly, then it must have been synchronized with the leader
     // otherwise forward the request to the leader
     if (dataGroupMember.getLeader() != null) {
@@ -94,7 +93,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
           dataGroupMember.getLeader());
       AsyncDataClient client = (AsyncDataClient) dataGroupMember.getAsyncClient(dataGroupMember.getLeader());
       try {
-        client.pullSnapshot(request, new GenericForwardHandler<>(resultHandler));
+        client.pullSnapshot(request, resultHandler);
       } catch (TException e) {
         resultHandler.onError(e);
       }

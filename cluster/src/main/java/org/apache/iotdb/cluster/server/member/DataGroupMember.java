@@ -389,7 +389,7 @@ public class DataGroupMember extends RaftMember {
         thatDataLastLogTerm);
 
     // check meta logs
-    // term of the electors's MetaGroupMember is not verified, so 0 and 1 are used to make sure
+    // term of the electors' MetaGroupMember is not verified, so 0 and 1 are used to make sure
     // the verification does not fail
     long metaResponse = metaGroupMember.verifyElector(thatMetaLastLogIndex, thatMetaLastLogTerm);
     if (metaResponse == Response.RESPONSE_LOG_MISMATCH) {
@@ -429,7 +429,7 @@ public class DataGroupMember extends RaftMember {
    */
   public void sendSnapshot(SendSnapshotRequest request) throws SnapshotApplicationException {
     logger.debug("{}: received a snapshot", name);
-    PartitionedSnapshot snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
+    PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
 
     snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
     if (logger.isDebugEnabled()) {
@@ -595,7 +595,7 @@ public class DataGroupMember extends RaftMember {
    *
    * @param snapshot
    */
-  private void applyPartitionedSnapshot(PartitionedSnapshot snapshot)
+  private void applyPartitionedSnapshot(PartitionedSnapshot<FileSnapshot> snapshot)
       throws SnapshotApplicationException {
     synchronized (super.getSnapshotApplyLock()) {
       List<Integer> slots = ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(getHeader());
@@ -784,18 +784,26 @@ public class DataGroupMember extends RaftMember {
         throw new IOException("No available client for " + node.toString());
       }
       ByteBuffer buffer = SyncClientAdaptor.readFile(client, remotePath, offset, fetchSize);
-      if (buffer == null || buffer.limit() - buffer.position() == 0) {
+      int len = writeBuffer(buffer, dest);
+      if (len == 0) {
         break;
       }
-
-      // notice: the buffer returned by thrift is a slice of a larger buffer which contains
-      // the whole response, so buffer.position() is not 0 initially and buffer.limit() is
-      // not the size of the downloaded chunk
-      dest.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
-          buffer.limit() - buffer.position());
-      offset += buffer.limit() - buffer.position();
+      offset += len;
     }
     dest.flush();
+  }
+
+  private int writeBuffer(ByteBuffer buffer, OutputStream dest) throws IOException {
+    if (buffer == null || buffer.limit() - buffer.position() == 0) {
+      return 0;
+    }
+
+    // notice: the buffer returned by thrift is a slice of a larger buffer which contains
+    // the whole response, so buffer.position() is not 0 initially and buffer.limit() is
+    // not the size of the downloaded chunk
+    dest.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
+        buffer.limit() - buffer.position());
+    return buffer.limit() - buffer.position();
   }
 
   private void downloadFileSync(Node node, String remotePath, OutputStream dest)
@@ -812,16 +820,11 @@ public class DataGroupMember extends RaftMember {
     try {
       while (true) {
         ByteBuffer buffer = client.readFile(remotePath, offset, fetchSize);
-        if (buffer == null || buffer.limit() - buffer.position() == 0) {
+        int len = writeBuffer(buffer, dest);
+        if (len == 0) {
           break;
         }
-
-        // notice: the buffer returned by thrift is a slice of a larger buffer which contains
-        // the whole response, so buffer.position() is not 0 initially and buffer.limit() is
-        // not the size of the downloaded chunk
-        dest.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
-            buffer.limit() - buffer.position());
-        offset += buffer.limit() - buffer.position();
+        offset += len;
       }
     } finally {
       putBackSyncClient(client);
@@ -876,7 +879,7 @@ public class DataGroupMember extends RaftMember {
       Map<Integer, ByteBuffer> resultMap = new HashMap<>();
       logManager.takeSnapshot();
 
-      PartitionedSnapshot allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
+      PartitionedSnapshot<Snapshot> allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
       for (int requiredSlot : requiredSlots) {
         Snapshot snapshot = allSnapshot.getSnapshot(requiredSlot);
         if (snapshot != null) {
@@ -899,7 +902,7 @@ public class DataGroupMember extends RaftMember {
   public void pullNodeAdditionSnapshots(List<Integer> slots, Node newNode) {
     synchronized (logManager) {
       logger.info("{} pulling {} slots from remote", name, slots.size());
-      PartitionedSnapshot snapshot = (PartitionedSnapshot) logManager.getSnapshot();
+      PartitionedSnapshot<Snapshot> snapshot = (PartitionedSnapshot) logManager.getSnapshot();
       Map<Integer, Node> prevHolders = ((SlotPartitionTable) metaGroupMember.getPartitionTable())
           .getPreviousNodeMap(newNode);
 
@@ -1058,7 +1061,7 @@ public class DataGroupMember extends RaftMember {
             partitionId * StorageEngine.getTimePartitionInterval());
         DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
         if (localDataMember.getHeader().equals(this.getHeader())) {
-          localListPair.add(new Pair<Long, Boolean>(partitionId, pair.right));
+          localListPair.add(new Pair<>(partitionId, pair.right));
         }
       }
       try {
@@ -1527,7 +1530,7 @@ public class DataGroupMember extends RaftMember {
     List<PartialPath> allStorageGroupNames = IoTDB.metaManager.getAllStorageGroupPaths();
     TimePartitionFilter filter = (storageGroupName, timePartitionId) -> {
       int slot = SlotPartitionTable
-          .slotStrategy.calculateSlotByPartitionNum(storageGroupName, timePartitionId,
+          .getSlotStrategy().calculateSlotByPartitionNum(storageGroupName, timePartitionId,
               ClusterConstant.SLOT_NUM);
       return slotSet.contains(slot);
     };
@@ -1747,7 +1750,7 @@ public class DataGroupMember extends RaftMember {
   }
 
   @TestOnly
-  void setLogManager(PartitionedSnapshotLogManager logManager) {
+  void setLogManager(PartitionedSnapshotLogManager<Snapshot> logManager) {
     if (this.logManager != null) {
       this.logManager.close();
     }

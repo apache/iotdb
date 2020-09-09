@@ -55,7 +55,6 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   long snapshotLastLogIndex;
   long snapshotLastLogTerm;
   PartitionTable partitionTable;
-  private Node header;
   Node thisNode;
   DataGroupMember dataGroupMember;
 
@@ -64,7 +63,6 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
       Node header, Node thisNode, SnapshotFactory<T> factory, DataGroupMember dataGroupMember) {
     super(new SyncLogDequeSerializer(header.nodeIdentifier), logApplier, header.toString());
     this.partitionTable = partitionTable;
-    this.header = header;
     this.factory = factory;
     this.thisNode = thisNode;
     this.dataGroupMember = dataGroupMember;
@@ -89,7 +87,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     List<StorageGroupMNode> allSgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
-      int slot = SlotPartitionTable.slotStrategy.calculateSlotByTime(storageGroupName, 0,
+      int slot = SlotPartitionTable.getSlotStrategy().calculateSlotByTime(storageGroupName, 0,
           ((SlotPartitionTable) partitionTable).getTotalSlotNumbers());
 
       Collection<TimeseriesSchema> schemas = slotTimeseries.computeIfAbsent(slot,

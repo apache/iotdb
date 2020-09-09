@@ -36,7 +36,6 @@ public class RemoteTsFileResource extends TsFileResource {
 
   private Node source;
   private boolean isRemote = false;
-  private byte[] md5;
   private boolean withModification = false;
 
   public RemoteTsFileResource() {
@@ -50,7 +49,6 @@ public class RemoteTsFileResource extends TsFileResource {
 
   private RemoteTsFileResource(TsFileResource other) throws IOException {
     super(other);
-    md5 = getFileMd5(other);
     withModification = new File(getModFile().getFilePath()).exists();
     setClosed(true);
   }
@@ -59,11 +57,6 @@ public class RemoteTsFileResource extends TsFileResource {
     this(other);
     this.source = source;
     this.isRemote = true;
-  }
-
-  private byte[] getFileMd5(TsFileResource resource) {
-    // TODO-Cluster#353: implement
-    return new byte[0];
   }
 
   @Override
@@ -89,8 +82,6 @@ public class RemoteTsFileResource extends TsFileResource {
   public void serialize(DataOutputStream dataOutputStream) {
     SerializeUtils.serialize(source, dataOutputStream);
     try {
-      dataOutputStream.writeInt(md5.length);
-      dataOutputStream.write(md5);
       // the path here is only for the remote node to get a download link, so it does not matter
       // if it is absolute
       SerializeUtils.serialize(getTsFile().getPath(), dataOutputStream);
@@ -123,9 +114,6 @@ public class RemoteTsFileResource extends TsFileResource {
   public void deserialize(ByteBuffer buffer) {
     source = new Node();
     SerializeUtils.deserialize(source, buffer);
-    int md5Length = buffer.getInt();
-    md5 = new byte[md5Length];
-    buffer.get(md5);
     setFile(new File(SerializeUtils.deserializeString(buffer)));
 
     int deviceNum = buffer.getInt();
@@ -162,10 +150,6 @@ public class RemoteTsFileResource extends TsFileResource {
 
   public boolean isRemote() {
     return isRemote;
-  }
-
-  public byte[] getMd5() {
-    return md5;
   }
 
   public void setRemote(boolean remote) {

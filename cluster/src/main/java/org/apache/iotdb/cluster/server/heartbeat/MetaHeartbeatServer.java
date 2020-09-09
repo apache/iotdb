@@ -53,7 +53,7 @@ public class MetaHeartbeatServer extends HeartbeatServer {
   @Override
   TProcessor getProcessor() {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new AsyncProcessor(metaClusterServer);
+      return new AsyncProcessor<>(metaClusterServer);
     } else {
       return new Processor<>(metaClusterServer);
     }

@@ -236,7 +236,7 @@ public class MemberTest {
       }
 
       @Override
-      public DataGroupMember getLocalDataMember(Node header, AsyncMethodCallback resultHandler,
+      public DataGroupMember getLocalDataMember(Node header,
           Object request) {
         return getDataGroupMember(header);
       }

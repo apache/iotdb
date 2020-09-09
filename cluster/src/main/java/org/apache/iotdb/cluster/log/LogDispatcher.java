@@ -30,7 +30,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,8 +60,14 @@ public class LogDispatcher {
   }
 
   public void offer(SendLogRequest log) {
-    for (BlockingQueue<SendLogRequest> nodeLogQueue : nodeLogQueues) {
-      nodeLogQueue.offer(log);
+    for (int i = 0; i < nodeLogQueues.size(); i++) {
+      BlockingQueue<SendLogRequest> nodeLogQueue = nodeLogQueues.get(i);
+      try {
+        nodeLogQueue.put(log);
+      } catch (InterruptedException e) {
+        logger.error("Interrupted when inserting {} into queue[{}]", log, i);
+        Thread.currentThread().interrupt();
+      }
     }
     if (logger.isDebugEnabled()) {
       logger.debug("{} is enqueued in {} queues", log.log, nodeLogQueues.size());
@@ -81,19 +86,52 @@ public class LogDispatcher {
 
   public static class SendLogRequest {
 
-    public Log log;
-    public AtomicInteger voteCounter;
-    public AtomicBoolean leaderShipStale;
-    public AtomicLong newLeaderTerm;
-    public AppendEntryRequest appendEntryRequest;
+    private Log log;
+    private AtomicInteger voteCounter;
+    private AtomicBoolean leaderShipStale;
+    private AtomicLong newLeaderTerm;
+    private AppendEntryRequest appendEntryRequest;
 
     public SendLogRequest(Log log, AtomicInteger voteCounter,
         AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm,
         AppendEntryRequest appendEntryRequest) {
       this.log = log;
+      this.setVoteCounter(voteCounter);
+      this.setLeaderShipStale(leaderShipStale);
+      this.setNewLeaderTerm(newLeaderTerm);
+      this.setAppendEntryRequest(appendEntryRequest);
+    }
+
+    public AtomicInteger getVoteCounter() {
+      return voteCounter;
+    }
+
+    public void setVoteCounter(AtomicInteger voteCounter) {
       this.voteCounter = voteCounter;
+    }
+
+    public AtomicBoolean getLeaderShipStale() {
+      return leaderShipStale;
+    }
+
+    public void setLeaderShipStale(AtomicBoolean leaderShipStale) {
       this.leaderShipStale = leaderShipStale;
+    }
+
+    public AtomicLong getNewLeaderTerm() {
+      return newLeaderTerm;
+    }
+
+    void setNewLeaderTerm(AtomicLong newLeaderTerm) {
       this.newLeaderTerm = newLeaderTerm;
+    }
+
+    public AppendEntryRequest getAppendEntryRequest() {
+      return appendEntryRequest;
+    }
+
+    public void setAppendEntryRequest(
+        AppendEntryRequest appendEntryRequest) {
       this.appendEntryRequest = appendEntryRequest;
     }
   }
@@ -101,7 +139,6 @@ public class LogDispatcher {
   class DispatcherThread implements Runnable {
 
     private Node receiver;
-    private Peer peer;
     private BlockingQueue<SendLogRequest> logBlockingDeque;
     private List<SendLogRequest> currBatch = new ArrayList<>();
 
@@ -109,8 +146,6 @@ public class LogDispatcher {
         BlockingQueue<SendLogRequest> logBlockingDeque) {
       this.receiver = receiver;
       this.logBlockingDeque = logBlockingDeque;
-      this.peer = member.getPeerMap().computeIfAbsent(receiver,
-          r -> new Peer(member.getLogManager().getLastLogIndex()));
     }
 
     @Override
@@ -138,8 +173,9 @@ public class LogDispatcher {
     }
 
     private void sendLog(SendLogRequest logRequest) {
-      member.sendLogToFollower(logRequest.log, logRequest.voteCounter, receiver,
-          logRequest.leaderShipStale, logRequest.newLeaderTerm, logRequest.appendEntryRequest);
+      member.sendLogToFollower(logRequest.log, logRequest.getVoteCounter(), receiver,
+          logRequest.getLeaderShipStale(), logRequest.getNewLeaderTerm(),
+          logRequest.getAppendEntryRequest());
     }
   }
 }

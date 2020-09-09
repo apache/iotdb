@@ -22,12 +22,25 @@ package org.apache.iotdb.cluster.utils;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.thrift.TProcessor;
+import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.server.TServer;
+import org.apache.thrift.server.TThreadPoolServer;
+import org.apache.thrift.transport.TFastFramedTransport;
+import org.apache.thrift.transport.TServerTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -210,5 +223,33 @@ public class ClusterUtils {
       // find config InConsistence, stop building cluster
       throw new ConfigInconsistentException();
     }
+  }
+
+  public static TServer createTThreadPoolServer(TServerTransport socket,
+      String clientThreadPrefix, TProcessor processor, TProtocolFactory protocolFactory) {
+    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+    TThreadPoolServer.Args poolArgs =
+        new TThreadPoolServer.Args(socket).maxWorkerThreads(config.getMaxConcurrentClientNum())
+            .minWorkerThreads(CommonUtils.getCpuCores());
+
+    poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
+        poolArgs.maxWorkerThreads, poolArgs.stopTimeoutVal, poolArgs.stopTimeoutUnit,
+        new SynchronousQueue<>(), new ThreadFactory() {
+      private AtomicLong threadIndex = new AtomicLong(0);
+
+      @Override
+      public Thread newThread(Runnable r) {
+        return new Thread(r, clientThreadPrefix + threadIndex.incrementAndGet());
+      }
+    }));
+    poolArgs.processor(processor);
+    poolArgs.protocolFactory(protocolFactory);
+    // async service requires FramedTransport
+    poolArgs.transportFactory(new TFastFramedTransport.Factory(
+        IoTDBDescriptor.getInstance().getConfig().getThriftInitBufferSize(),
+        IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
+
+    // run the thrift server in a separate thread so that the main thread is not blocked
+    return new TThreadPoolServer(poolArgs);
   }
 }

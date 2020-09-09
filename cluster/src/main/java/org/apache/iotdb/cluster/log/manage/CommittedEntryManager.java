@@ -158,7 +158,7 @@ public class CommittedEntryManager {
    * < dummyIndex, or return the entry's log for given index
    * @throws EntryCompactedException
    */
-  public Log getEntry(long index) throws EntryCompactedException {
+  Log getEntry(long index) throws EntryCompactedException {
     long dummyIndex = getDummyIndex();
     if (index < dummyIndex) {
       logger.info(

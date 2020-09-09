@@ -53,7 +53,7 @@ public class JoinClusterHandler implements AsyncMethodCallback<AddNodeResponse> 
     }
   }
 
-  public void setResponse(AtomicReference response) {
+  public void setResponse(AtomicReference<AddNodeResponse> response) {
     this.response = response;
   }
 

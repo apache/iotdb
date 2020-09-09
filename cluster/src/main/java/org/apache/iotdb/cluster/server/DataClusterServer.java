@@ -127,8 +127,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     headerGroupMap.put(dataGroupMember.getHeader(), dataGroupMember);
   }
 
-  private DataAsyncService getDataAsyncService(Node header, AsyncMethodCallback resultHandler,
-      Object request) {
+  private <T> DataAsyncService getDataAsyncService(Node header,
+      AsyncMethodCallback<T> resultHandler, Object request) {
     return asyncServiceMap.computeIfAbsent(header, h -> {
       DataGroupMember dataMember = getDataMember(h, resultHandler, request);
       return dataMember != null ? new DataAsyncService(dataMember) : null;
@@ -149,7 +149,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    *                      is only used in logs for tracing
    * @return
    */
-  public DataGroupMember getDataMember(Node header, AsyncMethodCallback resultHandler,
+  public <T> DataGroupMember getDataMember(Node header, AsyncMethodCallback<T> resultHandler,
       Object request) {
     // if the resultHandler is not null, then the request is a external one and must be with a
     // header
@@ -446,7 +446,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   TProcessor getProcessor() {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new AsyncProcessor(this);
+      return new AsyncProcessor<>(this);
     } else {
       return new Processor<>(this);
     }

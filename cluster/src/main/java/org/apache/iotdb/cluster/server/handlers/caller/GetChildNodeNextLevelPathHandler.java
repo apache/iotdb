@@ -47,7 +47,7 @@ public class GetChildNodeNextLevelPathHandler implements AsyncMethodCallback<Set
     logger.warn("Cannot get child node next level path from {}, because", contact, exception);
   }
 
-  public void setResponse(AtomicReference response) {
+  public void setResponse(AtomicReference<Set<String>> response) {
     this.result = response;
   }
 

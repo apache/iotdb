@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.client.async;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.RaftServer;
@@ -45,9 +44,6 @@ public class AsyncDataHeartbeatClient extends AsyncDataClient {
   }
 
   public static class FactoryAsync extends AsyncClientFactory {
-
-    private TProtocolFactory protocolFactory;
-    private AtomicInteger clientCnt = new AtomicInteger();
 
     public FactoryAsync(TProtocolFactory protocolFactory) {
       this.protocolFactory = protocolFactory;

@@ -48,7 +48,7 @@ public class MetaLogApplier extends BaseApplier {
   public void apply(Log log)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     try {
-      logger.debug("MetaMember [{}] start applying Log {}", metaGroupMember.getName(), log);
+      logger.debug("MetaMember [{}] starts applying Log {}", metaGroupMember.getName(), log);
       if (log instanceof AddNodeLog) {
         AddNodeLog addNodeLog = (AddNodeLog) log;
         Node newNode = addNodeLog.getNewNode();

@@ -62,7 +62,7 @@ public class PullSnapshotTask implements Callable<Void> {
   private DataGroupMember newMember;
 
   private PullSnapshotRequest request;
-  private SnapshotFactory snapshotFactory;
+  private SnapshotFactory<Snapshot> snapshotFactory;
 
   private File snapshotSave;
   private Random random = new Random();
@@ -76,7 +76,7 @@ public class PullSnapshotTask implements Callable<Void> {
    *                     otherwise it should bu null
    */
   public PullSnapshotTask(PullSnapshotTaskDescriptor descriptor,
-      DataGroupMember newMember, SnapshotFactory snapshotFactory, File snapshotSave) {
+      DataGroupMember newMember, SnapshotFactory<Snapshot> snapshotFactory, File snapshotSave) {
     this.descriptor = descriptor;
     this.newMember = newMember;
     this.snapshotFactory = snapshotFactory;

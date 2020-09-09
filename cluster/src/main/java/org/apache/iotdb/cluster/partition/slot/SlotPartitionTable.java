@@ -30,8 +30,6 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy.DefaultStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +41,7 @@ import org.slf4j.LoggerFactory;
 public class SlotPartitionTable implements PartitionTable {
 
   private static final Logger logger = LoggerFactory.getLogger(SlotPartitionTable.class);
-  public static SlotStrategy slotStrategy = new DefaultStrategy();
+  private static SlotStrategy slotStrategy = new DefaultStrategy();
 
   private int replicationNum =
       ClusterDescriptor.getInstance().getConfig().getReplicationNum();
@@ -67,7 +65,6 @@ public class SlotPartitionTable implements PartitionTable {
   private List<PartitionGroup> localGroups;
 
   private Node thisNode;
-  private MManager mManager = IoTDB.metaManager;
 
   private List<PartitionGroup> globalGroups;
 
@@ -88,6 +85,14 @@ public class SlotPartitionTable implements PartitionTable {
     this.thisNode = thisNode;
     this.totalSlotNumbers = totalSlotNumbers;
     init(nodes);
+  }
+
+  public static SlotStrategy getSlotStrategy() {
+    return slotStrategy;
+  }
+
+  public static void setSlotStrategy(SlotStrategy slotStrategy) {
+    SlotPartitionTable.slotStrategy = slotStrategy;
   }
 
   private void init(Collection<Node> nodes) {
@@ -191,7 +196,8 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public Node routeToHeaderByTime(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
-      int slot = slotStrategy.calculateSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
+      int slot = getSlotStrategy()
+          .calculateSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
       Node node = slotNodes[slot];
       logger.trace("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
           slot, node);

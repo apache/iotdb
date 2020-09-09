@@ -290,7 +290,7 @@ public class ClientServer extends TSServiceImpl {
         Set<Node> queriedNodes = headerEntry.getValue();
 
         for (Node queriedNode : queriedNodes) {
-          GenericHandler handler = new GenericHandler(queriedNode, new AtomicReference());
+          GenericHandler<Void> handler = new GenericHandler<>(queriedNode, new AtomicReference<>());
           try {
             if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
               AsyncDataClient client = metaGroupMember

@@ -135,7 +135,7 @@ public class MetaPuller {
       List<PartialPath> prefixPaths, List<MeasurementSchema> results) {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the node is in the target group, synchronize with leader should be enough
-      metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), null,
+      metaGroupMember.getLocalDataMember(partitionGroup.getHeader(),
           "Pull timeseries of " + prefixPaths).syncLeader();
       int preSize = results.size();
       for (PartialPath prefixPath : prefixPaths) {

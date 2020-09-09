@@ -132,7 +132,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       if (client == null) {
         throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
       }
-      PullSchemaResp pullSchemaResp = client.pullTimeSeriesSchema(request);
+      PullSchemaResp pullSchemaResp = client.pullMeasurementSchema(request);
       putBackSyncClient(client);
       return pullSchemaResp;
     } catch (IllegalPathException e) {

@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -38,7 +39,6 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.THsHaServer;
 import org.apache.thrift.server.THsHaServer.Args;
 import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TServerTransport;
@@ -162,29 +162,8 @@ public abstract class HeartbeatServer {
 
   private TServer getSyncHeartbeatServer() throws TTransportException {
     heartbeatSocket = getHeartbeatServerSocket();
-    TThreadPoolServer.Args poolArgs =
-        new TThreadPoolServer.Args(heartbeatSocket)
-            .maxWorkerThreads(config.getMaxConcurrentClientNum())
-            .minWorkerThreads(CommonUtils.getCpuCores());
-
-    poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
-        poolArgs.maxWorkerThreads, poolArgs.stopTimeoutVal, poolArgs.stopTimeoutUnit,
-        new SynchronousQueue<>(), new ThreadFactory() {
-      private AtomicLong threadIndex = new AtomicLong(0);
-
-      @Override
-      public Thread newThread(Runnable r) {
-        return new Thread(r, getClientThreadPrefix() + threadIndex.incrementAndGet());
-      }
-    }));
-    poolArgs.processor(getProcessor());
-    poolArgs.protocolFactory(heartbeatProtocolFactory);
-    // async service requires FramedTransport
-    poolArgs.transportFactory(new TFastFramedTransport.Factory(
-        IoTDBDescriptor.getInstance().getConfig().getThriftInitBufferSize(),
-        IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
-
-    return new TThreadPoolServer(poolArgs);
+    return ClusterUtils.createTThreadPoolServer(heartbeatSocket, getClientThreadPrefix(),
+        getProcessor(), heartbeatProtocolFactory);
   }
 
   private TServer getAsyncHeartbeatServer() throws TTransportException {

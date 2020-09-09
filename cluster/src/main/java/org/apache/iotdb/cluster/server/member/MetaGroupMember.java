@@ -197,10 +197,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -595,24 +593,28 @@ public class MetaGroupMember extends RaftMember {
           thisNode.getNodeIdentifier());
       setNodeIdentifier(genNodeIdentifier());
     } else if (resp.getRespNum() == Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT) {
-      if (logger.isInfoEnabled()) {
-        CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
-        String parameters =
-            (checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval")
-                + (checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt")
-                + (checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number")
-                + (checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes")
-                + (checkStatusResponse.isClusterNameEquals() ? "" : ", clusterName");
-        logger.info(
-            "The start up configuration{} conflicts the cluster. Please reset the configurations. ",
-            parameters.substring(1));
-      }
-      throw new ConfigInconsistentException();
+      handleConfigInconsistency(resp);
     } else {
       logger
           .warn("Joining the cluster is rejected by {} for response {}", node, resp.getRespNum());
     }
     return false;
+  }
+
+  private void handleConfigInconsistency(AddNodeResponse resp) throws ConfigInconsistentException {
+    if (logger.isInfoEnabled()) {
+      CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
+      String parameters =
+          (checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval")
+              + (checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt")
+              + (checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number")
+              + (checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes")
+              + (checkStatusResponse.isClusterNameEquals() ? "" : ", clusterName");
+      logger.info(
+          "The start up configuration{} conflicts the cluster. Please reset the configurations. ",
+          parameters.substring(1));
+    }
+    throw new ConfigInconsistentException();
   }
 
   /**
@@ -1777,13 +1779,16 @@ public class MetaGroupMember extends RaftMember {
       return false;
     }
     for (String measurementId : insertPlan.getMeasurements()) {
-      seriesList.add(
-          new StringContainer(new String[]{deviceId.getFullPath(), measurementId},
-              TsFileConstant.PATH_SEPARATOR)
-              .toString());
+      seriesList.add(deviceId.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurementId);
     }
     PartitionGroup partitionGroup = partitionTable.route(storageGroupName.getFullPath(), 0);
     List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
+
+    return autoCreateTimeseries(unregisteredSeriesList, seriesList, insertPlan);
+  }
+
+  private boolean autoCreateTimeseries(List<String> unregisteredSeriesList,
+      List<String> seriesList, InsertPlan insertPlan) {
     for (String seriesPath : unregisteredSeriesList) {
       int index = seriesList.indexOf(seriesPath);
       TSDataType dataType;
@@ -1830,7 +1835,6 @@ public class MetaGroupMember extends RaftMember {
    */
   private List<String> getUnregisteredSeriesList(List<String> seriesList,
       PartitionGroup partitionGroup) {
-    List<String> unregistered = new ArrayList<>();
     for (Node node : partitionGroup) {
       try {
         List<String> result;
@@ -1846,8 +1850,7 @@ public class MetaGroupMember extends RaftMember {
         }
 
         if (result != null) {
-          unregistered.addAll(result);
-          break;
+          return result;
         }
       } catch (TException | IOException e) {
         logger.error("{}: cannot getting unregistered {} and other {} paths from {}", name,
@@ -1858,7 +1861,7 @@ public class MetaGroupMember extends RaftMember {
             seriesList.get(0), seriesList.get(seriesList.size() - 1), node, e);
       }
     }
-    return new ArrayList<>(unregistered);
+    return Collections.emptyList();
   }
 
   /**
@@ -1931,26 +1934,8 @@ public class MetaGroupMember extends RaftMember {
     Client client = getSyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
     try {
 
-//            if (plan instanceof CreateTimeSeriesPlan) {
-//        CreateTimeSeriesPlan timeSeriesPlan = (CreateTimeSeriesPlan) plan;
-//        if (cli == null) {
-//          TSocket tSocket = new TSocket("127.0.0.1", 6669);
-//          tSocket.open();
-//          cli = new TSIService.Client(new TBinaryProtocol(new TFastFramedTransport(tSocket)));
-//          TSOpenSessionReq tsOpenSessionReq = new TSOpenSessionReq(
-//              TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
-//          tsOpenSessionReq.setUsername("root");
-//          tsOpenSessionReq.setPassword("root");
-//          TSOpenSessionResp tsOpenSessionResp = cli.openSession(tsOpenSessionReq);
-//          sId = tsOpenSessionResp.sessionId;
-//        }
-//        TSCreateTimeseriesReq re =
-//            new TSCreateTimeseriesReq(sId, timeSeriesPlan.getPath().getFullPath(), 0, 0, 0);
-//        return cli.createTimeseries(re);
-//      }
-
       ExecutNonQueryReq req = new ExecutNonQueryReq();
-      req.setPlanBytes(PlanSerializer.instance.serialize(plan));
+      req.setPlanBytes(PlanSerializer.getInstance().serialize(plan));
       if (header != null) {
         req.setHeader(header);
       }
@@ -2050,7 +2035,7 @@ public class MetaGroupMember extends RaftMember {
       List<String> prefixPaths) {
     if (partitionGroup.contains(thisNode)) {
       // the node is in the target group, synchronize with leader should be enough
-      getLocalDataMember(partitionGroup.getHeader(), null,
+      getLocalDataMember(partitionGroup.getHeader(),
           "Pull timeseries of " + prefixPaths).syncLeader();
       return;
     }
@@ -2591,8 +2576,7 @@ public class MetaGroupMember extends RaftMember {
       StorageEngineException, QueryProcessException {
     if (partitionGroup.contains(thisNode)) {
       // the target storage group contains this node, perform a local query
-      DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader(),
-          null, String.format("Query: %s, time filter: %s, queryId: %d", path, timeFilter,
+      DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader(), String.format("Query: %s, time filter: %s, queryId: %d", path, timeFilter,
               context.getQueryId()));
       IPointReader seriesPointReader = dataGroupMember
           .getSeriesPointReader(path, deviceMeasurements, dataType, timeFilter, valueFilter,
@@ -2820,7 +2804,7 @@ public class MetaGroupMember extends RaftMember {
               paths);
         }
         if (paths != null) {
-          // query next group
+          // a non-null result contains correct result even if it is empty, so query next group
           return paths;
         }
       } catch (IOException | TException e) {
@@ -2834,6 +2818,7 @@ public class MetaGroupMember extends RaftMember {
     return Collections.emptyList();
   }
 
+  @SuppressWarnings("java:S1168") // null and empty list are different
   private List<PartialPath> getMatchedPaths(Node node, Node header, List<String> pathsToQuery)
       throws IOException, TException, InterruptedException {
     List<String> paths;
@@ -2847,15 +2832,23 @@ public class MetaGroupMember extends RaftMember {
       paths = syncDataClient.getAllPaths(header, pathsToQuery);
       putBackSyncClient(syncDataClient);
     }
-    List<PartialPath> partialPaths = new ArrayList<>();
-    for (String path : paths) {
-      try {
-        partialPaths.add(new PartialPath(path));
-      } catch (IllegalPathException e) {
-        // ignore
+
+    if (paths != null) {
+      // paths may be empty, implying that the group does not contain matched paths, so we do not
+      // need to query other nodes in the group
+      List<PartialPath> partialPaths = new ArrayList<>();
+      for (String path : paths) {
+        try {
+          partialPaths.add(new PartialPath(path));
+        } catch (IllegalPathException e) {
+          // ignore
+        }
       }
+      return partialPaths;
+    } else {
+      // a null implies a network failure, so we have to query other nodes in the group
+      return null;
     }
-    return partialPaths;
   }
 
   /**
@@ -3184,7 +3177,7 @@ public class MetaGroupMember extends RaftMember {
     lastReportedLogIndex = logManager.getLastLogIndex();
     return new MetaMemberReport(character, leader, term.get(),
         logManager.getLastLogTerm(), lastReportedLogIndex, logManager.getCommitLogIndex()
-        , logManager.getCommitLogTerm(), readOnly, lastHeartbeatReceivedTime, lastReportedLogIndex);
+        , logManager.getCommitLogTerm(), readOnly, lastHeartbeatReceivedTime, prevLastLogIndex);
   }
 
   /**
@@ -3214,14 +3207,12 @@ public class MetaGroupMember extends RaftMember {
    * Get a local DataGroupMember that is in the group of "header" and should process "request".
    *
    * @param header        the header of the group which the local node is in
-   * @param resultHandler can be set to null if the request is an internal request
    * @param request       the toString() of this parameter should explain what the request is and it
    *                      is only used in logs for tracing
    * @return
    */
-  public DataGroupMember getLocalDataMember(Node header,
-      AsyncMethodCallback resultHandler, Object request) {
-    return dataClusterServer.getDataMember(header, resultHandler, request);
+  public DataGroupMember getLocalDataMember(Node header, Object request) {
+    return dataClusterServer.getDataMember(header, null, request);
   }
 
   /**

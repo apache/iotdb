@@ -117,42 +117,38 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
   private boolean appendEntryAsync(Log log, AppendEntryRequest request)
       throws TException, InterruptedException {
-    AtomicBoolean appendSucceed = new AtomicBoolean(false);
-    LogCatchUpHandler handler = new LogCatchUpHandler();
-    handler.setAppendSucceed(appendSucceed);
-    handler.setRaftMember(raftMember);
-    handler.setFollower(node);
-    handler.setLog(log);
-    request.setEntry(log.serialize());
-
-    synchronized (appendSucceed) {
-      appendSucceed.set(false);
+    LogCatchUpHandler handler = getCatchUpHandler(log, request);
+    synchronized (handler.getAppendSucceed()) {
       AsyncClient client = raftMember.getAsyncClient(node);
       if (client == null) {
         return false;
       }
       client.appendEntry(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-      appendSucceed.wait(RaftServer.getWriteOperationTimeoutMS());
+      handler.getAppendSucceed().wait(RaftServer.getWriteOperationTimeoutMS());
     }
-    return appendSucceed.get();
+    return handler.getAppendSucceed().get();
   }
 
-  private boolean appendEntrySync(Log log, AppendEntryRequest request) {
+  private LogCatchUpHandler getCatchUpHandler(Log log, AppendEntryRequest request) {
     AtomicBoolean appendSucceed = new AtomicBoolean(false);
-
     LogCatchUpHandler handler = new LogCatchUpHandler();
     handler.setAppendSucceed(appendSucceed);
     handler.setRaftMember(raftMember);
     handler.setFollower(node);
     handler.setLog(log);
     request.setEntry(log.serialize());
+    return handler;
+  }
+
+  private boolean appendEntrySync(Log log, AppendEntryRequest request) {
+    LogCatchUpHandler handler = getCatchUpHandler(log, request);
 
     Client client = raftMember.getSyncClient(node);
     try {
       long result = client.appendEntry(request);
       handler.onComplete(result);
-      return appendSucceed.get();
+      return handler.getAppendSucceed().get();
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       handler.onError(e);

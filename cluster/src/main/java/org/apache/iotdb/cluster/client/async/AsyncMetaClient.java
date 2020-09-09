@@ -107,7 +107,7 @@ public class AsyncMetaClient extends AsyncClient {
     return ___currentMethod == null;
   }
 
-  TAsyncMethodCall getCurrMethod() {
+  TAsyncMethodCall<Object> getCurrMethod() {
     return ___currentMethod;
   }
 }

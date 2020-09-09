@@ -253,6 +253,7 @@ public class ClusterMain {
    * Developers may perform pre-start customizations here for debugging or experiments.
    *
    */
+  @SuppressWarnings("java:S125") // leaving examples
   private static void preStartCustomize() {
     // customize data distribution
     // The given example tries to divide storage groups like "root.sg_0", "root.sg_1"... into k

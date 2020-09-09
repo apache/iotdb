@@ -86,8 +86,7 @@ public class DataLogApplierTest extends IoTDBTest {
     }
 
     @Override
-    public DataGroupMember getLocalDataMember(Node header,
-                                              AsyncMethodCallback resultHandler, Object request) {
+    public DataGroupMember getLocalDataMember(Node header, Object request) {
       return testDataGroupMember;
     }
 

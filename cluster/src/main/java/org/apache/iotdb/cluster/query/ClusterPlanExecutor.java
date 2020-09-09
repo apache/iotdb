@@ -132,27 +132,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected int getPathsNum(PartialPath path) throws MetadataException {
-    // make sure this node knows all storage groups
-    try {
-      metaGroupMember.syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e.getMessage());
-    }
-    // get all storage groups this path may belong to
-    // the key is the storage group name and the value is the path to be queried with storage group
-    // added, e.g:
-    // "root.*" will be translated into:
-    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(path);
-    logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
-    int ret;
-    try {
-      ret = getPathCount(sgPathMap, -1);
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e.getMessage());
-    }
-    logger.debug("The number of paths satisfying {} is {}", path, ret);
-    return ret;
+    return getNodesNumInGivenLevel(path, -1);
   }
 
   @Override
@@ -161,7 +141,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     try {
       metaGroupMember.syncLeaderWithConsistencyCheck();
     } catch (CheckConsistencyException e) {
-      throw new MetadataException(e.getMessage());
+      throw new MetadataException(e);
     }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
@@ -316,7 +296,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     ConcurrentSkipListSet<PartialPath> nodeSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
-    List<Future> futureList = new ArrayList<>();
+    List<Future<Void>> futureList = new ArrayList<>();
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
       futureList.add(pool.submit(() -> {
         List<PartialPath> paths;
@@ -329,7 +309,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         return null;
       }));
     }
-    for (Future future : futureList) {
+    for (Future<Void> future : futureList) {
       try {
         future.get();
       } catch (InterruptedException e) {
@@ -419,7 +399,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
-    List<Future> futureList = new ArrayList<>();
+    List<Future<Void>> futureList = new ArrayList<>();
 
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
       futureList.add(pool.submit(() -> {
@@ -434,10 +414,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
         } else {
           logger.error("Fail to get next children of {} from {}", path, group);
         }
+        return null;
       }));
     }
 
-    for (Future future : futureList) {
+    for (Future<Void> future : futureList) {
       try {
         future.get();
       } catch (InterruptedException e) {
@@ -532,7 +513,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
           globalGroups.size());
     }
 
-    List<Future> futureList = new ArrayList<>();
+    List<Future<Void>> futureList = new ArrayList<>();
     for (PartitionGroup group : globalGroups) {
       futureList.add(pool.submit(() -> {
         try {
@@ -540,10 +521,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
         } catch (CheckConsistencyException e) {
           logger.error("Cannot get show timeseries result of {} from {}", plan, group);
         }
+        return null;
       }));
     }
 
-    for (Future future : futureList) {
+    for (Future<Void> future : futureList) {
       try {
         future.get();
       } catch (InterruptedException e) {

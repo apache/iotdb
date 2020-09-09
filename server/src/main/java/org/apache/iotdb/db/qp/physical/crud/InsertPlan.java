@@ -40,8 +40,8 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   // record the failed measurements
   List<String> failedMeasurements;
-  List<Exception> failedExceptions;
-  List<Integer> failedIndices;
+  private List<Exception> failedExceptions;
+  private List<Integer> failedIndices;
 
   public InsertPlan(Operator.OperatorType operatorType) {
     super(false, operatorType);
@@ -99,6 +99,8 @@ public abstract class InsertPlan extends PhysicalPlan {
   public void setDeviceMNode(MNode deviceMNode) {
     this.deviceMNode = deviceMNode;
   }
+
+  abstract public long getMinTime();
 
 
   /**
