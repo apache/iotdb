@@ -30,6 +30,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -688,24 +689,27 @@ public class IoTDBSessionComplexIT {
         CompressionType.SNAPPY);
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    String standard = "Time\n" + "root.1.2.3\n" + "root.sg2.d1.s1\n" + "root.sg1.d1.s1\n";
+    List<String> standard = Arrays.asList("Time", "root.1.2.3", "root.sg2.d1.s1",
+        "root.sg1.d1.s1");
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
       final ResultSetMetaData metaData = resultSet.getMetaData();
       final int colCount = metaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
+      List<String> resultStrs = new ArrayList<>();
       for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
+        resultStrs.add(metaData.getColumnLabel(i + 1));
       }
       while (resultSet.next()) {
         for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
+          resultStrs.add(resultSet.getString(i));
         }
-        resultStr.append("\n");
       }
-      Assert.assertEquals(standard, resultStr.toString());
+      Assert.assertEquals(standard.size(), resultStrs.size());
+      for (String resultStr : resultStrs) {
+        assertTrue(standard.contains(resultStr));
+      }
       List<String> storageGroups = new ArrayList<>();
       storageGroups.add("root.sg1.d1");
       storageGroups.add("root.sg2");
