@@ -79,6 +79,9 @@ public class MergeManager implements IService, MergeManagerMBean {
     return mergeRateLimiter;
   }
 
+  /**
+   * wait by throughoutMbPerSec limit to avoid continuous Write
+   */
   public static void mergeRateLimiterAcquire(RateLimiter limiter, long bytesLength) {
     while (bytesLength >= Integer.MAX_VALUE) {
       limiter.acquire(Integer.MAX_VALUE);

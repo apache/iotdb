@@ -176,11 +176,13 @@ public class HotCompactionUtils {
               maxVersion, measurementId, timeValuePairMap, tsFileResources);
           IChunkWriter chunkWriter = new ChunkWriterImpl(entry.getValue());
           for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
-            MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, timeValuePair.getSize());
             writeTVPair(timeValuePair, chunkWriter);
             targetResource.updateStartTime(deviceId, timeValuePair.getTimestamp());
             targetResource.updateEndTime(deviceId, timeValuePair.getTimestamp());
           }
+          // wait for limit write
+          MergeManager
+              .mergeRateLimiterAcquire(compactionRateLimiter, chunkWriter.getCurrentChunkSize());
           chunkWriter.writeToFileWriter(writer);
         }
         writer.writeVersion(maxVersion);
@@ -202,8 +204,9 @@ public class HotCompactionUtils {
           ChunkMetadata newChunkMetadata = chunkPair.left;
           Chunk newChunk = chunkPair.right;
           if (newChunkMetadata != null && newChunk != null) {
+            // wait for limit write
             MergeManager.mergeRateLimiterAcquire(compactionRateLimiter,
-                newChunk.getRamSize() + newChunkMetadata.getRamSize());
+                newChunk.getHeader().getDataSize() + newChunk.getData().position());
             writer.writeChunk(newChunk, newChunkMetadata);
             targetResource.updateStartTime(deviceId, newChunkMetadata.getStartTime());
             targetResource.updateEndTime(deviceId, newChunkMetadata.getEndTime());
