@@ -327,47 +327,43 @@ public class PhysicalGenerator {
   private PhysicalPlan transformQuery(QueryOperator queryOperator) throws QueryProcessException {
     QueryPlan queryPlan;
 
-    if (queryOperator.isGroupByTime() && queryOperator.isFill()) {
-      queryPlan = new GroupByTimeFillPlan();
-      ((GroupByTimeFillPlan) queryPlan).setInterval(queryOperator.getUnit());
-      ((GroupByTimeFillPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
-      ((GroupByTimeFillPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
-      if (!queryOperator.isLeftCRightO()) {
-        ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
-        ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime() + 1);
+    if (queryOperator.hasAggregation()) {
+      if (queryOperator.isGroupByTime() && queryOperator.isFill()) {
+        queryPlan = new GroupByTimeFillPlan();
+      } else if (queryOperator.isGroupByTime()) {
+        queryPlan = new GroupByTimePlan();
       } else {
-        ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime());
-        ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime());
+        queryPlan = new AggregationPlan();
       }
-      ((GroupByTimeFillPlan) queryPlan)
-          .setAggregations(queryOperator.getSelectOperator().getAggregations());
-      for (String aggregation : queryPlan.getAggregations()) {
-        if (!SQLConstant.LAST_VALUE.equals(aggregation)) {
-          throw new QueryProcessException("Group By Fill only support last_value function");
-        }
-      }
-      ((GroupByTimeFillPlan) queryPlan).setFillType(queryOperator.getFillTypes());
-    } else if (queryOperator.isGroupByTime()) {
-      queryPlan = new GroupByTimePlan();
-      ((GroupByTimePlan) queryPlan).setInterval(queryOperator.getUnit());
-      ((GroupByTimePlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
-      ((GroupByTimePlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
-      if (!queryOperator.isLeftCRightO()) {
-        ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
-        ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime() + 1);
-      } else {
-        ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime());
-        ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime());
-      }
-      ((GroupByTimePlan) queryPlan)
+      ((AggregationPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
 
-      ((GroupByTimePlan) queryPlan).setLevel(queryOperator.getLevel());
-      if (queryOperator.getLevel() >= 0) {
-        for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
-          if (!SQLConstant.COUNT
-              .equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
-            throw new QueryProcessException("group by level only support count now.");
+      if (queryOperator.isGroupByTime()) {
+        ((GroupByTimePlan) queryPlan).setInterval(queryOperator.getUnit());
+        ((GroupByTimePlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
+        ((GroupByTimePlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
+        if (!queryOperator.isLeftCRightO()) {
+          ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
+          ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime() + 1);
+        } else {
+          ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime());
+          ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime());
+        }
+      }
+      if (queryOperator.isFill()) {
+        ((GroupByTimeFillPlan) queryPlan).setFillType(queryOperator.getFillTypes());
+        for (String aggregation : queryPlan.getAggregations()) {
+          if (!SQLConstant.LAST_VALUE.equals(aggregation)) {
+            throw new QueryProcessException("Group By Fill only support last_value function.");
+          }
+        }
+      } else {
+        ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
+        if (queryOperator.getLevel() >= 0) {
+          for (String aggregation : queryPlan.getAggregations()) {
+            if (!SQLConstant.COUNT.equals(aggregation)) {
+              throw new QueryProcessException("Group By Level only support count now.");
+            }
           }
         }
       }
@@ -380,32 +376,13 @@ public class PhysicalGenerator {
       long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
       ((FillQueryPlan) queryPlan).setQueryTime(time);
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
-    } else if (queryOperator.hasAggregation()) {
-      queryPlan = new AggregationPlan();
-      ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
-      ((AggregationPlan) queryPlan)
-          .setAggregations(queryOperator.getSelectOperator().getAggregations());
-      if (queryOperator.getLevel() >= 0) {
-        for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
-          if (!SQLConstant.COUNT
-              .equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
-            throw new QueryProcessException("group by level only support count now.");
-          }
-        }
-      }
     } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
     } else {
       queryPlan = new RawDataQueryPlan();
     }
-    if (queryPlan instanceof LastQueryPlan) {
-      // Last query result set will not be affected by alignment
-      if (!queryOperator.isAlignByTime()) {
-        throw new QueryProcessException("Disable align cannot be applied to LAST query.");
-      }
-      List<PartialPath> paths = queryOperator.getSelectedPaths();
-      queryPlan.setPaths(paths);
-    } else if (queryOperator.isAlignByDevice()) {
+
+    if (queryOperator.isAlignByDevice()) {
       // below is the core realization of ALIGN_BY_DEVICE sql logic
       AlignByDevicePlan alignByDevicePlan = new AlignByDevicePlan();
       if (queryPlan instanceof GroupByTimePlan) {
@@ -444,7 +421,7 @@ public class PhysicalGenerator {
         Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
 
         // if const measurement
-        if (suffixPath.getMeasurement().startsWith("'") || suffixPath.getMeasurement().startsWith("\"")) {
+        if (suffixPath.getMeasurement().startsWith("'")) {
           measurements.add(suffixPath.getMeasurement());
           measurementTypeMap.put(suffixPath.getMeasurement(), MeasurementType.Constant);
           continue;
@@ -573,9 +550,13 @@ public class PhysicalGenerator {
 
       queryPlan = alignByDevicePlan;
     } else {
-      queryPlan.setAlignByTime(queryOperator.isAlignByTime());
       List<PartialPath> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
+      // Last query result set will not be affected by alignment
+      if (queryPlan instanceof LastQueryPlan && !queryOperator.isAlignByTime()) {
+        throw new QueryProcessException("Disable align cannot be applied to LAST query.");
+      }
+      queryPlan.setAlignByTime(queryOperator.isAlignByTime());
 
       // transform filter operator to expression
       FilterOperator filterOperator = queryOperator.getFilterOperator();
