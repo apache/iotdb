@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.tsfilemanagement;
 
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -104,7 +105,7 @@ public abstract class TsFileManagement {
   /**
    * fork current TsFile list (call this before merge)
    */
-  public abstract void forkCurrentFileList(long timePartition);
+  public abstract void forkCurrentFileList(long timePartition) throws IOException;
 
   public void readLock() {
     hotCompactionMergeLock.readLock().lock();

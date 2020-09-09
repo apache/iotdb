@@ -1572,14 +1572,14 @@ public class StorageGroupProcessor {
         .isTerminated()) {
       hotCompactionMergeWorking = true;
       logger.info("{} submit a hot compaction merge task", storageGroupName);
-      // fork and filter current tsfile, then commit then to hot compaction merge
-      tsFileManagement.forkCurrentFileList(tsFileProcessor.getTimeRangeId());
       try {
+        // fork and filter current tsfile, then commit then to hot compaction merge
+        tsFileManagement.forkCurrentFileList(tsFileProcessor.getTimeRangeId());
         HotCompactionMergeTaskPoolManager.getInstance()
             .submitTask(
                 tsFileManagement.new HotCompactionMergeTask(this::closeHotCompactionMergeCallBack,
                     tsFileProcessor.getTimeRangeId()));
-      } catch (RejectedExecutionException e) {
+      } catch (RejectedExecutionException | IOException e) {
         this.closeHotCompactionMergeCallBack();
         logger.error("{} hot compaction submit task failed", storageGroupName);
       }
