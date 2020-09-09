@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.tsfilemanagement;
 
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -34,7 +35,7 @@ public abstract class TsFileManagement {
    * hotCompactionMergeLock is used to wait for TsFile list change in hot compaction merge
    * processor.
    */
-  public final ReadWriteLock hotCompactionMergeLock = new ReentrantReadWriteLock();
+  private final ReadWriteLock hotCompactionMergeLock = new ReentrantReadWriteLock();
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -42,17 +43,17 @@ public abstract class TsFileManagement {
   }
 
   /**
-   * get the TsFile list for other merges
+   * get the TsFile list which has been completed hot compacted
    */
-  public abstract List<TsFileResource> getMergeTsFileList(boolean sequence);
+  public abstract List<TsFileResource> getStableTsFileList(boolean sequence);
 
   /**
-   * get the TsFile list from 0 to maxLevelNum-1 in sequence
+   * get the TsFile list in sequence
    */
   public abstract List<TsFileResource> getTsFileList(boolean sequence);
 
   /**
-   * get the TsFile list iterator from 0 to maxLevelNum-1 in sequence
+   * get the TsFile list iterator in sequence
    */
   public abstract Iterator<TsFileResource> getIterator(boolean sequence);
 
@@ -102,9 +103,29 @@ public abstract class TsFileManagement {
   public abstract void recover();
 
   /**
-   * call this before merge to copy current TsFile list
+   * fork current TsFile list (call this before merge)
    */
-  public abstract void forkCurrentFileList(long timePartition);
+  public abstract void forkCurrentFileList(long timePartition) throws IOException;
+
+  public void readLock() {
+    hotCompactionMergeLock.readLock().lock();
+  }
+
+  public void readUnLock() {
+    hotCompactionMergeLock.readLock().unlock();
+  }
+
+  public void writeLock() {
+    hotCompactionMergeLock.writeLock().lock();
+  }
+
+  public void writeUnlock() {
+    hotCompactionMergeLock.writeLock().unlock();
+  }
+
+  public boolean tryWriteLock() {
+    return hotCompactionMergeLock.writeLock().tryLock();
+  }
 
   protected abstract void merge(long timePartition);
 
