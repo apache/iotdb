@@ -39,8 +39,8 @@
 - TsFileManagement 也管理未封口文件
 - TsFileManagement 同时管理 Seq 和 UnSeq 文件列表，在 StorageGroupProcessor 中只创建一个 TsFileManagement
 - List\<TsFileResource\> getStableTsFileList() 对外提供稳定的 TsFileResource 列表
-- List\<TsFileResource\> getTsFileList(boolean sequence) 对外提供按插入顺序的 TsFileResource 列表
-- Iterator\<TsFileResource\> getIterator(boolean sequence) 对外提供按插入顺序的 TsFileResource 迭代器
+- List\<TsFileResource\> getTsFileList(boolean sequence) 对外提供（顺序/乱序）文件列表（如果 sequence = true，则提供按时间戳顺序的列表）
+- Iterator\<TsFileResource\> getIterator(boolean sequence) 对外提供（顺序/乱序）文件迭代器（如果 sequence = true，则提供按时间戳顺序的迭代器）
 - void remove(TsFileResource tsFileResource, boolean sequence) 删除对应的 TsFileResource 文件
 - void removeAll(List\<TsFileResource\> tsfileReourceList, boolean sequence) 删除对应的 TsFileResource 列表
 - void addAll(List\<TsFileResource\> tsfileReourceList, boolean sequence) 批量加入 TsFileResource 列表
