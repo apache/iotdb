@@ -69,7 +69,8 @@ public class DeletionQueryTest {
   @Before
   public void setup() throws MetadataException {
     EnvironmentUtils.envSetUp();
-    deviceMNode = new MNode(null, processorName);
+    String test = "test";
+    deviceMNode = new MNode(null, test);
     IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
       deviceMNode.addChild(measurements[i], new MeasurementMNode(null, null, null, null));

@@ -72,6 +72,13 @@ public class IoTDBConfig {
   private boolean enableMetricService = false;
 
   /**
+   * Port which the http service listens to
+   */
+  private int httpPort = 8282;
+
+  private boolean enableHTTPService = false;
+
+  /**
    * whether to enable the mqtt service.
    */
   private boolean enableMQTTService = false;
@@ -803,6 +810,22 @@ public class IoTDBConfig {
 
   public boolean isEnableMetricService() {
     return enableMetricService;
+  }
+
+  public int getHTTPPort() {
+    return httpPort;
+  }
+
+  public void setHTTPPort(int httpPort) {
+    this.httpPort = httpPort;
+  }
+
+  public boolean isEnableHTTPService() {
+    return enableHTTPService;
+  }
+
+  public void setEnableHTTPService(boolean enableHTTPService) {
+    this.enableHTTPService = enableHTTPService;
   }
 
   public void setEnableMetricService(boolean enableMetricService) {

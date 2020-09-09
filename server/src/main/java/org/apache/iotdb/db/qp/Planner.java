@@ -64,6 +64,11 @@ public class Planner {
     return physicalGenerator.transformToPhysicalPlan(operator);
   }
 
+  public PhysicalPlan logicalPlanToPhysicalPlan(Operator operator) throws QueryProcessException {
+    operator = logicalOptimize(operator);
+    PhysicalGenerator physicalGenerator = new PhysicalGenerator();
+    return physicalGenerator.transformToPhysicalPlan(operator);
+  }
 
   /**
    * given an unoptimized logical operator tree and return a optimized result.
