@@ -23,6 +23,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.time.ZoneId;
 import java.util.Properties;
@@ -118,10 +119,16 @@ public class IoTDBDescriptor {
     else if(!urlString.endsWith(".properties")) {
       urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
-    // If the url doesn't start with "file:" it's provided as a normal path.
-    // So we need to add it to make it a real URL.
-    if(!urlString.startsWith("file:")) {
-      urlString = "file:" + urlString;
+
+    // If the url doesn't start with "file:" or other protocols, it's provided as a normal path.
+    // If valid, we return a URL converted from this file path.
+    File confFile = new File(urlString);
+    if (confFile.exists()) {
+      try {
+        return confFile.toURI().toURL();
+      } catch (MalformedURLException e) {
+        return null;
+      }
     }
     try {
       return new URL(urlString);
@@ -135,6 +142,11 @@ public class IoTDBDescriptor {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
+    try {
+      Thread.sleep(3000);
+    } catch (Exception e) {
+
+    }
     URL url = getPropsUrl();
     if(url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
