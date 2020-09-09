@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.tsfilemanagement.utils;
 
 import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 
+import com.google.common.util.concurrent.RateLimiter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,6 +30,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -89,7 +91,7 @@ public class HotCompactionUtils {
     return new Pair<>(newChunkMetadata, newChunk);
   }
 
-  private static long writeUnseqChunk(String storageGroup,
+  private static long readUnseqChunk(String storageGroup,
       Map<String, TsFileSequenceReader> tsFileSequenceReaderMap, String deviceId, long maxVersion,
       String measurementId,
       Map<Long, TimeValuePair> timeValuePairMap, List<TsFileResource> levelResources)
@@ -157,7 +159,7 @@ public class HotCompactionUtils {
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
     Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap = new HashMap<>();
-
+    RateLimiter compactionRateLimiter = MergeManager.getINSTANCE().getMergeRateLimiter();
     fillDeviceMeasurementMap(devices, deviceMeasurementMap, tsFileResources,
         tsFileSequenceReaderMap, storageGroup);
     if (!sequence) {
@@ -170,10 +172,11 @@ public class HotCompactionUtils {
             .entrySet()) {
           String measurementId = entry.getKey();
           Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
-          maxVersion = writeUnseqChunk(storageGroup, tsFileSequenceReaderMap, deviceId,
+          maxVersion = readUnseqChunk(storageGroup, tsFileSequenceReaderMap, deviceId,
               maxVersion, measurementId, timeValuePairMap, tsFileResources);
           IChunkWriter chunkWriter = new ChunkWriterImpl(entry.getValue());
           for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
+            MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, timeValuePair.getSize());
             writeTVPair(timeValuePair, chunkWriter);
             targetResource.updateStartTime(deviceId, timeValuePair.getTimestamp());
             targetResource.updateEndTime(deviceId, timeValuePair.getTimestamp());
@@ -199,6 +202,8 @@ public class HotCompactionUtils {
           ChunkMetadata newChunkMetadata = chunkPair.left;
           Chunk newChunk = chunkPair.right;
           if (newChunkMetadata != null && newChunk != null) {
+            MergeManager.mergeRateLimiterAcquire(compactionRateLimiter,
+                newChunk.getRamSize() + newChunkMetadata.getRamSize());
             writer.writeChunk(newChunk, newChunkMetadata);
             targetResource.updateStartTime(deviceId, newChunkMetadata.getStartTime());
             targetResource.updateEndTime(deviceId, newChunkMetadata.getEndTime());
