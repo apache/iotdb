@@ -725,14 +725,14 @@ public class MTree implements Serializable {
     } else {
       boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
-        if (child instanceof MeasurementMNode ) {
-          if( !deviceAdded){
+        if (child instanceof MeasurementMNode) {
+          if (!deviceAdded) {
             cnt++;
             deviceAdded = true;
-          }else{
+          } else {
             break;
           }
-        }else{
+        } else {
           cnt += getDevicesCount(child, nodes, idx + 1);
         }
       }
