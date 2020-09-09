@@ -35,6 +35,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -43,9 +45,12 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.MeasurementNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -323,6 +328,26 @@ public abstract class PhysicalPlan {
           plan = new CreateMultiTimeSeriesPlan();
           plan.deserialize(buffer);
           break;
+        case CHANGE_ALIAS:
+          plan = new ChangeAliasPlan();
+          plan.deserialize(buffer);
+          break;
+        case CHANGE_TAG_OFFSET:
+          plan = new ChangeTagOffsetPlan();
+          plan.deserialize(buffer);
+          break;
+        case MNODE:
+          plan = new MNodePlan();
+          plan.deserialize(buffer);
+          break;
+        case MEASUREMENT_MNODE:
+          plan = new MeasurementNodePlan();
+          plan.deserialize(buffer);
+          break;
+        case STORAGE_GROUP_MNODE:
+          plan = new StorageGroupMNodePlan();
+          plan.deserialize(buffer);
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -335,7 +360,8 @@ public abstract class PhysicalPlan {
     REVOKE_WATERMARK_EMBEDDING, CREATE_ROLE, DELETE_ROLE, CREATE_USER, REVOKE_USER_ROLE, REVOKE_ROLE_PRIVILEGE,
     REVOKE_USER_PRIVILEGE, GRANT_ROLE_PRIVILEGE, GRANT_USER_PRIVILEGE, GRANT_USER_ROLE, MODIFY_PASSWORD, DELETE_USER,
     DELETE_STORAGE_GROUP, SHOW_TIMESERIES, DELETE_TIMESERIES, LOAD_CONFIGURATION, CREATE_MULTI_TIMESERIES,
-    ALTER_TIMESERIES, FLUSH, CREATE_INDEX, DROP_INDEX
+    ALTER_TIMESERIES, FLUSH, CREATE_INDEX, DROP_INDEX,
+    CHANGE_TAG_OFFSET, CHANGE_ALIAS, MNODE, MEASUREMENT_MNODE, STORAGE_GROUP_MNODE
   }
 
   public long getIndex() {

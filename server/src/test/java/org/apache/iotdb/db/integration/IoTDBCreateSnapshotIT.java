@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -35,12 +32,24 @@ import java.util.HashSet;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.MeasurementNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 public class IoTDBCreateSnapshotIT {
 
@@ -77,29 +86,32 @@ public class IoTDBCreateSnapshotIT {
       Assert.assertTrue(snapshotFile.exists());
 
       // test snapshot content correct
-      Set<String> e1 = new HashSet<>(Arrays.asList("2,s0,,1,2,1,,-1,0", "2,s1,,2,2,1,,-1,0",
-          "2,s2,,3,2,1,,-1,0", "2,s3,,5,0,1,,-1,0", "2,s4,,0,0,1,,-1,0"));
-      Set<String> e2 = new HashSet<>(Arrays.asList("2,s0,,1,2,1,,-1,0", "2,s1,,5,0,1,,-1,0",
-          "2,s2,,0,0,1,,-1,0"));
+      String[] exp = new String[]{
+        "2,s0,,1,2,1,,-1,0",
+        "2,s1,,2,2,1,,-1,0",
+        "2,s2,,3,2,1,,-1,0",
+        "2,s3,,5,0,1,,-1,0",
+        "2,s4,,0,0,1,,-1,0",
+        "1,d0,9223372036854775807,5",
+        "2,s0,,1,2,1,,-1,0",
+        "2,s1,,5,0,1,,-1,0",
+        "2,s2,,0,0,1,,-1,0",
+        "1,d1,9223372036854775807,3",
+        "0,vehicle,2",
+        "0,root,1"
+      };
 
-      try (BufferedReader br = new BufferedReader(new FileReader(snapshotFile))) {
-        for (int i = 0; i < 5; ++i) {
-          String actual = br.readLine();
-          Assert.assertTrue(e1.removeIf(candidate -> candidate.equals(actual)));
+      PhysicalPlan[] plans = new PhysicalPlan[exp.length];
+      for (int i = 0; i < exp.length; i++) {
+        plans[i] = convertFromString(exp[i]);
+      }
+
+      try (MLogReader mLogReader = new MLogReader(snapshotFile)){
+        int i = 0;
+        while (mLogReader.hasNext()) {
+          PhysicalPlan plan = mLogReader.next();
+          assertEquals(plans[i++], plan);
         }
-        Assert.assertTrue(e1.isEmpty());
-
-        Assert.assertEquals("1,d0,9223372036854775807,5", br.readLine());
-
-        for (int i = 0; i < 3; ++i) {
-          String actual = br.readLine();
-          Assert.assertTrue(e2.removeIf(candidate -> candidate.equals(actual)));
-        }
-        Assert.assertTrue(e2.isEmpty());
-
-        Assert.assertEquals("1,d1,9223372036854775807,3", br.readLine());
-        Assert.assertEquals("0,vehicle,2", br.readLine());
-        Assert.assertEquals("0,root,1", br.readLine());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -162,5 +174,21 @@ public class IoTDBCreateSnapshotIT {
       }
       Assert.assertEquals(8, cnt);
     }
+  }
+
+  private PhysicalPlan convertFromString(String str) {
+    String[] words = str.split(",");
+    if (words[0].equals("2")) {
+      return new MeasurementNodePlan(words[1],words[2].equals("") ? null :  words[2], Long.parseLong(words[words.length - 2]),
+        Integer.parseInt(words[words.length - 1]),
+        new MeasurementSchema(words[1], TSDataType.values()[Integer.parseInt(words[3])],
+          TSEncoding.values()[Integer.parseInt(words[4])], CompressionType.values()[Integer.parseInt(words[5])]
+          ));
+    } else if (words[0].equals("1")) {
+      return new StorageGroupMNodePlan(words[1], Long.parseLong(words[2]), Integer.parseInt(words[3]));
+    } else if (words[0].equals("0")) {
+      return new MNodePlan(words[1], Integer.parseInt(words[2]));
+    }
+    return null;
   }
 }

@@ -211,6 +211,12 @@ public class IoTDBConfig {
   private int estimatedSeriesSize = 300;
 
   /**
+   * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan
+   * is smaller than this parameter, then the MetaData operation plan will be rejected by MManager.
+   */
+  private int mlogBufferSize = 64 * 1024;
+
+  /**
    * default base dir, stores all IoTDB runtime files
    */
   private static final String DEFAULT_BASE_DIR = "data";
@@ -2107,5 +2113,13 @@ public class IoTDBConfig {
   public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
     RpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
+  }
+
+  public int getMlogBufferSize() {
+    return mlogBufferSize;
+  }
+
+  public void setMlogBufferSize(int mlogBufferSize) {
+    this.mlogBufferSize = mlogBufferSize;
   }
 }

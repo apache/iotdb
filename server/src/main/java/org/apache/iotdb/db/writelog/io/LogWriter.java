@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.writelog.io;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -41,13 +42,26 @@ public class LogWriter implements ILogWriter {
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
   private ByteBuffer checkSumBuffer = ByteBuffer.allocate(8);
+  private long forcePeriodInMs = 0;
 
-  public LogWriter(String logFilePath) {
+  public LogWriter(String logFilePath, long forcePeriodInMs) throws FileNotFoundException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+    this.forcePeriodInMs = forcePeriodInMs;
+
+    if (channel == null) {
+      fileOutputStream = new FileOutputStream(logFile, true);
+      channel = fileOutputStream.getChannel();
+    }
   }
 
-  public LogWriter(File logFile) {
+  public LogWriter(File logFile, long forcePeriodInMs) throws FileNotFoundException {
     this.logFile = logFile;
+    this.forcePeriodInMs = forcePeriodInMs;
+
+    if (channel == null) {
+      fileOutputStream = new FileOutputStream(logFile, true);
+      channel = fileOutputStream.getChannel();
+    }
   }
 
   @Override
@@ -77,7 +91,7 @@ public class LogWriter implements ILogWriter {
     channel.write(logBuffer);
     channel.write(checkSumBuffer);
 
-    if (config.getForceWalPeriodInMs() == 0) {
+    if (this.forcePeriodInMs == 0) {
       channel.force(true);
     }
   }

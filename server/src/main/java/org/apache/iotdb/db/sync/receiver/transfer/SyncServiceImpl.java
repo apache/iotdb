@@ -37,6 +37,8 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.receiver.load.FileLoader;
@@ -269,18 +271,25 @@ public class SyncServiceImpl implements SyncService.Iface {
   private void loadMetadata() {
     logger.info("Start to load metadata in sync process.");
     if (currentFile.get().exists()) {
-      try (BufferedReader br = new BufferedReader(
-          new java.io.FileReader(currentFile.get()))) {
-        String metadataOperation;
-        while ((metadataOperation = br.readLine()) != null) {
+      MLogReader mLogReader = null;
+      try {
+        mLogReader = new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
+        while (mLogReader.hasNext()) {
+          PhysicalPlan plan = mLogReader.next();
           try {
-            IoTDB.metaManager.operation(metadataOperation);
-          } catch (IOException | MetadataException e) {
-            logger.error("Can not operate metadata operation {} ", metadataOperation, e);
+            if (plan == null) {
+              continue;
+            }
+            IoTDB.metaManager.operation(plan);
+          } catch (Exception e) {
+            logger.error("Can not operate metadata operation {} for err:{}", plan.getOperatorType(), e);
           }
         }
+        mLogReader.close();
       } catch (IOException e) {
         logger.error("Cannot read the file {}.", currentFile.get().getAbsoluteFile(), e);
+      } finally {
+        mLogReader.close();
       }
     }
   }

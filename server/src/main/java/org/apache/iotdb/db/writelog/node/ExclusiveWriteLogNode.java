@@ -20,6 +20,7 @@ package org.apache.iotdb.db.writelog.node;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
@@ -163,7 +164,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
 
   @Override
-  public void notifyStartFlush() {
+  public void notifyStartFlush() throws FileNotFoundException {
     lock.lock();
     try {
       close();
@@ -317,21 +318,21 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
-  private ILogWriter getCurrentFileWriter() {
+  private ILogWriter getCurrentFileWriter() throws FileNotFoundException {
     if (currentFileWriter == null) {
       nextFileWriter();
     }
     return currentFileWriter;
   }
 
-  private void nextFileWriter() {
+  private void nextFileWriter() throws FileNotFoundException {
     fileId++;
     File newFile = SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + fileId);
     if (newFile.getParentFile().mkdirs()) {
       logger.info("create WAL parent folder {}.", newFile.getParent());
     }
     logger.debug("WAL file {} is opened", newFile);
-    currentFileWriter = new LogWriter(newFile);
+    currentFileWriter = new LogWriter(newFile, config.getForceWalPeriodInMs());
   }
 
   @Override

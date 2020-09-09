@@ -190,6 +190,49 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    buffer.put((byte) PhysicalPlanType.CREATE_TIMESERIES.ordinal());
+    byte[] bytes = path.getFullPath().getBytes();
+    buffer.putInt(bytes.length);
+    buffer.put(bytes);
+    buffer.put((byte) dataType.ordinal());
+    buffer.put((byte) encoding.ordinal());
+    buffer.put((byte) compressor.ordinal());
+
+    // alias
+    if (alias != null) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(alias, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // props
+    if (props != null && !props.isEmpty()) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(props, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // tags
+    if (tags != null && !tags.isEmpty()) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(tags, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // attributes
+    if (attributes != null && !attributes.isEmpty()) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(attributes, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+  }
+
+  @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     int length = buffer.getInt();
     byte[] bytes = new byte[length];

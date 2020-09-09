@@ -211,7 +211,7 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
 
 ## 元数据日志管理
 
-* org.apache.iotdb.db.metadata.MLogWriter
+* org.apache.iotdb.db.metadata.logfile.MLogWriter
 
 所有元数据的操作均会记录到元数据日志文件中，此文件默认为 data/system/schema/mlog.txt。
 

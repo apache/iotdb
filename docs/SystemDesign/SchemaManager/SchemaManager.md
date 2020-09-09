@@ -213,7 +213,7 @@ The method is `MManager.initFromLog()`:
 
 ## Log management of metadata
 
-* org.apache.iotdb.db.metadata.MLogWriter
+* org.apache.iotdb.db.metadata.logfile.MLogWriter
 
 All metadata operations are recorded in a metadata log file, which defaults to data/system/schema/mlog.txt.
 

@@ -33,6 +33,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -190,6 +191,33 @@ public class IoTDBConfigCheck {
         || properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.11")) {
       logger.error("DO NOT UPGRADE IoTDB from v0.11 or lower version NOW");
       System.exit(-1);
+    }
+
+    // check whether upgrading from v0.10 to v0.11
+    if (properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.10")) {
+      logger.info("Upgrading IoTDB from v0.10 to v0.11, checking files...");
+      checkUnClosedTsFileV2();
+      upgradePropertiesFile();
+      logger.info("Upgrade to IoTDB v0.11 successfully!");
+
+      // upgrade mlog finished, delete old mlog file
+      File mlogFile = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR + File.separator
+          + MetadataConstant.METADATA_LOG);
+      File tmpMLogFile = SystemFileFactory.INSTANCE.getFile(mlogFile.getAbsolutePath()
+          + ".tmp");
+
+      if (!mlogFile.delete()) {
+        throw new IOException("Deleting " + mlogFile + "failed.");
+      }
+      // rename tmpLogFile to mlog
+      FileUtils.moveFile(tmpMLogFile, mlogFile);
+
+      File oldMLogFile = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR + File.separator
+          + MetadataConstant.METADATA_OLD_LOG);
+
+      if (oldMLogFile.delete()) {
+        throw new IOException("Deleting old mlog " + oldMLogFile + "failed.");
+      }
     }
     checkProperties();
   }

@@ -21,6 +21,8 @@ package org.apache.iotdb.db.metadata.mnode;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
 public class StorageGroupMNode extends MNode {
 
@@ -46,18 +48,13 @@ public class StorageGroupMNode extends MNode {
   }
 
   @Override
-  public void serializeTo(BufferedWriter bw) throws IOException {
-    serializeChildren(bw);
+  public void serializeTo(MLogWriter logWriter) throws IOException {
+    serializeChildren(logWriter);
 
-    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE));
-    s.append(",").append(name).append(",");
-    s.append(dataTTL).append(",");
-    s.append(children == null ? "0" : children.size());
-    bw.write(s.toString());
-    bw.newLine();
+    logWriter.seriallizeStorageGroupMNode(this);
   }
 
-  public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
-    return new StorageGroupMNode(null, nodeInfo[1], Long.valueOf(nodeInfo[2]));
+  public static StorageGroupMNode deserializeFrom(StorageGroupMNodePlan plan) {
+    return new StorageGroupMNode(null, plan.getName(), plan.getDataTTL());
   }
 }

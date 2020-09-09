@@ -16,32 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-public class SetStorageGroupPlan extends PhysicalPlan {
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
+public class ChangeTagOffsetPlan extends PhysicalPlan {
   private PartialPath path;
+  private long offset;
 
-  public SetStorageGroupPlan() {
-    super(false, Operator.OperatorType.SET_STORAGE_GROUP);
+  public ChangeTagOffsetPlan() {
+    super(false, Operator.OperatorType.CHANGE_TAG_OFFSET);
   }
 
-  public SetStorageGroupPlan(PartialPath path) {
-    super(false, Operator.OperatorType.SET_STORAGE_GROUP);
-    this.path = path;
+  public ChangeTagOffsetPlan(PartialPath partialPath, long offset) {
+    super(false, Operator.OperatorType.CHANGE_TAG_OFFSET);
+    path = partialPath;
+    this.offset = offset;
   }
-  
+
   public PartialPath getPath() {
     return path;
   }
@@ -50,34 +53,47 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     this.path = path;
   }
 
-  @Override
-  public List<PartialPath> getPaths() {
-    return path != null ? Collections.singletonList(path) : Collections.emptyList();
+  public long getOffset() {
+    return offset;
+  }
+
+  public void setOffset(long offset) {
+    this.offset = offset;
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    stream.write((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
-    putString(stream, path.getFullPath());
-    stream.writeLong(index);
+  public List<PartialPath> getPaths() {
+    List<PartialPath> ret = new ArrayList<>();
+    if (path != null) {
+      ret.add(path);
+    }
+    return ret;
   }
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
+    int type = PhysicalPlanType.CHANGE_TAG_OFFSET.ordinal();
+    buffer.put((byte) type);
     putString(buffer, path.getFullPath());
-    buffer.putLong(index);
+    buffer.putLong(offset);
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.write((byte) PhysicalPlanType.CHANGE_TAG_OFFSET.ordinal());
+    putString(stream, path.getFullPath());
+    stream.writeLong(offset);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     path = new PartialPath(readString(buffer));
-    this.index = buffer.getLong();
+    offset = buffer.getLong();
   }
 
   @Override
   public String toString() {
-    return "SetStorageGroup{" + path + '}';
+    return "ChangeTagOffset{" + path + "," + offset + "}";
   }
 
   @Override
@@ -88,12 +104,12 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    SetStorageGroupPlan that = (SetStorageGroupPlan) o;
-    return Objects.equals(path, that.path);
+    ChangeTagOffsetPlan that = (ChangeTagOffsetPlan) o;
+    return Objects.equals(path, that.path) && Objects.equals(offset, that.offset);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(path);
+    return Objects.hash(path, offset);
   }
 }
