@@ -41,7 +41,7 @@ Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.excepti
 
 ## Show Storage Group
 
-After the storage group is created, we can use the [SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.html) statement to view all the storage groups. The SQL statement is as follows:
+After the storage group is created, we can use the [SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md) statement to view all the storage groups. The SQL statement is as follows:
 
 ```
 IoTDB> show storage group
@@ -49,6 +49,15 @@ IoTDB> show storage group
 
 The result is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
+
+## Delete Storage Group
+
+User can delete a specified storage group by using [DELETE STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md). Please note the data in the storage group will also be deleted. 
+
+```
+IoTDB > DELETE STORAGE GROUP root.ln
+IoTDB > DELETE STORAGE GROUP root.sgcc
+```
 
 ## Create Timeseries
 
@@ -70,7 +79,7 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-Please refer to [Encoding](../Concept/Encoding.html) for correspondence between data type and encoding.
+Please refer to [Encoding](../Concept/Encoding.md) for correspondence between data type and encoding.
 
 ### Tag and attribute management
 

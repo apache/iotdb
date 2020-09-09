@@ -82,12 +82,13 @@ public class IoTDBRestartIT {
           "2,1.0",
           "3,1.0"
       };
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      while (resultSet.next()) {
-        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-        assertEquals(exp[cnt], result);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
       }
     }
 
@@ -130,26 +131,30 @@ public class IoTDBRestartIT {
       };
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      while (resultSet.next()) {
-        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-        assertEquals(exp[cnt], result);
-        cnt++;
-      }
+      try {
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
 
-      statement.execute("flush");
-      statement.execute("delete from root.turbine.d1.s1 where time<=2");
+        statement.execute("flush");
+        statement.execute("delete from root.turbine.d1.s1 where time<=2");
 
-      hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
-      assertTrue(hasResultSet);
-      exp = new String[]{
-          "3,3.0"
-      };
-      resultSet = statement.getResultSet();
-      cnt = 0;
-      while (resultSet.next()) {
-        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-        assertEquals(exp[cnt], result);
-        cnt++;
+        hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
+        assertTrue(hasResultSet);
+        exp = new String[]{
+                "3,3.0"
+        };
+        resultSet = statement.getResultSet();
+        cnt = 0;
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
+      } finally {
+        resultSet.close();
       }
     }
 
@@ -200,12 +205,13 @@ public class IoTDBRestartIT {
       String[] exp = new String[]{
           "4,2.0",
       };
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      while (resultSet.next()) {
-        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-        assertEquals(exp[cnt], result);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
       }
       assertEquals(1, cnt);
 
@@ -261,15 +267,85 @@ public class IoTDBRestartIT {
           "1,1.0",
           "2,2.0"
       };
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      while (resultSet.next()) {
-        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-        assertEquals(exp[cnt], result);
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
       }
       assertEquals(2, cnt);
 
+    }
+
+    EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void testRecoverWALMismatchDataType() throws Exception {
+    EnvironmentUtils.envSetUp();
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()){
+      statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
+      statement.execute("delete timeseries root.turbine1.d1.s1");
+      statement.execute("create timeseries root.turbine1.d1.s1 with datatype=INT32, encoding=RLE, compression=SNAPPY");
+    }
+
+    EnvironmentUtils.restartDaemon();
+
+
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()){
+
+      boolean hasResultSet = statement.execute("select * from root");
+      assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      assertEquals(1, cnt);
+    }
+
+    EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void testRecoverWALDeleteSchema() throws Exception {
+    EnvironmentUtils.envSetUp();
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()){
+      statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
+      statement.execute("delete timeseries root.turbine1.d1.s1");
+    }
+
+    EnvironmentUtils.restartDaemon();
+
+
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()){
+
+      boolean hasResultSet = statement.execute("select * from root");
+      assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      assertEquals(1, cnt);
     }
 
     EnvironmentUtils.cleanEnv();

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TypeInferenceUtils {
@@ -47,8 +48,8 @@ public class TypeInferenceUtils {
   }
 
   private static boolean isBoolean(String s) {
-    return s.equalsIgnoreCase(SQLConstant.BOOLEN_TRUE) || s
-        .equalsIgnoreCase(SQLConstant.BOOLEN_FALSE);
+    return s.equalsIgnoreCase(SQLConstant.BOOLEAN_TRUE) || s
+        .equalsIgnoreCase(SQLConstant.BOOLEAN_FALSE);
   }
 
   /**
@@ -61,7 +62,7 @@ public class TypeInferenceUtils {
       if (isBoolean(strValue)) {
         return booleanStringInferType;
       } else if (isNumber(strValue)){
-        if (!strValue.contains(".")) {
+        if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
           return integerStringInferType;
         } else {
           return floatingStringInferType;

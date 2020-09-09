@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.After;
@@ -31,7 +31,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
 
 public class GroupByLevelDataSetTest {
   private IPlanExecutor queryExecutor = new PlanExecutor();
@@ -82,7 +81,7 @@ public class GroupByLevelDataSetTest {
     "insert into root.test.d1(timestamp, \"s3.xy\") values(10, 'text')"};
 
   static {
-    MManager.getInstance().init();
+    IoTDB.metaManager.init();
   }
 
   public GroupByLevelDataSetTest() throws QueryProcessException {
@@ -160,7 +159,6 @@ public class GroupByLevelDataSetTest {
     try {
       queryPlan = (QueryPlan) processor
         .parseSQLToPhysicalPlan("select sum(s0) from root.test.* group by level=6");
-      dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       fail();
     } catch (Exception e) {
       assertEquals("group by level only support count now.", e.getMessage());

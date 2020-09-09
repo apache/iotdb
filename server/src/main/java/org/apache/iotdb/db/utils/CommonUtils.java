@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -64,23 +65,17 @@ public class CommonUtils {
 
   public static long getOccupiedSpace(String folderPath) throws IOException {
     Path folder = Paths.get(folderPath);
-    return Files.walk(folder).filter(p -> p.toFile().isFile())
-        .mapToLong(p -> p.toFile().length()).sum();
+    try (Stream<Path> s = Files.walk(folder)) {
+      return s.filter(p -> p.toFile().isFile())
+              .mapToLong(p -> p.toFile().length()).sum();
+    }
   }
 
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
     try {
       switch (dataType) {
         case BOOLEAN:
-          value = value.toLowerCase();
-          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEN_FALSE
-              .equals(value)) {
-            return false;
-          }
-          if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE.equals(value)) {
-            return true;
-          }
-          throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
+          return parseBoolean(value);
         case INT32:
           return Integer.parseInt(value);
         case INT64:
@@ -114,15 +109,7 @@ public class CommonUtils {
     try {
       switch (dataType) {
         case BOOLEAN:
-          value = value.toLowerCase();
-          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEN_FALSE
-              .equals(value)) {
-            return false;
-          }
-          if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE.equals(value)) {
-            return true;
-          }
-          throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
+          return parseBoolean(value);
         case INT32:
           return Integer.parseInt(value);
         case INT64:
@@ -139,5 +126,17 @@ public class CommonUtils {
     } catch (NumberFormatException e) {
       throw new QueryProcessException(e.getMessage());
     }
+  }
+
+  private static boolean parseBoolean(String value) throws QueryProcessException {
+    value = value.toLowerCase();
+    if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEAN_FALSE
+        .equals(value)) {
+      return false;
+    }
+    if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEAN_TRUE.equals(value)) {
+      return true;
+    }
+    throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
   }
 }

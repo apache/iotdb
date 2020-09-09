@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.qp;
 
+import java.time.ZoneId;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
@@ -33,11 +36,8 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.read.common.Path;
-
-import java.time.ZoneId;
-import java.util.Set;
 
 /**
  * provide a integration method for other user.
@@ -63,7 +63,9 @@ public class Planner {
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId, int fetchSize)
       throws QueryProcessException {
     Operator operator = parseDriver.parse(sqlStr, zoneId);
-    operator = logicalOptimize(operator);
+    int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
+        .getMaxDeduplicatedPathNum(fetchSize);
+    operator = logicalOptimize(operator, maxDeduplicatedPathNum);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
   }
@@ -76,7 +78,7 @@ public class Planner {
    * @return optimized logical operator
    * @throws LogicalOptimizeException exception in logical optimizing
    */
-  protected Operator logicalOptimize(Operator operator)
+  protected Operator logicalOptimize(Operator operator, int maxDeduplicatedPathNum)
       throws LogicalOperatorException {
     switch (operator.getType()) {
       case AUTHOR:
@@ -104,13 +106,14 @@ public class Planner {
       case CLEAR_CACHE:
       case NULL:
       case SHOW_MERGE_STATUS:
+      case DELETE_PARTITION:
       case CREATE_SCHEMA_SNAPSHOT:
         return operator;
       case QUERY:
       case UPDATE:
       case DELETE:
         SFWOperator root = (SFWOperator) operator;
-        return optimizeSFWOperator(root);
+        return optimizeSFWOperator(root, maxDeduplicatedPathNum);
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
@@ -123,15 +126,15 @@ public class Planner {
    * @return optimized select-from-where operator
    * @throws LogicalOptimizeException exception in SFW optimizing
    */
-  private SFWOperator optimizeSFWOperator(SFWOperator root)
+  private SFWOperator optimizeSFWOperator(SFWOperator root, int maxDeduplicatedPathNum)
       throws LogicalOperatorException {
     ConcatPathOptimizer concatPathOptimizer = getConcatPathOptimizer();
-    root = (SFWOperator) concatPathOptimizer.transform(root);
+    root = (SFWOperator) concatPathOptimizer.transform(root, maxDeduplicatedPathNum);
     FilterOperator filter = root.getFilterOperator();
     if (filter == null) {
       return root;
     }
-    Set<Path> pathSet = filter.getPathSet();
+    Set<PartialPath> pathSet = filter.getPathSet();
     RemoveNotOptimizer removeNot = new RemoveNotOptimizer();
     filter = removeNot.optimize(filter);
     DnfFilterOptimizer dnf = new DnfFilterOptimizer();

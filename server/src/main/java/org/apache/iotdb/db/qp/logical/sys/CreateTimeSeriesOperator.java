@@ -18,35 +18,34 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import java.util.Map;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
-
-import java.util.Map;
 
 public class CreateTimeSeriesOperator extends RootOperator {
 
-  private Path path;
+  private PartialPath path;
   private String alias;
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
-  private Map<String, String> props;
-  private Map<String, String> attributes;
-  private Map<String, String> tags;
+  private Map<String, String> props = null;
+  private Map<String, String> attributes = null;
+  private Map<String, String> tags = null;
   
   public CreateTimeSeriesOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.CREATE_TIMESERIES;
   }
   
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
   
-  public void setPath(Path path) {
+  public void setPath(PartialPath path) {
     this.path = path;
   }
   

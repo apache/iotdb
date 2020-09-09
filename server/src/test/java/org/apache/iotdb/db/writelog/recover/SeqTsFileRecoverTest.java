@@ -31,16 +31,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -58,8 +60,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
@@ -92,14 +94,15 @@ public class SeqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);
     tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
-    MManager.getInstance().setStorageGroup("root.sg");
+    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
-        MManager.getInstance()
-            .createTimeseries("root.sg.device" + i + ".sensor" + j, TSDataType.INT64,
+        IoTDB.metaManager
+            .createTimeseries(new PartialPath("root.sg.device" + i + ".sensor" + j), TSDataType.INT64,
                 TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(),
                 Collections.emptyMap());
       }
@@ -149,7 +152,7 @@ public class SeqTsFileRecoverTest {
           types[k] = TSDataType.INT64;
           values[k] = String.valueOf(k);
         }
-        InsertPlan insertPlan = new InsertPlan("root.sg.device" + j, i, measurements, types,
+        InsertRowPlan insertPlan = new InsertRowPlan(new PartialPath("root.sg.device" + j), i, measurements, types,
             values);
         node.write(insertPlan);
       }
@@ -162,6 +165,7 @@ public class SeqTsFileRecoverTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(true);
     FileUtils.deleteDirectory(tsF.getParentFile());
     resource.close();
     node.delete();
@@ -169,17 +173,18 @@ public class SeqTsFileRecoverTest {
 
   @Test
   public void testNonLastRecovery() throws StorageGroupProcessorException, IOException {
-    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
-        versionController, resource, true, false);
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
+        resource, false, false, Collections.singletonList(new ArrayList<>()));
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    RestorableTsFileIOWriter writer = performer.recover();
+    RestorableTsFileIOWriter writer = performer.recover().left;
     assertFalse(writer.canWrite());
+    writer.close();
 
-    assertEquals(2, (long) resource.getStartTime("root.sg.device99"));
-    assertEquals(100, (long) resource.getEndTime("root.sg.device99"));
+    assertEquals(2, resource.getStartTime("root.sg.device99"));
+    assertEquals(100,  resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
-      assertEquals(0, (long) resource.getStartTime("root.sg.device" + i));
-      assertEquals(19, (long) resource.getEndTime("root.sg.device" + i));
+      assertEquals(0, resource.getStartTime("root.sg.device" + i));
+      assertEquals(19, resource.getEndTime("root.sg.device" + i));
     }
 
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(tsF.getPath()));
@@ -218,10 +223,10 @@ public class SeqTsFileRecoverTest {
 
   @Test
   public void testLastRecovery() throws StorageGroupProcessorException, IOException {
-    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
-        versionController, resource, true, true);
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
+        resource, false, true, Collections.singletonList(new ArrayList<>()));
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    RestorableTsFileIOWriter writer = performer.recover();
+    RestorableTsFileIOWriter writer = performer.recover().left;
 
     writer.makeMetadataVisible();
     assertEquals(11, writer.getMetadatasForQuery().size());
@@ -229,11 +234,11 @@ public class SeqTsFileRecoverTest {
     assertTrue(writer.canWrite());
     writer.endFile();
 
-    assertEquals(2, (long) resource.getStartTime("root.sg.device99"));
-    assertEquals(100, (long) resource.getEndTime("root.sg.device99"));
+    assertEquals(2, resource.getStartTime("root.sg.device99"));
+    assertEquals(100, resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
-      assertEquals(0, (long) resource.getStartTime("root.sg.device" + i));
-      assertEquals(19, (long) resource.getEndTime("root.sg.device" + i));
+      assertEquals(0, resource.getStartTime("root.sg.device" + i));
+      assertEquals(19, resource.getEndTime("root.sg.device" + i));
     }
 
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(tsF.getPath()));

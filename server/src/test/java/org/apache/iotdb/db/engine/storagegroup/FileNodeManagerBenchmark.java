@@ -18,22 +18,27 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.RandomNum;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Bench The storage group manager with mul-thread and get its performance.
@@ -53,7 +58,7 @@ public class FileNodeManagerBenchmark {
 
   static {
     for (int i = 0; i < numOfDevice; i++) {
-      devices[i] = prefix + "." + "device_" + i;
+      devices[i] = prefix + TsFileConstant.PATH_SEPARATOR + "device_" + i;
     }
   }
 
@@ -65,11 +70,11 @@ public class FileNodeManagerBenchmark {
 
   private static void prepare()
       throws MetadataException {
-    MManager manager = MManager.getInstance();
-    manager.setStorageGroup(prefix);
+    MManager manager = IoTDB.metaManager;
+    manager.setStorageGroup(new PartialPath(prefix));
     for (String device : devices) {
       for (String measurement : measurements) {
-        manager.createTimeseries(device + "." + measurement, TSDataType.INT64,
+        manager.createTimeseries(new PartialPath(device + "." + measurement), TSDataType.INT64,
             TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections
                 .emptyMap());
       }
@@ -117,9 +122,9 @@ public class FileNodeManagerBenchmark {
           long time = RandomNum.getRandomLong(1, seed);
           String deltaObject = devices[(int) (time % numOfDevice)];
           TSRecord tsRecord = getRecord(deltaObject, time);
-          StorageEngine.getInstance().insert(new InsertPlan(tsRecord));
+          StorageEngine.getInstance().insert(new InsertRowPlan(tsRecord));
         }
-      } catch (StorageEngineException e) {
+      } catch (StorageEngineException | IllegalPathException e) {
         e.printStackTrace();
       } finally {
         latch.countDown();

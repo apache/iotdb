@@ -277,7 +277,6 @@ var config = {
 							['6-System Tools/2-Memory Estimation Tool','Memory Estimation Tool'],
 							['6-System Tools/3-JMX Tool','JMX Tool'],
 							['6-System Tools/4-Watermark Tool','Watermark Tool'],
-							['6-System Tools/5-Log Visualizer','Log Visualizer'],
 							['6-System Tools/6-Query History Visualization Tool','Query History Visualization Tool'],
 							['6-System Tools/7-Monitor and Log Tools','Monitor and Log Tools']
 						]
@@ -371,7 +370,6 @@ var config = {
 							['System Tools/Memory Estimation Tool','Memory Estimation Tool'],
 							['System Tools/JMX Tool','JMX Tool'],
 							['System Tools/Watermark Tool','Watermark Tool'],
-							['System Tools/Log Visualizer','Log Visualizer'],
 							['System Tools/Query History Visualization Tool','Query History Visualization Tool'],
 							['System Tools/Monitor and Log Tools','Monitor and Log Tools'],
 							['System Tools/Load External Tsfile','Load External Tsfile']
@@ -446,7 +444,8 @@ var config = {
 							['Client/Programming - Other Languages','Other Languages'],
 							['Client/Programming - TsFile API','TsFile API'],
 							['Client/Programming - MQTT','MQTT'],
-							['Client/Status Codes','Status Codes']
+							['Client/Status Codes','Status Codes'],
+							['Client/Native API Update(0.9-0.10)','Native API Update(0.9-0.10)']
 						]
 					},
 					{
@@ -465,10 +464,10 @@ var config = {
 							['System Tools/Memory Estimation Tool','Memory Estimation Tool'],
 							['System Tools/JMX Tool','JMX Tool'],
 							['System Tools/Watermark Tool','Watermark Tool'],
-							['System Tools/Log Visualizer','Log Visualizer'],
 							['System Tools/Query History Visualization Tool','Query History Visualization Tool'],
 							['System Tools/Monitor and Log Tools','Monitor and Log Tools'],
-							['System Tools/Load External Tsfile','Load External Tsfile']
+							['System Tools/Load External Tsfile','Load External Tsfile'],
+							['System Tools/Performance Tracing Tool','Performance Tracing Tool']
 						]
 					},
 					{
@@ -489,6 +488,12 @@ var config = {
 							['Architecture/Shared Nothing Cluster','Shared Nothing Cluster']
 						]
 					},
+					{
+						title: 'Comparison with TSDBs',
+						children: [
+							['Comparison/TSDB-Comparison','Comparison']
+						]
+					}
 				],
 				'/SystemDesign/': [
 					{
@@ -533,7 +538,8 @@ var config = {
 							['StorageEngine/FlushManager','FlushManager'],
 							['StorageEngine/MergeManager','MergeManager'],
 							['StorageEngine/DataPartition','DataPartition'],
-							['StorageEngine/DataManipulation','DataManipulation']
+							['StorageEngine/DataManipulation','DataManipulation'],
+							['StorageEngine/Recover','Recover']
 						]
 					},
 					{
@@ -623,8 +629,8 @@ var config = {
 					text: '开发',
 					items: [
 					  { text: '如何投票', link: '/zh/Development/VoteRelease'},
-					  { text: '如何提交代码', link: '/Development/HowToCommit'},
-					  { text: '成为Committer', link: '/Development/Committer'},
+					  { text: '如何提交代码', link: '/zh/Development/HowToCommit'},
+					  { text: '成为Committer', link: '/zh/Development/Committer'},
 					  { text: '项目开发指南', link: '/zh/Development/ContributeGuide'},
 					  { text: 'TsFile的更改列表', link: '/zh/Development/format-changelist'},
 					  { text: 'RPC变更清单', link: '/zh/Development/rpc-changelist'},
@@ -793,7 +799,6 @@ var config = {
 							['6-System Tools/2-Memory Estimation Tool','内存预估'],
 							['6-System Tools/3-JMX Tool','JMX工具'],
 							['6-System Tools/4-Watermark Tool','水印工具'],
-							['6-System Tools/5-Log Visualizer','日志可视化工具'],
 							['6-System Tools/6-Query History Visualization Tool','查询历史可视化工具'],
 							['6-System Tools/7-Monitor and Log Tools','监控与日志工具']
 						]
@@ -887,7 +892,6 @@ var config = {
 							['System Tools/Memory Estimation Tool','内存预估'],
 							['System Tools/JMX Tool','JMX工具'],
 							['System Tools/Watermark Tool','水印工具'],
-							['System Tools/Log Visualizer','日志可视化工具'],
 							['System Tools/Query History Visualization Tool','查询历史可视化工具'],
 							['System Tools/Monitor and Log Tools','监控与日志工具'],
 							['System Tools/Load External Tsfile','加载外部tsfile文件']
@@ -962,7 +966,8 @@ var config = {
 							['Client/Programming - Other Languages','其他语言'],
 							['Client/Programming - TsFile API','TsFile API'],
 							['Client/Programming - MQTT','MQTT'],
-							['Client/Status Codes','状态码']
+							['Client/Status Codes','状态码'],
+							['Client/Native API Update(0.9-0.10)','0.9-0.10的原生接口更新']
 						]
 					},
 					{
@@ -981,10 +986,10 @@ var config = {
 							['System Tools/Memory Estimation Tool','内存预估'],
 							['System Tools/JMX Tool','JMX工具'],
 							['System Tools/Watermark Tool','水印工具'],
-							['System Tools/Log Visualizer','日志可视化工具'],
 							['System Tools/Query History Visualization Tool','查询历史可视化工具'],
 							['System Tools/Monitor and Log Tools','监控与日志工具'],
-							['System Tools/Load External Tsfile','加载外部tsfile文件']
+							['System Tools/Load External Tsfile','加载外部tsfile文件'],
+							['System Tools/Performance Tracing Tool','性能追踪工具']
 						]
 					},
 					{
@@ -1044,12 +1049,14 @@ var config = {
 					{
 						title: '存储引擎',
 						children: [
+							['StorageEngine/FileLists','磁盘文件汇总'],
 							['StorageEngine/StorageEngine','存储引擎'],
 							['StorageEngine/WAL','写前日志'],
 							['StorageEngine/FlushManager','FlushManager'],
 							['StorageEngine/MergeManager','文件合并机制'],
 							['StorageEngine/DataPartition','数据分区'],
-							['StorageEngine/DataManipulation','数据增删改']
+							['StorageEngine/DataManipulation','数据增删改'],
+							['StorageEngine/Recover','重启恢复'],
 						]
 					},
 					{

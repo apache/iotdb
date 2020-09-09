@@ -21,10 +21,13 @@ package org.apache.iotdb.tsfile.file.metadata;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -50,9 +53,9 @@ public class ChunkMetadata implements Accountable {
   private long version;
 
   /**
-   * All data with timestamp <= deletedAt are considered deleted.
+   * A list of deleted intervals.
    */
-  private long deletedAt = Long.MIN_VALUE;
+  private List<TimeRange> deleteIntervalList;
 
   private boolean modified;
 
@@ -62,7 +65,7 @@ public class ChunkMetadata implements Accountable {
   private IChunkLoader chunkLoader;
 
   private Statistics statistics;
-  
+
   private boolean isFromOldTsFile = false;
 
   private long ramSize;
@@ -77,9 +80,9 @@ public class ChunkMetadata implements Accountable {
    * constructor of ChunkMetaData.
    *
    * @param measurementUid measurement id
-   * @param tsDataType     time series data type
-   * @param fileOffset     file offset
-   * @param statistics     value statistics
+   * @param tsDataType time series data type
+   * @param fileOffset file offset
+   * @param statistics value statistics
    */
   public ChunkMetadata(String measurementUid, TSDataType tsDataType, long fileOffset,
       Statistics statistics) {
@@ -91,8 +94,9 @@ public class ChunkMetadata implements Accountable {
 
   @Override
   public String toString() {
-    return String.format("measurementId: %s, datatype: %s, version: %d, deletedAt: %d, "
-        + "Statistics: %s", measurementUid, tsDataType, version, deletedAt, statistics);
+    return String.format("measurementId: %s, datatype: %s, version: %d, "
+            + "Statistics: %s, deleteIntervalList: %s", measurementUid, tsDataType, version, statistics,
+        deleteIntervalList);
   }
 
   public long getNumOfPoints() {
@@ -171,12 +175,33 @@ public class ChunkMetadata implements Accountable {
     this.version = version;
   }
 
-  public long getDeletedAt() {
-    return deletedAt;
+  public List<TimeRange> getDeleteIntervalList() {
+    return deleteIntervalList;
   }
 
-  public void setDeletedAt(long deletedAt) {
-    this.deletedAt = deletedAt;
+  public void setDeleteIntervalList(List<TimeRange> list) {
+    this.deleteIntervalList = list;
+  }
+
+  public void insertIntoSortedDeletions(long startTime, long endTime) {
+    List<TimeRange> resultInterval = new ArrayList<>();
+    if (deleteIntervalList != null) {
+      for (TimeRange interval : deleteIntervalList) {
+        if (interval.getMax() < startTime) {
+          resultInterval.add(interval);
+        } else if (interval.getMin() > endTime) {
+          resultInterval.add(new TimeRange(startTime, endTime));
+          startTime = interval.getMin();
+          endTime = interval.getMax();
+        } else if (interval.getMax() >= startTime || interval.getMin() <= endTime) {
+          startTime = Math.min(interval.getMin(), startTime);
+          endTime = Math.max(interval.getMax(), endTime);
+        }
+      }
+    }
+
+    resultInterval.add(new TimeRange(startTime, endTime));
+    deleteIntervalList = resultInterval;
   }
 
   public IChunkLoader getChunkLoader() {
@@ -198,15 +223,15 @@ public class ChunkMetadata implements Accountable {
     ChunkMetadata that = (ChunkMetadata) o;
     return offsetOfChunkHeader == that.offsetOfChunkHeader &&
         version == that.version &&
-        deletedAt == that.deletedAt &&
         Objects.equals(measurementUid, that.measurementUid) &&
         tsDataType == that.tsDataType &&
+        Objects.equals(deleteIntervalList, that.deleteIntervalList) &&
         Objects.equals(statistics, that.statistics);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(measurementUid, deletedAt, tsDataType, statistics,
+    return Objects.hash(measurementUid, deleteIntervalList, tsDataType, statistics,
         version, offsetOfChunkHeader);
   }
 
@@ -238,5 +263,10 @@ public class ChunkMetadata implements Accountable {
   @Override
   public long getRamSize() {
     return ramSize;
+  }
+
+  public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {
+    this.statistics.mergeStatistics(chunkMetadata.getStatistics());
+    this.ramSize = calculateRamSize();
   }
 }

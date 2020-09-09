@@ -49,6 +49,7 @@ public abstract class AbstractPoolManager {
         totalWaitTime += WAIT_TIMEOUT;
       } catch (InterruptedException e) {
         logger.error("Interrupted while waiting {} thread pool to exit. ", getName(), e);
+        Thread.currentThread().interrupt();
       }
     }
   }
@@ -81,7 +82,12 @@ public abstract class AbstractPoolManager {
 
   public abstract void start();
 
-  public abstract void stop();
+  public void stop() {
+    if (pool != null) {
+      close();
+      pool = null;
+    }
+  }
 
   public abstract String getName();
 

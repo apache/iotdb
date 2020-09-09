@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
@@ -41,14 +42,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
 public class SeriesReader {
 
-  private final Path seriesPath;
+  private final PartialPath seriesPath;
 
   // all the sensors in this device;
   private final Set<String> allSensors;
@@ -105,7 +105,7 @@ public class SeriesReader {
   private boolean hasCachedNextOverlappedPage;
   private BatchData cachedBatchData;
 
-  public SeriesReader(Path seriesPath, Set<String> allSensors, TSDataType dataType,
+  public SeriesReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType,
       QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
     this.seriesPath = seriesPath;
@@ -120,7 +120,7 @@ public class SeriesReader {
   }
 
   @TestOnly
-  SeriesReader(Path seriesPath, Set<String> allSensors, TSDataType dataType, QueryContext context,
+  SeriesReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
       Filter timeFilter, Filter valueFilter) {
     this.seriesPath = seriesPath;
@@ -312,6 +312,7 @@ public class SeriesReader {
    * This method should be called after hasNextChunk() until no next page, make sure that all
    * overlapped pages are consumed
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
 
     /*
@@ -347,6 +348,10 @@ public class SeriesReader {
        */
       if (!cachedPageReaders.isEmpty()) {
         firstPageReader = cachedPageReaders.poll();
+        long endTime = firstPageReader.getEndTime();
+        unpackAllOverlappedTsFilesToTimeSeriesMetadata(endTime);
+        unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(endTime, false);
+        unpackAllOverlappedChunkMetadataToCachedPageReaders(endTime, false);
       }
     }
 
@@ -484,6 +489,7 @@ public class SeriesReader {
    * read overlapped data till currentLargestEndTime in mergeReader, if current batch does not
    * contain data, read till next currentLargestEndTime again
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean hasNextOverlappedPage() throws IOException {
 
     if (hasCachedNextOverlappedPage) {
@@ -612,6 +618,7 @@ public class SeriesReader {
    * the chunks at once, which may cause OOM, so we can only unpack one file at a time when needed.
    * This approach is likely to be ubiquitous, but it keeps the system running smoothly
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void tryToUnpackAllOverlappedFilesToTimeSeriesMetadata() throws IOException {
     /*
      * Fill sequence TimeSeriesMetadata List until it is not empty

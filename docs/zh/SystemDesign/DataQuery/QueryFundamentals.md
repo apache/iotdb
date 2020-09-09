@@ -30,7 +30,7 @@ IoTDB会将顺序和乱序文件分开存储在data/sequence和data/unsequence�
 
 ## 读取TsFile的一般流程
 
-TsFile 各级结构在前面的[TsFile](../TsFile/TsFile.html)文档中已有介绍，读取一个时间序列的过程需要按照层级各级展开TsFileResource -> TimeseriesMetadata -> ChunkMetadata -> IPageReader -> BatchData。
+TsFile 各级结构在前面的[TsFile](../TsFile/TsFile.md)文档中已有介绍，读取一个时间序列的过程需要按照层级各级展开TsFileResource -> TimeseriesMetadata -> ChunkMetadata -> IPageReader -> BatchData。
 
 文件读取的功能方法在
 `org.apache.iotdb.db.utils.FileLoaderUtils`
@@ -69,12 +69,46 @@ Modification文件: org.apache.iotdb.db.engine.modification.ModificationFile
 
 删除操作: org.apache.iotdb.db.engine.modification.Modification
 
+删除区间的内部表示：org.apache.iotdb.tsfile.read.common.TimeRange
+
+### Modification 文件
+IoTDB 通过为包含数据的TsFile写入一个Modification文件来完成删除操作。
+
+在0.11.0版本的IoTDB中对Modification文件中的删除记录格式进行了修改，每一行的删除记录包含删除的开始时间和结束时间。
+对之前版本产生的Modification文件依旧可以照常处理，旧的Modification文件中只记录一个"deleteAt"时间戳，现在会被视为删除了一个时间戳从Long.MIN_VALUE开始到"deleteAt"结束的范围数据。
+
+### TimeRange
+相应的，TimeRange结构是删除区间在内存中的表示媒介。
+
+删除操作中所有的TimeRange都是闭区间，我们使用Long.MIN_VALUE和Long.MAX_VALUE表示正负无穷范围。
+
+### 包含删除区间的查询处理
+当对一个TVList进行查询的时候，该TVList的所有记录的删除区间会预先被排序和合并。例如初始的删除区间为[1,10], [5,12], [15,20], [16,21]，会被预先处理为[1,12] and [15,21]两个区间。
+这样做的好处在于当删除区间很多的情况下，可以加快排除被删除数据的过程。
+
+具体的说，由于TVList中存储的是有序的时序数据，因此使用排序过后的TimeRange会有助于筛选出已经被删除的时间戳数据。
+使用一个标记位来标记TimeRange 列表中当前遍历到的TimeRange，由于时间戳是有序的，因此后面的数据不会落在当前TimeRange之前的范围之中。下面是一个具体遍历的实例：
+```
+private boolean isPointDeleted(long timestamp) {
+  while (deletionList != null && deleteCursor < deletionList.size()) {
+    if (deletionList.get(deleteCursor).contains(timestamp)) {
+      return true;
+    } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
+      deleteCursor++;
+    } else {
+      return false;
+    }
+  }
+  return false;
+}
+```
+
 ### 查询流程处理Modification
 
 对于任意的 TimeseriesMetadata,ChunkMetadata和PageHeader都有相应的modified标记，表示当前的数据块是否存在更改。由于数据删除都是从一个时间节点删除该时间前面的数据，因此如果存在数据删除会导致数据块统计信息中的startTime失效。因此在使用统计信息中的startTime之前必须检查数据块是否包含modification。对于 TimeseriesMetadata，如果删除时间点等于endTime也会导致统计信息中的endTime失效。
 
 
-![](https://user-images.githubusercontent.com/7240743/78339324-deca5d80-75c6-11ea-8fa8-dbd94232b756.png)
+![](https://user-images.githubusercontent.com/59866276/87266560-27fc4880-c4f8-11ea-9c8f-6794a9c599cb.jpg)
 
 如上图所示，数据修改会对前面提到的TsFile层级数据读取产生影响
 * TsFileResource -> TimeseriesMetadata
@@ -93,7 +127,7 @@ FileLoaderUtils.loadChunkMetadataList()
 
 对于以上示例，读取到的 ChunkMetadataList 为
 
-![](https://user-images.githubusercontent.com/7240743/78339335-e427a800-75c6-11ea-815f-16dc5b6ebfa3.png)
+![](https://user-images.githubusercontent.com/59866276/87266976-0b144500-c4f9-11ea-95b3-15d60d2b7416.jpg)
 
 * ChunkMetadata -> List\<IPageReader\>
 

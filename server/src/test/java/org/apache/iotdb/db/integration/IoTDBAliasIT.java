@@ -289,37 +289,40 @@ public class IoTDBAliasIT {
       statement.execute("ALTER timeseries root.sg.d2.s3 UPSERT ALIAS=powerNew");
       boolean hasResult = statement.execute("show timeseries root.sg.d2.s3");
       assertTrue(hasResult);
-      ResultSet resultSet = statement.getResultSet();
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-            + "," + resultSet.getString("alias")
-            + "," + resultSet.getString("storage group")
-            + "," + resultSet.getString("dataType")
-            + "," + resultSet.getString("encoding")
-            + "," + resultSet.getString("compression");
-        assertEquals(ret, ans);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression");
+          assertEquals(ret, ans);
+        }
       }
 
       hasResult = statement.execute("select powerNew from root.sg.d2");
       assertTrue(hasResult);
-      resultSet = statement.getResultSet();
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      StringBuilder header = new StringBuilder();
-      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-        header.append(resultSetMetaData.getColumnName(i)).append(",");
-      }
-      assertEquals("Time,root.sg.d2.powerNew,", header.toString());
 
-      int cnt = 0;
-      while (resultSet.next()) {
-        StringBuilder builder = new StringBuilder();
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          builder.append(resultSet.getString(i)).append(",");
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        assertEquals(retArray[cnt], builder.toString());
-        cnt++;
+        assertEquals("Time,root.sg.d2.powerNew,", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
       }
-      assertEquals(retArray.length, cnt);
     } catch (Exception e) {
       fail(e.getMessage());
       e.printStackTrace();

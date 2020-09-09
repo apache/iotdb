@@ -19,21 +19,21 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class FlushOperator extends RootOperator {
 
-  public List<Path> getStorageGroupList() {
+  public List<PartialPath> getStorageGroupList() {
     return storageGroupList;
   }
 
   public void setStorageGroupList(
-      List<Path> storageGroupList) {
+      List<PartialPath> storageGroupList) {
     this.storageGroupList = storageGroupList;
   }
 
-  private List<Path> storageGroupList;
+  private List<PartialPath> storageGroupList;
 
   public Boolean isSeq() {
     return isSeq;

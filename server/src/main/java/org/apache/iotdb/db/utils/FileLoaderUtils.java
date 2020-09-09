@@ -25,6 +25,7 @@ import java.util.Set;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
@@ -49,11 +50,12 @@ public class FileLoaderUtils {
 
   }
 
-  public static void checkTsFileResource(TsFileResource tsFileResource) throws IOException {
-    if (!tsFileResource.fileExists()) {
+  public static void checkTsFileResource(TsFileResource tsFileResource)
+      throws IOException {
+    if (!tsFileResource.resourceFileExists()) {
       // .resource file does not exist, read file metadata and recover tsfile resource
       try (TsFileSequenceReader reader = new TsFileSequenceReader(
-          tsFileResource.getFile().getAbsolutePath())) {
+          tsFileResource.getTsFile().getAbsolutePath())) {
         updateTsFileResource(reader, tsFileResource);
       }
       // write .resource file
@@ -83,12 +85,12 @@ public class FileLoaderUtils {
    * @param allSensors measurements queried at the same time of this device
    * @param filter any filter, only used to check time range
    */
-  public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath,
+  public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, PartialPath seriesPath,
       QueryContext context, Filter filter, Set<String> allSensors) throws IOException {
     TimeseriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {
       timeSeriesMetadata = TimeSeriesMetadataCache.getInstance()
-          .get(new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(resource.getPath(),
+          .get(new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(resource.getTsFilePath(),
               seriesPath.getDevice(), seriesPath.getMeasurement()), allSensors);
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(

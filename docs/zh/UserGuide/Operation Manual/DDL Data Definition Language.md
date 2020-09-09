@@ -41,7 +41,7 @@ Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.excepti
 
 ## 查看存储组
 
-在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.html)语句来查看所有的存储组，SQL语句如下所示：
+在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句来查看所有的存储组，SQL语句如下所示：
 
 ```
 IoTDB> show storage group
@@ -49,6 +49,15 @@ IoTDB> show storage group
 
 执行结果为：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
+
+## 删除存储组
+
+用户使用[DELETE STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句可以删除指定的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
+
+```
+IoTDB > DELETE STORAGE GROUP root.ln
+IoTDB > DELETE STORAGE GROUP root.sgcc
+```
 
 ## 创建时间序列
 
@@ -69,7 +78,7 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-详细的数据类型与编码方式的对应列表请参见[编码方式](../Concept/Encoding.html)。
+详细的数据类型与编码方式的对应列表请参见[编码方式](../Concept/Encoding.md)。
 
 ### 标签点管理
 
@@ -292,6 +301,19 @@ IoTDB> unset ttl to root.ln
 ```
 
 取消设置TTL后，存储组`root.ln`中所有的数据都会被保存。
+
+## 显示 TTL
+
+显示TTL的SQL语句如下所示：
+
+```
+IoTDB> SHOW ALL TTL
+IoTDB> SHOW TTL ON StorageGroupNames
+```
+
+SHOW ALL TTL这个例子会给出所有存储组的TTL。
+SHOW TTL ON root.group1,root.group2,root.group3这个例子会显示指定的三个存储组的TTL。
+注意: 没有设置TTL的存储组的TTL将显示为null。
 
 ## FLUSH
 

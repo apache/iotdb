@@ -31,13 +31,13 @@
 	* JDBC 的 execute 和 executeBatch 接口
 	* Session 的 insertRecord 和 insertRecords
 
-* 总入口: public void insert(InsertPlan insertPlan)   StorageEngine.java
+* 总入口: public void insert(InsertRowPlan insertRowPlan)   StorageEngine.java
 	* 找到对应的 StorageGroupProcessor
 	* 根据写入数据的时间以及当前设备落盘的最后时间戳，找到对应的 TsFileProcessor
-	* 记录写前日志
 	* 写入 TsFileProcessor 对应的 memtable 中
 	    * 如果是乱序文件，则更新tsfileResource中的endTimeMap
-	    * 如果tsfile中没有该设备的信息，则更新tsfileResource中的startTimeMap
+	    * 如果tsfile中没有该设备的信息，或新插入数据的时间小于已存startTime，则更新tsfileResource中的startTimeMap
+	* 记录写前日志
 	* 根据 memtable 大小，来判断是否触发异步持久化 memtable 操作
 	    * 如果是顺序文件且执行了刷盘动作，则更新tsfileResource中的endTimeMap
 	* 根据当前磁盘 TsFile 的大小，判断是否触发文件关闭操作
@@ -47,13 +47,13 @@
 * 对应的接口
 	* Session 的 insertTablet
 
-* 总入口: public Integer[] insertTablet(InsertTabletPlan insertTabletPlan)  StorageEngine.java
+* 总入口: public void insertTablet(InsertTabletPlan insertTabletPlan)  StorageEngine.java
     * 找到对应的 StorageGroupProcessor
 	* 根据这批数据的时间以及当前设备落盘的最后时间戳，将这批数据分成小批，分别对应到一个 TsFileProcessor 中
-	* 记录写前日志
 	* 分别将每小批写入 TsFileProcessor 对应的 memtable 中
 	    * 如果是乱序文件，则更新tsfileResource中的endTimeMap
-	    * 如果tsfile中没有该设备的信息，则更新tsfileResource中的startTimeMap
+	    * 如果tsfile中没有该设备的信息，或新插入数据的时间小于已存startTime，则更新tsfileResource中的startTimeMap
+	* 记录写前日志
 	* 根据 memtable 大小，来判断是否触发异步持久化 memtable 操作
 	    * 如果是顺序文件且执行了刷盘动作，则更新tsfileResource中的endTimeMap
 	* 根据当前磁盘 TsFile 的大小，判断是否触发文件关闭操作
@@ -64,7 +64,7 @@
 目前不支持数据的原地更新操作，即update语句，但用户可以直接插入新的数据，在同一个时间点上的同一个时间序列以最新插入的数据为准
 旧数据会通过合并来自动删除，参见：
 
-* [文件合并机制](/zh/SystemDesign/StorageEngine/MergeManager.html)
+* [文件合并机制](../StorageEngine/MergeManager.md)
 
 ## 数据删除
 
@@ -75,15 +75,19 @@
 每个 StorageGroupProsessor 中针对每个分区会维护一个自增的版本号，由 SimpleFileVersionController 管理。
 每个内存缓冲区 memtable 在持久化的时候会申请一个版本号。持久化到 TsFile 后，会在 TsFileMetadata 中记录此 memtable 对应的 多个 ChunkGroup 的终止位置和版本号。
 查询时会根据此信息对 ChunkMetadata 赋 version。
-​	
-* 总入口: public void delete(String deviceId, String measurementId, long timestamp) StorageEngine.java
+
+StorageEngine.java中的delete入口: 
+
+```public void delete(String deviceId, String measurementId, long timestamp)```
   * 找到对应的 StorageGroupProcessor
   * 找到受影响的所有 working TsFileProcessor 记录写前日志
-  * 找到受影响的所有 TsFileResource，在其对应的 mods 文件中记录一条记录：path，deleteTime，version
-  * 如果文件没有关闭，拿到对应的 TsFileProcessor
+  * 找到受影响的所有 TsFileResource，在其对应的 mods 文件中记录一条记录：path，version，startTime，endTime
     * 如果存在 working memtable：则删除内存中的数据
     * 如果存在 正在 flush 的 memtable，记录一条记录，查询时跳过删掉的数据（注意此时文件中已经为这些 memtable 记录了 mods）
 
+Mods文件用来存储所有的删除记录。下图的mods文件中，d1.s1落在 [100, 200], [180, 300]范围的数据，以及d1.s2落在[500, 1000]范围中的数据将会被删除。
+
+![](https://user-images.githubusercontent.com/59866276/88248546-20952600-ccd4-11ea-88e9-84af8dde4304.jpg)
 
 ## 数据TTL设置
 

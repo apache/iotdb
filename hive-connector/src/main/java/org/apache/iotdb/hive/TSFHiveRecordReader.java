@@ -79,6 +79,7 @@ public class TSFHiveRecordReader implements RecordReader<NullWritable, MapWritab
                   .forEach((k, v) -> res.put(new Text(k.toString().toLowerCase()), v));
           value.putAll(res);
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           throw new IOException(e.getMessage());
         }
 

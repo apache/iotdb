@@ -59,7 +59,7 @@ Under the root path of incubator-iotdb:
 
 Then the binary version (including both server and client) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
 
-> NOTE: Directories "service-rpc/target/generated-sources/thrift" and "server/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in IDE.
+> NOTE: Directories "thrift/target/generated-sources/thrift" and "antlr/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in IDE.
 
 If you would like to build the IoTDB server, you can run the following command under the root path of incubator-iotdb:
 
@@ -71,4 +71,4 @@ After build, the IoTDB server will be at the folder "server/target/iotdb-server-
 
 ## Installation by Docker (Dockerfile)
 
-You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](../Server/Docker%20Image.html)
+You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](../Server/Docker%20Image.md)

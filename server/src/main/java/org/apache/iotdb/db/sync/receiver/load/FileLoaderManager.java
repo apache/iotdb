@@ -93,7 +93,7 @@ public class FileLoaderManager {
    */
   public synchronized void checkAndUpdateDeviceOwner(TsFileResource tsFileResource)
       throws SyncDeviceOwnerConflictException, IOException {
-    String curOwner = tsFileResource.getFile().getParentFile().getParentFile().getParentFile()
+    String curOwner = tsFileResource.getTsFile().getParentFile().getParentFile().getParentFile()
         .getName();
     Set<String> deviceSet = tsFileResource.getDeviceToIndexMap().keySet();
     checkDeviceConflict(curOwner, deviceSet);
@@ -200,6 +200,7 @@ public class FileLoaderManager {
         totalWaitTime += WAIT_TIMEOUT;
       } catch (InterruptedException e) {
         LOGGER.error("Interrupted while waiting file load manager thread pool to exit. ", e);
+        Thread.currentThread().interrupt();
       }
     }
     loadTaskRunnerPool = null;

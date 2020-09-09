@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.monitor;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
@@ -34,13 +27,16 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeManagerStatConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstants;
 import org.apache.iotdb.db.monitor.collector.FileSize;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -49,6 +45,14 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class StatMonitor implements IService {
 
@@ -75,7 +79,7 @@ public class StatMonitor implements IService {
 
   private StatMonitor() {
     initTemporaryStatList();
-    MManager mmanager = MManager.getInstance();
+    MManager mmanager = IoTDB.metaManager;
     statisticMap = new HashMap<>();
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     statMonitorDetectFreqSec = config.getStatMonitorDetectFreqSec();
@@ -83,7 +87,7 @@ public class StatMonitor implements IService {
     backLoopPeriod = config.getBackLoopPeriodSec();
     if (config.isEnableStatMonitor()) {
       try {
-        String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
+        PartialPath prefix = new PartialPath(MonitorConstants.getStatStorageGroupPrefixArray());
         if (!mmanager.isPathExist(prefix)) {
           mmanager.setStorageGroup(prefix);
         }
@@ -138,8 +142,8 @@ public class StatMonitor implements IService {
   }
 
   void registerStatStorageGroup() {
-    MManager mManager = MManager.getInstance();
-    String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
+    MManager mManager = IoTDB.metaManager;
+    PartialPath prefix = new PartialPath(MonitorConstants.getStatStorageGroupPrefixArray());
     try {
       if (!mManager.isPathExist(prefix)) {
         mManager.setStorageGroup(prefix);
@@ -155,15 +159,15 @@ public class StatMonitor implements IService {
    * @param hashMap series path and data type pair, for example: [root.stat.file.size.DATA, INT64]
    */
   public synchronized void registerStatStorageGroup(Map<String, String> hashMap) {
-    MManager mManager = MManager.getInstance();
+    MManager mManager = IoTDB.metaManager;
     try {
       for (Map.Entry<String, String> entry : hashMap.entrySet()) {
         if (entry.getValue() == null) {
           logger.error("Registering metadata but data type of {} is null", entry.getKey());
         }
 
-        if (!mManager.isPathExist(entry.getKey())) {
-          mManager.createTimeseries(entry.getKey(), TSDataType.valueOf(entry.getValue()),
+        if (!mManager.isPathExist(new PartialPath(entry.getKey()))) {
+          mManager.createTimeseries(new PartialPath(entry.getKey()), TSDataType.valueOf(entry.getValue()),
               TSEncoding.valueOf("RLE"),
               TSFileDescriptor.getInstance().getConfig().getCompressor(),
               Collections.emptyMap());
@@ -363,12 +367,12 @@ public class StatMonitor implements IService {
         for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
           for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
             if (temporaryStatList.contains(statParamName)) {
-              fManager.delete(entry.getKey(), statParamName,
+              fManager.delete(new PartialPath(entry.getKey()), statParamName, Long.MIN_VALUE,
                   currentTimeMillis - statMonitorRetainIntervalSec * 1000);
             }
           }
         }
-      } catch (StorageEngineException e) {
+      } catch (StorageEngineException | IllegalPathException e) {
         logger
             .error("Error occurred when deleting statistics information periodically, because",
                 e);
@@ -380,11 +384,11 @@ public class StatMonitor implements IService {
       int pointNum;
       for (Map.Entry<String, TSRecord> entry : tsRecordHashMap.entrySet()) {
         try {
-          fManager.insert(new InsertPlan(entry.getValue()));
+          fManager.insert(new InsertRowPlan(entry.getValue()));
           numInsert.incrementAndGet();
           pointNum = entry.getValue().dataPointList.size();
           numPointsInsert.addAndGet(pointNum);
-        } catch (StorageEngineException e) {
+        } catch (StorageEngineException | IllegalPathException e) {
           numInsertError.incrementAndGet();
           logger.error("Inserting stat points error.", e);
         }

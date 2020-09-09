@@ -465,6 +465,7 @@ public final class RamUsageEstimator {
    * or complex graphs (a max. recursion depth on my machine was ~5000 objects linked in a chain
    * so not too much).
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static long measureObjectSize(Object root) {
     // Objects seen so far.
     final IdentityHashSet<Object> seen = new IdentityHashSet<Object>();

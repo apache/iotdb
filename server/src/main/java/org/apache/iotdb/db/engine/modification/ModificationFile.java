@@ -31,6 +31,7 @@ import java.util.Random;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.modification.io.ModificationReader;
 import org.apache.iotdb.db.engine.modification.io.ModificationWriter;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,7 +150,7 @@ public class ModificationFile implements AutoCloseable {
     }
 
     while (true) {
-      String hardlinkSuffix = "." + System.currentTimeMillis() + "_" + random.nextLong();
+      String hardlinkSuffix = TsFileConstant.PATH_SEPARATOR + System.currentTimeMillis() + "_" + random.nextLong();
       File hardlink = new File(filePath + hardlinkSuffix);
 
       try {

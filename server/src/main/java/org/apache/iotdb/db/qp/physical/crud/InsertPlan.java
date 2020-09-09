@@ -16,222 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public class InsertPlan extends PhysicalPlan {
+abstract public class InsertPlan extends PhysicalPlan {
 
-  private static final Logger logger = LoggerFactory.getLogger(InsertPlan.class);
+  protected PartialPath deviceId;
+  protected String[] measurements;
+  protected TSDataType[] dataTypes;
+  protected MeasurementSchema[] schemas;
 
-  private long time;
-  private String deviceId;
-  private String[] measurements;
-  private Object[] values;
-  private TSDataType[] types;
-  private MeasurementSchema[] schemas;
-
-  // if isNeedInferType is true, the values must be String[], so we could infer types from them
-  // if values is object[], we could use the raw type of them, and we should set this to false
-  private boolean isNeedInferType = false;
+  // for updating last cache
+  private MNode deviceMNode;
 
   // record the failed measurements
-  private List<String> failedMeasurements;
+  protected List<String> failedMeasurements;
 
-  public InsertPlan() {
-    super(false, OperatorType.INSERT);
-    canBeSplit = false;
+  public InsertPlan(Operator.OperatorType operatorType) {
+    super(false, operatorType);
+    super.canBeSplit = false;
   }
 
-  @TestOnly
-  public InsertPlan(String deviceId, long insertTime, String[] measurements, TSDataType[] types,
-      String[] insertValues) {
-    super(false, OperatorType.INSERT);
-    this.time = insertTime;
-    this.deviceId = deviceId;
-    this.measurements = measurements;
-
-    this.types = types;
-    this.values = new Object[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
-      try {
-        values[i] = CommonUtils.parseValueForTest(types[i], insertValues[i]);
-      } catch (QueryProcessException e) {
-        e.printStackTrace();
-      }
-    }
-    canBeSplit = false;
+  public PartialPath getDeviceId() {
+    return deviceId;
   }
 
-  @TestOnly
-  public InsertPlan(String deviceId, long insertTime, String measurement, TSDataType type, String insertValue) {
-    super(false, OperatorType.INSERT);
-    this.time = insertTime;
-    this.deviceId = deviceId;
-    this.measurements = new String[]{measurement};
-    this.types = new TSDataType[]{type};
-    this.values = new Object[1];
-    try {
-      values[0] = CommonUtils.parseValueForTest(types[0], insertValue);
-    } catch (QueryProcessException e) {
-      e.printStackTrace();
-    }
-    canBeSplit = false;
-  }
-
-  public InsertPlan(TSRecord tsRecord) {
-    super(false, OperatorType.INSERT);
-    this.deviceId = tsRecord.deviceId;
-    this.time = tsRecord.time;
-    this.measurements = new String[tsRecord.dataPointList.size()];
-    this.schemas = new MeasurementSchema[tsRecord.dataPointList.size()];
-    this.types = new TSDataType[tsRecord.dataPointList.size()];
-    this.values = new Object[tsRecord.dataPointList.size()];
-    for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
-      measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
-      schemas[i] = new MeasurementSchema(measurements[i], tsRecord.dataPointList.get(i).getType(),
-          TSEncoding.PLAIN);
-      types[i] = tsRecord.dataPointList.get(i).getType();
-      values[i] = tsRecord.dataPointList.get(i).getValue();
-    }
-    canBeSplit = false;
-  }
-
-  public InsertPlan(String deviceId, long insertTime, String[] measurementList, TSDataType[] types,
-      Object[] insertValues) {
-    super(false, Operator.OperatorType.INSERT);
-    this.time = insertTime;
-    this.deviceId = deviceId;
-    this.measurements = measurementList;
-    this.types = types;
-    this.values = insertValues;
-    canBeSplit = false;
-  }
-
-  public InsertPlan(String deviceId, long insertTime, String[] measurementList,
-      String[] insertValues) {
-    super(false, Operator.OperatorType.INSERT);
-    this.time = insertTime;
-    this.deviceId = deviceId;
-    this.measurements = measurementList;
-    // build types and values
-    this.types = new TSDataType[measurements.length];
-    this.values = new Object[measurements.length];
-    System.arraycopy(insertValues, 0, values, 0, measurements.length);
-    isNeedInferType = true;
-    canBeSplit = false;
-  }
-
-
-  public long getTime() {
-    return time;
-  }
-
-  public void setTime(long time) {
-    this.time = time;
-  }
-
-  public boolean isNeedInferType() {
-    return isNeedInferType;
-  }
-
-  public void setNeedInferType(boolean inferType) {
-    this.isNeedInferType = inferType;
-  }
-
-  public MeasurementSchema[] getSchemas() {
-    return schemas;
-  }
-
-  /**
-   * if inferType is true,
-   * transfer String[] values to specific data types (Integer, Long, Float, Double, Binary)
-   */
-  public void setSchemasAndTransferType(MeasurementSchema[] schemas) throws QueryProcessException {
-    this.schemas = schemas;
-    if (isNeedInferType) {
-      for (int i = 0; i < schemas.length; i++) {
-        if (schemas[i] == null) {
-          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markMeasurementInsertionFailed(i);
-          } else {
-            throw new QueryProcessException(new PathNotExistException(
-                deviceId + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
-          }
-          continue;
-        }
-        types[i] = schemas[i].getType();
-        try {
-          values[i] = CommonUtils.parseValue(types[i], values[i].toString());
-        } catch (Exception e) {
-          logger.warn("{}.{} data type is not consistent, input {}, registered {}", deviceId,
-              measurements[i], values[i], types[i]);
-          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markMeasurementInsertionFailed(i);
-            schemas[i] = null;
-          } else {
-            throw e;
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * @param index failed measurement index
-   */
-  public void markMeasurementInsertionFailed(int index) {
-    if (failedMeasurements == null) {
-      failedMeasurements = new ArrayList<>();
-    }
-    failedMeasurements.add(measurements[index]);
-    measurements[index] = null;
-    types[index] = null;
-    values[index] = null;
-  }
-
-  @Override
-  public List<Path> getPaths() {
-    List<Path> ret = new ArrayList<>();
-
-    for (String m : measurements) {
-      ret.add(new Path(deviceId, m));
-    }
-    return ret;
-  }
-
-  public String getDeviceId() {
-    return this.deviceId;
-  }
-
-  public void setDeviceId(String deviceId) {
+  public void setDeviceId(PartialPath deviceId) {
     this.deviceId = deviceId;
   }
 
@@ -243,122 +62,20 @@ public class InsertPlan extends PhysicalPlan {
     this.measurements = measurements;
   }
 
-  public Object[] getValues() {
-    return this.values;
+  public TSDataType[] getDataTypes() {
+    return dataTypes;
   }
 
-  public void setValues(Object[] values) {
-    this.values = values;
+  public void setDataTypes(TSDataType[] dataTypes) {
+    this.dataTypes = dataTypes;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    InsertPlan that = (InsertPlan) o;
-    return time == that.time && Objects.equals(deviceId, that.deviceId)
-        && Arrays.equals(measurements, that.measurements)
-        && Arrays.equals(values, that.values);
+  public MeasurementSchema[] getSchemas() {
+    return schemas;
   }
 
-  @Override
-  public int hashCode() {
-    return Objects.hash(deviceId, time);
-  }
-
-  @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    int type = PhysicalPlanType.INSERT.ordinal();
-    stream.writeByte((byte) type);
-    stream.writeLong(time);
-
-    putString(stream, deviceId);
-
-    stream.writeInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
-
-    for (String m : measurements) {
-      if (m != null) {
-        putString(stream, m);
-      }
-    }
-
-    for (MeasurementSchema schema: schemas) {
-      if (schema != null) {
-        schema.serializeTo(stream);
-      }
-    }
-
-    try {
-      putValues(stream);
-    } catch (QueryProcessException e) {
-      throw new IOException(e);
-    }
-  }
-
-  private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
-    for (int i = 0; i < values.length; i++) {
-      if (types[i] == null) {
-        continue;
-      }
-      ReadWriteIOUtils.write(types[i], outputStream);
-      switch (types[i]) {
-        case BOOLEAN:
-          ReadWriteIOUtils.write((Boolean) values[i], outputStream);
-          break;
-        case INT32:
-          ReadWriteIOUtils.write((Integer) values[i], outputStream);
-          break;
-        case INT64:
-          ReadWriteIOUtils.write((Long) values[i], outputStream);
-          break;
-        case FLOAT:
-          ReadWriteIOUtils.write((Float) values[i], outputStream);
-          break;
-        case DOUBLE:
-          ReadWriteIOUtils.write((Double) values[i], outputStream);
-          break;
-        case TEXT:
-          ReadWriteIOUtils.write((Binary) values[i], outputStream);
-          break;
-        default:
-          throw new QueryProcessException("Unsupported data type:" + types[i]);
-      }
-    }
-  }
-
-  private void putValues(ByteBuffer buffer) throws QueryProcessException {
-    for (int i = 0; i < values.length; i++) {
-      if (types[i] == null) {
-        continue;
-      }
-      ReadWriteIOUtils.write(types[i], buffer);
-      switch (types[i]) {
-        case BOOLEAN:
-          ReadWriteIOUtils.write((Boolean) values[i], buffer);
-          break;
-        case INT32:
-          ReadWriteIOUtils.write((Integer) values[i], buffer);
-          break;
-        case INT64:
-          ReadWriteIOUtils.write((Long) values[i], buffer);
-          break;
-        case FLOAT:
-          ReadWriteIOUtils.write((Float) values[i], buffer);
-          break;
-        case DOUBLE:
-          ReadWriteIOUtils.write((Double) values[i], buffer);
-          break;
-        case TEXT:
-          ReadWriteIOUtils.write((Binary) values[i], buffer);
-          break;
-        default:
-          throw new QueryProcessException("Unsupported data type:" + types[i]);
-      }
-    }
+  public void setSchemas(MeasurementSchema[] schemas) {
+    this.schemas = schemas;
   }
 
   public List<String> getFailedMeasurements() {
@@ -369,97 +86,24 @@ public class InsertPlan extends PhysicalPlan {
     return failedMeasurements == null ? 0 : failedMeasurements.size();
   }
 
-  public TSDataType[] getTypes() {
-    return types;
+  public MNode getDeviceMNode() {
+    return deviceMNode;
   }
 
-  public void setTypes(TSDataType[] types) {
-    this.types = types;
+  public void setDeviceMNode(MNode deviceMNode) {
+    this.deviceMNode = deviceMNode;
   }
 
-  public void setValues(ByteBuffer buffer) throws QueryProcessException {
-    for (int i = 0; i < measurements.length; i++) {
-      types[i] = ReadWriteIOUtils.readDataType(buffer);
-      switch (types[i]) {
-        case BOOLEAN:
-          values[i] = ReadWriteIOUtils.readBool(buffer);
-          break;
-        case INT32:
-          values[i] = ReadWriteIOUtils.readInt(buffer);
-          break;
-        case INT64:
-          values[i] = ReadWriteIOUtils.readLong(buffer);
-          break;
-        case FLOAT:
-          values[i] = ReadWriteIOUtils.readFloat(buffer);
-          break;
-        case DOUBLE:
-          values[i] = ReadWriteIOUtils.readDouble(buffer);
-          break;
-        case TEXT:
-          values[i] = ReadWriteIOUtils.readBinary(buffer);
-          break;
-        default:
-          throw new QueryProcessException("Unsupported data type:" + types[i]);
-      }
+  /**
+   * @param index failed measurement index
+   */
+  public void markFailedMeasurementInsertion(int index) {
+    if (failedMeasurements == null) {
+      failedMeasurements = new ArrayList<>();
     }
+    failedMeasurements.add(measurements[index]);
+    measurements[index] = null;
+    dataTypes[index] = null;
   }
 
-  @Override
-  public void serialize(ByteBuffer buffer) {
-    int type = PhysicalPlanType.INSERT.ordinal();
-    buffer.put((byte) type);
-    buffer.putLong(time);
-
-    putString(buffer, deviceId);
-
-    buffer.putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
-
-    for (String measurement : measurements) {
-      if (measurement != null) {
-        putString(buffer, measurement);
-      }
-    }
-
-    try {
-      putValues(buffer);
-    } catch (QueryProcessException e) {
-      e.printStackTrace();
-    }
-  }
-
-  @Override
-  public void deserialize(ByteBuffer buffer) {
-    this.time = buffer.getLong();
-    this.deviceId = readString(buffer);
-
-    int measurementSize = buffer.getInt();
-
-    this.measurements = new String[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      measurements[i] = readString(buffer);
-    }
-
-    this.types = new TSDataType[measurementSize];
-    this.values = new Object[measurementSize];
-    try {
-      setValues(buffer);
-    } catch (QueryProcessException e) {
-      e.printStackTrace();
-    }
-  }
-
-  @Override
-  public String toString() {
-    return "deviceId: " + deviceId + ", time: " + time;
-  }
-
-  public TimeValuePair composeTimeValuePair(int measurementIndex) {
-    if (measurementIndex >= values.length) {
-      return null;
-    }
-    Object value = values[measurementIndex];
-    return new TimeValuePair(time,
-        TsPrimitiveType.getByType(schemas[measurementIndex].getType(), value));
-  }
 }
