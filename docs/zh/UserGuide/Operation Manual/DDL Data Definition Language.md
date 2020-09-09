@@ -41,7 +41,7 @@ Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.excepti
 
 ## 查看存储组
 
-在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句来查看所有的存储组，SQL语句如下所示：
+在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句和[SHOW STORAGE GROUP <PrefixPath>](../Operation%20Manual/SQL%20Reference.md)来查看存储组，SQL语句如下所示：
 
 ```
 IoTDB> show storage group

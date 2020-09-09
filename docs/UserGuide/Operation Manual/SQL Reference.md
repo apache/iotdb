@@ -190,7 +190,16 @@ Eg: show timeseries root.ln where unit='c' limit 10 offset 10
 ```
 SHOW STORAGE GROUP
 Eg: IoTDB > SHOW STORAGE GROUP
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
+* Show Specific Storage Group Statement
+
+```
+SHOW STORAGE GROUP <PrefixPath>
+Eg: IoTDB > SHOW STORAGE GROUP root.*
 Eg: IoTDB > SHOW STORAGE GROUP root.ln
+Note: The path can be prefix path or star path.
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
