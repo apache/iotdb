@@ -50,9 +50,10 @@
 - void recover() 调用对应的恢复流程
 - HotCompactionMergeTask 调用对应的异步合并流程，传入 closeUnsealedTsFileProcessorCallBack 以通知外部类合并结束
 
-## LevelStrategy
+## LevelStrategy merge 流程
 
 * 外部调用 forkCurrentFileList(long timePartition) 保存当前文件的某时间分区列表
+  * 这里选择的文件列表 chunk 点数之和不超出 merge_chunk_point_number
 * 外部异步创建并提交 merge 线程
 * 判断是否要进行全局热合并
 	* 生成目标文件 {first_file_name}-{max_level_num - 1}.tsfile
@@ -130,15 +131,93 @@
 
 ### 动态参数调整的例子
 
+- 系统会严格按照上文中提到的 merge 流程对多层文件进行选择和合并，这里只介绍到参数调整时，系统初始化过程中文件会被放在哪一层
+- 假设max_file_num_in_each_level = 3
 * 从0.10.0升级
 	* 将所有文件的 mergeVersion 置为 {max_level_num - 1}
 	* 即老版本的文件不会被重复合并
+假设整个系统中有5个文件，此时恢复后的文件结构为：
+0: t0-0 t1-0 t2-0 t3-0 t4-0
+
 * 提高 max_level_num
 	* 此时因为不会改变任何文件的原 level，所以 recover 时文件还会被放到原来的层上，或超出 {max_level_num - 1} 的文件被放在最后一层（考虑到多次调整的情况）
 	* 即原文件将基于原来的 level 继续合并，超出 {max_level_num - 1} 部分也不会有乱序问题，因为在最后一层的必然是老文件
+假设整个系统中有5个文件，原max_file_num_in_each_level = 2，提高后的max_file_num_in_each_level = 3，此时恢复后的文件结构为：
+0: t2-0 t3-0 t4-0
+1: t0-1 t1-1
+假设 {size(t2-0)+size(t3-0)+size(t4-0)< merge_chunk_point_number}，则进行合并的过程如下
+0: t2-0 t3-0 t4-0
+     \    \    |
+       \   \   |
+         \  \  |
+           \ \ |
+1: t0-1 t1-1 t2-1
+合并后发现第1层合并后也满了，则继续合并到第2层，最后整个系统只剩下了第2层的t0-2文件
+0: t2-0 t3-0 t4-0
+     \    \    |
+       \   \   |
+         \  \  |
+           \ \ |
+1: t0-1 t1-1 t2-1
+   |    /     /
+   |   /    /
+   |  /   /
+   | /  /
+2: t0-2
+
 * 降低 max_level_num
 	* 此时因为不会改变任何文件的原 level，所以 recover 时小于此时 {max_level_num - 1} 的文件还会被放到原来的层上，而超出的文件将被放在最后一层
 	* 即部分文件将被继续合并，而超出 {max_level_num - 2} 的文件将不会再被热合并
+假设整个系统中有7个文件，原max_file_num_in_each_level = 3，降低后的max_file_num_in_each_level = 2，此时恢复后的文件结构为：
+0: t4-0 t5-0 t6-0
+1: t0-2 t1-1 t2-1 t3-1
+假设 {size(t2-0)+size(t3-0)+size(t4-0)< merge_chunk_point_number}，则进行合并的过程如下
+0:          t2-0 t3-0 t4-0
+              \    \    |
+                \   \   |
+                  \  \  |
+                    \ \ |
+1: t0-2 t1-1 t2-1 t3-1 t4-1
+合并后发现第1层合并后也满了，则继续合并到第2层
+0:          t2-0 t3-0 t4-0
+              \    \    |
+                \   \   |
+                  \  \  |
+                    \ \ |
+1: t0-2 t1-1 t2-1 t3-1 t4-1
+   |    /     /
+   |   /    /
+   |  /   /
+   | /  /
+2: t0-2
+最后剩下的文件结构为
+0: 
+1: t3-1 t4-1
+2: t0-2
+
 * NormalStrategy -> LevelStrategy
 	* 此时因为因为删去了原始合并的 {mergeVersion + 1} 策略，所以所有文件将全部被放到0层
 	* 每一次热合并会最多取出满足 {merge_chunk_point_number} 的文件进行合并，直到将所有多余的文件热合并完，进入正常的热合并流程
+假设整个系统中有5个文件，此时恢复后的文件结构为：
+0: t0-0 t1-0 t2-0 t3-0 t4-0
+假设 {size(t0-0)+size(t1-0)>=merge_chunk_point_number}，则进行第一次合并的过程如下
+0: t0-0 t1-0 t2-0 t3-0 t4-0 t5-0(新增了文件才会触发合并检查)
+     |   /
+     |  /
+     | /
+2: t0-2
+假设 {size(t2-0)+size(t3-0)>=merge_chunk_point_number}，则进行第二次合并的过程如下
+0: t2-0 t3-0 t4-0 t5-0 t6-0(新增了文件才会触发合并检查)
+     \    |
+      \   |
+       \  |
+2: t0-2 t2-2
+假设 {size(t4-0)+size(t5-0)+size(t6-0)+size(t7-0)< merge_chunk_point_number}，则进行第三次合并的过程如下
+0: t4-0 t5-0 t6-0 t7-0(新增了文件才会触发合并检查)
+     |    /   /
+     |   /  /
+     |  / /
+     | //  
+1: t4-1
+   
+2: t0-2 t2-2
