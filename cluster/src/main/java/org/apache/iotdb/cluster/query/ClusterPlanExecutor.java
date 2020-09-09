@@ -716,11 +716,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<PartialPath> getAllStorageGroupNames() {
-    return metaGroupMember.getAllStorageGroupNames();
-  }
-
-  @Override
   protected List<StorageGroupMNode> getAllStorageGroupNodes() {
     return metaGroupMember.getAllStorageGroupNodes();
   }

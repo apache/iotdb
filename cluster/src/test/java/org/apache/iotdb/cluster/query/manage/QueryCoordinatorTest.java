@@ -89,6 +89,7 @@ public class QueryCoordinatorTest {
       }
     };
     coordinator.setMetaGroupMember(metaGroupMember);
+    coordinator.clear();
   }
 
   @After

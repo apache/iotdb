@@ -113,6 +113,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
@@ -371,7 +372,7 @@ public class PlanExecutor implements IPlanExecutor {
       case TIMESERIES:
         return processShowTimeseries((ShowTimeSeriesPlan) showPlan, context);
       case STORAGE_GROUP:
-        return processShowStorageGroup();
+        return processShowStorageGroup((ShowStorageGroupPlan) showPlan);
       case DEVICES:
         return processShowDevices((ShowDevicesPlan) showPlan);
       case CHILD_PATH:
@@ -496,16 +497,17 @@ public class PlanExecutor implements IPlanExecutor {
     return IoTDB.metaManager.getChildNodePathInNextLevel(path);
   }
 
-  protected List<PartialPath> getAllStorageGroupNames() {
-    return IoTDB.metaManager.getAllStorageGroupPaths();
+  protected List<PartialPath> getStorageGroupNames(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getStorageGroupPaths(path);
   }
 
-  private QueryDataSet processShowStorageGroup() {
+  private QueryDataSet processShowStorageGroup(ShowStorageGroupPlan showStorageGroupPlan)
+      throws MetadataException {
     ListDataSet listDataSet =
         new ListDataSet(
             Collections.singletonList(new PartialPath(COLUMN_STORAGE_GROUP, false)),
             Collections.singletonList(TSDataType.TEXT));
-    List<PartialPath> storageGroupList = getAllStorageGroupNames();
+    List<PartialPath> storageGroupList = getStorageGroupNames(showStorageGroupPlan.getPath());
     for (PartialPath s : storageGroupList) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
@@ -1086,7 +1088,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     return true;
   }
-  
+
   protected QueryDataSet processAuthorQuery(AuthorPlan plan)
       throws QueryProcessException {
     AuthorType authorType = plan.getAuthorType();

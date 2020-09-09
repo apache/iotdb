@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,5 +124,10 @@ public class QueryCoordinator {
   public long getLastResponseLatency(Node node) {
     NodeStatus nodeStatus = getNodeStatus(node);
     return nodeStatus.getLastResponseLatency();
+  }
+
+  @TestOnly
+  public void clear() {
+    nodeStatusMap.clear();
   }
 }

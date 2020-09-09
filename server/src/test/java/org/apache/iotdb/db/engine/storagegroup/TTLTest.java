@@ -46,6 +46,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -80,6 +82,8 @@ public class TTLTest {
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
   private long prevPartitionInterval;
 
+  private MNode deviceMNode = null;
+
   @Before
   public void setUp()
       throws MetadataException, IOException, StartupException, StorageGroupProcessorException {
@@ -87,6 +91,8 @@ public class TTLTest {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
     createSchemas();
+    deviceMNode = new MNode(null, sg1);
+    deviceMNode.addChild(s1, new MeasurementMNode(null, null, null, null));
   }
 
   @After
@@ -94,6 +100,12 @@ public class TTLTest {
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+  }
+
+  private void insertToStorageGroupProcessor(InsertRowPlan insertPlan)
+      throws WriteProcessException {
+    insertPlan.setDeviceMNode(deviceMNode);
+    storageGroupProcessor.insert(insertPlan);
   }
 
   private void createSchemas()
@@ -274,6 +286,11 @@ public class TTLTest {
     assertEquals(4, seqFiles.size());
     assertEquals(4, unseqFiles.size());
 
+    try {
+      Thread.sleep(500);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     storageGroupProcessor.setDataTTL(500);
     storageGroupProcessor.checkFilesTTL();
 

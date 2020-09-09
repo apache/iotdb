@@ -76,12 +76,4 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
       assertEquals(testMetaMember.getAllStorageGroupNodes().get(i).getFullPath(), allStorageGroupNodes.get(i).getFullPath());
     }
   }
-
-  @Test
-  public void testGetAllStorageGroupNames() {
-    List<PartialPath> allStorageGroupNames = queryExecutor.getAllStorageGroupNames();
-    for (int i = 0; i < allStorageGroupNames.size(); i++) {
-      assertEquals(testMetaMember.getAllStorageGroupNames().get(i), allStorageGroupNames.get(i));
-    }
-  }
 }

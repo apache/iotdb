@@ -691,10 +691,15 @@ public class MManager {
       MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurements.length];
       for (int i = 0; i < measurementSchemas.length; i++) {
         if (!deviceNode.hasChild(measurements[i])) {
-          throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
+          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+            measurementSchemas[i] = null;
+          } else {
+            throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
+          }
+        } else {
+          measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]))
+              .getSchema();
         }
-        measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]))
-            .getSchema();
       }
       return measurementSchemas;
     } finally {
@@ -764,6 +769,22 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllStorageGroupPaths();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get all storage group under given prefixPath.
+   *
+   * @param prefixPath a prefix of a full path. if the wildcard is not at the tail, then each
+   *                   wildcard can only match one level, otherwise it can match to the tail.
+   * @return A ArrayList instance which stores storage group paths with given prefixPath.
+   */
+  public List<PartialPath> getStorageGroupPaths(PartialPath prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupPaths(prefixPath);
     } finally {
       lock.readLock().unlock();
     }
