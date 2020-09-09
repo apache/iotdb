@@ -36,7 +36,7 @@ import org.junit.Test;
 
 public class SerializableRowRecordListTest extends SerializableListTest {
 
-  private static final TSDataType[] dataTypes = {TSDataType.INT32, TSDataType.INT64,
+  private static final TSDataType[] DATA_TYPES = {TSDataType.INT32, TSDataType.INT64,
       TSDataType.FLOAT, TSDataType.DOUBLE, TSDataType.BOOLEAN, TSDataType.TEXT};
 
   private List<RowRecord> originalList;
@@ -47,7 +47,7 @@ public class SerializableRowRecordListTest extends SerializableListTest {
     super.setUp();
     originalList = new ArrayList<>();
     testList = SerializableRowRecordList
-        .newSerializableRowRecordList(dataTypes, QUERY_ID, UNIQUE_ID, INDEX);
+        .newSerializableRowRecordList(DATA_TYPES, QUERY_ID, UNIQUE_ID, INDEX);
   }
 
   @After
@@ -73,7 +73,7 @@ public class SerializableRowRecordListTest extends SerializableListTest {
 
   protected void generateData(int index) {
     RowRecord rowRecord = new RowRecord(index);
-    for (TSDataType dataType : dataTypes) {
+    for (TSDataType dataType : DATA_TYPES) {
       switch (dataType) {
         case INT32:
           rowRecord.addField(index, dataType);
@@ -118,7 +118,7 @@ public class SerializableRowRecordListTest extends SerializableListTest {
       List<Field> originalFields = originalList.get(i).getFields();
       List<Field> testFields = testList.getRowRecord(i).getFields();
       for (int j = 0; j < testFields.size(); ++j) {
-        switch (dataTypes[j]) {
+        switch (DATA_TYPES[j]) {
           case INT32:
             assertEquals(originalFields.get(j).getIntV(), testFields.get(j).getIntV());
             break;

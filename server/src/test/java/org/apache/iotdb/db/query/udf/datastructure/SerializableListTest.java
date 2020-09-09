@@ -23,7 +23,11 @@ import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 
 public abstract class SerializableListTest {
 
-  protected final static int ITERATION_TIMES = 250000; // make sure serialize() & deserialize() can be triggered
+  protected final static int ITERATION_TIMES = 100000; // make sure serialize() & deserialize() can be triggered
+  protected static final int BATCH_SIZE = 100;
+
+  protected static final float MEMORY_USAGE_LIMIT_IN_MB = 1f;
+  protected static final int CACHE_SIZE = 3;
 
   protected final static long QUERY_ID = 0;
   protected final static String UNIQUE_ID = "unique_id";

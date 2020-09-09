@@ -112,7 +112,7 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
   }
 
   @Override
-  public RowRecordBatchIterator getSizeLimitedBatchDataIterator(final int batchSize)
+  public RowRecordBatchIterator getSizeLimitedBatchIterator(final int batchSize)
       throws QueryProcessException {
     if (batchSize <= 0) {
       throw new QueryProcessException("Batch size should be larger than 0.");
@@ -121,7 +121,7 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
   }
 
   @Override
-  public RowRecordBatchIterator getSizeLimitedBatchDataIterator(final int batchSize,
+  public RowRecordBatchIterator getSizeLimitedBatchIterator(final int batchSize,
       final long displayWindowBegin) throws QueryProcessException {
     if (batchSize <= 0) {
       throw new QueryProcessException("Batch size should be larger than 0.");
@@ -180,7 +180,7 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
 
     @Override
     public RowRecordIterator currentBatch() {
-      return getRowRecordIteratorInBatch(batchSize, minIndexInCurrentBatch);
+      return getRowRecordIteratorInBatch(currentBatchSize, minIndexInCurrentBatch);
     }
 
     @Override
@@ -256,24 +256,24 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
   }
 
   @Override
-  public RowRecordBatchIterator getTimeWindowBatchDataIterator(long timeInterval,
-      long slidingStep) throws QueryProcessException {
+  public RowRecordBatchIterator getTimeWindowBatchIterator(long timeInterval, long slidingStep)
+      throws QueryProcessException {
     long displayWindowBegin = 0;
     long displayWindowEnd = 0;
     try {
       if (0 < size) {
         displayWindowBegin = getTime(0);
-        displayWindowEnd = getTime(size - 1);
+        displayWindowEnd = getTime(size - 1) + 1; // +1 for right open interval
       }
     } catch (IOException e) {
       throw new QueryProcessException(e.toString());
     }
-    return getTimeWindowBatchDataIterator(displayWindowBegin, displayWindowEnd, timeInterval,
+    return getTimeWindowBatchIterator(displayWindowBegin, displayWindowEnd, timeInterval,
         slidingStep);
   }
 
   @Override
-  public RowRecordBatchIterator getTimeWindowBatchDataIterator(long displayWindowBegin,
+  public RowRecordBatchIterator getTimeWindowBatchIterator(long displayWindowBegin,
       long displayWindowEnd, long timeInterval, long slidingStep) throws QueryProcessException {
     if (displayWindowEnd < displayWindowBegin) {
       throw new QueryProcessException(
@@ -311,7 +311,8 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
         ++currentBatchIndex;
         long minTimeInCurrentBatch = minTimeInNextBatch;
         minIndexInCurrentBatch = minIndexInNextBatch;
-        long maxTimeInCurrentBatch = minTimeInCurrentBatch + timeInterval;
+        long maxTimeInCurrentBatch = Math
+            .min(minTimeInCurrentBatch + timeInterval, displayWindowEnd);
         int maxIndexInCurrentBatch = findIndexByTimestamp(maxTimeInCurrentBatch);
         currentBatchSize = maxIndexInCurrentBatch - minIndexInCurrentBatch;
 

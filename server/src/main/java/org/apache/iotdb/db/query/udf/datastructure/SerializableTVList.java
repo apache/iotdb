@@ -59,10 +59,9 @@ public interface SerializableTVList extends SerializableList {
         size = (int) (memoryLimitInB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
             * (ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.BOOLEAN_LEN)));
         break;
-      case TEXT: // times + offsets + values
+      case TEXT: // times + values
         size = (int) (memoryLimitInB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD
-            * (ReadWriteIOUtils.LONG_LEN
-            + ReadWriteIOUtils.LONG_LEN
+            * (ReadWriteIOUtils.LONG_LEN // time
             + MIN_OBJECT_HEADER_SIZE // Binary header
             + ReadWriteIOUtils.INT_LEN + MIN_ARRAY_HEADER_SIZE // Binary.values
             + SerializableList.BINARY_AVERAGE_LENGTH_FOR_MEMORY_CONTROL)));

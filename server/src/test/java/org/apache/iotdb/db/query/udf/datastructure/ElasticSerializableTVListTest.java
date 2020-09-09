@@ -37,11 +37,6 @@ import org.junit.Test;
 
 public class ElasticSerializableTVListTest extends SerializableListTest {
 
-  private static final float MEMORY_USAGE_LIMIT_IN_MB = 1f;
-  private static final int CACHE_SIZE = 3;
-
-  private static final int BATCH_SIZE = 100;
-
   private ElasticSerializableTVList tvList;
 
   @Before

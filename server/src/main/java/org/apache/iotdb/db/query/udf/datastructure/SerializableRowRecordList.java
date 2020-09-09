@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.MB;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -38,7 +40,8 @@ public class SerializableRowRecordList implements SerializableList {
     final int MIN_OBJECT_HEADER_SIZE = 8;
     final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
     memoryLimitInMB /= 2; // half for SerializableRowRecordList and half for its serialization
-    int rowLength = ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.LONG_LEN; // timestamp + offset
+    float memoryLimitInB = memoryLimitInMB * MB;
+    int rowLength = ReadWriteIOUtils.LONG_LEN; // timestamp
     for (TSDataType dataType : dataTypes) { // values
       switch (dataType) {
         case INT32:
@@ -65,7 +68,7 @@ public class SerializableRowRecordList implements SerializableList {
           throw new UnSupportedDataTypeException(dataType.toString());
       }
     }
-    int size = (int) (memoryLimitInMB / rowLength);
+    int size = (int) (memoryLimitInB / rowLength);
     if (size <= 0) {
       throw new QueryProcessException("Memory is not enough for current query.");
     }

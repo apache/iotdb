@@ -171,8 +171,8 @@ public class UDTFExecutor extends UDFExecutor {
           int batchSize = sizeLimitedBatchIterationStrategy.getBatchSize();
           rowRecordIterators.put(strategy.getKey(),
               !sizeLimitedBatchIterationStrategy.hasDisplayWindowBegin()
-                  ? rowRecordList.getSizeLimitedBatchDataIterator(batchSize)
-                  : rowRecordList.getSizeLimitedBatchDataIterator(batchSize,
+                  ? rowRecordList.getSizeLimitedBatchIterator(batchSize)
+                  : rowRecordList.getSizeLimitedBatchIterator(batchSize,
                       sizeLimitedBatchIterationStrategy.getDisplayWindowBegin()));
           break;
         case FETCH_BY_TIME_WINDOW:
@@ -183,8 +183,8 @@ public class UDTFExecutor extends UDFExecutor {
           long slidingStep = timeWindowBatchIterationStrategy.getSlidingStep();
           rowRecordIterators.put(strategy.getKey(),
               !timeWindowBatchIterationStrategy.hasDisplayWindowRange()
-                  ? rowRecordList.getTimeWindowBatchDataIterator(timeInterval, slidingStep)
-                  : rowRecordList.getTimeWindowBatchDataIterator(
+                  ? rowRecordList.getTimeWindowBatchIterator(timeInterval, slidingStep)
+                  : rowRecordList.getTimeWindowBatchIterator(
                       timeWindowBatchIterationStrategy.getDisplayWindowBegin(),
                       timeWindowBatchIterationStrategy.getDisplayWindowBegin(),
                       timeInterval, slidingStep
