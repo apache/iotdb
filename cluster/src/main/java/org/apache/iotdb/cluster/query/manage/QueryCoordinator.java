@@ -109,7 +109,7 @@ public class QueryCoordinator {
         } else {
           nodeStatus.setLastResponseLatency(Long.MAX_VALUE);
         }
-        logger.info("NodeStatus of {} is updated, status: {}, response time: {}", node,
+        logger.warn("NodeStatus of {} is updated, status: {}, response time: {}", node,
             nodeStatus.getStatus(), nodeStatus.getLastResponseLatency());
       } catch (TException e) {
         logger.error("Cannot query the node status of {}", node, e);
