@@ -172,7 +172,7 @@
         {
           avatar: 'https://avatars1.githubusercontent.com/u/22488084?s=400&u=2ef5ad52a7c4241bf88fb5e45682948b307a7d90&v=4',
           name: 'Jincheng Sun',
-          role: 'Committer',
+          role: 'PPMC, Committer',
           id: 'jincheng',
           date: '2020/01/21'
         },
