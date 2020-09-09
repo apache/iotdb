@@ -48,6 +48,7 @@ public class GroupByFillDataSet extends QueryDataSet {
   private long[] previousTime;
   // last timestamp for each time series
   private long[] lastTimeArray;
+  private TimeValuePair[] firstNotNullTV;
 
   public GroupByFillDataSet(List<PartialPath> paths, List<TSDataType> dataTypes,
       GroupByEngineDataSet groupByEngineDataSet,
@@ -64,6 +65,7 @@ public class GroupByFillDataSet extends QueryDataSet {
       throws StorageEngineException, IOException, QueryProcessException {
     previousValue = new Object[paths.size()];
     previousTime = new long[paths.size()];
+    firstNotNullTV = new TimeValuePair[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = (PartialPath) paths.get(i);
       TSDataType dataType = dataTypes.get(i);
@@ -79,11 +81,11 @@ public class GroupByFillDataSet extends QueryDataSet {
       fill.configureFill(path, dataType, groupByEngineDataSet.getStartTime(),
           groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
-      TimeValuePair timeValuePair = fill.getFillResult();
-      if (timeValuePair == null || timeValuePair.getValue() == null) {
-        previousValue[i] = null;
-        previousTime[i] = Long.MIN_VALUE;
-      } else {
+      firstNotNullTV[i] = fill.getFillResult();
+      TimeValuePair timeValuePair = firstNotNullTV[i];
+      previousValue[i] = null;
+      previousTime[i] = Long.MIN_VALUE;
+      if (ascending && timeValuePair != null && timeValuePair.getValue() != null) {
         previousValue[i] = timeValuePair.getValue().getValue();
         previousTime[i] = timeValuePair.getTimestamp();
       }
@@ -122,21 +124,26 @@ public class GroupByFillDataSet extends QueryDataSet {
         // the previous value is not null
         // and (fill type is not previous until last or now time is before last time)
         // and (previous before range is not limited or previous before range contains the previous interval)
-        if (previousValue[i] != null && (
-            (fillTypes.containsKey(dataTypes.get(i)) && !((PreviousFill) fillTypes
-                .get(dataTypes.get(i))).isUntilLast())
-                || rowRecord.getTimestamp() <= lastTimeArray[i]) && (
-            !fillTypes.containsKey(dataTypes.get(i))
-                || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange() < 0
-                || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange()
-                >= groupByEngineDataSet.plan.getInterval()) && rowRecord.getTimestamp() >= previousTime[i]) {
-          rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
+        TSDataType tsDataType = dataTypes.get(i);
+        PreviousFill previousFill = (PreviousFill) fillTypes.get(tsDataType);
+        if (previousValue[i] != null
+            && ((fillTypes.containsKey(tsDataType) && !previousFill.isUntilLast())
+            || rowRecord.getTimestamp() <= lastTimeArray[i])
+            && (!fillTypes.containsKey(tsDataType) || previousFill.getBeforeRange() < 0
+            || previousFill.getBeforeRange() >= groupByEngineDataSet.interval)
+            && rowRecord.getTimestamp() >= previousTime[i]) {
+          rowRecord.getFields().set(i, Field.getField(previousValue[i], tsDataType));
         } else if (!ascending) {
           Pair<Long, Object> data = groupByEngineDataSet.peekNextNotNullValue(paths.get(i), i);
           if (data != null) {
-            rowRecord.getFields().set(i, Field.getField(data.right, dataTypes.get(i)));
+            rowRecord.getFields().set(i, Field.getField(data.right, tsDataType));
             previousValue[i] = data.right;
             previousTime[i] = data.left;
+          } else if (firstNotNullTV[i] != null && firstNotNullTV[i].getValue() != null) {
+            rowRecord.getFields().set(i,
+                Field.getField(firstNotNullTV[i].getValue().getValue(), tsDataType));
+            previousValue[i] = firstNotNullTV[i].getValue().getValue();
+            previousTime[i] = firstNotNullTV[i].getTimestamp();
           }
         }
       } else {

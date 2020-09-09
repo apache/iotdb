@@ -55,7 +55,7 @@ public class BatchData implements Serializable {
   private static final int capacityThreshold = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
   protected int capacity = 16;
 
-  private TSDataType dataType;
+  protected TSDataType dataType;
 
   // outer list index for read
   protected int readCurListIndex;
@@ -68,16 +68,16 @@ public class BatchData implements Serializable {
   protected int writeCurArrayIndex;
 
   // the insert timestamp number of timeRet
-  private int count;
+  protected int count;
 
 
-  private List<long[]> timeRet;
-  private List<boolean[]> booleanRet;
-  private List<int[]> intRet;
-  private List<long[]> longRet;
-  private List<float[]> floatRet;
-  private List<double[]> doubleRet;
-  private List<Binary[]> binaryRet;
+  protected List<long[]> timeRet;
+  protected List<boolean[]> booleanRet;
+  protected List<int[]> intRet;
+  protected List<long[]> longRet;
+  protected List<float[]> floatRet;
+  protected List<double[]> doubleRet;
+  protected List<Binary[]> binaryRet;
 
   public BatchData() {
     dataType = null;
@@ -599,10 +599,14 @@ public class BatchData implements Serializable {
   }
 
   /**
-   * When put data, the writeIndex increases while the readIndex remains 0.
-   * For ascending read, we could read from 0 to writeIndex. So no need to flip.
+   * When put data, the writeIndex increases while the readIndex remains 0. For ascending read, we
+   * could read from 0 to writeIndex. So no need to flip.
    */
   public BatchData flip() {
     return this;
+  }
+
+  public BatchData getDescBatchData() {
+    return new DescBatchData(this).flip();
   }
 }

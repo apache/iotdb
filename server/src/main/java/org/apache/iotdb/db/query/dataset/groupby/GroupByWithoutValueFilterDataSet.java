@@ -110,7 +110,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     }
     hasCachedTimeInterval = false;
     RowRecord record;
-    if (plan.isLeftCRightO()) {
+    if (leftCRightO) {
       record = new RowRecord(curStartTime);
     } else {
       record = new RowRecord(curEndTime - 1);
@@ -148,20 +148,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     long nextStartTime = curStartTime;
     long nextEndTime;
     do {
-      if (ascending) {
-        nextStartTime += plan.getSlidingStep();
-        if (nextStartTime < plan.getEndTime()) {
-          nextEndTime = Math.min(nextStartTime + plan.getInterval(), plan.getEndTime());
-        } else {
-          return null;
-        }
+      nextStartTime -= slidingStep;
+      if (nextStartTime >= startTime) {
+        nextEndTime = Math.min(nextStartTime + interval, endTime);
       } else {
-        nextStartTime -= plan.getSlidingStep();
-        if (nextStartTime >= plan.getStartTime()) {
-          nextEndTime = Math.min(nextStartTime + plan.getInterval(), plan.getEndTime());
-        } else {
-          return null;
-        }
+        return null;
       }
       result = pathExecutors.get(path).peekNextNotNullValue(i, nextStartTime, nextEndTime);
     } while (result == null);

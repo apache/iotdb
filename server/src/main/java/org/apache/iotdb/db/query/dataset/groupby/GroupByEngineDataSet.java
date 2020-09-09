@@ -32,13 +32,20 @@ import java.io.IOException;
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected long queryId;
-  protected GroupByTimePlan plan;
+  protected long interval;
+  protected long slidingStep;
+  // total query [startTime, endTime)
+  protected long startTime;
+  protected long endTime;
 
   // current interval [curStartTime, curEndTime)
   protected long curStartTime;
   protected long curEndTime;
   protected boolean hasCachedTimeInterval;
 
+  protected boolean leftCRightO;
+
+  protected boolean ascending;
 
   public GroupByEngineDataSet() {
   }
@@ -50,17 +57,23 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     super(new ArrayList<>(groupByTimePlan.getDeduplicatedPaths()),
         groupByTimePlan.getDeduplicatedDataTypes(), groupByTimePlan.isAscending());
     this.queryId = context.getQueryId();
-    this.plan = groupByTimePlan;
+    this.interval = groupByTimePlan.getInterval();
+    this.slidingStep = groupByTimePlan.getSlidingStep();
+    this.startTime = groupByTimePlan.getStartTime();
+    this.endTime = groupByTimePlan.getEndTime();
+    this.leftCRightO = groupByTimePlan.isLeftCRightO();
+    this.ascending = groupByTimePlan.isAscending();
+
     // find the startTime of the first aggregation interval
     if (ascending) {
-      curStartTime = plan.getStartTime();
+      curStartTime = startTime;
     } else {
-      long queryRange = plan.getEndTime() - plan.getStartTime();
+      long queryRange = endTime - startTime;
       // calculate the total interval number
-      long intervalNum = (long) Math.ceil(queryRange / (double) plan.getSlidingStep());
-      curStartTime = plan.getSlidingStep() * (intervalNum - 1) + plan.getStartTime();
+      long intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
+      curStartTime = slidingStep * (intervalNum - 1) + startTime;
     }
-    curEndTime = Math.min(curStartTime + plan.getInterval(), plan.getEndTime());
+    curEndTime = Math.min(curStartTime + interval, endTime);
     this.hasCachedTimeInterval = true;
   }
 
@@ -73,20 +86,20 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
 
     // check if the next interval out of range
     if (ascending) {
-      curStartTime += plan.getSlidingStep();
+      curStartTime += slidingStep;
       //This is an open interval , [0-100)
-      if (curStartTime >= plan.getEndTime()) {
+      if (curStartTime >= endTime) {
         return false;
       }
     } else {
-      curStartTime -= plan.getSlidingStep();
-      if (curStartTime < plan.getStartTime()) {
+      curStartTime -= slidingStep;
+      if (curStartTime < startTime) {
         return false;
       }
     }
 
     hasCachedTimeInterval = true;
-    curEndTime = Math.min(curStartTime + plan.getInterval(), plan.getEndTime());
+    curEndTime = Math.min(curStartTime + interval, endTime);
     return true;
   }
 
@@ -94,7 +107,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected abstract RowRecord nextWithoutConstraint() throws IOException;
 
   public long getStartTime() {
-    return plan.getStartTime();
+    return startTime;
   }
 
   @TestOnly

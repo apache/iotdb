@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -52,16 +55,13 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * cached timestamp for next group by partition.
    */
-  private long timestamp;
-  /**
-   * if this object has cached timestamp for next group by partition.
-   */
-  private boolean hasCachedTimestamp;
-
+  private LinkedList<Long> cachedTimestamps = new LinkedList<>();
   /**
    * group by batch calculation size.
    */
   protected int timeStampFetchSize;
+
+  private long lastTimestamp;
 
   /**
    * constructor.
@@ -104,12 +104,12 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   protected IReaderByTimestamp getReaderByTime(PartialPath path, RawDataQueryPlan queryPlan,
       TSDataType dataType, QueryContext context, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
-      return ascending ? new SeriesReaderByTimestamp(path,
-          queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter)
-          : new DescSeriesReaderByTimestamp(path,
-          queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
+    return ascending ? new SeriesReaderByTimestamp(path,
+        queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter)
+        : new DescSeriesReaderByTimestamp(path,
+            queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
+            QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -129,16 +129,18 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
     long[] timestampArray = new long[timeStampFetchSize];
     int timeArrayLength = 0;
-    if (hasCachedTimestamp) {
+    while (!cachedTimestamps.isEmpty()) {
+      long timestamp = cachedTimestamps.remove();
       if (timestamp < curEndTime) {
         if (!groupByTimePlan.isAscending() && timestamp < curStartTime) {
+          cachedTimestamps.addFirst(timestamp);
           return constructRowRecord(aggregateResultList);
         }
         if (timestamp >= curStartTime) {
-          hasCachedTimestamp = false;
           timestampArray[timeArrayLength++] = timestamp;
         }
       } else {
+        cachedTimestamps.addFirst(timestamp);
         return constructRowRecord(aggregateResultList);
       }
     }
@@ -154,9 +156,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
       timeArrayLength = 0;
       // judge if it's end
-      if ((groupByTimePlan.isAscending() && timestamp >= curEndTime)
-          || (!groupByTimePlan.isAscending() && timestamp < curStartTime)) {
-        hasCachedTimestamp = true;
+      if ((groupByTimePlan.isAscending() && lastTimestamp >= curEndTime)
+          || (!groupByTimePlan.isAscending() && lastTimestamp < curStartTime)) {
         break;
       }
     }
@@ -173,18 +174,42 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   @Override
   public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
+    if (!timestampGenerator.hasNext() && cachedTimestamps.isEmpty()) {
+      return null;
+    }
+
     long[] timestampArray = new long[1];
     AggregateResult aggrResultByName = AggregateResultFactory.getAggrResultByName(
         groupByTimePlan.getDeduplicatedAggregations().get(i),
         groupByTimePlan.getDeduplicatedDataTypes().get(i));
 
-    int timeArrayLength = 0;
-    if (hasCachedTimestamp) {
-      timestampArray[timeArrayLength++] = timestamp;
-
+    long tmpStartTime = curStartTime - slidingStep;
+    while (tmpStartTime >= startTime
+        && (timestampGenerator.hasNext() || !cachedTimestamps.isEmpty())) {
+      long timestamp = Long.MIN_VALUE;
+      if (timestampGenerator.hasNext()) {
+        cachedTimestamps.add(timestampGenerator.next());
+      }
+      if (!cachedTimestamps.isEmpty()) {
+        timestamp = cachedTimestamps.remove();
+      }
+      if (timestamp >= tmpStartTime) {
+        timestampArray[0] = timestamp;
+      } else {
+        do {
+          tmpStartTime -= slidingStep;
+          if (timestamp >= tmpStartTime) {
+            timestampArray[0] = timestamp;
+            break;
+          }
+        } while (tmpStartTime >= startTime);
+      }
       aggrResultByName
-          .updateResultUsingTimestamps(timestampArray, timeArrayLength, allDataReaderList.get(i));
-      return new Pair<>(timestamp, aggrResultByName.getResult());
+          .updateResultUsingTimestamps(timestampArray, 1, allDataReaderList.get(i));
+
+      if (aggrResultByName.getResult() != null) {
+        return new Pair<>(tmpStartTime, aggrResultByName.getResult());
+      }
     }
     return null;
   }
@@ -199,13 +224,13 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
       throws IOException {
     for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt++) {
-      timestamp = timestampGenerator.next();
-      if (groupByTimePlan.isAscending() && timestamp < curEndTime) {
-        timestampArray[timeArrayLength++] = timestamp;
-      } else if (!groupByTimePlan.isAscending() && timestamp >= curStartTime) {
-        timestampArray[timeArrayLength++] = timestamp;
+      lastTimestamp = timestampGenerator.next();
+      if (groupByTimePlan.isAscending() && lastTimestamp < curEndTime) {
+        timestampArray[timeArrayLength++] = lastTimestamp;
+      } else if (!groupByTimePlan.isAscending() && lastTimestamp >= curStartTime) {
+        timestampArray[timeArrayLength++] = lastTimestamp;
       } else {
-        hasCachedTimestamp = true;
+        cachedTimestamps.add(lastTimestamp);
         break;
       }
     }
@@ -214,7 +239,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   private RowRecord constructRowRecord(List<AggregateResult> aggregateResultList) {
     RowRecord record;
-    if (plan.isLeftCRightO()) {
+    if (leftCRightO) {
       record = new RowRecord(curStartTime);
     } else {
       record = new RowRecord(curEndTime - 1);
