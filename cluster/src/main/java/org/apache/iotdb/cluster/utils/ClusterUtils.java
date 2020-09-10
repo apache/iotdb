@@ -279,4 +279,26 @@ public class ClusterUtils {
     int clientPort = Integer.parseInt(str.substring(clientPortFirstPos, clientPortLastPos));
     return new Node(ip, metaPort, id, dataPort, clientPort);
   }
+
+  public static Node parseNode(String nodeUrl) {
+    Node result = new Node();
+    String[] split = nodeUrl.split(":");
+    if (split.length != 4) {
+      logger.warn("Bad seed url: {}", nodeUrl);
+      return null;
+    }
+    String ip = split[0];
+    try {
+      int metaPort = Integer.parseInt(split[1]);
+      int dataPort = Integer.parseInt(split[2]);
+      int clientPort = Integer.parseInt(split[3]);
+      result.setIp(ip);
+      result.setMetaPort(metaPort);
+      result.setDataPort(dataPort);
+      result.setClientPort(clientPort);
+    } catch (NumberFormatException e) {
+      logger.warn("Bad seed url: {}", nodeUrl);
+    }
+    return result;
+  }
 }

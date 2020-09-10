@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.handlers.caller.SnapshotCatchUpHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,7 +102,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
       client.sendSnapshot(request);
       return true;
     } finally {
-      raftMember.putBackSyncClient(client);
+      ClientUtils.putBackSyncClient(client);
     }
   }
 

@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
@@ -56,12 +57,12 @@ public abstract class BaseSyncService implements RaftService.Iface {
 
   @Override
   public HeartBeatResponse sendHeartbeat(HeartBeatRequest request) {
-    return member.sendHeartbeat(request);
+    return member.processHeartbeatRequest(request);
   }
 
   @Override
   public long startElection(ElectionRequest request) {
-    return member.startElection(request);
+    return member.processElectionRequest(request);
   }
 
   @Override
@@ -89,7 +90,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   @Override
   public long requestCommitIndex(Node header)
       throws TException {
-    long commitIndex = member.requestCommitIndex();
+    long commitIndex = member.getCommitIndex();
     if (commitIndex != Long.MIN_VALUE) {
       return commitIndex;
     }
@@ -115,7 +116,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   @Override
   public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
     try {
-      return member.readFile(filePath, offset, length);
+      return IOUtils.readFile(filePath, offset, length);
     } catch (IOException e) {
       throw new TException(e);
     }
@@ -123,7 +124,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
 
   @Override
   public boolean matchTerm(long index, long term, Node header) {
-    return member.matchTerm(index, term);
+    return member.matchLog(index, term);
   }
 
   @Override

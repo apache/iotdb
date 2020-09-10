@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.ElectionHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.HeartbeatHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -210,7 +211,7 @@ public class HeartbeatThread implements Runnable {
         } catch (Exception e) {
           logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
         } finally {
-          localMember.putBackSyncHeartbeatClient(client);
+          ClientUtils.putBackSyncHeartbeatClient(client);
         }
       });
     }
@@ -358,7 +359,7 @@ public class HeartbeatThread implements Runnable {
         } catch (Exception e) {
           handler.onError(e);
         } finally {
-          localMember.putBackSyncHeartbeatClient(client);
+          ClientUtils.putBackSyncHeartbeatClient(client);
         }
       });
     }

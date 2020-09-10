@@ -101,6 +101,7 @@ import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.PullSnapshotHintService;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -377,7 +378,7 @@ public class DataGroupMember extends RaftMember {
    * than the local member
    */
   @Override
-  long processElectionRequest(ElectionRequest electionRequest) {
+  long checkElectorLogProgress(ElectionRequest electionRequest) {
     // to be a data group leader, a node should also be qualified to be the meta group leader
     // which guarantees the data group leader has the newest partition table.
     long thatTerm = electionRequest.getTerm();
@@ -393,12 +394,12 @@ public class DataGroupMember extends RaftMember {
     // check meta logs
     // term of the electors' MetaGroupMember is not verified, so 0 and 1 are used to make sure
     // the verification does not fail
-    long metaResponse = metaGroupMember.verifyElector(thatMetaLastLogIndex, thatMetaLastLogTerm);
+    long metaResponse = metaGroupMember.checkLogProgress(thatMetaLastLogIndex, thatMetaLastLogTerm);
     if (metaResponse == Response.RESPONSE_LOG_MISMATCH) {
       return Response.RESPONSE_META_LOG_STALE;
     }
 
-    long resp = verifyElector(thatDataLastLogIndex, thatDataLastLogTerm);
+    long resp = checkLogProgress(thatDataLastLogIndex, thatDataLastLogTerm);
     if (resp == Response.RESPONSE_AGREE) {
       logger.info(
           "{} accepted an dataGroup election request, term:{}/{}, dataLogIndex:{}/{}, dataLogTerm:{}/{}, metaLogIndex:{}/{},metaLogTerm:{}/{}",
@@ -609,7 +610,7 @@ public class DataGroupMember extends RaftMember {
         }
       }
       synchronized (logManager) {
-        logManager.applyingSnapshot(snapshot);
+        logManager.applySnapshot(snapshot);
       }
     }
   }
@@ -830,7 +831,7 @@ public class DataGroupMember extends RaftMember {
         offset += len;
       }
     } finally {
-      putBackSyncClient(client);
+      ClientUtils.putBackSyncClient(client);
     }
     dest.flush();
   }
@@ -1110,7 +1111,7 @@ public class DataGroupMember extends RaftMember {
    * @param plan a non-query plan.
    * @return
    */
-  TSStatus executeNonQuery(PhysicalPlan plan) {
+  TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
       TSStatus status = processPlanLocally(plan);
       if (status != null) {

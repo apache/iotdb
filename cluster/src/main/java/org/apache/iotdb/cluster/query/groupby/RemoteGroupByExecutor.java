@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.thrift.TException;
@@ -83,7 +84,7 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
         SyncDataClient syncDataClient = metaGroupMember
             .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
         aggrBuffers = syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
-        metaGroupMember.putBackSyncClient(syncDataClient);
+        ClientUtils.putBackSyncClient(syncDataClient);
       }
 
     } catch (TException e) {

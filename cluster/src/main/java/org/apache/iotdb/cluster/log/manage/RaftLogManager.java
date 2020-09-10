@@ -471,7 +471,7 @@ public abstract class RaftLogManager {
    *
    * @param snapshot leader's snapshot
    */
-  public void applyingSnapshot(Snapshot snapshot) {
+  public void applySnapshot(Snapshot snapshot) {
     logger.info("{}: log module starts to restore snapshot [index: {}, term: {}]",
         name, snapshot.getLastLogIndex(), snapshot.getLastLogTerm());
     try {
@@ -868,7 +868,7 @@ public abstract class RaftLogManager {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.error("{}: do check applied log index is interrupt", name);
+      logger.info("{}: do check applied log index is interrupt", name);
     } catch (EntryCompactedException e) {
       // ignore
     }

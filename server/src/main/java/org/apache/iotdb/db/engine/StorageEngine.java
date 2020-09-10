@@ -309,15 +309,17 @@ public class StorageEngine implements IService {
             processor = processorMap.get(storageGroupPath);
             if (processor == null) {
               logger.info("construct a processor instance, the storage group is {}, Thread is {}",
-                storageGroupPath, Thread.currentThread().getId());
-              processor = new StorageGroupProcessor(systemDir, storageGroupPath.getFullPath(), fileFlushPolicy);
+                  storageGroupPath, Thread.currentThread().getId());
+              processor = new StorageGroupProcessor(systemDir, storageGroupPath.getFullPath(),
+                  fileFlushPolicy);
               processor.setDataTTL(storageGroupMNode.getDataTTL());
               processorMap.put(storageGroupPath, processor);
             }
           }
         } else {
           // not finished recover, refuse the request
-          throw new StorageEngineException("the sg " + storageGroupPath + " may not ready now, please wait and retry later",
+          throw new StorageEngineException(
+              "the sg " + storageGroupPath + " may not ready now, please wait and retry later",
               TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
@@ -421,8 +423,6 @@ public class StorageEngine implements IService {
       } finally {
         processor.writeUnlock();
       }
-    } else {
-      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
     }
   }
 
@@ -615,17 +615,20 @@ public class StorageEngine implements IService {
 
   public boolean deleteTsfileForSync(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessor(new PartialPath(deletedTsfile.getParentFile().getName())).deleteTsfile(deletedTsfile);
+    return getProcessor(new PartialPath(deletedTsfile.getParentFile().getName()))
+        .deleteTsfile(deletedTsfile);
   }
 
   public boolean deleteTsfile(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessor(new PartialPath(getSgByEngineFile(deletedTsfile))).deleteTsfile(deletedTsfile);
+    return getProcessor(new PartialPath(getSgByEngineFile(deletedTsfile)))
+        .deleteTsfile(deletedTsfile);
   }
 
   public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
       throws StorageEngineException, IllegalPathException {
-    return getProcessor(new PartialPath(getSgByEngineFile(tsfileToBeMoved))).moveTsfile(tsfileToBeMoved, targetDir);
+    return getProcessor(new PartialPath(getSgByEngineFile(tsfileToBeMoved)))
+        .moveTsfile(tsfileToBeMoved, targetDir);
   }
 
   /**
@@ -693,7 +696,8 @@ public class StorageEngine implements IService {
    * @param partitionId
    * @param newMaxVersion
    */
-  public void setPartitionVersionToMax(PartialPath storageGroup, long partitionId, long newMaxVersion)
+  public void setPartitionVersionToMax(PartialPath storageGroup, long partitionId,
+      long newMaxVersion)
       throws StorageEngineException {
     getProcessor(storageGroup).setPartitionFileVersionToMax(partitionId, newMaxVersion);
   }
