@@ -54,37 +54,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
     long followerTerm = resp.getTerm();
     if (followerTerm == RESPONSE_AGREE) {
       // current leadership is still valid
-      localMember.processValidHeartbeatResp(resp, receiver);
-
-      Node follower = resp.getFollower();
-      long lastLogIdx = resp.getLastLogIndex();
-      long lastLogTerm = resp.getLastLogTerm();
-      long localLastLogIdx = localMember.getLogManager().getLastLogIndex();
-      long localLastLogTerm = localMember.getLogManager().getLastLogTerm();
-      logger.trace("{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
-          memberName, follower, lastLogIdx
-          , localLastLogIdx, lastLogTerm, localLastLogTerm);
-
-      Peer peer = localMember.getPeerMap()
-          .computeIfAbsent(follower, k -> new Peer(localMember.getLogManager().getLastLogIndex()));
-      if (!peer.isCatchUp() || !localMember.getLogManager()
-          .isLogUpToDate(lastLogTerm, lastLogIdx)) {
-        peer.setNextIndex(lastLogIdx + 1);
-        logger.debug("{}: catching up node {}, index-term: {}-{}/{}-{}, peer nextIndex {}, peer "
-                + "match index {}",
-            memberName, follower,
-            lastLogIdx, lastLogTerm,
-            localLastLogIdx, localLastLogTerm,
-            peer.getNextIndex(), peer.getMatchIndex());
-
-        int inconsistentNum = peer.incInconsistentHeartbeatNum();
-        if (inconsistentNum >= 5) {
-          localMember.catchUp(follower);
-        }
-      } else {
-        peer.setMatchIndex(Math.max(peer.getMatchIndex(), lastLogIdx));
-        peer.resetInconsistentHeartbeatNum();
-      }
+      handleNormalHeartbeatResponse(resp);
     } else {
       // current leadership is invalid because the follower has a larger term
       synchronized (localMember.getTerm()) {
@@ -96,6 +66,54 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
         }
       }
     }
+  }
+
+  private void handleNormalHeartbeatResponse(HeartBeatResponse resp) {
+    // additional process depending on member type
+    localMember.processValidHeartbeatResp(resp, receiver);
+
+    // check the necessity of performing a catch up
+    Node follower = resp.getFollower();
+    long lastLogIdx = resp.getLastLogIndex();
+    long lastLogTerm = resp.getLastLogTerm();
+    long localLastLogIdx = localMember.getLogManager().getLastLogIndex();
+    long localLastLogTerm = localMember.getLogManager().getLastLogTerm();
+    logger.trace("{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
+        memberName, follower, lastLogIdx
+        , localLastLogIdx, lastLogTerm, localLastLogTerm);
+
+    Peer peer = localMember.getPeerMap()
+        .computeIfAbsent(follower, k -> new Peer(localMember.getLogManager().getLastLogIndex()));
+    if (!peer.isCatchUp() || !localMember.getLogManager()
+        .isLogUpToDate(lastLogTerm, lastLogIdx)) {
+      // the follower is not up-to-date
+      peer.setNextIndex(lastLogIdx + 1);
+      logger.debug("{}: catching up node {}, index-term: {}-{}/{}-{}, peer nextIndex {}, peer "
+              + "match index {}",
+          memberName, follower,
+          lastLogIdx, lastLogTerm,
+          localLastLogIdx, localLastLogTerm,
+          peer.getNextIndex(), peer.getMatchIndex());
+
+      // only start a catch up when the follower's lastLogIndex remains stall and unchanged for 5
+      // heartbeats
+      if (lastLogIdx == peer.getLastHeartBeatIndex()) {
+        // the follower's lastLogIndex is unchanged, increase inconsistent counter
+        int inconsistentNum = peer.incInconsistentHeartbeatNum();
+        if (inconsistentNum >= 5) {
+          localMember.catchUp(follower);
+        }
+      } else {
+        // the follower's lastLogIndex is changed, which means the follower is not down yet, we
+        // reset the counter to see if it can eventually catch up by itself
+        peer.resetInconsistentHeartbeatNum();
+      }
+    } else {
+      // the follower is up-to-date
+      peer.setMatchIndex(Math.max(peer.getMatchIndex(), lastLogIdx));
+      peer.resetInconsistentHeartbeatNum();
+    }
+    peer.setLastHeartBeatIndex(lastLogIdx);
   }
 
   @Override

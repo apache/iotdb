@@ -25,8 +25,10 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -86,7 +88,6 @@ public class PublishHandler extends AbstractInterceptHandler {
             }
 
             InsertRowPlan plan = new InsertRowPlan();
-            plan.setDeviceId(event.getDevice());
             plan.setTime(event.getTimestamp());
             plan.setMeasurements(event.getMeasurements().toArray(new String[event.getMeasurements().size()]));
             plan.setValues(event.getValues().toArray(new Object[event.getValues().size()]));
@@ -95,8 +96,9 @@ public class PublishHandler extends AbstractInterceptHandler {
 
             boolean status = false;
             try {
+                plan.setDeviceId(new PartialPath(event.getDevice()));
                 status = executeNonQuery(plan);
-            } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e ) {
+            } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException | IllegalPathException e ) {
                 LOG.warn(
                     "meet error when inserting device {}, measurements {}, at time {}, because ",
                     event.getDevice(), event.getMeasurements(), event.getTimestamp(), e);

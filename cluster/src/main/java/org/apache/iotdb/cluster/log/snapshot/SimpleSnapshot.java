@@ -61,13 +61,8 @@ public class SimpleSnapshot extends Snapshot {
     } catch (IOException e) {
       // unreachable
     }
-    subSerialize(dataOutputStream);
 
     return ByteBuffer.wrap(outputStream.toByteArray());
-  }
-
-  private void subSerialize(DataOutputStream dataOutputStream) {
-    // provided for sub-classes to add more serialized fields
   }
 
   @Override
@@ -84,12 +79,6 @@ public class SimpleSnapshot extends Snapshot {
     this.lastLogIndex =
         snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
     this.lastLogTerm = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogTerm();
-
-    subDeserialize(buffer);
-  }
-
-  private void subDeserialize(ByteBuffer buffer) {
-    // provided for sub-classes to add more serialized fields
   }
 
   public List<Log> getSnapshot() {

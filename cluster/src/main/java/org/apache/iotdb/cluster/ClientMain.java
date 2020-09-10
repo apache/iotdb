@@ -226,7 +226,7 @@ public class ClientMain {
   }
 
   private static void doDeleteSeries(boolean noOption, CommandLine commandLine)
-      throws StatementExecutionException, TException, IoTDBConnectionException {
+      throws TException {
     if (noOption || commandLine.hasOption(PARAM_DELETE_SERIES)) {
       System.out.println("Test delete timeseries");
       Client client = getClient(ip, port);
@@ -267,7 +267,7 @@ public class ClientMain {
     return ret;
   }
 
-  protected static long connectClient(Client client) throws TException {
+  private static long connectClient(Client client) throws TException {
     TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
     openReq.setUsername("root");
     openReq.setPassword("root");

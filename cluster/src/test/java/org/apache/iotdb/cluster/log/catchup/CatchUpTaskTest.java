@@ -35,7 +35,7 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.partition.PartitionTable;
-import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -45,9 +45,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
@@ -179,6 +177,7 @@ public class CatchUpTaskTest {
     }
     sender.getLogManager().append(logList);
     sender.getLogManager().commitTo(9, false);
+    sender.getLogManager().setMaxHaveAppliedCommitIndex(sender.getLogManager().getCommitLogIndex());
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
@@ -203,6 +202,7 @@ public class CatchUpTaskTest {
     }
     sender.getLogManager().append(logList);
     sender.getLogManager().commitTo(9, false);
+    sender.getLogManager().setMaxHaveAppliedCommitIndex(sender.getLogManager().getCommitLogIndex());
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);

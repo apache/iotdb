@@ -30,7 +30,9 @@ import java.util.Map;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
@@ -43,7 +45,6 @@ import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
@@ -77,14 +78,14 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
 
   @Test
   public void testAggregation()
-      throws StorageEngineException, IOException, QueryProcessException, QueryFilterOptimizationException {
+      throws StorageEngineException, IOException, QueryProcessException, QueryFilterOptimizationException, IllegalPathException {
     AggregationPlan plan = new AggregationPlan();
-    List<Path> paths = Arrays.asList(
-        new Path(TestUtils.getTestSeries(0, 0)),
-        new Path(TestUtils.getTestSeries(0, 1)),
-        new Path(TestUtils.getTestSeries(0, 2)),
-        new Path(TestUtils.getTestSeries(0, 3)),
-        new Path(TestUtils.getTestSeries(0, 4)));
+    List<PartialPath> paths = Arrays.asList(
+        new PartialPath(TestUtils.getTestSeries(0, 0)),
+        new PartialPath(TestUtils.getTestSeries(0, 1)),
+        new PartialPath(TestUtils.getTestSeries(0, 2)),
+        new PartialPath(TestUtils.getTestSeries(0, 3)),
+        new PartialPath(TestUtils.getTestSeries(0, 4)));
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE,
         TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE);
     List<String> aggregations = Arrays.asList(SQLConstant.MIN_TIME, SQLConstant.MAX_VALUE,
@@ -103,10 +104,11 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   }
 
   @Test
-  public void testPreviousFill() throws QueryProcessException, StorageEngineException, IOException {
+  public void testPreviousFill()
+      throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
     plan.setDeduplicatedPaths(Collections.singletonList(
-        new Path(TestUtils.getTestSeries(0, 10))));
+        new PartialPath(TestUtils.getTestSeries(0, 10))));
     plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
     plan.setPaths(plan.getDeduplicatedPaths());
     plan.setDataTypes(plan.getDeduplicatedDataTypes());
@@ -134,10 +136,11 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   }
 
   @Test
-  public void testLinearFill() throws QueryProcessException, StorageEngineException, IOException {
+  public void testLinearFill()
+      throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     FillQueryPlan plan = new FillQueryPlan();
     plan.setDeduplicatedPaths(Collections.singletonList(
-        new Path(TestUtils.getTestSeries(0, 10))));
+        new PartialPath(TestUtils.getTestSeries(0, 10))));
     plan.setDeduplicatedDataTypes(Collections.singletonList(TSDataType.DOUBLE));
     plan.setPaths(plan.getDeduplicatedPaths());
     plan.setDataTypes(plan.getDeduplicatedDataTypes());
@@ -167,15 +170,15 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
 
   @Test
   public void testVFilterGroupBy()
-      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException {
+      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IllegalPathException {
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     GroupByTimePlan groupByPlan = new GroupByTimePlan();
-    List<Path> pathList = new ArrayList<>();
+    List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     List<String> aggregations = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      pathList.add(new Path(TestUtils.getTestSeries(i, 0)));
+      pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
       dataTypes.add(TSDataType.DOUBLE);
       aggregations.add(SQLConstant.COUNT);
     }
@@ -192,8 +195,8 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     groupByPlan.setInterval(5);
 
     IExpression expression = BinaryExpression.and(
-        new SingleSeriesExpression(new Path(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0)),
-        new SingleSeriesExpression(new Path(TestUtils.getTestSeries(5, 0)), TimeFilter.ltEq(15))
+        new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0)),
+        new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(5, 0)), TimeFilter.ltEq(15))
     );
     groupByPlan.setExpression(expression);
     QueryDataSet queryDataSet = clusterQueryRouter.groupBy(groupByPlan, queryContext);
@@ -212,15 +215,15 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
 
   @Test
   public void testNoVFilterGroupBy()
-      throws StorageEngineException, IOException, QueryFilterOptimizationException, QueryProcessException {
+      throws StorageEngineException, IOException, QueryFilterOptimizationException, QueryProcessException, IllegalPathException {
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     GroupByTimePlan groupByPlan = new GroupByTimePlan();
-    List<Path> pathList = new ArrayList<>();
+    List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     List<String> aggregations = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      pathList.add(new Path(TestUtils.getTestSeries(i, 0)));
+      pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
       dataTypes.add(TSDataType.DOUBLE);
       aggregations.add(SQLConstant.COUNT);
     }

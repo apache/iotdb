@@ -111,7 +111,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
    * @return true if the forwarding succeeds, false otherwise.
    */
   private boolean forwardAddNode(Node node, StartUpStatus startUpStatus,
-      AsyncMethodCallback resultHandler) {
+      AsyncMethodCallback<AddNodeResponse> resultHandler) {
     TSMetaService.AsyncClient client =
         (TSMetaService.AsyncClient) metaGroupMember.getAsyncClient(metaGroupMember.getLeader());
     if (client != null) {
@@ -173,7 +173,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
    * @param resultHandler
    * @return true if the request is successfully forwarded, false otherwise
    */
-  private boolean forwardRemoveNode(Node node, AsyncMethodCallback resultHandler) {
+  private boolean forwardRemoveNode(Node node, AsyncMethodCallback<Long> resultHandler) {
     TSMetaService.AsyncClient client =
         (TSMetaService.AsyncClient) metaGroupMember.getAsyncClient(metaGroupMember.getLeader());
     if (client != null) {

@@ -40,11 +40,14 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.config.ConsistencyLevel;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.log.applier.DataLogApplier;
+import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
-import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -53,11 +56,11 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
@@ -120,7 +123,7 @@ public class MemberTest {
 
     for (int i = 0; i < 10; i++) {
       try {
-        IoTDB.metaManager.setStorageGroup(TestUtils.getTestSg(i));
+        IoTDB.metaManager.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
         for (int j = 0; j < 20; j++) {
           SchemaUtils.registerTimeseries(TestUtils.getTestTimeSeriesSchema(i, j));
         }
@@ -185,9 +188,24 @@ public class MemberTest {
     newMember.setMetaGroupMember(testMetaMember);
     newMember.setLeader(node);
     newMember.setCharacter(NodeCharacter.LEADER);
-    newMember.setLogManager(new TestPartitionedLogManager());
+    newMember
+        .setLogManager(
+            getLogManager(partitionTable.getHeaderGroup(TestUtils.getNode(0)), newMember));
+    newMember
+        .getLogManager().setLogApplierExecutor(Executors.newSingleThreadExecutor());
+
     newMember.setAppendLogThreadPool(testThreadPool);
     return newMember;
+  }
+
+  private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup,
+      DataGroupMember dataGroupMember) {
+    return new TestPartitionedLogManager(new DataLogApplier(testMetaMember, dataGroupMember),
+        testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot::new) {
+      @Override
+      public void takeSnapshot() {
+      }
+    };
   }
 
   protected MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
@@ -197,29 +215,29 @@ public class MemberTest {
   private MetaGroupMember newMetaGroupMember(Node node) {
     MetaGroupMember ret = new TestMetaGroupMember() {
       @Override
-      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<Path> paths,
+      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<PartialPath> paths,
           List<String> aggregations)
           throws MetadataException {
-        return new Pair<>(SchemaUtils.getSeriesTypesByPath(paths, aggregations),
-            SchemaUtils.getSeriesTypesByPath(paths, (List<String>) null));
+        return new Pair<>(SchemaUtils.getSeriesTypesByPaths(paths, aggregations),
+            SchemaUtils.getSeriesTypesByPaths(paths, (List<String>) null));
       }
 
       @Override
-      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByString(List<String> pathStrs,
+      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPaths(List<PartialPath> pathStrs,
           String aggregation)
           throws MetadataException {
-        return new Pair<>(SchemaUtils.getSeriesTypesByString(pathStrs, aggregation),
-            SchemaUtils.getSeriesTypesByString(pathStrs, null));
+        return new Pair<>(SchemaUtils.getSeriesTypesByPaths(pathStrs, aggregation),
+            SchemaUtils.getSeriesTypesByPaths(pathStrs, (List<String>) null));
       }
 
       @Override
-      public List<String> getMatchedPaths(String pathPattern) throws MetadataException {
-        return IoTDB.metaManager.getAllTimeseriesName(pathPattern);
+      public List<PartialPath> getMatchedPaths(PartialPath pathPattern) throws MetadataException {
+        return IoTDB.metaManager.getAllTimeseriesPath(pathPattern);
       }
 
       @Override
-      public DataGroupMember getLocalDataMember(Node header, AsyncMethodCallback resultHandler,
-                                                Object request) {
+      public DataGroupMember getLocalDataMember(Node header,
+          Object request) {
         return getDataGroupMember(header);
       }
 

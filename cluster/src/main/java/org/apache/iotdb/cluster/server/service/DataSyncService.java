@@ -41,6 +41,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.thrift.TException;
@@ -131,9 +132,11 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       if (client == null) {
         throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
       }
-      PullSchemaResp pullSchemaResp = client.pullTimeSeriesSchema(request);
+      PullSchemaResp pullSchemaResp = client.pullMeasurementSchema(request);
       putBackSyncClient(client);
       return pullSchemaResp;
+    } catch (IllegalPathException e) {
+      throw new TException(e);
     }
   }
 
@@ -270,7 +273,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public ByteBuffer previousFill(PreviousFillRequest request) throws TException {
     try {
       return dataGroupMember.previousFill(request);
-    } catch (QueryProcessException | StorageEngineException | IOException e) {
+    } catch (QueryProcessException | StorageEngineException | IOException | IllegalPathException e) {
       throw new TException(e);
     }
   }
@@ -279,7 +282,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public ByteBuffer last(LastQueryRequest request) throws TException {
     try {
       return dataGroupMember.last(request);
-    } catch (CheckConsistencyException | QueryProcessException | IOException | StorageEngineException e) {
+    } catch (CheckConsistencyException | QueryProcessException | IOException | StorageEngineException | IllegalPathException e) {
       throw new TException(e);
     }
   }

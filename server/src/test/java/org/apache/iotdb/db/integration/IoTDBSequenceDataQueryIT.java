@@ -32,7 +32,9 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -41,6 +43,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -162,24 +165,24 @@ public class IoTDBSequenceDataQueryIT {
 
   @Test
   public void readWithoutFilterTest()
-      throws IOException, StorageEngineException, QueryProcessException {
+      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
 
     QueryRouter queryRouter = new QueryRouter();
-    List<Path> pathList = new ArrayList<>();
+    List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new Path(TestConstant.d0s0));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d0s1));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     dataTypes.add(TSDataType.INT64);
-    pathList.add(new Path(TestConstant.d0s2));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2));
     dataTypes.add(TSDataType.FLOAT);
-    pathList.add(new Path(TestConstant.d0s3));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s3));
     dataTypes.add(TSDataType.TEXT);
-    pathList.add(new Path(TestConstant.d0s4));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s4));
     dataTypes.add(TSDataType.BOOLEAN);
-    pathList.add(new Path(TestConstant.d1s0));
+    pathList.add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s1));
+    pathList.add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     dataTypes.add(TSDataType.INT64);
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
@@ -201,15 +204,15 @@ public class IoTDBSequenceDataQueryIT {
 
   @Test
   public void readWithTimeFilterTest()
-      throws IOException, StorageEngineException, QueryProcessException {
+      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
     QueryRouter queryRouter = new QueryRouter();
-    List<Path> pathList = new ArrayList<>();
+    List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new Path(TestConstant.d0s0));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s0));
+    pathList.add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s1));
+    pathList.add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     dataTypes.add(TSDataType.INT64);
 
     GlobalTimeExpression globalTimeExpression = new GlobalTimeExpression(TimeFilter.gtEq(800L));
@@ -237,27 +240,27 @@ public class IoTDBSequenceDataQueryIT {
 
   @Test
   public void readWithValueFilterTest()
-      throws IOException, StorageEngineException, QueryProcessException {
+      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
     // select * from root where root.vehicle.d0.s0 >=14
     QueryRouter queryRouter = new QueryRouter();
-    List<Path> pathList = new ArrayList<>();
+    List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new Path(TestConstant.d0s0));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d0s1));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     dataTypes.add(TSDataType.INT64);
-    pathList.add(new Path(TestConstant.d0s2));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2));
     dataTypes.add(TSDataType.FLOAT);
-    pathList.add(new Path(TestConstant.d0s3));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s3));
     dataTypes.add(TSDataType.TEXT);
-    pathList.add(new Path(TestConstant.d0s4));
+    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s4));
     dataTypes.add(TSDataType.BOOLEAN);
-    pathList.add(new Path(TestConstant.d1s0));
+    pathList.add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new Path(TestConstant.d1s1));
+    pathList.add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     dataTypes.add(TSDataType.INT64);
 
-    Path queryPath = new Path(TestConstant.d0s0);
+    Path queryPath = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(queryPath,
         ValueFilter.gtEq(14));
 

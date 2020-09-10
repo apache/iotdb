@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -36,10 +37,8 @@ import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.server.THsHaServer;
-import org.apache.thrift.server.THsHaServer.Args;
 import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TThreadPoolServer;
+import org.apache.thrift.server.TThreadedSelectorServer;
 import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TServerTransport;
@@ -183,13 +182,11 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
 
   private TServer getAsyncServer() throws TTransportException {
     socket = getServerSocket();
-    Args poolArgs =
-        new THsHaServer.Args((TNonblockingServerTransport) socket)
-            .maxWorkerThreads(config.getMaxConcurrentClientNum())
-            .minWorkerThreads(CommonUtils.getCpuCores());
-
-    poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
-        poolArgs.maxWorkerThreads, poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
+    TThreadedSelectorServer.Args poolArgs =
+        new TThreadedSelectorServer.Args((TNonblockingServerTransport) socket);
+    poolArgs.selectorThreads(CommonUtils.getCpuCores());
+    poolArgs.executorService(new ThreadPoolExecutor(CommonUtils.getCpuCores(),
+        config.getMaxConcurrentClientNum(), poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
         new SynchronousQueue<>(), new ThreadFactory() {
       private AtomicLong threadIndex = new AtomicLong(0);
 
@@ -206,34 +203,13 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
 
     // run the thrift server in a separate thread so that the main thread is not blocked
-    return new THsHaServer(poolArgs);
+    return new TThreadedSelectorServer(poolArgs);
   }
 
   private TServer getSyncServer() throws TTransportException {
     socket = getServerSocket();
-    TThreadPoolServer.Args poolArgs =
-        new TThreadPoolServer.Args(socket).maxWorkerThreads(config.getMaxConcurrentClientNum())
-            .minWorkerThreads(CommonUtils.getCpuCores());
-
-    poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
-        poolArgs.maxWorkerThreads, poolArgs.stopTimeoutVal, poolArgs.stopTimeoutUnit,
-        new SynchronousQueue<>(), new ThreadFactory() {
-      private AtomicLong threadIndex = new AtomicLong(0);
-
-      @Override
-      public Thread newThread(Runnable r) {
-        return new Thread(r, getClientThreadPrefix() + threadIndex.incrementAndGet());
-      }
-    }));
-    poolArgs.processor(getProcessor());
-    poolArgs.protocolFactory(protocolFactory);
-    // async service requires FramedTransport
-    poolArgs.transportFactory(new TFastFramedTransport.Factory(
-        IoTDBDescriptor.getInstance().getConfig().getThriftInitBufferSize(),
-        IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
-
-    // run the thrift server in a separate thread so that the main thread is not blocked
-    return new TThreadPoolServer(poolArgs);
+    return ClusterUtils.createTThreadPoolServer(socket, getClientThreadPrefix(), getProcessor(),
+        protocolFactory);
   }
 
   private void establishServer() throws TTransportException {

@@ -95,4 +95,8 @@ public class LogCatchUpHandler implements AsyncMethodCallback<Long> {
   public void setFollower(Node follower) {
     this.follower = follower;
   }
+
+  public AtomicBoolean getAppendSucceed() {
+    return appendSucceed;
+  }
 }

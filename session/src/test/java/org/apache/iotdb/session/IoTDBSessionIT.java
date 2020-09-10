@@ -39,17 +39,18 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -113,7 +114,8 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testInsertByBlankStrAndInferType() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertByBlankStrAndInferType()
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -139,7 +141,8 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testInsertByStrAndInferType() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertByStrAndInferType()
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -175,7 +178,8 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testInsertByObjAndNotInferType() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertByObjAndNotInferType()
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -330,7 +334,8 @@ public class IoTDBSessionIT {
 
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
-    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance().getNodeByPath("root.sg1.d1.s1");
+    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance()
+        .getNodeByPath(new PartialPath("root.sg1.d1.s1"));
     assertNull(mNode.getSchema().getProps());
 
   }
@@ -346,7 +351,6 @@ public class IoTDBSessionIT {
     String deviceId = "root.sg1.d1";
 
     createTimeseries();
-
 
     // test insert tablet
     List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -465,7 +469,7 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.\"1.2.3\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d1.\'1.2.4\'", TSDataType.INT64, TSEncoding.RLE,
+    session.createTimeseries("root.sg1.d1.\"1.2.4\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
 
     session.setStorageGroup("root.1");
@@ -537,7 +541,7 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.\"1.2.3\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d1.\'1.2.4\'", TSDataType.INT64, TSEncoding.RLE,
+    session.createTimeseries("root.sg1.d1.\"1.2.4\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
 
     session.setStorageGroup("root.1");
@@ -573,7 +577,7 @@ public class IoTDBSessionIT {
   @Test
   public void TestSessionInterfacesWithDisabledWAL()
       throws StatementExecutionException, IoTDBConnectionException,
-          BatchExecutionException {
+      BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     try {
       session.open();
@@ -611,7 +615,7 @@ public class IoTDBSessionIT {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
-    Tablet tablet = new Tablet(deviceId, schemaList, 100);
+    Tablet tablet = new Tablet(deviceId, schemaList, 200);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
     for (int time = 1; time <= 100; time++) {
@@ -619,6 +623,17 @@ public class IoTDBSessionIT {
       for (int i = 0; i < 3; i++) {
         long[] sensor = (long[]) values[i];
         sensor[time - 1] = i;
+      }
+      tablet.rowSize++;
+    }
+
+    for (int time = 101; time <= 200; time++) {
+      int rowIndex = time - 1;
+      tablet.addTimestamp(rowIndex, time);
+      long value = 0;
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
       }
       tablet.rowSize++;
     }
@@ -668,7 +683,7 @@ public class IoTDBSessionIT {
   private void createTimeseriesInChinese(String storageGroup, String[] devices)
       throws StatementExecutionException, IoTDBConnectionException {
     for (String path : devices) {
-      String fullPath = storageGroup + "." + path;
+      String fullPath = storageGroup + TsFileConstant.PATH_SEPARATOR + path;
       session.createTimeseries(fullPath, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     }
   }
@@ -680,7 +695,7 @@ public class IoTDBSessionIT {
         String[] ss = path.split("\\.");
         String deviceId = storageGroup;
         for (int j = 0; j < ss.length - 1; j++) {
-          deviceId += ("." + ss[j]);
+          deviceId += (TsFileConstant.PATH_SEPARATOR + ss[j]);
         }
         String sensorId = ss[ss.length - 1];
         List<String> measurements = new ArrayList<>();
@@ -779,7 +794,7 @@ public class IoTDBSessionIT {
     types.add(TSDataType.INT64);
 
     for (long time = 0; time < 100; time++) {
-      session.insertRecord(deviceId, time, measurements, types,1L, 2L, 3L);
+      session.insertRecord(deviceId, time, measurements, types, 1L, 2L, 3L);
     }
   }
 
@@ -812,6 +827,25 @@ public class IoTDBSessionIT {
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
+
+    for (long time = 0; time < 100; time++) {
+      int rowIndex = tablet.rowSize++;
+      long value = 0;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
 
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
@@ -861,19 +895,23 @@ public class IoTDBSessionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      final int colCount = metaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
-      }
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
+      try {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int colCount = metaData.getColumnCount();
+        StringBuilder resultStr = new StringBuilder();
+        for (int i = 0; i < colCount; i++) {
+          resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
         }
-        resultStr.append("\n");
+        while (resultSet.next()) {
+          for (int i = 1; i <= colCount; i++) {
+            resultStr.append(resultSet.getString(i)).append(",");
+          }
+          resultStr.append("\n");
+        }
+        Assert.assertEquals(resultStr.toString(), standard);
+      } finally {
+        resultSet.close();
       }
-      Assert.assertEquals(resultStr.toString(), standard);
     }
   }
 
@@ -890,9 +928,9 @@ public class IoTDBSessionIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      Assert.assertEquals("root.sg1.d1,11,0,11,", sb.toString());
+      Assert.assertEquals("root.sg1.d1,\'11\',0,\'11\',", sb.toString());
     }
-    Assert.assertEquals(1000, count);
+    Assert.assertEquals(2000, count);
     sessionDataSet.closeOperationHandle();
   }
 
@@ -909,9 +947,9 @@ public class IoTDBSessionIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      Assert.assertEquals("root.sg1.d1,11,0,11,null,0,null,", sb.toString());
+      Assert.assertEquals("root.sg1.d1,'11',0,'11',null,0,null,", sb.toString());
     }
-    Assert.assertEquals(1000, count);
+    Assert.assertEquals(2000, count);
     sessionDataSet.closeOperationHandle();
   }
 
@@ -925,19 +963,23 @@ public class IoTDBSessionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      final int colCount = metaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
-      }
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          resultStr.append(resultSet.getString(i)).append(",");
+      try {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int colCount = metaData.getColumnCount();
+        StringBuilder resultStr = new StringBuilder();
+        for (int i = 0; i < colCount; i++) {
+          resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
         }
-        resultStr.append("\n");
+        while (resultSet.next()) {
+          for (int i = 1; i <= colCount; i++) {
+            resultStr.append(resultSet.getString(i)).append(",");
+          }
+          resultStr.append("\n");
+        }
+        Assert.assertEquals(resultStr.toString(), standard);
+      } finally {
+        resultSet.close();
       }
-      Assert.assertEquals(resultStr.toString(), standard);
     }
   }
 
@@ -956,26 +998,28 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     // using the query result as the QueryTest to verify the deletion and the new insertion
     Class.forName(Config.JDBC_DRIVER_NAME);
-    List<String> standard = Arrays.asList( "Time", "root.1.2.3", "root.sg2.d1.s1",
+    List<String> standard = Arrays.asList("Time", "root.1.2.3", "root.sg2.d1.s1",
         "root.sg1.d1.s1");
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      final int colCount = metaData.getColumnCount();
-      List<String> results = new ArrayList<>();
-      for (int i = 0; i < colCount; i++) {
-        results.add(metaData.getColumnLabel(i + 1));
-      }
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          results.add(resultSet.getString(i));
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root");) {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int colCount = metaData.getColumnCount();
+        List<String> results = new ArrayList<>();
+        for (int i = 0; i < colCount; i++) {
+          results.add(metaData.getColumnLabel(i + 1));
         }
-      }
-      assertEquals(standard.size(), results.size());
-      for (String s : standard) {
-        assertTrue(results.contains(s));
+        while (resultSet.next()) {
+          for (int i = 1; i <= colCount; i++) {
+            results.add(resultSet.getString(i));
+          }
+        }
+        assertEquals(standard.size(), results.size());
+        for (String s : standard) {
+          assertTrue(results.contains(s));
+        }
       }
       List<String> storageGroups = new ArrayList<>();
       storageGroups.add("root.sg1.d1");
@@ -1038,10 +1082,10 @@ public class IoTDBSessionIT {
     checkSetSG(session, "root..vehicle", false);
     checkSetSG(session, "root.1234a4", true);
     checkSetSG(session, "root.1_2", true);
-    checkSetSG(session, "root.%12345", true);
-    checkSetSG(session, "root.+12345", true);
-    checkSetSG(session, "root.-12345", true);
-    checkSetSG(session, "root.a{12345}", true);
+    checkSetSG(session, "root.%12345", false);
+    checkSetSG(session, "root.+12345", false);
+    checkSetSG(session, "root.-12345", false);
+    checkSetSG(session, "root.a{12345}", false);
 
     //test create timeseries
     checkCreateTimeseries(session, "root.vehicle.d0.s0", true);
@@ -1049,7 +1093,7 @@ public class IoTDBSessionIT {
     checkCreateTimeseries(session, "root.vehicle.d0.1220", true);
     checkCreateTimeseries(session, "root.vehicle._1234.s0", true);
     checkCreateTimeseries(session, "root.vehicle.1245.\"1.2.3\"", true);
-    checkCreateTimeseries(session, "root.vehicle.1245.\'1.2.4\'", true);
+    checkCreateTimeseries(session, "root.vehicle.1245.\"1.2.4\"", true);
     checkCreateTimeseries(session, "root.vehicle./d0.s0", true);
     checkCreateTimeseries(session, "root.vehicle.d\t0.s0", false);
     checkCreateTimeseries(session, "root.vehicle.!d\t0.s0", false);
@@ -1091,6 +1135,25 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 256);
 
+    for (long time = 1000; time < 2000; time++) {
+      int rowIndex = tablet.rowSize++;
+      long value = 0;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -1122,6 +1185,25 @@ public class IoTDBSessionIT {
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 200);
+
+    for (long time = 500; time < 1500; time++) {
+      int rowIndex = tablet.rowSize++;
+      long value = 0;
+      tablet.addTimestamp(rowIndex, time);
+      for (int s = 0; s < 3; s++) {
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+        value++;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
 
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
@@ -1160,6 +1242,25 @@ public class IoTDBSessionIT {
 
     Tablet tablet = new Tablet(deviceId, schemaList, 1000);
 
+    for (long time = begin; time < count + begin; time++) {
+      int rowIndex = tablet.rowSize++;
+      long value = 0;
+      tablet.addTimestamp(rowIndex, time);
+      for (int i = 0; i < 6; i++) {
+        tablet.addValue(schemaList.get(i).getMeasurementId(), rowIndex, value);
+        value++;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -1180,7 +1281,6 @@ public class IoTDBSessionIT {
       session.insertTablet(tablet);
       tablet.reset();
     }
-
   }
 
   private void queryForBatch() throws ClassNotFoundException, SQLException {
@@ -1192,22 +1292,26 @@ public class IoTDBSessionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      final int colCount = metaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
-      }
-
-      int count = 0;
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          count++;
+      try {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int colCount = metaData.getColumnCount();
+        StringBuilder resultStr = new StringBuilder();
+        for (int i = 0; i < colCount; i++) {
+          resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
         }
+
+        int count = 0;
+        while (resultSet.next()) {
+          for (int i = 1; i <= colCount; i++) {
+            count++;
+          }
+        }
+        Assert.assertEquals(standard, resultStr.toString());
+        // d1 and d2 will align
+        Assert.assertEquals(14000, count);
+      } finally {
+        resultSet.close();
       }
-      Assert.assertEquals(standard, resultStr.toString());
-      // d1 and d2 will align
-      Assert.assertEquals(7000, count);
     }
   }
 
@@ -1220,34 +1324,38 @@ public class IoTDBSessionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "192.168.130.18:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("SELECT s_0 FROM root.group_0.d_0 LIMIT 10000");
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      final int colCount = metaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
-      }
+      try {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int colCount = metaData.getColumnCount();
+        StringBuilder resultStr = new StringBuilder();
+        for (int i = 0; i < colCount; i++) {
+          resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
+        }
 
-      int count = 0;
-      long beforeTime = 0;
-      int errorCount = 0;
-      while (resultSet.next()) {
-        long curTime = resultSet.getLong(1);
-        if (beforeTime < curTime) {
-          beforeTime = curTime;
-        } else {
-          errorCount++;
-          if (errorCount > 10) {
-            System.exit(-1);
+        int count = 0;
+        long beforeTime = 0;
+        int errorCount = 0;
+        while (resultSet.next()) {
+          long curTime = resultSet.getLong(1);
+          if (beforeTime < curTime) {
+            beforeTime = curTime;
+          } else {
+            errorCount++;
+            if (errorCount > 10) {
+              System.exit(-1);
+            }
+          }
+
+          for (int i = 1; i <= colCount; i++) {
+            count++;
           }
         }
-
-        for (int i = 1; i <= colCount; i++) {
-          count++;
-        }
+        Assert.assertEquals(standard, resultStr.toString());
+        // d1 and d2 will align
+        Assert.assertEquals(7000, count);
+      } finally {
+        resultSet.close();
       }
-      Assert.assertEquals(standard, resultStr.toString());
-      // d1 and d2 will align
-      Assert.assertEquals(7000, count);
     }
   }
 
@@ -1260,22 +1368,26 @@ public class IoTDBSessionIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
-      final ResultSetMetaData metaData = resultSet.getMetaData();
-      final int colCount = metaData.getColumnCount();
-      StringBuilder resultStr = new StringBuilder();
-      for (int i = 0; i < colCount; i++) {
-        resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
-      }
-
-      int count = 0;
-      while (resultSet.next()) {
-        for (int i = 1; i <= colCount; i++) {
-          count++;
+      try {
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        final int colCount = metaData.getColumnCount();
+        StringBuilder resultStr = new StringBuilder();
+        for (int i = 0; i < colCount; i++) {
+          resultStr.append(metaData.getColumnLabel(i + 1)).append("\n");
         }
+
+        int count = 0;
+        while (resultSet.next()) {
+          for (int i = 1; i <= colCount; i++) {
+            count++;
+          }
+        }
+        Assert.assertEquals(standard, resultStr.toString());
+        // d1 and d2 will align
+        Assert.assertEquals(14000, count);
+      } finally {
+        resultSet.close();
       }
-      Assert.assertEquals(standard, resultStr.toString());
-      // d1 and d2 will align
-      Assert.assertEquals(10500, count);
     }
   }
 

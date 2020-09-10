@@ -41,8 +41,8 @@ public class JettyUtil {
     HttpServlet httpServlet = new HttpServlet() {
       private static final long serialVersionUID = 1L;
 
-      ObjectMapper om = mapper;
-      MetricRegistry mr = metricRegistry;
+      private final ObjectMapper om = mapper;
+      private final MetricRegistry mr = metricRegistry;
 
       @Override
       protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {

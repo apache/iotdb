@@ -24,17 +24,17 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,17 +63,17 @@ public class DataLogApplier extends BaseApplier {
       PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
       PhysicalPlan plan = physicalPlanLog.getPlan();
       if (plan instanceof InsertPlan) {
-        applyInsert(plan);
+        applyInsert((InsertPlan) plan);
       } else {
         applyPhysicalPlan(plan, dataGroupMember);
       }
     } else if (log instanceof CloseFileLog) {
       CloseFileLog closeFileLog = ((CloseFileLog) log);
       try {
-        StorageEngine.getInstance().asyncCloseProcessor(closeFileLog.getStorageGroupName(),
+        StorageEngine.getInstance().closeProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
             closeFileLog.getPartitionId(),
-            closeFileLog.isSeq());
-      } catch (StorageGroupNotSetException e) {
+            closeFileLog.isSeq(), false);
+      } catch (StorageGroupNotSetException | IllegalPathException e) {
         logger.error("Cannot close {} file in {}, partitionId {}",
             closeFileLog.isSeq() ? "seq" : "unseq",
             closeFileLog.getStorageGroupName(), closeFileLog.getPartitionId());
@@ -84,21 +84,13 @@ public class DataLogApplier extends BaseApplier {
     log.setApplied(true);
   }
 
-  private void applyInsert(PhysicalPlan plan)
+  private void applyInsert(InsertPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     // check if the corresponding slot is being pulled
-    String sg;
-    long time;
+    PartialPath sg;
+    long time = plan.getMinTime();
     try {
-      if (plan instanceof InsertRowPlan) {
-        InsertRowPlan insertPlan = (InsertRowPlan) plan;
-        sg = IoTDB.metaManager.getStorageGroupName(insertPlan.getDeviceId());
-        time = insertPlan.getTime();
-      } else {
-        InsertTabletPlan insertTabletPlan = (InsertTabletPlan) plan;
-        sg = IoTDB.metaManager.getStorageGroupName(insertTabletPlan.getDeviceId());
-        time = insertTabletPlan.getMinTime();
-      }
+      sg = IoTDB.metaManager.getStorageGroupPath(plan.getDeviceId());
     } catch (StorageGroupNotSetException e) {
       // the sg may not exist because the node does not catch up with the leader, retry after
       // synchronization
@@ -107,17 +99,10 @@ public class DataLogApplier extends BaseApplier {
       } catch (CheckConsistencyException ce) {
         throw new QueryProcessException(ce.getMessage());
       }
-      if (plan instanceof InsertRowPlan) {
-        InsertRowPlan insertPlan = (InsertRowPlan) plan;
-        sg = IoTDB.metaManager.getStorageGroupName(insertPlan.getDeviceId());
-        time = insertPlan.getTime();
-      } else {
-        InsertTabletPlan insertTabletPlan = (InsertTabletPlan) plan;
-        sg = IoTDB.metaManager.getStorageGroupName(insertTabletPlan.getDeviceId());
-        time = insertTabletPlan.getMinTime();
-      }
+      sg = IoTDB.metaManager.getStorageGroupPath(plan.getDeviceId());
     }
-    int slotId = PartitionUtils.calculateStorageGroupSlotByTime(sg, time, ClusterConstant.SLOT_NUM);
+    int slotId = SlotPartitionTable.getSlotStrategy().calculateSlotByTime(sg.getFullPath(), time,
+        ClusterConstant.SLOT_NUM);
     // the slot may not be writable because it is pulling file versions, wait until it is done
     dataGroupMember.getSlotManager().waitSlotForWrite(slotId);
     applyPhysicalPlan(plan, dataGroupMember);

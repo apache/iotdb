@@ -25,19 +25,19 @@ import static org.junit.Assert.assertSame;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Test;
 
 public class ForwardPlanHandlerTest {
 
   @Test
-  public void testComplete() {
+  public void testComplete() throws IllegalPathException {
     AtomicReference<TSStatus> result = new AtomicReference<>();
-    PhysicalPlan plan = new SetStorageGroupPlan(new Path("root.test"));
+    PhysicalPlan plan = new SetStorageGroupPlan(new PartialPath("root.test"));
     ForwardPlanHandler handler = new ForwardPlanHandler(result, plan, TestUtils.getNode(0));
 
     TSStatus status = new TSStatus();
@@ -46,9 +46,9 @@ public class ForwardPlanHandlerTest {
   }
 
   @Test
-  public void testError() {
+  public void testError() throws IllegalPathException {
     AtomicReference<TSStatus> result = new AtomicReference<>();
-    PhysicalPlan plan = new SetStorageGroupPlan(new Path("root.test"));
+    PhysicalPlan plan = new SetStorageGroupPlan(new PartialPath("root.test"));
     ForwardPlanHandler handler = new ForwardPlanHandler(result, plan, TestUtils.getNode(0));
 
     handler.onError(new TestException());

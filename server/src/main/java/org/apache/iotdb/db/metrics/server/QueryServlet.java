@@ -30,7 +30,7 @@ public class QueryServlet extends HttpServlet {
 
   private static final long serialVersionUID = 1L;
 
-  private MetricsPage page;
+  private final MetricsPage page;
 
   public QueryServlet(MetricsPage page) {
     this.page = page;

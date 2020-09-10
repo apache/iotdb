@@ -164,7 +164,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   @Override
   TProcessor getProcessor() {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new AsyncProcessor(this);
+      return new AsyncProcessor<>(this);
     } else {
       return new Processor<>(this);
     }

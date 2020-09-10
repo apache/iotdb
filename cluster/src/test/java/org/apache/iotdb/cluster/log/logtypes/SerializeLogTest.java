@@ -30,26 +30,28 @@ import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
 public class SerializeLogTest {
 
   @Test
-  public void testPhysicalPlanLog() throws UnknownLogTypeException, QueryProcessException {
+  public void testPhysicalPlanLog()
+      throws UnknownLogTypeException, QueryProcessException, IllegalPathException {
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
     InsertRowPlan plan = new InsertRowPlan();
-    plan.setDeviceId("root.d1");
+    plan.setDeviceId(new PartialPath("root.d1"));
     plan.setMeasurements(new String[]{"s1", "s2", "s3"});
     plan.setNeedInferType(true);
     plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -67,12 +69,12 @@ public class SerializeLogTest {
     Log logPrime = LogParser.getINSTANCE().parse(byteBuffer);
     assertEquals(log, logPrime);
 
-    log = new PhysicalPlanLog(new SetStorageGroupPlan(new Path("root.sg1")));
+    log = new PhysicalPlanLog(new SetStorageGroupPlan(new PartialPath("root.sg1")));
     byteBuffer = log.serialize();
     logPrime = LogParser.getINSTANCE().parse(byteBuffer);
     assertEquals(log, logPrime);
 
-    log = new PhysicalPlanLog(new CreateTimeSeriesPlan(new Path("root.applyMeta"
+    log = new PhysicalPlanLog(new CreateTimeSeriesPlan(new PartialPath("root.applyMeta"
         + ".s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
         new HashMap<String, String>() {{
           put("MAX_POINT_NUMBER", "100");

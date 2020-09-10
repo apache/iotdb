@@ -41,6 +41,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -281,6 +282,32 @@ public class Session {
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     defaultSessionConnection.executeNonQueryStatement(sql);
+  }
+
+  /**
+   * query eg. select * from paths where time >= startTime and time < endTime time interval include
+   * startTime and exclude endTime
+   *
+   * @param paths
+   * @param startTime included
+   * @param endTime   excluded
+   * @return
+   * @throws StatementExecutionException
+   * @throws IoTDBConnectionException
+   */
+
+  public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSRawDataQueryReq request = genTSRawDataQueryReq(paths, startTime, endTime);
+    return defaultSessionConnection.executeRawDataQuery(request);
+  }
+
+  private TSRawDataQueryReq genTSRawDataQueryReq(List<String> paths, long startTime, long endTime) {
+    TSRawDataQueryReq request = new TSRawDataQueryReq();
+    request.setPaths(paths);
+    request.setStartTime(startTime);
+    request.setEndTime(endTime);
+    return request;
   }
 
   /**
@@ -960,7 +987,7 @@ public class Session {
     return true;
   }
 
-  private void sortTablet(Tablet tablet) {
+  protected void sortTablet(Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance

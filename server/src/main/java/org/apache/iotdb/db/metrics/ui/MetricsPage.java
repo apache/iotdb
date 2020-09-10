@@ -49,12 +49,12 @@ public class MetricsPage {
     String tmpStr = "";
     try {
       URL resource = MetricsPage.class.getClassLoader().getResource("iotdb/ui/static/index.html");
-      InputStream is = resource.openStream();
-      BufferedReader br = new BufferedReader(new InputStreamReader(is));
-      while ((tmpStr = br.readLine()) != null) {
-        html += tmpStr;
+      try (InputStream is = resource.openStream();
+           BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+        while ((tmpStr = br.readLine()) != null) {
+          html += tmpStr;
+        }
       }
-      is.close();
     } catch (IOException e) {
       logger.error("Response page failed", e);
     }

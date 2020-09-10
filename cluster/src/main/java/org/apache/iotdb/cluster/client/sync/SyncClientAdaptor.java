@@ -51,10 +51,11 @@ import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPath
 import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullMeasurementSchemaHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
+import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -329,13 +330,10 @@ public class SyncClientAdaptor {
 
   public static TSStatus executeNonQuery(AsyncClient client, PhysicalPlan plan, Node header,
       Node receiver) throws IOException, TException, InterruptedException {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    plan.serialize(dataOutputStream);
 
     AtomicReference<TSStatus> status = new AtomicReference<>();
     ExecutNonQueryReq req = new ExecutNonQueryReq();
-    req.setPlanBytes(byteArrayOutputStream.toByteArray());
+    req.planBytes = ByteBuffer.wrap(PlanSerializer.getInstance().serialize(plan));
     if (header != null) {
       req.setHeader(header);
     }

@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.cluster.metadata;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
@@ -32,18 +39,12 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class MetaPuller {
 
@@ -77,12 +78,12 @@ public class MetaPuller {
    * <p>
    * Attention!!!  Just copy from metaGroupMember now, will refactor later.
    */
-  List<MeasurementSchema> pullMeasurementSchemas(List<String> prefixPaths)
+  List<MeasurementSchema> pullMeasurementSchemas(List<PartialPath> prefixPaths)
       throws MetadataException {
     logger.debug("{}: Pulling timeseries schemas of {}", metaGroupMember.getName(), prefixPaths);
     // split the paths by the data groups that will hold them
-    Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
-    for (String prefixPath : prefixPaths) {
+    Map<PartitionGroup, List<PartialPath>> partitionGroupPathMap = new HashMap<>();
+    for (PartialPath prefixPath : prefixPaths) {
       PartitionGroup partitionGroup;
       try {
         partitionGroup = metaGroupMember.getPartitionTable().partitionByPathTime(prefixPath, 0);
@@ -108,10 +109,10 @@ public class MetaPuller {
           metaGroupMember.getName(), prefixPaths.get(0), prefixPaths.size() - 1,
           partitionGroupPathMap.size());
     }
-    for (Map.Entry<PartitionGroup, List<String>> partitionGroupListEntry : partitionGroupPathMap
+    for (Map.Entry<PartitionGroup, List<PartialPath>> partitionGroupListEntry : partitionGroupPathMap
         .entrySet()) {
       PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
-      List<String> paths = partitionGroupListEntry.getValue();
+      List<PartialPath> paths = partitionGroupListEntry.getValue();
       pullMeasurementSchemas(partitionGroup, paths, schemas);
     }
     if (logger.isDebugEnabled()) {
@@ -131,13 +132,13 @@ public class MetaPuller {
    * @param results
    */
   private void pullMeasurementSchemas(PartitionGroup partitionGroup,
-      List<String> prefixPaths, List<MeasurementSchema> results) {
+      List<PartialPath> prefixPaths, List<MeasurementSchema> results) {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the node is in the target group, synchronize with leader should be enough
-      metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), null,
+      metaGroupMember.getLocalDataMember(partitionGroup.getHeader(),
           "Pull timeseries of " + prefixPaths).syncLeader();
       int preSize = results.size();
-      for (String prefixPath : prefixPaths) {
+      for (PartialPath prefixPath : prefixPaths) {
         IoTDB.metaManager.collectSeries(prefixPath, results);
       }
       if (logger.isDebugEnabled()) {
@@ -151,7 +152,8 @@ public class MetaPuller {
     // pull schemas from a remote node
     PullSchemaRequest pullSchemaRequest = new PullSchemaRequest();
     pullSchemaRequest.setHeader(partitionGroup.getHeader());
-    pullSchemaRequest.setPrefixPaths(prefixPaths);
+    pullSchemaRequest.setPrefixPaths(prefixPaths.stream().map(PartialPath::getFullPath).collect(
+        Collectors.toList()));
 
     for (Node node : partitionGroup) {
       if (pullMeasurementSchemas(node, pullSchemaRequest, results)) {

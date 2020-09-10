@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -126,8 +127,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     headerGroupMap.put(dataGroupMember.getHeader(), dataGroupMember);
   }
 
-  private DataAsyncService getDataAsyncService(Node header, AsyncMethodCallback resultHandler,
-      Object request) {
+  private <T> DataAsyncService getDataAsyncService(Node header,
+      AsyncMethodCallback<T> resultHandler, Object request) {
     return asyncServiceMap.computeIfAbsent(header, h -> {
       DataGroupMember dataMember = getDataMember(h, resultHandler, request);
       return dataMember != null ? new DataAsyncService(dataMember) : null;
@@ -148,7 +149,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    *                      is only used in logs for tracing
    * @return
    */
-  public DataGroupMember getDataMember(Node header, AsyncMethodCallback resultHandler,
+  public <T> DataGroupMember getDataMember(Node header, AsyncMethodCallback<T> resultHandler,
       Object request) {
     // if the resultHandler is not null, then the request is a external one and must be with a
     // header
@@ -445,7 +446,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   TProcessor getProcessor() {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new AsyncProcessor(this);
+      return new AsyncProcessor<>(this);
     } else {
       return new Processor<>(this);
     }
@@ -501,7 +502,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         addDataGroupMember(dataGroupMember);
         dataGroupMember.start();
         dataGroupMember
-            .pullNodeAdditionSnapshots(partitionTable.getNodeSlots(node), node);
+            .pullNodeAdditionSnapshots(((SlotPartitionTable) partitionTable).getNodeSlots(node),
+                node);
       }
     }
   }
@@ -565,7 +567,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         } else {
           if (node.equals(thisNode)) {
             // this node is removed, it is no more replica of other groups
-            List<Integer> nodeSlots = partitionTable.getNodeSlots(dataGroupMember.getHeader());
+            List<Integer> nodeSlots =
+                ((SlotPartitionTable) partitionTable).getNodeSlots(dataGroupMember.getHeader());
             dataGroupMember.removeLocalData(nodeSlots);
             entryIterator.remove();
             dataGroupMember.stop();
@@ -598,7 +601,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * which has no data. This is to make that member pull data from other nodes.
    */
   public void pullSnapshots() {
-    List<Integer> slots = partitionTable.getNodeSlots(thisNode);
+    List<Integer> slots = ((SlotPartitionTable) partitionTable).getNodeSlots(thisNode);
     DataGroupMember dataGroupMember = headerGroupMap.get(thisNode);
     dataGroupMember.pullNodeAdditionSnapshots(slots, thisNode);
   }

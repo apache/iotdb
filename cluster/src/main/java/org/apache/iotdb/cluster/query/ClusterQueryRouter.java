@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.query.last.ClusterLastQueryExecutor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
@@ -42,7 +43,6 @@ import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ClusterQueryRouter extends QueryRouter {
 
@@ -53,7 +53,7 @@ public class ClusterQueryRouter extends QueryRouter {
   }
 
   @Override
-  protected FillQueryExecutor getFillExecutor(List<Path> fillPaths, List<TSDataType> dataTypes,
+  protected FillQueryExecutor getFillExecutor(List<PartialPath> fillPaths, List<TSDataType> dataTypes,
       long queryTime, Map<TSDataType, IFill> fillType) {
     return new ClusterFillExecutor(fillPaths, dataTypes, queryTime, fillType, metaGroupMember);
   }

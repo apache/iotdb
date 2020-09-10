@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.qp;
 
+import java.time.ZoneId;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
@@ -33,11 +36,18 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
+import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.tsfile.read.common.Path;
-
-import java.time.ZoneId;
-import java.util.Set;
+import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
+import java.util.HashSet;
+import java.util.List;
 
 /**
  * provide a integration method for other user.
@@ -65,6 +75,50 @@ public class Planner {
     return physicalGenerator.transformToPhysicalPlan(operator);
   }
 
+  /**
+   * convert raw data query to physical plan directly
+   */
+  public PhysicalPlan rawDataQueryReqToPhysicalPlan(TSRawDataQueryReq rawDataQueryReq)
+      throws QueryProcessException, IllegalPathException {
+    List<String> paths = rawDataQueryReq.getPaths();
+    long startTime = rawDataQueryReq.getStartTime();
+    long endTime = rawDataQueryReq.getEndTime();
+
+    //construct query operator and set its global time filter
+    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
+    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
+    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+
+    //iterate the path list and add it to from operator
+    for (String p : paths) {
+      PartialPath path = new PartialPath(p);
+      fromOp.addPrefixTablePath(path);
+    }
+    selectOp.addSelectPath(new PartialPath(""));
+
+    queryOp.setSelectOperator(selectOp);
+    queryOp.setFromOperator(fromOp);
+
+    //set time filter operator
+    FilterOperator filterOp = new FilterOperator(SQLConstant.KW_AND);
+    PartialPath timePath = new PartialPath(TIME);
+    filterOp.setSinglePath(timePath);
+    Set<PartialPath> pathSet = new HashSet<>();
+    pathSet.add(timePath);
+    filterOp.setIsSingle(true);
+    filterOp.setPathSet(pathSet);
+
+    BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO, timePath, Long.toString(startTime));
+    BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHAN, timePath, Long.toString(endTime));
+    filterOp.addChildOperator(left);
+    filterOp.addChildOperator(right);
+
+    queryOp.setFilterOperator(filterOp);
+
+    SFWOperator op = (SFWOperator) logicalOptimize(queryOp);
+    PhysicalGenerator physicalGenerator = new PhysicalGenerator();
+    return physicalGenerator.transformToPhysicalPlan(op);
+  }
 
   /**
    * given an unoptimized logical operator tree and return a optimized result.
@@ -129,7 +183,7 @@ public class Planner {
     if (filter == null) {
       return root;
     }
-    Set<Path> pathSet = filter.getPathSet();
+    Set<PartialPath> pathSet = filter.getPathSet();
     RemoveNotOptimizer removeNot = new RemoveNotOptimizer();
     filter = removeNot.optimize(filter);
     DnfFilterOptimizer dnf = new DnfFilterOptimizer();

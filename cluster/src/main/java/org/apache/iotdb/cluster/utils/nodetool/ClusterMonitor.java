@@ -25,12 +25,14 @@ import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.ClusterMain;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -73,7 +75,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     try {
-      return partitionTable.partitionByPathRangeTime(path, startTime, endTime);
+      return partitionTable.partitionByPathRangeTime(new PartialPath(path), startTime, endTime);
     } catch (MetadataException e) {
       LOGGER.error("The storage group of path {} doesn't exist.", path, e);
       return new MultiKeyMap<>();
@@ -87,7 +89,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     try {
-      return partitionTable.partitionByPathTime(path, 0);
+      return partitionTable.partitionByPathTime(new PartialPath(path), 0);
     } catch (MetadataException e) {
       LOGGER.error("The storage group of path {} doesn't exist.", path, e);
       return new PartitionGroup();
@@ -101,7 +103,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     List<PartitionGroup> localGroups = partitionTable.getLocalGroups();
-    Map<Node, List<Integer>> nodeSlotMap = partitionTable.getAllNodeSlots();
+    Map<Node, List<Integer>> nodeSlotMap = ((SlotPartitionTable) partitionTable).getAllNodeSlots();
     Map<PartitionGroup, Integer> raftGroupMapSlotNum = new HashMap<>();
     for (PartitionGroup group : localGroups) {
       raftGroupMapSlotNum.put(group, nodeSlotMap.get(group.getHeader()).size());
@@ -116,7 +118,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     List<Node> allNodes = partitionTable.getAllNodes();
-    Map<Node, List<Integer>> nodeSlotMap = partitionTable.getAllNodeSlots();
+    Map<Node, List<Integer>> nodeSlotMap = ((SlotPartitionTable) partitionTable).getAllNodeSlots();
     Map<PartitionGroup, Integer> raftGroupMapSlotNum = new HashMap<>();
     for (Node header : allNodes) {
       raftGroupMapSlotNum

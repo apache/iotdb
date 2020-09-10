@@ -1,23 +1,8 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements.  See the NOTICE file distributed with this work for additional information regarding copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at      http://www.apache.org/licenses/LICENSE-2.0  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the specific language governing permissions and limitations under the License.
  */
 
-package org.apache.iotdb.cluster.partition;
+package org.apache.iotdb.cluster.partition.slot;
 
 
 import java.io.ByteArrayOutputStream;
@@ -39,10 +24,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.partition.NodeAdditionResult;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotStrategy.DefaultStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +41,8 @@ import org.slf4j.LoggerFactory;
 public class SlotPartitionTable implements PartitionTable {
 
   private static final Logger logger = LoggerFactory.getLogger(SlotPartitionTable.class);
+  private static SlotStrategy slotStrategy = new DefaultStrategy();
+
   private int replicationNum =
       ClusterDescriptor.getInstance().getConfig().getReplicationNum();
 
@@ -76,7 +65,6 @@ public class SlotPartitionTable implements PartitionTable {
   private List<PartitionGroup> localGroups;
 
   private Node thisNode;
-  private MManager mManager = IoTDB.metaManager;
 
   private List<PartitionGroup> globalGroups;
 
@@ -97,6 +85,14 @@ public class SlotPartitionTable implements PartitionTable {
     this.thisNode = thisNode;
     this.totalSlotNumbers = totalSlotNumbers;
     init(nodes);
+  }
+
+  public static SlotStrategy getSlotStrategy() {
+    return slotStrategy;
+  }
+
+  public static void setSlotStrategy(SlotStrategy slotStrategy) {
+    SlotPartitionTable.slotStrategy = slotStrategy;
   }
 
   private void init(Collection<Node> nodes) {
@@ -182,13 +178,6 @@ public class SlotPartitionTable implements PartitionTable {
     }
   }
 
-  @Override
-  public int getPartitionKey(String storageGroupName, long timestamp) {
-    return PartitionUtils
-        .calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
-  }
-
-  @Override
   public PartitionGroup route(int slot) {
     if (slot >= slotNodes.length || slot < 0) {
       logger.warn("Invalid slot to route: {}, stack trace: {}", slot,
@@ -207,8 +196,8 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public Node routeToHeaderByTime(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
-      int slot = PartitionUtils
-          .calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
+      int slot = getSlotStrategy()
+          .calculateSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
       Node node = slotNodes[slot];
       logger.trace("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
           slot, node);
@@ -253,7 +242,7 @@ public class SlotPartitionTable implements PartitionTable {
       }
     }
 
-    NodeAdditionResult result = new NodeAdditionResult();
+    SlotNodeAdditionResult result = new SlotNodeAdditionResult();
     PartitionGroup newGroup = getHeaderGroup(node);
     if (newGroup.contains(thisNode)) {
       localGroups.add(newGroup);
@@ -386,31 +375,21 @@ public class SlotPartitionTable implements PartitionTable {
     return nodeRing;
   }
 
-  @Override
   public Map<Integer, Node> getPreviousNodeMap(Node node) {
     return previousNodeMap.get(node);
   }
 
-  @Override
   public List<Integer> getNodeSlots(Node header) {
     return nodeSlotMap.get(header);
   }
 
-  @Override
   public Map<Node, List<Integer>> getAllNodeSlots() {
     return nodeSlotMap;
   }
 
-  @Override
   public int getTotalSlotNumbers() {
     return totalSlotNumbers;
   }
-
-  @Override
-  public MManager getMManager() {
-    return mManager;
-  }
-
 
   @Override
   public boolean equals(Object o) {
@@ -440,7 +419,7 @@ public class SlotPartitionTable implements PartitionTable {
         return null;
       }
 
-      NodeRemovalResult result = new NodeRemovalResult();
+      SlotNodeRemovalResult result = new SlotNodeRemovalResult();
       result.setRemovedGroup(getHeaderGroup(target));
       nodeRing.remove(target);
 

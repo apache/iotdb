@@ -18,24 +18,22 @@
  */
 package org.apache.iotdb.cluster.partition;
 
-import static org.apache.iotdb.cluster.partition.SlotManager.SlotStatus.NULL;
-import static org.apache.iotdb.cluster.partition.SlotManager.SlotStatus.PULLING;
-import static org.apache.iotdb.cluster.partition.SlotManager.SlotStatus.PULLING_WRITABLE;
-import static org.apache.iotdb.cluster.partition.SlotManager.SlotStatus.SENDING;
-import static org.apache.iotdb.cluster.partition.SlotManager.SlotStatus.SENT;
+import static org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus.NULL;
+import static org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus.PULLING;
+import static org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus.PULLING_WRITABLE;
+import static org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus.SENDING;
+import static org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus.SENT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.partition.slot.SlotManager;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.junit.Before;
 import org.junit.Test;
 

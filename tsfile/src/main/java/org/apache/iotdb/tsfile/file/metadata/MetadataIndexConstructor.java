@@ -45,6 +45,7 @@ public class MetadataIndexConstructor {
    * @param deviceTimeseriesMetadataMap device - >List<TimeseriesMetadata>
    * @param out tsfile output
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static MetadataIndexNode constructMetadataIndex(Map<String, List<TimeseriesMetadata>>
       deviceTimeseriesMetadataMap, TsFileOutput out) throws IOException {
     Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();

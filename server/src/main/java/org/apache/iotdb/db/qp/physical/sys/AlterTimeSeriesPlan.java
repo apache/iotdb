@@ -22,23 +22,26 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AlterTimeSeriesPlan extends PhysicalPlan {
 
-  private Path path;
+  private static final Logger logger = LoggerFactory.getLogger(AlterTimeSeriesPlan.class);
 
+  private PartialPath path;
   private AlterType alterType;
 
   /**
@@ -63,7 +66,7 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     super(false, OperatorType.ALTER_TIMESERIES);
   }
 
-  public AlterTimeSeriesPlan(Path path, AlterType alterType, Map<String, String> alterMap,
+  public AlterTimeSeriesPlan(PartialPath path, AlterType alterType, Map<String, String> alterMap,
       String alias, Map<String, String> tagsMap, Map<String, String> attributesMap) {
     super(false, Operator.OperatorType.ALTER_TIMESERIES);
     this.path = path;
@@ -74,7 +77,7 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     this.attributesMap = attributesMap;
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
 
@@ -99,7 +102,7 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.singletonList(path);
   }
 
@@ -155,7 +158,11 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     int length = buffer.getInt();
     byte[] bytes = new byte[length];
     buffer.get(bytes);
-    path = new Path(new String(bytes));
+    try {
+      path = new PartialPath(new String(bytes));
+    } catch (IllegalPathException e) {
+      logger.error("Illegal path in plan deserialization:", e);
+    }
 
     alterType = AlterType.values()[buffer.get()];
 

@@ -47,7 +47,7 @@ public class GetTimeseriesSchemaHandler implements AsyncMethodCallback<ByteBuffe
     logger.warn("Cannot get timeseries schema from {}, because ", contact, exception);
   }
 
-  public void setResponse(AtomicReference response) {
+  public void setResponse(AtomicReference<ByteBuffer> response) {
     this.result = response;
   }
 

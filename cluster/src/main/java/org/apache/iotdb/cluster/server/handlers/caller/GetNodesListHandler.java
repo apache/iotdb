@@ -48,7 +48,7 @@ public class GetNodesListHandler implements AsyncMethodCallback<List<String>> {
     logger.warn("Cannot get node list from {}, because", contact, exception);
   }
 
-  public void setResponse(AtomicReference response) {
+  public void setResponse(AtomicReference<List<String>> response) {
     this.result = response;
   }
 

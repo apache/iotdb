@@ -26,13 +26,13 @@ import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -61,7 +61,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
 
     List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      Path path = deduplicatedPaths.get(i);
+      PartialPath path = deduplicatedPaths.get(i);
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
       ManagedSeriesReader reader;
@@ -77,7 +77,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
   }
 
   @Override
-  protected IReaderByTimestamp getReaderByTimestamp(Path path,
+  protected IReaderByTimestamp getReaderByTimestamp(PartialPath path,
       Set<String> deviceMeasurements, TSDataType dataType,
       QueryContext context)
       throws StorageEngineException, QueryProcessException {

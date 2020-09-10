@@ -23,11 +23,11 @@ import java.io.IOException;
 import java.util.Collections;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -57,11 +57,11 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
   protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
       throws IOException {
     Filter filter = expression.getFilter();
-    Path path = expression.getSeriesPath();
+    PartialPath path = (PartialPath) expression.getSeriesPath();
     TSDataType dataType;
     try {
       dataType =
-          metaGroupMember.getSeriesTypesByString(Collections.singletonList(path.getFullPath()),
+          metaGroupMember.getSeriesTypesByPaths(Collections.singletonList(path),
               null).left.get(0);
       return metaGroupMember.getSeriesReader(path,
           queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType,

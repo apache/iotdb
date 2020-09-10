@@ -52,7 +52,7 @@ public class DataHeartbeatServer extends HeartbeatServer {
   @Override
   TProcessor getProcessor() {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new AsyncProcessor(dataClusterServer);
+      return new AsyncProcessor<>(dataClusterServer);
     } else {
       return new Processor<>(dataClusterServer);
     }

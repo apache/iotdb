@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,26 +90,30 @@ public class QueryCoordinator {
         || nodeStatus.getStatus() == null) {
 
       try {
-        long startTime = System.nanoTime();
+        long startTime;
+        long responseTime;
         TNodeStatus status;
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncMetaClient asyncMetaClient = (AsyncMetaClient) metaGroupMember.getAsyncClient(node);
+          startTime = System.nanoTime();
           status = SyncClientAdaptor.queryNodeStatus(asyncMetaClient);
+          responseTime = System.nanoTime() - startTime;
         } else {
           SyncMetaClient syncMetaClient = (SyncMetaClient) metaGroupMember.getSyncClient(node);
+          startTime = System.nanoTime();
           status = syncMetaClient.queryNodeStatus();
+          responseTime = System.nanoTime() - startTime;
           metaGroupMember.putBackSyncClient(syncMetaClient);
         }
 
         if (status != null) {
-          long responseTime = System.nanoTime() - startTime;
           nodeStatus.setStatus(status);
           nodeStatus.setLastUpdateTime(System.currentTimeMillis());
           nodeStatus.setLastResponseLatency(responseTime);
         } else {
           nodeStatus.setLastResponseLatency(Long.MAX_VALUE);
         }
-        logger.info("NodeStatus of {} is updated, status: {}, response time: {}", node,
+        logger.warn("NodeStatus of {} is updated, status: {}, response time: {}", node,
             nodeStatus.getStatus(), nodeStatus.getLastResponseLatency());
       } catch (TException e) {
         logger.error("Cannot query the node status of {}", node, e);
@@ -123,5 +128,10 @@ public class QueryCoordinator {
   public long getLastResponseLatency(Node node) {
     NodeStatus nodeStatus = getNodeStatus(node);
     return nodeStatus.getLastResponseLatency();
+  }
+
+  @TestOnly
+  public void clear() {
+    nodeStatusMap.clear();
   }
 }

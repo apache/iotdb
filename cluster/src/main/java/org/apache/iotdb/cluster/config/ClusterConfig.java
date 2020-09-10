@@ -37,7 +37,7 @@ public class ClusterConfig {
   private List<String> seedNodeUrls = Arrays.asList("127.0.0.1:9003:40010:55560", "127.0.0.1:9005:40012:55561", "127.0.0.1:9007:40014:55562");
 
   @ClusterConsistent
-  private boolean isRpcThriftCompressionEnabled = true;
+  private boolean isRpcThriftCompressionEnabled = false;
   private int maxConcurrentClientNum = 100000;
 
   @ClusterConsistent
@@ -53,8 +53,8 @@ public class ClusterConfig {
 
   private int connectionTimeoutInMS = 20 * 1000;
   /**
-   * This parameter controls when to actually delete snapshot logs because we can't remove
-   * snapshot logs directly from disk now
+   * This parameter controls when to actually delete snapshot logs because we can't remove snapshot
+   * logs directly from disk now
    */
   private long maxUnsnapshotLogSize = 1024 * 1024 * 128L;
 

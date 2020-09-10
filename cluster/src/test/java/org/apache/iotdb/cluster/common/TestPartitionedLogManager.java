@@ -28,7 +28,8 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 public class TestPartitionedLogManager extends PartitionedSnapshotLogManager {
 
   public TestPartitionedLogManager() {
-    super(new TestLogApplier(), null, new Node("localhost", 30001, 1, 40001, 55560), null, null);
+    super(new TestLogApplier(), null, new Node("localhost", 30001, 1, 40001, 55560), null, null,
+        null);
   }
 
   public TestPartitionedLogManager(LogApplier logApplier,
@@ -36,7 +37,8 @@ public class TestPartitionedLogManager extends PartitionedSnapshotLogManager {
       Node header,
       SnapshotFactory factory) {
     super(logApplier, partitionTable, header, new Node("localhost", 30001, 1, 40001, 55560),
-        factory);
+        factory,
+        null);
   }
 
   @Override

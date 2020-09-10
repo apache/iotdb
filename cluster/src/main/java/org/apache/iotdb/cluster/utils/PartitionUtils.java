@@ -119,7 +119,8 @@ public class PartitionUtils {
     return calculateStorageGroupSlotByPartition(storageGroupName, partitionNum, slotNum);
   }
 
-  public static int calculateStorageGroupSlotByPartition(String storageGroupName, long partitionNum,
+  private static int calculateStorageGroupSlotByPartition(String storageGroupName,
+      long partitionNum,
       int slotNum) {
     int hash = Murmur128Hash.hash(storageGroupName, partitionNum, HASH_SALT);
     return Math.abs(hash % slotNum);

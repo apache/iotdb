@@ -111,23 +111,12 @@ public class CommittedEntryManager {
    * dummyIndex, or return the entry's term for given index
    * @throws EntryCompactedException
    */
-  long maybeTerm(long index) throws EntryCompactedException {
-    long dummyIndex = getDummyIndex();
-    if (index < dummyIndex) {
-      logger.info(
-          "invalid committedEntryManager maybeTerm: parameter: index({}) < compactIndex({})",
-          index, dummyIndex);
-      throw new EntryCompactedException(index, dummyIndex);
-    }
-    if ((int) (index - dummyIndex) >= entries.size()) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "invalid committedEntryManager maybeTerm : parameter: index({}) > lastIndex({})",
-            index, getLastIndex());
-      }
+  public long maybeTerm(long index) throws EntryCompactedException {
+    Log log = getEntry(index);
+    if (log == null) {
       return -1;
     }
-    return entries.get((int) (index - dummyIndex)).getCurrLogTerm();
+    return log.getCurrLogTerm();
   }
 
   /**
@@ -158,6 +147,34 @@ public class CommittedEntryManager {
       high = lastIndex + 1;
     }
     return entries.subList((int) (low - dummyIndex), (int) (high - dummyIndex));
+  }
+
+  /**
+   * Return the entry's log for given index. Note that the called should ensure index <=
+   * entries[entries.size()-1].index.
+   *
+   * @param index request entry index
+   * @return null if index > entries[entries.size()-1].index, throw EntryCompactedException if index
+   * < dummyIndex, or return the entry's log for given index
+   * @throws EntryCompactedException
+   */
+  Log getEntry(long index) throws EntryCompactedException {
+    long dummyIndex = getDummyIndex();
+    if (index < dummyIndex) {
+      logger.info(
+          "invalid committedEntryManager getEntry: parameter: index({}) < compactIndex({})",
+          index, dummyIndex);
+      throw new EntryCompactedException(index, dummyIndex);
+    }
+    if ((int) (index - dummyIndex) >= entries.size()) {
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "invalid committedEntryManager getEntry : parameter: index({}) > lastIndex({})",
+            index, getLastIndex());
+      }
+      return null;
+    }
+    return entries.get((int) (index - dummyIndex));
   }
 
   /**

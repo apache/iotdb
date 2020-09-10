@@ -16,26 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.rescon;
 
-package org.apache.iotdb.cluster.server.handlers.forwarder;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.thrift.async.AsyncMethodCallback;
+public class CachedStringPool {
 
-public class GenericForwardHandler<T> implements AsyncMethodCallback<T> {
+  private Map<String, String> cachedPool = new ConcurrentHashMap<>();
 
-  private AsyncMethodCallback resultHandler;
-
-  public GenericForwardHandler(AsyncMethodCallback resultHandler) {
-    this.resultHandler = resultHandler;
+  public Map<String, String> getCachedPool() {
+    return cachedPool;
   }
 
-  @Override
-  public void onComplete(T response) {
-    resultHandler.onComplete(response);
+  public static CachedStringPool getInstance() {
+    return CachedStringPool.InstanceHolder.INSTANCE;
   }
 
-  @Override
-  public void onError(Exception exception) {
-    resultHandler.onError(exception);
+  private static class InstanceHolder {
+
+    private static final CachedStringPool INSTANCE = new CachedStringPool();
+
+    private InstanceHolder() {
+    }
   }
 }

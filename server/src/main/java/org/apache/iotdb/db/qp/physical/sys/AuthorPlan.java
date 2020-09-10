@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -29,12 +28,13 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class AuthorPlan extends PhysicalPlan {
 
@@ -44,7 +44,7 @@ public class AuthorPlan extends PhysicalPlan {
   private String password;
   private String newPassword;
   private Set<Integer> permissions;
-  private Path nodeName;
+  private PartialPath nodeName;
 
   /**
    * AuthorPlan Constructor.
@@ -60,7 +60,7 @@ public class AuthorPlan extends PhysicalPlan {
    */
   public AuthorPlan(AuthorOperator.AuthorType authorType, String userName, String roleName,
       String password,
-      String newPassword, String[] authorizationList, Path nodeName) throws AuthException {
+      String newPassword, String[] authorizationList, PartialPath nodeName) throws AuthException {
     super(false, Operator.OperatorType.AUTHOR);
     this.authorType = authorType;
     this.userName = userName;
@@ -211,7 +211,7 @@ public class AuthorPlan extends PhysicalPlan {
     this.permissions = permissions;
   }
 
-  public Path getNodeName() {
+  public PartialPath getNodeName() {
     return nodeName;
   }
 
@@ -247,7 +247,7 @@ public class AuthorPlan extends PhysicalPlan {
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return nodeName != null ? Collections.singletonList(nodeName)
         : Collections.emptyList();
   }
@@ -335,7 +335,7 @@ public class AuthorPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     this.authorType = AuthorType.values()[buffer.getInt()];
     this.userName = readString(buffer);
     this.roleName = readString(buffer);
@@ -355,7 +355,7 @@ public class AuthorPlan extends PhysicalPlan {
     if (nodeNameStr == null) {
       this.nodeName = null;
     } else {
-      this.nodeName = new Path(nodeNameStr);
+      this.nodeName = new PartialPath(nodeNameStr);
     }
   }
 

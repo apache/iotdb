@@ -21,37 +21,37 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class SetStorageGroupPlan extends PhysicalPlan {
 
-  private Path path;
+  private PartialPath path;
 
   public SetStorageGroupPlan() {
     super(false, Operator.OperatorType.SET_STORAGE_GROUP);
   }
 
-  public SetStorageGroupPlan(Path path) {
+  public SetStorageGroupPlan(PartialPath path) {
     super(false, Operator.OperatorType.SET_STORAGE_GROUP);
     this.path = path;
   }
-
-  public Path getPath() {
+  
+  public PartialPath getPath() {
     return path;
   }
 
-  public void setPath(Path path) {
+  public void setPath(PartialPath path) {
     this.path = path;
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return path != null ? Collections.singletonList(path) : Collections.emptyList();
   }
 
@@ -69,11 +69,11 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     int length = buffer.getInt();
     byte[] fullPathBytes = new byte[length];
     buffer.get(fullPathBytes);
-    path = new Path(new String(fullPathBytes));
+    path = new PartialPath(new String(fullPathBytes));
   }
 
   @Override

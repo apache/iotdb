@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.cluster.query.groupby;
 
+import java.util.ArrayList;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -31,7 +33,6 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
@@ -42,7 +43,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
   public ClusterGroupByVFilterDataSet(QueryContext context,
       GroupByTimePlan groupByPlan, MetaGroupMember metaGroupMember)
       throws StorageEngineException, QueryProcessException {
-    this.paths = groupByPlan.getDeduplicatedPaths();
+    this.paths = new ArrayList<>(groupByPlan.getDeduplicatedPaths());
     this.dataTypes = groupByPlan.getDeduplicatedDataTypes();
 
     this.queryId = context.getQueryId();
@@ -69,7 +70,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
   }
 
   @Override
-  protected IReaderByTimestamp getReaderByTime(Path path, RawDataQueryPlan dataQueryPlan,
+  protected IReaderByTimestamp getReaderByTime(PartialPath path, RawDataQueryPlan dataQueryPlan,
       TSDataType dataType,
       QueryContext context,
       TsFileFilter fileFilter) throws StorageEngineException, QueryProcessException {

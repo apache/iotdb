@@ -42,6 +42,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
@@ -238,6 +239,24 @@ public class SessionConnection {
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
+  }
+
+  protected SessionDataSet executeRawDataQuery(TSRawDataQueryReq request)
+      throws StatementExecutionException, IoTDBConnectionException {
+    request.setSessionId(sessionId);
+    request.setFetchSize(session.fetchSize);
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.executeRawDataQuery(request);
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet("", execResp.getColumns(), execResp.getDataTypeList(),
+        execResp.columnNameIndexMap,
+        execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
+        execResp.isIgnoreTimeStamp());
   }
 
   protected void insertRecord(TSInsertRecordReq request)

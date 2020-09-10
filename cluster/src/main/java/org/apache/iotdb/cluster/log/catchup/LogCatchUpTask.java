@@ -80,7 +80,6 @@ public class LogCatchUpTask implements Callable<Boolean> {
   }
 
   void doLogCatchUp() throws TException, InterruptedException, LeaderUnknownException {
-
     AppendEntryRequest request = new AppendEntryRequest();
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());
@@ -118,42 +117,38 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
   private boolean appendEntryAsync(Log log, AppendEntryRequest request)
       throws TException, InterruptedException {
-    AtomicBoolean appendSucceed = new AtomicBoolean(false);
-    LogCatchUpHandler handler = new LogCatchUpHandler();
-    handler.setAppendSucceed(appendSucceed);
-    handler.setRaftMember(raftMember);
-    handler.setFollower(node);
-    handler.setLog(log);
-    request.setEntry(log.serialize());
-
-    synchronized (appendSucceed) {
-      appendSucceed.set(false);
+    LogCatchUpHandler handler = getCatchUpHandler(log, request);
+    synchronized (handler.getAppendSucceed()) {
       AsyncClient client = raftMember.getAsyncClient(node);
       if (client == null) {
         return false;
       }
       client.appendEntry(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-      appendSucceed.wait(RaftServer.getWriteOperationTimeoutMS());
+      handler.getAppendSucceed().wait(RaftServer.getWriteOperationTimeoutMS());
     }
-    return appendSucceed.get();
+    return handler.getAppendSucceed().get();
   }
 
-  private boolean appendEntrySync(Log log, AppendEntryRequest request) {
+  private LogCatchUpHandler getCatchUpHandler(Log log, AppendEntryRequest request) {
     AtomicBoolean appendSucceed = new AtomicBoolean(false);
-
     LogCatchUpHandler handler = new LogCatchUpHandler();
     handler.setAppendSucceed(appendSucceed);
     handler.setRaftMember(raftMember);
     handler.setFollower(node);
     handler.setLog(log);
     request.setEntry(log.serialize());
+    return handler;
+  }
+
+  private boolean appendEntrySync(Log log, AppendEntryRequest request) {
+    LogCatchUpHandler handler = getCatchUpHandler(log, request);
 
     Client client = raftMember.getSyncClient(node);
     try {
       long result = client.appendEntry(request);
       handler.onComplete(result);
-      return appendSucceed.get();
+      return handler.getAppendSucceed().get();
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       handler.onError(e);
@@ -210,8 +205,10 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
       ByteBuffer logData = logs.get(i).serialize();
       int logSize = logData.array().length;
-      if (logSize > IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
-        logger.warn("the frame size {} of thrift is too small", IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
+      if (logSize > IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()
+          - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
+        logger.warn("the frame size {} of thrift is too small",
+            IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
         abort = true;
         return;
       }
@@ -220,7 +217,8 @@ public class LogCatchUpTask implements Callable<Boolean> {
       // we should send logs who's size is smaller than the max frame size of thrift
       // left 200 byte for other fields of AppendEntriesRequest
       if (totalLogSize >
-          IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize() - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
+          IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()
+              - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
         // batch oversize, send previous batch and add the log to a new batch
         sendBatchLogs(logList, firstLogPos);
         logList.add(logData);

@@ -27,7 +27,6 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 /**
  * ClusterLinearFill overrides the dataReader in LinearFill so that it can read data from the
@@ -55,7 +54,6 @@ public class ClusterLinearFill extends LinearFill {
   @Override
   protected TimeValuePair calculateSucceedingPoint()
       throws StorageEngineException {
-    TimeValuePair result = new TimeValuePair(0, null);
 
     List<AggregateResult> aggregateResult = metaGroupMember
         .getAggregateResult(seriesPath, deviceMeasurements, AGGREGATION_NAMES,
@@ -63,14 +61,6 @@ public class ClusterLinearFill extends LinearFill {
     AggregateResult minTimeResult = aggregateResult.get(0);
     AggregateResult firstValueResult = aggregateResult.get(1);
 
-    if (minTimeResult.getResult() != null) {
-      long timestamp = (long)(minTimeResult.getResult());
-      result.setTimestamp(timestamp);
-    }
-    if (firstValueResult.getResult() != null) {
-      Object value = firstValueResult.getResult();
-      result.setValue(TsPrimitiveType.getByType(dataType, value));
-    }
-    return result;
+    return convertToResult(minTimeResult, firstValueResult);
   }
 }

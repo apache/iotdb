@@ -27,14 +27,16 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.partition.PartitionTable;
-import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -233,12 +235,12 @@ public class TestUtils {
   }
 
   public static void prepareData()
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, IllegalPathException {
     InsertRowPlan insertPlan = new InsertRowPlan();
     // data for raw data query and aggregation
     // 10 devices (storage groups)
     for (int j = 0; j < 10; j++) {
-      insertPlan.setDeviceId(getTestSg(j));
+      insertPlan.setDeviceId(new PartialPath(getTestSg(j)));
       String[] measurements = new String[10];
       MeasurementSchema[] schemas = new MeasurementSchema[10];
       // 10 series each device, all double
@@ -291,7 +293,7 @@ public class TestUtils {
     }
 
     // data for fill
-    insertPlan.setDeviceId(getTestSg(0));
+    insertPlan.setDeviceId(new PartialPath(getTestSg(0)));
     String[] measurements = new String[]{getTestMeasurement(10)};
     MeasurementSchema[] schemas = new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(10)};
     insertPlan.setMeasurements(measurements);
