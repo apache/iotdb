@@ -79,6 +79,11 @@ public class IoTDBConfig {
   private boolean enableHTTPService = false;
 
   /**
+   * http binding address.
+   */
+  private String httpAddress = "0.0.0.0";
+
+  /**
    * whether to enable the mqtt service.
    */
   private boolean enableMQTTService = false;
@@ -850,6 +855,22 @@ public class IoTDBConfig {
 
   void setRpcPort(int rpcPort) {
     this.rpcPort = rpcPort;
+  }
+
+  public int getHttpPort() {
+    return httpPort;
+  }
+
+  public void setHttpPort(int httpPort) {
+    this.httpPort = httpPort;
+  }
+
+  public String getHttpAddress() {
+    return httpAddress;
+  }
+
+  public void setHttpAddress(String httpAddress) {
+    this.httpAddress = httpAddress;
   }
 
   public String getTimestampPrecision() {

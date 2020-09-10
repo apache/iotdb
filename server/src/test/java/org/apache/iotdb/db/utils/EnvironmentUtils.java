@@ -72,6 +72,12 @@ public class EnvironmentUtils {
 
   private static IoTDB daemon;
 
+  private static boolean isEnableHttpService = false;
+
+  public static void setIsEnableHttpService(boolean isEnableHttpService) {
+    EnvironmentUtils.isEnableHttpService = isEnableHttpService;
+  }
+
   public static void cleanEnv() throws IOException, StorageEngineException {
     logger.warn("EnvironmentUtil cleanEnv...");
     if (daemon != null) {
@@ -200,6 +206,7 @@ public class EnvironmentUtils {
     }
 
     IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableHTTPService(isEnableHttpService);
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
 
     createAllDir();
