@@ -69,16 +69,16 @@ public class BatchData implements Serializable {
   protected int writeCurArrayIndex;
 
   // the insert timestamp number of timeRet
-  protected int count;
+  private int count;
 
 
-  protected List<long[]> timeRet;
-  protected List<boolean[]> booleanRet;
-  protected List<int[]> intRet;
-  protected List<long[]> longRet;
-  protected List<float[]> floatRet;
-  protected List<double[]> doubleRet;
-  protected List<Binary[]> binaryRet;
+  private List<long[]> timeRet;
+  private List<boolean[]> booleanRet;
+  private List<int[]> intRet;
+  private List<long[]> longRet;
+  private List<float[]> floatRet;
+  private List<double[]> doubleRet;
+  private List<Binary[]> binaryRet;
 
   public BatchData() {
     dataType = null;
@@ -616,9 +616,5 @@ public class BatchData implements Serializable {
    */
   public BatchData flip() {
     return this;
-  }
-
-  public BatchData getDescBatchData() {
-    return new DescBatchData(this).flip();
   }
 }

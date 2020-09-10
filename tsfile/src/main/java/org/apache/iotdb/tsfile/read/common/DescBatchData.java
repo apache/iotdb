@@ -27,23 +27,6 @@ public class DescBatchData extends BatchData {
     super(dataType);
   }
 
-  public DescBatchData(BatchData batchData) {
-    super.dataType = batchData.getDataType();
-    super.readCurListIndex = batchData.readCurListIndex;
-    super.readCurArrayIndex = batchData.readCurArrayIndex;
-    super.writeCurListIndex = batchData.writeCurListIndex;
-    super.writeCurArrayIndex = batchData.writeCurArrayIndex;
-    super.count = batchData.length();
-
-    super.timeRet = batchData.timeRet;
-    super.booleanRet = batchData.booleanRet;
-    super.intRet = batchData.intRet;
-    super.longRet = batchData.longRet;
-    super.floatRet = batchData.floatRet;
-    super.doubleRet = batchData.doubleRet;
-    super.binaryRet = batchData.binaryRet;
-  }
-
   @Override
   public boolean hasCurrent() {
     return super.readCurListIndex >= 0 && super.readCurArrayIndex >= 0;

@@ -798,15 +798,15 @@ public class SeriesReader {
 
   public interface TimeOrderUtils {
 
-    long getOrderTime(Statistics statistics);
+    long getOrderTime(Statistics<? extends Object> statistics);
 
     long getOrderTime(TsFileResource fileResource);
 
-    long getOverlapCheckTime(Statistics range);
+    long getOverlapCheckTime(Statistics<? extends Object> range);
 
-    boolean isOverlapped(Statistics left, Statistics right);
+    boolean isOverlapped(Statistics<? extends Object> left, Statistics<? extends Object> right);
 
-    boolean isOverlapped(long time, Statistics right);
+    boolean isOverlapped(long time, Statistics<? extends Object> right);
 
     boolean isOverlapped(long time, TsFileResource right);
 

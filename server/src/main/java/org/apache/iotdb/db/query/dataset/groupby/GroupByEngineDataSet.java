@@ -45,8 +45,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected boolean leftCRightO;
 
-  protected boolean ascending;
-
   public GroupByEngineDataSet() {
   }
 
