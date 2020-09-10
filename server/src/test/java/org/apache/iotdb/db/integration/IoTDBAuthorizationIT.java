@@ -793,15 +793,19 @@ public class IoTDBAuthorizationIT {
 
     try {
       adminStmt.execute("CREATE ROLE role1");
-      adminStmt.execute(
-          "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.a.b.c");
-      adminStmt.execute(
-          "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.d.b.c");
-
       ResultSet resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
-      String ans = "root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n"
-          + "root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
+      String ans = "";
       try {
+        //not granted list role privilege, should return empty
+        validateResultSet(resultSet, ans);
+
+        adminStmt.execute(
+          "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.a.b.c");
+        adminStmt.execute(
+          "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.d.b.c");
+        resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
+        ans = "root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n"
+          + "root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
         validateResultSet(resultSet, ans);
 
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");

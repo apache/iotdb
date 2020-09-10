@@ -1073,7 +1073,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       switch (authorType) {
         case LIST_ROLE:
-          dataSet = executeListRole();
+          dataSet = executeListRole(plan);
           break;
         case LIST_USER:
           dataSet = executeListUser(plan);
@@ -1099,13 +1099,21 @@ public class PlanExecutor implements IPlanExecutor {
     return dataSet;
   }
 
-  private ListDataSet executeListRole() {
+  private ListDataSet executeListRole(AuthorPlan plan) throws AuthException {
     int index = 0;
     List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new PartialPath(COLUMN_ROLE, false));
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
+
+    boolean hasListRolePrivilege = AuthorityChecker
+        .check(plan.getUserName(), new ArrayList<>(), plan.getOperatorType(), plan.getUserName());
+
+    if (!hasListRolePrivilege) {
+      return dataSet;
+    }
+
     List<String> roleList = authorizer.listAllRoles();
     for (String role : roleList) {
       RowRecord record = new RowRecord(index++);
