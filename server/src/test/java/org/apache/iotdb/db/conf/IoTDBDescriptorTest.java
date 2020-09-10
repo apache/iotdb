@@ -23,16 +23,14 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
 import java.net.URL;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class IoTDBDescriptorTest {
   private final String confPath = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
 
   @Before
   public void init() {
+    org.apache.catalina.webresources.TomcatURLStreamHandlerFactory.getInstance();
   }
 
   @After
@@ -55,17 +53,12 @@ public class IoTDBDescriptorTest {
   }
 
   @Test
-  public void testConfigURLWithOtherProtocol() {
+  public void testConfigURLWithClasspathProtocol() {
     IoTDBDescriptor desc = IoTDBDescriptor.getInstance();
 
-    String pathString = "ftp://root/path";
+    String pathString = "classpath:/root/path";
     System.setProperty(IoTDBConstant.IOTDB_CONF, pathString);
     URL confURL = desc.getPropsUrl();
-    Assert.assertTrue(confURL.toString().startsWith(pathString));
-
-    pathString = "https://github.com/apache/incubator-iotdb.git";
-    System.setProperty(IoTDBConstant.IOTDB_CONF, pathString);
-    confURL = desc.getPropsUrl();
     Assert.assertTrue(confURL.toString().startsWith(pathString));
   }
 
