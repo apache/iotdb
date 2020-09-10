@@ -39,7 +39,7 @@ If you need to monitor the remote cluster or modify the JMX service port number,
 use the actual IP and port at the -H and -P entries.
 
 ## Explains
-In a distributed system, a node is identified by node IP, metadata port and data port \<METAPORT:DATAPORT>.
+In a distributed system, a node is identified by node IP, metadata port, data port and cluster port \<METAPORT:DATAPORT:CLUSTERPORT>.
 ### Show The Ring Of Node
 IoTDB cluster version uses consistent hash to achieve data distribution.
 
@@ -51,24 +51,24 @@ Users can know the location of each node in the ring by printing hash ring infor
 2.Output
 
 > The output is a multi line string, and each line of string is a key value pair, 
-> where the key represents the token value and the value represents the node (IP:METAPORT:DATAPORT), the format is \<key -> value>.
+> where the key represents the token value and the value represents the node (IP:METAPORT:DATAPORT:CLUSTERPORT), the format is \<key -> value>.
 
 3.Examples
 
-> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010, 127.0.0.1:9004:40011, and 127.0.0.1:9005:40012.
+> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561, and 127.0.0.1:9007:40014:55562.
 
 Examples of input instructions for different systems are as follows:
 
 Linux and MacOS：
 
 ```
-Shell > ./bin/nodetool.sh -h 127.0.0.1 -p 31999 ring
+Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 ring
 ```
 
 Windows：
 
 ```
-Shell > \bin\nodetool.bat -h 127.0.0.1 -p 31999 ring
+Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 ring
 ```
 
 Press enter to execute the command. 
@@ -76,9 +76,9 @@ Press enter to execute the command.
 The output of the example instruction is as follows:
 ```
 Node Identifier                                 Node 
-330411070           ->          127.0.0.1:9003:40010 
-330454032           ->          127.0.0.1:9004:40011 
-330496472           ->          127.0.0.1:9005:40012
+330411070           ->          127.0.0.1:9003:40010:55560 
+330454032           ->          127.0.0.1:9005:40012:55561 
+330496472           ->          127.0.0.1:9007:40014:55562
 ```
  
 The above output shows that there are three nodes in the current cluster,
@@ -118,7 +118,7 @@ Through this instruction, the user can know the metadata under a certain path
 
 3.Examples
 
-> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010, 127.0.0.1:9004:40011, and 127.0.0.1:9005:40012.
+> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561, and 127.0.0.1:9007:40014:55562.
 > 
 > The number of copies is 2 and there are 3 storage groups:{ root.beijing , root.shanghai , root.guangzhou}.
 
@@ -126,18 +126,18 @@ Through this instruction, the user can know the metadata under a certain path
 
 Linux and MacOS：
 ```
-Shell > ./bin/nodetool.sh -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1
+Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1
 ```
 Windows：
 ```
-Shell > \bin\nodetool.bat -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1
+Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1
 ```
 
 Press enter to execute the command. 
 
 The output of the example instruction is as follows:
 ```
-DATA<root.guangzhou.d1, 1576723735188, 1576723735188>	->	[127.0.0.1:9003:40010, 127.0.0.1:9004:40011]
+DATA<root.guangzhou.d1, 1576723735188, 1576723735188>	->	[127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561]
 ```
 
 + Partition of query data (specified time interval, time dimension is partitioned by day)
@@ -145,41 +145,41 @@ DATA<root.guangzhou.d1, 1576723735188, 1576723735188>	->	[127.0.0.1:9003:40010, 
 
 Linux and MacOS：
 ```
-Shell > ./bin/nodetool.sh -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1 -st 1576624778159 -et 1576724778159
+Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1 -st 1576624778159 -et 1576724778159
 ```
 Windows：
 ```
-Shell > \bin\nodetool.bat -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1 -st 1576624778159 -et 1576724778159
+Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1 -st 1576624778159 -et 1576724778159
 ```
 
 Press enter to execute the command. 
 
 The output of the example instruction is as follows:
 ```
-DATA<root.guangzhou.d1, 1576627200000, 1576713599999>	->	[127.0.0.1:9005:40012, 127.0.0.1:9003:40010] 
-DATA<root.guangzhou.d1, 1576713600000, 1576724778159>	->	[127.0.0.1:9003:40010, 127.0.0.1:9004:40011] 
-DATA<root.guangzhou.d1, 1576624778159, 1576627199999>	->	[127.0.0.1:9004:40011, 127.0.0.1:9005:40012]
+DATA<root.guangzhou.d1, 1576627200000, 1576713599999>	->	[127.0.0.1:9007:40014:55562, 127.0.0.1:9003:40010:55560] 
+DATA<root.guangzhou.d1, 1576713600000, 1576724778159>	->	[127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561] 
+DATA<root.guangzhou.d1, 1576624778159, 1576627199999>	->	[127.0.0.1:9005:40012:55561, 127.0.0.1:9007:40014:55562]
 ```
 
 + Query metadata partition
 
 Linux and MacOS：
 ```
-Shell > ./bin/nodetool.sh -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1 -m
+Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1 -m
 ```
 Windows：
 ```
-Shell > \bin\nodetool.bat -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1 -m
+Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1 -m
 ```
 
 Press enter to execute the command. 
 
 The output of the example instruction is as follows:
 ```
-DATA<root.guangzhou.d1, 1576723735188, 1576723735188>	->	[127.0.0.1:9003:40010, 127.0.0.1:9004:40011]
+DATA<root.guangzhou.d1, 1576723735188, 1576723735188>	->	[127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561]
 ```
 The above output shows that the data partition to which root.t1.d1 belongs contains two nodes,
-of which 127.0.0.1:9003:40010 is the header node.
+of which 127.0.0.1:9003:40010:55560 is the header node.
 
 
 ### Query the number of slots managed by the node
@@ -204,7 +204,7 @@ Through this instruction, the user can know the number of slots managed by the d
 
 3.Examples
 
-> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010, 127.0.0.1:9004:40011, and 127.0.0.1:9005:40012,
+> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561, and 127.0.0.1:9007:40014:55562,
 > and the number of copies is 2.
 
 + Default Partition Group
@@ -212,11 +212,11 @@ Through this instruction, the user can know the number of slots managed by the d
 Linux and MacOS：
 
 ```
-Shell > ./bin/nodetool.sh -h 127.0.0.1 -p 31999 host
+Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 host
 ```
 Windows：
 ```
-Shell > \bin\nodetool.bat -h 127.0.0.1 -p 31999 host
+Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 host
 ```
 
 Press enter to execute the command. 
@@ -224,18 +224,18 @@ Press enter to execute the command.
 The output of the example instruction is as follows:
 ```
 Raft group                                                 Slot Number
-(127.0.0.1:9003:40010, 127.0.0.1:9004:40011)      ->                3333
-(127.0.0.1:9005:40012, 127.0.0.1:9003:40010)      ->                3334
+(127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561)      ->                3333
+(127.0.0.1:9007:40014:55562, 127.0.0.1:9003:40010:55560)      ->                3334
 ```
 + All Partition Groups
 
 Linux and MacOS：
 ```
-Shell > ./bin/nodetool.sh -h 127.0.0.1 -p 31999 host -a
+Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 host -a
 ```
 Windows：
 ```
-Shell > \bin\nodetool.bat -h 127.0.0.1 -p 31999 host -a
+Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 host -a
 ```
 
 Press enter to execute the command. 
@@ -243,9 +243,9 @@ Press enter to execute the command.
 The output of the example instruction is as follows:
 ```
 Raft group                                                 Slot Number
-(127.0.0.1:9003:40010, 127.0.0.1:9004:40011)      ->                3333
-(127.0.0.1:9004:40011, 127.0.0.1:9005:40012)      ->                3333
-(127.0.0.1:9005:40012, 127.0.0.1:9003:40010)      ->                3334 
+(127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561)      ->                3333
+(127.0.0.1:9005:40012:55561, 127.0.0.1:9007:40014:55562)      ->                3333
+(127.0.0.1:9007:40014:55562, 127.0.0.1:9003:40010:55560)      ->                3334 
 ```
 
 ### Query node status
@@ -262,16 +262,16 @@ Through this instruction, the user can know the current status of all nodes in t
 > the value indicates the state of the node, "on" is normal, "off" is abnormal, and the format is \< key -> value>.
 
 3.Examples
-> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010, 127.0.0.1:9004:40011, and 127.0.0.1:9005:40012,
+> Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561, and 127.0.0.1:9007:40014:55562,
 > and the number of copies is 2.
 
 Linux and MacOS：
 ```
-Shell > ./bin/nodetool.sh -h 127.0.0.1 -p 31999 status
+Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 status
 ```
 Windows：
 ```
-Shell > \bin\nodetool.bat -h 127.0.0.1 -p 31999 status
+Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 status
 ```
 
 Press enter to execute the command. 
@@ -279,10 +279,10 @@ Press enter to execute the command.
 The output of the example instruction is as follows:
 ```
 Node                                Status 
-127.0.0.1:9003:40010          ->        on 
-127.0.0.1:9005:40012          ->        off 
-127.0.0.1:9004:40011          ->        on
+127.0.0.1:9003:40010:55560          ->        on 
+127.0.0.1:9005:40012:55561          ->        off
+127.0.0.1:9007:40014:55562          ->        on 
 
 ```
-The above output indicates that 127.0.0.1:9003:40010 nodes and 127.0.0.1:9004:40011 nodes are in normal state,
-and 127.0.0.1:9005:40012 nodes cannot provide services.
+The above output indicates that 127.0.0.1:9003:40010:55560 nodes and 127.0.0.1:9007:40014:55562 nodes are in normal state,
+and 127.0.0.1:9005:40012:55561 nodes cannot provide services.
