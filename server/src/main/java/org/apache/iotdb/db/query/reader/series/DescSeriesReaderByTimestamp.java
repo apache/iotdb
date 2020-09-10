@@ -48,6 +48,6 @@ public class DescSeriesReaderByTimestamp extends SeriesReaderByTimestamp {
       return null;
     }
 
-    return batchData.getValueInTimestamp(timestamp);
+    return batchData.getValueInTimestamp(timestamp, (c, p) -> c > p);
   }
 }

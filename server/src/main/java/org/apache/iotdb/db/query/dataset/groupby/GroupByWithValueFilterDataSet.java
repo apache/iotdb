@@ -184,14 +184,15 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         groupByTimePlan.getDeduplicatedDataTypes().get(i));
 
     long tmpStartTime = curStartTime - slidingStep;
+    int index = 0;
     while (tmpStartTime >= startTime
         && (timestampGenerator.hasNext() || !cachedTimestamps.isEmpty())) {
       long timestamp = Long.MIN_VALUE;
       if (timestampGenerator.hasNext()) {
         cachedTimestamps.add(timestampGenerator.next());
       }
-      if (!cachedTimestamps.isEmpty()) {
-        timestamp = cachedTimestamps.remove();
+      if (!cachedTimestamps.isEmpty() && index < cachedTimestamps.size()) {
+        timestamp = cachedTimestamps.get(index++);
       }
       if (timestamp >= tmpStartTime) {
         timestampArray[0] = timestamp;

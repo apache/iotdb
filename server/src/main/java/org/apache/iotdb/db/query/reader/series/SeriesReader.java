@@ -539,7 +539,7 @@ public class SeriesReader {
 
       if (mergeReader.hasNextTimeValuePair()) {
 
-        cachedBatchData = BatchDataFactory.createBatchData(dataType, orderUtils.getAscending());
+        cachedBatchData = BatchDataFactory.createBatchData(dataType);
         long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
 
         while (mergeReader.hasNextTimeValuePair()) {
@@ -570,16 +570,6 @@ public class SeriesReader {
             cachedBatchData.putAnObject(
                 timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
           }
-        }
-        if (!orderUtils.getAscending()) {
-          BatchData descBatchData = cachedBatchData.getDescBatchData();
-          BatchData descData = BatchDataFactory.createBatchData(dataType, false);
-
-          while (descBatchData.hasCurrent()) {
-            descData.putAnObject(descBatchData.currentTime(), descBatchData.currentValue());
-            descBatchData.next();
-          }
-          cachedBatchData = descData.flip();
         }
         hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
         /*
