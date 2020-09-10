@@ -30,6 +30,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -39,13 +40,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IoTDBMergeTest {
+
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMergeTest.class);
   private long prevPartitionInterval;
+
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1);
+    IoTDBDescriptor.getInstance().getConfig()
+        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
@@ -54,6 +59,8 @@ public class IoTDBMergeTest {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig()
+        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
   }
 
   @Test
@@ -77,14 +84,16 @@ public class IoTDBMergeTest {
 
       for (int i = 0; i < 10; i++) {
         logger.info("Running the {} round merge", i);
-        for (int j = i * 10 + 1; j <= (i+1) * 10; j++) {
-          statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
-              + "%d,%d)", j, j+1, j+2, j+3));
+        for (int j = i * 10 + 1; j <= (i + 1) * 10; j++) {
+          statement
+              .execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                  + "%d,%d)", j, j + 1, j + 2, j + 3));
         }
         statement.execute("FLUSH");
-        for (int j = i * 10 + 1; j <= (i+1) * 10; j++) {
-          statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
-              + "%d,%d)", j, j+10, j+20, j+30));
+        for (int j = i * 10 + 1; j <= (i + 1) * 10; j++) {
+          statement
+              .execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                  + "%d,%d)", j, j + 10, j + 20, j + 30));
         }
         statement.execute("FLUSH");
         statement.execute("MERGE");
@@ -129,28 +138,37 @@ public class IoTDBMergeTest {
       }
 
       for (int j = 10; j < 20; j++) {
-        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
-            + "%d,%d)", j, j+1, j+2, j+3));
+        statement
+            .execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                + "%d,%d)", j, j + 1, j + 2, j + 3));
       }
       statement.execute("FLUSH");
       for (int j = 20; j < 30; j++) {
-        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
-            + "%d,%d)", j, j+1, j+2, j+3));
+        statement
+            .execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                + "%d,%d)", j, j + 1, j + 2, j + 3));
       }
       statement.execute("FLUSH");
 
       for (int j = 20; j < 30; j++) {
-        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
-            + "%d,%d)", j, j+10, j+20, j+30));
+        statement
+            .execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                + "%d,%d)", j, j + 10, j + 20, j + 30));
       }
       statement.execute("FLUSH");
       for (int j = 10; j < 20; j++) {
-        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
-            + "%d,%d)", j, j+10, j+20, j+30));
+        statement
+            .execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                + "%d,%d)", j, j + 10, j + 20, j + 30));
       }
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
@@ -198,14 +216,16 @@ public class IoTDBMergeTest {
         for (int i = 0; i < 10; i++) {
           // sequence files
           for (int j = i * 1000 + 300 + k * 100; j <= i * 1000 + 399 + k * 100; j++) {
-            statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
-                + "%d,%d)", j, j+1, j+2, j+3));
+            statement.execute(
+                String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                    + "%d,%d)", j, j + 1, j + 2, j + 3));
           }
           statement.execute("FLUSH");
           // unsequence files
           for (int j = i * 1000 + k * 100; j <= i * 1000 + 99 + k * 100; j++) {
-            statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
-                + "%d,%d)", j, j+10, j+20, j+30));
+            statement.execute(
+                String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                    + "%d,%d)", j, j + 10, j + 20, j + 30));
           }
           statement.execute("FLUSH");
         }
@@ -254,13 +274,15 @@ public class IoTDBMergeTest {
       }
 
       for (int j = 1; j <= 10; j++) {
-        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
-            + "%d,%d)", j, j+1, j+2, j+3));
+        statement
+            .execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                + "%d,%d)", j, j + 1, j + 2, j + 3));
       }
       statement.execute("FLUSH");
       for (int j = 1; j <= 10; j++) {
-        statement.execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
-            + "%d,%d)", j, j+10, j+20, j+30));
+        statement
+            .execute(String.format("INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                + "%d,%d)", j, j + 10, j + 20, j + 30));
       }
       statement.execute("FLUSH");
       statement.execute("MERGE");
@@ -280,7 +302,7 @@ public class IoTDBMergeTest {
       }
       // it is uncertain whether the sub tasks are created at this time point, and we are only
       // sure that the main task is created
-      assertTrue(cnt >= 1);
+      assertEquals(0, cnt);
     }
   }
 }

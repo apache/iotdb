@@ -17,21 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.flush;
+package org.apache.iotdb.db.engine.tsfilemanagement.utils;
 
 import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -44,30 +48,30 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class VmMergeUtils {
+public class HotCompactionUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger(VmMergeUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(HotCompactionUtils.class);
 
-  private VmMergeUtils() {
+  private HotCompactionUtils() {
     throw new IllegalStateException("Utility class");
   }
 
-  private static Pair<ChunkMetadata, Chunk> writeSeqChunk(RestorableTsFileIOWriter writer,
-      String storageGroup,
+  private static Pair<ChunkMetadata, Chunk> writeSeqChunk(String storageGroup,
       Map<String, TsFileSequenceReader> tsFileSequenceReaderMap, String deviceId,
       String measurementId,
-      List<RestorableTsFileIOWriter> vmWriters, ChunkMetadata lastChunkMetadata, Chunk lastChunk)
+      List<TsFileResource> levelResources)
       throws IOException {
-    ChunkMetadata newChunkMetadata = lastChunkMetadata;
-    Chunk newChunk = lastChunk;
-    for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-      TsFileSequenceReader reader = buildReaderFromVmWriter(vmWriter,
-          writer, tsFileSequenceReaderMap, storageGroup);
-      if (reader == null || !vmWriter.getMetadatasForQuery().containsKey(deviceId)) {
+    ChunkMetadata newChunkMetadata = null;
+    Chunk newChunk = null;
+    for (TsFileResource levelResource : levelResources) {
+      TsFileSequenceReader reader = buildReaderFromTsFileResource(levelResource,
+          tsFileSequenceReaderMap,
+          storageGroup);
+      if (reader == null || !reader.getAllDevices().contains(deviceId)) {
         continue;
       }
-      List<ChunkMetadata> chunkMetadataList = vmWriter.getMetadatasForQuery()
-          .get(deviceId).get(measurementId);
+      List<ChunkMetadata> chunkMetadataList = reader
+          .getChunkMetadataList(new Path(deviceId, measurementId));
       if (chunkMetadataList == null) {
         continue;
       }
@@ -85,19 +89,20 @@ public class VmMergeUtils {
     return new Pair<>(newChunkMetadata, newChunk);
   }
 
-  private static long writeUnseqChunk(RestorableTsFileIOWriter writer, String storageGroup,
+  private static long writeUnseqChunk(String storageGroup,
       Map<String, TsFileSequenceReader> tsFileSequenceReaderMap, String deviceId, long maxVersion,
-      Entry<String, MeasurementSchema> entry, String measurementId,
-      Map<Long, TimeValuePair> timeValuePairMap, List<RestorableTsFileIOWriter> vmWriters)
+      String measurementId,
+      Map<Long, TimeValuePair> timeValuePairMap, List<TsFileResource> levelResources)
       throws IOException {
-    for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-      TsFileSequenceReader reader = buildReaderFromVmWriter(vmWriter,
-          writer, tsFileSequenceReaderMap, storageGroup);
+    for (TsFileResource levelResource : levelResources) {
+      TsFileSequenceReader reader = buildReaderFromTsFileResource(levelResource,
+          tsFileSequenceReaderMap,
+          storageGroup);
       if (reader == null) {
         continue;
       }
-      List<ChunkMetadata> chunkMetadataList = vmWriter.getVisibleMetadataList(deviceId,
-          measurementId, entry.getValue().getType());
+      List<ChunkMetadata> chunkMetadataList = reader
+          .getChunkMetadataList(new Path(deviceId, measurementId));
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         maxVersion = Math.max(chunkMetadata.getVersion(), maxVersion);
         IChunkReader chunkReader = new ChunkReaderByTimestamp(
@@ -117,38 +122,44 @@ public class VmMergeUtils {
 
   private static void fillDeviceMeasurementMap(Set<String> devices,
       Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap,
-      List<RestorableTsFileIOWriter> subVmWriters) {
-    for (RestorableTsFileIOWriter vmWriter : subVmWriters) {
-      vmWriter.makeMetadataVisible();
-      Map<String, Map<String, List<ChunkMetadata>>> deviceMeasurementChunkMetadataMap = vmWriter
-          .getMetadatasForQuery();
+      List<TsFileResource> subLevelResources,
+      Map<String, TsFileSequenceReader> tsFileSequenceReaderMap, String storageGroup)
+      throws IOException {
+    for (TsFileResource levelResource : subLevelResources) {
+      TsFileSequenceReader reader = buildReaderFromTsFileResource(levelResource,
+          tsFileSequenceReaderMap,
+          storageGroup);
+      if (reader == null) {
+        continue;
+      }
+      List<Path> allPaths = reader.getAllPaths();
+      Map<String, TSDataType> allMeasurements = reader.getAllMeasurements();
       // device, measurement -> chunk metadata list
-      for (Entry<String, Map<String, List<ChunkMetadata>>> deviceEntry :
-          deviceMeasurementChunkMetadataMap.entrySet()) {
-        if (devices.contains(deviceEntry.getKey())) {
+      for (Path path : allPaths) {
+        if (devices.contains(path.getDevice())) {
           continue;
         }
         Map<String, MeasurementSchema> measurementSchemaMap = deviceMeasurementMap
-            .computeIfAbsent(deviceEntry.getKey(), k -> new HashMap<>());
+            .computeIfAbsent(path.getDevice(), k -> new HashMap<>());
 
         // measurement, chunk metadata list
-        for (Entry<String, List<ChunkMetadata>> measurementEntry : deviceEntry.getValue()
-            .entrySet()) {
-          measurementSchemaMap.computeIfAbsent(measurementEntry.getKey(), k ->
-              new MeasurementSchema(k, measurementEntry.getValue().get(0).getDataType()));
-        }
+        measurementSchemaMap.computeIfAbsent(path.getMeasurement(), k ->
+            new MeasurementSchema(k, allMeasurements.get(path.getMeasurement())));
       }
     }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static void merge(RestorableTsFileIOWriter writer,
-      List<RestorableTsFileIOWriter> vmWriters, String storageGroup, VmLogger vmLogger,
+  public static void merge(TsFileResource targetResource,
+      List<TsFileResource> tsFileResources, String storageGroup,
+      HotCompactionLogger hotCompactionLogger,
       Set<String> devices, boolean sequence) throws IOException {
+    RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
     Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap = new HashMap<>();
 
-    fillDeviceMeasurementMap(devices, deviceMeasurementMap, vmWriters);
+    fillDeviceMeasurementMap(devices, deviceMeasurementMap, tsFileResources,
+        tsFileSequenceReaderMap, storageGroup);
     if (!sequence) {
       for (Entry<String, Map<String, MeasurementSchema>> deviceMeasurementEntry : deviceMeasurementMap
           .entrySet()) {
@@ -159,18 +170,20 @@ public class VmMergeUtils {
             .entrySet()) {
           String measurementId = entry.getKey();
           Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
-          maxVersion = writeUnseqChunk(writer, storageGroup, tsFileSequenceReaderMap, deviceId,
-              maxVersion, entry, measurementId, timeValuePairMap, vmWriters);
+          maxVersion = writeUnseqChunk(storageGroup, tsFileSequenceReaderMap, deviceId,
+              maxVersion, measurementId, timeValuePairMap, tsFileResources);
           IChunkWriter chunkWriter = new ChunkWriterImpl(entry.getValue());
           for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
             writeTVPair(timeValuePair, chunkWriter);
+            targetResource.updateStartTime(deviceId, timeValuePair.getTimestamp());
+            targetResource.updateEndTime(deviceId, timeValuePair.getTimestamp());
           }
           chunkWriter.writeToFileWriter(writer);
         }
         writer.writeVersion(maxVersion);
         writer.endChunkGroup();
-        if (vmLogger != null) {
-          vmLogger.logDevice(deviceId, writer.getPos());
+        if (hotCompactionLogger != null) {
+          hotCompactionLogger.logDevice(deviceId, writer.getPos());
         }
       }
     } else {
@@ -181,44 +194,51 @@ public class VmMergeUtils {
         for (Entry<String, MeasurementSchema> entry : deviceMeasurementEntry.getValue()
             .entrySet()) {
           String measurementId = entry.getKey();
-          Pair<ChunkMetadata, Chunk> chunkPair = writeSeqChunk(writer, storageGroup,
-              tsFileSequenceReaderMap, deviceId, measurementId, vmWriters, null, null);
+          Pair<ChunkMetadata, Chunk> chunkPair = writeSeqChunk(storageGroup,
+              tsFileSequenceReaderMap, deviceId, measurementId, tsFileResources);
           ChunkMetadata newChunkMetadata = chunkPair.left;
           Chunk newChunk = chunkPair.right;
           if (newChunkMetadata != null && newChunk != null) {
             writer.writeChunk(newChunk, newChunkMetadata);
+            targetResource.updateStartTime(deviceId, newChunkMetadata.getStartTime());
+            targetResource.updateEndTime(deviceId, newChunkMetadata.getEndTime());
           }
         }
         writer.endChunkGroup();
-        if (vmLogger != null) {
-          vmLogger.logDevice(deviceId, writer.getPos());
+        if (hotCompactionLogger != null) {
+          hotCompactionLogger.logDevice(deviceId, writer.getPos());
         }
       }
     }
 
     for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
       reader.close();
-      logger.debug("{} vm file close a reader", reader.getFileName());
     }
+    Set<Long> historicalVersions = new HashSet<>();
+    for (TsFileResource tsFileResource : tsFileResources) {
+      historicalVersions.addAll(tsFileResource.getHistoricalVersions());
+    }
+    targetResource.setHistoricalVersions(historicalVersions);
+    targetResource.serialize();
+    writer.endFile();
+    targetResource.close();
   }
 
-  private static TsFileSequenceReader buildReaderFromVmWriter(RestorableTsFileIOWriter vmWriter,
-      RestorableTsFileIOWriter writer, Map<String, TsFileSequenceReader> tsFileSequenceReaderMap,
-      String storageGroup) {
-    return tsFileSequenceReaderMap.computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
+  private static TsFileSequenceReader buildReaderFromTsFileResource(TsFileResource levelResource,
+      Map<String, TsFileSequenceReader> tsFileSequenceReaderMap, String storageGroup) {
+    return tsFileSequenceReaderMap.computeIfAbsent(levelResource.getTsFile().getAbsolutePath(),
         path -> {
           try {
-            if (vmWriter.getFile().exists()) {
-              logger.debug("{} vm file create a reader", path);
+            if (levelResource.getTsFile().exists()) {
               return new TsFileSequenceReader(path);
             } else {
-              logger.info("{} vm file does not exist", path);
+              logger.info("{} tsfile does not exist", path);
               return null;
             }
           } catch (IOException e) {
             logger.error(
-                "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
-                storageGroup, writer.getFile().getName(), e);
+                "Storage group {}, flush recover meets error. reader create failed.",
+                storageGroup, e);
             return null;
           }
         });

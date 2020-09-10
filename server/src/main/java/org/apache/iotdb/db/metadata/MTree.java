@@ -503,6 +503,50 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Get all storage group under give path
+   *
+   * @return a list contains all storage group names under give path
+   */
+  List<PartialPath> getStorageGroupPaths(PartialPath prefixPath) throws MetadataException {
+    String[] nodes = prefixPath.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(prefixPath.getFullPath());
+    }
+    List<PartialPath> storageGroupPaths = new ArrayList<>();
+    findStorageGroupPaths(root, nodes, 1, "", storageGroupPaths);
+    return storageGroupPaths;
+  }
+
+  /**
+   * Traverse the MTree to match all storage group with prefix path.
+   *
+   * @param node              the current traversing node
+   * @param nodes             split the prefix path with '.'
+   * @param idx               the current index of array nodes
+   * @param parent            current parent path
+   * @param storageGroupPaths store all matched storage group names
+   */
+  private void findStorageGroupPaths(MNode node, String[] nodes, int idx, String parent,
+      List<PartialPath> storageGroupPaths) {
+    if (node instanceof StorageGroupMNode) {
+      storageGroupPaths.add(node.getPartialPath());
+      return;
+    }
+    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
+    if (!(PATH_WILDCARD).equals(nodeReg)) {
+      if (node.hasChild(nodeReg)) {
+        findStorageGroupPaths(node.getChild(nodeReg), nodes, idx + 1,
+            parent + node.getName() + PATH_SEPARATOR, storageGroupPaths);
+      }
+    } else {
+      for (MNode child : node.getChildren().values()) {
+        findStorageGroupPaths(
+            child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, storageGroupPaths);
+      }
+    }
+  }
+
+  /**
    * Get all storage group MNodes
    */
   List<StorageGroupMNode> getAllStorageGroupNodes() {

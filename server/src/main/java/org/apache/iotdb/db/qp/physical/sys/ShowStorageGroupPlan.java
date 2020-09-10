@@ -16,19 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.common.constant;
+package org.apache.iotdb.db.qp.physical.sys;
 
-public class TsFileConstant {
+import org.apache.iotdb.db.metadata.PartialPath;
 
-  public static final String TSFILE_SUFFIX = ".tsfile";
-  public static final String TSFILE_HOME = "TSFILE_HOME";
-  public static final String TSFILE_CONF = "TSFILE_CONF";
-  public static final String PATH_ROOT = "root";
-  public static final String TMP_SUFFIX = "tmp";
-  public static final String PATH_SEPARATOR = ".";
-  public static final char PATH_SEPARATOR_CHAR = '.';
-  public static final String PATH_SEPARATER_NO_REGEX = "\\.";
-  public static final char DOUBLE_QUOTE = '"';
-  private TsFileConstant() {
+public class ShowStorageGroupPlan extends ShowPlan {
+
+  private PartialPath path;
+
+  public ShowStorageGroupPlan(ShowContentType showContentType, PartialPath path) {
+    super(showContentType);
+    this.path = path;
+  }
+
+  public PartialPath getPath() {
+    return this.path;
   }
 }
+
