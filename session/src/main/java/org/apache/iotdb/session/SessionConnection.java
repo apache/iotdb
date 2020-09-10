@@ -19,14 +19,8 @@
 
 package org.apache.iotdb.session;
 
-import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -50,15 +44,6 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -170,7 +155,6 @@ public class SessionConnection {
     if (zoneId != null) {
       return zoneId.toString();
     }
-
     TSGetTimeZoneResp resp;
     try {
       resp = client.getTimeZone(sessionId);
@@ -199,21 +183,9 @@ public class SessionConnection {
     }
   }
 
-  protected void createTimeseries(String path, TSDataType dataType,
-      TSEncoding encoding, CompressionType compressor, Map<String, String> props,
-      Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
+  protected void createTimeseries(TSCreateTimeseriesReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setSessionId(sessionId);
-    request.setPath(path);
-    request.setDataType(dataType.ordinal());
-    request.setEncoding(encoding.ordinal());
-    request.setCompressor(compressor.ordinal());
-    request.setProps(props);
-    request.setTags(tags);
-    request.setAttributes(attributes);
-    request.setMeasurementAlias(measurementAlias);
-
     try {
       RpcUtils.verifySuccess(client.createTimeseries(request));
     } catch (TException e) {
@@ -221,39 +193,9 @@ public class SessionConnection {
     }
   }
 
-  protected void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
-      List<TSEncoding> encodings, List<CompressionType> compressors,
-      List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList, List<String> measurementAliasList)
+  protected void createMultiTimeseries(TSCreateMultiTimeseriesReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-
-    TSCreateMultiTimeseriesReq request = new TSCreateMultiTimeseriesReq();
     request.setSessionId(sessionId);
-    request.setPaths(paths);
-
-    List<Integer> dataTypeOrdinals = new ArrayList<>(paths.size());
-    for (TSDataType dataType : dataTypes) {
-      dataTypeOrdinals.add(dataType.ordinal());
-    }
-    request.setDataTypes(dataTypeOrdinals);
-
-    List<Integer> encodingOrdinals = new ArrayList<>(paths.size());
-    for (TSEncoding encoding : encodings) {
-      encodingOrdinals.add(encoding.ordinal());
-    }
-    request.setEncodings(encodingOrdinals);
-
-    List<Integer> compressionOrdinals = new ArrayList<>(paths.size());
-    for (CompressionType compression : compressors) {
-      compressionOrdinals.add(compression.ordinal());
-    }
-    request.setCompressors(compressionOrdinals);
-
-    request.setPropsList(propsList);
-    request.setTagsList(tagsList);
-    request.setAttributesList(attributesList);
-    request.setMeasurementAliasList(measurementAliasList);
-
     try {
       RpcUtils.verifySuccess(client.createMultiTimeseries(request));
     } catch (TException e) {
@@ -298,12 +240,9 @@ public class SessionConnection {
     }
   }
 
-  protected void insertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types,
-      List<Object> values)
+  protected void insertRecord(TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
-    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
-
+    request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertRecord(request));
     } catch (TException e) {
@@ -311,27 +250,9 @@ public class SessionConnection {
     }
   }
 
-  private TSInsertRecordReq genTSInsertRecordReq(String deviceId, long time,
-      List<String> measurements,
-      List<TSDataType> types,
-      List<Object> values) throws IoTDBConnectionException {
-    TSInsertRecordReq request = new TSInsertRecordReq();
-    request.setSessionId(sessionId);
-    request.setDeviceId(deviceId);
-    request.setTimestamp(time);
-    request.setMeasurements(measurements);
-    ByteBuffer buffer = ByteBuffer.allocate(calculateLength(types, values));
-    putValues(types, values, buffer);
-    request.setValues(buffer);
-    return request;
-  }
-
-  protected void insertRecord(String deviceId, long time, List<String> measurements,
-      List<String> values)
+  protected void insertRecord(TSInsertStringRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
-    TSInsertStringRecordReq request = genTSInsertStringRecordReq(deviceId, time, measurements,
-        values);
-
+    request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertStringRecord(request));
     } catch (TException e) {
@@ -339,93 +260,29 @@ public class SessionConnection {
     }
   }
 
-  private TSInsertStringRecordReq genTSInsertStringRecordReq(String deviceId, long time,
-      List<String> measurements, List<String> values) {
-    TSInsertStringRecordReq request = new TSInsertStringRecordReq();
-    request.setSessionId(sessionId);
-    request.setDeviceId(deviceId);
-    request.setTimestamp(time);
-    request.setMeasurements(measurements);
-    request.setValues(values);
-    return request;
-  }
-
-  protected void insertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordsReq request = genTSInsertRecordsReq(deviceIds, times, measurementsList,
-        typesList, valuesList);
-
-    try {
-      RpcUtils.verifySuccess(client.insertRecords(request));
-    } catch (TException e) {
-      throw new IoTDBConnectionException(e);
-    }
-  }
-
-  private TSInsertRecordsReq genTSInsertRecordsReq(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList) throws IoTDBConnectionException {
-    // check params size
-    int len = deviceIds.size();
-    if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
-      throw new IllegalArgumentException(
-          "deviceIds, times, measurementsList and valuesList's size should be equal");
-    }
-
-    TSInsertRecordsReq request = new TSInsertRecordsReq();
-    request.setSessionId(sessionId);
-    request.setDeviceIds(deviceIds);
-    request.setTimestamps(times);
-    request.setMeasurementsList(measurementsList);
-    List<ByteBuffer> buffersList = new ArrayList<>();
-    for (int i = 0; i < measurementsList.size(); i++) {
-      ByteBuffer buffer = ByteBuffer.allocate(calculateLength(typesList.get(i), valuesList.get(i)));
-      putValues(typesList.get(i), valuesList.get(i), buffer);
-      buffersList.add(buffer);
-    }
-    request.setValuesList(buffersList);
-    return request;
-  }
-
-  protected void insertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList)
-      throws IoTDBConnectionException, StatementExecutionException {
-
-    TSInsertStringRecordsReq request = genTSInsertStringRecordsReq(deviceIds, times,
-        measurementsList, valuesList);
-
-    try {
-      RpcUtils.verifySuccess(client.insertStringRecords(request));
-    } catch (TException e) {
-      throw new IoTDBConnectionException(e);
-    }
-  }
-
-  private TSInsertStringRecordsReq genTSInsertStringRecordsReq(List<String> deviceIds,
-      List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList) {
-    // check params size
-    int len = deviceIds.size();
-    if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
-      throw new IllegalArgumentException(
-          "deviceIds, times, measurementsList and valuesList's size should be equal");
-    }
-
-    TSInsertStringRecordsReq request = new TSInsertStringRecordsReq();
-    request.setSessionId(sessionId);
-    request.setDeviceIds(deviceIds);
-    request.setTimestamps(times);
-    request.setMeasurementsList(measurementsList);
-    request.setValuesList(valuesList);
-    return request;
-  }
-
-  protected void insertTablet(Tablet tablet, boolean sorted)
+  protected void insertRecords(TSInsertRecordsReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
-    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccessWithRedirection(client.insertRecords(request));
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
+  }
 
+  protected void insertRecords(TSInsertStringRecordsReq request)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccessWithRedirection(client.insertStringRecords(request));
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
+  }
+
+  protected void insertTablet(TSInsertTabletReq request)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertTablet(request));
     } catch (TException e) {
@@ -433,68 +290,14 @@ public class SessionConnection {
     }
   }
 
-  private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted)
-      throws BatchExecutionException {
-    if (sorted) {
-      if (!checkSorted(tablet)) {
-        throw new BatchExecutionException("Times in Tablet are not in ascending order");
-      }
-    } else {
-      sortTablet(tablet);
-    }
-
-    TSInsertTabletReq request = new TSInsertTabletReq();
+  protected void insertTablets(TSInsertTabletsReq request)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
-    request.setDeviceId(tablet.deviceId);
-    for (MeasurementSchema measurementSchema : tablet.getSchemas()) {
-      request.addToMeasurements(measurementSchema.getMeasurementId());
-      request.addToTypes(measurementSchema.getType().ordinal());
-    }
-    request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-    request.setValues(SessionUtils.getValueBuffer(tablet));
-    request.setSize(tablet.rowSize);
-    return request;
-  }
-
-  protected void insertTablets(Map<String, Tablet> tablets, boolean sorted)
-      throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertTabletsReq request = genTSInsertTabletsReq(tablets, sorted);
-
     try {
-      RpcUtils.verifySuccess(client.insertTablets(request));
+      RpcUtils.verifySuccessWithRedirection(client.insertTablets(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
-  }
-
-  private TSInsertTabletsReq genTSInsertTabletsReq(Map<String, Tablet> tablets, boolean sorted)
-      throws BatchExecutionException {
-    TSInsertTabletsReq request = new TSInsertTabletsReq();
-    request.setSessionId(sessionId);
-
-    for (Tablet tablet : tablets.values()) {
-      if (sorted) {
-        if (!checkSorted(tablet)) {
-          throw new BatchExecutionException("Times in Tablet are not in ascending order");
-        }
-      } else {
-        sortTablet(tablet);
-      }
-
-      request.addToDeviceIds(tablet.deviceId);
-      List<String> measurements = new ArrayList<>();
-      List<Integer> dataTypes = new ArrayList<>();
-      for (MeasurementSchema measurementSchema : tablet.getSchemas()) {
-        measurements.add(measurementSchema.getMeasurementId());
-        dataTypes.add(measurementSchema.getType().ordinal());
-      }
-      request.addToMeasurementsList(measurements);
-      request.addToTypesList(dataTypes);
-      request.addToTimestampsList(SessionUtils.getTimeBuffer(tablet));
-      request.addToValuesList(SessionUtils.getValueBuffer(tablet));
-      request.addToSizeList(tablet.rowSize);
-    }
-    return request;
   }
 
   protected void deleteTimeseries(List<String> paths)
@@ -506,14 +309,9 @@ public class SessionConnection {
     }
   }
 
-  public void deleteData(List<String> paths, long startTime, long endTime)
+  public void deleteData(TSDeleteDataReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSDeleteDataReq request = new TSDeleteDataReq();
     request.setSessionId(sessionId);
-    request.setPaths(paths);
-    request.setStartTime(startTime);
-    request.setEndTime(endTime);
-
     try {
       RpcUtils.verifySuccess(client.deleteData(request));
     } catch (TException e) {
@@ -521,10 +319,9 @@ public class SessionConnection {
     }
   }
 
-  protected void testInsertRecord(String deviceId, long time, List<String> measurements,
-      List<String> values) throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertStringRecordReq request = genTSInsertStringRecordReq(deviceId, time, measurements,
-        values);
+  protected void testInsertRecord(TSInsertStringRecordReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.testInsertStringRecord(request));
     } catch (TException e) {
@@ -532,10 +329,9 @@ public class SessionConnection {
     }
   }
 
-  protected void testInsertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values)
+  protected void testInsertRecord(TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
+    request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.testInsertRecord(request));
     } catch (TException e) {
@@ -543,11 +339,9 @@ public class SessionConnection {
     }
   }
 
-  public void testInsertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList)
+  public void testInsertRecords(TSInsertStringRecordsReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertStringRecordsReq request = genTSInsertStringRecordsReq(deviceIds, times,
-        measurementsList, valuesList);
+    request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.testInsertStringRecords(request));
     } catch (TException e) {
@@ -555,12 +349,9 @@ public class SessionConnection {
     }
   }
 
-  public void testInsertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
+  public void testInsertRecords(TSInsertRecordsReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordsReq request = genTSInsertRecordsReq(deviceIds, times, measurementsList,
-        typesList, valuesList);
+    request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.testInsertRecords(request));
     } catch (TException e) {
@@ -568,9 +359,9 @@ public class SessionConnection {
     }
   }
 
-  protected void testInsertTablet(Tablet tablet, boolean sorted)
+  protected void testInsertTablet(TSInsertTabletReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
+    request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.testInsertTablet(request));
     } catch (TException e) {
@@ -578,9 +369,9 @@ public class SessionConnection {
     }
   }
 
-  protected void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
+  protected void testInsertTablets(TSInsertTabletsReq request)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertTabletsReq request = genTSInsertTabletsReq(tablets, sorted);
+    request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccess(client.testInsertTablets(request));
     } catch (TException e) {
@@ -588,165 +379,4 @@ public class SessionConnection {
     }
   }
 
-  /**
-   * check whether the batch has been sorted
-   *
-   * @return whether the batch has been sorted
-   */
-  public static boolean checkSorted(Tablet tablet) {
-    for (int i = 1; i < tablet.rowSize; i++) {
-      if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  public static void sortTablet(Tablet tablet) {
-    /*
-     * following part of code sort the batch data by time,
-     * so we can insert continuous data in value list to get a better performance
-     */
-    // sort to get index, and use index to sort value list
-    Integer[] index = new Integer[tablet.rowSize];
-    for (int i = 0; i < tablet.rowSize; i++) {
-      index[i] = i;
-    }
-    Arrays.sort(index, Comparator.comparingLong(o -> tablet.timestamps[o]));
-    Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
-    for (int i = 0; i < tablet.getSchemas().size(); i++) {
-      tablet.values[i] =
-          sortList(tablet.values[i], tablet.getSchemas().get(i).getType(), index);
-    }
-  }
-
-  /**
-   * sort value list by index
-   *
-   * @param valueList value list
-   * @param dataType  data type
-   * @param index     index
-   * @return sorted list
-   */
-  public static Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
-    switch (dataType) {
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) valueList;
-        boolean[] sortedValues = new boolean[boolValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedValues[i] = boolValues[index[i]];
-        }
-        return sortedValues;
-      case INT32:
-        int[] intValues = (int[]) valueList;
-        int[] sortedIntValues = new int[intValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedIntValues[i] = intValues[index[i]];
-        }
-        return sortedIntValues;
-      case INT64:
-        long[] longValues = (long[]) valueList;
-        long[] sortedLongValues = new long[longValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedLongValues[i] = longValues[index[i]];
-        }
-        return sortedLongValues;
-      case FLOAT:
-        float[] floatValues = (float[]) valueList;
-        float[] sortedFloatValues = new float[floatValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedFloatValues[i] = floatValues[index[i]];
-        }
-        return sortedFloatValues;
-      case DOUBLE:
-        double[] doubleValues = (double[]) valueList;
-        double[] sortedDoubleValues = new double[doubleValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedDoubleValues[i] = doubleValues[index[i]];
-        }
-        return sortedDoubleValues;
-      case TEXT:
-        Binary[] binaryValues = (Binary[]) valueList;
-        Binary[] sortedBinaryValues = new Binary[binaryValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedBinaryValues[i] = binaryValues[index[i]];
-        }
-        return sortedBinaryValues;
-      default:
-        throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
-    }
-  }
-
-  public static int calculateLength(List<TSDataType> types, List<Object> values)
-      throws IoTDBConnectionException {
-    int res = 0;
-    for (int i = 0; i < types.size(); i++) {
-      // types
-      res += Short.BYTES;
-      switch (types.get(i)) {
-        case BOOLEAN:
-          res += 1;
-          break;
-        case INT32:
-          res += Integer.BYTES;
-          break;
-        case INT64:
-          res += Long.BYTES;
-          break;
-        case FLOAT:
-          res += Float.BYTES;
-          break;
-        case DOUBLE:
-          res += Double.BYTES;
-          break;
-        case TEXT:
-          res += Integer.BYTES;
-          res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
-          break;
-        default:
-          throw new IoTDBConnectionException("Unsupported data type:" + types.get(i));
-      }
-    }
-    return res;
-  }
-
-  /**
-   * put value in buffer
-   *
-   * @param types  types list
-   * @param values values list
-   * @param buffer buffer to insert
-   * @throws IoTDBConnectionException
-   */
-  public static void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
-      throws IoTDBConnectionException {
-    for (int i = 0; i < values.size(); i++) {
-      ReadWriteIOUtils.write(types.get(i), buffer);
-      switch (types.get(i)) {
-        case BOOLEAN:
-          ReadWriteIOUtils.write((Boolean) values.get(i), buffer);
-          break;
-        case INT32:
-          ReadWriteIOUtils.write((Integer) values.get(i), buffer);
-          break;
-        case INT64:
-          ReadWriteIOUtils.write((Long) values.get(i), buffer);
-          break;
-        case FLOAT:
-          ReadWriteIOUtils.write((Float) values.get(i), buffer);
-          break;
-        case DOUBLE:
-          ReadWriteIOUtils.write((Double) values.get(i), buffer);
-          break;
-        case TEXT:
-          byte[] bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
-          ReadWriteIOUtils.write(bytes.length, buffer);
-          buffer.put(bytes);
-          break;
-        default:
-          throw new IoTDBConnectionException("Unsupported data type:" + types.get(i));
-      }
-    }
-    buffer.flip();
-  }
 }

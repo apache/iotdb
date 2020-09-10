@@ -91,7 +91,7 @@ public class SessionUT {
         sensor[2] = 2;
         tablet.rowSize = 3;
 
-        SessionConnection.sortTablet(tablet);
+        session.sortTablet(tablet);
 
         /*
         After sorting, if the tablet data is sorted according to the timestamps,

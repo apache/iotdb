@@ -100,19 +100,24 @@ public class SessionExample {
       List<String> paths = new ArrayList<>();
       paths.add("root.sg1.d2.s1");
       paths.add("root.sg1.d2.s2");
+      paths.add("root.sg1.d2.s3");
       List<TSDataType> tsDataTypes = new ArrayList<>();
+      tsDataTypes.add(TSDataType.INT64);
       tsDataTypes.add(TSDataType.INT64);
       tsDataTypes.add(TSDataType.INT64);
       List<TSEncoding> tsEncodings = new ArrayList<>();
       tsEncodings.add(TSEncoding.RLE);
       tsEncodings.add(TSEncoding.RLE);
+      tsEncodings.add(TSEncoding.RLE);
       List<CompressionType> compressionTypes = new ArrayList<>();
+      compressionTypes.add(CompressionType.SNAPPY);
       compressionTypes.add(CompressionType.SNAPPY);
       compressionTypes.add(CompressionType.SNAPPY);
 
       List<Map<String, String>> tagsList = new ArrayList<>();
       Map<String, String> tags = new HashMap<>();
       tags.put("unit", "kg");
+      tagsList.add(tags);
       tagsList.add(tags);
       tagsList.add(tags);
 
@@ -122,10 +127,12 @@ public class SessionExample {
       attributes.put("maxValue", "100");
       attributesList.add(attributes);
       attributesList.add(attributes);
+      attributesList.add(attributes);
 
       List<String> alias = new ArrayList<>();
       alias.add("weight1");
       alias.add("weight2");
+      alias.add("weight3");
 
       session
           .createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
@@ -275,45 +282,45 @@ public class SessionExample {
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
+//    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
     Tablet tablet1 = new Tablet("root.sg1.d1", schemaList, 100);
     Tablet tablet2 = new Tablet("root.sg1.d2", schemaList, 100);
-    Tablet tablet3 = new Tablet("root.sg1.d3", schemaList, 100);
+//    Tablet tablet3 = new Tablet("root.sg1.d3", schemaList, 100);
 
     Map<String, Tablet> tabletMap = new HashMap<>();
     tabletMap.put("root.sg1.d1", tablet1);
     tabletMap.put("root.sg1.d2", tablet2);
-    tabletMap.put("root.sg1.d3", tablet3);
+//    tabletMap.put("root.sg1.d3", tablet3);
 
     long[] timestamps1 = tablet1.timestamps;
     Object[] values1 = tablet1.values;
     long[] timestamps2 = tablet2.timestamps;
     Object[] values2 = tablet2.values;
-    long[] timestamps3 = tablet3.timestamps;
-    Object[] values3 = tablet3.values;
+//    long[] timestamps3 = tablet3.timestamps;
+//    Object[] values3 = tablet3.values;
 
     for (long time = 0; time < 100; time++) {
       int row1 = tablet1.rowSize++;
       int row2 = tablet2.rowSize++;
-      int row3 = tablet3.rowSize++;
+//      int row3 = tablet3.rowSize++;
       timestamps1[row1] = time;
       timestamps2[row2] = time;
-      timestamps3[row3] = time;
-      for (int i = 0; i < 3; i++) {
+//      timestamps3[row3] = time;
+      for (int i = 0; i < 2; i++) {
         long[] sensor1 = (long[]) values1[i];
         sensor1[row1] = i;
         long[] sensor2 = (long[]) values2[i];
         sensor2[row2] = i;
-        long[] sensor3 = (long[]) values3[i];
-        sensor3[row3] = i;
+//        long[] sensor3 = (long[]) values3[i];
+//        sensor3[row3] = i;
       }
       if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
         session.insertTablets(tabletMap, true);
 
         tablet1.reset();
         tablet2.reset();
-        tablet3.reset();
+//        tablet3.reset();
       }
     }
 
@@ -321,7 +328,7 @@ public class SessionExample {
       session.insertTablets(tabletMap, true);
       tablet1.reset();
       tablet2.reset();
-      tablet3.reset();
+//      tablet3.reset();
     }
   }
 
