@@ -120,7 +120,7 @@ public class IoTDBDescriptor {
       urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
 
-    // If the url doesn't start with "file:" it's provided as a normal path.
+    // If the url doesn't start with "file:" or "classpath:", it's provided as a normal path.
     // So we need to add it to make it a real URL.
     if(!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
       urlString = "file:" + urlString;
