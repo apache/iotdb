@@ -159,7 +159,7 @@ select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01
 #### 根据时间降序返回
 IoTDB 在 0.10.x 之后支持 'order by time' 语句, 用于对结果按照时间进行降序展示。例如，SQL语句为：
 ```sql
-select * from root.ln where time > 1 order by time desc limit 1;
+select * from root.ln where time > 1 order by time desc limit 10;
 ```
 
 更多语法请参照 [SQL REFERENCE](../Operation%20Manual/SQL%20Reference.md).

@@ -129,7 +129,16 @@ public class DescBatchData extends BatchData {
 2.在需要倒序处理数据的位置构建`DescBatchData`类，为此，特意设计了一个`BatchDataFactory`类，
 根据ascending参数判断生产哪个类型的BatchData。
 
-3.至此数据从磁盘和缓存中取出的数据都是严格按照时间排序的了。
+3.因为`MergeReader`使用了`PageReader`，所以在降序模式的时候数据会被倒序读出来(如下):
+```
+5 4 3 2 1 
+```
+这种情况会使得`BatchData`使用`getValueInTimestamp`方法变得困难(因为在正序模式的时候默认为越往后的数据时间越大，
+倒序模式的时候越后时间越小)，但是按照如上数据示例无论在哪种模式下，都是违反了期望的数据时间比较，所以，新增了一个
+`getValueInTimestamp(long time, BiFunction<Long, Long, Boolean> compare)`方法，
+让不同的使用场景抉择基于时间的数据查找方式。
+
+4.至此数据从磁盘和缓存中取出的数据都是严格按照时间排序的了。
 
 ## 数据集
 1.原始数据查询
@@ -161,7 +170,7 @@ select max_time(*) from root group by ((0,10],2ms) order by time desc
 
 
 对于BatchData中的数据大于每次遍历的结束时间时，进行skip，然后对 `AggregateResult` 新增
-minBound计算限制,限制为第次遍历的开始时间值，
+minBound计算限制,限制为第i次遍历的开始时间值，
 **数据无论是正序还是倒序遍历对于`AggregateResult`的结果是等价的**.
 
 3.GroupByFill
