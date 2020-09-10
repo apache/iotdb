@@ -89,7 +89,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback<Void> resultHandler) {
     try {
-      metaGroupMember.sendSnapshot(request);
+      metaGroupMember.receiveSnapshot(request);
     } catch (Exception e) {
       resultHandler.onError(e);
       return;

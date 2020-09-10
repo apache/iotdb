@@ -85,6 +85,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -179,7 +180,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-      TSStatus executeNonQuery(PhysicalPlan plan) {
+      TSStatus executeNonQueryPlan(PhysicalPlan plan) {
         try {
           planExecutor.processNonQuery(plan);
           return StatusUtils.OK;
@@ -192,7 +193,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
       @Override
       TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
-        return executeNonQuery(plan);
+        return executeNonQueryPlan(plan);
       }
 
       @Override
@@ -319,7 +320,7 @@ public class MetaGroupMemberTest extends MemberTest {
         List<String> seedUrls = config.getSeedNodeUrls();
         // initialize allNodes
         for (String seedUrl : seedUrls) {
-          Node node = generateNode(seedUrl);
+          Node node = ClusterUtils.parseNode(seedUrl);
           if ((!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode.getMetaPort())
               && !allNodes.contains(node)) {
             // do not add the local node since it is added in `setThisNode()`
@@ -718,7 +719,7 @@ public class MetaGroupMemberTest extends MemberTest {
       // process a non partitioned plan
       SetStorageGroupPlan setStorageGroupPlan =
           new SetStorageGroupPlan(new PartialPath(TestUtils.getTestSg(i)));
-      TSStatus status = testMetaMember.executeNonQuery(setStorageGroupPlan);
+      TSStatus status = testMetaMember.executeNonQueryPlan(setStorageGroupPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
       assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSg(i))));
 
@@ -728,7 +729,7 @@ public class MetaGroupMemberTest extends MemberTest {
           new PartialPath(schema.getFullPath()), schema.getType(),
           schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
           Collections.emptyMap(), Collections.emptyMap(), null);
-      status = testMetaMember.executeNonQuery(createTimeSeriesPlan);
+      status = testMetaMember.executeNonQueryPlan(createTimeSeriesPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
       assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSeries(i, 0))));
     }

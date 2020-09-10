@@ -53,6 +53,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -266,7 +267,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
           count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
-          metaGroupMember.putBackSyncClient(syncDataClient);
+          ClientUtils.putBackSyncClient(syncDataClient);
         }
 
         logger.debug("{}: get path count of {} from {}, result {}", metaGroupMember.getName(),
@@ -368,7 +369,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
           SyncDataClient syncDataClient = metaGroupMember
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           paths = syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
-          metaGroupMember.putBackSyncClient(syncDataClient);
+          ClientUtils.putBackSyncClient(syncDataClient);
         }
 
         if (paths != null) {
@@ -474,7 +475,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
           SyncDataClient syncDataClient = metaGroupMember
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           nextChildren = syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
-          metaGroupMember.putBackSyncClient(syncDataClient);
+          ClientUtils.putBackSyncClient(syncDataClient);
         }
 
         if (nextChildren != null) {
@@ -639,7 +640,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       plan.serialize(dataOutputStream);
       resultBinary = syncDataClient.getAllMeasurementSchema(group.getHeader(),
           ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-      metaGroupMember.putBackSyncClient(syncDataClient);
+      ClientUtils.putBackSyncClient(syncDataClient);
     }
     return resultBinary;
   }

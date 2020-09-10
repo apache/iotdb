@@ -41,6 +41,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -202,7 +203,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
           .last(new LastQueryRequest(seriesPath.getFullPath(), dataType.ordinal(),
               context.getQueryId(), deviceMeasurements, group.getHeader(),
               syncDataClient.getNode()));
-      metaGroupMember.putBackSyncClient(syncDataClient);
+      ClientUtils.putBackSyncClient(syncDataClient);
       return result;
     }
   }

@@ -252,4 +252,24 @@ public class ClusterUtils {
     // run the thrift server in a separate thread so that the main thread is not blocked
     return new TThreadPoolServer(poolArgs);
   }
+
+  public static Node parseNode(String nodeUrl) {
+    Node result = new Node();
+    String[] split = nodeUrl.split(":");
+    if (split.length != 3) {
+      logger.warn("Bad seed url: {}", nodeUrl);
+      return null;
+    }
+    String ip = split[0];
+    try {
+      int metaPort = Integer.parseInt(split[1]);
+      int dataPort = Integer.parseInt(split[2]);
+      result.setIp(ip);
+      result.setMetaPort(metaPort);
+      result.setDataPort(dataPort);
+    } catch (NumberFormatException e) {
+      logger.warn("Bad seed url: {}", nodeUrl);
+    }
+    return result;
+  }
 }

@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
@@ -52,12 +53,12 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   @Override
   public void sendHeartbeat(HeartBeatRequest request,
       AsyncMethodCallback<HeartBeatResponse> resultHandler) {
-    resultHandler.onComplete(member.sendHeartbeat(request));
+    resultHandler.onComplete(member.processHeartbeatRequest(request));
   }
 
   @Override
   public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {
-    resultHandler.onComplete(member.startElection(request));
+    resultHandler.onComplete(member.processElectionRequest(request));
   }
 
   @Override
@@ -80,7 +81,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
 
   @Override
   public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
-    long commitIndex = member.requestCommitIndex();
+    long commitIndex = member.getCommitIndex();
     if (commitIndex != Long.MIN_VALUE) {
       resultHandler.onComplete(commitIndex);
       return;
@@ -103,7 +104,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   public void readFile(String filePath, long offset, int length,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
-      resultHandler.onComplete(member.readFile(filePath, offset, length));
+      resultHandler.onComplete(IOUtils.readFile(filePath, offset, length));
     } catch (IOException e) {
       resultHandler.onError(e);
     }
@@ -112,7 +113,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   @Override
   public void matchTerm(long index, long term, Node header,
       AsyncMethodCallback<Boolean> resultHandler) {
-    resultHandler.onComplete(member.matchTerm(index, term));
+    resultHandler.onComplete(member.matchLog(index, term));
   }
 
   @Override

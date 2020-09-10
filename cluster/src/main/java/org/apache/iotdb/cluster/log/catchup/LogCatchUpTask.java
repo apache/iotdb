@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpInBatchHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.TException;
@@ -154,7 +155,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       handler.onError(e);
       return false;
     } finally {
-      raftMember.putBackSyncClient(client);
+      ClientUtils.putBackSyncClient(client);
     }
   }
 
@@ -301,7 +302,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
       return false;
     } finally {
-      raftMember.putBackSyncClient(client);
+      ClientUtils.putBackSyncClient(client);
     }
   }
 

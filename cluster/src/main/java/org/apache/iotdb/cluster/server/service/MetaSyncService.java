@@ -87,7 +87,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
   @Override
   public void sendSnapshot(SendSnapshotRequest request) throws TException {
     try {
-      metaGroupMember.sendSnapshot(request);
+      metaGroupMember.receiveSnapshot(request);
     } catch (Exception e) {
       throw new TException(e);
     }

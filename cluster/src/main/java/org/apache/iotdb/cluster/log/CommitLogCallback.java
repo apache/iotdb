@@ -19,50 +19,29 @@
 
 package org.apache.iotdb.cluster.log;
 
-import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CommitLogTask implements Runnable {
+public class CommitLogCallback implements AsyncMethodCallback<Void> {
 
-  private static final Logger logger = LoggerFactory.getLogger(CommitLogTask.class);
-  private RaftLogManager logManager;
-  private long leaderCommit;
-  private long term;
+  private static final Logger logger = LoggerFactory.getLogger(CommitLogCallback.class);
+  private final RaftMember raftMember;
 
-  public CommitLogTask(RaftLogManager logManager, long leaderCommit, long term) {
-    this.logManager = logManager;
-    this.leaderCommit = leaderCommit;
-    this.term = term;
+  public CommitLogCallback(RaftMember raftMember) {
+    this.raftMember = raftMember;
   }
 
-  /**
-   * listener field
-   */
-  private AsyncMethodCallback<Void> callback;
-
-  /**
-   * @param callback the event listener
-   */
-  public void registerCallback(AsyncMethodCallback<Void> callback) {
-    this.callback = callback;
-  }
-
-  private void doCommitLog() {
-    if (callback == null) {
-      logger.error("callback is not registered");
-      return;
-    }
-
-    boolean success = logManager.maybeCommit(leaderCommit, term);
-    if (success) {
-      callback.onComplete(null);
+  @Override
+  public void onComplete(Void v) {
+    synchronized (raftMember.getSyncLock()) {
+      raftMember.getSyncLock().notifyAll();
     }
   }
 
   @Override
-  public void run() {
-    doCommitLog();
+  public void onError(Exception e) {
+    logger.error("async commit log failed", e);
   }
 }

@@ -818,7 +818,7 @@ public class RaftLogManagerTest {
     RaftLogManager instance = new TestRaftLogManager(committedEntryManager,
         new SyncLogDequeSerializer(testIdentifier), logApplier);
     try {
-      instance.applyingSnapshot(new SimpleSnapshot(index, term));
+      instance.applySnapshot(new SimpleSnapshot(index, term));
       assertEquals(instance.getLastLogIndex(), term);
       List<Log> entries = new ArrayList<>();
       for (int i = 1; i <= 10; i++) {
@@ -833,12 +833,12 @@ public class RaftLogManagerTest {
       assertEquals(6, instance.getCommittedEntryManager().getAllEntries().size());
       assertEquals(5, instance.getUnCommittedEntryManager().getAllEntries().size());
       assertEquals(105, instance.getCommitLogIndex());
-      instance.applyingSnapshot(new SimpleSnapshot(103, 103));
+      instance.applySnapshot(new SimpleSnapshot(103, 103));
       assertEquals(104, instance.getFirstIndex());
       assertEquals(3, instance.getCommittedEntryManager().getAllEntries().size());
       assertEquals(5, instance.getUnCommittedEntryManager().getAllEntries().size());
       assertEquals(105, instance.getCommitLogIndex());
-      instance.applyingSnapshot(new SimpleSnapshot(108, 108));
+      instance.applySnapshot(new SimpleSnapshot(108, 108));
       assertEquals(109, instance.getFirstIndex());
       assertEquals(1, instance.getCommittedEntryManager().getAllEntries().size());
       assertEquals(0, instance.getUnCommittedEntryManager().getAllEntries().size());
