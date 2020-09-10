@@ -73,7 +73,7 @@ public class Session {
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
   private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
   private String host;
-  private int port;
+  private int rpcPort;
   private String username;
   private String password;
   private TSIService.Iface client = null;
@@ -84,25 +84,25 @@ public class Session {
   private long statementId;
   private int fetchSize;
 
-  public Session(String host, int port) {
-    this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
+  public Session(String host, int rpcPort) {
+    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
   }
 
-  public Session(String host, String port, String username, String password) {
-    this(host, Integer.parseInt(port), username, password);
+  public Session(String host, String rpcPort, String username, String password) {
+    this(host, Integer.parseInt(rpcPort), username, password);
   }
 
-  public Session(String host, int port, String username, String password) {
+  public Session(String host, int rpcPort, String username, String password) {
     this.host = host;
-    this.port = port;
+    this.rpcPort = rpcPort;
     this.username = username;
     this.password = password;
     this.fetchSize = Config.DEFAULT_FETCH_SIZE;
   }
 
-  public Session(String host, int port, String username, String password, int fetchSize) {
+  public Session(String host, int rpcPort, String username, String password, int fetchSize) {
     this.host = host;
-    this.port = port;
+    this.rpcPort = rpcPort;
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -122,7 +122,7 @@ public class Session {
       return;
     }
 
-    transport = new TFastFramedTransport(new TSocket(host, port, connectionTimeoutInMs));
+    transport = new TFastFramedTransport(new TSocket(host, rpcPort, connectionTimeoutInMs));
 
     if (!transport.isOpen()) {
       try {
