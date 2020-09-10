@@ -1060,7 +1060,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     return true;
   }
-  
+
   protected QueryDataSet processAuthorQuery(AuthorPlan plan)
       throws QueryProcessException {
     AuthorType authorType = plan.getAuthorType();

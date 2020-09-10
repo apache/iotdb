@@ -801,7 +801,7 @@ public class IoTDBAuthorizationIT {
 
         adminStmt.execute(
           "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.a.b.c");
-        adminStmt.execute(
+      adminStmt.execute(
           "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.d.b.c");
         resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
         ans = "root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n"
