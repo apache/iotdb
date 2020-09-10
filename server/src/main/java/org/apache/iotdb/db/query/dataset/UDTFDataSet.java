@@ -111,7 +111,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
   }
 
   private void setupTransformedDataColumns() {
-    transformedDataColumns = new DataPointIterator[udtfPlan.getDeduplicatedColumns().size()];
+    transformedDataColumns = new DataPointIterator[udtfPlan.getPathToIndex().size()];
 
     // UDF columns
     for (UDTFExecutor executor : udtfPlan.getDeduplicatedExecutors()) {

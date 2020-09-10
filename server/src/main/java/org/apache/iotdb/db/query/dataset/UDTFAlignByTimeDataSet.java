@@ -34,6 +34,7 @@ import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
@@ -216,7 +217,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     for (int i = 0; i < size; ++i) {
       DataPointIterator dataPointIterator = transformedDataColumns[i];
       if (!dataPointIterator.hasNextPoint() || dataPointIterator.nextTime() != minTime) {
-        rowRecord.addField(null);
+        rowRecord.addField(new Field(null));
         continue;
       }
       dataPointIterator.next();

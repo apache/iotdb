@@ -48,6 +48,7 @@ import org.apache.iotdb.db.query.udf.datastructure.ElasticSerializableTVList;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public class UDTFExecutor extends UDFExecutor {
@@ -257,7 +258,7 @@ public class UDTFExecutor extends UDFExecutor {
       for (int i = 0; i < size; ++i) {
         DataPointIterator dataPointIterator = rowRecordColumns[i];
         if (!dataPointIterator.hasNextPoint() || dataPointIterator.nextTime() != minTime) {
-          rowRecord.addField(null);
+          rowRecord.addField(new Field(null));
           continue;
         }
 
