@@ -67,7 +67,7 @@ public class NormalTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public List<TsFileResource> getMergeTsFileList(boolean sequence) {
+  public List<TsFileResource> getStableTsFileList(boolean sequence) {
     return getTsFileList(sequence);
   }
 
