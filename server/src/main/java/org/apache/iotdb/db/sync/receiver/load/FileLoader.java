@@ -90,6 +90,7 @@ public class FileLoader implements IFileLoader {
       }
     } catch (InterruptedException e) {
       LOGGER.error("Can not handle load task", e);
+      Thread.currentThread().interrupt();
     }
   };
 

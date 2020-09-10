@@ -18,6 +18,23 @@
  */
 package org.apache.iotdb.db.engine;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -31,7 +48,13 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.*;
+import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.ShutdownException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -54,13 +77,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class StorageEngine implements IService {
 
@@ -117,8 +133,7 @@ public class StorageEngine implements IService {
   private static long timePartitionInterval = -1;
 
   /**
-   * whether enable data partition
-   * if disabled, all data belongs to partition 0
+   * whether enable data partition if disabled, all data belongs to partition 0
    */
   @ServerConfigConsistent
   private static boolean enablePartition =
@@ -149,7 +164,7 @@ public class StorageEngine implements IService {
 
   public void recover() {
     recoverAllSgThreadPool = IoTDBThreadPoolFactory
-      .newSingleThreadExecutor("Begin-Recovery-Pool");
+        .newSingleThreadExecutor("Begin-Recovery-Pool");
     recoverAllSgThreadPool.submit(this::recoverAllSgs);
   }
 
@@ -163,13 +178,14 @@ public class StorageEngine implements IService {
       futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
         try {
           StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
-            storageGroup.getFullPath(), fileFlushPolicy);
+              storageGroup.getFullPath(), fileFlushPolicy);
           processor.setDataTTL(storageGroup.getDataTTL());
           processorMap.put(storageGroup.getPartialPath(), processor);
           logger.info("Storage Group Processor {} is recovered successfully",
-            storageGroup.getFullPath());
+              storageGroup.getFullPath());
         } catch (Exception e) {
-          logger.error("meet error when recovering storage group: {}", storageGroup.getFullPath(), e);
+          logger
+              .error("meet error when recovering storage group: {}", storageGroup.getFullPath(), e);
         }
         return null;
       }));
@@ -177,7 +193,10 @@ public class StorageEngine implements IService {
     for (Future future : futures) {
       try {
         future.get();
-      } catch (InterruptedException | ExecutionException e) {
+      } catch (ExecutionException e) {
+        throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
       }
     }
@@ -238,6 +257,8 @@ public class StorageEngine implements IService {
         ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         logger.warn("TTL check thread still doesn't exit after 30s");
+        Thread.currentThread().interrupt();
+        throw new StorageEngineFailureException("StorageEngine failed to stop.", e);
       }
     }
     recoveryThreadPool.shutdownNow();
@@ -286,15 +307,17 @@ public class StorageEngine implements IService {
             processor = processorMap.get(storageGroupPath);
             if (processor == null) {
               logger.info("construct a processor instance, the storage group is {}, Thread is {}",
-                storageGroupPath, Thread.currentThread().getId());
-              processor = new StorageGroupProcessor(systemDir, storageGroupPath.getFullPath(), fileFlushPolicy);
+                  storageGroupPath, Thread.currentThread().getId());
+              processor = new StorageGroupProcessor(systemDir, storageGroupPath.getFullPath(),
+                  fileFlushPolicy);
               processor.setDataTTL(storageGroupMNode.getDataTTL());
               processorMap.put(storageGroupPath, processor);
             }
           }
         } else {
           // not finished recover, refuse the request
-          throw new StorageEngineException("the sg " + storageGroupPath + " may not ready now, please wait and retry later",
+          throw new StorageEngineException(
+              "the sg " + storageGroupPath + " may not ready now, please wait and retry later",
               TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
@@ -364,8 +387,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void asyncCloseProcessor(PartialPath storageGroupPath, boolean isSeq)
-      throws StorageGroupNotSetException {
+  public void asyncCloseProcessor(PartialPath storageGroupPath, boolean isSeq) {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor != null) {
       logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupPath,
@@ -388,8 +410,6 @@ public class StorageEngine implements IService {
       } finally {
         processor.writeUnlock();
       }
-    } else {
-      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
     }
   }
 
@@ -570,17 +590,20 @@ public class StorageEngine implements IService {
 
   public boolean deleteTsfileForSync(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessor(new PartialPath(deletedTsfile.getParentFile().getName())).deleteTsfile(deletedTsfile);
+    return getProcessor(new PartialPath(deletedTsfile.getParentFile().getName()))
+        .deleteTsfile(deletedTsfile);
   }
 
   public boolean deleteTsfile(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessor(new PartialPath(getSgByEngineFile(deletedTsfile))).deleteTsfile(deletedTsfile);
+    return getProcessor(new PartialPath(getSgByEngineFile(deletedTsfile)))
+        .deleteTsfile(deletedTsfile);
   }
 
   public boolean moveTsfile(File tsfileToBeMoved, File targetDir)
       throws StorageEngineException, IllegalPathException {
-    return getProcessor(new PartialPath(getSgByEngineFile(tsfileToBeMoved))).moveTsfile(tsfileToBeMoved, targetDir);
+    return getProcessor(new PartialPath(getSgByEngineFile(tsfileToBeMoved)))
+        .moveTsfile(tsfileToBeMoved, targetDir);
   }
 
   /**
@@ -643,11 +666,13 @@ public class StorageEngine implements IService {
 
   /**
    * Set the version of given partition to newMaxVersion if it is larger than the current version.
+   *
    * @param storageGroup
    * @param partitionId
    * @param newMaxVersion
    */
-  public void setPartitionVersionToMax(PartialPath storageGroup, long partitionId, long newMaxVersion)
+  public void setPartitionVersionToMax(PartialPath storageGroup, long partitionId,
+      long newMaxVersion)
       throws StorageEngineException {
     getProcessor(storageGroup).setPartitionFileVersionToMax(partitionId, newMaxVersion);
   }

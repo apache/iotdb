@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 public class AlignByDevicePlan extends QueryPlan {
 
   private List<String> measurements; // to record result measurement columns, e.g. temperature, status, speed
+  private Map<String, String> measurementAliasMap; // select s1, s2 as speed from root, then s2 -> speed
   // to check data type consistency for the same name sensor of different devices
   private List<PartialPath> devices;
   // to record the datatype of the column in the result set
@@ -55,6 +56,15 @@ public class AlignByDevicePlan extends QueryPlan {
 
   public List<String> getMeasurements() {
     return measurements;
+  }
+
+  public void setMeasurementAliasMap(
+      Map<String, String> measurementAliasMap) {
+    this.measurementAliasMap = measurementAliasMap;
+  }
+
+  public Map<String, String> getMeasurementAliasMap() {
+    return measurementAliasMap;
   }
 
   public void setDevices(List<PartialPath> devices) {

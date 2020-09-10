@@ -292,7 +292,7 @@ public class TimePlainEncodeReadTest {
       if (cnt == 1) {
         assertEquals(1480562618976L, r.getTimestamp());
         Field f1 = r.getFields().get(0);
-        assertEquals("dog976", f1.getBinaryV());
+        assertEquals("dog976", f1.getBinaryV().toString());
       }
       // System.out.println(r);
       cnt++;

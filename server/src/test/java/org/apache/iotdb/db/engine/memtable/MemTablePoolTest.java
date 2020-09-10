@@ -69,6 +69,7 @@ public class MemTablePoolTest {
           try {
             Thread.sleep(10);
           } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
           }
           continue;
         }

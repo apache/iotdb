@@ -102,7 +102,8 @@ public class TTLTest {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
-  private void insertToStorageGroupProcessor(InsertRowPlan insertPlan) throws WriteProcessException {
+  private void insertToStorageGroupProcessor(InsertRowPlan insertPlan)
+      throws WriteProcessException {
     insertPlan.setDeviceMNode(deviceMNode);
     storageGroupProcessor.insert(insertPlan);
   }
@@ -285,6 +286,11 @@ public class TTLTest {
     assertEquals(4, seqFiles.size());
     assertEquals(4, unseqFiles.size());
 
+    try {
+      Thread.sleep(500);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     storageGroupProcessor.setDataTTL(500);
     storageGroupProcessor.checkFilesTTL();
 

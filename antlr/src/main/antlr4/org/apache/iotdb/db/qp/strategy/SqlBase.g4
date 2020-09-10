@@ -72,7 +72,7 @@ statement
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
     | {hasSingleQuoteString = false;} SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
-    | SHOW STORAGE GROUP #showStorageGroup
+    | {hasSingleQuoteString = false;} SHOW STORAGE GROUP prefixPath? #showStorageGroup
     | {hasSingleQuoteString = false;} SHOW CHILD PATHS prefixPath? #showChildPaths
     | {hasSingleQuoteString = false;} SHOW DEVICES prefixPath? #showDevices
     | SHOW MERGE #showMergeStatus
@@ -103,8 +103,9 @@ statement
 selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
-    | stringLiteral (COMMA stringLiteral)* #selectConstElement
     | lastClause #lastElement
+    | asClause (COMMA asClause)* #asElement
+    | functionAsClause (COMMA functionAsClause)* #functionAsElement
     ;
 
 functionCall
@@ -123,8 +124,17 @@ functionName
     | LAST_VALUE
     ;
 
+functionAsClause
+    : functionCall (AS ID)?
+    ;
+
 lastClause
     : LAST suffixPath (COMMA suffixPath)*
+    | LAST asClause (COMMA asClause)*
+    ;
+
+asClause
+    : suffixPath (AS ID)?
     ;
 
 alias
@@ -1054,6 +1064,10 @@ ALIGN
 
 COMPRESSION
     : C O M P R E S S I O N
+    ;
+
+AS
+    : A S
     ;
 
 TIME

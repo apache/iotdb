@@ -63,6 +63,7 @@ public class QueryUtils {
    * @param chunkMetaData the original chunkMetaData.
    * @param modifications all possible modifications.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(List<ChunkMetadata> chunkMetaData,
       List<Modification> modifications) {
     int modIndex = 0;

@@ -52,6 +52,7 @@ public class TsFileDeserializer {
    * @return A list of objects suitable for Hive to work with further
    * @throws TsFileSerDeException For any exception during deserialization
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public Object deserialize(List<String> columnNames, List<TypeInfo> columnTypes,
                             Writable writable, String deviceId) throws TsFileSerDeException {
     if(!(writable instanceof MapWritable)) {

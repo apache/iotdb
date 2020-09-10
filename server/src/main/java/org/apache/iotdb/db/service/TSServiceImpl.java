@@ -129,6 +129,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 
 /**
@@ -346,9 +347,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "COLUMN":
-          List<TSDataType> dataTypes =
-              getSeriesTypesByString(Collections.singletonList(new PartialPath(req.getColumnPath())), null);
-          resp.setDataType(dataTypes.get(0).toString());
+          resp.setDataType(getSeriesTypeByPath(new PartialPath(req.getColumnPath())).toString());
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "ALL_COLUMNS":
@@ -544,10 +543,50 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
+  public TSExecuteStatementResp executeRawDataQuery(TSRawDataQueryReq req) {
+    try {
+      if (!checkLogin(req.getSessionId())) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return RpcUtils.getTSExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
+      }
+
+      PhysicalPlan physicalPlan;
+      try {
+        physicalPlan =
+            processor.rawDataQueryReqToPhysicalPlan(req);
+      } catch (QueryProcessException | SQLParserException e) {
+        logger.info(ERROR_PARSING_SQL, e.getMessage());
+        return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
+      }
+
+      if (!physicalPlan.isQuery()) {
+        return RpcUtils.getTSExecuteStatementResp(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+      }
+
+      return internalExecuteQueryStatement("", generateQueryId(true), physicalPlan, req.fetchSize,
+          sessionIdUsernameMap.get(req.getSessionId()));
+
+    } catch (ParseCancellationException e) {
+      logger.warn(ERROR_PARSING_SQL, e.getMessage());
+      return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR,
+          ERROR_PARSING_SQL + e.getMessage());
+    } catch (SQLParserException e) {
+      logger.error("check metadata error: ", e);
+      return RpcUtils.getTSExecuteStatementResp(
+          TSStatusCode.METADATA_ERROR, "Check metadata error: " + e.getMessage());
+    } catch (Exception e) {
+      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return RpcUtils.getTSExecuteStatementResp(
+          RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
+    }
+  }
+
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByTimePlan, some
    *             AuthorPlan
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
       long statementId, PhysicalPlan plan, int fetchSize, String username) throws IOException {
     auditLogger.debug("Session {} execute Query: {}", currSessionId.get(), statement);
@@ -761,24 +800,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   // wide means not align by device
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void getWideQueryHeaders(
       QueryPlan plan, List<String> respColumns, List<String> columnTypes)
       throws TException, MetadataException {
     // Restore column header of aggregate to func(column_name), only
     // support single aggregate function for now
     List<PartialPath> paths = plan.getPaths();
-    List<TSDataType> seriesTypes;
+    List<TSDataType> seriesTypes = new ArrayList<>();
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
         for (PartialPath path : paths) {
-          if (path.getAlias() != null) {
-            respColumns.add(path.getFullPathWithAlias());
-          } else {
-            respColumns.add(path.getFullPath());
+          String column = path.getTsAlias();
+          if (column == null) {
+            column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.getFullPath();
           }
+          respColumns.add(column);
+          seriesTypes.add(getSeriesTypeByPath(path));
         }
-        seriesTypes = getSeriesTypesByString(paths, null);
         break;
       case AGGREGATION:
       case GROUPBYTIME:
@@ -790,13 +830,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
         }
         for (int i = 0; i < paths.size(); i++) {
-          if (paths.get(i).getAlias() != null) {
-            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")");
-          } else {
-            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+          PartialPath path = paths.get(i);
+          String column = path.getTsAlias();
+          if (column == null) {
+            column = path.getMeasurementAlias() != null
+                ? aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")"
+                : aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")";
           }
+          respColumns.add(column);
         }
-        seriesTypes = getSeriesTypesByPath(paths, aggregations);
+        seriesTypes = getSeriesTypesByPaths(paths, aggregations);
         break;
       default:
         throw new TException("unsupported query type: " + plan.getOperatorType());
@@ -822,9 +865,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     // build column header with constant and non exist column and deduplication
     List<String> measurements = plan.getMeasurements();
+    Map<String, String> measurementAliasMap = plan.getMeasurementAliasMap();
     Map<String, MeasurementType> measurementTypeMap = plan.getMeasurementTypeMap();
     for (String measurement : measurements) {
-      TSDataType type = null;
+      TSDataType type = TSDataType.TEXT;
       switch (measurementTypeMap.get(measurement)) {
         case Exist:
           type = measurementDataTypeMap.get(measurement);
@@ -833,7 +877,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case Constant:
           type = TSDataType.TEXT;
       }
-      respColumns.add(measurement);
+      respColumns.add(measurementAliasMap.getOrDefault(measurement, measurement));
       columnTypes.add(type.toString());
 
       if (!deduplicatedMeasurements.contains(measurement)) {
@@ -851,6 +895,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     plan.setPaths(null);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
     try {
@@ -1467,6 +1512,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public TSStatus createMultiTimeseries(TSCreateMultiTimeseriesReq req) {
     try {
@@ -1608,13 +1654,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
   }
 
-  protected List<TSDataType> getSeriesTypesByPath(List<PartialPath> paths, List<String> aggregations)
+  protected List<TSDataType> getSeriesTypesByPaths(List<PartialPath> paths, List<String> aggregations)
       throws MetadataException {
-    return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+    return SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
   }
 
-  protected List<TSDataType> getSeriesTypesByString(List<PartialPath> paths, String aggregation)
-      throws MetadataException {
-    return SchemaUtils.getSeriesTypesByString(paths, aggregation);
+
+  protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
+    return SchemaUtils.getSeriesTypeByPath(path);
   }
 }
