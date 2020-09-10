@@ -330,7 +330,6 @@ public class MetaGroupMember extends RaftMember {
         new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncMetaHeartbeatClient.FactorySync(factory)));
     allNodes = new ArrayList<>();
-    allNodes.add(thisNode);
     initPeerMap();
 
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -348,6 +347,7 @@ public class MetaGroupMember extends RaftMember {
     setThisNode(thisNode);
     // load the identifier from the disk or generate a new one
     loadIdentifier();
+    allNodes.add(thisNode);
 
     Factory dataMemberFactory = new Factory(factory, this);
     dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory, this);
