@@ -34,7 +34,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class InsertHandler extends Handler{
-  public JSON handle(JSON json)
+  public JSON handle(Object json)
       throws IllegalPathException, QueryProcessException,
       StorageEngineException, StorageGroupNotSetException, AuthException {
     checkLogin();

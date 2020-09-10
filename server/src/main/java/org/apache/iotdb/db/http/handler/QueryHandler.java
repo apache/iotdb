@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.TException;
 
 public class QueryHandler extends Handler{
-  public JSON handle(JSON json)
+  public JSON handle(Object json)
       throws QueryProcessException, MetadataException, AuthException,
       TException, StorageEngineException, QueryFilterOptimizationException,
       IOException, InterruptedException, SQLException {

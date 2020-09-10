@@ -30,6 +30,9 @@ import org.apache.iotdb.db.exception.UnsupportedHttpMethod;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.http.constant.HttpConstant;
+import org.apache.iotdb.db.http.handler.DeleteStorageGroupsHandler;
+import org.apache.iotdb.db.http.handler.DeleteTimeSeriesHandler;
+import org.apache.iotdb.db.http.handler.GetTimeSeriesHandler;
 import org.apache.iotdb.db.http.handler.InsertHandler;
 import org.apache.iotdb.db.http.handler.QueryHandler;
 import org.apache.iotdb.db.http.handler.StorageGroupsHandlers;
@@ -51,20 +54,20 @@ public class Router {
    * @param json request JSON Object
    * @return JSON object, may be a JSONArray or JSONObject
    */
-  public JSON route(HttpMethod method, String uri, JSON json)
+  public JSON route(HttpMethod method, String uri, Object json)
       throws AuthException, MetadataException, QueryProcessException
       , StorageEngineException, UnsupportedHttpMethod, SQLException, InterruptedException, QueryFilterOptimizationException, IOException, TException {
     QueryStringDecoder decoder = new QueryStringDecoder(uri);
     uri = URIUtils.removeParameter(uri);
     UsersHandler usersHandler;
     switch (uri) {
-      case HttpConstant.STORAGE_GROUPS:
+      case HttpConstant.ROUTING_STORAGE_GROUPS:
         StorageGroupsHandlers storageGroupsHandlers = new StorageGroupsHandlers();
         return storageGroupsHandlers.handle(method, json);
-      case HttpConstant.TIME_SERIES:
+      case HttpConstant.ROUTING_TIME_SERIES:
         TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
         return timeSeriesHandler.handle(method, json);
-      case HttpConstant.USER_LOGIN:
+      case HttpConstant.ROUTING_USER_LOGIN:
         usersHandler = new UsersHandler();
         if (usersHandler.userLogin(decoder.parameters())) {
           JSONObject result = new JSONObject();
@@ -73,7 +76,7 @@ public class Router {
         } else {
           throw new AuthException(String.format("%s can't log in", usersHandler.getUsername()));
         }
-      case HttpConstant.USER_LOGOUT:
+      case HttpConstant.ROUTING_USER_LOGOUT:
         usersHandler = new UsersHandler();
         if (usersHandler.userLogout(decoder.parameters())) {
           JSONObject result = new JSONObject();
@@ -82,12 +85,21 @@ public class Router {
         } else {
           throw new AuthException(String.format("%s can't log out", usersHandler.getUsername()));
         }
-      case HttpConstant.QUERY:
+      case HttpConstant.ROUTING_QUERY:
         QueryHandler queryHandler = new QueryHandler();
         return queryHandler.handle(json);
-      case HttpConstant.INSERT:
+      case HttpConstant.ROUTING_INSERT:
         InsertHandler insertHandler = new InsertHandler();
         return insertHandler.handle(json);
+      case HttpConstant.ROUTING_STORAGE_GROUPS_DELETE:
+        DeleteStorageGroupsHandler deleteStorageGroupsHandler = new DeleteStorageGroupsHandler();
+        return deleteStorageGroupsHandler.handle(json);
+      case HttpConstant.ROUTING_TIME_SERIES_DELETE:
+        DeleteTimeSeriesHandler deleteTimeSeriesHandler = new DeleteTimeSeriesHandler();
+        return deleteTimeSeriesHandler.handle(json);
+      case HttpConstant.ROUTING_GET_TIME_SERIES:
+        GetTimeSeriesHandler getTimeSeriesHandler = new GetTimeSeriesHandler();
+        return getTimeSeriesHandler.handle(json);
       case "":
         JSONObject result = new JSONObject();
         result.put(HttpConstant.RESULT, "Hello, IoTDB");

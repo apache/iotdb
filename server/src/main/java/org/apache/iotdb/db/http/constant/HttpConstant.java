@@ -21,12 +21,15 @@ package org.apache.iotdb.db.http.constant;
 public class HttpConstant {
 
   //router
-  public static final String STORAGE_GROUPS = "/storageGroups";
-  public static final String TIME_SERIES = "/timeSeries";
-  public static final String USER_LOGIN = "/user/login";
-  public static final String USER_LOGOUT = "/user/logout";
-  public static final String QUERY = "/query";
-  public static final String INSERT = "/insert";
+  public static final String ROUTING_STORAGE_GROUPS = "/storageGroups";
+  public static final String ROUTING_TIME_SERIES = "/timeSeries";
+  public static final String ROUTING_USER_LOGIN = "/user/login";
+  public static final String ROUTING_USER_LOGOUT = "/user/logout";
+  public static final String ROUTING_QUERY = "/query";
+  public static final String ROUTING_INSERT = "/insert";
+  public static final String ROUTING_STORAGE_GROUPS_DELETE = "/storageGroups/delete";
+  public static final String ROUTING_TIME_SERIES_DELETE = "/timeSeries/delete";
+  public static final String ROUTING_GET_TIME_SERIES = "/getTimeSeries";
 
   public static final char QUESTION_MARK = '?';
   public static final String USERNAME = "username";
@@ -35,7 +38,7 @@ public class HttpConstant {
   public static final String RESULT = "result";
   public static final String STORAGE_GROUP = "storage group";
   public static final String TTL = "TTL";
-  public static final String TIME_SERIES_JSON = "timeSeries";
+  public static final String TIME_SERIES = "timeSeries";
   public static final String ALIAS = "alias";
   public static final String DATATYPE = "dataType";
   public static final String ENCODING = "encoding";

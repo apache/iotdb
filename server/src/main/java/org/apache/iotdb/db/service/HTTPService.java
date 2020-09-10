@@ -96,14 +96,14 @@ public class HTTPService implements HTTPServiceMBean, IService {
       executorService.execute(new HTTPServiceThread(server, startLatch));
       logger.info("{}: start {} successfully, listening on ip {} port {}",
           IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
-          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getHttpAddress(),
           IoTDBDescriptor.getInstance().getConfig().getHTTPPort());
       startLatch.await();
     } catch (NullPointerException | InterruptedException e) {
       //issue IOTDB-415, we need to stop the service.
       logger.error("{}: start {} failed, listening on ip {} port {}",
           IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
-          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getHttpAddress(),
           IoTDBDescriptor.getInstance().getConfig().getHTTPPort());
       Thread.currentThread().interrupt();
       stopService();

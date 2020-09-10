@@ -32,7 +32,6 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
-import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpUtil;
@@ -59,7 +58,7 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
       JSON result;
       try {
         result = router.route(request.method(), request.uri(),
-            JSON.parseObject(request.content().toString(CharsetUtil.UTF_8)));
+            JSONObject.parse(request.content().toString(CharsetUtil.UTF_8)));
         status = OK;
       } catch (Exception e) {
         result = new JSONObject();
@@ -67,11 +66,12 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
         status = INTERNAL_SERVER_ERROR;
       }
 
-      writeResponse(request, ctx, result, status);
+      writeResponse(ctx, result, status);
     }
   }
 
-  private void writeResponse(HttpObject currentObj, ChannelHandlerContext ctx, JSON json, HttpResponseStatus status) {
+  private void writeResponse(ChannelHandlerContext ctx, JSON json,
+      HttpResponseStatus status) {
 
     // Decide whether to close the connection or not.
     boolean keepAlive = HttpUtil.isKeepAlive(request);

@@ -20,7 +20,6 @@ package org.apache.iotdb.db.http.core;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -29,12 +28,19 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HttpServer {
 
   private static final boolean SSL = System.getProperty("ssl") != null;
   private final int port;
   private ServerBootstrap b;
+  private static final Logger logger = LoggerFactory.getLogger(HttpServer.class);
+  private Channel ch;
+  private EventLoopGroup bossGroup;
+  private EventLoopGroup workerGroup;
 
 
   public HttpServer(int port){
@@ -51,32 +57,29 @@ public class HttpServer {
     } else {
       sslCtx = null;
     }
-
-    // Configure the server.
-    EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-    EventLoopGroup workerGroup = new NioEventLoopGroup();
     try {
+      // Configure the server.
+      bossGroup = new NioEventLoopGroup(1);
+      workerGroup = new NioEventLoopGroup();
       b.group(bossGroup, workerGroup)
           .channel(NioServerSocketChannel.class)
           .handler(new LoggingHandler(LogLevel.INFO))
           .childHandler(new HttpSnoopServerInitializer(sslCtx));
 
-      Channel ch = b.bind(port).sync().channel();
+      ch = b.bind(port).sync().channel();
 
-      System.err.println("Open your web browser and navigate to " +
-          (SSL? "https" : "http") + "://127.0.0.1:" + port + '/');
-
-      ch.closeFuture().sync();
-    } finally {
-      bossGroup.shutdownGracefully();
-      workerGroup.shutdownGracefully();
+      logger.info("Open your web browser and navigate to " +
+          (SSL ? "https" : "http") + IoTDBDescriptor.getInstance().getConfig().getHttpAddress()
+          + port + '/');
+    } catch (Exception e) {
+      stop();
     }
   }
 
   public void stop() throws InterruptedException {
-    ChannelFuture f = b.bind().sync();
-// Call this once you want to stop accepting new connections.
-    f.channel().close().sync();
+    bossGroup.shutdownGracefully().sync();
+    workerGroup.shutdownGracefully().sync();
+    ch.closeFuture().sync();
   }
 
 }

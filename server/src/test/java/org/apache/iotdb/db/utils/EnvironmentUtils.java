@@ -196,6 +196,7 @@ public class EnvironmentUtils {
     //we do not start 8181 port in test.
     IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(false);
     IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
+    IoTDBDescriptor.getInstance().getConfig().setEnableHTTPService(isEnableHttpService);
     if (daemon == null) {
       daemon = new IoTDB();
     }
@@ -206,7 +207,6 @@ public class EnvironmentUtils {
     }
 
     IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableHTTPService(isEnableHttpService);
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
 
     createAllDir();
