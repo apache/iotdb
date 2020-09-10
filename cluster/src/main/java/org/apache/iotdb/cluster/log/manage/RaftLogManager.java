@@ -868,7 +868,7 @@ public abstract class RaftLogManager {
       }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.error("{}: do check applied log index is interrupt", name);
+      logger.info("{}: do check applied log index is interrupt", name);
     } catch (EntryCompactedException e) {
       // ignore
     }
