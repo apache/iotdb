@@ -354,7 +354,7 @@ public class PhysicalGenerator {
         ((GroupByTimeFillPlan) queryPlan).setFillType(queryOperator.getFillTypes());
         for (String aggregation : queryPlan.getAggregations()) {
           if (!SQLConstant.LAST_VALUE.equals(aggregation)) {
-            throw new QueryProcessException("Group By Fill only support last_value function.");
+            throw new QueryProcessException("Group By Fill only support last_value function");
           }
         }
       } else {
@@ -362,7 +362,7 @@ public class PhysicalGenerator {
         if (queryOperator.getLevel() >= 0) {
           for (String aggregation : queryPlan.getAggregations()) {
             if (!SQLConstant.COUNT.equals(aggregation)) {
-              throw new QueryProcessException("Group By Level only support count now.");
+              throw new QueryProcessException("group by level only support count now.");
             }
           }
         }
