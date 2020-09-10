@@ -599,7 +599,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       statementId2QueryId.computeIfAbsent(statementId, k -> new HashSet<>()).add(queryId);
 
       if (plan instanceof AuthorPlan) {
-        ((AuthorPlan) plan).setUserName(username);
+        ((AuthorPlan) plan).setLoginUserName(username);
       }
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);

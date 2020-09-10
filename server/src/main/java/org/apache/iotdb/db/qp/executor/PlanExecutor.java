@@ -1108,7 +1108,7 @@ public class PlanExecutor implements IPlanExecutor {
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
 
     boolean hasListRolePrivilege = AuthorityChecker
-        .check(plan.getUserName(), new ArrayList<>(), plan.getOperatorType(), plan.getUserName());
+        .check(plan.getLoginUserName(), new ArrayList<>(), plan.getOperatorType(), plan.getLoginUserName());
 
     if (!hasListRolePrivilege) {
       return dataSet;
@@ -1130,7 +1130,7 @@ public class PlanExecutor implements IPlanExecutor {
     paths.add(plan.getNodeName());
     // check if current user is granted list_user privilege
     boolean hasListUserPrivilege = AuthorityChecker
-        .check(plan.getUserName(), paths, plan.getOperatorType(), plan.getUserName());
+        .check(plan.getLoginUserName(), paths, plan.getOperatorType(), plan.getLoginUserName());
 
     List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
