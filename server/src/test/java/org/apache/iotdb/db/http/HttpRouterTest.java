@@ -15,6 +15,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.http.router.Router;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -200,9 +201,9 @@ public class HttpRouterTest {
     for(int i = 0; i < 6; i++) {
       timestamps.add(i);
       JSONArray value = new JSONArray();
-      value.add(i);
-      value.add(true);
-      value.add(i);
+      value.add(String.valueOf(i));
+      value.add("true");
+      value.add(String.valueOf(i));
       values.add(value);
     }
     insert.put("timestamps", timestamps);
@@ -231,6 +232,21 @@ public class HttpRouterTest {
     Assert.assertEquals(6, count);
   }
 
+  @Test
+  public void queryByHttp() throws Exception{
+    prepareData();
+    JSONObject query = new JSONObject();
+    query.put(HttpConstant.SELECT, measurements[1]);
+    query.put(HttpConstant.FROM, processorName);
+    JSONObject range = new JSONObject();
+    range.put(HttpConstant.START, "0");
+    range.put(HttpConstant.END, "6");
+    query.put(HttpConstant.RANGE, range);
+    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, "/user/login?username=root&password=root", null).toString());
+    Assert.assertEquals("[{\"timestamps\":1,\"value\":1.0},{\"timestamps\":2,\"value\":2.0},{\"timestamps\":3,\"value\":3.0},{\"timestamps\":4,\"value\":4.0},{\"timestamps\":5,\"value\":5.0}]"
+        , router.route(HttpMethod.POST, "/query", query).toString());
+  }
+
   private void prepareData() throws MetadataException, StorageEngineException {
     String test = "test";
     deviceMNode = new MNode(null, test);
@@ -255,5 +271,7 @@ public class HttpRouterTest {
     insertRowPlan.setDeviceMNode(deviceMNode);
     StorageEngine.getInstance().insert(insertRowPlan);
   }
+
+
 
 }

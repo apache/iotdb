@@ -27,14 +27,14 @@ public class QueryParser {
       timeLeft = parseTimeFormat(timeRange.left);
       binaryOp.addChildOperator(
           new BasicFunctionOperator(SQLConstant.GREATERTHAN,
-              new PartialPath(SQLConstant.RESERVED_TIME, false),
+              SQLConstant.TIME_PATH,
               String.valueOf(timeLeft)
           )
       );
     } else {
       binaryOp.addChildOperator(
           new BasicFunctionOperator(SQLConstant.GREATERTHAN,
-              new PartialPath(SQLConstant.RESERVED_TIME, false),
+              SQLConstant.TIME_PATH,
               timeRange.left
           )
       );
@@ -44,14 +44,14 @@ public class QueryParser {
       timeRight = parseTimeFormat(timeRange.right);
       binaryOp.addChildOperator(
           new BasicFunctionOperator(SQLConstant.LESSTHAN,
-              new PartialPath(SQLConstant.RESERVED_TIME, false),
+              SQLConstant.TIME_PATH,
               String.valueOf(timeRight)
           )
       );
     } else {
       binaryOp.addChildOperator(
           new BasicFunctionOperator(SQLConstant.LESSTHAN,
-              new PartialPath(SQLConstant.RESERVED_TIME, false),
+              SQLConstant.TIME_PATH,
               timeRange.right
           )
       );

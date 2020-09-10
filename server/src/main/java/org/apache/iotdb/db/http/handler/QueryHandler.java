@@ -37,6 +37,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.TException;
@@ -54,18 +55,20 @@ public class QueryHandler extends Handler{
     Pair<String, String> timeRange = new Pair<>((String)range.get(HttpConstant.START), (String)range.get(HttpConstant.END));
     QueryOperator queryOperator = QueryParser.generateOperator(suffixPath, prefixPath, timeRange);
     QueryPlan plan = (QueryPlan) processor.logicalPlanToPhysicalPlan(queryOperator);
-    if(AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
+    if(!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
       throw new AuthException(String.format("%s can't be queried by %s", prefixPath + TsFileConstant.PATH_SEPARATOR
           + suffixPath, username));
     }
     JSONArray result = new JSONArray();
     QueryDataSet dataSet = executor.processQuery(plan, new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
     while(dataSet.hasNext()) {
-      JSONArray row = new JSONArray();
-      for(Field field : dataSet.next().getFields()) {
-        row.add(field.getStringValue());
+      JSONObject datapoint = new JSONObject();
+      RowRecord rowRecord = dataSet.next();
+      for(Field field : rowRecord.getFields()) {
+        datapoint.put(HttpConstant.TIMESTAMPS, rowRecord.getTimestamp());
+        datapoint.put(HttpConstant.VALUE,field.getObjectValue(field.getDataType()));
       }
-      result.add(row);
+      result.add(datapoint);
     }
     return result;
   }
