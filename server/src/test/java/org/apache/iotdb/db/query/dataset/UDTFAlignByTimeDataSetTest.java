@@ -76,6 +76,12 @@ public class UDTFAlignByTimeDataSetTest {
       IoTDB.metaManager
           .createTimeseries("root.vehicle.d1.s2", TSDataType.FLOAT, TSEncoding.PLAIN,
               CompressionType.UNCOMPRESSED, null);
+      IoTDB.metaManager
+          .createTimeseries("root.vehicle.d2.s2", TSDataType.FLOAT, TSEncoding.PLAIN,
+              CompressionType.UNCOMPRESSED, null);
+      IoTDB.metaManager
+          .createTimeseries("root.vehicle.d2.s2", TSDataType.FLOAT, TSEncoding.PLAIN,
+              CompressionType.UNCOMPRESSED, null);
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -91,6 +97,8 @@ public class UDTFAlignByTimeDataSetTest {
           : i % 2 == 0
               ? String.format("insert into root.vehicle.d1(timestamp,s1) values(%d,%d)", i, i)
               : String.format("insert into root.vehicle.d1(timestamp,s2) values(%d,%d)", i, i)));
+      queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(
+          String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
     }
   }
 
@@ -159,7 +167,7 @@ public class UDTFAlignByTimeDataSetTest {
   @Test
   public void testHasNextAndNextWithoutValueFilter2() {
     try {
-      String sqlStr = "select udf(*, *) from root.vehicle";
+      String sqlStr = "select udf(*, *) from root.vehicle.d1";
       UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
       QueryDataSet dataSet = queryExecutor
           .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -181,7 +189,7 @@ public class UDTFAlignByTimeDataSetTest {
         for (int i = 0; i < 4; ++i) {
           Field field = fields.get(originalIndex2FieldIndex.get(i));
           if (!field.isNull()) {
-            assertEquals(count * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+            assertEquals(count * 2, field.getFloatV(), 0);
           }
         }
         ++count;
@@ -196,7 +204,7 @@ public class UDTFAlignByTimeDataSetTest {
   @Test
   public void testHasNextAndNextWithoutValueFilter3() {
     try {
-      String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle";
+      String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle.d1";
       UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
       QueryDataSet dataSet = queryExecutor
           .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -222,13 +230,13 @@ public class UDTFAlignByTimeDataSetTest {
           if (s1AndS2.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
             if (!field.isNull()) {
-              assertEquals(count * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+              assertEquals(count * 2, field.getFloatV(), 0);
             }
           }
           if (s1OrS2.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
             if (!field.isNull()) {
-              assertEquals(count, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+              assertEquals(count, field.getFloatV(), 0);
             }
           }
         }
@@ -245,7 +253,7 @@ public class UDTFAlignByTimeDataSetTest {
   public void testHasNextAndNextWithoutValueFilter4() {
     try {
       String sqlStr =
-          "select udf(*, *, \"addend\"=\"" + ADDEND + "\"), *, udf(*, *) from root.vehicle";
+          "select udf(*, *, \"addend\"=\"" + ADDEND + "\"), *, udf(*, *) from root.vehicle.d1";
       UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
       QueryDataSet dataSet = queryExecutor
           .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -272,26 +280,169 @@ public class UDTFAlignByTimeDataSetTest {
           if (s1AndS2WithAddend.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
             if (!field.isNull()) {
-              assertEquals(count * 2 + ADDEND,
-                  fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+              assertEquals(count * 2 + ADDEND, field.getFloatV(), 0);
             }
           }
           if (s1AndS2.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
             if (!field.isNull()) {
-              assertEquals(count * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+              assertEquals(count * 2, field.getFloatV(), 0);
             }
           }
           if (s1OrS2.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
             if (!field.isNull()) {
-              assertEquals(count, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+              assertEquals(count, field.getFloatV(), 0);
             }
           }
         }
         ++count;
       }
       assertEquals(ITERATION_TIMES, count);
+    } catch (StorageEngineException | QueryFilterOptimizationException | TException | MetadataException | QueryProcessException | SQLException | IOException | InterruptedException e) {
+      e.printStackTrace();
+      fail(e.toString());
+    }
+  }
+
+  @Test
+  public void testHasNextAndNextWithValueFilter1() {
+    try {
+      String sqlStr =
+          "select udf(d2.s2, d2.s1), udf(d2.s1, d2.s2), d2.s1, d2.s2, udf(d2.s1, d2.s2), udf(d2.s2, d2.s1), d2.s1, d2.s2 from root.vehicle"
+              + String.format(" where d2.s1 >= %d and d2.s2 < %d", (int) (0.25 * ITERATION_TIMES),
+              (int) (0.75 * ITERATION_TIMES));
+      UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+      QueryDataSet dataSet = queryExecutor
+          .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+      assertTrue(dataSet instanceof UDTFAlignByTimeDataSet);
+      UDTFAlignByTimeDataSet udtfAlignByTimeDataSet = (UDTFAlignByTimeDataSet) dataSet;
+
+      Set<Integer> s1s2 = new HashSet<>(Arrays.asList(0, 1, 4, 5));
+      Set<Integer> s1 = new HashSet<>(Arrays.asList(2, 6));
+      Set<Integer> s2 = new HashSet<>(Arrays.asList(3, 7));
+
+      Map<String, Integer> path2Index = queryPlan.getPathToIndex();
+      List<Integer> originalIndex2FieldIndex = new ArrayList<>();
+      for (int i = 0; i < 8; ++i) {
+        Path path = queryPlan.getPaths().get(i);
+        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
+        originalIndex2FieldIndex.add(path2Index.get(columnName));
+      }
+
+      int index = (int) (0.25 * ITERATION_TIMES);
+      while (udtfAlignByTimeDataSet.hasNext()) {
+        RowRecord rowRecord = udtfAlignByTimeDataSet.next();
+        List<Field> fields = rowRecord.getFields();
+        for (int i = 0; i < 8; ++i) {
+          if (s1s2.contains(i)) {
+            assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+          } else if (s1.contains(i)) {
+            assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+          } else if (s2.contains(i)) {
+            assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+          }
+        }
+        ++index;
+      }
+      assertEquals((int) (0.5 * ITERATION_TIMES), index - (int) (0.25 * ITERATION_TIMES));
+    } catch (StorageEngineException | QueryFilterOptimizationException | TException | MetadataException | QueryProcessException | SQLException | IOException | InterruptedException e) {
+      e.printStackTrace();
+      fail(e.toString());
+    }
+  }
+
+  @Test
+  public void testHasNextAndNextWithValueFilter2() {
+    try {
+      String sqlStr =
+          "select udf(d2.s2, d2.s1), udf(d2.s1, d2.s2), d2.s1, d2.s2, udf(d2.s1, d2.s2), udf(d2.s2, d2.s1), d2.s1, d2.s2 from root.vehicle"
+              + String.format(" where d2.s1 >= %d and d2.s2 < %d", (int) (0.25 * ITERATION_TIMES),
+              (int) (0.75 * ITERATION_TIMES));
+      UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+      QueryDataSet dataSet = queryExecutor
+          .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+      assertTrue(dataSet instanceof UDTFAlignByTimeDataSet);
+      UDTFAlignByTimeDataSet udtfAlignByTimeDataSet = (UDTFAlignByTimeDataSet) dataSet;
+
+      Set<Integer> s1s2 = new HashSet<>(Arrays.asList(0, 1, 4, 5));
+      Set<Integer> s1 = new HashSet<>(Arrays.asList(2, 6));
+      Set<Integer> s2 = new HashSet<>(Arrays.asList(3, 7));
+
+      Map<String, Integer> path2Index = queryPlan.getPathToIndex();
+      List<Integer> originalIndex2FieldIndex = new ArrayList<>();
+      for (int i = 0; i < 8; ++i) {
+        Path path = queryPlan.getPaths().get(i);
+        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
+        originalIndex2FieldIndex.add(path2Index.get(columnName));
+      }
+
+      int index = (int) (0.25 * ITERATION_TIMES);
+      while (udtfAlignByTimeDataSet.hasNext()) {
+        RowRecord rowRecord = udtfAlignByTimeDataSet.next();
+        List<Field> fields = rowRecord.getFields();
+        for (int i = 0; i < 8; ++i) {
+          if (s1s2.contains(i)) {
+            assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+          } else if (s1.contains(i)) {
+            assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+          } else if (s2.contains(i)) {
+            assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+          }
+        }
+        ++index;
+      }
+      assertEquals((int) (0.5 * ITERATION_TIMES), index - (int) (0.25 * ITERATION_TIMES));
+    } catch (StorageEngineException | QueryFilterOptimizationException | TException | MetadataException | QueryProcessException | SQLException | IOException | InterruptedException e) {
+      e.printStackTrace();
+      fail(e.toString());
+    }
+  }
+
+  @Test
+  public void testHasNextAndNextWithValueFilter3() {
+    try {
+      String sqlStr =
+          "select udf(*, *, \"addend\"=\"" + ADDEND + "\"), *, udf(*, *) from root.vehicle.d2"
+              + String.format(" where s1 >= %d and s2 < %d", (int) (0.25 * ITERATION_TIMES),
+              (int) (0.75 * ITERATION_TIMES));
+      UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+      QueryDataSet dataSet = queryExecutor
+          .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+      assertTrue(dataSet instanceof UDTFAlignByTimeDataSet);
+      UDTFAlignByTimeDataSet udtfAlignByTimeDataSet = (UDTFAlignByTimeDataSet) dataSet;
+
+      Map<String, Integer> path2Index = queryPlan.getPathToIndex();
+      List<Integer> originalIndex2FieldIndex = new ArrayList<>();
+      for (int i = 0; i < 10; ++i) {
+        Path path = queryPlan.getPaths().get(i);
+        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
+        originalIndex2FieldIndex.add(path2Index.get(columnName));
+      }
+
+      Set<Integer> s1AndS2WithAddend = new HashSet<>(Arrays.asList(0, 1, 2, 3));
+      Set<Integer> s1AndS2 = new HashSet<>(Arrays.asList(6, 7, 8, 9));
+      Set<Integer> s1OrS2 = new HashSet<>(Arrays.asList(4, 5));
+
+      int index = (int) (0.25 * ITERATION_TIMES);
+      while (udtfAlignByTimeDataSet.hasNext()) {
+        RowRecord rowRecord = udtfAlignByTimeDataSet.next();
+        List<Field> fields = rowRecord.getFields();
+        for (int i = 0; i < 10; ++i) {
+          if (s1AndS2WithAddend.contains(i)) {
+            assertEquals(index * 2 + ADDEND,
+                fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+          }
+          if (s1AndS2.contains(i)) {
+            assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+          }
+          if (s1OrS2.contains(i)) {
+            assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+          }
+        }
+        ++index;
+      }
+      assertEquals((int) (0.5 * ITERATION_TIMES), index - (int) (0.25 * ITERATION_TIMES));
     } catch (StorageEngineException | QueryFilterOptimizationException | TException | MetadataException | QueryProcessException | SQLException | IOException | InterruptedException e) {
       e.printStackTrace();
       fail(e.toString());
