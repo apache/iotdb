@@ -1145,7 +1145,7 @@ public class MetaGroupMember extends RaftMember {
       }
     } else {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
-      getAsyncThreadPool().submit(() -> {
+      getSerialToParallelPool().submit(() -> {
         try {
           handler.onComplete(client.appendEntry(request));
         } catch (TException e) {

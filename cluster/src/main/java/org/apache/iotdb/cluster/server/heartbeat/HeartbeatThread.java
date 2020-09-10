@@ -198,7 +198,7 @@ public class HeartbeatThread implements Runnable {
       req.setPartitionTableBytesIsSet(true);
     }
     if (client != null) {
-      localMember.getAsyncThreadPool().submit(() -> {
+      localMember.getSerialToParallelPool().submit(() -> {
         try {
           logger.debug("{}: Sending heartbeat to {}", memberName, node);
           HeartBeatResponse heartBeatResponse = client.sendHeartbeat(req);
@@ -351,7 +351,7 @@ public class HeartbeatThread implements Runnable {
     Client client = localMember.getSyncHeartbeatClient(node);
     if (client != null) {
       logger.info("{}: Requesting a vote from {}", memberName, node);
-      localMember.getAsyncThreadPool().submit(() -> {
+      localMember.getSerialToParallelPool().submit(() -> {
         try {
           long result = client.startElection(request);
           handler.onComplete(result);
