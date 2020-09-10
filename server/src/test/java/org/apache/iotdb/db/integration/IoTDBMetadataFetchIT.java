@@ -215,7 +215,7 @@ public class IoTDBMetadataFetchIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       String[] sqls = new String[]{"show devices root.ln"};
-      String[] standards = new String[]{"root.ln.wf01.wt01,\n"+"root.ln.wf01.wt01.status,\n"};
+      String[] standards = new String[]{"root.ln.wf01.wt01,\n" + "root.ln.wf01.wt01.status,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
