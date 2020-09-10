@@ -57,6 +57,8 @@ public class UDTFAlignByTimeDataSetTest {
 
   protected final static int ITERATION_TIMES = 10_000;
 
+  protected final static int ADDEND = 500_000;
+
   private final IPlanExecutor queryExecutor = new PlanExecutor();
   private final Planner processor = new Planner();
 
@@ -99,7 +101,7 @@ public class UDTFAlignByTimeDataSetTest {
   }
 
   @Test
-  public void testHasNextAndNext1() {
+  public void testHasNextAndNextWithoutValueFilter1() {
     try {
       String sqlStr = "select udf(d1.s2, d1.s1), udf(d1.s1, d1.s2), d1.s1, d1.s2, udf(d1.s1, d1.s2), udf(d1.s2, d1.s1), d1.s1, d1.s2 from root.vehicle";
       UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
@@ -155,7 +157,7 @@ public class UDTFAlignByTimeDataSetTest {
   }
 
   @Test
-  public void testHasNextAndNext2() {
+  public void testHasNextAndNextWithoutValueFilter2() {
     try {
       String sqlStr = "select udf(*, *) from root.vehicle";
       UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
@@ -192,7 +194,7 @@ public class UDTFAlignByTimeDataSetTest {
   }
 
   @Test
-  public void testHasNextAndNext3() {
+  public void testHasNextAndNextWithoutValueFilter3() {
     try {
       String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle";
       UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
@@ -217,6 +219,63 @@ public class UDTFAlignByTimeDataSetTest {
         RowRecord rowRecord = udtfAlignByTimeDataSet.next();
         List<Field> fields = rowRecord.getFields();
         for (int i = 0; i < 14; ++i) {
+          if (s1AndS2.contains(i)) {
+            Field field = fields.get(originalIndex2FieldIndex.get(i));
+            if (!field.isNull()) {
+              assertEquals(count * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+            }
+          }
+          if (s1OrS2.contains(i)) {
+            Field field = fields.get(originalIndex2FieldIndex.get(i));
+            if (!field.isNull()) {
+              assertEquals(count, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+            }
+          }
+        }
+        ++count;
+      }
+      assertEquals(ITERATION_TIMES, count);
+    } catch (StorageEngineException | QueryFilterOptimizationException | TException | MetadataException | QueryProcessException | SQLException | IOException | InterruptedException e) {
+      e.printStackTrace();
+      fail(e.toString());
+    }
+  }
+
+  @Test
+  public void testHasNextAndNextWithoutValueFilter4() {
+    try {
+      String sqlStr =
+          "select udf(*, *, \"addend\"=\"" + ADDEND + "\"), *, udf(*, *) from root.vehicle";
+      UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+      QueryDataSet dataSet = queryExecutor
+          .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+      assertTrue(dataSet instanceof UDTFAlignByTimeDataSet);
+      UDTFAlignByTimeDataSet udtfAlignByTimeDataSet = (UDTFAlignByTimeDataSet) dataSet;
+
+      Map<String, Integer> path2Index = queryPlan.getPathToIndex();
+      List<Integer> originalIndex2FieldIndex = new ArrayList<>();
+      for (int i = 0; i < 10; ++i) {
+        Path path = queryPlan.getPaths().get(i);
+        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
+        originalIndex2FieldIndex.add(path2Index.get(columnName));
+      }
+
+      Set<Integer> s1AndS2WithAddend = new HashSet<>(Arrays.asList(0, 1, 2, 3));
+      Set<Integer> s1AndS2 = new HashSet<>(Arrays.asList(6, 7, 8, 9));
+      Set<Integer> s1OrS2 = new HashSet<>(Arrays.asList(4, 5));
+
+      int count = 0;
+      while (udtfAlignByTimeDataSet.hasNext()) {
+        RowRecord rowRecord = udtfAlignByTimeDataSet.next();
+        List<Field> fields = rowRecord.getFields();
+        for (int i = 0; i < 10; ++i) {
+          if (s1AndS2WithAddend.contains(i)) {
+            Field field = fields.get(originalIndex2FieldIndex.get(i));
+            if (!field.isNull()) {
+              assertEquals(count * 2 + ADDEND,
+                  fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+            }
+          }
           if (s1AndS2.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
             if (!field.isNull()) {
