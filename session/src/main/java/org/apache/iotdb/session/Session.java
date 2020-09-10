@@ -151,9 +151,11 @@ public class Session {
     try {
       metaSessionConnection.setStorageGroup(storageGroup);
     } catch (RedirectException e) {
-      logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
-      metaSessionConnection = new SessionConnection(this, e.getEndPoint());
-      endPointToSessionConnection.putIfAbsent(e.getEndPoint(), metaSessionConnection);
+      if (Config.DEFAULT_CACHE_LEADER_MODE) {
+        logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
+        metaSessionConnection = new SessionConnection(this, e.getEndPoint());
+        endPointToSessionConnection.putIfAbsent(e.getEndPoint(), metaSessionConnection);
+      }
     }
   }
 
@@ -164,9 +166,11 @@ public class Session {
         add(storageGroup);
       }});
     } catch (RedirectException e) {
-      logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
-      metaSessionConnection = new SessionConnection(this, e.getEndPoint());
-      endPointToSessionConnection.putIfAbsent(e.getEndPoint(), metaSessionConnection);
+      if (Config.DEFAULT_CACHE_LEADER_MODE) {
+        logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
+        metaSessionConnection = new SessionConnection(this, e.getEndPoint());
+        endPointToSessionConnection.putIfAbsent(e.getEndPoint(), metaSessionConnection);
+      }
     }
   }
 
@@ -175,9 +179,11 @@ public class Session {
     try {
       metaSessionConnection.deleteStorageGroups(storageGroups);
     } catch (RedirectException e) {
-      logger.debug(e.getMessage());
-      metaSessionConnection = new SessionConnection(this, e.getEndPoint());
-      endPointToSessionConnection.putIfAbsent(e.getEndPoint(), metaSessionConnection);
+      if (Config.DEFAULT_CACHE_LEADER_MODE) {
+        logger.debug(e.getMessage());
+        metaSessionConnection = new SessionConnection(this, e.getEndPoint());
+        endPointToSessionConnection.putIfAbsent(e.getEndPoint(), metaSessionConnection);
+      }
     }
   }
 
@@ -331,10 +337,12 @@ public class Session {
         defaultSessionConnection.insertRecord(request);
       }
     } catch (RedirectException e) {
-      logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
-      deviceIdToEndpoint.put(deviceId, e.getEndPoint());
-      endPointToSessionConnection
-          .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+      if (Config.DEFAULT_CACHE_LEADER_MODE) {
+        logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
+        deviceIdToEndpoint.put(deviceId, e.getEndPoint());
+        endPointToSessionConnection
+            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+      }
     }
   }
 
@@ -358,10 +366,12 @@ public class Session {
         defaultSessionConnection.insertRecord(request);
       }
     } catch (RedirectException e) {
-      logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
-      deviceIdToEndpoint.put(deviceId, e.getEndPoint());
-      endPointToSessionConnection
-          .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+      if (Config.DEFAULT_CACHE_LEADER_MODE) {
+        logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
+        deviceIdToEndpoint.put(deviceId, e.getEndPoint());
+        endPointToSessionConnection
+            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+      }
     }
   }
 
@@ -399,10 +409,12 @@ public class Session {
         defaultSessionConnection.insertRecord(request);
       }
     } catch (RedirectException e) {
-      logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
-      deviceIdToEndpoint.put(deviceId, e.getEndPoint());
-      endPointToSessionConnection
-          .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+      if (Config.DEFAULT_CACHE_LEADER_MODE) {
+        logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
+        deviceIdToEndpoint.put(deviceId, e.getEndPoint());
+        endPointToSessionConnection
+            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+      }
     }
   }
 
@@ -442,6 +454,7 @@ public class Session {
             measurementsList.get(i), valuesList.get(i));
       }
       EndPoint endPoint;
+      //TODO parallel
       for (Entry<String, TSInsertStringRecordsReq> entry : deviceGroup.entrySet()) {
         try {
           if ((endPoint = deviceIdToEndpoint.get(entry.getKey())) != null) {
@@ -513,6 +526,7 @@ public class Session {
             measurementsList.get(i), typesList.get(i), valuesList.get(i));
       }
       EndPoint endPoint;
+      //TODO parallel
       for (Entry<String, TSInsertRecordsReq> entry : deviceGroup.entrySet()) {
         try {
           if ((endPoint = deviceIdToEndpoint.get(entry.getKey())) != null) {
@@ -587,10 +601,12 @@ public class Session {
         defaultSessionConnection.insertTablet(request);
       }
     } catch (RedirectException e) {
-      logger.debug("DeviceId[{}]:{}", tablet.deviceId, e.getMessage());
-      deviceIdToEndpoint.put(tablet.deviceId, e.getEndPoint());
-      endPointToSessionConnection
-          .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+      if (Config.DEFAULT_CACHE_LEADER_MODE) {
+        logger.debug("DeviceId[{}]:{}", tablet.deviceId, e.getMessage());
+        deviceIdToEndpoint.put(tablet.deviceId, e.getEndPoint());
+        endPointToSessionConnection
+            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+      }
     }
   }
 
@@ -672,6 +688,7 @@ public class Session {
         updateTSInsertTabletsReq(request, entry.getValue(), sorted);
       }
       EndPoint endPoint;
+      //TODO parallel
       for (Entry<String, TSInsertTabletsReq> entry : tabletGroup.entrySet()) {
         try {
           if ((endPoint = deviceIdToEndpoint.get(entry.getKey())) != null) {
