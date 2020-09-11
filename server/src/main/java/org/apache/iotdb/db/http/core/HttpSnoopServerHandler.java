@@ -62,6 +62,7 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
         status = OK;
       } catch (Exception e) {
         result = new JSONObject();
+        ((JSONObject) result).put(HttpConstant.ERROR_CLASS, e.getClass());
         ((JSONObject) result).put(HttpConstant.ERROR, e.getMessage());
         status = INTERNAL_SERVER_ERROR;
       }

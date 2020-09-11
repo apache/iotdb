@@ -36,6 +36,9 @@ public class UsersHandler extends Handler{
   }
 
   public boolean userLogout(Map<String, List<String>> p) throws AuthException {
+    if(username == null) {
+      throw new AuthException("you have already logout");
+    }
     List<String> usernameList = p.get(HttpConstant.USERNAME);
     if(!usernameList.get(0).equals(username)) {
       throw new AuthException("wrong username");

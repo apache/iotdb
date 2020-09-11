@@ -60,4 +60,5 @@ public class HttpConstant {
   public static final String START = "start";
   public static final String END = "end";
   public static final String ERROR = "error";
+  public static final String ERROR_CLASS = "errorClass";
 }
