@@ -38,10 +38,12 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -73,12 +75,20 @@ public class EnvironmentUtils {
   private static IoTDB daemon;
 
   public static void cleanEnv() throws IOException, StorageEngineException {
+    // deregister all UDFs
+    try {
+      UDFRegistrationService.getInstance().deregisterAll();
+    } catch (UDFRegistrationException e) {
+      fail(e.toString());
+    }
+
     logger.warn("EnvironmentUtil cleanEnv...");
     if (daemon != null) {
       daemon.stop();
       daemon = null;
     }
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
+
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
@@ -103,11 +113,11 @@ public class EnvironmentUtils {
     }
     //try jmx connection
     try {
-    JMXServiceURL url =
-        new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
-    JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
+      JMXServiceURL url =
+          new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
+      JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
       logger.error("stop JMX failed. 31999 can be connected now.");
-    jmxConnector.close();
+      jmxConnector.close();
     } catch (IOException e) {
       //do nothing
     }
@@ -128,7 +138,6 @@ public class EnvironmentUtils {
     }
 
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
-
 
     // clean cache
     if (config.isMetaDataCacheEnable()) {
@@ -210,19 +219,19 @@ public class EnvironmentUtils {
   }
 
   public static void stopDaemon() {
-    if(daemon != null) {
+    if (daemon != null) {
       daemon.stop();
     }
   }
 
   public static void shutdownDaemon() throws Exception {
-    if(daemon != null) {
+    if (daemon != null) {
       daemon.shutdown();
     }
   }
 
   public static void activeDaemon() {
-    if(daemon != null) {
+    if (daemon != null) {
       daemon.active();
     }
   }

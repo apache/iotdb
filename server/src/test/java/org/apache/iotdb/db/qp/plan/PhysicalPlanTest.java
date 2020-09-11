@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Set;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -102,9 +103,8 @@ public class PhysicalPlanTest {
   }
 
   @After
-  public void clean() throws IOException {
-    IoTDB.metaManager.clear();
-    EnvironmentUtils.cleanAllDir();
+  public void clean() throws IOException, StorageEngineException {
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test

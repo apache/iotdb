@@ -38,6 +38,7 @@ import org.apache.iotdb.db.query.udf.api.UDF;
 import org.apache.iotdb.db.query.udf.core.UDFContext;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -180,7 +181,7 @@ public class UDFRegistrationService implements IService {
   }
 
   public UDFRegistrationInformation[] getRegistrationInformation() {
-    return (UDFRegistrationInformation[]) registrationInformation.values().toArray();
+    return registrationInformation.values().toArray(new UDFRegistrationInformation[0]);
   }
 
   @Override
@@ -256,6 +257,13 @@ public class UDFRegistrationService implements IService {
       logWriter.register(information.getFunctionName(), information.getClassName());
     }
     logWriter.close();
+  }
+
+  @TestOnly
+  public void deregisterAll() throws UDFRegistrationException {
+    for (UDFRegistrationInformation information : getRegistrationInformation()) {
+      deregister(information.getFunctionName());
+    }
   }
 
   @Override

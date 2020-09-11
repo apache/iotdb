@@ -68,23 +68,15 @@ public class UDTFAlignByTimeDataSetTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    try {
-      IoTDB.metaManager.setStorageGroup("root.vehicle");
-      IoTDB.metaManager
-          .createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-              CompressionType.UNCOMPRESSED, null);
-      IoTDB.metaManager
-          .createTimeseries("root.vehicle.d1.s2", TSDataType.FLOAT, TSEncoding.PLAIN,
-              CompressionType.UNCOMPRESSED, null);
-      IoTDB.metaManager
-          .createTimeseries("root.vehicle.d2.s2", TSDataType.FLOAT, TSEncoding.PLAIN,
-              CompressionType.UNCOMPRESSED, null);
-      IoTDB.metaManager
-          .createTimeseries("root.vehicle.d2.s2", TSDataType.FLOAT, TSEncoding.PLAIN,
-              CompressionType.UNCOMPRESSED, null);
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
+    IoTDB.metaManager.setStorageGroup("root.vehicle");
+    IoTDB.metaManager.createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager.createTimeseries("root.vehicle.d1.s2", TSDataType.FLOAT, TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager.createTimeseries("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager.createTimeseries("root.vehicle.d2.s2", TSDataType.FLOAT, TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED, null);
     generateData();
     queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(String
         .format("create function udf as \"%s\"", "org.apache.iotdb.db.query.udf.example.Adder")));
@@ -104,7 +96,6 @@ public class UDTFAlignByTimeDataSetTest {
 
   @After
   public void tearDown() throws Exception {
-    queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan("drop function udf"));
     EnvironmentUtils.cleanEnv();
   }
 
