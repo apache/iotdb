@@ -392,10 +392,10 @@ public class IoTDBRpcDataSet {
     switch (tsDataType) {
       case BOOLEAN:
         boolean result = BytesUtils.bytesToBool(values[index]);
-        if (Config.boolFormat== Config.Constant.BOOLEAN){
+        if (Config.boolFormat == Config.Constant.BOOLEAN) {
           return String.valueOf(result);
-        }else{
-          return String.valueOf(result?1:0);
+        } else {
+          return String.valueOf(result ? 1 : 0);
         }
       case INT32:
         return String.valueOf(BytesUtils.bytesToInt(values[index]));
