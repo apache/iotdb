@@ -148,7 +148,7 @@ The execution result of this SQL statement is as follows:
 
 
 #### Order By Time Query
-IoTDB supports the 'order by time' statement after 0.10.x, it's used to display results in descending order by time.
+IoTDB supports the 'order by time' statement since 0.11, it's used to display results in descending order by time.
 For example, the SQL statement is:
 
 ```sql
