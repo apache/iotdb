@@ -220,6 +220,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
   }
 
 
+  // implements methods of StatMonitorMean from here
   @Override
   public long getGlobalTotalPointsNum() {
     List<PartialPath> monitorSeries = monitorSeriesMap
@@ -276,6 +277,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
   public boolean getWriteAheadLogStatus() {
     return config.isEnableWal();
   }
+
+  @Override
+  public boolean getEnableStatMonitor() { return config.isEnableStatMonitor(); }
 
   @Override
   public void start() throws StartupException {

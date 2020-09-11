@@ -33,5 +33,7 @@ public interface StatMonitorMBean {
   long getDataSizeInByte();
 
   boolean getWriteAheadLogStatus();
+
+  boolean getEnableStatMonitor();
 }
 
