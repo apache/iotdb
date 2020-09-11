@@ -41,7 +41,7 @@ Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.excepti
 
 ## Show Storage Group
 
-After the storage group is created, we can use the [SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md) statement and [SHOW STORAGE GROUP <PrefixPath>](../Operation%20Manual/SQL%20Reference.md) to view the storage groups. The SQL statement is as follows:
+After the storage group is created, we can use the [SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md) statement and [SHOW STORAGE GROUP \<PrefixPath>](../Operation%20Manual/SQL%20Reference.md) to view the storage groups. The SQL statement is as follows:
 
 ```
 IoTDB> show storage group
