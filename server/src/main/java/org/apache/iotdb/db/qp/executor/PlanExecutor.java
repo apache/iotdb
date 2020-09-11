@@ -679,8 +679,8 @@ public class PlanExecutor implements IPlanExecutor {
         continue;
       }
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
-      rowRecord.addField(info.getFunctionName(), TSDataType.TEXT);
-      rowRecord.addField(info.getClassName(), TSDataType.TEXT);
+      rowRecord.addField(Binary.valueOf(info.getFunctionName()), TSDataType.TEXT);
+      rowRecord.addField(Binary.valueOf(info.getClassName()), TSDataType.TEXT);
       rowRecord.addField(info.isTemporary(), TSDataType.BOOLEAN);
       listDataSet.putRecord(rowRecord);
     }
