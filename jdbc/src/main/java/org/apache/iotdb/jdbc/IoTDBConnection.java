@@ -77,7 +77,7 @@ public class IoTDBConnection implements Connection {
     params = Utils.parseUrl(url, info);
 
     String boolFormat = params.getParams().get(org.apache.iotdb.jdbc.Config.PARAMS_BOOL_FORMAT);
-    if (Config.Constant.NUMBER.getType().equals(boolFormat)){
+    if (Config.Constant.NUMBER.getType().equals(boolFormat)) {
       Config.setBoolFormat(Config.Constant.NUMBER);
     }
     openTransport();
