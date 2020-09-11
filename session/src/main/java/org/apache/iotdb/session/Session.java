@@ -86,11 +86,11 @@ public class Session {
     this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, params);
   }
 
-  public Session(String host, String port, String username, String password) {
-    this(host, Integer.parseInt(port), username, password);
+  public Session(String host, String rpcPort, String username, String password) {
+    this(host, Integer.parseInt(rpcPort), username, password);
   }
-  public Session(String host, String port, String username, String password, Map<String,String> params) {
-    this(host, Integer.parseInt(port), username, password, params);
+  public Session(String host, String rpcPort, String username, String password, Map<String,String> params) {
+    this(host, Integer.parseInt(rpcPort), username, password, params);
   }
 
   public Session(String host, int port, String username, String password) {
