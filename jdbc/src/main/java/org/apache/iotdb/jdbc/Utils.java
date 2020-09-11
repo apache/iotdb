@@ -52,7 +52,7 @@ public class Utils {
         int separationIndex = subURL.indexOf(PARAMS_SEPARATION);
         String[] parameters = subURL.substring(separationIndex+1).split(PARAMS_JOIN);
         subURL = subURL.substring(0, separationIndex);
-        for (int i=0; i<parameters.length; i++){
+        for (int i = 0; i < parameters.length; i++) {
           String[] kv = parameters[i].split(PARAMS_ASSIGNMENT);
           if (kv.length<2){
             continue;
