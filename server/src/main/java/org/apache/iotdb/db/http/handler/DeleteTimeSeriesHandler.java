@@ -9,21 +9,27 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.service.IoTDB;
 
 public class DeleteTimeSeriesHandler extends Handler {
   public JSON handle(Object json)
       throws QueryProcessException, StorageEngineException, StorageGroupNotSetException,
-      AuthException, IllegalPathException {
+      AuthException, IllegalPathException, PathNotExistException {
     JSONArray jsonArray = (JSONArray) json;
     List<PartialPath> timeSeries = new ArrayList<>();
     for(Object object : jsonArray) {
-      String storageGroup = (String) object;
-      timeSeries.add(new PartialPath(storageGroup));
+      String path = (String) object;
+      PartialPath partialPath = new PartialPath(path);
+      if(!IoTDB.metaManager.isPathExist(partialPath)) {
+        throw new PathNotExistException(partialPath.toString());
+      }
+      timeSeries.add(partialPath);
     }
     DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(timeSeries);
     if(!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
