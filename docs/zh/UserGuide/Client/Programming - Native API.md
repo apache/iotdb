@@ -50,9 +50,9 @@
 * 初始化Session
 
   ```
-  ​Session(String host, int port)
-  ​Session(String host, String port, String username, String password)
-  ​Session(String host, int port, String username, String password)
+  ​Session(String host, int rpcPort)
+  ​Session(String host, String rpcPort, String username, String password)
+  ​Session(String host, int rpcPort, String username, String password)
   ```
   
 * 开启Session
