@@ -57,7 +57,7 @@ public class Utils {
           if (kv.length < 2) {
             continue;
           }
-          paramKV.put(kv[0],kv[1]);
+          paramKV.put(kv[0], kv[1]);
         }
       }
       params.setParams(paramKV);
