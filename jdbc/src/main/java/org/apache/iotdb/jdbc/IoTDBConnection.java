@@ -490,18 +490,12 @@ public class IoTDBConnection implements Connection {
     return flag;
   }
 
-  public String getTimeZone() throws TException, IoTDBSQLException {
+  public String getTimeZone() {
     if (zoneId != null) {
       return zoneId.toString();
     }
-
-    TSGetTimeZoneResp resp = getClient().getTimeZone(sessionId);
-    try {
-      RpcUtils.verifySuccess(resp.getStatus());
-    } catch (StatementExecutionException e) {
-      throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-    }
-    return resp.getTimeZone();
+    zoneId = ZoneId.systemDefault();
+    return zoneId.toString();
   }
 
   public void setTimeZone(String zoneId) throws TException, IoTDBSQLException {
