@@ -33,22 +33,20 @@ public abstract class AbstractScript {
     Process p = builder.start();
     BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
     String line;
-    List<String> outputList = new ArrayList<>();
+    List<String> actualOutput = new ArrayList<>();
     while (true) {
       line = r.readLine();
       if (line == null) {
         break;
       } else {
-        outputList.add(line);
+        actualOutput.add(line);
       }
     }
     r.close();
     p.destroy();
 
     for (int i = 0; i < output.length; i++) {
-      System.out.println("output:" + output[i]);
-      System.out.println("outputList:" + outputList.get(i));
-      assertTrue(outputList.get(i).startsWith(output[i]));
+      assertTrue(actualOutput.get(i).startsWith(output[i]));
     }
   }
 

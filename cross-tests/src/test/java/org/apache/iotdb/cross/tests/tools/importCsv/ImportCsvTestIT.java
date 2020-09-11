@@ -25,12 +25,16 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+
+import static org.junit.Assert.assertTrue;
 
 public class ImportCsvTestIT extends AbstractScript {
 
@@ -76,11 +80,39 @@ public class ImportCsvTestIT extends AbstractScript {
   @Test
   public void test() throws IOException {
     String os = System.getProperty("os.name").toLowerCase();
+    assertTrue(generateTestCSV());
     if (os.startsWith("windows")) {
       testOnWindows();
     } else {
       testOnUnix();
     }
+    File file = new File("test.csv");
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+
+  private boolean generateTestCSV() {
+    String[] csvText = {
+      "Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1",
+      "1,100,'hello',200,300,400",
+      "2,500,'world',600,700,800",
+      "3,900,'IoTDB',1000,1100,1200"};
+    BufferedWriter writer;
+    try {
+      writer = new BufferedWriter(new FileWriter("test.csv"));
+      writer.write("");
+      for (String s : csvText) {
+        writer.write(s);
+        writer.newLine();
+      }
+      writer.flush();
+      writer.close();
+      return true;
+    } catch (IOException e) {
+      System.out.println("failed to create test csv");
+    }
+    return false;
   }
 
   @Override
@@ -98,7 +130,7 @@ public class ImportCsvTestIT extends AbstractScript {
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
         dir + File.separator + "tools" + File.separator + "import-csv.bat",
         "-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-f",
-        this.getClass().getClassLoader().getResource("test.csv").getFile());
+       "test.csv");
     testOutput(builder, output);
   }
 
@@ -117,7 +149,7 @@ public class ImportCsvTestIT extends AbstractScript {
     ProcessBuilder builder = new ProcessBuilder("sh",
         dir + File.separator + "tools" + File.separator + "import-csv.sh",
         "-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-f",
-        this.getClass().getClassLoader().getResource("test.csv").getFile());
+        "test.csv");
     testOutput(builder, output);
   }
 }

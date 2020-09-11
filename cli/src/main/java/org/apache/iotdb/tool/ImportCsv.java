@@ -388,6 +388,12 @@ public class ImportCsv extends AbstractCsvTool {
         continue;
       }
       if (timeseriesToType.get(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
+        /**
+         * like csv line 1,100,'hello',200,300,400, we will read the third field as 'hello',
+         * so, if we add '', the field will be ''hello'', and IoTDB will be failed
+         * to insert the field.
+         * Now, if we meet the string which is enclosed in quotation marks, we should not add ''
+         */
         if ((data[colIndex.get(j) + 1].startsWith("'") && data[colIndex.get(j) + 1].endsWith("'")) ||
                 (data[colIndex.get(j) + 1].startsWith("\"") && data[colIndex.get(j) + 1].endsWith("\""))) {
           sbd.append(",").append(data[colIndex.get(j) + 1]);
