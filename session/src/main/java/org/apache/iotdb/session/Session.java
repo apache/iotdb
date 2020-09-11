@@ -66,13 +66,14 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 public class Session {
 
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
   private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
   private String host;
-  private int port;
+  private int rpcPort;
   private String username;
   private String password;
   private TSIService.Iface client = null;
@@ -83,25 +84,25 @@ public class Session {
   private long statementId;
   private int fetchSize;
 
-  public Session(String host, int port) {
-    this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
+  public Session(String host, int rpcPort) {
+    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
   }
 
-  public Session(String host, String port, String username, String password) {
-    this(host, Integer.parseInt(port), username, password);
+  public Session(String host, String rpcPort, String username, String password) {
+    this(host, Integer.parseInt(rpcPort), username, password);
   }
 
-  public Session(String host, int port, String username, String password) {
+  public Session(String host, int rpcPort, String username, String password) {
     this.host = host;
-    this.port = port;
+    this.rpcPort = rpcPort;
     this.username = username;
     this.password = password;
     this.fetchSize = Config.DEFAULT_FETCH_SIZE;
   }
 
-  public Session(String host, int port, String username, String password, int fetchSize) {
+  public Session(String host, int rpcPort, String username, String password, int fetchSize) {
     this.host = host;
-    this.port = port;
+    this.rpcPort = rpcPort;
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -121,7 +122,7 @@ public class Session {
       return;
     }
 
-    transport = new TFastFramedTransport(new TSocket(host, port, connectionTimeoutInMs));
+    transport = new TFastFramedTransport(new TSocket(host, rpcPort, connectionTimeoutInMs));
 
     if (!transport.isOpen()) {
       try {
@@ -927,6 +928,36 @@ public class Session {
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
+  }
+
+  /**
+   * query eg. select * from paths where time >= startTime and time < endTime
+   * time interval include startTime and exclude endTime
+   * @param paths
+   * @param startTime included
+   * @param endTime excluded
+   * @return
+   * @throws StatementExecutionException
+   * @throws IoTDBConnectionException
+   */
+
+  public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSRawDataQueryReq execReq = new TSRawDataQueryReq(sessionId, paths, startTime, endTime);
+    execReq.setFetchSize(fetchSize);
+
+    TSExecuteStatementResp execResp;
+    try {
+      execResp = client.executeRawDataQuery(execReq);
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return new SessionDataSet("", execResp.getColumns(), execResp.getDataTypeList(),
+        execResp.columnNameIndexMap,
+        execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
+        execResp.isIgnoreTimeStamp());
   }
 
   /**

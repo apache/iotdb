@@ -632,7 +632,7 @@ For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result 
 As statement assigns an alias to time seires queried in SELECT statement
 
 ```
-You can use as statement in all query type.
+You can use as statement in all queries, but some rules are restricted about wildcard.
 
 1. Raw data query
 select s1 as speed, s2 as temperature from root.sg.d1
@@ -652,7 +652,7 @@ select s1 as speed, s2 as temperature from root.sg.d1 align by device
 
 select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg.d2 align by device
 
-5. Last query
+5. Last Record query
 select last s1 as speed, s2 from root.sg.d1
 
 Rules：

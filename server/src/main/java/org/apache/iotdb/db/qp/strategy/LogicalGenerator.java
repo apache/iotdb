@@ -71,6 +71,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
@@ -83,6 +84,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AsElementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountDevicesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountNodesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
@@ -221,6 +223,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   @Override
+  public void enterCountDevices(CountDevicesContext ctx) {
+    super.enterCountDevices(ctx);
+    PrefixPathContext pathContext = ctx.prefixPath();
+    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext) : new PartialPath(SQLConstant.getSingleRootArray()));
+    initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_DEVICES, path);
+  }
+
+  @Override
   public void enterFlush(FlushContext ctx) {
     super.enterFlush(ctx);
     FlushOperator flushOperator = new FlushOperator(SQLConstant.TOK_FLUSH);
@@ -302,7 +312,13 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterShowStorageGroup(ShowStorageGroupContext ctx) {
     super.enterShowStorageGroup(ctx);
-    initializedOperator = new ShowOperator(SQLConstant.TOK_STORAGE_GROUP);
+    if (ctx.prefixPath() != null) {
+      initializedOperator = new ShowStorageGroupOperator(SQLConstant.TOK_STORAGE_GROUP,
+          parsePrefixPath(ctx.prefixPath()));
+    } else {
+      initializedOperator = new ShowStorageGroupOperator(SQLConstant.TOK_STORAGE_GROUP,
+          new PartialPath(SQLConstant.getSingleRootArray()));
+    }
   }
 
   @Override

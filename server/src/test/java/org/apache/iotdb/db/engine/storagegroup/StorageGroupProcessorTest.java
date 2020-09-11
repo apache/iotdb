@@ -26,15 +26,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -71,6 +71,8 @@ public class StorageGroupProcessorTest {
 
   @Before
   public void setUp() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig()
+        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
@@ -87,6 +89,8 @@ public class StorageGroupProcessorTest {
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     MergeManager.getINSTANCE().stop();
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig()
+        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
   }
 
   private void insertToStorageGroupProcessor(TSRecord record)
@@ -122,17 +126,11 @@ public class StorageGroupProcessorTest {
 
     processor.delete(new PartialPath(deviceId), measurementId, 0, 15L);
 
-    List<TsFileResource> unLockList = new ArrayList<>();
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
       tsfileProcessor
           .query(deviceId, measurementId, TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
               new QueryContext(), tsfileResourcesForQuery);
-      unLockList.add(tsfileProcessor.getTsFileResource());
-      for (List<TsFileResource> subTsFileResources : tsfileProcessor.getVmTsFileResources()) {
-        unLockList.addAll(subTsFileResources);
-      }
-      break;
     }
 
     Assert.assertEquals(1, tsfileResourcesForQuery.size());
@@ -146,8 +144,6 @@ public class StorageGroupProcessorTest {
         Assert.assertEquals(time++, timeValuePair.getTimestamp());
       }
     }
-
-    unLockList.forEach(TsFileResource::readUnlock);
   }
 
   @Test
@@ -160,10 +156,14 @@ public class StorageGroupProcessorTest {
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
 
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     processor.syncCloseAllWorkingTsFileProcessors();
     QueryDataSource queryDataSource = processor.query(new PartialPath(deviceId), measurementId, context,
         null, null);
-
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
