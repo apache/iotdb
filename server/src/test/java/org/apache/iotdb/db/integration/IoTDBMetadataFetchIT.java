@@ -138,8 +138,8 @@ public class IoTDBMetadataFetchIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[]{"show storage group"};
-      String[] standards = new String[]{"root.ln.wf01.wt01,\n"};
+      String[] sqls = new String[]{"show storage group", "show storage group root.ln.wf01.wt01.temperature"};
+      String[] standards = new String[]{"root.ln.wf01.wt01,\n", ""};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -208,13 +208,13 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  public void showDevices() throws SQLException, ClassNotFoundException {
+  public void showDevicesTest() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[]{"show devices root.ln"};
-      String[] standards = new String[]{"root.ln.wf01.wt01,\n" + "root.ln.wf01.wt01.status,\n"};
+      String[] sqls = new String[]{"show devices root.ln", "show devices root.ln.wf01.wt01.temperature"};
+      String[] standards = new String[]{"root.ln.wf01.wt01,\n" + "root.ln.wf01.wt01.status,\n", ""};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
