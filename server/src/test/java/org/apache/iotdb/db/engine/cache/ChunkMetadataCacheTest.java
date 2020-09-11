@@ -63,14 +63,15 @@ public class ChunkMetadataCacheTest {
   private String measurementId5 = "s5";
   private StorageGroupProcessor storageGroupProcessor;
   private String systemDir = TestConstant.BASE_OUTPUT_PATH.concat("data")
-          .concat(File.separator).concat("info");
+      .concat(File.separator).concat("info");
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup, new DirectFlushPolicy());
+    storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup,
+        new DirectFlushPolicy());
     insertData();
   }
 
@@ -105,7 +106,8 @@ public class ChunkMetadataCacheTest {
     for (int j = 1; j <= 100; j++) {
       insertOneRecord(j, j);
     }
-    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessors()){
+    for (TsFileProcessor tsFileProcessor : storageGroupProcessor
+        .getWorkSequenceTsFileProcessors()) {
       tsFileProcessor.syncFlush();
     }
 

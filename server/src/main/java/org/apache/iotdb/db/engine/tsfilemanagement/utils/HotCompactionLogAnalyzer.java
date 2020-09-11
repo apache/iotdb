@@ -17,11 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.flush;
+package org.apache.iotdb.db.engine.tsfilemanagement.utils;
 
-import static org.apache.iotdb.db.engine.flush.VmLogger.MERGE_FINISHED;
-import static org.apache.iotdb.db.engine.flush.VmLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.flush.VmLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.FULL_MERGE;
+import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.MERGE_FINISHED;
+import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.SEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.UNSEQUENCE_NAME;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -32,7 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class VmLogAnalyzer {
+public class HotCompactionLogAnalyzer {
 
   static final String STR_DEVICE_OFFSET_SEPERATOR = " ";
 
@@ -42,8 +45,10 @@ public class VmLogAnalyzer {
   private long offset = 0;
   private List<File> sourceFiles = new ArrayList<>();
   private File targetFile = null;
+  private boolean isSeq = false;
+  private boolean fullMerge = false;
 
-  public VmLogAnalyzer(File logFile) {
+  public HotCompactionLogAnalyzer(File logFile) {
     this.logFile = logFile;
   }
 
@@ -54,7 +59,8 @@ public class VmLogAnalyzer {
   public void analyze() throws IOException {
     String currLine;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
-      while ((currLine = bufferedReader.readLine()) != null) {
+      currLine = bufferedReader.readLine();
+      while (currLine != null) {
         switch (currLine) {
           case SOURCE_NAME:
             currLine = bufferedReader.readLine();
@@ -66,6 +72,15 @@ public class VmLogAnalyzer {
             break;
           case MERGE_FINISHED:
             isMergeFinished = true;
+            break;
+          case FULL_MERGE:
+            fullMerge = true;
+            break;
+          case SEQUENCE_NAME:
+            isSeq = true;
+            break;
+          case UNSEQUENCE_NAME:
+            isSeq = false;
             break;
           default:
             String[] resultList = currLine.split(STR_DEVICE_OFFSET_SEPERATOR);
@@ -95,5 +110,13 @@ public class VmLogAnalyzer {
 
   public File getTargetFile() {
     return targetFile;
+  }
+
+  public boolean isSeq() {
+    return isSeq;
+  }
+
+  public boolean isFullMerge() {
+    return fullMerge;
   }
 }

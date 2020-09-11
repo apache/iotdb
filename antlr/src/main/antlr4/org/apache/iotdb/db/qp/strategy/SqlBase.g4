@@ -71,13 +71,14 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW VERSION #showVersion
     | {hasSingleQuoteString = false;} SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
-    | SHOW STORAGE GROUP #showStorageGroup
+    | {hasSingleQuoteString = false;} SHOW STORAGE GROUP prefixPath? #showStorageGroup
     | {hasSingleQuoteString = false;} SHOW CHILD PATHS prefixPath? #showChildPaths
     | {hasSingleQuoteString = false;} SHOW DEVICES prefixPath? #showDevices
     | SHOW MERGE #showMergeStatus
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
+    | COUNT DEVICES prefixPath? #countDevices
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
     | {hasSingleQuoteString = true;} LOAD stringLiteral autoCreateSchema?#loadFiles
