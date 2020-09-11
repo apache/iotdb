@@ -89,6 +89,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     return addLastNullChild(ret, filter, firstNonSingleIndex, childPath);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private int mergeSingleFilters(List<FilterOperator> ret, FilterOperator filter) {
     List<FilterOperator> children = filter.getChildren();
     List<FilterOperator> tempExtrNode = null;

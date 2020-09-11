@@ -33,6 +33,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -117,9 +118,9 @@ public class IoTDBDescriptor {
     else if(!urlString.endsWith(".properties")) {
       urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
-    // If the url doesn't contain a ":" it's provided as a normal path.
-    // So we need to add the prefix "file:" to make it a real URL.
-    if(!urlString.contains(":")) {
+    // If the url doesn't start with "file:" it's provided as a normal path.
+    // So we need to add it to make it a real URL.
+    if(!urlString.startsWith("file:")) {
       urlString = "file:" + urlString;
     }
     try {
@@ -132,6 +133,7 @@ public class IoTDBDescriptor {
   /**
    * load an property file and set TsfileDBConfig variables.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
     URL url = getPropsUrl();
     if(url == null) {
@@ -207,12 +209,11 @@ public class IoTDBDescriptor {
       loadWALProps(properties);
 
       String systemDir = properties.getProperty("system_dir");
-      if(systemDir == null) {
+      if (systemDir == null) {
         systemDir = properties.getProperty("base_dir");
-        if(systemDir != null){
+        if (systemDir != null) {
           systemDir = FilePathUtils.regularizePath(systemDir) + IoTDBConstant.SYSTEM_FOLDER_NAME;
-        }
-        else {
+        } else {
           systemDir = conf.getSystemDir();
         }
       }
@@ -269,17 +270,17 @@ public class IoTDBDescriptor {
           .getProperty("merge_chunk_point_number",
               Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
 
-      conf.setMaxMergeChunkNumInTsFile(Integer.parseInt(properties
-          .getProperty("max_merge_chunk_num_in_tsfile",
-              Integer.toString(conf.getMaxMergeChunkNumInTsFile()))));
+      conf.setTsFileManagementStrategy(TsFileManagementStrategy.valueOf(properties
+          .getProperty("tsfile_manage_strategy",
+              conf.getTsFileManagementStrategy().toString())));
 
-      conf.setEnableVm(Boolean.parseBoolean(properties
-          .getProperty("enable_vm",
-              Boolean.toString(conf.isEnableVm()))));
+      conf.setMaxLevelNum(Integer.parseInt(properties
+          .getProperty("max_level_num",
+              Integer.toString(conf.getMaxLevelNum()))));
 
-      conf.setMaxVmNum(Integer.parseInt(properties
-          .getProperty("max_vm_num",
-              Integer.toString(conf.getMaxVmNum()))));
+      conf.setMaxFileNumInEachLevel(Integer.parseInt(properties
+          .getProperty("max_file_num_in_each_level",
+              Integer.toString(conf.getMaxFileNumInEachLevel()))));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
@@ -702,10 +703,12 @@ public class IoTDBDescriptor {
         proportionSum += Integer.parseInt(proportion.trim());
       }
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
-      conf.setAllocateMemoryForWrite(
-          maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-      conf.setAllocateMemoryForRead(
-          maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      if (proportionSum != 0) {
+        conf.setAllocateMemoryForWrite(
+                maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+        conf.setAllocateMemoryForRead(
+                maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      }
     }
 
     logger.info("allocateMemoryForRead = " + conf.getAllocateMemoryForRead());
@@ -724,18 +727,20 @@ public class IoTDBDescriptor {
         proportionSum += Integer.parseInt(proportion.trim());
       }
       long maxMemoryAvailable = conf.getAllocateMemoryForRead();
-      try {
-        conf.setAllocateMemoryForChunkMetaDataCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-        conf.setAllocateMemoryForChunkCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-        conf.setAllocateMemoryForTimeSeriesMetaDataCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
-                + " should be an integer, which is "
-                + queryMemoryAllocateProportion);
+      if (proportionSum != 0) {
+        try {
+          conf.setAllocateMemoryForChunkMetaDataCache(
+                  maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+          conf.setAllocateMemoryForChunkCache(
+                  maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+          conf.setAllocateMemoryForTimeSeriesMetaDataCache(
+                  maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+        } catch (Exception e) {
+          throw new RuntimeException(
+                  "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
+                          + " should be an integer, which is "
+                          + queryMemoryAllocateProportion);
+        }
       }
 
     }

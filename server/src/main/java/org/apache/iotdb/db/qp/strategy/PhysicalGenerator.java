@@ -60,6 +60,7 @@ import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
@@ -98,6 +99,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
@@ -113,6 +115,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
  */
 public class PhysicalGenerator {
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
     List<PartialPath> paths;
     switch (operator.getType()) {
@@ -231,10 +234,14 @@ public class PhysicalGenerator {
                 showTimeSeriesOperator.getValue(), showTimeSeriesOperator.getLimit(),
                 showTimeSeriesOperator.getOffset(), showTimeSeriesOperator.isOrderByHeat());
           case SQLConstant.TOK_STORAGE_GROUP:
-            return new ShowPlan(ShowContentType.STORAGE_GROUP);
+            return new ShowStorageGroupPlan(
+                ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());
           case SQLConstant.TOK_DEVICES:
             return new ShowDevicesPlan(
                 ShowContentType.DEVICES, ((ShowDevicesOperator) operator).getPath());
+          case SQLConstant.TOK_COUNT_DEVICES:
+            return new CountPlan(
+                ShowContentType.COUNT_DEVICES, ((CountOperator) operator).getPath());
           case SQLConstant.TOK_COUNT_NODE_TIMESERIES:
             return new CountPlan(
                 ShowContentType.COUNT_NODE_TIMESERIES,
@@ -319,6 +326,7 @@ public class PhysicalGenerator {
     return SchemaUtils.getSeriesTypesByPath(paths);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private PhysicalPlan transformQuery(QueryOperator queryOperator) throws QueryProcessException {
     QueryPlan queryPlan;
 
@@ -668,6 +676,7 @@ public class PhysicalGenerator {
     basicOperator.setSinglePath(concatPath);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void deduplicate(QueryPlan queryPlan) throws MetadataException {
     // generate dataType first
     List<PartialPath> paths = queryPlan.getPaths();

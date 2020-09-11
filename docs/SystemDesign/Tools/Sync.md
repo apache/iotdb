@@ -61,7 +61,7 @@ The schema / sync folder holds the synchronization information that needs to be 
 
 #### Sender
 
-`data / sync-sender` is the sender's folder. The folder name in this directory represents the IP and port of the receiver. In this example, there is a receiver` 192.168.130.16: 5555`. Each folder contains the following  Several files:
+`data / sync-sender` is the sender's folder. The folder name in this directory represents the IP and rpc port of the receiver. In this example, there is a receiver` 192.168.130.16: 5555`. Each folder contains the following  Several files:
 
 * last_local_files.txt 
 Records a list of all local tsfile files that have been synchronized after the synchronization task ends, and is updated after each synchronization task ends.

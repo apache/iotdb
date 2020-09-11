@@ -49,6 +49,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   private static final String WARNING_NO_PREFIX_PATHS = "given SFWOperator doesn't have prefix paths, cannot concat seriesPath";
 
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public Operator transform(Operator operator) throws LogicalOptimizeException {
     if (!(operator instanceof SFWOperator)) {

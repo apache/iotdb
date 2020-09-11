@@ -118,13 +118,14 @@ public class EnvironmentUtils {
       //do nothing
     }
     //try MetricService
+    Socket socket = new Socket();
     try {
-      Socket socket = new Socket();
       socket.connect(new InetSocketAddress("127.0.0.1", 8181));
       logger.error("stop MetricService failed. 8181 can be connected now.");
-      socket.close();
     } catch (Exception e) {
       //do nothing
+    } finally {
+      socket.close();
     }
 
     // clean storage group manager

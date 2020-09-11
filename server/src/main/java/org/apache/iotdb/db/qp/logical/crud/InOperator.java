@@ -76,6 +76,7 @@ public class InOperator extends FunctionOperator {
   }
 
   @Override
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
       Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
       throws LogicalOperatorException, MetadataException {

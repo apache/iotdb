@@ -78,36 +78,40 @@ public class IoTDBQuotedPathIT {
       ArrayList<String> ans = new ArrayList<>();
       ResultSet resultSet = statement.getResultSet();
       cnt = 0;
-      while (resultSet.next()) {
-        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-        ans.add(result);
-        cnt++;
-      }
+      try {
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          ans.add(result);
+          cnt++;
+        }
 
-      for (int i = 0; i < ans.size(); i++) {
-        assertEquals(exp[i], ans.get(i));
-      }
+        for (int i = 0; i < ans.size(); i++) {
+          assertEquals(exp[i], ans.get(i));
+        }
 
-      hasResultSet = statement.execute("SELECT  * FROM root.ln.\"wf.01\".wt01 WHERE \"status.2.3\" = false");
-      assertTrue(hasResultSet);
-      exp = new String[]{
-              "1509465600002,false",
-              "1509465600003,false"
-      };
-      ans = new ArrayList<>();
-      resultSet = statement.getResultSet();
-      cnt = 0;
-      while (resultSet.next()) {
-        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
-        ans.add(result);
-        cnt++;
-      }
+        hasResultSet = statement.execute("SELECT  * FROM root.ln.\"wf.01\".wt01 WHERE \"status.2.3\" = false");
+        assertTrue(hasResultSet);
+        exp = new String[]{
+                "1509465600002,false",
+                "1509465600003,false"
+        };
+        ans = new ArrayList<>();
+        resultSet = statement.getResultSet();
+        cnt = 0;
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          ans.add(result);
+          cnt++;
+        }
 
-      for (int i = 0; i < exp.length; i++) {
-        assertEquals(exp[i], ans.get(i));
+        for (int i = 0; i < exp.length; i++) {
+          assertEquals(exp[i], ans.get(i));
+        }
+        statement.execute("DELETE FROM root.ln.\"wf.01\".wt01.\"status.2.3\" WHERE time < 1509465600001");
+        statement.execute("DELETE TIMESERIES root.ln.\"wf.01\".wt01.\"status.2.3\"");
+      } finally {
+        resultSet.close();
       }
-      statement.execute("DELETE FROM root.ln.\"wf.01\".wt01.\"status.2.3\" WHERE time < 1509465600001");
-      statement.execute("DELETE TIMESERIES root.ln.\"wf.01\".wt01.\"status.2.3\"");
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();

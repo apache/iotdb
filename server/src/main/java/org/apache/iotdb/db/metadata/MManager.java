@@ -369,6 +369,7 @@ public class MManager {
     createTimeseries(plan, -1);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     lock.writeLock().lock();
     try {
@@ -411,7 +412,7 @@ public class MManager {
         int size = seriesNumberInStorageGroups.get(storageGroupPath.getFullPath());
         seriesNumberInStorageGroups.put(storageGroupPath.getFullPath(), size + 1);
         if (size + 1 > maxSeriesNumberAmongStorageGroup) {
-          maxSeriesNumberAmongStorageGroup = size + 1;
+          maxSeriesNumberAmongStorageGroup = size + 1L;
         }
       }
 
@@ -502,6 +503,7 @@ public class MManager {
   /**
    * remove the node from the tag inverted index
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void removeFromTagInvertedIndex(MeasurementMNode node) throws IOException {
     if (node.getOffset() < 0) {
       return;
@@ -651,7 +653,7 @@ public class MManager {
    * @param path Format: root.node.(node)*
    * @apiNote :for cluster
    */
-  boolean isStorageGroup(PartialPath path) {
+  public boolean isStorageGroup(PartialPath path) {
     lock.readLock().lock();
     try {
       return mtree.isStorageGroup(path);
@@ -686,10 +688,15 @@ public class MManager {
       MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurements.length];
       for (int i = 0; i < measurementSchemas.length; i++) {
         if (!deviceNode.hasChild(measurements[i])) {
-          throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
+          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+            measurementSchemas[i] = null;
+          } else {
+            throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
+          }
+        } else {
+          measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]))
+              .getSchema();
         }
-        measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]))
-            .getSchema();
       }
       return measurementSchemas;
     } finally {
@@ -765,6 +772,22 @@ public class MManager {
   }
 
   /**
+   * Get all storage group under given prefixPath.
+   *
+   * @param prefixPath a prefix of a full path. if the wildcard is not at the tail, then each
+   *                   wildcard can only match one level, otherwise it can match to the tail.
+   * @return A ArrayList instance which stores storage group paths with given prefixPath.
+   */
+  public List<PartialPath> getStorageGroupPaths(PartialPath prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupPaths(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * Get all storage group MNodes
    */
   public List<StorageGroupMNode> getAllStorageGroupNodes() {
@@ -818,6 +841,18 @@ public class MManager {
   }
 
   /**
+   * To calculate the count of devices for given prefix path.
+   */
+  public int getDevicesNum(PartialPath prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getDevicesNum(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * To calculate the count of nodes in the given level for given prefix path.
    *
    * @param prefixPath a prefix path or a full path, can not contain '*'
@@ -832,6 +867,7 @@ public class MManager {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan,
       QueryContext context) throws MetadataException {
     lock.readLock().lock();
@@ -1261,6 +1297,7 @@ public class MManager {
    * @param attributesMap newly added attributes map
    * @param fullPath      timeseries
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void upsertTagsAndAttributes(String alias, Map<String, String> tagsMap,
       Map<String, String> attributesMap, PartialPath fullPath) throws MetadataException, IOException {
     lock.writeLock().lock();
@@ -1460,6 +1497,7 @@ public class MManager {
    * @param keySet   tags key or attributes key
    * @param fullPath timeseries path
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException {
     lock.writeLock().lock();
@@ -1531,6 +1569,7 @@ public class MManager {
    * @param alterMap the new tags or attributes key-value
    * @param fullPath timeseries
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
     lock.writeLock().lock();
@@ -1610,6 +1649,7 @@ public class MManager {
    * @param newKey   new key of tag or attribute
    * @param fullPath timeseries
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
     lock.writeLock().lock();
@@ -1887,6 +1927,7 @@ public class MManager {
    *
    * @throws MetadataException
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(PartialPath deviceId,
       String[] measurementList, InsertPlan plan) throws MetadataException {
     MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];

@@ -45,6 +45,7 @@ public class PhysicalOptimizer {
     this.columnNames = columnNames;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public List<TSQueryPlan> optimize(SingleQuery singleQuery, List<String> paths,
       TsFileSequenceReader in, Long start, Long end) throws IOException {
 
@@ -127,6 +128,7 @@ public class PhysicalOptimizer {
    * @param beginIndex         current recursion list index
    * @param values             combination of column values
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void combination(List<String> actualDeltaObjects, Map<String, Set<String>> columnValues,
       Object[] columns, int beginIndex, String[] values) {
     // which should in column names -> now just device_name

@@ -30,7 +30,6 @@ import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -80,13 +79,9 @@ public class LastQueryExecutor {
 
     for (int i = 0; i < selectedSeries.size(); i++) {
       TimeValuePair lastTimeValuePair = null;
-      try {
-        lastTimeValuePair = calculateLastPairForOneSeries(
-                new PartialPath(selectedSeries.get(i).getFullPath()), dataTypes.get(i), context,
-                lastQueryPlan.getAllMeasurementsInDevice(selectedSeries.get(i).getDevice()));
-      } catch (IllegalPathException e) {
-        throw new QueryProcessException(e.getMessage());
-      }
+      lastTimeValuePair = calculateLastPairForOneSeries(
+              selectedSeries.get(i), dataTypes.get(i), context,
+              lastQueryPlan.getAllMeasurementsInDevice(selectedSeries.get(i).getDevice()));
       if (lastTimeValuePair.getValue() != null) {
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
@@ -125,6 +120,7 @@ public class LastQueryExecutor {
    * @param context query context
    * @return TimeValuePair
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TimeValuePair calculateLastPairForOneSeriesLocally(
       PartialPath seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
       throws IOException, QueryProcessException, StorageEngineException {
