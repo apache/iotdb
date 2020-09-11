@@ -65,7 +65,7 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -1218,22 +1218,15 @@ public class MTree implements Serializable {
   }
 
   public void serializeTo(String snapshotPath) throws IOException {
-    MLogWriter mLogWriter = null;
-    try {
-      mLogWriter = new MLogWriter(snapshotPath);
+    try (MLogWriter mLogWriter = new MLogWriter(snapshotPath)) {
       root.serializeTo(mLogWriter);
-    } finally {
-      if (mLogWriter != null) {
-        mLogWriter.close();
-      }
     }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static MTree deserializeFrom(File mtreeSnapshot) {
-    MLogReader mlogReader = null;
-    try {
-      mlogReader = new MLogReader(mtreeSnapshot);
+
+    try (MLogReader mlogReader = new MLogReader(mtreeSnapshot)) {
       Deque<MNode> nodeStack = new ArrayDeque<>();
       MNode node = null;
 
@@ -1248,9 +1241,9 @@ public class MTree implements Serializable {
           if (plan instanceof StorageGroupMNodePlan) {
             node = StorageGroupMNode.deserializeFrom((StorageGroupMNodePlan) plan);
             childrenSize = ((StorageGroupMNodePlan) plan).getChildSize();
-          } else if (plan instanceof MeasurementNodePlan) {
-            node = MeasurementMNode.deserializeFrom((MeasurementNodePlan) plan);
-            childrenSize = ((MeasurementNodePlan) plan).getChildSize();
+          } else if (plan instanceof MeasurementMNodePlan) {
+            node = MeasurementMNode.deserializeFrom((MeasurementMNodePlan) plan);
+            childrenSize = ((MeasurementMNodePlan) plan).getChildSize();
           } else if (plan instanceof MNodePlan) {
             node = new MNode(null, ((MNodePlan) plan).getName());
             childrenSize = ((MNodePlan) plan).getChildSize();
@@ -1283,9 +1276,6 @@ public class MTree implements Serializable {
       logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
       return new MTree();
     } finally {
-      if (mlogReader != null) {
-        mlogReader.close();
-      }
       limit = new ThreadLocal<>();
       offset = new ThreadLocal<>();
       count = new ThreadLocal<>();

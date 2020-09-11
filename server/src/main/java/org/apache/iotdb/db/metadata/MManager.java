@@ -146,6 +146,7 @@ public class MManager {
 
   private File logFile;
   private ScheduledExecutorService timedCreateMTreeSnapshotThread;
+  private ScheduledExecutorService timedForceMLogThread;
 
   /**
    * threshold total size of MTree
@@ -197,12 +198,21 @@ public class MManager {
       }
     };
 
+
     if (config.isEnableMTreeSnapshot()) {
       timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
-          "timedCreateMTreeSnapshotThread"));
+        "timedCreateMTreeSnapshotThread"));
       timedCreateMTreeSnapshotThread
-          .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
-              MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
+        .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
+          MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
+    }
+
+    if (config.getForceWalPeriodInMs() > 0) {
+      timedForceMLogThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
+        "timedForceMLogThread"));
+      timedForceMLogThread
+        .scheduleAtFixedRate(this::forceMlog, config.getForceMlogPeriodInMs(),
+          config.getForceMlogPeriodInMs(), TimeUnit.MILLISECONDS);
     }
   }
 
@@ -236,8 +246,7 @@ public class MManager {
       logWriter.setLogNum(lineNumber);
       isRecovering = false;
     } catch (IOException | MetadataException e) {
-      mtree = new MTree();
-      logger.error("Cannot read MTree from file, using an empty new one", e);
+      logger.error("Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
     reportedDataTypeTotalNum = 0L;
     initialized = true;
@@ -268,9 +277,8 @@ public class MManager {
     // init the metadata from the operation log
     if (logFile.exists()) {
       int idx = 0;
-      MLogReader mLogReader = null;
-      try {
-        mLogReader = new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
+      try (MLogReader mLogReader = new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG);) {
+
         while (mLogReader.hasNext()) {
           PhysicalPlan plan = null;
           try {
@@ -289,13 +297,7 @@ public class MManager {
         return idx;
       } catch (Exception e) {
         throw new IOException("Failed to parser mlog.bin for err:" +  e.toString());
-      } finally {
-        if (mLogReader != null) {
-          mLogReader.close();
-        }
       }
-    } else if (mtreeSnapshot.exists()) {
-      throw new IOException("mtree snapshot file exists but mlog.txt does not exist.");
     } else {
       return 0;
     }
@@ -325,6 +327,10 @@ public class MManager {
         timedCreateMTreeSnapshotThread.shutdownNow();
         timedCreateMTreeSnapshotThread = null;
       }
+      if (timedForceMLogThread != null) {
+        timedForceMLogThread.shutdownNow();
+        timedForceMLogThread = null;
+      }
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
     }
@@ -334,7 +340,7 @@ public class MManager {
     switch (plan.getOperatorType()) {
       case CREATE_TIMESERIES:
         CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
-        createTimeseries(createTimeSeriesPlan);
+        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         break;
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
@@ -428,7 +434,8 @@ public class MManager {
             || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
           offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
         }
-        logWriter.createTimeseries(plan, offset);
+        plan.setTagOffset(offset);
+        logWriter.createTimeseries(plan);
       }
       leafMNode.setOffset(offset);
 
@@ -1655,6 +1662,18 @@ public class MManager {
       logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
     }
     return null;
+  }
+
+  private void forceMlog() {
+    if (logWriter == null || logFile == null) {
+      // the logWriter is not initialized now, we skip the check once.
+      return;
+    }
+    try {
+      logWriter.force();
+    } catch (IOException e) {
+      logger.error("Cannot force mlog, because ", e);
+    }
   }
 
   private void checkMTreeModified() {

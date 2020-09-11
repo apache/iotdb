@@ -30,10 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class StorageGroupMNodePlan extends PhysicalPlan {
-  private String name;
+public class StorageGroupMNodePlan extends MNodePlan {
   private long dataTTL;
-  private int childSize;
 
   public StorageGroupMNodePlan() {
     super(false, Operator.OperatorType.STORAGE_GROUP_MNODE);
@@ -51,28 +49,12 @@ public class StorageGroupMNodePlan extends PhysicalPlan {
     return new ArrayList<>();
   }
 
-  public String getName() {
-    return name;
-  }
-
-  public void setName(String name) {
-    this.name = name;
-  }
-
   public long getDataTTL() {
     return dataTTL;
   }
 
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
-  }
-
-  public int getChildSize() {
-    return childSize;
-  }
-
-  public void setChildSize(int childSize) {
-    this.childSize = childSize;
   }
 
   @Override

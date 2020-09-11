@@ -46,7 +46,7 @@ import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -341,7 +341,7 @@ public abstract class PhysicalPlan {
           plan.deserialize(buffer);
           break;
         case MEASUREMENT_MNODE:
-          plan = new MeasurementNodePlan();
+          plan = new MeasurementMNodePlan();
           plan.deserialize(buffer);
           break;
         case STORAGE_GROUP_MNODE:

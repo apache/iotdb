@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.integration;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -35,14 +33,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -101,17 +98,31 @@ public class IoTDBCreateSnapshotIT {
         "0,root,1"
       };
 
-      PhysicalPlan[] plans = new PhysicalPlan[exp.length];
-      for (int i = 0; i < exp.length; i++) {
-        plans[i] = convertFromString(exp[i]);
+      HashSet<PhysicalPlan> d0Plans = new HashSet<>(6);
+      for (int i = 0; i < 6; i++) {
+        d0Plans.add(convertFromString(exp[i]));
+      }
+
+      HashSet<PhysicalPlan> d1Plans = new HashSet<>(6);
+      for (int i = 0; i < 6; i++) {
+        d1Plans.add(convertFromString(exp[i+6]));
       }
 
       try (MLogReader mLogReader = new MLogReader(snapshotFile)){
         int i = 0;
-        while (mLogReader.hasNext()) {
+        while (i < 6 && mLogReader.hasNext()) {
           PhysicalPlan plan = mLogReader.next();
-          assertEquals(plans[i++], plan);
+          assertTrue(d0Plans.removeIf(candidate -> candidate.equals(plan)));
+          i++;
         }
+        assertTrue(d0Plans.isEmpty());
+
+        while (i < 12 && mLogReader.hasNext()) {
+          PhysicalPlan plan = mLogReader.next();
+          assertTrue(d1Plans.removeIf(candidate -> candidate.equals(plan)));
+          i++;
+        }
+        assertTrue(d1Plans.isEmpty());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -178,15 +189,16 @@ public class IoTDBCreateSnapshotIT {
 
   private PhysicalPlan convertFromString(String str) {
     String[] words = str.split(",");
-    if (words[0].equals("2")) {
-      return new MeasurementNodePlan(words[1],words[2].equals("") ? null :  words[2], Long.parseLong(words[words.length - 2]),
+    switch (words[0]) {
+      case "2":
+      return new MeasurementMNodePlan(words[1],words[2].equals("") ? null :  words[2], Long.parseLong(words[words.length - 2]),
         Integer.parseInt(words[words.length - 1]),
         new MeasurementSchema(words[1], TSDataType.values()[Integer.parseInt(words[3])],
           TSEncoding.values()[Integer.parseInt(words[4])], CompressionType.values()[Integer.parseInt(words[5])]
           ));
-    } else if (words[0].equals("1")) {
+      case "1":
       return new StorageGroupMNodePlan(words[1], Long.parseLong(words[2]), Integer.parseInt(words[3]));
-    } else if (words[0].equals("0")) {
+      case "0":
       return new MNodePlan(words[1], Integer.parseInt(words[2]));
     }
     return null;

@@ -204,7 +204,7 @@ public class IoTDBConfig {
 
   /**
    * Size of log buffer in each log node(in byte). If WAL is enabled and the size of a insert plan
-   * is smaller than this parameter, then the insert plan will be rejected by WAL.
+   * is larger than this parameter, then the insert plan will be rejected by WAL.
    */
   private int walBufferSize = 16 * 1024 * 1024;
 
@@ -212,9 +212,15 @@ public class IoTDBConfig {
 
   /**
    * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan
-   * is smaller than this parameter, then the MetaData operation plan will be rejected by MManager.
+   * is larger than this parameter, then the MetaData operation plan will be rejected by MManager.
    */
   private int mlogBufferSize = 64 * 1024;
+
+  /**
+   * The cycle when meta log is periodically forced to be written to disk(in milliseconds) If
+   * set this parameter to 0 it means call outputStream.force(true) after every each insert
+   */
+  private long forceMlogPeriodInMs = 100;
 
   /**
    * default base dir, stores all IoTDB runtime files
@@ -2121,5 +2127,13 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public long getForceMlogPeriodInMs() {
+    return forceMlogPeriodInMs;
+  }
+
+  public void setForceMlogPeriodInMs(long forceMlogPeriodInMs) {
+    this.forceMlogPeriodInMs = forceMlogPeriodInMs;
   }
 }

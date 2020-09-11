@@ -91,7 +91,7 @@ public class PhysicalPlanTest {
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
-        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY",
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY, tagOffset: -1",
         plan.toString());
   }
 
@@ -101,13 +101,14 @@ public class PhysicalPlanTest {
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
-        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY",
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY, tagOffset: -1",
         plan.toString());
   }
 
   @Test
   public void testMetadata3() throws QueryProcessException {
-    String metadata = "create timeseries root.vehicle.d1.s2(温度) with datatype=int32,encoding=rle, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    String metadata = "create timeseries root.vehicle.d1.s2(温度) with datatype=int32,encoding=rle, compression=SNAPPY " +
+      "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     System.out.println(metadata.length());
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);

@@ -44,6 +44,10 @@ public class MNodePlan extends PhysicalPlan {
     this.childSize = childSize;
   }
 
+  public MNodePlan(boolean isQuery, Operator.OperatorType operatorType) {
+    super(isQuery, operatorType);
+  }
+
   @Override
   public List<PartialPath> getPaths() {
     return new ArrayList<>();

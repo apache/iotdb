@@ -28,15 +28,17 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 
-
-public class OldMLogReader {
+/**
+ * reader for reading mlog.txt
+ */
+public class MLogTxtReader implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(MLogReader.class);
 
   private BufferedReader bufferedReader;
   private File logFile;
   private String cmd;
 
-  public OldMLogReader(String schemaDir, String logFileName) throws IOException {
+  public MLogTxtReader(String schemaDir, String logFileName) throws IOException {
     File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!metadataDir.exists()) {
       logger.error("no mlog.txt to init MManager.");

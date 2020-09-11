@@ -45,6 +45,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   private Map<String, String> props = null;
   private Map<String, String> tags = null;
   private Map<String, String> attributes = null;
+  private long tagOffset = -1;
 
   public CreateTimeSeriesPlan() {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
@@ -133,10 +134,18 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     this.props = props;
   }
 
+  public long getTagOffset() {
+    return tagOffset;
+  }
+
+  public void setTagOffset(long tagOffset) {
+    this.tagOffset = tagOffset;
+  }
+
   @Override
   public String toString() {
-    return String.format("seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s", path,
-        dataType, encoding, compressor);
+    return String.format("seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s, tagOffset: %s", path,
+        dataType, encoding, compressor, tagOffset);
   }
 
   @Override
@@ -153,6 +162,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     stream.write(dataType.ordinal());
     stream.write(encoding.ordinal());
     stream.write(compressor.ordinal());
+    stream.writeLong(tagOffset);
 
     // alias
     if (alias != null) {
@@ -198,6 +208,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     buffer.put((byte) dataType.ordinal());
     buffer.put((byte) encoding.ordinal());
     buffer.put((byte) compressor.ordinal());
+    buffer.putLong(tagOffset);
 
     // alias
     if (alias != null) {
@@ -241,6 +252,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     dataType = TSDataType.values()[buffer.get()];
     encoding = TSEncoding.values()[buffer.get()];
     compressor = CompressionType.values()[buffer.get()];
+    tagOffset = buffer.getLong();
 
     // alias
     if (buffer.get() == 1) {
@@ -277,11 +289,12 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     return Objects.equals(path, that.path) &&
         dataType == that.dataType &&
         encoding == that.encoding &&
-        compressor == that.compressor;
+        compressor == that.compressor &&
+        tagOffset == that.tagOffset;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(path, dataType, encoding, compressor);
+    return Objects.hash(path, dataType, encoding, compressor, tagOffset);
   }
 }

@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.qp.physical.sys;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
@@ -28,19 +27,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class MeasurementNodePlan extends PhysicalPlan {
+public class MeasurementMNodePlan extends MNodePlan {
   private MeasurementSchema schema;
   private String alias;
   private long offset;
-  private String name;
-  protected int childSize;
 
-  public MeasurementNodePlan() {
+  public MeasurementMNodePlan() {
     super(false, Operator.OperatorType.MEASUREMENT_MNODE);
   }
 
-  public MeasurementNodePlan(String name, String alias,
-                             long offset, int childSize, MeasurementSchema schema) {
+  public MeasurementMNodePlan(String name, String alias,
+                              long offset, int childSize, MeasurementSchema schema) {
     super(false, Operator.OperatorType.MEASUREMENT_MNODE);
     this.name = name;
     this.alias = alias;
@@ -72,22 +69,6 @@ public class MeasurementNodePlan extends PhysicalPlan {
     offset = buffer.getLong();
     childSize = buffer.getInt();
     schema = MeasurementSchema.deserializeFrom(buffer);
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  public void setName(String name) {
-    this.name = name;
-  }
-
-  public int getChildSize() {
-    return childSize;
-  }
-
-  public void setChildSize(int childSize) {
-    this.childSize = childSize;
   }
 
   public MeasurementSchema getSchema() {
@@ -128,7 +109,7 @@ public class MeasurementNodePlan extends PhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    MeasurementNodePlan that = (MeasurementNodePlan) o;
+    MeasurementMNodePlan that = (MeasurementMNodePlan) o;
     return Objects.equals(name, that.name)
       && Objects.equals(alias, that.alias)
       && Objects.equals(schema, that.schema)

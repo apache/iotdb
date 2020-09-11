@@ -39,11 +39,16 @@ public class LogWriter implements ILogWriter {
   private FileOutputStream fileOutputStream;
   private FileChannel channel;
   private CRC32 checkSummer = new CRC32();
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
   private ByteBuffer checkSumBuffer = ByteBuffer.allocate(8);
   private long forcePeriodInMs = 0;
 
+  /**
+   * only used by tests
+   * @param logFilePath
+   * @param forcePeriodInMs
+   * @throws FileNotFoundException
+   */
   public LogWriter(String logFilePath, long forcePeriodInMs) throws FileNotFoundException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     this.forcePeriodInMs = forcePeriodInMs;
@@ -106,6 +111,7 @@ public class LogWriter implements ILogWriter {
   @Override
   public void close() throws IOException {
     if (channel != null) {
+      channel.force(true);
       fileOutputStream.close();
       fileOutputStream = null;
       channel.close();

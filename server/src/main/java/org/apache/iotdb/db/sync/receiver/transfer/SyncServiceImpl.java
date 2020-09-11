@@ -285,11 +285,12 @@ public class SyncServiceImpl implements SyncService.Iface {
             logger.error("Can not operate metadata operation {} for err:{}", plan.getOperatorType(), e);
           }
         }
-        mLogReader.close();
       } catch (IOException e) {
         logger.error("Cannot read the file {}.", currentFile.get().getAbsoluteFile(), e);
       } finally {
-        mLogReader.close();
+        if (mLogReader != null) {
+          mLogReader.close();
+        }
       }
     }
   }

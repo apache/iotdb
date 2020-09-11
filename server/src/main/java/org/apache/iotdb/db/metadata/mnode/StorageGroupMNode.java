@@ -18,9 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
-import org.apache.iotdb.db.metadata.MetadataConstant;
+
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
@@ -51,7 +50,7 @@ public class StorageGroupMNode extends MNode {
   public void serializeTo(MLogWriter logWriter) throws IOException {
     serializeChildren(logWriter);
 
-    logWriter.seriallizeStorageGroupMNode(this);
+    logWriter.serializeStorageGroupMNode(this);
   }
 
   public static StorageGroupMNode deserializeFrom(StorageGroupMNodePlan plan) {

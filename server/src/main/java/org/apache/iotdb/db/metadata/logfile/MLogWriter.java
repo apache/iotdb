@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.*;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -43,7 +44,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MLogWriter {
+public class MLogWriter implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogWriter.class);
   private File logFile;
@@ -58,7 +59,7 @@ public class MLogWriter {
       if (metadataDir.mkdirs()) {
         logger.info("create schema folder {}.", metadataDir);
       } else {
-        logger.info("create schema folder {} failed.", metadataDir);
+        logger.warn("create schema folder {} failed.", metadataDir);
       }
     }
 
@@ -73,6 +74,7 @@ public class MLogWriter {
     logWriter = new LogWriter(logFile, 0L);
   }
 
+  @Override
   public void close() throws IOException {
     sync();
     logWriter.close();
@@ -93,7 +95,7 @@ public class MLogWriter {
     try {
       plan.serialize(mlogBuffer);
     } catch (BufferOverflowException e) {
-      logger.error("MLog {} BufferOverflow !", plan.getOperatorType(), e);
+      logger.debug("MLog {} BufferOverflow !", plan.getOperatorType(), e);
       mlogBuffer.reset();
       sync();
       plan.serialize(mlogBuffer);
@@ -101,11 +103,9 @@ public class MLogWriter {
     logNum ++;
   }
 
-  public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws IOException {
+  public void createTimeseries(CreateTimeSeriesPlan createTimeSeriesPlan) throws IOException {
     try {
-      putLog(plan);
-      ChangeTagOffsetPlan changeTagOffsetPlan = new ChangeTagOffsetPlan(plan.getPath(), offset);
-      putLog(changeTagOffsetPlan);
+      putLog(createTimeSeriesPlan);
     } catch (BufferOverflowException e) {
       throw new IOException(
         "Log cannot fit into buffer, please increase mlog_buffer_size", e);
@@ -191,7 +191,7 @@ public class MLogWriter {
       if (node.getChildren() != null) {
         childSize = node.getChildren().size();
       }
-      MeasurementNodePlan plan = new MeasurementNodePlan(node.getName(), node.getAlias(),
+      MeasurementMNodePlan plan = new MeasurementMNodePlan(node.getName(), node.getAlias(),
         node.getOffset(), childSize, node.getSchema());
       putLog(plan);
     } catch (BufferOverflowException e) {
@@ -200,7 +200,7 @@ public class MLogWriter {
     }
   }
 
-  public void seriallizeStorageGroupMNode(StorageGroupMNode node) throws IOException {
+  public void serializeStorageGroupMNode(StorageGroupMNode node) throws IOException {
     try {
       int childSize = 0;
       if (node.getChildren() != null) {
@@ -221,47 +221,46 @@ public class MLogWriter {
         schemaDir + File.separator + MetadataConstant.METADATA_OLD_LOG);
 
     if (oldLogFile.exists()) {
-      MLogWriter mLogWriter = null;
-      OldMLogReader oldMLogReader = null;
-      try {
+      try (MLogWriter mLogWriter = new MLogWriter(schemaDir, logFileName + ".tmp");
+        MLogTxtReader MLogTxtReader = new MLogTxtReader(schemaDir, MetadataConstant.METADATA_OLD_LOG)) {
         // upgrade from old character log file to new binary mlog
-        mLogWriter = new MLogWriter(schemaDir, logFileName + ".tmp");
-        oldMLogReader = new OldMLogReader(schemaDir, MetadataConstant.METADATA_OLD_LOG);
-        while (oldMLogReader.hasNext()) {
-          String cmd = oldMLogReader.next();
+        while (MLogTxtReader.hasNext()) {
+          String cmd = MLogTxtReader.next();
           try {
             mLogWriter.operation(cmd);
           } catch (MetadataException e) {
             logger.error("failed to upgrade cmd {}.", cmd, e);
           }
         }
-
-        return;
-      } finally {
-        if (mLogWriter != null) {
-          mLogWriter.close();
-        }
-        if (oldMLogReader != null) {
-          oldMLogReader.close();
-        }
       }
-    }
-
-    // if both old mlog and mlog.tmp do not exist, nothing to do
-    if (!logFile.exists() && !tmpLogFile.exists()) {
-      return;
+    } else if (!logFile.exists() && !tmpLogFile.exists()) {
+      // if both old mlog.bin and mlog.bin.tmp do not exist, nothing to do
     } else if (!logFile.exists() && tmpLogFile.exists()) {
-      // if old mlog doesn't exsit but mlog.tmp exists, rename tmp file to mlog  
+      // if old mlog.bin doesn't exist but mlog.bin.tmp exists, rename tmp file to mlog
       FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
-      return;
-    }
-
-    // if both old mlog and mlog.tmp exist, delete mlog tmp, then do upgrading
-    if (tmpLogFile.exists()) {
+    } else if (tmpLogFile.exists()) {
+      // if both old mlog.bin and mlog.bin.tmp exist, delete mlog.bin.tmp
       if (!tmpLogFile.delete()) {
         throw new IOException("Deleting " + tmpLogFile + "failed.");
       }
     }
+
+    // do some clean job
+
+    // remove old mlog.txt and mlog.txt.tmp
+    File tmpOldLogFile = SystemFileFactory.INSTANCE.getFile(oldLogFile.getAbsolutePath()
+      + ".tmp");
+
+    if (oldLogFile.exists() && !oldLogFile.delete()) {
+      throw new IOException("Deleting old mlog.txt " + oldLogFile + "failed.");
+    }
+
+    if (tmpLogFile.exists() && !tmpLogFile.delete()) {
+      throw new IOException("Deleting old mlog.txt.tmp " + oldLogFile + "failed.");
+    }
+
+    // rename mlog.bin.tmp to mlog.bin
+    FileUtils.moveFile(tmpLogFile, logFile);
   }
 
   public void clear() throws IOException {
@@ -288,6 +287,12 @@ public class MLogWriter {
     logNum = number;
   }
 
+  /**
+   * upgrade from mlog.txt to mlog.bin
+   * @param cmd, the old meta operation
+   * @throws IOException
+   * @throws MetadataException
+   */
   public void operation(String cmd) throws IOException, MetadataException {
     // see createTimeseries() to get the detailed format of the cmd
     String[] args = cmd.trim().split(",", -1);
@@ -309,7 +314,6 @@ public class MLogWriter {
           alias = args[6];
         }
         long offset = -1L;
-        Map<String, String> tagMap = null;
         if (!args[7].isEmpty()) {
           offset = Long.parseLong(args[7]);
         }
@@ -318,8 +322,9 @@ public class MLogWriter {
             TSDataType.deserialize(Short.parseShort(args[2])),
             TSEncoding.deserialize(Short.parseShort(args[3])),
             CompressionType.deserialize(Short.parseShort(args[4])), props, null, null, alias);
+        plan.setTagOffset(offset);
 
-        createTimeseries(plan, offset);
+        createTimeseries(plan);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan =
@@ -346,5 +351,9 @@ public class MLogWriter {
       default:
         logger.error("Unrecognizable command {}", cmd);
     }
+  }
+
+  public void force() throws IOException {
+    logWriter.force();
   }
 }

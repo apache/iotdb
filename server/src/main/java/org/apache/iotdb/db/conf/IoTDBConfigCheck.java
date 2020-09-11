@@ -34,6 +34,7 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -202,23 +203,20 @@ public class IoTDBConfigCheck {
 
       // upgrade mlog finished, delete old mlog file
       File mlogFile = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR + File.separator
-          + MetadataConstant.METADATA_LOG);
+        + MetadataConstant.METADATA_LOG);
       File tmpMLogFile = SystemFileFactory.INSTANCE.getFile(mlogFile.getAbsolutePath()
-          + ".tmp");
+        + ".tmp");
 
       if (!mlogFile.delete()) {
         throw new IOException("Deleting " + mlogFile + "failed.");
       }
       // rename tmpLogFile to mlog
       FileUtils.moveFile(tmpMLogFile, mlogFile);
-
-      File oldMLogFile = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR + File.separator
-          + MetadataConstant.METADATA_OLD_LOG);
-
-      if (oldMLogFile.delete()) {
-        throw new IOException("Deleting old mlog " + oldMLogFile + "failed.");
-      }
     }
+
+    // upgrade from mlog.txt to mlog.bin
+    MLogWriter.upgradeMLog(SCHEMA_DIR, MetadataConstant.METADATA_LOG);
+
     checkProperties();
   }
 
