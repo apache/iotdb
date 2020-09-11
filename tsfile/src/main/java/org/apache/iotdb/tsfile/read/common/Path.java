@@ -61,6 +61,10 @@ public class Path implements Serializable, Comparable<Path> {
       if (pathSc.length() > 0) {
         if (pathSc.charAt(pathSc.length() - 1) == TsFileConstant.DOUBLE_QUOTE) {
           int endIndex = pathSc.lastIndexOf('"', pathSc.length() - 2);
+          // if a double quotes with escape character
+          while (endIndex != -1 && pathSc.charAt(endIndex - 1) == '\\') {
+            endIndex = pathSc.lastIndexOf('"', endIndex - 2);
+          }
           if (endIndex != -1 && (endIndex == 0 || pathSc.charAt(endIndex - 1) == '.')) {
             fullPath = pathSc;
             device = pathSc.substring(0, endIndex - 1);

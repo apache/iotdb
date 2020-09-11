@@ -46,7 +46,7 @@ First explain the meaning of some important fields in AlignByDevicePlan:
 Before explaining the specific implementation process, a relatively complete example is given first, and the following explanation will be used in conjunction with this example.
 
 ```sql
-SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 ALIGN BY DEVICE
+SELECT s1, '1', *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 ALIGN BY DEVICE
 ```
 
 Among them, the time series in the system is:
@@ -87,7 +87,7 @@ It splices the suffix paths obtained in the SELECT statement with the prefix pat
     // See the following for an example
     Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
     // If a constant. Recording, continue to the next suffix path
-    if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
+    if (suffixPath.startWith("'"))) {
       ...
       continue;
     }
@@ -174,11 +174,11 @@ In the example, the result of splicing the filter conditions of device 1 is `tim
 
 The following example summarizes the variable information calculated through this stage:
 
-- measurement list `measurements`：`[s1, "1", s1, s2, s2, s5]`
+- measurement list `measurements`：`[s1, '1', s1, s2, s2, s5]`
 - measurement type `measurementTypeMap`：
   -  `s1 -> Exist`
   -  `s2 -> Exist`
-  -  `"1" -> Constant`
+  -  `'1' -> Constant`
   -  `s5 -> NonExist`
 - Filter condition `deviceToFilterMap` for each device:
   -  `root.sg.d1 -> time = 1 AND root.sg.d1.s1 < 25`
@@ -213,7 +213,7 @@ The resulting header is:
 | ---- | ------ | --- | --- | --- | --- | --- | --- |
 |      |        |     |     |     |     |     |     |
 
-The deduplicated `measurements` are `[s1, "1", s2, s5]`.
+The deduplicated `measurements` are `[s1, '1', s2, s5]`.
 
 ### Result set generation
 
