@@ -138,8 +138,9 @@ public class IoTDBMetadataFetchIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[]{"show storage group", "show storage group root.ln.wf01.wt01.temperature"};
-      String[] standards = new String[]{"root.ln.wf01.wt01,\n", ""};
+      String[] sqls = new String[]{"show storage group", "show storage group root.ln.wf01",
+          "show storage group root.ln.wf01.wt01.status"};
+      String[] standards = new String[]{"root.ln.wf01.wt01,\n", "root.ln.wf01.wt01,\n", ""};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -234,7 +235,7 @@ public class IoTDBMetadataFetchIT {
           }
           Assert.assertEquals(builder.toString(), standard);
         } catch (SQLException e) {
-          logger.error("showDevices() failed", e);
+          logger.error("showDevicesTest() failed", e);
           fail(e.getMessage());
         }
       }
