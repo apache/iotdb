@@ -49,6 +49,7 @@ public class GroupByFillDataSet extends QueryDataSet {
   // last timestamp for each time series
   private long[] lastTimeArray;
   private TimeValuePair[] firstNotNullTV;
+  private boolean isPeekEnded = false;
 
   public GroupByFillDataSet(List<PartialPath> paths, List<TSDataType> dataTypes,
       GroupByEngineDataSet groupByEngineDataSet,
@@ -84,7 +85,7 @@ public class GroupByFillDataSet extends QueryDataSet {
       firstNotNullTV[i] = fill.getFillResult();
       TimeValuePair timeValuePair = firstNotNullTV[i];
       previousValue[i] = null;
-      previousTime[i] = Long.MIN_VALUE;
+      previousTime[i] = Long.MAX_VALUE;
       if (ascending && timeValuePair != null && timeValuePair.getValue() != null) {
         previousValue[i] = timeValuePair.getValue().getValue();
         previousTime[i] = timeValuePair.getTimestamp();
@@ -133,17 +134,23 @@ public class GroupByFillDataSet extends QueryDataSet {
             || previousFill.getBeforeRange() >= groupByEngineDataSet.interval)
             && rowRecord.getTimestamp() >= previousTime[i]) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], tsDataType));
-        } else if (!ascending) {
+        } else if (!ascending && !isPeekEnded) {
           Pair<Long, Object> data = groupByEngineDataSet.peekNextNotNullValue(paths.get(i), i);
-          if (data != null) {
+          if (data == null) {
+            isPeekEnded = true;
+            previousTime[i] = Long.MIN_VALUE;
+            previousValue[i] = null;
+            if (firstNotNullTV[i] != null && firstNotNullTV[i].getValue() != null) {
+              rowRecord.getFields().set(i,
+                  Field.getField(firstNotNullTV[i].getValue().getValue(), tsDataType));
+              previousValue[i] = firstNotNullTV[i].getValue().getValue();
+              previousTime[i] = firstNotNullTV[i].getTimestamp();
+            }
+            //data != null
+          } else {
             rowRecord.getFields().set(i, Field.getField(data.right, tsDataType));
             previousValue[i] = data.right;
             previousTime[i] = data.left;
-          } else if (firstNotNullTV[i] != null && firstNotNullTV[i].getValue() != null) {
-            rowRecord.getFields().set(i,
-                Field.getField(firstNotNullTV[i].getValue().getValue(), tsDataType));
-            previousValue[i] = firstNotNullTV[i].getValue().getValue();
-            previousTime[i] = firstNotNullTV[i].getTimestamp();
           }
         }
       } else {

@@ -36,7 +36,7 @@ public class DescBatchData extends BatchData {
   public void next() {
     super.readCurArrayIndex--;
     if (super.readCurArrayIndex == -1) {
-      super.readCurArrayIndex = capacity;
+      super.readCurArrayIndex = capacity - 1;
       super.readCurListIndex--;
     }
   }

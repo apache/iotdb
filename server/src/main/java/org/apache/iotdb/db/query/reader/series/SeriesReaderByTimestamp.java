@@ -56,6 +56,11 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     return batchData.getValueInTimestamp(timestamp);
   }
 
+  @Override
+  public boolean readerIsEmpty() throws IOException {
+    return seriesReader.isEmpty()&& isEmpty(batchData);
+  }
+
   protected boolean hasNext(long timestamp) throws IOException {
 
     /*

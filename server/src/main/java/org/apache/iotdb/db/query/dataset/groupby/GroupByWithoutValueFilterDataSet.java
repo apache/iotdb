@@ -154,7 +154,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       } else {
         return null;
       }
-      result = pathExecutors.get(path).peekNextNotNullValue(i, nextStartTime, nextEndTime);
+      result = pathExecutors.get(path).peekNextNotNullValue(nextStartTime, nextEndTime);
     } while (result == null);
     return result;
   }

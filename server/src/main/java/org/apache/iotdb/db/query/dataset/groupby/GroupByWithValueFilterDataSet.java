@@ -175,7 +175,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   @Override
   @SuppressWarnings("squid:S3776")
   public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
-    if (!timestampGenerator.hasNext() && cachedTimestamps.isEmpty()) {
+    if ((!timestampGenerator.hasNext() && cachedTimestamps.isEmpty())
+        || allDataReaderList.get(i).readerIsEmpty()) {
       return null;
     }
 

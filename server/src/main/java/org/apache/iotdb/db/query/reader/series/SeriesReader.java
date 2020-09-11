@@ -167,8 +167,8 @@ public class SeriesReader {
         versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
   }
 
-  public boolean isEmpty() {
-    return seqFileResource.isEmpty() && unseqFileResource.isEmpty();
+  public boolean isEmpty() throws IOException {
+    return !(hasNextPage() || hasNextChunk() || hasNextFile());
   }
 
   boolean hasNextFile() throws IOException {

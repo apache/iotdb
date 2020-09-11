@@ -215,7 +215,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public Pair<Long, Object> peekNextNotNullValue(int i, long nextStartTime, long nextEndTime)
+  public Pair<Long, Object> peekNextNotNullValue(long nextStartTime, long nextEndTime)
       throws IOException {
     try {
       if (preCachedData != null && preCachedData.hasCurrent()) {
@@ -223,18 +223,20 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         int readCurListIndex = preCachedData.getReadCurListIndex();
 
         List<AggregateResult> aggregateResults = calcResult(nextStartTime, nextEndTime);
-        if (aggregateResults == null || aggregateResults.get(i).getResult() == null) {
+        if (aggregateResults == null || aggregateResults.get(0).getResult() == null) {
           return null;
         }
         preCachedData.resetBatchData(readCurArrayIndex, readCurListIndex);
-        return new Pair<>(nextStartTime, aggregateResults.get(i).getResult());
+        return new Pair<>(nextStartTime, aggregateResults.get(0).getResult());
       } else {
         List<AggregateResult> aggregateResults = calcResult(nextStartTime, nextEndTime);
-        if (aggregateResults == null || aggregateResults.get(i) == null) {
+        if (aggregateResults == null || aggregateResults.get(0) == null) {
           return null;
         }
-        preCachedData.resetBatchData();
-        return new Pair<>(nextStartTime, aggregateResults.get(i).getResult());
+        if (preCachedData != null) {
+          preCachedData.resetBatchData();
+        }
+        return new Pair<>(nextStartTime, aggregateResults.get(0).getResult());
       }
     } catch (QueryProcessException e) {
       throw new IOException(e.getMessage(), e);
