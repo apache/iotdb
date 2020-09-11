@@ -137,8 +137,7 @@ public class StorageEngine implements IService {
   private static long timePartitionInterval = -1;
 
   /**
-   * whether enable data partition
-   * if disabled, all data belongs to partition 0
+   * whether enable data partition if disabled, all data belongs to partition 0
    */
   @ServerConfigConsistent
   private static boolean enablePartition =
@@ -313,14 +312,16 @@ public class StorageEngine implements IService {
             if (processor == null) {
               logger.info("construct a processor instance, the storage group is {}, Thread is {}",
                   storageGroupPath, Thread.currentThread().getId());
-              processor = new StorageGroupProcessor(systemDir, storageGroupPath.getFullPath(), fileFlushPolicy);
+              processor = new StorageGroupProcessor(systemDir, storageGroupPath.getFullPath(),
+                  fileFlushPolicy);
               processor.setDataTTL(storageGroupMNode.getDataTTL());
               processorMap.put(storageGroupPath, processor);
             }
           }
         } else {
           // not finished recover, refuse the request
-          throw new StorageEngineException("the sg " + storageGroupPath + " may not ready now, please wait and retry later",
+          throw new StorageEngineException(
+              "the sg " + storageGroupPath + " may not ready now, please wait and retry later",
               TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
@@ -417,8 +418,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void asyncCloseProcessor(PartialPath storageGroupPath, boolean isSeq)
-      throws StorageGroupNotSetException {
+  public void asyncCloseProcessor(PartialPath storageGroupPath, boolean isSeq) {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor != null) {
       logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupPath,
@@ -441,8 +441,6 @@ public class StorageEngine implements IService {
       } finally {
         processor.writeUnlock();
       }
-    } else {
-      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
     }
   }
 

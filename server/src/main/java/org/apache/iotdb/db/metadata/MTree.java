@@ -650,6 +650,19 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Get the count of devices under the given prefix path.
+   *
+   * @param prefixPath a prefix path or a full path, may contain '*'.
+   */
+  int getDevicesNum(PartialPath prefixPath) throws MetadataException {
+    String[] nodes = prefixPath.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(prefixPath.getFullPath());
+    }
+    return getDevicesCount(root, nodes, 1);
+  }
+
+  /**
    * Get the count of nodes in the given level under the given prefix path.
    */
   int getNodesCountInGivenLevel(PartialPath prefixPath, int level) throws MetadataException {
@@ -693,6 +706,33 @@ public class MTree implements Serializable {
       }
       return cnt;
     }
+  }
+
+  /**
+   * Traverse the MTree to get the count of devices.
+   */
+  private int getDevicesCount(MNode node, String[] nodes, int idx) throws MetadataException {
+    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
+    int cnt = 0;
+    if (!(PATH_WILDCARD).equals(nodeReg)) {
+      if (node.hasChild(nodeReg)) {
+        if (node.getChild(nodeReg) instanceof MeasurementMNode && idx >= nodes.length) {
+          cnt++;
+        } else {
+          cnt += getDevicesCount(node.getChild(nodeReg), nodes, idx + 1);
+        }
+      }
+    } else {
+      boolean deviceAdded = false;
+      for (MNode child : node.getChildren().values()) {
+        if (child instanceof MeasurementMNode && !deviceAdded) {
+          cnt++;
+          deviceAdded = true;
+        }
+        cnt += getDevicesCount(child, nodes, idx + 1);
+      }
+    }
+    return cnt;
   }
 
   /**

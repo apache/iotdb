@@ -19,12 +19,10 @@
 package org.apache.iotdb.db.engine.flush;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
-
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
-import org.apache.iotdb.db.engine.flush.pool.VmMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.monitor.StatMonitor;
@@ -45,7 +43,6 @@ public class FlushManager implements FlushManagerMBean, IService {
   @Override
   public void start() throws StartupException {
     FlushSubTaskPoolManager.getInstance().start();
-    VmMergeTaskPoolManager.getInstance().start();
     FlushTaskPoolManager.getInstance().start();
     try {
       JMXService.registerMBean(this, ServiceType.FLUSH_SERVICE.getJmxName());
@@ -57,7 +54,6 @@ public class FlushManager implements FlushManagerMBean, IService {
   @Override
   public void stop() {
     FlushSubTaskPoolManager.getInstance().stop();
-    VmMergeTaskPoolManager.getInstance().stop();
     FlushTaskPoolManager.getInstance().stop();
     JMXService.deregisterMBean(ServiceType.FLUSH_SERVICE.getJmxName());
   }

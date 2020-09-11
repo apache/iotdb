@@ -103,6 +103,10 @@ class StaticResps {
       Arrays.asList(COLUMN_COLUMN, COLUMN_COUNT),
       Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
 
+  static final TSExecuteStatementResp COUNT_DEVICES = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_COUNT),
+      Collections.singletonList(TSDataType.INT32.toString()));
+
   static final TSExecuteStatementResp COUNT_NODES = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_COUNT),
       Collections.singletonList(TSDataType.INT32.toString()));

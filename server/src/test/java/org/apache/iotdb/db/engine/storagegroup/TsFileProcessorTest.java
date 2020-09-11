@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
@@ -75,21 +74,18 @@ public class TsFileProcessorTest {
     MetadataManagerHelper.initMetadata();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
-    IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
-    IoTDBDescriptor.getInstance().getConfig().setEnableVm(true);
   }
 
   @Test
   public void testWriteAndFlush() throws IOException, WriteProcessException, IllegalPathException {
     logger.info("testWriteAndFlush begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
@@ -141,7 +137,6 @@ public class TsFileProcessorTest {
       throws IOException, WriteProcessException, IllegalPathException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
@@ -219,7 +214,6 @@ public class TsFileProcessorTest {
   public void testMultiFlush() throws IOException, WriteProcessException, IllegalPathException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
@@ -255,7 +249,6 @@ public class TsFileProcessorTest {
   public void testWriteAndClose() throws IOException, WriteProcessException, IllegalPathException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
-        new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
@@ -291,6 +284,11 @@ public class TsFileProcessorTest {
 
     // close synchronously
     processor.syncClose();
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
 
     assertTrue(processor.getTsFileResource().isClosed());
 

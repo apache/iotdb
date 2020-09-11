@@ -27,6 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -252,24 +253,26 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 100000;
 
   /**
-   * When merge point number reaches this, merge the vmfile to the tsfile.
+   * Work when tsfile_manage_strategy is level_strategy. When merge point number reaches this, merge
+   * the files to the last level.
    */
   private int mergeChunkPointNumberThreshold = 100000;
 
   /**
-   * Is vm merge enable
+   * TsFile manage strategy, define use which hot compaction strategy
    */
-  private boolean enableVm = false;
+  private TsFileManagementStrategy tsFileManagementStrategy = TsFileManagementStrategy.NORMAL_STRATEGY;
 
   /**
-   * The max vm num of each memtable. When vm num exceeds this, the vm files will merge to one.
+   * Work when tsfile_manage_strategy is level_strategy. The max file num of each level. When file
+   * num exceeds this, the files in one level will merge to one.
    */
-  private int maxVmNum = 10;
+  private int maxFileNumInEachLevel = 100;
 
   /**
-   * When vmfiles merge times exceeds this, merge the vmfile to the tsfile.
+   * Work when tsfile_manage_strategy is level_strategy. The max num of level.
    */
-  private int maxMergeChunkNumInTsFile = 100;
+  private int maxLevelNum = 2;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -499,6 +502,11 @@ public class IoTDBConfig {
    */
   private int chunkMergePointThreshold = 20480;
 
+  /**
+   * The limit of write throughput merge can reach per second
+   */
+  private int mergeThroughputMbPerSec = 16;
+
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   /**
@@ -578,8 +586,7 @@ public class IoTDBConfig {
 
   /**
    * default TTL for storage groups that are not set TTL by statements, in ms
-   * Notice: if this property is changed, previous created storage group which are not set TTL
-   * will also be affected.
+   * Notice: if this property is changed, previous created storage group which are not set TTL will also be affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -1181,6 +1188,14 @@ public class IoTDBConfig {
     this.chunkMergePointThreshold = chunkMergePointThreshold;
   }
 
+  public int getMergeThroughputMbPerSec() {
+    return mergeThroughputMbPerSec;
+  }
+
+  public void setMergeThroughputMbPerSec(int mergeThroughputMbPerSec) {
+    this.mergeThroughputMbPerSec = mergeThroughputMbPerSec;
+  }
+
   public long getMemtableSizeThreshold() {
     return memtableSizeThreshold;
   }
@@ -1205,13 +1220,6 @@ public class IoTDBConfig {
     this.mergeChunkPointNumberThreshold = mergeChunkPointNumberThreshold;
   }
 
-  public int getMaxMergeChunkNumInTsFile() {
-    return maxMergeChunkNumInTsFile;
-  }
-
-  public void setMaxMergeChunkNumInTsFile(int maxMergeChunkNumInTsFile) {
-    this.maxMergeChunkNumInTsFile = maxMergeChunkNumInTsFile;
-  }
   public MergeFileStrategy getMergeFileStrategy() {
     return mergeFileStrategy;
   }
@@ -1221,20 +1229,30 @@ public class IoTDBConfig {
     this.mergeFileStrategy = mergeFileStrategy;
   }
 
-  public boolean isEnableVm() {
-    return enableVm;
+
+  public TsFileManagementStrategy getTsFileManagementStrategy() {
+    return tsFileManagementStrategy;
   }
 
-  public void setEnableVm(boolean enableVm) {
-    this.enableVm = enableVm;
+  public void setTsFileManagementStrategy(
+      TsFileManagementStrategy tsFileManagementStrategy) {
+    this.tsFileManagementStrategy = tsFileManagementStrategy;
   }
 
-  public int getMaxVmNum() {
-    return maxVmNum;
+  public int getMaxFileNumInEachLevel() {
+    return maxFileNumInEachLevel;
   }
 
-  public void setMaxVmNum(int maxVmNum) {
-    this.maxVmNum = maxVmNum;
+  public void setMaxFileNumInEachLevel(int maxFileNumInEachLevel) {
+    this.maxFileNumInEachLevel = maxFileNumInEachLevel;
+  }
+
+  public int getMaxLevelNum() {
+    return maxLevelNum;
+  }
+
+  public void setMaxLevelNum(int maxLevelNum) {
+    this.maxLevelNum = maxLevelNum;
   }
 
   public int getMergeChunkSubThreadNum() {
