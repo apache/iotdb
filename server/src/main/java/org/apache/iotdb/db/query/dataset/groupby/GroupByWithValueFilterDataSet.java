@@ -173,6 +173,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   @Override
+  @SuppressWarnings("squid:S3776")
   public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
     if (!timestampGenerator.hasNext() && cachedTimestamps.isEmpty()) {
       return null;
@@ -222,6 +223,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * @param timeArrayLength the current size of timestamp array
    * @return time array size
    */
+  @SuppressWarnings("squid:S3776")
   private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
       throws IOException {
     for (int cnt = 1; cnt < timeStampFetchSize - 1

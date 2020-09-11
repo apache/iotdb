@@ -138,6 +138,7 @@ public class SeriesReader {
   }
 
   @TestOnly
+  @SuppressWarnings("squid:S107")
   SeriesReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType,
       QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
@@ -344,7 +345,8 @@ public class SeriesReader {
    * This method should be called after hasNextChunk() until no next page, make sure that all
    * overlapped pages are consumed
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings("squid:S3776")
+  // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
 
     /*
