@@ -21,7 +21,6 @@ package org.apache.iotdb.jdbc;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
-
 import java.awt.SystemTray;
 import java.time.ZoneId;
 import java.util.ArrayList;
