@@ -55,6 +55,9 @@ public abstract class PhysicalPlan {
   //for cluster mode, whether the plan may be splitted into several sub plans
   protected boolean canBeSplit = true;
 
+  //login username, corresponding to cli/session login user info
+  private String loginUserName;
+
   /**
    * whether the plan can be split into more than one Plans. Only used in the cluster mode.
    */
@@ -149,6 +152,14 @@ public abstract class PhysicalPlan {
       return null;
     }
     return ReadWriteIOUtils.readStringWithLength(buffer, valueLen);
+  }
+
+  public String getLoginUserName() {
+    return loginUserName;
+  }
+
+  public void setLoginUserName(String loginUserName) {
+    this.loginUserName = loginUserName;
   }
 
   public static class Factory {

@@ -45,7 +45,6 @@ public class AuthorPlan extends PhysicalPlan {
   private Set<Integer> permissions;
   private PartialPath nodeName;
   private String userName;
-  private String loginUserName;
 
   /**
    * AuthorPlan Constructor.
@@ -214,14 +213,6 @@ public class AuthorPlan extends PhysicalPlan {
 
   public String getUserName() {
     return userName;
-  }
-
-  public String getLoginUserName() {
-    return loginUserName;
-  }
-
-  public void setLoginUserName(String loginUserName) {
-    this.loginUserName = loginUserName;
   }
 
   private Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {

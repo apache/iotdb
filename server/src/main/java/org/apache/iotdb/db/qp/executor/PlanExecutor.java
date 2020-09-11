@@ -1107,9 +1107,9 @@ public class PlanExecutor implements IPlanExecutor {
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
 
+    // check if current user is granted list_role privilege
     boolean hasListRolePrivilege = AuthorityChecker
-        .check(plan.getLoginUserName(), new ArrayList<>(), plan.getOperatorType(), plan.getLoginUserName());
-
+        .check(plan.getLoginUserName(), Collections.emptyList(), plan.getOperatorType(), plan.getLoginUserName());
     if (!hasListRolePrivilege) {
       return dataSet;
     }
@@ -1126,25 +1126,21 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private ListDataSet executeListUser(AuthorPlan plan) throws AuthException {
-    List<PartialPath> paths = new ArrayList<>();
-    paths.add(plan.getNodeName());
-    // check if current user is granted list_user privilege
-    boolean hasListUserPrivilege = AuthorityChecker
-        .check(plan.getLoginUserName(), paths, plan.getOperatorType(), plan.getLoginUserName());
-
+    int index = 0;
     List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new PartialPath(COLUMN_USER, false));
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
 
+    // check if current user is granted list_user privilege
+    boolean hasListUserPrivilege = AuthorityChecker
+        .check(plan.getLoginUserName(), Collections.singletonList((plan.getNodeName())), plan.getOperatorType(), plan.getLoginUserName());
     if (!hasListUserPrivilege) {
       return dataSet;
     }
 
     List<String> userList = authorizer.listAllUsers();
-    int index = 0;
-
     for (String user : userList) {
       RowRecord record = new RowRecord(index++);
       Field field = new Field(TSDataType.TEXT);
