@@ -26,7 +26,7 @@ public class MonitorConstants {
   // statistic for data inserting module
   public static final String STAT_STORAGE_GROUP_NAME = "root.stats";
   public static final String[] STAT_STORAGE_GROUP_ARRAY = {"root", "stats"};
-  public static final String[] STAT_GLOBAL_ARRAY = {"root", "stats", "global"};
+  public static final String[] STAT_GLOBAL_ARRAY = {"root", "stats", "\"global\""};
 
 
   /**
