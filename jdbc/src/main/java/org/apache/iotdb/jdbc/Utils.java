@@ -50,7 +50,7 @@ public class Utils {
       Map<String,String> paramKV = new HashMap<>();
       if (subURL.contains(PARAMS_SEPARATION)) {
         int separationIndex = subURL.indexOf(PARAMS_SEPARATION);
-        String[] parameters = subURL.substring(separationIndex+1).split(PARAMS_JOIN);
+        String[] parameters = subURL.substring(separationIndex + 1).split(PARAMS_JOIN);
         subURL = subURL.substring(0, separationIndex);
         for (int i = 0; i < parameters.length; i++) {
           String[] kv = parameters[i].split(PARAMS_ASSIGNMENT);
