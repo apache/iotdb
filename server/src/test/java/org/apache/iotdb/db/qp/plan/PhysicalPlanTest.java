@@ -35,7 +35,6 @@ import java.util.Set;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
@@ -437,11 +436,11 @@ public class PhysicalPlanTest {
         fail();
       }
       CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(), true);
-      UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
-    } catch (UDFRegistrationException | QueryProcessException e) {
+      assertEquals("udf", createFunctionPlan.getUdfName());
+      assertEquals("org.apache.iotdb.db.query.udf.example.Adder",
+          createFunctionPlan.getClassName());
+      assertFalse(createFunctionPlan.isTemporary());
+    } catch (QueryProcessException e) {
       fail(e.toString());
     }
   }
@@ -455,67 +454,10 @@ public class PhysicalPlanTest {
         fail();
       }
       CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(), true);
-      UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
-    } catch (UDFRegistrationException | QueryProcessException e) {
-      fail(e.toString());
-    }
-  }
-
-  @Test(expected = UDFRegistrationException.class)
-  public void testCreateFunctionPlan3()
-      throws UDFRegistrationException { // create function twice
-    try {
-      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(), true);
-      createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(), true);
-    } catch (QueryProcessException e) {
-      fail(e.toString());
-    }
-  }
-
-  @Test(expected = UDFRegistrationException.class)
-  public void testCreateFunctionPlan4()
-      throws UDFRegistrationException { // create temporary function twice
-    try {
-      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(), true);
-      createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(), true);
-    } catch (QueryProcessException e) {
-      fail(e.toString());
-    }
-  }
-
-  @Test(expected = UDFRegistrationException.class)
-  public void testCreateFunctionPlan5()
-      throws UDFRegistrationException { // create temporary function + create function
-    try {
-      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(), true);
-      createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(), true);
+      assertEquals("udf", createFunctionPlan.getUdfName());
+      assertEquals("org.apache.iotdb.db.query.udf.example.Adder",
+          createFunctionPlan.getClassName());
+      assertTrue(createFunctionPlan.isTemporary());
     } catch (QueryProcessException e) {
       fail(e.toString());
     }
@@ -534,9 +476,37 @@ public class PhysicalPlanTest {
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
 
       UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
+
       if (!(plan instanceof UDTFPlan)) {
         fail();
       }
+
+      UDTFPlan udtfPlan = (UDTFPlan) plan;
+
+      assertTrue(udtfPlan.isAlignByTime());
+
+      assertEquals(8, udtfPlan.getPaths().size());
+      assertEquals(8, udtfPlan.getDataTypes().size());
+
+      assertEquals(6, udtfPlan.getDeduplicatedPaths().size());
+      assertEquals(6, udtfPlan.getDeduplicatedDataTypes().size());
+      assertEquals(6, udtfPlan.getRawQueryPathOutputIndexes().size());
+
+      assertEquals(4, udtfPlan.getPathToIndex().size());
+      assertTrue(udtfPlan.getPathToIndex()
+          .containsKey("udf(root.vehicle.d2.s1, root.vehicle.d1.s1)"));
+      assertTrue(udtfPlan.getPathToIndex()
+          .containsKey("udf(root.vehicle.d1.s1, root.vehicle.d2.s1)"));
+      assertTrue(udtfPlan.getPathToIndex().containsKey("root.vehicle.d1.s1"));
+      assertTrue(udtfPlan.getPathToIndex().containsKey("root.vehicle.d2.s1"));
+
+      assertEquals(2, udtfPlan.getDeduplicatedColumns().size());
+      assertTrue(udtfPlan.getDeduplicatedColumns()
+          .contains("udf(root.vehicle.d2.s1, root.vehicle.d1.s1)"));
+      assertTrue(udtfPlan.getDeduplicatedColumns()
+          .contains("udf(root.vehicle.d1.s1, root.vehicle.d2.s1)"));
+
+      assertEquals(2, udtfPlan.getDeduplicatedExecutors().size());
     } catch (Exception e) {
       fail(e.toString());
     }
@@ -558,13 +528,44 @@ public class PhysicalPlanTest {
       if (!(plan instanceof UDTFPlan)) {
         fail();
       }
+
+      UDTFPlan udtfPlan = (UDTFPlan) plan;
+
+      assertTrue(udtfPlan.isAlignByTime());
+
+      assertEquals(5, udtfPlan.getPaths().size());
+      assertEquals(5, udtfPlan.getDataTypes().size());
+
+      assertEquals(8, udtfPlan.getDeduplicatedPaths().size());
+      assertEquals(8, udtfPlan.getDeduplicatedDataTypes().size());
+      assertEquals(8, udtfPlan.getRawQueryPathOutputIndexes().size());
+
+      assertEquals(5, udtfPlan.getPathToIndex().size());
+      assertTrue(udtfPlan.getPathToIndex()
+          .containsKey("udf(root.vehicle.d2.s1, root.vehicle.d1.s1, \"addend\"=\"100\")"));
+      assertTrue(udtfPlan.getPathToIndex()
+          .containsKey("udf(root.vehicle.d2.s1, root.vehicle.d1.s1)"));
+      assertTrue(udtfPlan.getPathToIndex()
+          .containsKey("udf(root.vehicle.d1.s1, root.vehicle.d2.s1)"));
+      assertTrue(udtfPlan.getPathToIndex().containsKey("root.vehicle.d1.s1"));
+      assertTrue(udtfPlan.getPathToIndex().containsKey("root.vehicle.d2.s1"));
+
+      assertEquals(3, udtfPlan.getDeduplicatedColumns().size());
+      assertTrue(udtfPlan.getDeduplicatedColumns()
+          .contains("udf(root.vehicle.d2.s1, root.vehicle.d1.s1)"));
+      assertTrue(udtfPlan.getDeduplicatedColumns()
+          .contains("udf(root.vehicle.d1.s1, root.vehicle.d2.s1)"));
+      assertTrue(udtfPlan.getDeduplicatedColumns()
+          .contains("udf(root.vehicle.d2.s1, root.vehicle.d1.s1, \"addend\"=\"100\")"));
+
+      assertEquals(3, udtfPlan.getDeduplicatedExecutors().size());
     } catch (Exception e) {
       fail(e.toString());
     }
   }
 
-  @Test(expected = UDFRegistrationException.class)
-  public void testDropFunctionPlan1() throws UDFRegistrationException { // create + drop twice
+  @Test
+  public void testUDTFQuery3() {
     try {
       CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
           "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
@@ -572,60 +573,41 @@ public class PhysicalPlanTest {
           .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
               createFunctionPlan.isTemporary(), true);
 
-      DropFunctionPlan dropFunctionPlan = (DropFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "drop function udf");
-      UDFRegistrationService.getInstance().deregister(dropFunctionPlan.getUdfName());
-      dropFunctionPlan = (DropFunctionPlan) processor.parseSQLToPhysicalPlan("drop function udf");
-      UDFRegistrationService.getInstance().deregister(dropFunctionPlan.getUdfName());
-    } catch (QueryProcessException e) {
-      fail(e.toString());
-    }
-  }
+      String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle";
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
 
-  @Test(expected = UDFRegistrationException.class)
-  public void testDropFunctionPlan2() throws UDFRegistrationException { // drop
-    try {
-      DropFunctionPlan dropFunctionPlan = (DropFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "drop function udf");
-      UDFRegistrationService.getInstance().deregister(dropFunctionPlan.getUdfName());
-    } catch (QueryProcessException e) {
+      UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
+      if (!(plan instanceof UDTFPlan)) {
+        fail();
+      }
+
+      UDTFPlan udtfPlan = (UDTFPlan) plan;
+
+      assertTrue(udtfPlan.isAlignByTime());
+
+      assertEquals(44, udtfPlan.getPaths().size());
+      assertEquals(44, udtfPlan.getDataTypes().size());
+
+      assertEquals(32, udtfPlan.getDeduplicatedPaths().size());
+      assertEquals(32, udtfPlan.getDeduplicatedDataTypes().size());
+      assertEquals(32, udtfPlan.getRawQueryPathOutputIndexes().size());
+
+      assertEquals(20, udtfPlan.getPathToIndex().size());
+
+      assertEquals(16, udtfPlan.getDeduplicatedColumns().size());
+      assertEquals(16, udtfPlan.getDeduplicatedExecutors().size());
+    } catch (Exception e) {
       fail(e.toString());
     }
   }
 
   @Test
-  public void testCreateAndDropFunction() {
+  public void testDropFunctionPlan() { // drop function
     try {
-      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(), true);
-
       DropFunctionPlan dropFunctionPlan = (DropFunctionPlan) processor.parseSQLToPhysicalPlan(
           "drop function udf");
-      UDFRegistrationService.getInstance().deregister(dropFunctionPlan.getUdfName());
-
-      createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(), true);
-
-      dropFunctionPlan = (DropFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "drop function udf");
-      UDFRegistrationService.getInstance().deregister(dropFunctionPlan.getUdfName());
-
-      createFunctionPlan = (CreateFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      UDFRegistrationService.getInstance()
-          .register(createFunctionPlan.getUdfName(), createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(), true);
-
-      dropFunctionPlan = (DropFunctionPlan) processor.parseSQLToPhysicalPlan(
-          "drop function udf");
-      UDFRegistrationService.getInstance().deregister(dropFunctionPlan.getUdfName());
-    } catch (QueryProcessException | UDFRegistrationException e) {
+      assertEquals("udf", dropFunctionPlan.getUdfName());
+    } catch (QueryProcessException e) {
       fail(e.toString());
     }
   }
