@@ -115,8 +115,8 @@ public class Cli extends AbstractCli {
       port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
       username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
 
-      boolFormat = checkRequiredArg(BOOL_FORMAT_ARGS,BOOL_FORMAT_ARGS,commandLine,false, boolFormat);
-      if (NUMBER.equals(boolFormat)){
+      boolFormat = checkRequiredArg(BOOL_FORMAT_ARGS, BOOL_FORMAT_ARGS, commandLine, false, boolFormat);
+      if (NUMBER.equals(boolFormat)) {
         org.apache.iotdb.rpc.Config.setBoolFormat(org.apache.iotdb.rpc.Config.Constant.NUMBER);
       }
 
