@@ -54,7 +54,7 @@ public class Utils {
         subURL = subURL.substring(0, separationIndex);
         for (int i = 0; i < parameters.length; i++) {
           String[] kv = parameters[i].split(PARAMS_ASSIGNMENT);
-          if (kv.length<2){
+          if (kv.length < 2) {
             continue;
           }
           paramKV.put(kv[0],kv[1]);
