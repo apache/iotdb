@@ -1,13 +1,6 @@
 package org.apache.iotdb.rpc;
 
 
-/**
- * @author chenPeng
- * @version 1.0.0
- * @ClassName Config.java
- * @Description TODO
- * @createTime 2020年08月19日 22:26:00
- */
 public class Config {
     public enum Constant {
         NUMBER("number"), BOOLEAN("bool");
