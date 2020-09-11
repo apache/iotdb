@@ -127,7 +127,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
     long[] timestampArray = new long[timeStampFetchSize];
     int timeArrayLength = 0;
-    while (!cachedTimestamps.isEmpty()) {
+
+    if (!cachedTimestamps.isEmpty()) {
       long timestamp = cachedTimestamps.remove();
       if (timestamp < curEndTime) {
         if (!groupByTimePlan.isAscending() && timestamp < curStartTime) {
@@ -142,7 +143,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         return constructRowRecord(aggregateResultList);
       }
     }
-    while (timestampGenerator.hasNext()) {
+
+    while (!cachedTimestamps.isEmpty() || timestampGenerator.hasNext()) {
       // construct timestamp array
       timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
 
@@ -222,14 +224,24 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    */
   private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
       throws IOException {
-    for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt++) {
-      lastTimestamp = timestampGenerator.next();
+    for (int cnt = 1; cnt < timeStampFetchSize - 1
+        && (!cachedTimestamps.isEmpty() || timestampGenerator.hasNext()); cnt++) {
+      if (!cachedTimestamps.isEmpty()) {
+        lastTimestamp = cachedTimestamps.remove();
+      } else {
+        lastTimestamp = timestampGenerator.next();
+      }
       if (groupByTimePlan.isAscending() && lastTimestamp < curEndTime) {
         timestampArray[timeArrayLength++] = lastTimestamp;
       } else if (!groupByTimePlan.isAscending() && lastTimestamp >= curStartTime) {
         timestampArray[timeArrayLength++] = lastTimestamp;
       } else {
-        cachedTimestamps.add(lastTimestamp);
+        //may lastTimestamp get from cache
+        if (!cachedTimestamps.isEmpty() && lastTimestamp <= cachedTimestamps.peek()) {
+          cachedTimestamps.addFirst(lastTimestamp);
+        } else {
+          cachedTimestamps.add(lastTimestamp);
+        }
         break;
       }
     }
