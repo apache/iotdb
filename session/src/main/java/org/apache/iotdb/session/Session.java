@@ -194,7 +194,7 @@ public class Session {
     isClosed = false;
 
     String boolFormat = params.get(Config.PARAMS_BOOL_FORMAT);
-    if (org.apache.iotdb.rpc.Config.Constant.NUMBER.getType().equals(boolFormat)){
+    if (org.apache.iotdb.rpc.Config.Constant.NUMBER.getType().equals(boolFormat)) {
       org.apache.iotdb.rpc.Config.setBoolFormat(org.apache.iotdb.rpc.Config.Constant.NUMBER);
     }
     client = RpcUtils.newSynchronizedClient(client);
