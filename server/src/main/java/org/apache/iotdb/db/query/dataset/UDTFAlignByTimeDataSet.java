@@ -109,7 +109,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         if (rowOffset == 0) {
           currentBitmapList[i] = (currentBitmapList[i] << 1) | FLAG;
           dataPointIterator.next();
-          TSDataType type = transformedDataColumnDataTypes.get(i);
+          TSDataType type = transformedDataColumnDataTypes[i];
           switch (type) {
             case INT32:
               int intValue = dataPointIterator.currentInt();
@@ -178,6 +178,13 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
       }
     }
 
+    return packBuffer(tsQueryDataSet, timeBAOS, valueBAOSList, bitmapBAOSList);
+  }
+
+  protected TSQueryDataSet packBuffer(TSQueryDataSet tsQueryDataSet, PublicBAOS timeBAOS,
+      PublicBAOS[] valueBAOSList, PublicBAOS[] bitmapBAOSList) {
+    int columnsNum = transformedDataColumns.length;
+
     ByteBuffer timeBuffer = ByteBuffer.allocate(timeBAOS.size());
     timeBuffer.put(timeBAOS.getBuf(), 0, timeBAOS.size());
     timeBuffer.flip();
@@ -222,7 +229,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
       }
       dataPointIterator.next();
       Object value;
-      switch (transformedDataColumnDataTypes.get(i)) {
+      switch (transformedDataColumnDataTypes[i]) {
         case INT32:
           value = dataPointIterator.currentInt();
           break;
@@ -244,7 +251,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         default:
           throw new UnSupportedDataTypeException("Unsupported data type.");
       }
-      rowRecord.addField(value, transformedDataColumnDataTypes.get(i));
+      rowRecord.addField(value, transformedDataColumnDataTypes[i]);
 
       if (dataPointIterator.hasNextPoint()) {
         timeHeap.add(dataPointIterator.nextTime());

@@ -49,8 +49,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class UDTFAlignByTimeDataSetTest {
@@ -59,14 +59,23 @@ public class UDTFAlignByTimeDataSetTest {
 
   protected final static int ADDEND = 500_000;
 
-  private final IPlanExecutor queryExecutor = new PlanExecutor();
-  private final Planner processor = new Planner();
+  private static IPlanExecutor queryExecutor;
+
+  static {
+    try {
+      queryExecutor = new PlanExecutor();
+    } catch (QueryProcessException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private static final Planner processor = new Planner();
 
   public UDTFAlignByTimeDataSetTest() throws QueryProcessException {
   }
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     IoTDB.metaManager.setStorageGroup("root.vehicle");
     IoTDB.metaManager.createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
@@ -86,7 +95,7 @@ public class UDTFAlignByTimeDataSetTest {
         .format("create function udf as \"%s\"", "org.apache.iotdb.db.query.udf.example.Adder")));
   }
 
-  private void generateData() throws Exception {
+  private static void generateData() throws Exception {
     for (int i = 0; i < ITERATION_TIMES; ++i) {
       queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(i % 3 != 0
           ? String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)
@@ -100,8 +109,8 @@ public class UDTFAlignByTimeDataSetTest {
     }
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
 
@@ -123,7 +132,8 @@ public class UDTFAlignByTimeDataSetTest {
       List<Integer> originalIndex2FieldIndex = new ArrayList<>();
       for (int i = 0; i < 8; ++i) {
         Path path = queryPlan.getPaths().get(i);
-        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
+        String columnName =
+            path == null ? queryPlan.getExecutor(i).getContext().getColumn() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -175,7 +185,8 @@ public class UDTFAlignByTimeDataSetTest {
       List<Integer> originalIndex2FieldIndex = new ArrayList<>();
       for (int i = 0; i < 4; ++i) {
         Path path = queryPlan.getPaths().get(i);
-        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
+        String columnName =
+            path == null ? queryPlan.getExecutor(i).getContext().getColumn() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -212,7 +223,8 @@ public class UDTFAlignByTimeDataSetTest {
       List<Integer> originalIndex2FieldIndex = new ArrayList<>();
       for (int i = 0; i < 14; ++i) {
         Path path = queryPlan.getPaths().get(i);
-        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
+        String columnName =
+            path == null ? queryPlan.getExecutor(i).getContext().getColumn() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -261,7 +273,8 @@ public class UDTFAlignByTimeDataSetTest {
       List<Integer> originalIndex2FieldIndex = new ArrayList<>();
       for (int i = 0; i < 10; ++i) {
         Path path = queryPlan.getPaths().get(i);
-        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
+        String columnName =
+            path == null ? queryPlan.getExecutor(i).getContext().getColumn() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -323,7 +336,8 @@ public class UDTFAlignByTimeDataSetTest {
       List<Integer> originalIndex2FieldIndex = new ArrayList<>();
       for (int i = 0; i < 8; ++i) {
         Path path = queryPlan.getPaths().get(i);
-        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
+        String columnName =
+            path == null ? queryPlan.getExecutor(i).getContext().getColumn() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -353,53 +367,6 @@ public class UDTFAlignByTimeDataSetTest {
   public void testHasNextAndNextWithValueFilter2() {
     try {
       String sqlStr =
-          "select udf(d2.s2, d2.s1), udf(d2.s1, d2.s2), d2.s1, d2.s2, udf(d2.s1, d2.s2), udf(d2.s2, d2.s1), d2.s1, d2.s2 from root.vehicle"
-              + String.format(" where d2.s1 >= %d and d2.s2 < %d", (int) (0.25 * ITERATION_TIMES),
-              (int) (0.75 * ITERATION_TIMES));
-      UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
-      QueryDataSet dataSet = queryExecutor
-          .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      assertTrue(dataSet instanceof UDTFAlignByTimeDataSet);
-      UDTFAlignByTimeDataSet udtfAlignByTimeDataSet = (UDTFAlignByTimeDataSet) dataSet;
-
-      Set<Integer> s1s2 = new HashSet<>(Arrays.asList(0, 1, 4, 5));
-      Set<Integer> s1 = new HashSet<>(Arrays.asList(2, 6));
-      Set<Integer> s2 = new HashSet<>(Arrays.asList(3, 7));
-
-      Map<String, Integer> path2Index = queryPlan.getPathToIndex();
-      List<Integer> originalIndex2FieldIndex = new ArrayList<>();
-      for (int i = 0; i < 8; ++i) {
-        Path path = queryPlan.getPaths().get(i);
-        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
-        originalIndex2FieldIndex.add(path2Index.get(columnName));
-      }
-
-      int index = (int) (0.25 * ITERATION_TIMES);
-      while (udtfAlignByTimeDataSet.hasNext()) {
-        RowRecord rowRecord = udtfAlignByTimeDataSet.next();
-        List<Field> fields = rowRecord.getFields();
-        for (int i = 0; i < 8; ++i) {
-          if (s1s2.contains(i)) {
-            assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
-          } else if (s1.contains(i)) {
-            assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
-          } else if (s2.contains(i)) {
-            assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
-          }
-        }
-        ++index;
-      }
-      assertEquals((int) (0.5 * ITERATION_TIMES), index - (int) (0.25 * ITERATION_TIMES));
-    } catch (StorageEngineException | QueryFilterOptimizationException | TException | MetadataException | QueryProcessException | SQLException | IOException | InterruptedException e) {
-      e.printStackTrace();
-      fail(e.toString());
-    }
-  }
-
-  @Test
-  public void testHasNextAndNextWithValueFilter3() {
-    try {
-      String sqlStr =
           "select udf(*, *, \"addend\"=\"" + ADDEND + "\"), *, udf(*, *) from root.vehicle.d2"
               + String.format(" where s1 >= %d and s2 < %d", (int) (0.25 * ITERATION_TIMES),
               (int) (0.75 * ITERATION_TIMES));
@@ -413,7 +380,8 @@ public class UDTFAlignByTimeDataSetTest {
       List<Integer> originalIndex2FieldIndex = new ArrayList<>();
       for (int i = 0; i < 10; ++i) {
         Path path = queryPlan.getPaths().get(i);
-        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
+        String columnName =
+            path == null ? queryPlan.getExecutor(i).getContext().getColumn() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -447,7 +415,7 @@ public class UDTFAlignByTimeDataSetTest {
   }
 
   @Test
-  public void testHasNextAndNextWithValueFilter4() {
+  public void testHasNextAndNextWithValueFilter3() {
     try {
       String sqlStr =
           "select udf(d1.s2, d1.s1), udf(d1.s1, d1.s2), d1.s1, d1.s2, udf(d1.s1, d1.s2), udf(d1.s2, d1.s1), d1.s1, d1.s2 from root.vehicle"
@@ -467,7 +435,8 @@ public class UDTFAlignByTimeDataSetTest {
       List<Integer> originalIndex2FieldIndex = new ArrayList<>();
       for (int i = 0; i < 8; ++i) {
         Path path = queryPlan.getPaths().get(i);
-        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
+        String columnName =
+            path == null ? queryPlan.getExecutor(i).getContext().getColumn() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -506,7 +475,7 @@ public class UDTFAlignByTimeDataSetTest {
   }
 
   @Test
-  public void testHasNextAndNextWithValueFilter5() {
+  public void testHasNextAndNextWithValueFilter4() {
     try {
       String sqlStr =
           "select udf(s2, s1), udf(s1, s2), s1, s2, udf(s1, s2), udf(s2, s1), s1, s2 from root.vehicle.d2, root.vehicle.d3"
@@ -526,7 +495,8 @@ public class UDTFAlignByTimeDataSetTest {
       List<Integer> originalIndex2FieldIndex = new ArrayList<>();
       for (int i = 0; i < 16; ++i) {
         Path path = queryPlan.getPaths().get(i);
-        String columnName = path == null ? queryPlan.getColumn(i) : path.getFullPath();
+        String columnName =
+            path == null ? queryPlan.getExecutor(i).getContext().getColumn() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordIterationStrategy;
 import org.apache.iotdb.db.query.udf.api.iterator.RowRecordIterator;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 
@@ -53,9 +54,29 @@ public class Adder extends UDTF {
       if (firstField.isNull() || secondField.isNull()) {
         continue;
       }
-      collector.putFloat(iterator.currentTime(),
-          firstField.getFloatV() + secondField.getFloatV() + addend);
+      collector.putFloat(iterator.currentTime(), cast(firstField) + cast(secondField) + addend);
     }
+  }
+
+  private float cast(Field field) {
+    float value;
+    switch (field.getDataType()) {
+      case INT32:
+        value = (float) field.getIntV();
+        break;
+      case INT64:
+        value = (float) field.getLongV();
+        break;
+      case FLOAT:
+        value = field.getFloatV();
+        break;
+      case DOUBLE:
+        value = (float) field.getDoubleV();
+        break;
+      default:
+        throw new UnSupportedDataTypeException(field.getDataType().toString());
+    }
+    return value;
   }
 
   @Override

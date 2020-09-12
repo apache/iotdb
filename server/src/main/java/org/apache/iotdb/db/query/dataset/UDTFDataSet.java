@@ -24,6 +24,7 @@ import static org.apache.iotdb.db.query.udf.datastructure.ElasticSerializableTVL
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -51,10 +52,12 @@ public abstract class UDTFDataSet extends QueryDataSet {
   // not null when data set executes without value filter
   protected List<ManagedSeriesReader> managedSeriesReaders;
 
+  // deduplicatedPaths[i] (paths[i]), deduplicatedDataTypes[i] (dataTypes[i]) -> rawDataColumns[i]
   protected ElasticSerializableTVList[] rawDataColumns;
-  protected DataPointIterator[] transformedDataColumns;
 
-  protected List<TSDataType> transformedDataColumnDataTypes;
+  // a transformed data column can be either a udf query output column or a raw query output column
+  protected DataPointIterator[] transformedDataColumns;
+  protected TSDataType[] transformedDataColumnDataTypes;
 
   // execute with value filter
   public UDTFDataSet(QueryContext context, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
@@ -71,16 +74,18 @@ public abstract class UDTFDataSet extends QueryDataSet {
     generateRawDataWithValueFilter();
     setupAndExecuteUDFs();
     setupTransformedDataColumns();
-    transformedDataColumnDataTypes = udtfPlan.getDeduplicatedDataTypes();
   }
 
   private void initRawDataColumns() throws QueryProcessException {
+    List<String> seriesReaderIdList = udtfPlan.getSeriesReaderIdList();
     int seriesNum = paths.size();
     rawDataColumns = new ElasticSerializableTVList[seriesNum];
     for (int i = 0; i < seriesNum; ++i) {
       rawDataColumns[i] = new ElasticSerializableTVList(dataTypes.get(i), context.getQueryId(),
-          paths.get(i).toString(), MEMORY_USAGE_LIMIT_FOR_SINGLE_COLUMN,
-          CACHE_SIZE_FOR_SINGLE_COLUMN);
+          // series ids were generated in PhysicalGenerator
+          // they make sure that each raw data column will have a unique temporary file path
+          seriesReaderIdList.get(i),
+          MEMORY_USAGE_LIMIT_FOR_SINGLE_COLUMN, CACHE_SIZE_FOR_SINGLE_COLUMN);
     }
   }
 
@@ -111,23 +116,28 @@ public abstract class UDTFDataSet extends QueryDataSet {
   }
 
   private void setupTransformedDataColumns() {
-    transformedDataColumns = new DataPointIterator[udtfPlan.getPathToIndex().size()];
+    Map<String, Integer> pathToIndex = udtfPlan.getPathToIndex();
+    transformedDataColumnDataTypes = new TSDataType[pathToIndex.size()];
+    transformedDataColumns = new DataPointIterator[pathToIndex.size()];
 
     // UDF columns
     for (UDTFExecutor executor : udtfPlan.getDeduplicatedExecutors()) {
-      int outputIndex = udtfPlan.getPathToIndex().get(executor.getContext().getColumn());
+      int outputIndex = pathToIndex.get(executor.getContext().getColumn());
+      transformedDataColumnDataTypes[outputIndex] = executor.getConfigurations()
+          .getOutputDataType();
       transformedDataColumns[outputIndex] = ((ElasticSerializableTVList) executor.getUDTF()
           .getCollector()).getDataPointIterator();
     }
 
     // raw query columns
-    List<Integer> outputIndexes = udtfPlan.getRawQueryPathOutputIndexes();
+    List<Integer> outputIndexes = udtfPlan.getRawQueryReaderIndex2DataSetOutputColumnIndexList();
     int size = outputIndexes.size();
     for (int readerIndex = 0; readerIndex < size; ++readerIndex) {
       Integer outputIndex = outputIndexes.get(readerIndex);
       if (outputIndex == null) {
         continue;
       }
+      transformedDataColumnDataTypes[outputIndex] = rawDataColumns[readerIndex].getDataType();
       transformedDataColumns[outputIndex] = rawDataColumns[readerIndex].getDataPointIterator();
     }
   }
@@ -144,7 +154,6 @@ public abstract class UDTFDataSet extends QueryDataSet {
     generateRawDataWithoutValueFilter();
     setupAndExecuteUDFs();
     setupTransformedDataColumns();
-    transformedDataColumnDataTypes = udtfPlan.getDeduplicatedDataTypes();
   }
 
   private void generateRawDataWithoutValueFilter() throws QueryProcessException {
@@ -207,7 +216,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     }
   }
 
-  public UDTFPlan getUDTFPlan() {
-    return udtfPlan;
+  public void finalizeUDFs() {
+    udtfPlan.finalizeUDFExecutors();
   }
 }

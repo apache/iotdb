@@ -30,7 +30,7 @@ import java.util.Map;
 public abstract class QueryPlan extends PhysicalPlan {
 
   protected List<Path> paths = null;
-  private List<TSDataType> dataTypes = null;
+  protected List<TSDataType> dataTypes = null;
   private boolean alignByTime = true; // for disable align sql
 
   private int rowLimit = 0;

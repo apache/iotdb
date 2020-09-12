@@ -327,7 +327,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     // remove the corresponding Physical Plan
     QueryDataSet dataSet = queryId2DataSet.remove(queryId);
     if (dataSet instanceof UDTFDataSet) {
-      ((UDTFDataSet) dataSet).getUDTFPlan().finalizeUDFExecutors();
+      ((UDTFDataSet) dataSet).finalizeUDFs();
     }
     QueryResourceManager.getInstance().endQuery(queryId);
   }
@@ -797,9 +797,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         seriesTypes = getSeriesTypesByPath(paths, aggregations);
         break;
       case UDTF:
+        seriesTypes = new ArrayList<>();
         UDTFPlan udtfPlan = (UDTFPlan) plan;
-        respColumns.addAll(udtfPlan.getDeduplicatedColumns());
-        seriesTypes = udtfPlan.getDeduplicatedDataTypes();
+        for (int i = 0; i < paths.size(); i++) {
+          respColumns.add(paths.get(i) != null
+              ? paths.get(i).getFullPath()
+              : udtfPlan.getExecutor(i).getContext().getColumn());
+          seriesTypes.add(paths.get(i) != null
+              ? udtfPlan.getDataTypes().get(i)
+              : udtfPlan.getExecutor(i).getConfigurations().getOutputDataType());
+        }
         break;
       default:
         throw new TException("unsupported query type: " + plan.getOperatorType());

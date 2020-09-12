@@ -98,7 +98,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
     PublicBAOS valueBAOS = new PublicBAOS();
 
     DataPointIterator dataPointIterator = transformedDataColumns[transformedDataColumnIndex];
-    TSDataType type = transformedDataColumnDataTypes.get(transformedDataColumnIndex);
+    TSDataType type = transformedDataColumnDataTypes[transformedDataColumnIndex];
     int rowCount = 0;
     while (rowCount < fetchSize
         && (rowLimit <= 0 || alreadyReturnedRowNumArray[transformedDataColumnIndex] < rowLimit)

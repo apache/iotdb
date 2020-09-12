@@ -316,4 +316,8 @@ public class UDTFExecutor extends UDFExecutor {
   public UDTF getUDTF() {
     return udtf;
   }
+
+  public UDTFConfigurations getConfigurations() {
+    return configurations;
+  }
 }

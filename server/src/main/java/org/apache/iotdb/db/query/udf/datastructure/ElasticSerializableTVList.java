@@ -64,6 +64,10 @@ public class ElasticSerializableTVList implements OverallDataPointIterator, Data
     size = 0;
   }
 
+  public TSDataType getDataType() {
+    return dataType;
+  }
+
   @Override
   public int size() {
     return size;

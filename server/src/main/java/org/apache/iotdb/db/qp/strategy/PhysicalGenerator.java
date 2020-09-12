@@ -766,6 +766,9 @@ public class PhysicalGenerator {
           ((AggregationPlan) queryPlan)
               .addDeduplicatedAggregations(queryPlan.getAggregations().get(originalIndex));
         }
+        if (queryPlan instanceof UDTFPlan) {
+          ((UDTFPlan) queryPlan).addSeriesReaderId(columnForReader);
+        }
         columnForReaderSet.add(columnForReader);
 
         columnForReader2DeduplicatedPathIndex
@@ -776,12 +779,12 @@ public class PhysicalGenerator {
           columnForDisplaySet.add(columnForDisplay);
 
           if (queryPlan instanceof UDTFPlan) {
-            ((UDTFPlan) queryPlan).addRawQueryOutputIndex(isUdf ? null : index);
+            ((UDTFPlan) queryPlan).addRawQueryReaderIndex2DataSetOutputColumnIndex(isUdf ? null : index);
           }
           ++index;
         } else {
           if (queryPlan instanceof UDTFPlan) {
-            ((UDTFPlan) queryPlan).addRawQueryOutputIndex(null);
+            ((UDTFPlan) queryPlan).addRawQueryReaderIndex2DataSetOutputColumnIndex(null);
           }
         }
       }
