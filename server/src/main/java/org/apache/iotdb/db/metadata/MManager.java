@@ -93,7 +93,7 @@ import org.slf4j.LoggerFactory;
 public class MManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
-  private static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
+  public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
   /**
    * A thread will check whether the MTree is modified lately each such interval. Unit: second
