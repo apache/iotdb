@@ -108,9 +108,9 @@ public class HttpRouterTest extends HttpPrepData{
   @Test
   public void insertByRouter() throws Exception{
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
-    JSONArray inserts = insertJsonExample();
+    JSONArray inserts = insertJsonExample(1);
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, HttpConstant.ROUTING_INSERT, inserts).toString());
-    checkDataAfterInserting();
+    checkDataAfterInserting(1);
   }
 
   @Test

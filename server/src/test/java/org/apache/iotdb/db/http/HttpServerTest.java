@@ -21,6 +21,8 @@ package org.apache.iotdb.db.http;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
@@ -149,11 +151,11 @@ public class HttpServerTest extends HttpPrepData {
   @Test
   public void insertByHttp() throws Exception {
     login();
-    JSONArray inserts = insertJsonExample();
+    JSONArray inserts = insertJsonExample(1);
     Response response = client.target(INSERT_URI)
         .request(MediaType.APPLICATION_JSON).post(Entity.entity(inserts, MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
-    checkDataAfterInserting();
+    checkDataAfterInserting(1);
   }
 
   @Test
@@ -165,6 +167,26 @@ public class HttpServerTest extends HttpPrepData {
         .request(MediaType.APPLICATION_JSON).post(Entity.entity(query, MediaType.APPLICATION_JSON));
     Assert.assertEquals("[{\"timestamps\":1,\"value\":1.0},{\"timestamps\":2,\"value\":2.0},{\"timestamps\":3,\"value\":3.0},{\"timestamps\":4,\"value\":4.0},{\"timestamps\":5,\"value\":5.0}]"
         , response.readEntity(String.class));
+  }
+
+  @Test
+  public void multiThreadInsertTest() {
+    login();
+    ExecutorService service = Executors.newFixedThreadPool(10);
+    for(int i = 0; i < 10; i++) {
+      int finalI = i;
+      service.submit(() -> {
+        JSONArray inserts = insertJsonExample(finalI);
+        Response response = client.target(INSERT_URI)
+            .request(MediaType.APPLICATION_JSON).post(Entity.entity(inserts, MediaType.APPLICATION_JSON));
+        Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
+        try {
+          checkDataAfterInserting(finalI);
+        } catch (Exception e) {
+          e.printStackTrace();
+        }
+      });
+    }
   }
 
 }

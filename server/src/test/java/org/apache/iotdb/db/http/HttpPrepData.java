@@ -163,10 +163,10 @@ public abstract class HttpPrepData {
         TSFileDescriptor.getInstance().getConfig().getCompressor(), new HashMap<>());
   }
 
-  JSONArray insertJsonExample() {
+  JSONArray insertJsonExample(int i) {
     JSONArray inserts = new JSONArray();
     JSONObject insert = new JSONObject();
-    insert.put("deviceId", "root.ln.wf01.wt01");
+    insert.put("deviceId", "root.ln.wf01.wt0" + i);
     JSONArray measurements = new JSONArray();
     measurements.add("temperature");
     measurements.add("status");
@@ -174,12 +174,12 @@ public abstract class HttpPrepData {
     insert.put("measurements", measurements);
     JSONArray timestamps = new JSONArray();
     JSONArray values = new JSONArray();
-    for(int i = 0; i < 6; i++) {
-      timestamps.add(i);
+    for(int j = 0; j < 6; j++) {
+      timestamps.add(j);
       JSONArray value = new JSONArray();
-      value.add(String.valueOf(i));
+      value.add(String.valueOf(j));
       value.add("true");
-      value.add(String.valueOf(i));
+      value.add(String.valueOf(j));
       values.add(value);
     }
     insert.put("timestamps", timestamps);
@@ -188,11 +188,11 @@ public abstract class HttpPrepData {
     return inserts;
   }
 
-  void checkDataAfterInserting() throws Exception{
+  void checkDataAfterInserting(int i) throws Exception{
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath("root.ln.wf01.wt01.temperature"));
-    pathList.add(new PartialPath("root.ln.wf01.wt01.status"));
-    pathList.add(new PartialPath("root.ln.wf01.wt01.hardware"));
+    pathList.add(new PartialPath("root.ln.wf01.wt0" + i +  ".temperature"));
+    pathList.add(new PartialPath("root.ln.wf01.wt0" + i + ".status"));
+    pathList.add(new PartialPath("root.ln.wf01.wt0" + i + ".hardware"));
     List<TSDataType> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.FLOAT);
     dataTypes.add(TSDataType.BOOLEAN);
