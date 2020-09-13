@@ -132,8 +132,7 @@ public class UDTFExecutor extends UDFExecutor {
               : tvList.getTimeWindowBatchIterator(
                   timeWindowBatchIterationStrategy.getDisplayWindowBegin(),
                   timeWindowBatchIterationStrategy.getDisplayWindowEnd(),
-                  timeInterval, slidingStep
-              ));
+                  timeInterval, slidingStep));
           break;
         case RANDOM_ACCESS_TO_OVERALL_DATA:
           dataPointIterators.add(tvList.asOverallDataPointIterator());
@@ -188,9 +187,7 @@ public class UDTFExecutor extends UDFExecutor {
                   : rowRecordList.getTimeWindowBatchIterator(
                       timeWindowBatchIterationStrategy.getDisplayWindowBegin(),
                       timeWindowBatchIterationStrategy.getDisplayWindowBegin(),
-                      timeInterval, slidingStep
-                  )
-          );
+                      timeInterval, slidingStep));
           break;
         case RANDOM_ACCESS_TO_OVERALL_DATA:
           rowRecordIterators.put(strategy.getKey(), rowRecordList.asOverallRowRecordIterator());
