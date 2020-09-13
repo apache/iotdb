@@ -628,7 +628,7 @@ public class MTree implements Serializable {
     List<Pair<PartialPath, String[]>> res = getAllMeasurementSchema(plan);
     List<PartialPath> paths = new ArrayList<>();
     for (Pair<PartialPath, String[]> p : res) {
-      if (p.right[0] != null) {
+      if (prePath.getMeasurement().equals(p.right[0])) {
         p.left.setMeasurementAlias(p.right[0]);
       }
       paths.add(p.left);
