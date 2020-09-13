@@ -43,7 +43,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class IoTDBUDFQueryIT {
+public class IoTDBUDTFAlignByTimeQueryIT {
 
   protected final static int ITERATION_TIMES = 10_000;
 

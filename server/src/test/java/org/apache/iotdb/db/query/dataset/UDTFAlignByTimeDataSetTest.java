@@ -71,9 +71,6 @@ public class UDTFAlignByTimeDataSetTest {
 
   private static final Planner processor = new Planner();
 
-  public UDTFAlignByTimeDataSetTest() throws QueryProcessException {
-  }
-
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
