@@ -487,13 +487,14 @@ public class UDTFAlignByTimeDataSetTest {
       assertTrue(dataSet instanceof UDTFAlignByTimeDataSet);
       UDTFAlignByTimeDataSet udtfAlignByTimeDataSet = (UDTFAlignByTimeDataSet) dataSet;
 
-      Set<Integer> s1s2 = new HashSet<>(Arrays.asList(0, 1, 2, 3, 8, 9, 10, 11));
-      Set<Integer> s1 = new HashSet<>(Arrays.asList(4, 5, 12, 13));
-      Set<Integer> s2 = new HashSet<>(Arrays.asList(6, 7, 14, 15));
+      Set<Integer> s1s2 = new HashSet<>(
+          Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 12, 13, 14, 15, 16, 17, 18, 19));
+      Set<Integer> s1 = new HashSet<>(Arrays.asList(8, 9, 20, 21));
+      Set<Integer> s2 = new HashSet<>(Arrays.asList(10, 11, 22, 23));
 
       Map<String, Integer> path2Index = queryPlan.getPathToIndex();
       List<Integer> originalIndex2FieldIndex = new ArrayList<>();
-      for (int i = 0; i < 16; ++i) {
+      for (int i = 0; i < 24; ++i) {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
             path == null ? queryPlan.getExecutor(i).getContext().getColumn() : path.getFullPath();
@@ -504,13 +505,52 @@ public class UDTFAlignByTimeDataSetTest {
       while (udtfAlignByTimeDataSet.hasNext()) {
         RowRecord rowRecord = udtfAlignByTimeDataSet.next();
         List<Field> fields = rowRecord.getFields();
-        for (int i = 0; i < 16; ++i) {
+        for (int i = 0; i < 24; ++i) {
           if (s1s2.contains(i)) {
             assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
           }
           if (s1.contains(i) || s2.contains(i)) {
             assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
           }
+        }
+        ++index;
+      }
+      assertEquals((int) (0.4 * ITERATION_TIMES), index - (int) (0.3 * ITERATION_TIMES));
+    } catch (StorageEngineException | QueryFilterOptimizationException | TException | MetadataException | QueryProcessException | SQLException | IOException | InterruptedException e) {
+      e.printStackTrace();
+      fail(e.toString());
+    }
+  }
+
+  @Test
+  public void testHasNextAndNextWithValueFilter5() {
+    try {
+      String sqlStr =
+          "select *, udf(*, *), udf(*, *) from root.vehicle.d2, root.vehicle.d3, root.vehicle.d2"
+              + String.format(" where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d",
+              (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
+      UDTFPlan queryPlan = (UDTFPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+      QueryDataSet dataSet = queryExecutor
+          .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+      assertTrue(dataSet instanceof UDTFAlignByTimeDataSet);
+      UDTFAlignByTimeDataSet udtfAlignByTimeDataSet = (UDTFAlignByTimeDataSet) dataSet;
+
+      Map<String, Integer> path2Index = queryPlan.getPathToIndex();
+      List<Integer> originalIndex2FieldIndex = new ArrayList<>();
+      for (int i = 0; i < 6 + 3 * 2 * 3 * 2 * 2; ++i) {
+        Path path = queryPlan.getPaths().get(i);
+        String columnName =
+            path == null ? queryPlan.getExecutor(i).getContext().getColumn() : path.getFullPath();
+        originalIndex2FieldIndex.add(path2Index.get(columnName));
+      }
+
+      int index = (int) (0.3 * ITERATION_TIMES);
+      while (udtfAlignByTimeDataSet.hasNext()) {
+        RowRecord rowRecord = udtfAlignByTimeDataSet.next();
+        List<Field> fields = rowRecord.getFields();
+        for (int i = 0; i < 6 + 3 * 2 * 3 * 2 * 2; ++i) {
+          assertEquals(i < 6 ? index : index * 2,
+              fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
         }
         ++index;
       }

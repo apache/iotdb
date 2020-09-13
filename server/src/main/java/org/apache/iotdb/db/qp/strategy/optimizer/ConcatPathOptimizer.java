@@ -173,18 +173,25 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         UDFContext originUdf = originUdfList.get(i);
         List<Path> originUdfSuffixPaths = originUdf.getPaths();
 
-        for (Path fromPath : fromPaths) {
+        List<List<Path>> afterConcatUdfPathsList = new ArrayList<>();
+        for (Path originUdfSuffixPath : originUdfSuffixPaths) {
+          List<Path> afterConcatUdfPaths = new ArrayList<>();
+          for (Path fromPath : fromPaths) {
+            afterConcatUdfPaths.add(Path.addPrefixPath(originUdfSuffixPath, fromPath));
+          }
+          afterConcatUdfPathsList.add(afterConcatUdfPaths);
+        }
+        List<List<Path>> extendedAfterConcatUdfPathsList = new ArrayList<>();
+        cartesianProduct(afterConcatUdfPathsList, extendedAfterConcatUdfPathsList, 0,
+            new ArrayList<>());
+
+        for (List<Path> afterConcatUdfPaths : extendedAfterConcatUdfPathsList) {
           afterConcatPaths.add(null);
           extendListSafely(originAggregations, i, afterConcatAggregations);
 
-          List<Path> afterConcatUdfPaths = new ArrayList<>();
-          for (Path originUdfSuffixPath : originUdfSuffixPaths) {
-            afterConcatUdfPaths.add(Path.addPrefixPath(originUdfSuffixPath, fromPath));
-          }
           afterConcatUdfList.add(new UDFContext(originUdf.getName(), originUdf.getAttributes(),
               originUdf.getAttributeKeysInOriginalOrder(), afterConcatUdfPaths));
         }
-
       } else { // non-udf
         for (Path fromPath : fromPaths) {
           afterConcatPaths.add(Path.addPrefixPath(selectPath, fromPath));

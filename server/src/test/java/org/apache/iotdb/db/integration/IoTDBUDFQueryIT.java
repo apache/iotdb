@@ -124,6 +124,7 @@ public class IoTDBUDFQueryIT {
 
       int count = 0;
       int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 8, columnCount);
 
       StringBuilder expected, actual;
       while (resultSet.next()) {
@@ -153,7 +154,7 @@ public class IoTDBUDFQueryIT {
   }
 
   @Test
-  public void testWithoutValueFilter2() {
+  public void queryWithoutValueFilter2() {
     String sqlStr = "select udf(*, *) from root.vehicle.d1";
 
     try (Statement statement = DriverManager.getConnection(
@@ -161,6 +162,7 @@ public class IoTDBUDFQueryIT {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int count = 0;
       int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 4, columnCount);
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
@@ -175,7 +177,7 @@ public class IoTDBUDFQueryIT {
   }
 
   @Test
-  public void testWithoutValueFilter3() {
+  public void queryWithoutValueFilter3() {
     String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle.d1";
 
     Set<Integer> s1AndS2 = new HashSet<>(Arrays.asList(2, 3, 4, 5, 8, 9, 10, 11));
@@ -186,6 +188,7 @@ public class IoTDBUDFQueryIT {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int count = 0;
       int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 14, columnCount);
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
@@ -204,7 +207,7 @@ public class IoTDBUDFQueryIT {
   }
 
   @Test
-  public void testWithoutValueFilter4() {
+  public void queryWithoutValueFilter4() {
     String sqlStr =
         "select udf(*, *, \"addend\"=\"" + ADDEND + "\"), *, udf(*, *) from root.vehicle.d1";
 
@@ -217,6 +220,7 @@ public class IoTDBUDFQueryIT {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int count = 0;
       int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 10, columnCount);
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
@@ -238,7 +242,7 @@ public class IoTDBUDFQueryIT {
   }
 
   @Test
-  public void testWithValueFilter1() {
+  public void queryWithValueFilter1() {
     String sqlStr =
         "select udf(d2.s2, d2.s1), udf(d2.s1, d2.s2), d2.s1, d2.s2, udf(d2.s1, d2.s2), udf(d2.s2, d2.s1), d2.s1, d2.s2 from root.vehicle"
             + String.format(" where d2.s1 >= %d and d2.s2 < %d", (int) (0.25 * ITERATION_TIMES),
@@ -253,6 +257,7 @@ public class IoTDBUDFQueryIT {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int index = (int) (0.25 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 8, columnCount);
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
@@ -273,7 +278,7 @@ public class IoTDBUDFQueryIT {
   }
 
   @Test
-  public void testWithValueFilter2() {
+  public void queryWithValueFilter2() {
     String sqlStr =
         "select udf(*, *, \"addend\"=\"" + ADDEND + "\"), *, udf(*, *) from root.vehicle.d2"
             + String.format(" where s1 >= %d and s2 < %d", (int) (0.25 * ITERATION_TIMES),
@@ -288,6 +293,7 @@ public class IoTDBUDFQueryIT {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int index = (int) (0.25 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 10, columnCount);
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
@@ -308,7 +314,7 @@ public class IoTDBUDFQueryIT {
   }
 
   @Test
-  public void testWithValueFilter3() {
+  public void queryWithValueFilter3() {
     String sqlStr =
         "select udf(d1.s2, d1.s1), udf(d1.s1, d1.s2), d1.s1, d1.s2, udf(d1.s1, d1.s2), udf(d1.s2, d1.s1), d1.s1, d1.s2 from root.vehicle"
             + String.format(" where d3.s1 >= %d and d3.s2 < %d", (int) (0.3 * ITERATION_TIMES),
@@ -323,6 +329,7 @@ public class IoTDBUDFQueryIT {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int index = (int) (0.3 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 8, columnCount);
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
@@ -355,21 +362,23 @@ public class IoTDBUDFQueryIT {
   }
 
   @Test
-  public void testWithValueFilter4() {
+  public void queryWithValueFilter4() {
     String sqlStr =
         "select udf(s2, s1), udf(s1, s2), s1, s2, udf(s1, s2), udf(s2, s1), s1, s2 from root.vehicle.d2, root.vehicle.d3"
             + String.format(" where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d",
             (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
 
-    Set<Integer> s1s2 = new HashSet<>(Arrays.asList(0, 1, 2, 3, 8, 9, 10, 11));
-    Set<Integer> s1 = new HashSet<>(Arrays.asList(4, 5, 12, 13));
-    Set<Integer> s2 = new HashSet<>(Arrays.asList(6, 7, 14, 15));
+    Set<Integer> s1s2 = new HashSet<>(
+        Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 12, 13, 14, 15, 16, 17, 18, 19));
+    Set<Integer> s1 = new HashSet<>(Arrays.asList(8, 9, 20, 21));
+    Set<Integer> s2 = new HashSet<>(Arrays.asList(10, 11, 22, 23));
 
     try (Statement statement = DriverManager.getConnection(
         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int index = (int) (0.3 * ITERATION_TIMES);
       int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 4 * 2 + 4 + 4 * 2 + 4, columnCount);
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
@@ -378,6 +387,32 @@ public class IoTDBUDFQueryIT {
           } else if (s1.contains(i - 2) || s2.contains(i - 2)) {
             assertEquals(index, Float.parseFloat(actualString), 0);
           }
+        }
+        ++index;
+      }
+      assertEquals((int) (0.4 * ITERATION_TIMES), index - (int) (0.3 * ITERATION_TIMES));
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithValueFilter5() {
+    String sqlStr =
+        "select *, udf(*, *), udf(*, *) from root.vehicle.d2, root.vehicle.d3, root.vehicle.d2"
+            + String.format(" where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d",
+            (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      int index = (int) (0.3 * ITERATION_TIMES);
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 6 + 2 * 2 * 3 * 2 * 3, columnCount); // time + * + 2 * udf(*, *)
+      while (resultSet.next()) {
+        for (int i = 2; i <= columnCount; ++i) {
+          String actualString = resultSet.getString(i);
+          assertEquals(i - 2 < 6 ? index : 2 * index, Float.parseFloat(actualString), 0);
         }
         ++index;
       }
