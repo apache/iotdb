@@ -130,7 +130,7 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Haonan Hou',
-          role: 'Committer',
+          role: 'PPMC, Committer',
           id: 'haonan',
           date: '2020/01/30'
         },
