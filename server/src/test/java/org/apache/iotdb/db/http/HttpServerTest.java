@@ -120,7 +120,7 @@ public class HttpServerTest extends HttpPrepData {
         .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray, MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
     List<PartialPath> paths = mmanager.getAllTimeseriesPathWithAlias(new PartialPath("root.sg.*"));
-    Assert.assertEquals("root.sg.d1.temperature" ,paths.get(0).getFullPathWithAlias());
+    Assert.assertEquals("root.sg.d1.s1" ,paths.get(0).getFullPathWithAlias());
     Assert.assertEquals("root.sg.d1.s2", paths.get(1).getFullPath());
   }
 

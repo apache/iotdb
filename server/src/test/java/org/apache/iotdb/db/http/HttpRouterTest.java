@@ -68,7 +68,7 @@ public class HttpRouterTest extends HttpPrepData{
       throws Exception {
     prepareData();
     JSONArray jsonArray = deleteStorageGroupsJsonExample();
-    Assert.assertEquals(1, mmanager.getAllStorageGroupPaths().size());
+    Assert.assertEquals("[root.test]", mmanager.getAllStorageGroupPaths().toString());
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
     router.route(HttpMethod.POST, HttpConstant.ROUTING_STORAGE_GROUPS_DELETE, jsonArray);
     Assert.assertEquals(0, mmanager.getAllStorageGroupPaths().size());
@@ -80,7 +80,7 @@ public class HttpRouterTest extends HttpPrepData{
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, HttpConstant.ROUTING_TIME_SERIES, jsonArray).toString());
     List<PartialPath> paths = mmanager.getAllTimeseriesPathWithAlias(new PartialPath("root.sg.*"));
-    Assert.assertEquals("root.sg.d1.temperature" ,paths.get(0).getFullPathWithAlias());
+    Assert.assertEquals("root.sg.d1.s1" ,paths.get(0).getFullPath());
     Assert.assertEquals("root.sg.d1.s2", paths.get(1).getFullPath());
   }
 
