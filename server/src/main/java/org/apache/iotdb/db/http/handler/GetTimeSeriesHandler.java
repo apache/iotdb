@@ -9,14 +9,12 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -33,9 +31,6 @@ public class GetTimeSeriesHandler extends Handler {
     for(Object object : jsonArray) {
       String path = (String) object;
       PartialPath partialPath = new PartialPath(path);
-      if (!IoTDB.metaManager.isPathExist(partialPath)) {
-        throw new PathNotExistException(path);
-      }
       ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(partialPath);
       plan.setHasLimit(true);
       if(!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
