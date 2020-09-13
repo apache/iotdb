@@ -193,7 +193,7 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Dawei Liu',
-          role: 'Committer',
+          role: 'PPMC, Committer',
           id: 'liudw',
           date: '2020/03/01'
         },
