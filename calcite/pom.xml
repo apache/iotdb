@@ -31,28 +31,32 @@
     <version>0.10.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <description>IoTDB adapter for Calcite</description>
+    <properties>
+        <calcite.version>1.21.0</calcite.version>
+        <avatica.version>1.15.0</avatica.version>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.calcite</groupId>
             <artifactId>calcite-core</artifactId>
-            <version>1.21.0</version>
+            <version>${calcite.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.calcite</groupId>
             <artifactId>calcite-core</artifactId>
-            <version>1.21.0</version>
+            <version>${calcite.version}</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
         </dependency>
         <dependency>
             <groupId>org.apache.calcite.avatica</groupId>
             <artifactId>avatica-core</artifactId>
-            <version>1.15.0</version>
+            <version>${avatica.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.calcite</groupId>
             <artifactId>calcite-linq4j</artifactId>
-            <version>1.21.0</version>
+            <version>${calcite.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>

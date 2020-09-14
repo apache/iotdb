@@ -31,9 +31,12 @@ import org.apache.calcite.rel.type.RelDataTypeSystem;
 import org.apache.calcite.rel.type.RelProtoDataType;
 import org.apache.calcite.sql.type.SqlTypeFactoryImpl;
 import org.apache.calcite.sql.type.SqlTypeName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBEnumerator implements Enumerator<Object> {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBEnumerator.class);
   private ResultSet currentResultSet;
   private Iterator<ResultSet> iterator;
   private List<Integer> indexInResultSet = new ArrayList<>();
@@ -62,10 +65,8 @@ public class IoTDBEnumerator implements Enumerator<Object> {
     ResultSetMetaData metaData = currentResultSet.getMetaData();
     int indexInFieldTypes = 0;
     for (int i = 1; i <= metaData.getColumnCount(); i++) {
-      if (i <= 2 && !metaData.getColumnName(i).toLowerCase()
+      if (i > 2 || metaData.getColumnName(i).toLowerCase()
           .equals(fieldTypes.get(indexInFieldTypes).getName())) {
-        continue;
-      } else {
         indexInFieldTypes++;
         indexInResultSet.add(i);
       }
@@ -119,12 +120,10 @@ public class IoTDBEnumerator implements Enumerator<Object> {
           return null;
       }
     } catch (SQLException e) {
-      if (e.getMessage().endsWith("NULL.")) {
-        return null;
-      } else {
-        e.printStackTrace();
-        return null;
+      if (!e.getMessage().endsWith("NULL.")) {
+        logger.error("Error while getting value from result set: ", e);
       }
+      return null;
     }
   }
 
@@ -143,7 +142,7 @@ public class IoTDBEnumerator implements Enumerator<Object> {
         return moveNext();
       }
     } catch (SQLException e) {
-      e.printStackTrace();
+      logger.error("Error while moving to the next result set: ", e);
     }
     return false;
   }

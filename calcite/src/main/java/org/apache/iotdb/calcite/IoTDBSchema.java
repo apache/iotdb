@@ -38,9 +38,12 @@ import org.apache.calcite.schema.impl.AbstractSchema;
 import org.apache.calcite.sql.type.SqlTypeFactoryImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.jdbc.Config;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBSchema extends AbstractSchema {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBSchema.class);
   final Connection connection;
   private Map<String, Table> tableMap;
   private final SchemaPlus parentSchema;
@@ -81,9 +84,9 @@ public class IoTDBSchema extends AbstractSchema {
     final RelDataTypeFactory.Builder fieldInfo = typeFactory.builder();
 
     // add time, device columns in relational table
-    fieldInfo.add(IoTDBConstant.TimeColumn,
+    fieldInfo.add(IoTDBConstant.TIME_COLUMN,
         typeFactory.createSqlType(IoTDBFieldType.INT64.getSqlType()));
-    fieldInfo.add(IoTDBConstant.DeviceColumn,
+    fieldInfo.add(IoTDBConstant.DEVICE_COLUMN,
         typeFactory.createSqlType(IoTDBFieldType.TEXT.getSqlType()));
 
     // get devices in this storage group
@@ -136,7 +139,7 @@ public class IoTDBSchema extends AbstractSchema {
         tableMap = createTableMap();
       }
     } catch (SQLException e) {
-      e.printStackTrace();
+      logger.error("Error while creating table map: ", e);
     }
     return tableMap;
   }

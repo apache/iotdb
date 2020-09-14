@@ -148,7 +148,7 @@ public class IoTDBAdapterTest {
   public void testSelect() {
     CalciteAssert.that()
         .with(MODEL)
-        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .with("UnQuotedCasing", IoTDBConstant.UNQUOTED_CASING)
         .query("select * from \"root.vehicle\"")
         .returnsCount(25)
         .returnsStartingWith(
@@ -164,7 +164,7 @@ public class IoTDBAdapterTest {
   public void testProject1() {
     CalciteAssert.that()
         .with(MODEL)
-        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .with("UnQuotedCasing", IoTDBConstant.UNQUOTED_CASING)
         .query("select s0 from \"root.vehicle\"")
         .limit(1)
         .returns("s0=101\n")
@@ -180,7 +180,7 @@ public class IoTDBAdapterTest {
   public void testProject2() {
     CalciteAssert.that()
         .with(MODEL)
-        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .with("UnQuotedCasing", IoTDBConstant.UNQUOTED_CASING)
         .query("select \"time\", device, s2 from \"root.vehicle\"")
         .limit(1)
         .returns("time=2; device=root.vehicle.d0; s2=2.22\n")
@@ -193,7 +193,7 @@ public class IoTDBAdapterTest {
   public void testProjectAlias() {
     CalciteAssert.that()
         .with(MODEL)
-        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .with("UnQuotedCasing", IoTDBConstant.UNQUOTED_CASING)
         .query("select \"time\" AS t, device AS d, s2 from \"root.vehicle\"")
         .returnsStartingWith("t=2; d=root.vehicle.d0; s2=2.22")
         .explainContains("PLAN=IoTDBToEnumerableConverter\n" +
@@ -205,7 +205,7 @@ public class IoTDBAdapterTest {
   public void testLimitOffset() {
     CalciteAssert.that()
         .with(MODEL)
-        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .with("UnQuotedCasing", IoTDBConstant.UNQUOTED_CASING)
         .query("select \"time\", s2 from \"root.vehicle\" limit 3 offset 2")
         .explainContains("IoTDBLimit(limit=[3], offset=[2])\n")
         .returns("time=3; s2=3.33\n" +
@@ -217,7 +217,7 @@ public class IoTDBAdapterTest {
   public void testFilter1() {
     CalciteAssert.that()
         .with(MODEL)
-        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .with("UnQuotedCasing", IoTDBConstant.UNQUOTED_CASING)
         .query("select * from \"root.vehicle\" " +
             "where s0 <= 10")
         .limit(1)
@@ -231,7 +231,7 @@ public class IoTDBAdapterTest {
   public void testFilter2() {
     CalciteAssert.that()
         .with(MODEL)
-        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .with("UnQuotedCasing", IoTDBConstant.UNQUOTED_CASING)
         .query("select * from \"root.vehicle\" " +
             "where device = 'root.vehicle.d1'")
         .limit(2)
@@ -246,7 +246,7 @@ public class IoTDBAdapterTest {
   public void testFilter3() {
     CalciteAssert.that()
         .with(MODEL)
-        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .with("UnQuotedCasing", IoTDBConstant.UNQUOTED_CASING)
         .query("select * from \"root.vehicle\" " +
             "where \"time\" < 10 AND s0 >= 150")
         .limit(2)
@@ -261,7 +261,7 @@ public class IoTDBAdapterTest {
   public void testFilter4() {
     CalciteAssert.that()
         .with(MODEL)
-        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .with("UnQuotedCasing", IoTDBConstant.UNQUOTED_CASING)
         .query("select * from \"root.vehicle\" " +
             "where device = 'root.vehicle.d0' AND \"time\" > 10 AND s0 <= 100")
         .limit(2)
@@ -276,7 +276,7 @@ public class IoTDBAdapterTest {
   public void testFilter5() {
     CalciteAssert.that()
         .with(MODEL)
-        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .with("UnQuotedCasing", IoTDBConstant.UNQUOTED_CASING)
         .query("select * from \"root.vehicle\" " +
             "where (device = 'root.vehicle.d0' AND \"time\" <= 1)" +
             " OR (device = 'root.vehicle.d1' AND s0 < 100)")
@@ -293,7 +293,7 @@ public class IoTDBAdapterTest {
   public void testFilter6() {
     CalciteAssert.that()
         .with(MODEL)
-        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .with("UnQuotedCasing", IoTDBConstant.UNQUOTED_CASING)
         .query("select * from \"root.vehicle\" " +
             "where (device = 'root.vehicle.d0' AND \"time\" <= 1)" +
             " OR (device = 'root.vehicle.d0' AND s0 < 100)")
@@ -310,7 +310,7 @@ public class IoTDBAdapterTest {
   public void testFilter7() {
     CalciteAssert.that()
         .with(MODEL)
-        .with("UnQuotedCasing", IoTDBConstant.UnQuotedCasing)
+        .with("UnQuotedCasing", IoTDBConstant.UNQUOTED_CASING)
         .query("select * from \"root.vehicle\" " +
             "where (device = 'root.vehicle.d0' AND \"time\" <= 1) OR s2 = 2.22")
         .returns("time=1; device=root.vehicle.d0; s0=101; s1=1101; s2=null; s3=null; s4=null\n" +

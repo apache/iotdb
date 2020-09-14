@@ -131,12 +131,8 @@ public class IoTDBRules {
     public RelNode convert(RelNode rel) {
       final LogicalFilter filter = (LogicalFilter) rel;
       final RelTraitSet traitSet = filter.getTraitSet().replace(IoTDBRel.CONVENTION);
-      try {
-        return new IoTDBFilter(filter.getCluster(), traitSet,
-            convert(filter.getInput(), IoTDBRel.CONVENTION), filter.getCondition());
-      } catch (LogicalOptimizeException e) {
-        throw new AssertionError(e.getMessage());
-      }
+      return new IoTDBFilter(filter.getCluster(), traitSet,
+          convert(filter.getInput(), IoTDBRel.CONVENTION), filter.getCondition());
     }
   }
 

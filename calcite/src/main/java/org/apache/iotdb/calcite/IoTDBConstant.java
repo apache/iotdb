@@ -20,9 +20,9 @@ package org.apache.iotdb.calcite;
 
 public class IoTDBConstant {
 
-  public static final String AlignByDevice = "align by device";
-  public static final String TimeColumn = "time";
-  public static final String DeviceColumn = "device";
+  public static final String ALIGN_BY_DEVICE = "align by device";
+  public static final String TIME_COLUMN = "time";
+  public static final String DEVICE_COLUMN = "device";
   public static final String PATH_SEPARATOR = ".";
-  public static final String UnQuotedCasing = "UNCHANGED";
+  public static final String UNQUOTED_CASING = "UNCHANGED";
 }

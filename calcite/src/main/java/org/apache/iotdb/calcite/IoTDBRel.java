@@ -56,9 +56,7 @@ public interface IoTDBRel extends RelNode {
      * @param fields New fields to be projected from a query
      */
     public void addFields(List<String> fields) {
-      if (selectFields != null) {
-        selectFields.addAll(fields);
-      }
+      selectFields.addAll(fields);
     }
 
     /**
@@ -68,12 +66,8 @@ public interface IoTDBRel extends RelNode {
      * @param predicates        global predicates to be applied to the query
      */
     public void add(Map<String, String> deviceToFilterMap, List<String> predicates) {
-      if (this.deviceToFilterMap != null) {
-        this.deviceToFilterMap.putAll(deviceToFilterMap);
-      }
-      if (this.globalPredicate != null) {
-        this.globalPredicate.addAll(predicates);
-      }
+      this.deviceToFilterMap.putAll(deviceToFilterMap);
+      this.globalPredicate.addAll(predicates);
     }
 
     public void visitChild(int ordinal, RelNode input) {

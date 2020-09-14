@@ -51,10 +51,13 @@ import org.apache.calcite.sql.type.SqlTypeFactoryImpl;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.Util;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBTable extends AbstractQueryableTable
     implements TranslatableTable {
 
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBTable.class);
   RelProtoDataType protoRowType;
   private final IoTDBSchema schema;
   private final String storageGroup;
@@ -75,9 +78,10 @@ public class IoTDBTable extends AbstractQueryableTable
       if (protoRowType == null) {
         protoRowType = schema.getRelDataType(storageGroup);
       }
-    } catch (SQLException | QueryProcessException e) {
-      // print exception error here
-      e.printStackTrace();
+    } catch (SQLException e) {
+      logger.error("Error while executing show statement: ", e);
+    } catch (QueryProcessException e) {
+      logger.error(e.getMessage());
     }
     return protoRowType.apply(typeFactory);
   }
@@ -151,10 +155,8 @@ public class IoTDBTable extends AbstractQueryableTable
       StringBuilder selectBuilder = new StringBuilder();
       for (int i = 0; i < selectFields.size(); i++) {
         String selectField = selectFields.get(i);
-        if (selectField.equals(IoTDBConstant.DeviceColumn) || selectField
-            .equals(IoTDBConstant.TimeColumn)) {
-          continue;
-        } else {
+        if (!selectField.equals(IoTDBConstant.DEVICE_COLUMN) && !selectField
+            .equals(IoTDBConstant.TIME_COLUMN)) {
           selectBuilder.append(selectField);
           if (i < selectFields.size() - 1) {
             selectBuilder.append(", ");
@@ -184,10 +186,7 @@ public class IoTDBTable extends AbstractQueryableTable
 
         // Build and issue the query and return an Enumerator over the results
         StringBuilder queryBuilder = new StringBuilder("SELECT ");
-        queryBuilder.append(selectString);
-        queryBuilder.append(fromClause);
-        queryBuilder.append(whereClause);
-
+        queryBuilder.append(selectString).append(fromClause).append(whereClause);
         if (limit > 0) {
           queryBuilder.append(" LIMIT " + limit);
         }
@@ -196,7 +195,7 @@ public class IoTDBTable extends AbstractQueryableTable
         }
 
         // append align by device
-        queryBuilder.append(" " + IoTDBConstant.AlignByDevice);
+        queryBuilder.append(" " + IoTDBConstant.ALIGN_BY_DEVICE);
         queryList.add(queryBuilder.toString());
       }
     }
@@ -205,7 +204,7 @@ public class IoTDBTable extends AbstractQueryableTable
     if (deviceToFilterList.isEmpty() || !globalPredicates.isEmpty()) {
       String fromClause = " FROM ";
       // deduplicate redundant device
-      if (!deviceToFilterList.isEmpty() && !globalPredicates.isEmpty()) {
+      if (!deviceToFilterList.isEmpty()) {
         List<String> deduplicatedDevices = new ArrayList<>();
         for (String device : IoTDBSchema.sgToDeviceMap.get(storageGroup)) {
           if (!tmpDevices.contains(device)) {
@@ -225,9 +224,7 @@ public class IoTDBTable extends AbstractQueryableTable
 
       // Build and issue the query and return an Enumerator over the results
       StringBuilder queryBuilder = new StringBuilder("SELECT ");
-      queryBuilder.append(selectString);
-      queryBuilder.append(fromClause);
-      queryBuilder.append(whereClause);
+      queryBuilder.append(selectString).append(fromClause).append(whereClause);
 
       if (limit > 0) {
         queryBuilder.append(" LIMIT " + limit);
@@ -237,9 +234,8 @@ public class IoTDBTable extends AbstractQueryableTable
       }
 
       // append align by device
-      queryBuilder.append(" " + IoTDBConstant.AlignByDevice);
+      queryBuilder.append(" " + IoTDBConstant.ALIGN_BY_DEVICE);
       queryList.add(queryBuilder.toString());
-
     }
 
     return new AbstractEnumerable<Object>() {
@@ -252,9 +248,8 @@ public class IoTDBTable extends AbstractQueryableTable
             resultList.add(statement.executeQuery(query));
           }
           enumerator = new IoTDBEnumerator(resultList, resultRowType);
-          return enumerator;
         } catch (SQLException e) {
-          e.printStackTrace();
+          logger.error("Error while querying from IOTDB: ", e);
         }
         return enumerator;
       }

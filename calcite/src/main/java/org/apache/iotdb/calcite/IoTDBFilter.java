@@ -34,34 +34,42 @@ import org.apache.calcite.rex.RexCall;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexLiteral;
 import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.Util;
+import org.apache.iotdb.calcite.exception.FilterException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBFilter extends Filter implements IoTDBRel {
 
-  private final FilterOperator filterOperator;
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBFilter.class);
   private final List<String> fieldNames;
   private List<String> predicates;  // for global predicate
   Map<String, String> deviceToFilterMap = new LinkedHashMap<>();  // for device predicate
 
-  protected IoTDBFilter(RelOptCluster cluster, RelTraitSet traits, RelNode child, RexNode condition)
-      throws LogicalOptimizeException {
+  protected IoTDBFilter(RelOptCluster cluster, RelTraitSet traits, RelNode child,
+      RexNode condition) {
     super(cluster, traits, child, condition);
     this.fieldNames = IoTDBRules.IoTDBFieldNames(getRowType());
-    this.filterOperator = getIoTDBOperator(condition);
-    this.predicates = translateWhere(filterOperator);
+    try {
+      FilterOperator filterOperator = getIoTDBOperator(condition);
+      this.predicates = translateWhere(filterOperator);
+    } catch (LogicalOptimizeException | FilterException e) {
+      logger.error("Error while transforming where clause to DNF: " + e.getMessage());
+    }
 
     // add global predicate to each device if both global and device predicate exist
     if (!this.predicates.isEmpty() && !this.deviceToFilterMap.isEmpty()) {
       for (String device : deviceToFilterMap.keySet()) {
-        StringBuilder builder = new StringBuilder(this.deviceToFilterMap.get(device));
-        builder.append(Util.toString(predicates, " OR ", " OR ", ""));
-        this.deviceToFilterMap.put(device, builder.toString());
+        this.deviceToFilterMap.put(device,
+            this.deviceToFilterMap.get(device) + Util.toString(predicates, " OR ", " OR ", ""));
       }
     }
     assert getConvention() == IoTDBRel.CONVENTION;
@@ -76,11 +84,7 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
 
   @Override
   public Filter copy(RelTraitSet relTraitSet, RelNode input, RexNode condition) {
-    try {
-      return new IoTDBFilter(getCluster(), traitSet, input, condition);
-    } catch (LogicalOptimizeException e) {
-      throw new AssertionError(e.getMessage());
-    }
+    return new IoTDBFilter(getCluster(), traitSet, input, condition);
   }
 
   @Override
@@ -92,7 +96,7 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
   /**
    * Translates {@link RexNode} expressions into IoTDB filter operator.
    */
-  private FilterOperator getIoTDBOperator(RexNode filter) {
+  private FilterOperator getIoTDBOperator(RexNode filter) throws FilterException {
     switch (filter.getKind()) {
       case EQUALS:
         return getBasicOperator(SQLConstant.EQUAL, (RexCall) filter);
@@ -111,11 +115,11 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
       case OR:
         return getBinaryOperator(SQLConstant.KW_OR, ((RexCall) filter).getOperands());
       default:
-        throw new AssertionError("cannot get IoTDBOperator from " + filter);
+        throw new FilterException("cannot get IoTDBOperator from " + filter.toString());
     }
   }
 
-  private FilterOperator getBasicOperator(int tokenIntType, RexCall call) {
+  private FilterOperator getBasicOperator(int tokenIntType, RexCall call) throws FilterException {
     final RexNode left = call.operands.get(0);
     final RexNode right = call.operands.get(1);
 
@@ -127,15 +131,12 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     if (operator != null) {
       return operator;
     }
-    throw new AssertionError("cannot translate basic operator: " + call);
+    throw new FilterException("cannot translate basic operator: " + call.toString());
   }
 
   private FilterOperator getBasicOperator2(int tokenIntType, RexNode left, RexNode right) {
-    switch (right.getKind()) {
-      case LITERAL:
-        break;
-      default:
-        return null;
+    if (right.getKind() != SqlKind.LITERAL) {
+      return null;
     }
     final RexLiteral rightLiteral = (RexLiteral) right;
     switch (left.getKind()) {
@@ -147,14 +148,15 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
       default:
         return null;
     }
-
   }
 
-  private FilterOperator getBinaryOperator(int tokenIntType, List<RexNode> operands) {
+  private FilterOperator getBinaryOperator(int tokenIntType, List<RexNode> operands)
+      throws FilterException {
     FilterOperator filterBinaryTree = new FilterOperator(tokenIntType);
     FilterOperator currentNode = filterBinaryTree;
-    for (int i = 0; i < operands.size(); i++) {
-      if (i > 0 && i < operands.size() - 1) {
+    int size = operands.size();
+    for (int i = 0; i < size; i++) {
+      if (i > 0 && i < size - 1) {
         FilterOperator newInnerNode = new FilterOperator(tokenIntType);
         currentNode.addChildOperator(newInnerNode);
         currentNode = newInnerNode;
@@ -175,7 +177,8 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
    * @param operator Condition to translate
    * @return IoTDB global predicate string
    */
-  private List<String> translateWhere(FilterOperator operator) throws LogicalOptimizeException {
+  private List<String> translateWhere(FilterOperator operator)
+      throws LogicalOptimizeException, FilterException {
     List<String> globalPredicate = new ArrayList<>();
     if (operator.isLeaf()) {
       if (translateLeaf((BasicFunctionOperator) operator) != null) {
@@ -205,12 +208,10 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     return globalPredicate;
   }
 
-  private String translateLeaf(BasicFunctionOperator operator) {
-    if (operator.getSinglePath().equals(IoTDBConstant.DeviceColumn)) {
+  private String translateLeaf(BasicFunctionOperator operator) throws FilterException {
+    if (operator.getSinglePath().equals(IoTDBConstant.DEVICE_COLUMN)) {
       // If the device doesn't exist, add it. Otherwise do nothing.
-      if (!this.deviceToFilterMap.containsKey(operator.getValue())) {
-        this.deviceToFilterMap.put(operator.getValue(), null);
-      }
+      this.deviceToFilterMap.putIfAbsent(operator.getValue(), null);
       return null;
     } else {
       // note that leaf node is a global predicate
@@ -224,7 +225,7 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
    * @param operator A conjunctive predicate
    * @return IoTDB where clause string for the predicate
    */
-  private String translateAnd(FilterOperator operator) {
+  private String translateAnd(FilterOperator operator) throws FilterException {
     if (operator.isLeaf()) {
       return translateLeaf((BasicFunctionOperator) operator);
     }
@@ -238,7 +239,7 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     while (iter.hasNext()) {
       FilterOperator child = iter.next();
       if (child instanceof BasicFunctionOperator
-          && child.getSinglePath().equals(IoTDBConstant.DeviceColumn)) {
+          && child.getSinglePath().equals(IoTDBConstant.DEVICE_COLUMN)) {
 
         String device = ((BasicFunctionOperator) child).getValue();
         // e.g. device = d1 AND device = d2
@@ -266,9 +267,9 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
       return Util.toString(predicates, "", " AND ", "");
     } else {
       if (this.deviceToFilterMap.get(deviceName) != null) {
-        StringBuilder builder = new StringBuilder(this.deviceToFilterMap.get(deviceName));
-        builder.append(Util.toString(predicates, " OR ", " AND ", ""));
-        this.deviceToFilterMap.put(deviceName, builder.toString());
+        this.deviceToFilterMap.put(deviceName,
+            this.deviceToFilterMap.get(deviceName) + Util
+                .toString(predicates, " OR ", " AND ", ""));
       } else {
         this.deviceToFilterMap.put(deviceName, Util.toString(predicates, "", " AND ", ""));
       }
@@ -276,10 +277,11 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     }
   }
 
-  private String translateBasicOperator(String device, BasicFunctionOperator operator) {
+  private String translateBasicOperator(String device, BasicFunctionOperator operator)
+      throws FilterException {
     StringBuilder buf = new StringBuilder();
-    if (device != null && !operator.getSinglePath().equals(IoTDBConstant.TimeColumn)) {
-      buf.append(device + IoTDBConstant.PATH_SEPARATOR);
+    if (device != null && !operator.getSinglePath().equals(IoTDBConstant.TIME_COLUMN)) {
+      buf.append(device).append(IoTDBConstant.PATH_SEPARATOR);
     }
     buf.append(operator.getSinglePath());
 
@@ -297,7 +299,7 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
       case SQLConstant.LESSTHANOREQUALTO:
         return buf.append("<=").append(operator.getValue()).toString();
       default:
-        throw new AssertionError("cannot translate " + operator);
+        throw new FilterException("cannot translate " + operator.toString());
     }
   }
 
@@ -308,12 +310,10 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
    * @return String representation of the literal
    */
   private static String literalValue(RexLiteral literal) {
-    switch (literal.getType().getSqlTypeName()){
-      case DOUBLE:
-        return String.valueOf(literal.getValueAs(Double.class));
-      default:
-        return String.valueOf(literal.getValue2());
+    if (literal.getType().getSqlTypeName() == SqlTypeName.DOUBLE) {
+      return String.valueOf(literal.getValueAs(Double.class));
     }
+    return String.valueOf(literal.getValue2());
   }
 
 }
