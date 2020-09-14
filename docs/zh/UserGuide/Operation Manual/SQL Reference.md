@@ -608,7 +608,7 @@ Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2
 As 语句为 SELECT 语句中出现的时间序列规定一个别名
 
 ```
-在每个查询中都可以使用 As 语句来规定时间序列的别名。
+在每个查询中都可以使用 As 语句来规定时间序列的别名，但是对于通配符的使用有一定限制。
 
 1. 原始数据查询：
 select s1 as speed, s2 as temperature from root.sg.d1
@@ -628,7 +628,7 @@ select s1 as speed, s2 as temperature from root.sg.d1 align by device
 
 select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg.d2 align by device
 
-5. Last 查询
+5. 最新数据查询
 select last s1 as speed, s2 from root.sg.d1
 
 规则：

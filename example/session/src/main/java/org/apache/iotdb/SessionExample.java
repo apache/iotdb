@@ -60,6 +60,7 @@ public class SessionExample {
     insertRecords();
     nonQuery();
     query();
+    rawDataQuery();
     queryByIterator();
     deleteData();
     deleteTimeseries();
@@ -405,6 +406,24 @@ public class SessionExample {
       System.out.println(dataSet.next());
     }
 
+    dataSet.closeOperationHandle();
+  }
+
+  private static void rawDataQuery() throws IoTDBConnectionException, StatementExecutionException {
+    List<String> paths = new ArrayList<>();
+    paths.add("root.sg1.d1.s1");
+    paths.add("root.sg1.d1.s2");
+    paths.add("root.sg1.d1.s3");
+    long startTime = 10L;
+    long endTime = 200L;
+
+    SessionDataSet dataSet;
+    dataSet = session.executeRawDataQuery(paths, startTime, endTime);
+    System.out.println(dataSet.getColumnNames());
+    dataSet.setFetchSize(1024);
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
     dataSet.closeOperationHandle();
   }
 

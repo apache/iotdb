@@ -250,6 +250,14 @@ struct TSCreateTimeseriesReq {
   9: optional string measurementAlias
 }
 
+struct TSRawDataQueryReq {
+    1: required i64 sessionId
+    2: required list<string> paths
+    3: optional i32 fetchSize
+    4: required i64 startTime
+    5: required i64 endTime
+}
+
 struct TSCreateMultiTimeseriesReq {
   1: required i64 sessionId
   2: required list<string> paths
@@ -330,6 +338,8 @@ service TSIService {
   TSStatus testInsertStringRecords(1:TSInsertStringRecordsReq req);
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
+
+	TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 
 	i64 requestStatementId(1:i64 sessionId);
 }

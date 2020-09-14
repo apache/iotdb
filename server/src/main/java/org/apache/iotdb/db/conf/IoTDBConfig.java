@@ -516,6 +516,11 @@ public class IoTDBConfig {
    */
   private int chunkMergePointThreshold = 20480;
 
+  /**
+   * The limit of write throughput merge can reach per second
+   */
+  private int mergeThroughputMbPerSec = 16;
+
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   /**
@@ -1219,6 +1224,14 @@ public class IoTDBConfig {
 
   public void setChunkMergePointThreshold(int chunkMergePointThreshold) {
     this.chunkMergePointThreshold = chunkMergePointThreshold;
+  }
+
+  public int getMergeThroughputMbPerSec() {
+    return mergeThroughputMbPerSec;
+  }
+
+  public void setMergeThroughputMbPerSec(int mergeThroughputMbPerSec) {
+    this.mergeThroughputMbPerSec = mergeThroughputMbPerSec;
   }
 
   public long getMemtableSizeThreshold() {

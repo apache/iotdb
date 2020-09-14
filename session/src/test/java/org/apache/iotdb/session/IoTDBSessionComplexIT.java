@@ -270,6 +270,20 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  public void testRawDataQuery() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+
+    insertRecords();
+
+    rawDataQuery();
+  }
+
+  @Test
   public void test() throws ClassNotFoundException, SQLException,
       IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -535,6 +549,32 @@ public class IoTDBSessionComplexIT {
     }
 
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+  }
+
+  private void rawDataQuery()
+      throws StatementExecutionException, IoTDBConnectionException {
+    List<String> paths = new ArrayList<>();
+    paths.add("root.sg1.d2.*");
+    paths.add("root.sg1.d2.s1");
+    paths.add("root.sg1.d2.s2");
+
+    SessionDataSet sessionDataSet = session
+        .executeRawDataQuery(paths, 450L, 600L);
+    sessionDataSet.setFetchSize(1024);
+
+    int count = 0;
+    System.out.println(sessionDataSet.getColumnNames());
+    while (sessionDataSet.hasNext()) {
+      count++;
+      StringBuilder sb = new StringBuilder();
+      List<Field> fields = sessionDataSet.next().getFields();
+      for (Field f : fields) {
+        sb.append(f.getStringValue()).append(",");
+      }
+      System.out.println(sb.toString());
+    }
+    Assert.assertEquals(50, count);
+    sessionDataSet.closeOperationHandle();
   }
 
   private void insertTablet(String deviceId)

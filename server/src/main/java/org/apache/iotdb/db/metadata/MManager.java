@@ -653,7 +653,7 @@ public class MManager {
    * @param path Format: root.node.(node)*
    * @apiNote :for cluster
    */
-  boolean isStorageGroup(PartialPath path) {
+  public boolean isStorageGroup(PartialPath path) {
     lock.readLock().lock();
     try {
       return mtree.isStorageGroup(path);
@@ -835,6 +835,18 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesCount(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * To calculate the count of devices for given prefix path.
+   */
+  public int getDevicesNum(PartialPath prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getDevicesNum(prefixPath);
     } finally {
       lock.readLock().unlock();
     }
