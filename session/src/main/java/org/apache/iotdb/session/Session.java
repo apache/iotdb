@@ -168,7 +168,8 @@ public class Session {
     } catch (RedirectException e) {
       if (Config.DEFAULT_CACHE_LEADER_MODE) {
         logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
-        endPointToSessionConnection.putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+        endPointToSessionConnection
+            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
         metaSessionConnection = endPointToSessionConnection.get(e.getEndPoint());
       }
     }
@@ -181,7 +182,8 @@ public class Session {
     } catch (RedirectException e) {
       if (Config.DEFAULT_CACHE_LEADER_MODE) {
         logger.debug(e.getMessage());
-        endPointToSessionConnection.putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+        endPointToSessionConnection
+            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
         metaSessionConnection = endPointToSessionConnection.get(e.getEndPoint());
       }
     }

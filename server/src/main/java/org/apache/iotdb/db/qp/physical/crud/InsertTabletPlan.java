@@ -56,8 +56,8 @@ public class InsertTabletPlan extends InsertPlan {
   // indicate whether this plan has been set 'start' or 'end' in order to support plan transmission without data loss in cluster version
   boolean isExecuting = false;
   // cached values
-  private Long maxTime = null;
-  private Long minTime = null;
+  private Long maxTime = Long.MIN_VALUE;
+  private Long minTime = Long.MAX_VALUE;
   private List<PartialPath> paths;
   private int start;
   private int end;
@@ -393,6 +393,7 @@ public class InsertTabletPlan extends InsertPlan {
     rowCount = rows;
     this.times = new long[rows];
     times = QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
+    updateTimesCache();
 
     columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, measurementSize, rows);
   }
@@ -417,29 +418,11 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public long getMinTime() {
-    if (minTime != null) {
-      return minTime;
-    }
-    minTime = Long.MAX_VALUE;
-    for (Long time : times) {
-      if (time < minTime) {
-        minTime = time;
-      }
-    }
     return minTime;
   }
 
   public long getMaxTime() {
-    if (maxTime != null) {
-      return maxTime;
-    }
-    long tmpMaxTime = Long.MIN_VALUE;
-    for (Long time : times) {
-      if (time > tmpMaxTime) {
-        tmpMaxTime = time;
-      }
-    }
-    return tmpMaxTime;
+    return maxTime;
   }
 
   public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
@@ -485,6 +468,18 @@ public class InsertTabletPlan extends InsertPlan {
 
   public void setTimes(long[] times) {
     this.times = times;
+    updateTimesCache();
+  }
+
+  private void updateTimesCache() {
+    for (Long time : times) {
+      if (time > maxTime) {
+        maxTime = time;
+      }
+      if (time < minTime) {
+        minTime = time;
+      }
+    }
   }
 
   public int getRowCount() {
