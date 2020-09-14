@@ -44,12 +44,12 @@ public abstract class UDTFDataSet extends QueryDataSet {
   protected final QueryContext context;
   protected final UDTFPlan udtfPlan;
 
-  // not null when data set executes with value filter
+  // not null when the dataset executes with value filters
   protected TimeGenerator timestampGenerator;
   protected List<IReaderByTimestamp> readersByTimestamp;
   protected List<Boolean> cached;
 
-  // not null when data set executes without value filter
+  // not null when the dataset executes without value filters
   protected List<ManagedSeriesReader> managedSeriesReaders;
 
   // deduplicatedPaths[i] (paths[i]), deduplicatedDataTypes[i] (dataTypes[i]) -> rawDataColumns[i]
@@ -59,7 +59,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
   protected DataPointIterator[] transformedDataColumns;
   protected TSDataType[] transformedDataColumnDataTypes;
 
-  // execute with value filter
+  // execute with value filters
   public UDTFDataSet(QueryContext context, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
       List<TSDataType> deduplicatedDataTypes, TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries, List<Boolean> cached)
@@ -82,7 +82,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     rawDataColumns = new ElasticSerializableTVList[seriesNum];
     for (int i = 0; i < seriesNum; ++i) {
       rawDataColumns[i] = new ElasticSerializableTVList(dataTypes.get(i), context.getQueryId(),
-          // series ids were generated in PhysicalGenerator
+          // series ids are generated in PhysicalGenerator
           // they make sure that each raw data column will have a unique temporary file path
           seriesReaderIdList.get(i),
           MEMORY_USAGE_LIMIT_FOR_SINGLE_COLUMN, CACHE_SIZE_FOR_SINGLE_COLUMN);
@@ -142,7 +142,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     }
   }
 
-  // execute without value filter
+  // execute without value filters
   public UDTFDataSet(QueryContext context, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
       List<TSDataType> deduplicatedDataTypes, List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException {
