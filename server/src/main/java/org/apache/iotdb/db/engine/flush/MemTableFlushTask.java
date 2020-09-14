@@ -78,6 +78,10 @@ public class MemTableFlushTask {
    */
   public void syncFlushMemTable()
       throws ExecutionException, InterruptedException, IOException {
+    logger.info("The memTable size of SG {} is {}, the avg series points num in chunk is {} ",
+        storageGroup,
+        memTable.memSize(),
+        memTable.getTotalPointsNum() / memTable.getSeriesNumber());
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
