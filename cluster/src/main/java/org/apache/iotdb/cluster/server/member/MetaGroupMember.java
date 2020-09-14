@@ -333,7 +333,7 @@ public class MetaGroupMember extends RaftMember {
     allNodes = new ArrayList<>();
     initPeerMap();
 
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+    if (!ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       dataSyncClientPool = new SyncClientPool(new SyncDataClient.FactorySync(factory));
     } else {
       dataAsyncClientPool = new AsyncClientPool(new FactoryAsync(factory));
