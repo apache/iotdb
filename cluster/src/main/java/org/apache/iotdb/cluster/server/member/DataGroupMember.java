@@ -1119,6 +1119,7 @@ public class DataGroupMember extends RaftMember {
       }
     } else if (leader != null) {
       TSStatus result = forwardPlan(plan, leader, getHeader());
+      // If result equals StatusUtils.NO_LEADER, block this request until the new leader is elected.
       if (!StatusUtils.NO_LEADER.equals(result)) {
         result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
         return result;
@@ -1134,6 +1135,7 @@ public class DataGroupMember extends RaftMember {
       }
     }
     TSStatus result = forwardPlan(plan, leader, getHeader());
+    // If result equals StatusUtils.NO_LEADER too, return StatusUtils.NO_LEADER.
     if (!StatusUtils.NO_LEADER.equals(result)) {
       result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
     }

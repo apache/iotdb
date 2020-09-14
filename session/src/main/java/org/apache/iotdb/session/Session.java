@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -153,8 +154,9 @@ public class Session {
     } catch (RedirectException e) {
       if (Config.DEFAULT_CACHE_LEADER_MODE) {
         logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
-        metaSessionConnection = new SessionConnection(this, e.getEndPoint());
-        endPointToSessionConnection.putIfAbsent(e.getEndPoint(), metaSessionConnection);
+        endPointToSessionConnection
+            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+        metaSessionConnection = endPointToSessionConnection.get(e.getEndPoint());
       }
     }
   }
@@ -162,14 +164,12 @@ public class Session {
   public void deleteStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
-      metaSessionConnection.deleteStorageGroups(new ArrayList<String>() {{
-        add(storageGroup);
-      }});
+      metaSessionConnection.deleteStorageGroups(Collections.singletonList(storageGroup));
     } catch (RedirectException e) {
       if (Config.DEFAULT_CACHE_LEADER_MODE) {
         logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
-        metaSessionConnection = new SessionConnection(this, e.getEndPoint());
-        endPointToSessionConnection.putIfAbsent(e.getEndPoint(), metaSessionConnection);
+        endPointToSessionConnection.putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+        metaSessionConnection = endPointToSessionConnection.get(e.getEndPoint());
       }
     }
   }
@@ -181,8 +181,8 @@ public class Session {
     } catch (RedirectException e) {
       if (Config.DEFAULT_CACHE_LEADER_MODE) {
         logger.debug(e.getMessage());
-        metaSessionConnection = new SessionConnection(this, e.getEndPoint());
-        endPointToSessionConnection.putIfAbsent(e.getEndPoint(), metaSessionConnection);
+        endPointToSessionConnection.putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+        metaSessionConnection = endPointToSessionConnection.get(e.getEndPoint());
       }
     }
   }
@@ -327,7 +327,7 @@ public class Session {
       List<TSDataType> types,
       Object... values) throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types,
-        new ArrayList<>(Arrays.asList(values)));
+        Arrays.asList(values));
     EndPoint endPoint;
     try {
       if (Config.DEFAULT_CACHE_LEADER_MODE
@@ -474,7 +474,7 @@ public class Session {
           measurementsList, valuesList);
       try {
         defaultSessionConnection.insertRecords(request);
-      } catch (RedirectException e) {
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -547,7 +547,7 @@ public class Session {
       try {
         defaultSessionConnection
             .insertRecords(request);
-      } catch (RedirectException e) {
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -707,7 +707,7 @@ public class Session {
       TSInsertTabletsReq request = genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted);
       try {
         defaultSessionConnection.insertTablets(request);
-      } catch (RedirectException e) {
+      } catch (RedirectException ignored) {
       }
     }
   }
@@ -857,9 +857,7 @@ public class Session {
    */
   public void deleteTimeseries(String path)
       throws IoTDBConnectionException, StatementExecutionException {
-    defaultSessionConnection.deleteTimeseries(new ArrayList<String>() {{
-      add(path);
-    }});
+    defaultSessionConnection.deleteTimeseries(Collections.singletonList(path));
   }
 
   /**

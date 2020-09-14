@@ -74,12 +74,10 @@ public class SessionConnection {
     transport = new TFastFramedTransport(
         new TSocket(endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs));
 
-    if (!transport.isOpen()) {
-      try {
-        transport.open();
-      } catch (TTransportException e) {
-        throw new IoTDBConnectionException(e);
-      }
+    try {
+      transport.open();
+    } catch (TTransportException e) {
+      throw new IoTDBConnectionException(e);
     }
 
     if (session.enableRPCCompression) {
@@ -206,10 +204,15 @@ public class SessionConnection {
 
   protected boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException {
-    SessionDataSet dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path));
-    boolean result = dataSet.hasNext();
-    dataSet.closeOperationHandle();
-    return result;
+    SessionDataSet dataSet = null;
+    try {
+      dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path));
+      return dataSet.hasNext();
+    } finally {
+      if (dataSet != null) {
+        dataSet.closeOperationHandle();
+      }
+    }
   }
 
   protected SessionDataSet executeQueryStatement(String sql)

@@ -1448,6 +1448,7 @@ public class MetaGroupMember extends RaftMember {
 
   /**
    * execute a non-query plan that is not necessary to be executed on other nodes.
+   *
    * @param plan
    * @return
    */
@@ -1693,19 +1694,18 @@ public class MetaGroupMember extends RaftMember {
     TSStatus[] subStatus = null;
     boolean noFailure = true;
     boolean isBatchFailure = false;
-    boolean allRedirect = true;
     EndPoint endPoint = null;
+    InsertTabletPlan subPlan;
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
+      subPlan = (InsertTabletPlan) entry.getKey();
       logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
       noFailure =
           (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
       isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
           || isBatchFailure;
-      if (tmpStatus.isSetRedirectNode()) {
+      if (tmpStatus.isSetRedirectNode() && subPlan.getMaxTime() == plan.getMaxTime()) {
         endPoint = tmpStatus.getRedirectNode();
-      } else {
-        allRedirect = false;
       }
       if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         if (subStatus == null) {
@@ -1725,7 +1725,7 @@ public class MetaGroupMember extends RaftMember {
     TSStatus status;
     if (noFailure) {
       status = StatusUtils.OK;
-      if (allRedirect) {
+      if (endPoint != null) {
         status = StatusUtils.getStatus(status, endPoint);
       }
     } else if (isBatchFailure) {
