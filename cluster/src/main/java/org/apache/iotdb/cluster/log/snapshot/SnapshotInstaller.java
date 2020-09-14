@@ -17,28 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.query;
 
-import java.util.List;
-import org.apache.iotdb.cluster.metadata.CMManager;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.service.IoTDB;
+package org.apache.iotdb.cluster.log.snapshot;
 
-public class ClusterConcatPathOptimizer extends ConcatPathOptimizer {
+import java.util.Map;
+import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
+import org.apache.iotdb.cluster.log.Snapshot;
 
-  private MetaGroupMember metaGroupMember;
+public interface SnapshotInstaller<T extends Snapshot> {
 
-  ClusterConcatPathOptimizer(
-      MetaGroupMember metaGroupMember) {
-    this.metaGroupMember = metaGroupMember;
-  }
+  void install(T snapshot, int slot) throws SnapshotInstallationException;
 
-  @Override
-  protected List<PartialPath> removeWildcard(PartialPath path) throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getMatchedPaths(path);
-  }
-
+  void install(Map<Integer, T> snapshotMap) throws SnapshotInstallationException;
 }

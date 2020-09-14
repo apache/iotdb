@@ -44,6 +44,7 @@ import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
@@ -128,7 +129,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected List<PartialPath> getPathsName(PartialPath path) throws MetadataException {
-    return metaGroupMember.getMatchedPaths(path);
+    return ((CMManager) IoTDB.metaManager).getMatchedPaths(path);
   }
 
   @Override
@@ -155,7 +156,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     try {
       ret = getPathCount(sgPathMap, level);
     } catch (CheckConsistencyException e) {
-      throw new MetadataException(e.getMessage());
+      throw new MetadataException(e);
     }
     logger.debug("The number of paths satisfying {}@{} is {}", path, level, ret);
     return ret;
@@ -258,13 +259,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
         Integer count;
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncDataClient client = metaGroupMember
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+              .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           client.setTimeout(RaftServer.getReadOperationTimeoutMS());
           count = SyncClientAdaptor.getPathCount(client, partitionGroup.getHeader(),
               pathsToQuery, level);
         } else {
           SyncDataClient syncDataClient = metaGroupMember
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+              .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
           count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
           ClientUtils.putBackSyncClient(syncDataClient);
@@ -288,7 +289,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected Set<PartialPath> getDevices(PartialPath path) throws MetadataException {
-    return metaGroupMember.getMatchedDevices(path);
+    return ((CMManager) IoTDB.metaManager).getMatchedDevices(path);
   }
 
   @Override
@@ -317,7 +318,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         logger.error("Interrupted when getting node lists");
         Thread.currentThread().interrupt();
       } catch (RuntimeException | ExecutionException e) {
-        throw new MetadataException(e.getMessage());
+        throw new MetadataException(e);
       }
     }
 
@@ -362,12 +363,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncDataClient client = metaGroupMember
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+              .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           paths = SyncClientAdaptor.getNodeList(client, group.getHeader(), schemaPattern.getFullPath(),
               level);
         } else {
           SyncDataClient syncDataClient = metaGroupMember
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+              .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           paths = syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
           ClientUtils.putBackSyncClient(syncDataClient);
         }
@@ -426,7 +427,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         logger.error("Unexpected interruption when waiting for getNextChildren()", e);
         Thread.currentThread().interrupt();
       } catch (RuntimeException | ExecutionException e) {
-        throw new MetadataException(e.getMessage());
+        throw new MetadataException(e);
       }
     }
 
@@ -469,11 +470,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncDataClient client = metaGroupMember
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+              .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           nextChildren = SyncClientAdaptor.getNextChildren(client, group.getHeader(), path.getFullPath());
         } else {
           SyncDataClient syncDataClient = metaGroupMember
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+              .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           nextChildren = syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
           ClientUtils.putBackSyncClient(syncDataClient);
         }
@@ -533,7 +534,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         logger.error("Unexpected interruption when waiting for showTimeseries()", e);
         Thread.currentThread().interrupt();
       } catch (RuntimeException | ExecutionException e) {
-        throw new MetadataException(e.getMessage());
+        throw new MetadataException(e);
       }
     }
 
@@ -629,12 +630,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client = metaGroupMember
-          .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(),
           plan);
     } else {
       SyncDataClient syncDataClient = metaGroupMember
-          .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
       plan.serialize(dataOutputStream);
@@ -695,12 +696,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (String s : measurementList) {
       schemasToPull.add(deviceId.concatNode(s));
     }
-    metaGroupMember.pullTimeSeriesSchemas(schemasToPull, null);
+    ((CMManager) IoTDB.metaManager).pullTimeSeriesSchemas(schemasToPull, null);
   }
 
   @Override
   protected List<StorageGroupMNode> getAllStorageGroupNodes() {
-    return metaGroupMember.getAllStorageGroupNodes();
+    metaGroupMember.syncLeader();
+    return IoTDB.metaManager.getAllStorageGroupNodes();
   }
 
   @Override

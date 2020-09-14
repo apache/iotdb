@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.query.groupby;
 
 import java.util.ArrayList;
+import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -39,6 +40,7 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet {
 
   private MetaGroupMember metaGroupMember;
+  private ClusterReaderFactory readerFactory;
 
   public ClusterGroupByVFilterDataSet(QueryContext context,
       GroupByTimePlan groupByPlan, MetaGroupMember metaGroupMember)
@@ -59,6 +61,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
 
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     this.metaGroupMember = metaGroupMember;
+    this.readerFactory = new ClusterReaderFactory(metaGroupMember);
     initGroupBy(context, groupByPlan);
   }
 
@@ -74,7 +77,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
       TSDataType dataType,
       QueryContext context,
       TsFileFilter fileFilter) throws StorageEngineException, QueryProcessException {
-    return metaGroupMember.getReaderByTimestamp(path,
+    return readerFactory.getReaderByTimestamp(path,
         dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context);
   }
 }

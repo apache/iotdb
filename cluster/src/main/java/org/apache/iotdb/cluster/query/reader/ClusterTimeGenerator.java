@@ -21,12 +21,14 @@ package org.apache.iotdb.cluster.query.reader;
 
 import java.io.IOException;
 import java.util.Collections;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
@@ -36,6 +38,7 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 public class ClusterTimeGenerator extends ServerTimeGenerator {
 
   private MetaGroupMember metaGroupMember;
+  private ClusterReaderFactory readerFactory;
 
   /**
    * Constructor of EngineTimeGenerator.
@@ -46,6 +49,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     super(context);
     this.metaGroupMember = metaGroupMember;
     this.queryPlan = rawDataQueryPlan;
+    this.readerFactory = new ClusterReaderFactory(metaGroupMember);
     try {
       constructNode(expression);
     } catch (IOException e) {
@@ -61,9 +65,9 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     TSDataType dataType;
     try {
       dataType =
-          metaGroupMember.getSeriesTypesByPaths(Collections.singletonList(path),
+          ((CMManager) IoTDB.metaManager).getSeriesTypesByPaths(Collections.singletonList(path),
               null).left.get(0);
-      return metaGroupMember.getSeriesReader(path,
+      return readerFactory.getSeriesReader(path,
           queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType,
           null, filter, context);
     } catch (Exception e) {

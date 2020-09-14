@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.ClusterPlanner;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
@@ -240,7 +242,7 @@ public class ClientServer extends TSServiceImpl {
   protected List<TSDataType> getSeriesTypesByPaths(List<PartialPath> paths,
       List<String> aggregations)
       throws MetadataException {
-    return metaGroupMember.getSeriesTypesByPath(paths, aggregations).left;
+    return ((CMManager) IoTDB.metaManager).getSeriesTypesByPath(paths, aggregations).left;
   }
 
   /**
@@ -254,7 +256,7 @@ public class ClientServer extends TSServiceImpl {
    */
   protected List<TSDataType> getSeriesTypesByString(List<PartialPath> paths, String aggregation)
       throws MetadataException {
-    return metaGroupMember.getSeriesTypesByPaths(paths, aggregation).left;
+    return ((CMManager) IoTDB.metaManager).getSeriesTypesByPaths(paths, aggregation).left;
   }
 
   /**
@@ -294,11 +296,13 @@ public class ClientServer extends TSServiceImpl {
           try {
             if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
               AsyncDataClient client = metaGroupMember
-                  .getAsyncDataClient(queriedNode, RaftServer.getReadOperationTimeoutMS());
+                  .getClientProvider().getAsyncDataClient(queriedNode,
+                  RaftServer.getReadOperationTimeoutMS());
               client.endQuery(header, metaGroupMember.getThisNode(), queryId, handler);
             } else {
               SyncDataClient syncDataClient = metaGroupMember
-                  .getSyncDataClient(queriedNode, RaftServer.getReadOperationTimeoutMS());
+                  .getClientProvider().getSyncDataClient(queriedNode,
+                      RaftServer.getReadOperationTimeoutMS());
               syncDataClient.endQuery(header, metaGroupMember.getThisNode(), queryId);
             }
           } catch (IOException | TException e) {

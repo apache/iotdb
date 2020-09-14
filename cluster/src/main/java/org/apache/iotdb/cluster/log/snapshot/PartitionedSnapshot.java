@@ -24,10 +24,18 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * PartitionedSnapshot stores the snapshot of each slot in a map.
@@ -109,7 +117,82 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
   }
 
   @Override
+  public SnapshotInstaller getDefaultInstaller(RaftMember member) {
+    return new Installer((DataGroupMember) member);
+  }
+
+  @Override
   public int hashCode() {
     return Objects.hash(slotSnapshots);
+  }
+
+  @SuppressWarnings("java:S3740")
+  public static class Installer implements SnapshotInstaller<PartitionedSnapshot> {
+
+    private static final Logger logger = LoggerFactory.getLogger(Installer.class);
+    private DataGroupMember dataGroupMember;
+    private String name;
+
+    public Installer(DataGroupMember dataGroupMember) {
+      this.dataGroupMember = dataGroupMember;
+      this.name = dataGroupMember.getName();
+    }
+
+    @Override
+
+    public void install(PartitionedSnapshot snapshot, int slot)
+        throws SnapshotInstallationException {
+      installPartitionedSnapshot(snapshot);
+    }
+
+    @Override
+    public void install(Map<Integer, PartitionedSnapshot> snapshotMap) {
+      throw new IllegalStateException("Method unimplemented");
+    }
+
+    /**
+     * Install a PartitionedSnapshot, which is a slotNumber -> FileSnapshot map. Only the slots that
+     * are managed by the the group will be applied. The lastLogId and lastLogTerm are also updated
+     * according to the snapshot.
+     *
+     * @param snapshot
+     */
+    private void installPartitionedSnapshot(PartitionedSnapshot<FileSnapshot> snapshot)
+        throws SnapshotInstallationException {
+      synchronized (dataGroupMember.getSnapshotApplyLock()) {
+        List<Integer> slots =
+            ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+                .getNodeSlots(dataGroupMember.getHeader());
+        for (Integer slot : slots) {
+          Snapshot subSnapshot = snapshot.getSnapshot(slot);
+          if (subSnapshot != null) {
+            installSnapshot(subSnapshot, slot);
+          }
+        }
+        synchronized (dataGroupMember.getLogManager()) {
+          dataGroupMember.getLogManager().applySnapshot(snapshot);
+        }
+      }
+    }
+
+    /**
+     * Apply a snapshot to the state machine, i.e., load the data and meta data contained in the
+     * snapshot into the IoTDB instance. Currently the type of the snapshot should be ony
+     * FileSnapshot, but more types may be supported in the future.
+     *
+     * @param snapshot
+     */
+    void installSnapshot(Snapshot snapshot, int slot) throws SnapshotInstallationException {
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: applying snapshot {}", name, snapshot);
+      }
+      // ensure storage groups are synchronized
+      try {
+        dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck();
+      } catch (CheckConsistencyException e) {
+        throw new SnapshotInstallationException(e);
+      }
+      snapshot.getDefaultInstaller(dataGroupMember).install(snapshot, slot);
+    }
   }
 }

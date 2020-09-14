@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -53,25 +55,29 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
     this.metaGroupMember = metaGroupMember;
   }
 
+  private CMManager getCMManager() {
+    return ((CMManager) IoTDB.metaManager);
+  }
+
   @Override
   protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<PartialPath> paths,
       String aggregation) throws MetadataException {
-    return metaGroupMember.getSeriesTypesByPaths(paths, aggregation);
+    return getCMManager().getSeriesTypesByPaths(paths, aggregation);
   }
 
   @Override
   protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
-    return metaGroupMember.getSeriesTypesByPaths(paths, null).left;
+    return getCMManager().getSeriesTypesByPaths(paths, null).left;
   }
 
   @Override
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return metaGroupMember.getMatchedPaths(path);
+    return ((CMManager) IoTDB.metaManager).getMatchedPaths(path);
   }
 
   @Override
   protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
-    return metaGroupMember.getMatchedDevices(path);
+    return ((CMManager) IoTDB.metaManager).getMatchedDevices(path);
   }
 
 

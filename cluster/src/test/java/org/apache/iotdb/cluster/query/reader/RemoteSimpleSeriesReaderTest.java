@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
+import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -45,6 +46,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -65,8 +67,8 @@ public class RemoteSimpleSeriesReaderTest {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
     batchUsed = false;
-    metaGroupMember = new TestMetaGroupMember() {
-
+    metaGroupMember = new TestMetaGroupMember();
+    metaGroupMember.setClientProvider(new DataClientProvider(new Factory()) {
       @Override
       public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
         return new AsyncDataClient(null, null, node, null) {
@@ -103,7 +105,7 @@ public class RemoteSimpleSeriesReaderTest {
           }
         };
       }
-    };
+    });
   }
 
   @After

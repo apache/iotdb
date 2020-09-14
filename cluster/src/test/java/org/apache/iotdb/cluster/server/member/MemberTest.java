@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
@@ -44,6 +45,7 @@ import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -60,9 +62,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -72,9 +73,9 @@ public class MemberTest {
 
   public static AtomicLong dummyResponse = new AtomicLong(Response.RESPONSE_AGREE);
 
-  protected Map<Node, DataGroupMember> dataGroupMemberMap;
-  protected Map<Node, MetaGroupMember> metaGroupMemberMap;
-  protected PartitionGroup allNodes;
+  Map<Node, DataGroupMember> dataGroupMemberMap;
+  private Map<Node, MetaGroupMember> metaGroupMemberMap;
+  PartitionGroup allNodes;
   protected MetaGroupMember testMetaMember;
   RaftLogManager metaLogManager;
   PartitionTable partitionTable;
@@ -96,14 +97,6 @@ public class MemberTest {
     testThreadPool = Executors.newFixedThreadPool(4);
     prevLeaderWait = RaftMember.getWaitLeaderTimeMs();
     RaftMember.setWaitLeaderTimeMs(10);
-    EnvironmentUtils.envSetUp();
-    prevUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
-    List<String> testUrls = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      Node node = TestUtils.getNode(i);
-      testUrls.add(node.getIp() + ":" + node.getMetaPort() + ":" + node.getDataPort());
-    }
-    ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(testUrls);
 
     allNodes = new PartitionGroup();
     for (int i = 0; i < 100; i += 10) {
@@ -116,10 +109,23 @@ public class MemberTest {
     metaGroupMemberMap = new HashMap<>();
     metaLogManager = new TestLogManager(1);
     testMetaMember = getMetaGroupMember(TestUtils.getNode(0));
+
     for (Node node : allNodes) {
       // pre-create data members
       getDataGroupMember(node);
     }
+
+    IoTDB.setMetaManager(CMManager.getInstance());
+    CMManager.getInstance().setMetaGroupMember(testMetaMember);
+
+    EnvironmentUtils.envSetUp();
+    prevUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
+    List<String> testUrls = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      Node node = TestUtils.getNode(i);
+      testUrls.add(node.getIp() + ":" + node.getMetaPort() + ":" + node.getDataPort());
+    }
+    ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(testUrls);
 
     for (int i = 0; i < 10; i++) {
       try {
@@ -214,26 +220,6 @@ public class MemberTest {
 
   private MetaGroupMember newMetaGroupMember(Node node) {
     MetaGroupMember ret = new TestMetaGroupMember() {
-      @Override
-      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<PartialPath> paths,
-          List<String> aggregations)
-          throws MetadataException {
-        return new Pair<>(SchemaUtils.getSeriesTypesByPaths(paths, aggregations),
-            SchemaUtils.getSeriesTypesByPaths(paths, (List<String>) null));
-      }
-
-      @Override
-      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPaths(List<PartialPath> pathStrs,
-          String aggregation)
-          throws MetadataException {
-        return new Pair<>(SchemaUtils.getSeriesTypesByPaths(pathStrs, aggregation),
-            SchemaUtils.getSeriesTypesByPaths(pathStrs, (List<String>) null));
-      }
-
-      @Override
-      public List<PartialPath> getMatchedPaths(PartialPath pathPattern) throws MetadataException {
-        return IoTDB.metaManager.getAllTimeseriesPath(pathPattern);
-      }
 
       @Override
       public DataGroupMember getLocalDataMember(Node header,
@@ -259,11 +245,6 @@ public class MemberTest {
           return null;
         }
       }
-
-      @Override
-      public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-        return new TestAsyncDataClient(node, dataGroupMemberMap);
-      }
     };
     ret.setThisNode(node);
     ret.setPartitionTable(partitionTable);
@@ -272,6 +253,12 @@ public class MemberTest {
     ret.setLeader(node);
     ret.setCharacter(NodeCharacter.LEADER);
     ret.setAppendLogThreadPool(testThreadPool);
+    ret.setClientProvider(new DataClientProvider(new Factory()) {
+      @Override
+      public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+        return new TestAsyncDataClient(node, dataGroupMemberMap);
+      }
+    });
     return ret;
   }
 

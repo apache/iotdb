@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.log.applier;
 import java.util.Collections;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
@@ -135,7 +136,7 @@ abstract class BaseApplier implements LogApplier {
       throws QueryProcessException {
     try {
       PartialPath path = plan.getDeviceId();
-      metaGroupMember
+      ((CMManager) IoTDB.metaManager)
           .pullTimeSeriesSchemas(Collections.singletonList(path), ignoredGroup);
     } catch (MetadataException e1) {
       throw new QueryProcessException(e1);

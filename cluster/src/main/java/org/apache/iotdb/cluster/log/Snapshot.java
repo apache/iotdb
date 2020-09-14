@@ -21,6 +21,9 @@ package org.apache.iotdb.cluster.log;
 
 
 import java.nio.ByteBuffer;
+import java.util.Map;
+import org.apache.iotdb.cluster.log.snapshot.SnapshotInstaller;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 
 /**
  * As we can only hold a certain amount of logs in memory, when the logs' size exceed the memory
@@ -34,6 +37,18 @@ public abstract class Snapshot {
 
   protected long lastLogIndex;
   protected long lastLogTerm;
+  // default installer does nothing
+  private static final SnapshotInstaller<Snapshot> DEFAULT_INSTALLER = new SnapshotInstaller<Snapshot>() {
+    @Override
+    public void install(Snapshot snapshot, int slot) {
+
+    }
+
+    @Override
+    public void install(Map<Integer, Snapshot> snapshotMap) {
+
+    }
+  };
 
   public abstract ByteBuffer serialize();
 
@@ -53,5 +68,9 @@ public abstract class Snapshot {
 
   public long getLastLogTerm() {
     return lastLogTerm;
+  }
+
+  public SnapshotInstaller getDefaultInstaller(RaftMember member) {
+    return DEFAULT_INSTALLER;
   }
 }

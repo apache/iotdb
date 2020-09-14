@@ -28,6 +28,7 @@ import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.EmptyReader;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -58,7 +59,8 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
       aggregationTypes.add(i);
     }
 
-    List<GroupByExecutor> groupByExecutors = testMetaMember
+    ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
+    List<GroupByExecutor> groupByExecutors = readerFactory
         .getGroupByExecutors(path, Collections.singleton(path.getMeasurement()), dataType,
             context, timeFilter,
             aggregationTypes);
@@ -110,7 +112,8 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
       aggregationTypes.add(i);
     }
 
-    List<GroupByExecutor> groupByExecutors = testMetaMember
+    ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
+    List<GroupByExecutor> groupByExecutors = readerFactory
         .getGroupByExecutors(path, Collections.singleton(path.getMeasurement()), dataType, context
             , timeFilter, aggregationTypes);
 

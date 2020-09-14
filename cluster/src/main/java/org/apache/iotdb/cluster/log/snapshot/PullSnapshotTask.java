@@ -38,7 +38,7 @@ import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
+import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
@@ -111,11 +111,13 @@ public class PullSnapshotTask implements Callable<Void> {
         logger.info("Received a snapshot {} from {}", result, descriptor.getPreviousHolders().get(nodeIndex));
       }
       try {
-        newMember.applySnapshot(result);
+        Snapshot snapshot = result.values().iterator().next();
+        SnapshotInstaller installer = snapshot.getDefaultInstaller(newMember);
+        installer.install(result);
         // inform the previous holders that one member has successfully pulled snapshot
         newMember.registerPullSnapshotHint(descriptor);
         return true;
-      } catch (SnapshotApplicationException e) {
+      } catch (SnapshotInstallationException e) {
         logger.error("Apply snapshot failed, retry...", e);
       }
     }

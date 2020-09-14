@@ -83,7 +83,7 @@ public class DataSourceInfo {
       try {
 
         AsyncDataClient client = this.metaGroupMember
-            .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+            .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
         Long newReaderId = applyForReaderId(client, byTimestamp, timestamp);
 
         if (newReaderId != null) {
@@ -149,11 +149,12 @@ public class DataSourceInfo {
   }
 
   AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
-    return isNoClient ? null : metaGroupMember.getAsyncDataClient(this.curSource, timeout);
+    return isNoClient ? null : metaGroupMember.getClientProvider().getAsyncDataClient(this.curSource, timeout);
   }
 
   SyncDataClient getCurSyncClient(int timeout) {
-    return isNoClient ? null : metaGroupMember.getSyncDataClient(this.curSource, timeout);
+    return isNoClient ? null :
+        metaGroupMember.getClientProvider().getSyncDataClient(this.curSource, timeout);
   }
 
   public boolean isNoData() {
