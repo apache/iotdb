@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -47,9 +48,9 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
 
   public boolean hasLimit = true;
 
-  public ShowTimeseriesDataSet(List<Path> paths, List<TSDataType> dataTypes,
+  public ShowTimeseriesDataSet(List<PartialPath> paths, List<TSDataType> dataTypes,
       ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context) {
-    super(paths, dataTypes);
+    super(new ArrayList<>(paths), dataTypes);
     this.plan = showTimeSeriesPlan;
     this.context = context;
   }

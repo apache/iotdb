@@ -22,12 +22,14 @@ import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetaUtils;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public class FilePathUtils {
@@ -63,13 +65,20 @@ public class FilePathUtils {
    * @param pathIndex
    * @return
    */
-  public static Map<String, Long> getPathByLevel(List<Path> rawPaths, int level, Map<Integer, String> pathIndex) {
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public static Map<String, Long> getPathByLevel(List<PartialPath> rawPaths, int level, Map<Integer, String> pathIndex)
+      throws QueryProcessException {
     // pathGroupByLevel -> count
     Map<String, Long> finalPaths = new TreeMap<>();
 
     int i = 0;
-    for (Path value : rawPaths) {
-      String[] tmpPath = MetaUtils.getNodeNames(value.getFullPath());
+    for (PartialPath value : rawPaths) {
+      String[] tmpPath;
+      try {
+        tmpPath = MetaUtils.splitPathToDetachedPath(value.getFullPath());
+      } catch (IllegalPathException e) {
+        throw new QueryProcessException(e.getMessage());
+      }
 
       String key;
       if (tmpPath.length <= level) {
@@ -80,7 +89,7 @@ public class FilePathUtils {
           if (k == 0) {
             path.append(tmpPath[k]);
           } else {
-            path.append(".").append(tmpPath[k]);
+            path.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[k]);
           }
         }
         key = path.toString();

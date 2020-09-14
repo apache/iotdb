@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.util.ArrayList;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -50,7 +51,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
    * groupBy query.
    */
   public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
-    super(groupByTimePlan.getDeduplicatedPaths(), groupByTimePlan.getDeduplicatedDataTypes());
+    super(new ArrayList<>(groupByTimePlan.getDeduplicatedPaths()), groupByTimePlan.getDeduplicatedDataTypes());
     this.queryId = context.getQueryId();
     this.interval = groupByTimePlan.getInterval();
     this.slidingStep = groupByTimePlan.getSlidingStep();

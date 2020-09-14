@@ -24,15 +24,16 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class DeletePlan extends PhysicalPlan {
 
   private long deleteStartTime;
   private long deleteEndTime;
-  private List<Path> paths = new ArrayList<>();
+  private List<PartialPath> paths = new ArrayList<>();
 
   public DeletePlan() {
     super(false, Operator.OperatorType.DELETE);
@@ -45,7 +46,7 @@ public class DeletePlan extends PhysicalPlan {
    * @param endTime delete time range end
    * @param path time series path
    */
-  public DeletePlan(long startTime, long endTime, Path path) {
+  public DeletePlan(long startTime, long endTime, PartialPath path) {
     super(false, Operator.OperatorType.DELETE);
     this.deleteStartTime = startTime;
     this.deleteEndTime = endTime;
@@ -59,7 +60,7 @@ public class DeletePlan extends PhysicalPlan {
    * @param endTime delete time range end
    * @param paths time series paths in List structure
    */
-  public DeletePlan(long startTime, long endTime, List<Path> paths) {
+  public DeletePlan(long startTime, long endTime, List<PartialPath> paths) {
     super(false, Operator.OperatorType.DELETE);
     this.deleteStartTime = startTime;
     this.deleteEndTime = endTime;
@@ -82,20 +83,20 @@ public class DeletePlan extends PhysicalPlan {
     this.deleteEndTime = delTime;
   }
 
-  public void addPath(Path path) {
+  public void addPath(PartialPath path) {
     this.paths.add(path);
   }
 
-  public void addPaths(List<Path> paths) {
+  public void addPaths(List<PartialPath> paths) {
     this.paths.addAll(paths);
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return paths;
   }
 
-  public void setPaths(List<Path> paths) {
+  public void setPaths(List<PartialPath> paths) {
     this.paths = paths;
   }
 
@@ -124,7 +125,7 @@ public class DeletePlan extends PhysicalPlan {
     stream.writeLong(deleteStartTime);
     stream.writeLong(deleteEndTime);
     stream.writeInt(paths.size());
-    for (Path path : paths) {
+    for (PartialPath path : paths) {
       putString(stream, path.getFullPath());
     }
   }
@@ -136,19 +137,19 @@ public class DeletePlan extends PhysicalPlan {
     buffer.putLong(deleteStartTime);
     buffer.putLong(deleteEndTime);
     buffer.putInt(paths.size());
-    for (Path path : paths) {
+    for (PartialPath path : paths) {
       putString(buffer, path.getFullPath());
     }
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     this.deleteStartTime = buffer.getLong();
     this.deleteEndTime = buffer.getLong();
     int pathSize = buffer.getInt();
     this.paths = new ArrayList();
     for (int i = 0; i < pathSize; i++) {
-      paths.add(new Path(readString(buffer)));
+      paths.add(new PartialPath(readString(buffer)));
     }
   }
 }

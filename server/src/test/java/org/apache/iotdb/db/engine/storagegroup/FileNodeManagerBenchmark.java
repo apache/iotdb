@@ -20,13 +20,16 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.RandomNum;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -55,7 +58,7 @@ public class FileNodeManagerBenchmark {
 
   static {
     for (int i = 0; i < numOfDevice; i++) {
-      devices[i] = prefix + "." + "device_" + i;
+      devices[i] = prefix + TsFileConstant.PATH_SEPARATOR + "device_" + i;
     }
   }
 
@@ -68,10 +71,10 @@ public class FileNodeManagerBenchmark {
   private static void prepare()
       throws MetadataException {
     MManager manager = IoTDB.metaManager;
-    manager.setStorageGroup(prefix);
+    manager.setStorageGroup(new PartialPath(prefix));
     for (String device : devices) {
       for (String measurement : measurements) {
-        manager.createTimeseries(device + "." + measurement, TSDataType.INT64,
+        manager.createTimeseries(new PartialPath(device + "." + measurement), TSDataType.INT64,
             TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections
                 .emptyMap());
       }
@@ -121,7 +124,7 @@ public class FileNodeManagerBenchmark {
           TSRecord tsRecord = getRecord(deltaObject, time);
           StorageEngine.getInstance().insert(new InsertRowPlan(tsRecord));
         }
-      } catch (StorageEngineException e) {
+      } catch (StorageEngineException | IllegalPathException e) {
         e.printStackTrace();
       } finally {
         latch.countDown();

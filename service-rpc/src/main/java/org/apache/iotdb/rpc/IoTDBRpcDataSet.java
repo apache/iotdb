@@ -71,6 +71,7 @@ public class IoTDBRpcDataSet {
   public byte[] currentBitmap; // used to cache the current bitmap for every column
   public static final int FLAG = 0x80; // used to do `and` operation with bitmap to judge whether the value is null
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IoTDBRpcDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
       long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,

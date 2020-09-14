@@ -28,12 +28,12 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +75,7 @@ public class SchemaUtils {
   public static void registerTimeseries(TimeseriesSchema schema) {
     try {
       logger.debug("Registering timeseries {}", schema);
-      String path = schema.getFullPath();
+      PartialPath path = new PartialPath(schema.getFullPath());
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
@@ -90,47 +90,38 @@ public class SchemaUtils {
 
   }
 
-  public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths)
+  public static List<TSDataType> getSeriesTypesByPath(Collection<PartialPath> paths)
       throws MetadataException {
     List<TSDataType> dataTypes = new ArrayList<>();
-    for (Path path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path.getFullPath()));
-    }
-    return dataTypes;
-  }
-
-  /**
-   * @param paths time series paths
-   * @param aggregation aggregation function, may be null
-   * @return The data type of aggregation or (data type of paths if aggregation is null)
-   */
-  public static List<TSDataType> getSeriesTypesByString(Collection<String> paths,
-      String aggregation) throws MetadataException {
-    TSDataType dataType = getAggregationType(aggregation);
-    if (dataType != null) {
-      return Collections.nCopies(paths.size(), dataType);
-    }
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (String path : paths) {
+    for (PartialPath path : paths) {
       dataTypes.add(IoTDB.metaManager.getSeriesType(path));
     }
     return dataTypes;
   }
 
-  public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths,
+  /**
+   * @param paths       time series paths
+   * @param aggregation aggregation function, may be null
+   * @return The data type of aggregation or (data type of paths if aggregation is null)
+   */
+  public static List<TSDataType> getSeriesTypesByString(Collection<PartialPath> paths,
       String aggregation) throws MetadataException {
     TSDataType dataType = getAggregationType(aggregation);
     if (dataType != null) {
       return Collections.nCopies(paths.size(), dataType);
     }
     List<TSDataType> dataTypes = new ArrayList<>();
-    for (Path path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path.getFullPath()));
+    for (PartialPath path : paths) {
+      dataTypes.add(IoTDB.metaManager.getSeriesType(path));
     }
     return dataTypes;
   }
 
-  public static List<TSDataType> getSeriesTypesByPath(List<Path> paths,
+  public static TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getSeriesType(path);
+  }
+
+  public static List<TSDataType> getSeriesTypesByPaths(List<PartialPath> paths,
       List<String> aggregations) throws MetadataException {
     List<TSDataType> tsDataTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
@@ -138,7 +129,7 @@ public class SchemaUtils {
       if (dataType != null) {
         tsDataTypes.add(dataType);
       } else {
-        tsDataTypes.add(IoTDB.metaManager.getSeriesType(paths.get(i).getFullPath()));
+        tsDataTypes.add(IoTDB.metaManager.getSeriesType(paths.get(i)));
       }
     }
     return tsDataTypes;
@@ -173,8 +164,9 @@ public class SchemaUtils {
 
   public static void checkDataTypeWithEncoding(TSDataType dataType, TSEncoding encoding)
       throws MetadataException {
-    if(!schemaChecker.get(dataType).contains(encoding)) {
-      throw new MetadataException(String.format("encoding %s does not support %s", dataType.toString(), encoding.toString()));
+    if (!schemaChecker.get(dataType).contains(encoding)) {
+      throw new MetadataException(String
+          .format("encoding %s does not support %s", dataType.toString(), encoding.toString()));
     }
   }
 }

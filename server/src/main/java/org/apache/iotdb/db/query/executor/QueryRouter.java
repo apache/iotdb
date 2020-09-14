@@ -19,16 +19,28 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.SingleDataSet;
-import org.apache.iotdb.db.query.dataset.groupby.*;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByTimeDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -38,10 +50,6 @@ import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
@@ -55,12 +63,12 @@ public class QueryRouter implements IQueryRouter {
   public QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException {
     IExpression expression = queryPlan.getExpression();
-    List<Path> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
+    List<PartialPath> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
 
     IExpression optimizedExpression;
     try {
       optimizedExpression = expression == null ? null : ExpressionOptimizer.getInstance()
-          .optimize(expression, deduplicatedPaths);
+          .optimize(expression, new ArrayList<>(deduplicatedPaths));
     } catch (QueryFilterOptimizationException e) {
       throw new StorageEngineException(e.getMessage());
     }
@@ -97,12 +105,12 @@ public class QueryRouter implements IQueryRouter {
     }
 
     IExpression expression = aggregationPlan.getExpression();
-    List<Path> deduplicatedPaths = aggregationPlan.getDeduplicatedPaths();
+    List<PartialPath> deduplicatedPaths = aggregationPlan.getDeduplicatedPaths();
 
     // optimize expression to an executable one
     IExpression optimizedExpression =
         expression == null ? null :
-            ExpressionOptimizer.getInstance().optimize(expression, deduplicatedPaths);
+            ExpressionOptimizer.getInstance().optimize(expression, new ArrayList<>(deduplicatedPaths));
 
     aggregationPlan.setExpression(optimizedExpression);
 
@@ -139,7 +147,7 @@ public class QueryRouter implements IQueryRouter {
     long endTime = groupByTimePlan.getEndTime();
 
     IExpression expression = groupByTimePlan.getExpression();
-    List<Path> selectedSeries = groupByTimePlan.getDeduplicatedPaths();
+    List<PartialPath> selectedSeries = groupByTimePlan.getDeduplicatedPaths();
 
     GlobalTimeExpression timeExpression = new GlobalTimeExpression(
         new GroupByFilter(unit, slidingStep, startTime, endTime));
@@ -152,7 +160,7 @@ public class QueryRouter implements IQueryRouter {
 
     // optimize expression to an executable one
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
-        .optimize(expression, selectedSeries);
+        .optimize(expression, new ArrayList<>(selectedSeries));
     groupByTimePlan.setExpression(optimizedExpression);
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
@@ -182,14 +190,14 @@ public class QueryRouter implements IQueryRouter {
 
   protected GroupByTimeDataSet groupByLevelWithoutTimeIntervalDataSet(QueryContext context, GroupByTimePlan plan,
       GroupByEngineDataSet dataSet)
-      throws StorageEngineException, QueryProcessException, IOException {
+      throws QueryProcessException, IOException {
     return new GroupByTimeDataSet(context, plan, dataSet);
   }
 
   @Override
   public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
-    List<Path> fillPaths = fillQueryPlan.getDeduplicatedPaths();
+    List<PartialPath> fillPaths = fillQueryPlan.getDeduplicatedPaths();
     List<TSDataType> dataTypes = fillQueryPlan.getDeduplicatedDataTypes();
     long queryTime = fillQueryPlan.getQueryTime();
     Map<TSDataType, IFill> fillType = fillQueryPlan.getFillType();
@@ -200,7 +208,7 @@ public class QueryRouter implements IQueryRouter {
   }
 
   protected FillQueryExecutor getFillExecutor(
-      List<Path> fillPaths,
+      List<PartialPath> fillPaths,
       List<TSDataType> dataTypes, long queryTime,
       Map<TSDataType, IFill> fillType) {
     return new FillQueryExecutor(fillPaths, dataTypes, queryTime, fillType);

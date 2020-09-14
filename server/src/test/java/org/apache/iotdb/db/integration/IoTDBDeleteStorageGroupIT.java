@@ -69,10 +69,11 @@ public class IoTDBDeleteStorageGroupIT {
       };
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
-      ResultSet resultSet = statement.getResultSet();
       List<String> result = new ArrayList<>();
-      while (resultSet.next()) {
-        result.add(resultSet.getString(1));
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          result.add(resultSet.getString(1));
+        }
       }
       assertEquals(expected.length, result.size());
       assertTrue(expectedList.containsAll(result));
@@ -118,10 +119,11 @@ public class IoTDBDeleteStorageGroupIT {
       };
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
-      ResultSet resultSet = statement.getResultSet();
       List<String> result = new ArrayList<>();
-      while (resultSet.next()) {
-        result.add(resultSet.getString(1));
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          result.add(resultSet.getString(1));
+        }
       }
       assertEquals(expected.length, result.size());
       assertTrue(expectedList.containsAll(result));

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -157,11 +158,11 @@ public class SeriesReaderTestUtil {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds.add(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device" + i);
     }
-    IoTDB.metaManager.setStorageGroup(SERIES_READER_TEST_SG);
+    IoTDB.metaManager.setStorageGroup(new PartialPath(SERIES_READER_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         IoTDB.metaManager.createTimeseries(
-            device + PATH_SEPARATOR + measurementSchema.getMeasurementId(), measurementSchema
+            new PartialPath(device + PATH_SEPARATOR + measurementSchema.getMeasurementId()), measurementSchema
                 .getType(), measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             Collections.emptyMap());
       }

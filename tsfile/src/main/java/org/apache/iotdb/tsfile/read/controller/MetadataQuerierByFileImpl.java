@@ -87,6 +87,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   }
 
   @Override
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void loadChunkMetaDatas(List<Path> paths) throws IOException {
     // group measurements by device
     TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
@@ -168,6 +169,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
 
   @Override
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public List<TimeRange> convertSpace2TimePartition(List<Path> paths, long spacePartitionStartPos,
       long spacePartitionEndPos) throws IOException {
     if (spacePartitionStartPos > spacePartitionEndPos) {

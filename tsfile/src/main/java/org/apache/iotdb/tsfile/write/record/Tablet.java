@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.tsfile.write.record;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -51,6 +53,11 @@ public class Tablet {
    * the list of measurement schemas for creating the tablet
    */
   private List<MeasurementSchema> schemas;
+
+  /**
+   * measurementId->indexOf(measurementSchema)
+   */
+  private Map<String, Integer> measurementIndex;
 
   /**
    * timestamps in this tablet
@@ -95,10 +102,60 @@ public class Tablet {
     this.deviceId = deviceId;
     this.schemas = schemas;
     this.maxRowNumber = maxRowNumber;
+    measurementIndex = new HashMap<>();
+
+    for (int i = 0; i < schemas.size(); i++) {
+      measurementIndex.put(schemas.get(i).getMeasurementId(), i);
+    }
 
     createColumns();
 
     reset();
+  }
+
+  public void addTimestamp(int rowIndex, long timestamp) {
+    timestamps[rowIndex] = timestamp;
+  }
+
+  public void addValue(String measurementId, int rowIndex, Object value) {
+    int indexOfValue = measurementIndex.get(measurementId);
+    MeasurementSchema measurementSchema = schemas.get(indexOfValue);
+
+    switch (measurementSchema.getType()) {
+      case TEXT: {
+        Binary[] sensor = (Binary[]) values[indexOfValue];
+        sensor[rowIndex] = (Binary) value;
+        break;
+      }
+      case FLOAT: {
+        float[] sensor = (float[]) values[indexOfValue];
+        sensor[rowIndex] = (float) value;
+        break;
+      }
+      case INT32: {
+        int[] sensor = (int[]) values[indexOfValue];
+        sensor[rowIndex] = (int) value;
+        break;
+      }
+      case INT64: {
+        long[] sensor = (long[]) values[indexOfValue];
+        sensor[rowIndex] = (long) value;
+        break;
+      }
+      case DOUBLE: {
+        double[] sensor = (double[]) values[indexOfValue];
+        sensor[rowIndex] = (double) value;
+        break;
+      }
+      case BOOLEAN: {
+        boolean[] sensor = (boolean[]) values[indexOfValue];
+        sensor[rowIndex] = (boolean) value;
+        break;
+      }
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", measurementSchema.getType()));
+    }
   }
 
   public List<MeasurementSchema> getSchemas() {

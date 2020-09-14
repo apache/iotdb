@@ -24,7 +24,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
@@ -80,13 +82,12 @@ public class SyncSenderLogAnalyzerTest {
     Map<String, Map<Long, Set<File>>> allFileList = new HashMap<>();
 
     for (int i = 0; i < 3; i++) {
-      IoTDB.metaManager.setStorageGroup(getSgName(i));
+      IoTDB.metaManager.setStorageGroup(new PartialPath(getSgName(i)));
     }
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
-        allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
-            .computeIfAbsent(0L, k -> new HashSet<>());
+        allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>()).computeIfAbsent(0L, k -> new HashSet<>());
         String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName = FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
             + File.separator + getSgName(i) + File.separator + "0" + File.separator + rand;
