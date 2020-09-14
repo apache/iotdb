@@ -110,14 +110,16 @@ public class PartialPath extends Path implements Comparable<Path> {
   }
 
   public boolean matchPath(PartialPath rhs) {
-    int len1 = nodes.length;
-    String[] rNodes = rhs.getNodes();
-    if (rNodes.length > len1 && !nodes[len1 - 1].equals(IoTDBConstant.PATH_WILDCARD)) {
-      return false;
-    }
-    for (int i = 0; i < nodes.length; i++) {
-      if (!nodes[i].equals(IoTDBConstant.PATH_WILDCARD) && !nodes[i].equals(rNodes[i])) {
+    if (!fullPath.equals(rhs.fullPath)) {
+      int len1 = nodes.length;
+      String[] rNodes = rhs.getNodes();
+      if (rNodes.length > len1 && !nodes[len1 - 1].equals(IoTDBConstant.PATH_WILDCARD)) {
         return false;
+      }
+      for (int i = 0; i < nodes.length; i++) {
+        if (!nodes[i].equals(IoTDBConstant.PATH_WILDCARD) && !nodes[i].equals(rNodes[i])) {
+          return false;
+        }
       }
     }
     return true;
