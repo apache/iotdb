@@ -28,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -76,7 +77,7 @@ public class LogDispatcher {
 
   private BlockingQueue<SendLogRequest> createQueueAndBindingThread(Node node) {
     BlockingQueue<SendLogRequest> logBlockingQueue =
-        new ArrayBlockingQueue<>(4096);
+        new ArrayBlockingQueue<>(ClusterDescriptor.getInstance().getConfig().getMinNumOfLogsInMem());
     int bindingThreadNum = 1;
     for (int i = 0; i < bindingThreadNum; i++) {
       executorService.submit(new DispatcherThread(node, logBlockingQueue));

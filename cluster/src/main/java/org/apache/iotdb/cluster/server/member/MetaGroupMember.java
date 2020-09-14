@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.server.member;
 
 import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_SEC;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -35,23 +34,17 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -60,16 +53,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
+import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.async.AsyncMetaHeartbeatClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncClientPool;
-import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncMetaHeartbeatClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
@@ -79,8 +69,7 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
-import org.apache.iotdb.cluster.exception.QueryTimeOutException;
-import org.apache.iotdb.cluster.exception.RequestTimeOutException;
+import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
@@ -90,38 +79,23 @@ import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
-import org.apache.iotdb.cluster.query.RemoteQueryContext;
-import org.apache.iotdb.cluster.query.fill.PreviousFillArguments;
-import org.apache.iotdb.cluster.query.groupby.RemoteGroupByExecutor;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
-import org.apache.iotdb.cluster.query.reader.DataSourceInfo;
-import org.apache.iotdb.cluster.query.reader.EmptyReader;
-import org.apache.iotdb.cluster.query.reader.ManagedMergeReader;
-import org.apache.iotdb.cluster.query.reader.MergedReaderByTime;
-import org.apache.iotdb.cluster.query.reader.RemoteSeriesReaderByTimestamp;
-import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
-import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
-import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
-import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
@@ -136,7 +110,6 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.PreviousFillHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
@@ -144,11 +117,7 @@ import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
-import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -157,50 +126,23 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
-import org.apache.iotdb.db.query.factory.AggregateResultFactory;
-import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
@@ -245,20 +187,20 @@ public class MetaGroupMember extends RaftMember {
       ClusterDescriptor.getInstance().getConfig().getReplicationNum();
 
   /**
-   * during snapshot, hardlinks of data files are created to for downloading. hardlinks
-   * will be checked every hour by default to see if they have expired, and will be cleaned if so.
+   * during snapshot, hardlinks of data files are created to for downloading. hardlinks will be
+   * checked every hour by default to see if they have expired, and will be cleaned if so.
    */
   private static final long CLEAN_HARDLINK_INTERVAL_SEC = 3600;
 
   /**
-   * blind nodes are nodes that do not have the partition table, and if this node is the leader,
-   * the partition table should be sent to them at the next heartbeat
+   * blind nodes are nodes that do not have the partition table, and if this node is the leader, the
+   * partition table should be sent to them at the next heartbeat
    */
   private Set<Node> blindNodes = new HashSet<>();
   /**
    * as a leader, when a follower sent this node its identifier, the identifier may conflict with
-   * other nodes', such conflicting nodes will be recorded and at the next heartbeat, and they
-   * will be required to regenerate an identifier.
+   * other nodes', such conflicting nodes will be recorded and at the next heartbeat, and they will
+   * be required to regenerate an identifier.
    */
   private Set<Node> idConflictNodes = new HashSet<>();
   /**
@@ -276,8 +218,8 @@ public class MetaGroupMember extends RaftMember {
    */
   private ClusterPlanRouter router;
   /**
-   * each node contains multiple DataGroupMembers and they are managed by a DataClusterServer
-   * acting as a broker
+   * each node contains multiple DataGroupMembers and they are managed by a DataClusterServer acting
+   * as a broker
    */
   private DataClusterServer dataClusterServer;
 
@@ -287,17 +229,12 @@ public class MetaGroupMember extends RaftMember {
   private DataHeartbeatServer dataHeartbeatServer;
 
   /**
-   * an override of TSServiceImpl, which redirect JDBC and Session requests to the
-   * MetaGroupMember so they can be processed cluster-wide
+   * an override of TSServiceImpl, which redirect JDBC and Session requests to the MetaGroupMember
+   * so they can be processed cluster-wide
    */
   private ClientServer clientServer;
 
-  /**
-   * dataClientPool provides reusable thrift clients to connect to the DataGroupMembers of other
-   * nodes
-   */
-  private AsyncClientPool dataAsyncClientPool;
-  private SyncClientPool dataSyncClientPool;
+  private DataClientProvider dataClientProvider;
 
   /**
    * a single thread pool, every "REPORT_INTERVAL_SEC" seconds, "reportThread" will print the status
@@ -306,13 +243,14 @@ public class MetaGroupMember extends RaftMember {
   private ScheduledExecutorService reportThread;
 
   /**
-   * containing configurations that should be kept the same cluster-wide, and must be checked
-   * before establishing a cluster or joining a cluster.
+   * containing configurations that should be kept the same cluster-wide, and must be checked before
+   * establishing a cluster or joining a cluster.
    */
   private StartUpStatus startUpStatus;
 
   /**
-   * localExecutor is used to directly execute plans like load configuration in the underlying IoTDB
+   * localExecutor is used to directly execute plans like load configuration in the underlying
+   * IoTDB
    */
   private PlanExecutor localExecutor;
 
@@ -333,11 +271,7 @@ public class MetaGroupMember extends RaftMember {
     allNodes = new ArrayList<>();
     initPeerMap();
 
-    if (!ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      dataSyncClientPool = new SyncClientPool(new SyncDataClient.FactorySync(factory));
-    } else {
-      dataAsyncClientPool = new AsyncClientPool(new FactoryAsync(factory));
-    }
+    dataClientProvider = new DataClientProvider(factory);
 
     // committed logs are applied to the state machine (the IoTDB instance) through the applier
     LogApplier metaLogApplier = new MetaLogApplier(this);
@@ -359,12 +293,9 @@ public class MetaGroupMember extends RaftMember {
 
   /**
    * Find the DataGroupMember that manages the partition of "storageGroupName"@"partitionId", and
-   * close the partition through that member.
-   * Notice: only partitions owned by this node can be closed by the method.
+   * close the partition through that member. Notice: only partitions owned by this node can be
+   * closed by the method.
    *
-   * @param storageGroupName
-   * @param partitionId
-   * @param isSeq
    * @return true if the member is a leader and the partition is closed, false otherwise
    */
   public void closePartition(String storageGroupName, long partitionId, boolean isSeq) {
@@ -389,8 +320,6 @@ public class MetaGroupMember extends RaftMember {
    * Add seed nodes from the config, start the heartbeat and catch-up thread pool, initialize
    * QueryCoordinator and FileFlushPolicy, then start the reportThread. Calling the method twice
    * does not induce side effect.
-   *
-   * @throws TTransportException
    */
   @Override
   public void start() {
@@ -448,9 +377,6 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Start DataClusterServer and ClientServer so this node will be able to respond to other nodes
    * and clients.
-   *
-   * @throws TTransportException
-   * @throws StartupException
    */
   private void initSubServers() throws TTransportException, StartupException {
     getDataClusterServer().start();
@@ -478,8 +404,6 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Apply the addition of a new node. Register its identifier, add it to the node list and
    * partition table, serialize the partition table and update the DataGroupMembers.
-   *
-   * @param newNode
    */
   public void applyAddNode(Node newNode) {
     synchronized (allNodes) {
@@ -596,8 +520,6 @@ public class MetaGroupMember extends RaftMember {
    * start DataClusterServer and ClientServer and initialize DataGroupMembers.
    *
    * @return rue if the node has successfully joined the cluster, false otherwise.
-   * @throws TException
-   * @throws InterruptedException
    */
   private boolean joinCluster(Node node, StartUpStatus startUpStatus)
       throws TException, InterruptedException, ConfigInconsistentException {
@@ -656,9 +578,6 @@ public class MetaGroupMember extends RaftMember {
    * Process the heartbeat request from a valid leader. Generate and tell the leader the identifier
    * of the node if necessary. If the partition table is missing, use the one from the request or
    * require it in the response.
-   *
-   * @param request
-   * @param response
    */
   @Override
   void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response) {
@@ -693,10 +612,8 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Deserialize a partition table from the buffer, save it locally, add nodes from the partition
    * table and start DataClusterServer and ClientServer.
-   *
-   * @param partitionTableBuffer
    */
-  private void acceptPartitionTable(ByteBuffer partitionTableBuffer) {
+  public void acceptPartitionTable(ByteBuffer partitionTableBuffer) {
     partitionTable = new SlotPartitionTable(thisNode);
     partitionTable.deserialize(partitionTableBuffer);
 
@@ -725,9 +642,6 @@ public class MetaGroupMember extends RaftMember {
    * initialize a new one and start the ClientServer and DataClusterServer. If the follower requires
    * a partition table, add it to the blind node list so that at the next heartbeat this node will
    * send it a partition table
-   *
-   * @param response
-   * @param receiver
    */
   @Override
   public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
@@ -860,9 +774,9 @@ public class MetaGroupMember extends RaftMember {
    * immediately. If the identifier of "node" conflicts with an existing node, the request will be
    * turned down.
    *
-   * @param node          cannot be the local node
+   * @param node cannot be the local node
    * @param startUpStatus the start up status of the new node
-   * @param response      the response that will be sent to "node"
+   * @param response the response that will be sent to "node"
    * @return true if the process is over, false if the request should be forwarded
    */
   private boolean processAddNodeLocally(Node node, StartUpStatus startUpStatus,
@@ -1111,11 +1025,6 @@ public class MetaGroupMember extends RaftMember {
    * Send "request" to each node in "nodeRing" and when a node returns a success, decrease all
    * counters of the groups it is in of "groupRemainings"
    *
-   * @param nodeRing
-   * @param request
-   * @param leaderShipStale
-   * @param log
-   * @param newLeaderTerm
    * @return a int array indicating how many votes are left in each group to make an agreement
    */
   @SuppressWarnings({"java:S2445", "java:S2274"})
@@ -1322,8 +1231,6 @@ public class MetaGroupMember extends RaftMember {
 
   /**
    * Set the node's identifier to "identifier", also save it to a local file in text format.
-   *
-   * @param identifier
    */
   private void setNodeIdentifier(int identifier) {
     logger.info("The identifier of this node has been set to {}", identifier);
@@ -1345,80 +1252,11 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Process a snapshot sent by the MetaLeader. Deserialize the snapshot and apply it. The type of
    * the snapshot should be MetaSimpleSnapshot.
-   *
-   * @param request
    */
-  public void receiveSnapshot(SendSnapshotRequest request) {
+  public void receiveSnapshot(SendSnapshotRequest request) throws SnapshotInstallationException {
     MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot();
     snapshot.deserialize(request.snapshotBytes);
-    applySnapshot(snapshot);
-  }
-
-  /**
-   * Apply a meta snapshot to IoTDB. The snapshot contains: all storage groups, partition table,
-   * authentication info, and last log term/index in the snapshot.
-   *
-   * @param snapshot
-   */
-  private void applySnapshot(MetaSimpleSnapshot snapshot) {
-    synchronized (super.getSnapshotApplyLock()) {
-      // 1.  register all storage groups
-      for (Map.Entry<PartialPath, Long> entry : snapshot.getStorageGroupTTLMap().entrySet()) {
-        PartialPath sgPath = entry.getKey();
-        try {
-          IoTDB.metaManager.setStorageGroup(sgPath);
-        } catch (StorageGroupAlreadySetException e) {
-          // ignore
-        } catch (MetadataException e) {
-          logger.error("{}: Cannot add storage group {} in snapshot, errMessage:{}", name,
-              entry.getKey(),
-              e.getMessage());
-        }
-
-        // 2. register ttl in the snapshot
-        try {
-          IoTDB.metaManager.setTTL(sgPath, entry.getValue());
-          StorageEngine.getInstance().setTTL(sgPath, entry.getValue());
-        } catch (MetadataException | StorageEngineException | IOException e) {
-          logger
-              .error("{}: Cannot set ttl in storage group {} , errMessage: {}", name,
-                  entry.getKey(),
-                  e.getMessage());
-        }
-      }
-
-      // 3. replace all users and roles
-      try {
-        IAuthorizer authorizer = BasicAuthorizer.getInstance();
-        applySnapshotUsers(authorizer, snapshot);
-        applySnapshotRoles(authorizer, snapshot);
-      } catch (AuthException e) {
-        logger.error("{}: Cannot get authorizer instance, error is: ", name, e);
-      }
-
-      // 4. accept partition table
-      acceptPartitionTable(snapshot.getPartitionTableBuffer());
-
-      synchronized (logManager) {
-        logManager.applySnapshot(snapshot);
-      }
-    }
-  }
-
-  private void applySnapshotUsers(IAuthorizer authorizer, MetaSimpleSnapshot snapshot) {
-    try {
-      authorizer.replaceAllUsers(snapshot.getUserMap());
-    } catch (AuthException e) {
-      logger.error("{}:replace users failed", name, e);
-    }
-  }
-
-  private void applySnapshotRoles(IAuthorizer authorizer, MetaSimpleSnapshot snapshot) {
-    try {
-      authorizer.replaceAllRoles(snapshot.getRoleMap());
-    } catch (AuthException e) {
-      logger.error("{}:replace roles failed", name, e);
-    }
+    snapshot.getDefaultInstaller(this).install(snapshot, -1);
   }
 
   /**
@@ -1427,7 +1265,6 @@ public class MetaGroupMember extends RaftMember {
    * ingestion).
    *
    * @param plan a non-query plan.
-   * @return
    */
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
@@ -1448,9 +1285,6 @@ public class MetaGroupMember extends RaftMember {
 
   /**
    * execute a non-query plan that is not necessary to be executed on other nodes.
-   *
-   * @param plan
-   * @return
    */
   private TSStatus executeNonQueryLocally(PhysicalPlan plan) {
     boolean execRet;
@@ -1475,11 +1309,8 @@ public class MetaGroupMember extends RaftMember {
    * so the MetaLeader should take the responsible to make sure that every node receives the plan.
    * Thus the plan will be processed locally only by the MetaLeader and forwarded by non-leader
    * nodes.
-   *
-   * @param plan
-   * @return
    */
-  private TSStatus processNonPartitionedMetaPlan(PhysicalPlan plan) {
+  public TSStatus processNonPartitionedMetaPlan(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
       TSStatus status = processPlanLocally(plan);
       if (status != null) {
@@ -1513,9 +1344,6 @@ public class MetaGroupMember extends RaftMember {
    * DataGroupLeader should take the responsible to make sure that every node receives the plan.
    * Thus the plan will be processed locally only by the DataGroupLeader and forwarded by non-leader
    * nodes.
-   *
-   * @param plan
-   * @return
    */
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
     if (plan instanceof DeleteTimeSeriesPlan || plan instanceof DeletePlan) {
@@ -1524,7 +1352,7 @@ public class MetaGroupMember extends RaftMember {
         // them to full paths so the executor nodes will not need to query the metadata holders,
         // eliminating the risk that when they are querying the metadata holders, the timeseries
         // has already been deleted
-        convertToFullPaths(plan);
+        ((CMManager) IoTDB.metaManager).convertToFullPaths(plan);
       } catch (PathNotExistException e) {
         return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
@@ -1541,29 +1369,12 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  private void convertToFullPaths(PhysicalPlan plan)
-      throws PathNotExistException {
-    Pair<List<PartialPath>, List<PartialPath>> getMatchedPathsRet = getMatchedPaths(
-        plan.getPaths());
-    List<PartialPath> fullPaths = getMatchedPathsRet.left;
-    List<PartialPath> nonExistPath = getMatchedPathsRet.right;
-    if (!nonExistPath.isEmpty()) {
-      throw new PathNotExistException(nonExistPath.stream().map(PartialPath::getFullPath).collect(
-          Collectors.toList()));
-    }
-    plan.setPaths(fullPaths);
-  }
-
   /**
    * A partitioned plan (like batch insertion) will be split into several sub-plans, each belongs to
-   * data group. And these sub-plans will be sent to and executed on the corresponding groups
+   * a data group. And these sub-plans will be sent to and executed on the corresponding groups
    * separately.
-   *
-   * @param plan
-   * @return
-   * @throws UnsupportedPlanException
    */
-  private TSStatus processPartitionedPlan(PhysicalPlan plan) throws UnsupportedPlanException {
+  public TSStatus processPartitionedPlan(PhysicalPlan plan) throws UnsupportedPlanException {
     logger.debug("{}: Received a partitioned plan {}", name, plan);
     if (partitionTable == null) {
       logger.debug("{}: Partition table is not ready", name);
@@ -1584,7 +1395,7 @@ public class MetaGroupMember extends RaftMember {
       if ((plan instanceof InsertPlan || plan instanceof CreateTimeSeriesPlan)
           && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
         try {
-          autoCreateSchema(plan);
+          ((CMManager) IoTDB.metaManager).createSchema(plan);
           return executeNonQueryPlan(plan);
         } catch (MetadataException e) {
           logger.error(
@@ -1598,12 +1409,16 @@ public class MetaGroupMember extends RaftMember {
     return forwardPlan(planGroupMap, plan);
   }
 
+  /**
+   * split a plan into several sub-plans, each belongs to only one data group.
+   */
   private Map<PhysicalPlan, PartitionGroup> splitPlan(PhysicalPlan plan)
       throws UnsupportedPlanException, CheckConsistencyException {
     Map<PhysicalPlan, PartitionGroup> planGroupMap = null;
     try {
       planGroupMap = router.splitAndRoutePlan(plan);
     } catch (StorageGroupNotSetException e) {
+      // synchronize with the leader to see if this node has unpulled storage groups
       syncLeaderWithConsistencyCheck();
       try {
         planGroupMap = router.splitAndRoutePlan(plan);
@@ -1616,46 +1431,11 @@ public class MetaGroupMember extends RaftMember {
     return planGroupMap;
   }
 
-  private void autoCreateSchema(PhysicalPlan plan) throws MetadataException {
-    // try to set storage group
-    PartialPath deviceId;
-    if (plan instanceof InsertPlan) {
-      deviceId = ((InsertPlan) plan).getDeviceId();
-    } else {
-      deviceId = ((CreateTimeSeriesPlan) plan).getPath();
-    }
-
-    PartialPath storageGroupName = MetaUtils
-        .getStorageGroupPathByLevel(deviceId, IoTDBDescriptor.getInstance()
-            .getConfig().getDefaultStorageGroupLevel());
-    SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(
-        storageGroupName);
-    TSStatus setStorageGroupResult = processNonPartitionedMetaPlan(setStorageGroupPlan);
-    if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() &&
-        setStorageGroupResult.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR
-            .getStatusCode()) {
-      throw new MetadataException(
-          String.format("Status Code: %d, failed to set storage group %s",
-              setStorageGroupResult.getCode(), storageGroupName)
-      );
-    }
-    if (plan instanceof InsertPlan) {
-      // try to create timeseries
-      boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertPlan) plan);
-      if (!isAutoCreateTimeseriesSuccess) {
-        throw new MetadataException(
-            "Failed to create timeseries from InsertPlan automatically."
-        );
-      }
-    }
-  }
-
   /**
    * Forward plans to the DataGroupMember of one node in the corresponding group. Only when all
    * nodes time out, will a TIME_OUT be returned.
    *
-   * @param planGroupMap
-   * @return
+   * @param planGroupMap sub-plan -> belong data group pairs
    */
   private TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
@@ -1664,6 +1444,12 @@ public class MetaGroupMember extends RaftMember {
       status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
     } else {
       if (plan instanceof InsertTabletPlan) {
+        // InsertTabletPlans contain many rows, each will correspond to a TSStatus as its
+        // execution result, as the plan is split and the sub-plans may have interleaving ranges,
+        // we must assure that each TSStatus is placed to the right position
+        // e.g., an InsertTabletPlan contains 3 rows, row1 and row3 belong to NodeA and row2
+        // belongs to NodeB, when NodeA returns a success while NodeB returns a failure, the
+        // failure and success should be placed into proper positions in TSStatus.subStatus
         status = forwardInsertTabletPlan(planGroupMap, (InsertTabletPlan) plan);
       } else {
         status = forwardToMultipleGroup(planGroupMap);
@@ -1676,7 +1462,12 @@ public class MetaGroupMember extends RaftMember {
       if (((InsertPlan) plan).getFailedMeasurements() != null) {
         ((InsertPlan) plan).getPlanFromFailed();
       }
-      boolean hasCreate = autoCreateTimeseries((InsertPlan) plan);
+      boolean hasCreate;
+      try {
+        hasCreate = ((CMManager) IoTDB.metaManager).createTimeseries((InsertPlan) plan);
+      } catch (IllegalPathException e) {
+        return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
       if (hasCreate) {
         status = forwardPlan(planGroupMap, plan);
       } else {
@@ -1687,6 +1478,11 @@ public class MetaGroupMember extends RaftMember {
     return status;
   }
 
+  /**
+   * Forward each sub-plan to its belonging data group, and combine responses from the groups.
+   *
+   * @param planGroupMap sub-plan -> data group pairs
+   */
   private TSStatus forwardInsertTabletPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
       InsertTabletPlan plan) {
     List<String> errorCodePartitionGroups = new ArrayList<>();
@@ -1712,6 +1508,7 @@ public class MetaGroupMember extends RaftMember {
           subStatus = new TSStatus[plan.getRowCount()];
           Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
         }
+        // set the status from one group to the proper positions of the overall status
         PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
             tmpStatus.subStatus.toArray(new TSStatus[]{}));
       }
@@ -1740,7 +1537,7 @@ public class MetaGroupMember extends RaftMember {
 
   private TSStatus forwardToSingleGroup(Map.Entry<PhysicalPlan, PartitionGroup> entry) {
     if (entry.getValue().contains(thisNode)) {
-      // the query should be handled by a group the local node is in, handle it with in the group
+      // the query should be handled by a group the local node is in, handle it within the group
       logger.debug("Execute {} in a local group of {}", entry.getKey(),
           entry.getValue().getHeader());
       return getLocalDataMember(entry.getValue().getHeader())
@@ -1753,6 +1550,12 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
+  /**
+   * forward each sub-plan to its corresponding data group, if some groups goes wrong, the error
+   * messages from each group will be compacted into one string.
+   *
+   * @param planGroupMap sub-plan -> data group pairs
+   */
   private TSStatus forwardToMultipleGroup(Map<PhysicalPlan, PartitionGroup> planGroupMap) {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
@@ -1786,11 +1589,9 @@ public class MetaGroupMember extends RaftMember {
   }
 
   /**
-   * Forward plans to all DataGroupMember groups. Only when all nodes time out, will a TIME_OUT be
-   * returned.
+   * Forward a plan to all DataGroupMember groups. Only when all nodes time out, will a TIME_OUT be
+   * returned. The error messages from each group (if any) will be compacted into one string.
    *
-   * @param partitionGroups
-   * @return
    * @para plan
    */
   private TSStatus forwardPlan(List<PartitionGroup> partitionGroups, PhysicalPlan plan) {
@@ -1827,122 +1628,14 @@ public class MetaGroupMember extends RaftMember {
   }
 
   /**
-   * Create timeseries automatically
-   *
-   * @param insertPlan, some of the timeseries in it are not created yet
-   * @return true of all uncreated timeseries are created
-   */
-  private boolean autoCreateTimeseries(InsertPlan insertPlan) {
-    List<String> seriesList = new ArrayList<>();
-    PartialPath deviceId = insertPlan.getDeviceId();
-    PartialPath storageGroupName;
-    try {
-      storageGroupName = MetaUtils
-          .getStorageGroupPathByLevel(deviceId, IoTDBDescriptor.getInstance()
-              .getConfig().getDefaultStorageGroupLevel());
-    } catch (MetadataException e) {
-      logger.error("Failed to infer storage group from deviceId {}", deviceId);
-      return false;
-    }
-    for (String measurementId : insertPlan.getMeasurements()) {
-      seriesList.add(deviceId.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurementId);
-    }
-    PartitionGroup partitionGroup = partitionTable.route(storageGroupName.getFullPath(), 0);
-    List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
-
-    return autoCreateTimeseries(unregisteredSeriesList, seriesList, insertPlan);
-  }
-
-  private boolean autoCreateTimeseries(List<String> unregisteredSeriesList,
-      List<String> seriesList, InsertPlan insertPlan) {
-    for (String seriesPath : unregisteredSeriesList) {
-      int index = seriesList.indexOf(seriesPath);
-      TSDataType dataType;
-      if (insertPlan.getDataTypes() != null && insertPlan.getDataTypes()[index] != null) {
-        dataType = insertPlan.getDataTypes()[index];
-      } else {
-        dataType = TypeInferenceUtils.getPredictedDataType(insertPlan instanceof InsertTabletPlan
-            ? Array.get(((InsertTabletPlan) insertPlan).getColumns()[index], 0)
-            : ((InsertRowPlan) insertPlan).getValues()[index], true);
-      }
-      TSEncoding encoding = getDefaultEncoding(dataType);
-      CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
-      CreateTimeSeriesPlan createTimeSeriesPlan = null;
-      try {
-        createTimeSeriesPlan = new CreateTimeSeriesPlan(new PartialPath(seriesPath),
-            dataType, encoding, compressionType, null, null, null, null);
-      } catch (IllegalPathException e) {
-        // ignore
-      }
-      // TODO-Cluster: add executeNonQueryBatch()
-      TSStatus result;
-      try {
-        result = processPartitionedPlan(createTimeSeriesPlan);
-      } catch (UnsupportedPlanException e) {
-        logger.error("Failed to create timeseries {} automatically. Unsupported plan exception {} ",
-            seriesPath, e.getMessage());
-        return false;
-      }
-      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        logger.error("{} failed to execute create timeseries {}", thisNode, seriesPath);
-        return false;
-      }
-    }
-    return true;
-  }
-
-
-  /**
-   * To check which timeseries in the input list is unregistered
-   *
-   * @param seriesList
-   * @param partitionGroup
-   * @return
-   */
-  private List<String> getUnregisteredSeriesList(List<String> seriesList,
-      PartitionGroup partitionGroup) {
-    for (Node node : partitionGroup) {
-      try {
-        List<String> result;
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-          result = SyncClientAdaptor
-              .getUnregisteredMeasurements(client, partitionGroup.getHeader(), seriesList);
-        } else {
-          SyncDataClient syncDataClient = getSyncDataClient(node,
-              RaftServer.getReadOperationTimeoutMS());
-          result = syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
-          ClientUtils.putBackSyncClient(syncDataClient);
-        }
-
-        if (result != null) {
-          return result;
-        }
-      } catch (TException | IOException e) {
-        logger.error("{}: cannot getting unregistered {} and other {} paths from {}", name,
-            seriesList.get(0), seriesList.get(seriesList.size() - 1), node, e);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error("{}: getting unregistered series list {} ... {} is interrupted from {}", name,
-            seriesList.get(0), seriesList.get(seriesList.size() - 1), node, e);
-      }
-    }
-    return Collections.emptyList();
-  }
-
-  /**
    * Forward a plan to the DataGroupMember of one node in the group. Only when all nodes time out,
    * will a TIME_OUT be returned.
-   *
-   * @param plan
-   * @param group
-   * @return
    */
   private TSStatus forwardPlan(PhysicalPlan plan, PartitionGroup group) {
     for (Node node : group) {
       TSStatus status;
       try {
-        // if a plan is partitioned to any group, it must be processed by its data server instead of
+        // only data plans are partitioned, so it must be processed by its data server instead of
         // meta server
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           status = forwardDataPlanAsync(plan, node, group.getHeader());
@@ -1966,627 +1659,37 @@ public class MetaGroupMember extends RaftMember {
   }
 
   /**
-   * Forward a non-query plan to "receiver" using "client".
+   * Forward a non-query plan to the data port of "receiver"
    *
-   * @param plan     a non-query plan
-   * @param receiver
-   * @param header   to determine which DataGroupMember of "receiver" will process the request.
+   * @param plan a non-query plan
+   * @param header to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
   private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header)
       throws IOException {
-    RaftService.AsyncClient client = getAsyncDataClient(receiver,
+    RaftService.AsyncClient client = getClientProvider().getAsyncDataClient(receiver,
         RaftServer.getWriteOperationTimeoutMS());
-    try {
-      TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
-      if (tsStatus == null) {
-        tsStatus = StatusUtils.TIME_OUT;
-        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
-      }
-      return tsStatus;
-    } catch (IOException | TException e) {
-      logger
-          .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
-      return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.warn("{}: forward {} to {} interrupted", name, plan, receiver);
-      return StatusUtils.TIME_OUT;
-    }
+    return forwardPlanAsync(plan, receiver, header, client);
   }
-
-  TSIService.Client cli;
-  long sId;
 
   private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header) {
-    Client client = getSyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
-    try {
-
-      ExecutNonQueryReq req = new ExecutNonQueryReq();
-      req.setPlanBytes(PlanSerializer.getInstance().serialize(plan));
-      if (header != null) {
-        req.setHeader(header);
-      }
-
-      TSStatus tsStatus = client.executeNonQueryPlan(req);
-      if (tsStatus == null) {
-        tsStatus = StatusUtils.TIME_OUT;
-        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
-      }
-      return tsStatus;
-    } catch (IOException e) {
-      logger
-          .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
-      return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
-    } catch (TException e) {
-      TSStatus status;
-      if (e.getCause() instanceof SocketTimeoutException) {
-        status = StatusUtils.TIME_OUT;
-        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
-      } else {
-        logger
-            .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
-        status = StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
-      }
-      client.getInputProtocol().getTransport().close();
-      return status;
-    } finally {
-      ClientUtils.putBackSyncClient(client);
-    }
-  }
-
-  /**
-   * Pull the all timeseries schemas of given prefixPaths from remote nodes. All prefixPaths must
-   * contain a storage group.
-   *
-   * @param ignoredGroup do not pull schema from the group to avoid backward dependency
-   */
-  public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths,
-      Node ignoredGroup)
-      throws MetadataException {
-    logger.debug("{}: Pulling timeseries schemas of {}", name, prefixPaths);
-    // split the paths by the data groups that will hold them
-    Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
-    for (PartialPath prefixPath : prefixPaths) {
-      if (SQLConstant.RESERVED_TIME.equalsIgnoreCase(prefixPath.getFullPath())) {
-        continue;
-      }
-      PartitionGroup partitionGroup;
-      try {
-        partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
-
-      } catch (StorageGroupNotSetException e) {
-        // the storage group is not found locally, but may be found in the leader, retry after
-        // synchronizing with the leader
-
-        try {
-          syncLeaderWithConsistencyCheck();
-        } catch (CheckConsistencyException checkConsistencyException) {
-          throw new MetadataException(checkConsistencyException.getMessage());
-        }
-        partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
-
-      }
-      if (!partitionGroup.getHeader().equals(ignoredGroup)) {
-        partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>())
-            .add(prefixPath.getFullPath());
-      }
-    }
-
-    // pull timeseries schema from every group involved
-    if (logger.isDebugEnabled()) {
-      logger.debug("{}: pulling schemas of {} and other {} paths from {} groups", name,
-          prefixPaths.get(0), prefixPaths.size() - 1,
-          partitionGroupPathMap.size());
-    }
-    for (Entry<PartitionGroup, List<String>> partitionGroupListEntry : partitionGroupPathMap
-        .entrySet()) {
-      PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
-      List<String> paths = partitionGroupListEntry.getValue();
-      pullTimeSeriesSchemas(partitionGroup, paths);
-    }
-
-  }
-
-  /**
-   * Pull timeseries schemas of "prefixPaths" from "partitionGroup" and store them in "results". If
-   * this node is a member of "partitionGroup", synchronize with the group leader and collect local
-   * schemas. Otherwise pull schemas from one node in the group.
-   *
-   * @param partitionGroup
-   * @param prefixPaths
-   */
-  private void pullTimeSeriesSchemas(PartitionGroup partitionGroup,
-      List<String> prefixPaths) {
-    if (partitionGroup.contains(thisNode)) {
-      // the node is in the target group, synchronize with leader should be enough
-      getLocalDataMember(partitionGroup.getHeader(),
-          "Pull timeseries of " + prefixPaths).syncLeader();
-      return;
-    }
-
-    // pull schemas from a remote node
-    PullSchemaRequest pullSchemaRequest = new PullSchemaRequest();
-    pullSchemaRequest.setHeader(partitionGroup.getHeader());
-    pullSchemaRequest.setPrefixPaths(prefixPaths);
-
-    for (Node node : partitionGroup) {
-      if (tryPullTimeSeriesSchemas(node, pullSchemaRequest)) {
-        break;
-      }
-    }
-  }
-
-  private boolean tryPullTimeSeriesSchemas(Node node, PullSchemaRequest request) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("{}: Pulling timeseries schemas of {} and other {} paths from {}", name,
-          request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node);
-    }
-
-    List<TimeseriesSchema> schemas = null;
-    try {
-      schemas = pullTimeSeriesSchemas(node, request);
-    } catch (IOException | TException e) {
-      logger
-          .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}", name,
-              request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node, e);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger
-          .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}", name,
-              request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node, e);
-    }
-
-    if (schemas != null) {
-      if (logger.isDebugEnabled()) {
-        logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
-            name, schemas.size(), request.getPrefixPaths().get(0),
-            request.getPrefixPaths().size() - 1, node, request.getHeader());
-      }
-      for (TimeseriesSchema schema : schemas) {
-        SchemaUtils.cacheTimeseriesSchema(schema);
-      }
-      return true;
-    }
-    return false;
-  }
-
-  private List<TimeseriesSchema> pullTimeSeriesSchemas(Node node,
-      PullSchemaRequest request) throws TException, InterruptedException, IOException {
-    List<TimeseriesSchema> schemas;
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
-    } else {
-      SyncDataClient syncDataClient = getSyncDataClient(node,
-          RaftServer.getReadOperationTimeoutMS());
-      PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
-      ByteBuffer buffer = pullSchemaResp.schemaBytes;
-      int size = buffer.getInt();
-      schemas = new ArrayList<>(size);
-      for (int i = 0; i < size; i++) {
-        schemas.add(TimeseriesSchema.deserializeFrom(buffer));
-      }
-    }
-
-    return schemas;
-  }
-
-  /**
-   * Get the data types of "paths". If "aggregations" is not null, each one of it correspond to one
-   * in "paths". First get types locally and if some paths does not exists, pull them from other
-   * nodes.
-   *
-   * @param paths
-   * @param aggregations nullable, when not null, correspond to "paths" one-to-one.
-   * @return
-   * @throws MetadataException
-   */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<PartialPath> paths,
-      List<String> aggregations) throws
-      MetadataException {
-    try {
-      return getSeriesTypesByPathLocally(paths, aggregations);
-    } catch (PathNotExistException e) {
-      return getSeriesTypesByPathRemotely(
-          paths, aggregations);
-    }
-  }
-
-  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathLocally(
-      List<PartialPath> paths,
-      List<String> aggregations) throws MetadataException {
-    // try locally first
-    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPath(paths);
-    // if the aggregation function is null, the type of column in result set
-    // is equal to the real type of the measurement
-    if (aggregations == null) {
-      return new Pair<>(measurementDataTypes, measurementDataTypes);
-    } else {
-      // if the aggregation function is not null,
-      // we should recalculate the type of column in result set
-      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
-      return new Pair<>(columnDataTypes, measurementDataTypes);
-    }
-  }
-
-  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathRemotely(
-      List<PartialPath> paths,
-      List<String> aggregations) throws MetadataException {
-    // pull schemas remotely and cache them
-    pullTimeSeriesSchemas(paths, null);
-
-    return getSeriesTypesByPathLocally(paths, aggregations);
-  }
-
-  /**
-   * Get the data types of "paths". If "aggregation" is not null, every path will use the
-   * aggregation. First get types locally and if some paths does not exists, pull them from other
-   * nodes.
-   *
-   * @param pathStrs
-   * @param aggregation
-   * @return
-   * @throws MetadataException
-   */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPaths(List<PartialPath> pathStrs,
-      String aggregation) throws
-      MetadataException {
-    try {
-      // try locally first
-      List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(pathStrs,
-          (String) null);
-      // if the aggregation function is null, the type of column in result set
-      // is equal to the real type of the measurement
-      if (aggregation == null) {
-        return new Pair<>(measurementDataTypes, measurementDataTypes);
-      } else {
-        // if the aggregation function is not null,
-        // we should recalculate the type of column in result set
-        List<TSDataType> columnDataTypes = SchemaUtils
-            .getSeriesTypesByPaths(pathStrs, aggregation);
-        return new Pair<>(columnDataTypes, measurementDataTypes);
-      }
-    } catch (PathNotExistException e) {
-      // pull schemas remotely and cache them
-      pullTimeSeriesSchemas(pathStrs, null);
-
-      List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(pathStrs,
-          (String) null);
-      // if the aggregation function is null, the type of column in result set
-      // is equal to the real type of the measurement
-      if (aggregation == null) {
-        return new Pair<>(measurementDataTypes, measurementDataTypes);
-      } else {
-        // if the aggregation function is not null,
-        // we should recalculate the type of column in result set
-        List<TSDataType> columnDataTypes = SchemaUtils
-            .getSeriesTypesByPaths(pathStrs, aggregation);
-        return new Pair<>(columnDataTypes, measurementDataTypes);
-      }
-    }
-  }
-
-  /**
-   * Create an IReaderByTimestamp that can read the data of "path" by timestamp in the whole
-   * cluster. This will query every group and merge the result from them.
-   *
-   * @param path
-   * @param dataType
-   * @param context
-   * @return
-   * @throws StorageEngineException
-   */
-  public IReaderByTimestamp getReaderByTimestamp(PartialPath path,
-      Set<String> deviceMeasurements, TSDataType dataType,
-      QueryContext context)
-      throws StorageEngineException, QueryProcessException {
-    // make sure the partition table is new
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
-    // get all data groups
-    List<PartitionGroup> partitionGroups = routeFilter(null, path);
-    logger.debug("{}: Sending query of {} to {} groups", name, path, partitionGroups.size());
-    List<IReaderByTimestamp> readers = new ArrayList<>();
-    for (PartitionGroup partitionGroup : partitionGroups) {
-      // query each group to get a reader in that group
-      readers.add(getSeriesReaderByTime(partitionGroup, path, deviceMeasurements, context,
-          dataType));
-    }
-    // merge the readers
-    return new MergedReaderByTime(readers);
-  }
-
-  /**
-   * Create a IReaderByTimestamp that read data of "path" by timestamp in the given group. If the
-   * local node is a member of that group, query locally. Otherwise create a remote reader pointing
-   * to one node in that group.
-   *
-   * @param partitionGroup
-   * @param path
-   * @param deviceMeasurements
-   * @param context
-   * @param dataType
-   * @return
-   * @throws StorageEngineException
-   */
-  private IReaderByTimestamp getSeriesReaderByTime(PartitionGroup partitionGroup, PartialPath path,
-      Set<String> deviceMeasurements, QueryContext context, TSDataType dataType)
-      throws StorageEngineException, QueryProcessException {
-    if (partitionGroup.contains(thisNode)) {
-      // the target storage group contains this node, perform a local query
-      DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader());
-      if (logger.isDebugEnabled()) {
-        logger.debug("{}: creating a local reader for {}#{}", name, path.getFullPath(),
-            context.getQueryId());
-      }
-      return dataGroupMember.getReaderByTimestamp(path, deviceMeasurements, dataType, context);
-    } else {
-      return getRemoteReaderByTimestamp(path, deviceMeasurements, dataType, partitionGroup,
-          context);
-    }
-  }
-
-  /**
-   * Create a IReaderByTimestamp that read data of "path" by timestamp in the given group that does
-   * not contain the local node. Send a request to one node in that group to build a reader and use
-   * that reader's id to build a remote reader.
-   *
-   * @param path
-   * @param deviceMeasurements
-   * @param dataType
-   * @param partitionGroup
-   * @param context
-   * @return
-   * @throws StorageEngineException
-   */
-  private IReaderByTimestamp getRemoteReaderByTimestamp(
-      Path path, Set<String> deviceMeasurements, TSDataType dataType,
-      PartitionGroup partitionGroup,
-      QueryContext context) throws StorageEngineException {
-    SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-    request.setPath(path.getFullPath());
-    request.setHeader(partitionGroup.getHeader());
-    request.setQueryId(context.getQueryId());
-    request.setRequester(thisNode);
-    request.setDataTypeOrdinal(dataType.ordinal());
-    request.setDeviceMeasurements(deviceMeasurements);
-
-    DataSourceInfo dataSourceInfo = new DataSourceInfo(partitionGroup, dataType, request,
-        (RemoteQueryContext) context, this, partitionGroup);
-
-    boolean hasClient = dataSourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
-    if (hasClient) {
-      return new RemoteSeriesReaderByTimestamp(dataSourceInfo);
-    } else if (dataSourceInfo.isNoData()) {
-      return new EmptyReader();
-    }
-
-    throw new StorageEngineException(
-        new RequestTimeOutException("Query by timestamp: " + path + " in " + partitionGroup));
-  }
-
-  /**
-   * Create a ManagedSeriesReader that can read the data of "path" with filters in the whole
-   * cluster. The data groups that should be queried will be determined by the timeFilter, then for
-   * each group a series reader will be created, and finally all such readers will be merged into
-   * one.
-   *
-   * @param path
-   * @param dataType
-   * @param timeFilter  nullable, when null, all data groups will be queried
-   * @param valueFilter nullable
-   * @param context
-   * @return
-   * @throws StorageEngineException
-   */
-  public ManagedSeriesReader getSeriesReader(PartialPath path,
-      Set<String> deviceMeasurements, TSDataType dataType,
-      Filter timeFilter,
-      Filter valueFilter, QueryContext context)
-      throws StorageEngineException {
-    // make sure the partition table is new
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      throw new StorageEngineException(e);
-    }
-    // find the groups that should be queried using the timeFilter
-    List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
-    logger.debug("{}: Sending data query of {} to {} groups", name, path,
-        partitionGroups.size());
-    ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
-    try {
-      // build a reader for each group and merge them
-      for (PartitionGroup partitionGroup : partitionGroups) {
-        IPointReader seriesReader = getSeriesReader(partitionGroup, path,
-            deviceMeasurements, timeFilter, valueFilter, context, dataType);
-        mergeReader.addReader(seriesReader, 0);
-      }
-    } catch (IOException | QueryProcessException e) {
-      throw new StorageEngineException(e);
-    }
-    return mergeReader;
-  }
-
-  /**
-   * Perform "aggregations" over "path" in some data groups and merge the results. The groups to be
-   * queried is determined by "timeFilter".
-   *
-   * @param path
-   * @param aggregations
-   * @param dataType
-   * @param timeFilter   nullable, when null, all groups will be queried
-   * @param context
-   * @return
-   * @throws StorageEngineException
-   */
-  public List<AggregateResult> getAggregateResult(PartialPath path,
-      Set<String> deviceMeasurements, List<String> aggregations,
-      TSDataType dataType, Filter timeFilter,
-      QueryContext context) throws StorageEngineException {
-    // make sure the partition table is new
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      throw new StorageEngineException(e);
-    }
-    List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
-    logger.debug("{}: Sending aggregation query of {} to {} groups", name, path,
-        partitionGroups.size());
-    List<AggregateResult> results = null;
-    // get the aggregation result of each group and merge them
-    for (PartitionGroup partitionGroup : partitionGroups) {
-      List<AggregateResult> groupResult = getAggregateResult(path, deviceMeasurements,
-          aggregations, dataType,
-          timeFilter, partitionGroup, context);
-      if (results == null) {
-        results = groupResult;
-      } else {
-        for (int i = 0; i < results.size(); i++) {
-          results.get(i).merge(groupResult.get(i));
-        }
-      }
-    }
-    return results;
-  }
-
-  /**
-   * Perform "aggregations" over "path" in "partitionGroup". If the local node is the member of the
-   * group, do it locally, otherwise pull the results from a remote node.
-   *
-   * @param path
-   * @param aggregations
-   * @param dataType
-   * @param timeFilter     nullable
-   * @param partitionGroup
-   * @param context
-   * @return
-   * @throws StorageEngineException
-   */
-  private List<AggregateResult> getAggregateResult(Path path,
-      Set<String> deviceMeasurements, List<String> aggregations,
-      TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
-      QueryContext context) throws StorageEngineException {
-    if (!partitionGroup.contains(thisNode)) {
-      return getRemoteAggregateResult(path, deviceMeasurements, aggregations, dataType, timeFilter
-          , partitionGroup, context);
-    } else {
-      // perform the aggregations locally
-      DataGroupMember dataMember = getLocalDataMember(partitionGroup.getHeader());
-      try {
-        logger
-            .debug("{}: querying aggregation {} of {} in {} locally", name, aggregations, path,
-                partitionGroup.getHeader());
-        List<AggregateResult> aggrResult = dataMember
-            .getAggrResult(aggregations, deviceMeasurements, dataType, path.getFullPath(),
-                timeFilter, context);
-        logger
-            .debug("{}: queried aggregation {} of {} in {} locally are {}", name, aggregations,
-                path, partitionGroup.getHeader(), aggrResult);
-        return aggrResult;
-      } catch (IOException | QueryProcessException e) {
-        throw new StorageEngineException(e);
-      }
-    }
-  }
-
-  /**
-   * Perform "aggregations" over "path" in a remote data group "partitionGroup". Query one node in
-   * the group to get the results.
-   *
-   * @param path
-   * @param aggregations
-   * @param dataType
-   * @param timeFilter     nullable
-   * @param partitionGroup
-   * @param context
-   * @return
-   * @throws StorageEngineException
-   */
-  private List<AggregateResult> getRemoteAggregateResult(Path
-      path, Set<String> deviceMeasurements, List<String> aggregations,
-      TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
-      QueryContext context) throws StorageEngineException {
-
-    GetAggrResultRequest request = new GetAggrResultRequest();
-    request.setPath(path.getFullPath());
-    request.setAggregations(aggregations);
-    request.setDataTypeOrdinal(dataType.ordinal());
-    request.setQueryId(context.getQueryId());
-    request.setRequestor(thisNode);
-    request.setHeader(partitionGroup.getHeader());
-    request.setDeviceMeasurements(deviceMeasurements);
-    if (timeFilter != null) {
-      request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
-    }
-
-    for (Node node : partitionGroup) {
-      logger.debug("{}: querying aggregation {} of {} from {} of {}", name, aggregations, path,
-          node, partitionGroup.getHeader());
-
-      try {
-        List<ByteBuffer> resultBuffers = getRemoteAggregateResult(node, request);
-        if (resultBuffers != null) {
-          List<AggregateResult> results = new ArrayList<>(resultBuffers.size());
-          for (ByteBuffer resultBuffer : resultBuffers) {
-            AggregateResult result = AggregateResult.deserializeFrom(resultBuffer);
-            results.add(result);
-          }
-          // register the queried node to release resources
-          ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
-          logger.debug("{}: queried aggregation {} of {} from {} of {} are {}", name,
-              aggregations,
-              path, node, partitionGroup.getHeader(), results);
-          return results;
-        }
-      } catch (TException | IOException e) {
-        logger.error("{}: Cannot query aggregation {} from {}", name, path, node, e);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error("{}: query {} interrupted from {}", name, path, node, e);
-      }
-    }
-    throw new StorageEngineException(
-        new RequestTimeOutException("Query aggregate: " + path + " in " + partitionGroup));
-  }
-
-  private List<ByteBuffer> getRemoteAggregateResult(Node node, GetAggrResultRequest request)
-      throws IOException, TException, InterruptedException {
-    List<ByteBuffer> resultBuffers;
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      // each buffer is an AggregationResult
-      resultBuffers = SyncClientAdaptor.getAggrResult(client, request);
-    } else {
-      SyncDataClient syncDataClient = getSyncDataClient(node,
-          RaftServer.getReadOperationTimeoutMS());
-      resultBuffers = syncDataClient.getAggrResult(request);
-      ClientUtils.putBackSyncClient(syncDataClient);
-    }
-    return resultBuffers;
+    Client client = getClientProvider().getSyncDataClient(receiver,
+        RaftServer.getWriteOperationTimeoutMS());
+    return forwardPlanSync(plan, receiver, header, client);
   }
 
   /**
    * Get the data groups that should be queried when querying "path" with "filter". First, the time
    * interval qualified by the filter will be extracted. If any side of the interval is open, query
    * all groups. Otherwise compute all involved groups w.r.t. the time partitioning.
-   *
-   * @param filter
-   * @param path
-   * @return
-   * @throws StorageEngineException
    */
-  private List<PartitionGroup> routeFilter(Filter filter, PartialPath path) throws
+  public List<PartitionGroup> routeFilter(Filter filter, PartialPath path) throws
       StorageEngineException {
     Intervals intervals = PartitionUtils.extractTimeInterval(filter);
     return routeIntervals(intervals, path);
   }
 
-  private List<PartitionGroup> routeIntervals(Intervals intervals, PartialPath path)
+  public List<PartitionGroup> routeIntervals(Intervals intervals, PartialPath path)
       throws StorageEngineException {
     List<PartitionGroup> partitionGroups = new ArrayList<>();
     long firstLB = intervals.getLowerBound(0);
@@ -2618,410 +1721,6 @@ public class MetaGroupMember extends RaftMember {
       }
     }
     return partitionGroups;
-  }
-
-
-  /**
-   * Query one node in "partitionGroup" for data of "path" with "timeFilter" and "valueFilter". If
-   * "partitionGroup" contains the local node, a local reader will be returned. Otherwise a remote
-   * reader will be returned.
-   *
-   * @param partitionGroup
-   * @param path
-   * @param deviceMeasurements
-   * @param timeFilter         nullable
-   * @param valueFilter        nullable
-   * @param context
-   * @param dataType
-   * @return
-   * @throws IOException
-   * @throws StorageEngineException
-   */
-  private IPointReader getSeriesReader(PartitionGroup partitionGroup, PartialPath path,
-      Set<String> deviceMeasurements, Filter timeFilter, Filter valueFilter,
-      QueryContext context, TSDataType dataType)
-      throws IOException,
-      StorageEngineException, QueryProcessException {
-    if (partitionGroup.contains(thisNode)) {
-      // the target storage group contains this node, perform a local query
-      DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader(),
-          String.format("Query: %s, time filter: %s, queryId: %d", path, timeFilter,
-              context.getQueryId()));
-      IPointReader seriesPointReader = dataGroupMember
-          .getSeriesPointReader(path, deviceMeasurements, dataType, timeFilter, valueFilter,
-              context);
-      if (logger.isDebugEnabled()) {
-        logger.debug("{}: creating a local reader for {}#{} of {}, empty: {}", name,
-            path.getFullPath(),
-            context.getQueryId(), partitionGroup.getHeader(),
-            !seriesPointReader.hasNextTimeValuePair());
-      }
-      return seriesPointReader;
-    } else {
-      return getRemoteSeriesPointReader(timeFilter, valueFilter, dataType, path,
-          deviceMeasurements, partitionGroup, context);
-    }
-  }
-
-  /**
-   * Query a remote node in "partitionGroup" to get the reader of "path" with "timeFilter" and
-   * "valueFilter". Firstly, a request will be sent to that node to construct a reader there, then
-   * the id of the reader will be returned so that we can fetch data from that node using the reader
-   * id.
-   *
-   * @param timeFilter         nullable
-   * @param valueFilter        nullable
-   * @param dataType
-   * @param path
-   * @param deviceMeasurements
-   * @param partitionGroup
-   * @param context
-   * @return
-   * @throws StorageEngineException
-   */
-  private IPointReader getRemoteSeriesPointReader(Filter timeFilter,
-      Filter valueFilter, TSDataType dataType, Path path,
-      Set<String> deviceMeasurements, PartitionGroup partitionGroup,
-      QueryContext context)
-      throws StorageEngineException {
-    SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-    if (timeFilter != null) {
-      request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
-    }
-    if (valueFilter != null) {
-      request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
-    }
-    request.setPath(path.getFullPath());
-    request.setHeader(partitionGroup.getHeader());
-    request.setQueryId(context.getQueryId());
-    request.setRequester(thisNode);
-    request.setDataTypeOrdinal(dataType.ordinal());
-    request.setDeviceMeasurements(deviceMeasurements);
-
-    // reorder the nodes such that the nodes that suit the query best (have lowest latenct or
-    // highest throughput) will be put to the front
-    List<Node> orderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-
-    DataSourceInfo dataSourceInfo = new DataSourceInfo(partitionGroup, dataType, request,
-        (RemoteQueryContext) context, this, orderedNodes);
-
-    boolean hasClient = dataSourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
-    if (hasClient) {
-      return new RemoteSimpleSeriesReader(dataSourceInfo);
-    } else if (dataSourceInfo.isNoData()) {
-      // there is no satisfying data on the remote node
-      return new EmptyReader();
-    }
-
-    throw new StorageEngineException(
-        new RequestTimeOutException("Query " + path + " in " + partitionGroup));
-  }
-
-  private AsyncClientPool getDataAsyncClientPool() {
-    return dataAsyncClientPool;
-  }
-
-  private SyncClientPool getDataSyncClientPool() {
-    return dataSyncClientPool;
-  }
-
-
-  /**
-   * Get all paths after removing wildcards in the path
-   *
-   * @param originPath a path potentially with wildcard
-   * @return all paths after removing wildcards in the path
-   */
-  public List<PartialPath> getMatchedPaths(PartialPath originPath) throws MetadataException {
-    // make sure this node knows all storage groups
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e);
-    }
-    // get all storage groups this path may belong to
-    // the key is the storage group name and the value is the path to be queried with storage group
-    // added, e.g:
-    // "root.*" will be translated into:
-    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap =
-        IoTDB.metaManager.determineStorageGroup(originPath);
-    logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
-    List<PartialPath> ret = getMatchedPaths(sgPathMap);
-    logger.debug("The paths of path {} are {}", originPath, ret);
-    return ret;
-  }
-
-  /**
-   * Get all paths after removing wildcards in the path
-   *
-   * @param originalPaths, a list of paths, potentially with wildcard
-   * @return a pair of path lists, the first are the existing full paths, the second are invalid
-   * original paths
-   */
-  private Pair<List<PartialPath>, List<PartialPath>> getMatchedPaths(
-      List<PartialPath> originalPaths) {
-    ConcurrentSkipListSet<PartialPath> fullPaths = new ConcurrentSkipListSet<>();
-    ConcurrentSkipListSet<PartialPath> nonExistPaths = new ConcurrentSkipListSet<>();
-    ExecutorService getAllPathsService = Executors
-        .newFixedThreadPool(partitionTable.getGlobalGroups().size());
-    for (PartialPath pathStr : originalPaths) {
-      getAllPathsService.submit(() -> {
-        try {
-          List<PartialPath> fullPathStrs = getMatchedPaths(pathStr);
-          if (fullPathStrs.isEmpty()) {
-            nonExistPaths.add(pathStr);
-            logger.error("Path {} is not found.", pathStr);
-          } else {
-            fullPaths.addAll(fullPathStrs);
-          }
-        } catch (MetadataException e) {
-          logger.error("Failed to get full paths of the prefix path: {} because", pathStr, e);
-        }
-      });
-    }
-    getAllPathsService.shutdown();
-    try {
-      getAllPathsService
-          .awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
-    }
-    return new Pair<>(new ArrayList<>(fullPaths), new ArrayList<>(nonExistPaths));
-  }
-
-
-  /**
-   * Get all devices after removing wildcards in the path
-   *
-   * @param originPath a path potentially with wildcard
-   * @return all paths after removing wildcards in the path
-   */
-  public Set<PartialPath> getMatchedDevices(PartialPath originPath) throws MetadataException {
-    // make sure this node knows all storage groups
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e);
-    }
-    // get all storage groups this path may belong to
-    // the key is the storage group name and the value is the path to be queried with storage group
-    // added, e.g:
-    // "root.*" will be translated into:
-    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap =
-        IoTDB.metaManager.determineStorageGroup(originPath);
-    logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
-    Set<PartialPath> ret = getMatchedDevices(sgPathMap);
-    logger.debug("The devices of path {} are {}", originPath, ret);
-
-    return ret;
-  }
-
-  /**
-   * Split the paths by the data group they belong to and query them from the groups separately.
-   *
-   * @param sgPathMap the key is the storage group name and the value is the path to be queried with
-   *                  storage group added
-   * @return a collection of all queried paths
-   * @throws MetadataException
-   */
-  private List<PartialPath> getMatchedPaths(Map<String, String> sgPathMap)
-      throws MetadataException {
-    List<PartialPath> result = new ArrayList<>();
-    // split the paths by the data group they belong to
-    Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
-    for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
-      String storageGroupName = sgPathEntry.getKey();
-      PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
-      // find the data group that should hold the timeseries schemas of the storage group
-      PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
-      if (partitionGroup.contains(thisNode)) {
-        // this node is a member of the group, perform a local query after synchronizing with the
-        // leader
-        getLocalDataMember(partitionGroup.getHeader()).syncLeader();
-        List<PartialPath> allTimeseriesName = IoTDB.metaManager.getAllTimeseriesPath(pathUnderSG);
-        logger.debug("{}: get matched paths of {} locally, result {}", name, partitionGroup,
-            allTimeseriesName);
-        result.addAll(allTimeseriesName);
-      } else {
-        // batch the queries of the same group to reduce communication
-        groupPathMap.computeIfAbsent(partitionGroup, p -> new ArrayList<>())
-            .add(pathUnderSG.getFullPath());
-      }
-    }
-
-    // query each data group separately
-    for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
-      PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
-      List<String> pathsToQuery = partitionGroupPathEntry.getValue();
-      result.addAll(getMatchedPaths(partitionGroup, pathsToQuery));
-    }
-
-    return result;
-  }
-
-  private List<PartialPath> getMatchedPaths(PartitionGroup partitionGroup,
-      List<String> pathsToQuery)
-      throws MetadataException {
-    // choose the node with lowest latency or highest throughput
-    List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-    for (Node node : coordinatedNodes) {
-      try {
-        List<PartialPath> paths = getMatchedPaths(node, partitionGroup.getHeader(), pathsToQuery);
-        if (logger.isDebugEnabled()) {
-          logger.debug("{}: get matched paths of {} and other {} paths from {} in {}, result {}",
-              name, pathsToQuery.get(0), pathsToQuery.size() - 1, node, partitionGroup.getHeader(),
-              paths);
-        }
-        if (paths != null) {
-          // a non-null result contains correct result even if it is empty, so query next group
-          return paths;
-        }
-      } catch (IOException | TException e) {
-        throw new MetadataException(e);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new MetadataException(e);
-      }
-    }
-    logger.warn("Cannot get paths of {} from {}", pathsToQuery, partitionGroup);
-    return Collections.emptyList();
-  }
-
-  @SuppressWarnings("java:S1168") // null and empty list are different
-  private List<PartialPath> getMatchedPaths(Node node, Node header, List<String> pathsToQuery)
-      throws IOException, TException, InterruptedException {
-    List<String> paths;
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      paths = SyncClientAdaptor.getAllPaths(client, header,
-          pathsToQuery);
-    } else {
-      SyncDataClient syncDataClient = getSyncDataClient(node,
-          RaftServer.getReadOperationTimeoutMS());
-      paths = syncDataClient.getAllPaths(header, pathsToQuery);
-      ClientUtils.putBackSyncClient(syncDataClient);
-    }
-
-    if (paths != null) {
-      // paths may be empty, implying that the group does not contain matched paths, so we do not
-      // need to query other nodes in the group
-      List<PartialPath> partialPaths = new ArrayList<>();
-      for (String path : paths) {
-        try {
-          partialPaths.add(new PartialPath(path));
-        } catch (IllegalPathException e) {
-          // ignore
-        }
-      }
-      return partialPaths;
-    } else {
-      // a null implies a network failure, so we have to query other nodes in the group
-      return null;
-    }
-  }
-
-  /**
-   * Split the paths by the data group they belong to and query them from the groups separately.
-   *
-   * @param sgPathMap the key is the storage group name and the value is the path to be queried with
-   *                  storage group added
-   * @return a collection of all queried devices
-   * @throws MetadataException
-   */
-  private Set<PartialPath> getMatchedDevices(Map<String, String> sgPathMap)
-      throws MetadataException {
-    Set<PartialPath> result = new HashSet<>();
-    // split the paths by the data group they belong to
-    Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
-    for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
-      String storageGroupName = sgPathEntry.getKey();
-      PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
-      // find the data group that should hold the timeseries schemas of the storage group
-      PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
-      if (partitionGroup.contains(thisNode)) {
-        // this node is a member of the group, perform a local query after synchronizing with the
-        // leader
-        getLocalDataMember(partitionGroup.getHeader()).syncLeader();
-        Set<PartialPath> allDevices = IoTDB.metaManager.getDevices(pathUnderSG);
-        logger.debug("{}: get matched paths of {} locally, result {}", name, partitionGroup,
-            allDevices);
-        result.addAll(allDevices);
-      } else {
-        // batch the queries of the same group to reduce communication
-        groupPathMap.computeIfAbsent(partitionGroup, p -> new ArrayList<>())
-            .add(pathUnderSG.getFullPath());
-      }
-    }
-
-    // query each data group separately
-    for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
-      PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
-      List<String> pathsToQuery = partitionGroupPathEntry.getValue();
-
-      result.addAll(getMatchedDevices(partitionGroup, pathsToQuery));
-    }
-
-    return result;
-  }
-
-  private Set<PartialPath> getMatchedDevices(PartitionGroup partitionGroup,
-      List<String> pathsToQuery)
-      throws MetadataException {
-    // choose the node with lowest latency or highest throughput
-    List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-    for (Node node : coordinatedNodes) {
-      try {
-        Set<String> paths = getMatchedDevices(node, partitionGroup.getHeader(), pathsToQuery);
-        logger.debug("{}: get matched paths of {} from {}, result {}", name, partitionGroup,
-            node, paths);
-        if (paths != null) {
-          // query next group
-          Set<PartialPath> partialPaths = new HashSet<>();
-          for (String path : paths) {
-            partialPaths.add(new PartialPath(path));
-          }
-          return partialPaths;
-        }
-      } catch (IOException | TException e) {
-        throw new MetadataException(e);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new MetadataException(e);
-      }
-    }
-    logger.warn("Cannot get paths of {} from {}", pathsToQuery, partitionGroup);
-    return Collections.emptySet();
-  }
-
-  private Set<String> getMatchedDevices(Node node, Node header, List<String> pathsToQuery)
-      throws IOException, TException, InterruptedException {
-    Set<String> paths;
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      paths = SyncClientAdaptor.getAllDevices(client, header,
-          pathsToQuery);
-    } else {
-      SyncDataClient syncDataClient = getSyncDataClient(node,
-          RaftServer.getReadOperationTimeoutMS());
-      paths = syncDataClient.getAllDevices(header, pathsToQuery);
-      ClientUtils.putBackSyncClient(syncDataClient);
-    }
-    return paths;
-  }
-
-  public List<PartialPath> getAllStorageGroupNames() {
-    // make sure this node knows all storage groups
-    syncLeader();
-    return IoTDB.metaManager.getAllStorageGroupPaths();
-  }
-
-  public List<StorageGroupMNode> getAllStorageGroupNodes() {
-    // make sure this node knows all storage groups
-    syncLeader();
-    return IoTDB.metaManager.getAllStorageGroupNodes();
   }
 
   @SuppressWarnings("java:S2274")
@@ -3243,8 +1942,6 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Generate a report containing the character, leader, term, last log and read-only-status. This
    * will help to see if the node is in a consistent and right state during debugging.
-   *
-   * @return
    */
   private MetaMemberReport genMemberReport() {
     long prevLastLogIndex = lastReportedLogIndex;
@@ -3257,8 +1954,6 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Generate a report containing the status of both MetaGroupMember and DataGroupMembers of this
    * node. This will help to see if the node is in a consistent and right state during debugging.
-   *
-   * @return
    */
   private NodeReport genNodeReport() {
     NodeReport report = new NodeReport(thisNode);
@@ -3280,10 +1975,9 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Get a local DataGroupMember that is in the group of "header" and should process "request".
    *
-   * @param header  the header of the group which the local node is in
+   * @param header the header of the group which the local node is in
    * @param request the toString() of this parameter should explain what the request is and it is
-   *                only used in logs for tracing
-   * @return
+   * only used in logs for tracing
    */
   public DataGroupMember getLocalDataMember(Node header, Object request) {
     return dataClusterServer.getDataMember(header, null, request);
@@ -3293,329 +1987,13 @@ public class MetaGroupMember extends RaftMember {
    * Get a local DataGroupMember that is in the group of "header" for an internal request.
    *
    * @param header the header of the group which the local node is in
-   * @return
    */
   public DataGroupMember getLocalDataMember(Node header) {
     return dataClusterServer.getDataMember(header, null, "Internal call");
   }
 
-  /**
-   * Get a thrift client that will connect to "node" using the data port.
-   *
-   * @param node    the node to be connected
-   * @param timeout timeout threshold of connection
-   * @return
-   * @throws IOException
-   */
-  public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-    AsyncDataClient client = (AsyncDataClient) getDataAsyncClientPool().getClient(node);
-    client.setTimeout(timeout);
-    return client;
-  }
-
-  /**
-   * Get a thrift client that will connect to "node" using the data port.
-   *
-   * @param node    the node to be connected
-   * @param timeout timeout threshold of connection
-   * @return
-   * @throws IOException
-   */
-  public SyncDataClient getSyncDataClient(Node node, int timeout) {
-    SyncDataClient client = (SyncDataClient) getDataSyncClientPool().getClient(node);
-    client.setTimeout(timeout);
-    return client;
-  }
-
-  /**
-   * Get GroupByExecutors the will executor the aggregations of "aggregationTypes" over "path".
-   * First, the groups to be queried will be determined by the timeFilter. Then for group, a local
-   * or remote GroupByExecutor will be created and finally all such executors will be returned.
-   *
-   * @param path
-   * @param dataType
-   * @param context
-   * @param timeFilter       nullable
-   * @param aggregationTypes
-   * @return
-   * @throws StorageEngineException
-   */
-  public List<GroupByExecutor> getGroupByExecutors(PartialPath path,
-      Set<String> deviceMeasurements, TSDataType dataType,
-      QueryContext context, Filter timeFilter, List<Integer> aggregationTypes)
-      throws StorageEngineException, QueryProcessException {
-    // make sure the partition table is new
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
-    // find out the groups that should be queried
-    List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
-    if (logger.isDebugEnabled()) {
-      logger.debug("{}: Sending group by query of {} to {} groups", name, path,
-          partitionGroups.size());
-    }
-    // create an executor for each group
-    List<GroupByExecutor> executors = new ArrayList<>();
-    for (PartitionGroup partitionGroup : partitionGroups) {
-      GroupByExecutor groupByExecutor = getGroupByExecutor(path, deviceMeasurements, partitionGroup,
-          timeFilter, context, dataType, aggregationTypes);
-      executors.add(groupByExecutor);
-    }
-    return executors;
-  }
-
-  /**
-   * Get a GroupByExecutor that will run "aggregationTypes" over "path" within "partitionGroup". If
-   * the local node is a member of the group, a local executor will be created. Otherwise a remote
-   * executor will be created.
-   *
-   * @param path
-   * @param deviceMeasurements
-   * @param partitionGroup
-   * @param timeFilter         nullable
-   * @param context
-   * @param dataType
-   * @param aggregationTypes
-   * @return
-   * @throws StorageEngineException
-   */
-  private GroupByExecutor getGroupByExecutor(PartialPath path,
-      Set<String> deviceMeasurements, PartitionGroup partitionGroup,
-      Filter timeFilter, QueryContext context, TSDataType dataType,
-      List<Integer> aggregationTypes) throws StorageEngineException, QueryProcessException {
-    if (partitionGroup.contains(thisNode)) {
-      // the target storage group contains this node, perform a local query
-      DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader());
-      logger.debug("{}: creating a local group by executor for {}#{}", name,
-          path.getFullPath(), context.getQueryId());
-      return dataGroupMember
-          .getGroupByExecutor(path, deviceMeasurements, dataType, timeFilter, aggregationTypes,
-              context);
-    } else {
-      return getRemoteGroupByExecutor(timeFilter, aggregationTypes, dataType, path,
-          deviceMeasurements, partitionGroup, context);
-    }
-  }
-
-  /**
-   * Get a GroupByExecutor that will run "aggregationTypes" over "path" within a remote group
-   * "partitionGroup". Send a request to one node in the group to create an executor there and use
-   * the return executor id to fetch result later.
-   *
-   * @param timeFilter         nullable
-   * @param aggregationTypes
-   * @param dataType
-   * @param path
-   * @param deviceMeasurements
-   * @param partitionGroup
-   * @param context
-   * @return
-   * @throws StorageEngineException
-   */
-  private GroupByExecutor getRemoteGroupByExecutor(Filter timeFilter,
-      List<Integer> aggregationTypes, TSDataType dataType, Path path,
-      Set<String> deviceMeasurements, PartitionGroup partitionGroup,
-      QueryContext context) throws StorageEngineException {
-    GroupByRequest request = new GroupByRequest();
-    if (timeFilter != null) {
-      request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
-    }
-    request.setPath(path.getFullPath());
-    request.setHeader(partitionGroup.getHeader());
-    request.setQueryId(context.getQueryId());
-    request.setAggregationTypeOrdinals(aggregationTypes);
-    request.setDataTypeOrdinal(dataType.ordinal());
-    request.setRequestor(thisNode);
-    request.setDeviceMeasurements(deviceMeasurements);
-
-    // select a node with lowest latency or highest throughput with high priority
-    List<Node> orderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-    for (Node node : orderedNodes) {
-      // query a remote node
-      logger.debug("{}: querying group by {} from {}", name, path, node);
-
-      try {
-        Long executorId = getRemoteGroupByExecutorId(node, request);
-
-        if (executorId == null) {
-          continue;
-        }
-
-        if (executorId != -1) {
-          // record the queried node to release resources later
-          ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
-          logger.debug("{}: get an executorId {} for {}@{} from {}", name, executorId,
-              aggregationTypes, path, node);
-          // create a remote executor with the return id
-          RemoteGroupByExecutor remoteGroupByExecutor = new RemoteGroupByExecutor(executorId,
-              this, node, partitionGroup.getHeader());
-          for (Integer aggregationType : aggregationTypes) {
-            remoteGroupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(
-                AggregationType.values()[aggregationType], dataType));
-          }
-          return remoteGroupByExecutor;
-        } else {
-          // an id of -1 means there is no satisfying data on the remote node, create an empty
-          // reader tp reduce further communication
-          logger.debug("{}: no data for {} from {}", name, path, node);
-          return new EmptyReader();
-        }
-      } catch (TException | IOException e) {
-        logger.error("{}: Cannot query {} from {}", name, path, node, e);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error("{}: Cannot query {} from {}", name, path, node, e);
-      }
-    }
-    throw new StorageEngineException(
-        new RequestTimeOutException("Query " + path + " in " + partitionGroup));
-  }
-
-  private Long getRemoteGroupByExecutorId(Node node, GroupByRequest request)
-      throws IOException, TException, InterruptedException {
-    Long executorId;
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      executorId = SyncClientAdaptor.getGroupByExecutor(client, request);
-    } else {
-      SyncDataClient syncDataClient = getSyncDataClient(node,
-          RaftServer.getReadOperationTimeoutMS());
-      executorId = syncDataClient.getGroupByExecutor(request);
-      ClientUtils.putBackSyncClient(syncDataClient);
-    }
-    return executorId;
-  }
-
-
-  public TimeValuePair performPreviousFill(PartialPath path, TSDataType dataType, long queryTime,
-      long beforeRange, Set<String> deviceMeasurements, QueryContext context)
-      throws StorageEngineException {
-    // make sure the partition table is new
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      throw new StorageEngineException(e);
-    }
-    // find the groups that should be queried using the time range
-    Intervals intervals = new Intervals();
-    long lowerBound = beforeRange == -1 ? Long.MIN_VALUE : queryTime - beforeRange;
-    intervals.addInterval(lowerBound, queryTime);
-    List<PartitionGroup> partitionGroups = routeIntervals(intervals, path);
-    if (logger.isDebugEnabled()) {
-      logger.debug("{}: Sending data query of {} to {} groups", name, path,
-          partitionGroups.size());
-    }
-    CountDownLatch latch = new CountDownLatch(partitionGroups.size());
-    PreviousFillHandler handler = new PreviousFillHandler(latch);
-
-    ExecutorService fillService = Executors.newFixedThreadPool(partitionGroups.size());
-    PreviousFillArguments arguments = new PreviousFillArguments(path, dataType, queryTime,
-        beforeRange, deviceMeasurements);
-
-    for (PartitionGroup partitionGroup : partitionGroups) {
-      fillService.submit(() -> performPreviousFill(arguments, context,
-          partitionGroup, handler));
-    }
-    fillService.shutdown();
-    try {
-      fillService.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error("Unexpected interruption when waiting for fill pool to stop", e);
-    }
-    return handler.getResult();
-  }
-
-  private void performPreviousFill(PreviousFillArguments arguments, QueryContext context,
-      PartitionGroup group,
-      PreviousFillHandler fillHandler) {
-    if (group.contains(thisNode)) {
-      localPreviousFill(arguments, context, group, fillHandler);
-    } else {
-      remotePreviousFill(arguments, context, group, fillHandler);
-    }
-  }
-
-  private void localPreviousFill(PreviousFillArguments arguments, QueryContext context,
-      PartitionGroup group,
-      PreviousFillHandler fillHandler) {
-    DataGroupMember localDataMember = getLocalDataMember(group.getHeader());
-    try {
-      fillHandler
-          .onComplete(
-              localDataMember.localPreviousFill(arguments.getPath(), arguments.getDataType(),
-                  arguments.getQueryTime(), arguments.getBeforeRange(),
-                  arguments.getDeviceMeasurements(), context));
-    } catch (QueryProcessException | StorageEngineException | IOException e) {
-      fillHandler.onError(e);
-    }
-  }
-
-  private void remotePreviousFill(PreviousFillArguments arguments, QueryContext context,
-      PartitionGroup group,
-      PreviousFillHandler fillHandler) {
-    PreviousFillRequest request = new PreviousFillRequest(arguments.getPath().getFullPath(),
-        arguments.getQueryTime(),
-        arguments.getBeforeRange(), context.getQueryId(), thisNode, group.getHeader(),
-        arguments.getDataType().ordinal(),
-        arguments.getDeviceMeasurements());
-
-    for (Node node : group) {
-      ByteBuffer byteBuffer;
-      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-        byteBuffer = remoteAsyncPreviousFill(node, request, arguments);
-      } else {
-        byteBuffer = remoteSyncPreviousFill(node, request, arguments);
-      }
-
-      if (byteBuffer != null) {
-        fillHandler.onComplete(byteBuffer);
-        return;
-      }
-    }
-
-    fillHandler.onError(new QueryTimeOutException(String.format("PreviousFill %s@%d range: %d",
-        arguments.getPath().getFullPath(), arguments.getQueryTime(), arguments.getBeforeRange())));
-  }
-
-  private ByteBuffer remoteAsyncPreviousFill(Node node, PreviousFillRequest request,
-      PreviousFillArguments arguments) {
-    ByteBuffer byteBuffer = null;
-    AsyncDataClient asyncDataClient;
-    try {
-      asyncDataClient = getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-    } catch (IOException e) {
-      logger.warn("{}: Cannot connect to {} during previous fill", name, node);
-      return null;
-    }
-
-    try {
-      byteBuffer = SyncClientAdaptor.previousFill(asyncDataClient, request);
-    } catch (Exception e) {
-      logger
-          .error("{}: Cannot perform previous fill of {} to {}", name, arguments.getPath(), node,
-              e);
-    }
-    return byteBuffer;
-  }
-
-  private ByteBuffer remoteSyncPreviousFill(Node node, PreviousFillRequest request,
-      PreviousFillArguments arguments) {
-    ByteBuffer byteBuffer = null;
-    SyncDataClient syncDataClient = getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-
-    try {
-      byteBuffer = syncDataClient.previousFill(request);
-    } catch (Exception e) {
-      logger
-          .error("{}: Cannot perform previous fill of {} to {}", name, arguments.getPath(), node,
-              e);
-    } finally {
-      ClientUtils.putBackSyncClient(syncDataClient);
-    }
-    return byteBuffer;
+  public DataClientProvider getClientProvider() {
+    return dataClientProvider;
   }
 
   @Override
@@ -3635,5 +2013,10 @@ public class MetaGroupMember extends RaftMember {
 
   public StartUpStatus getStartUpStatus() {
     return startUpStatus;
+  }
+
+  @TestOnly
+  public void setClientProvider(DataClientProvider dataClientProvider) {
+    this.dataClientProvider = dataClientProvider;
   }
 }

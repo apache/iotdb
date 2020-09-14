@@ -29,11 +29,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -300,5 +306,23 @@ public class ClusterUtils {
       logger.warn("Bad seed url: {}", nodeUrl);
     }
     return result;
+  }
+
+  public static PartitionGroup partitionByPathTimeWithSync(PartialPath prefixPath,
+      MetaGroupMember metaGroupMember) throws MetadataException {
+    PartitionGroup partitionGroup;
+    try {
+      partitionGroup = metaGroupMember.getPartitionTable().partitionByPathTime(prefixPath, 0);
+    } catch (StorageGroupNotSetException e) {
+      // the storage group is not found locally, but may be found in the leader, retry after
+      // synchronizing with the leader
+      try {
+        metaGroupMember.syncLeaderWithConsistencyCheck();
+      } catch (CheckConsistencyException checkConsistencyException) {
+        throw new MetadataException(checkConsistencyException.getMessage());
+      }
+      partitionGroup = metaGroupMember.getPartitionTable().partitionByPathTime(prefixPath, 0);
+    }
+    return partitionGroup;
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.query;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -44,10 +45,12 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterDataQueryExecutor.class);
   private MetaGroupMember metaGroupMember;
+  private ClusterReaderFactory readerFactory;
 
   ClusterDataQueryExecutor(RawDataQueryPlan plan, MetaGroupMember metaGroupMember) {
     super(plan);
     this.metaGroupMember = metaGroupMember;
+    this.readerFactory = new ClusterReaderFactory(metaGroupMember);
   }
 
   @Override
@@ -65,7 +68,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       TSDataType dataType = deduplicatedDataTypes.get(i);
 
       ManagedSeriesReader reader;
-      reader = metaGroupMember.getSeriesReader(path,
+      reader = readerFactory.getSeriesReader(path,
           dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, timeFilter,
           null, context);
       readersOfSelectedSeries.add(reader);
@@ -81,7 +84,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       Set<String> deviceMeasurements, TSDataType dataType,
       QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    return metaGroupMember.getReaderByTimestamp(path, deviceMeasurements, dataType, context);
+    return readerFactory.getReaderByTimestamp(path, deviceMeasurements, dataType, context);
   }
 
   @Override

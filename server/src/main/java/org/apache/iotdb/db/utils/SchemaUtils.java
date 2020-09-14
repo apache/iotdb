@@ -137,6 +137,15 @@ SchemaUtils {
     return dataTypes;
   }
 
+  public static List<TSDataType> getAggregatedDataTypes(List<TSDataType> measurementDataType,
+      String aggregation) throws MetadataException {
+    TSDataType dataType = getAggregationType(aggregation);
+    if (dataType != null) {
+      return Collections.nCopies(measurementDataType.size(), dataType);
+    }
+    return measurementDataType;
+  }
+
   public static TSDataType getSeriesTypeByPaths(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getSeriesType(path);
   }

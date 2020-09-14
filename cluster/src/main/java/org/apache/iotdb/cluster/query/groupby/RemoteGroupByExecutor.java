@@ -77,12 +77,12 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
     try {
       if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
         AsyncDataClient client = metaGroupMember
-            .getAsyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
+            .getClientProvider().getAsyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
         aggrBuffers = SyncClientAdaptor
             .getGroupByResult(client, header, executorId, curStartTime, curEndTime);
       } else {
         SyncDataClient syncDataClient = metaGroupMember
-            .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
+            .getClientProvider().getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
         aggrBuffers = syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
         ClientUtils.putBackSyncClient(syncDataClient);
       }

@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +63,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public void sendSnapshot(SendSnapshotRequest request) throws TException {
     try {
-      dataGroupMember.sendSnapshot(request);
+      dataGroupMember.receiveSnapshot(request);
     } catch (Exception e) {
       throw new TException(e);
     }
@@ -71,7 +73,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public PullSnapshotResp pullSnapshot(PullSnapshotRequest request) throws TException {
     PullSnapshotResp pullSnapshotResp;
     try {
-      pullSnapshotResp = dataGroupMember.pullSnapshot(request);
+      pullSnapshotResp = dataGroupMember.getSnapshot(request);
     } catch (IOException e) {
       throw new TException(e);
     }
@@ -101,7 +103,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request) throws TException {
     try {
-      return dataGroupMember.pullTimeSeriesSchema(request);
+      return dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request);
     } catch (CheckConsistencyException e) {
       // if this node cannot synchronize with the leader with in a given time, forward the
       // request to the leader
@@ -122,7 +124,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request) throws TException {
     try {
-      return dataGroupMember.pullMeasurementSchema(request);
+      return dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request);
     } catch (CheckConsistencyException e) {
       // if this node cannot synchronize with the leader with in a given time, forward the
       // request to the leader
@@ -143,7 +145,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public long querySingleSeries(SingleSeriesQueryRequest request) throws TException {
     try {
-      return dataGroupMember.querySingleSeries(request);
+      return dataGroupMember.getLocalQueryExecutor().querySingleSeries(request);
     } catch (Exception e) {
       throw new TException(e);
     }
@@ -152,7 +154,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request) throws TException {
     try {
-      return dataGroupMember.querySingleSeriesByTimestamp(request);
+      return dataGroupMember.getLocalQueryExecutor().querySingleSeriesByTimestamp(request);
     } catch (Exception e) {
       throw new TException(e);
     }
@@ -161,7 +163,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public void endQuery(Node header, Node requester, long queryId) throws TException {
     try {
-      dataGroupMember.endQuery(requester, queryId);
+      dataGroupMember.getQueryManager().endQuery(requester, queryId);
     } catch (StorageEngineException e) {
       throw new TException(e);
     }
@@ -170,7 +172,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public ByteBuffer fetchSingleSeries(Node header, long readerId) throws TException {
     try {
-      return dataGroupMember.fetchSingleSeries(readerId);
+      return dataGroupMember.getLocalQueryExecutor().fetchSingleSeries(readerId);
     } catch (ReaderNotFoundException | IOException e) {
       throw new TException(e);
     }
@@ -180,7 +182,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public ByteBuffer fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp)
       throws TException {
     try {
-      return dataGroupMember.fetchSingleSeriesByTimestamp(readerId, timestamp);
+      return dataGroupMember.getLocalQueryExecutor().fetchSingleSeriesByTimestamp(readerId, timestamp);
     } catch (ReaderNotFoundException | IOException e) {
       throw new TException(e);
     }
@@ -189,8 +191,9 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public List<String> getAllPaths(Node header, List<String> paths) throws TException {
     try {
-      return dataGroupMember.getAllPaths(paths);
-    } catch (MetadataException e) {
+      dataGroupMember.syncLeaderWithConsistencyCheck();
+      return ((CMManager) IoTDB.metaManager).getAllPaths(paths);
+    } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
     }
   }
@@ -198,8 +201,9 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public Set<String> getAllDevices(Node header, List<String> path) throws TException {
     try {
-      return dataGroupMember.getAllDevices(path);
-    } catch (MetadataException e) {
+      dataGroupMember.syncLeaderWithConsistencyCheck();
+      return ((CMManager) IoTDB.metaManager).getAllDevices(path);
+    } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
     }
   }
@@ -207,7 +211,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public List<String> getNodeList(Node header, String path, int nodeLevel) throws TException {
     try {
-      return dataGroupMember.getNodeList(path, nodeLevel);
+      dataGroupMember.syncLeaderWithConsistencyCheck();
+      return ((CMManager) IoTDB.metaManager).getNodeList(path, nodeLevel);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
@@ -216,7 +221,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public Set<String> getChildNodePathInNextLevel(Node header, String path) throws TException {
     try {
-      return dataGroupMember.getChildNodePathInNextLevel(path);
+      dataGroupMember.syncLeaderWithConsistencyCheck();
+      return ((CMManager) IoTDB.metaManager).getChildNodePathInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
@@ -225,7 +231,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public ByteBuffer getAllMeasurementSchema(Node header, ByteBuffer planBinary) throws TException {
     try {
-      return dataGroupMember.getAllMeasurementSchema(planBinary);
+      return dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(planBinary);
     } catch (CheckConsistencyException | IOException | MetadataException e) {
       throw new TException(e);
     }
@@ -234,7 +240,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public List<ByteBuffer> getAggrResult(GetAggrResultRequest request) throws TException {
     try {
-      return dataGroupMember.getAggrResult(request);
+      return dataGroupMember.getLocalQueryExecutor().getAggrResult(request);
     } catch (StorageEngineException | QueryProcessException | IOException e) {
       throw new TException(e);
     }
@@ -244,7 +250,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public List<String> getUnregisteredTimeseries(Node header, List<String> timeseriesList)
       throws TException {
     try {
-      return dataGroupMember.getUnregisteredTimeseries(timeseriesList);
+      return dataGroupMember.getLocalQueryExecutor().getUnregisteredTimeseries(timeseriesList);
     } catch (CheckConsistencyException e) {
       throw new TException(e);
     }
@@ -253,7 +259,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public long getGroupByExecutor(GroupByRequest request) throws TException {
     try {
-      return dataGroupMember.getGroupByExecutor(request);
+      return dataGroupMember.getLocalQueryExecutor().getGroupByExecutor(request);
     } catch (QueryProcessException | StorageEngineException e) {
       throw new TException(e);
     }
@@ -263,7 +269,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public List<ByteBuffer> getGroupByResult(Node header, long executorId, long startTime, long endTime)
       throws TException {
     try {
-      return dataGroupMember.getGroupByResult(executorId, startTime, endTime);
+      return dataGroupMember.getLocalQueryExecutor().getGroupByResult(executorId, startTime, endTime);
     } catch (ReaderNotFoundException | IOException | QueryProcessException e) {
       throw new TException(e);
     }
@@ -272,7 +278,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public ByteBuffer previousFill(PreviousFillRequest request) throws TException {
     try {
-      return dataGroupMember.previousFill(request);
+      return dataGroupMember.getLocalQueryExecutor().previousFill(request);
     } catch (QueryProcessException | StorageEngineException | IOException | IllegalPathException e) {
       throw new TException(e);
     }
@@ -281,7 +287,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public ByteBuffer last(LastQueryRequest request) throws TException {
     try {
-      return dataGroupMember.last(request);
+      return dataGroupMember.getLocalQueryExecutor().last(request);
     } catch (CheckConsistencyException | QueryProcessException | IOException | StorageEngineException | IllegalPathException e) {
       throw new TException(e);
     }
@@ -290,7 +296,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public int getPathCount(Node header, List<String> pathsToQuery, int level) throws TException {
     try {
-      return dataGroupMember.getPathCount(pathsToQuery, level);
+      return dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
     }
@@ -298,6 +304,6 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
 
   @Override
   public boolean onSnapshotApplied(Node header, List<Integer> slots) {
-    return dataGroupMember.onSnapshotApplied(slots);
+    return dataGroupMember.onSnapshotInstalled(slots);
   }
 }

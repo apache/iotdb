@@ -46,6 +46,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
@@ -60,10 +61,13 @@ import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.query.LocalQueryExecutor;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
+import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
@@ -94,11 +98,9 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -121,8 +123,8 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -229,21 +231,23 @@ public class MetaGroupMemberTest extends MemberTest {
           }
         };
       }
-
-      @Override
-      public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request) {
-        return mockedPullTimeSeriesSchema(request);
-      }
-
-      @Override
-      public PullSchemaResp pullMeasurementSchema(PullSchemaRequest request) {
-        return mockedPullTimeSeriesSchema(request);
-      }
     };
+
     dataGroupMember.setLogManager(new TestPartitionedLogManager(null,
         partitionTable, group.getHeader(), TestSnapshot::new));
     dataGroupMember.setLeader(node);
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
+    dataGroupMember.setLocalQueryExecutor(new LocalQueryExecutor(dataGroupMember) {
+      @Override
+      public PullSchemaResp queryTimeSeriesSchema(PullSchemaRequest request) {
+        return mockedPullTimeSeriesSchema(request);
+      }
+
+      @Override
+      public PullSchemaResp queryMeasurementSchema(PullSchemaRequest request) {
+        return mockedPullTimeSeriesSchema(request);
+      }
+    });
     return dataGroupMember;
   }
 
@@ -284,18 +288,12 @@ public class MetaGroupMemberTest extends MemberTest {
 
       @Override
       public DataHeartbeatServer getDataHeartbeatServer() {
-        DataHeartbeatServer dataHeartbeatServer = new DataHeartbeatServer(thisNode,
+        return new DataHeartbeatServer(thisNode,
             dataClusterServer) {
           @Override
-          public void start() throws TTransportException, StartupException {
+          public void start() {
           }
         };
-        return dataHeartbeatServer;
-      }
-
-      @Override
-      public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-        return new TestAsyncDataClient(node, dataGroupMemberMap);
       }
 
       @Override
@@ -337,7 +335,7 @@ public class MetaGroupMemberTest extends MemberTest {
         return getClient(node);
       }
 
-      public AsyncClient getClient(Node node) {
+      AsyncClient getClient(Node node) {
         try {
           return new TestAsyncMetaClient(null, null, node, null) {
             @Override
@@ -447,6 +445,13 @@ public class MetaGroupMemberTest extends MemberTest {
     metaGroupMember.setAllNodes(allNodes);
     metaGroupMember.setCharacter(NodeCharacter.LEADER);
     metaGroupMember.setAppendLogThreadPool(testThreadPool);
+    metaGroupMember.setClientProvider(new DataClientProvider(new TBinaryProtocol.Factory()
+    ) {
+      @Override
+      public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+        return new TestAsyncDataClient(node, dataGroupMemberMap);
+      }
+    });
     return metaGroupMember;
   }
 
@@ -735,50 +740,6 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testPullTimeseriesSchema() throws MetadataException {
-    System.out.println("Start testPullTimeseriesSchema()");
-    for (int i = 0; i < 10; i++) {
-      testMetaMember.pullTimeSeriesSchemas(Collections.singletonList(new PartialPath(TestUtils.getTestSg(i))),
-          null);
-      for (int j = 0; j < 10; j++) {
-        assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSeries(i, j))));
-      }
-    }
-  }
-
-  @Test
-  public void testGetSeriesType() throws MetadataException {
-    System.out.println("Start testGetSeriesType()");
-    // a local series
-    assertEquals(Collections.singletonList(TSDataType.DOUBLE),
-        testMetaMember
-            .getSeriesTypesByPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 0))),
-                null).left);
-    // a remote series that can be fetched
-    assertEquals(Collections.singletonList(TSDataType.DOUBLE),
-        testMetaMember
-            .getSeriesTypesByPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(9, 0))),
-                null).left);
-    // a non-existent series
-    IoTDB.metaManager.setStorageGroup(new PartialPath(TestUtils.getTestSg(10)));
-    try {
-      testMetaMember.getSeriesTypesByPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(10
-          , 100))), null);
-    } catch (PathNotExistException e) {
-      assertEquals("Path [root.test10.s100] does not exist", e.getMessage());
-    }
-    // a non-existent group
-    try {
-      testMetaMember.getSeriesTypesByPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(11
-          , 100))), null);
-    } catch (StorageGroupNotSetException e) {
-      assertEquals("Storage group is not set for current seriesPath: [root.test11.s100]",
-          e.getMessage());
-    }
-  }
-
-
-  @Test
   public void testGetReaderByTimestamp()
       throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException, IllegalPathException {
     System.out.println("Start testGetReaderByTimestamp()");
@@ -810,8 +771,9 @@ public class MetaGroupMemberTest extends MemberTest {
         QueryResourceManager.getInstance().assignQueryId(true));
 
     try {
+      ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
       for (int i = 0; i < 10; i++) {
-        IReaderByTimestamp readerByTimestamp = testMetaMember
+        IReaderByTimestamp readerByTimestamp = readerFactory
             .getReaderByTimestamp(new PartialPath(TestUtils.getTestSeries(i, 0)),
                 Collections.singleton(TestUtils.getTestMeasurement(0)), TSDataType.DOUBLE,
                 context);
@@ -856,8 +818,9 @@ public class MetaGroupMemberTest extends MemberTest {
         QueryResourceManager.getInstance().assignQueryId(true));
 
     try {
+      ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
       for (int i = 0; i < 10; i++) {
-        ManagedSeriesReader reader = testMetaMember
+        ManagedSeriesReader reader = readerFactory
             .getSeriesReader(new PartialPath(TestUtils.getTestSeries(i, 0)),
                 Collections.singleton(TestUtils.getTestMeasurement(0)), TSDataType.DOUBLE,
                 TimeFilter.gtEq(5),
@@ -881,13 +844,13 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testGetMatchedPaths() throws MetadataException {
     System.out.println("Start testGetMatchedPaths()");
-    List<PartialPath> matchedPaths = testMetaMember
+    List<PartialPath> matchedPaths = ((CMManager) IoTDB.metaManager)
         .getMatchedPaths(new PartialPath(TestUtils.getTestSg(0) + ".*"));
     assertEquals(20, matchedPaths.size());
     for (int j = 0; j < 10; j++) {
       assertTrue(matchedPaths.contains(new PartialPath(TestUtils.getTestSeries(0, j))));
     }
-    matchedPaths = testMetaMember
+    matchedPaths = ((CMManager) IoTDB.metaManager)
         .getMatchedPaths(new PartialPath(TestUtils.getTestSg(10) + ".*"));
     assertTrue(matchedPaths.isEmpty());
   }

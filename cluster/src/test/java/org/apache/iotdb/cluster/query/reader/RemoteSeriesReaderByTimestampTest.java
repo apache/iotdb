@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
+import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -42,6 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -56,6 +58,54 @@ public class RemoteSeriesReaderByTimestampTest {
   public void setUp() {
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
+    metaGroupMember.setClientProvider(new DataClientProvider(new Factory()) {
+      @Override
+      public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+        return new AsyncDataClient(null, null, node, null) {
+          @Override
+          public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
+              AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
+            if (failedNodes.contains(node)) {
+              throw new TException("Node down.");
+            }
+
+            new Thread(() -> {
+              ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+              DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+              boolean isNull = true;
+              while (batchData.hasCurrent()) {
+                long currentTime = batchData.currentTime();
+                Object value = batchData.currentValue();
+                if (currentTime == time) {
+                  SerializeUtils.serializeObject(value, dataOutputStream);
+                  batchData.next();
+                  isNull = false;
+                  break;
+                } else if (currentTime > time) {
+                  break;
+                }
+                // time < timestamp, continue
+                batchData.next();
+              }
+              if (isNull) {
+                SerializeUtils.serializeObject(null, dataOutputStream);
+              }
+              resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+            }).start();
+          }
+
+          @Override
+          public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
+              AsyncMethodCallback<Long> resultHandler) throws TException {
+            if (failedNodes.contains(node)) {
+              throw new TException("Node down.");
+            }
+
+            new Thread(() -> resultHandler.onComplete(1L)).start();
+          }
+        };
+      }
+    });
   }
 
   @After
@@ -63,54 +113,7 @@ public class RemoteSeriesReaderByTimestampTest {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 
-  private MetaGroupMember metaGroupMember = new MetaGroupMember() {
-    @Override
-    public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-      return new AsyncDataClient(null, null, node, null) {
-        @Override
-        public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
-            AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
-          if (failedNodes.contains(node)) {
-            throw new TException("Node down.");
-          }
-
-          new Thread(() -> {
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-            boolean isNull = true;
-            while (batchData.hasCurrent()) {
-              long currentTime = batchData.currentTime();
-              Object value = batchData.currentValue();
-              if (currentTime == time) {
-                SerializeUtils.serializeObject(value, dataOutputStream);
-                batchData.next();
-                isNull = false;
-                break;
-              } else if (currentTime > time) {
-                break;
-              }
-              // time < timestamp, continue
-              batchData.next();
-            }
-            if (isNull) {
-              SerializeUtils.serializeObject(null, dataOutputStream);
-            }
-            resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-          }).start();
-        }
-
-        @Override
-        public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
-            AsyncMethodCallback<Long> resultHandler) throws TException {
-          if (failedNodes.contains(node)) {
-            throw new TException("Node down.");
-          }
-
-          new Thread(() -> resultHandler.onComplete(1L)).start();
-        }
-      };
-    }
-  };
+  private MetaGroupMember metaGroupMember = new MetaGroupMember();
 
   @Test
   public void test() throws IOException {

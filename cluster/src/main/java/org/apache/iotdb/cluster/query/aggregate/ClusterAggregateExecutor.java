@@ -17,12 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.query;
+
+package org.apache.iotdb.cluster.query.aggregate;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
+import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -41,15 +43,19 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 public class ClusterAggregateExecutor extends AggregationExecutor {
 
   private MetaGroupMember metaMember;
+  private ClusterReaderFactory readerFactory;
+  private ClusterAggregator aggregator;
 
   /**
    * constructor.
    *
    * @param aggregationPlan
    */
-  ClusterAggregateExecutor(AggregationPlan aggregationPlan, MetaGroupMember metaMember) {
+  public ClusterAggregateExecutor(AggregationPlan aggregationPlan, MetaGroupMember metaMember) {
     super(aggregationPlan);
     this.metaMember = metaMember;
+    this.readerFactory = new ClusterReaderFactory(metaMember);
+    this.aggregator = new ClusterAggregator(metaMember);
   }
 
   @Override
@@ -62,7 +68,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
     for (int i : pathToAggrIndexes.getValue()) {
       aggregationNames.add(aggregations.get(i));
     }
-    return metaMember.getAggregateResult(seriesPath, deviceMeasurements, aggregationNames,
+    return aggregator.getAggregateResult(seriesPath, deviceMeasurements, aggregationNames,
         tsDataType, timeFilter,
         context);
   }
@@ -78,7 +84,8 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
       RawDataQueryPlan dataQueryPlan, TSDataType dataType,
       QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    return metaMember.getReaderByTimestamp(path, dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()),
+    return readerFactory.getReaderByTimestamp(path,
+        dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()),
         dataType, context);
   }
 }

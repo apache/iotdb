@@ -101,8 +101,8 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("java:S3077") // reference volatile is enough
 public abstract class RaftMember {
 
-  static final String MSG_FORWARD_TIMEOUT = "{}: Forward {} to {} time out";
-  static final String MSG_FORWARD_ERROR = "{}: encountered an error when forwarding {} to"
+  private static final String MSG_FORWARD_TIMEOUT = "{}: Forward {} to {} time out";
+  private static final String MSG_FORWARD_ERROR = "{}: encountered an error when forwarding {} to"
       + " {}";
   private static final String MSG_NO_LEADER_COMMIT_INDEX = "{}: Cannot request commit index from {}";
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
@@ -983,6 +983,10 @@ public abstract class RaftMember {
    */
   private TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header) {
     AsyncClient client = getAsyncClient(receiver);
+    return forwardPlanAsync(plan, receiver, header, client);
+  }
+
+  TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header, AsyncClient client) {
     try {
       TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
       if (tsStatus == null) {
@@ -1003,8 +1007,11 @@ public abstract class RaftMember {
 
   private TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header) {
     Client client = getSyncClient(receiver);
-    try {
+    return forwardPlanSync(plan, receiver, header, client);
+  }
 
+  TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header, Client client) {
+    try {
       ExecutNonQueryReq req = new ExecutNonQueryReq();
       req.setPlanBytes(PlanSerializer.getInstance().serialize(plan));
       if (header != null) {
@@ -1027,12 +1034,11 @@ public abstract class RaftMember {
         status = StatusUtils.TIME_OUT;
         logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       } else {
-        status = StatusUtils.INTERNAL_ERROR.deepCopy();
-        status.setMessage(e.getMessage());
         logger
             .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
         status = StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
       }
+      // the connection may be broken, close it to avoid it being reused
       client.getInputProtocol().getTransport().close();
       return status;
     } finally {
@@ -1533,7 +1539,7 @@ public abstract class RaftMember {
     this.appendLogThreadPool = appendLogThreadPool;
   }
 
-  Object getSnapshotApplyLock() {
+  public Object getSnapshotApplyLock() {
     return snapshotApplyLock;
   }
 

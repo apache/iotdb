@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -46,7 +47,7 @@ public class MergeGroupByExecutor implements GroupByExecutor {
   private TSDataType dataType;
   private QueryContext context;
   private Filter timeFilter;
-  private MetaGroupMember metaGroupMember;
+  private ClusterReaderFactory readerFactory;
 
   private List<GroupByExecutor> groupByExecutors;
 
@@ -58,7 +59,7 @@ public class MergeGroupByExecutor implements GroupByExecutor {
     this.dataType = dataType;
     this.context = context;
     this.timeFilter = timeFilter;
-    this.metaGroupMember = metaGroupMember;
+    this.readerFactory = new ClusterReaderFactory(metaGroupMember);
   }
 
   @Override
@@ -94,7 +95,7 @@ public class MergeGroupByExecutor implements GroupByExecutor {
 
   private void initExecutors() throws QueryProcessException {
     try {
-      groupByExecutors = metaGroupMember.getGroupByExecutors(path, deviceMeasurements, dataType,
+      groupByExecutors = readerFactory.getGroupByExecutors(path, deviceMeasurements, dataType,
           context, timeFilter, aggregationTypes);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);

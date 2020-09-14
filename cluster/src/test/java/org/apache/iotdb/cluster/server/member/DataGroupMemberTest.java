@@ -52,7 +52,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
-import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
+import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
@@ -399,7 +399,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testApplySnapshot()
-      throws StorageEngineException, IOException, WriteProcessException, SnapshotApplicationException, QueryProcessException, IllegalPathException {
+      throws StorageEngineException, IOException, WriteProcessException, SnapshotInstallationException, QueryProcessException, IllegalPathException {
     System.out.println("Start testStartElection()");
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> schemaList = new ArrayList<>();
@@ -445,7 +445,7 @@ public class DataGroupMemberTest extends MemberTest {
     insertPlan.setTime(101);
     processor.insert(insertPlan);
 
-    dataGroupMember.applySnapshot(snapshot, 0);
+    snapshot.getDefaultInstaller(dataGroupMember).install(snapshot, 0);
     assertEquals(2, processor.getSequenceFileTreeSet().size());
     assertEquals(1, processor.getUnSequenceFileList().size());
     Deletion deletion = new Deletion(new PartialPath(TestUtils.getTestSg(0)), 0, 0);

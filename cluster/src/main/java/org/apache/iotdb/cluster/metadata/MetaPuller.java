@@ -30,15 +30,14 @@ import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -84,21 +83,7 @@ public class MetaPuller {
     // split the paths by the data groups that will hold them
     Map<PartitionGroup, List<PartialPath>> partitionGroupPathMap = new HashMap<>();
     for (PartialPath prefixPath : prefixPaths) {
-      PartitionGroup partitionGroup;
-      try {
-        partitionGroup = metaGroupMember.getPartitionTable().partitionByPathTime(prefixPath, 0);
-      } catch (StorageGroupNotSetException e) {
-        // the storage group is not found locally, but may be found in the leader, retry after
-        // synchronizing with the leader
-
-        try {
-          metaGroupMember.syncLeaderWithConsistencyCheck();
-        } catch (CheckConsistencyException checkConsistencyException) {
-          throw new MetadataException(checkConsistencyException.getMessage());
-        }
-        partitionGroup = metaGroupMember.getPartitionTable().partitionByPathTime(prefixPath, 0);
-
-      }
+      PartitionGroup partitionGroup = ClusterUtils.partitionByPathTimeWithSync(prefixPath, metaGroupMember);
       partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>()).add(prefixPath);
     }
 
@@ -203,11 +188,11 @@ public class MetaPuller {
     List<MeasurementSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client = metaGroupMember
-          .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullMeasurementSchema(client, request);
     } else {
       SyncDataClient syncDataClient = metaGroupMember
-          .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
       ByteBuffer buffer = pullSchemaResp.schemaBytes;
       int size = buffer.getInt();

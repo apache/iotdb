@@ -31,6 +31,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.Before;
@@ -64,6 +65,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
   @Test
   public void testMatchPaths() throws MetadataException {
     List<PartialPath> allMatchedPaths = queryExecutor.getPathsName(new PartialPath("root.*.s0"));
+    allMatchedPaths.sort(null);
     for (int i = 0; i < allMatchedPaths.size(); i++) {
       assertEquals(pathList.get(i), allMatchedPaths.get(i));
     }
@@ -73,7 +75,8 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
   public void testGetAllStorageGroupNodes() {
     List<StorageGroupMNode> allStorageGroupNodes = queryExecutor.getAllStorageGroupNodes();
     for (int i = 0; i < allStorageGroupNodes.size(); i++) {
-      assertEquals(testMetaMember.getAllStorageGroupNodes().get(i).getFullPath(), allStorageGroupNodes.get(i).getFullPath());
+      assertEquals(IoTDB.metaManager.getAllStorageGroupNodes().get(i).getFullPath(),
+          allStorageGroupNodes.get(i).getFullPath());
     }
   }
 }

@@ -97,6 +97,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     metaHeartbeatServer.start();
     ioTDB = new IoTDB();
     IoTDB.setMetaManager(CMManager.getInstance());
+    ((CMManager) IoTDB.metaManager).setMetaGroupMember(member);
     ioTDB.active();
     member.start();
     registerManager.register(ClusterMonitor.INSTANCE);

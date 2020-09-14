@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
+import org.apache.iotdb.db.service.IoTDB;
 
 public class ClusterAlignByDeviceDataSet extends AlignByDeviceDataSet {
 
@@ -48,7 +50,7 @@ public class ClusterAlignByDeviceDataSet extends AlignByDeviceDataSet {
   @Override
   protected Set<String> getDeviceMeasurements(PartialPath device) throws IOException {
     try {
-      List<PartialPath> matchedPaths = metaGroupMember.getMatchedPaths(device);
+      List<PartialPath> matchedPaths = ((CMManager) IoTDB.metaManager).getMatchedPaths(device);
       Set<String> deviceMeasurements = new HashSet<>();
       for (PartialPath matchedPath : matchedPaths) {
         deviceMeasurements.add(matchedPath.getFullPath().substring(

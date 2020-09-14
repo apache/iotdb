@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.query.fill;
 
 import java.util.Arrays;
 import java.util.List;
+import org.apache.iotdb.cluster.query.aggregate.ClusterAggregator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -35,27 +36,31 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 public class ClusterLinearFill extends LinearFill {
 
   private MetaGroupMember metaGroupMember;
+  private ClusterAggregator aggregator;
   private static final List<String> AGGREGATION_NAMES = Arrays.asList(SQLConstant.MIN_TIME,
       SQLConstant.FIRST_VALUE);
 
   ClusterLinearFill(LinearFill fill, MetaGroupMember metaGroupMember) {
     super(fill.getDataType(), fill.getQueryTime(), fill.getBeforeRange(), fill.getAfterRange());
     this.metaGroupMember = metaGroupMember;
+    this.aggregator = new ClusterAggregator(metaGroupMember);
   }
 
   @Override
   protected TimeValuePair calculatePrecedingPoint()
       throws StorageEngineException {
     // calculate the preceding point can be viewed as a previous fill
-    return metaGroupMember.performPreviousFill(seriesPath, dataType, queryTime, beforeRange,
-        deviceMeasurements, context);
+    ClusterPreviousFill clusterPreviousFill = new ClusterPreviousFill(dataType, queryTime,
+        beforeRange, metaGroupMember);
+    clusterPreviousFill.configureFill(seriesPath, dataType, queryTime, deviceMeasurements, context);
+    return clusterPreviousFill.getFillResult();
   }
 
   @Override
   protected TimeValuePair calculateSucceedingPoint()
       throws StorageEngineException {
 
-    List<AggregateResult> aggregateResult = metaGroupMember
+    List<AggregateResult> aggregateResult = aggregator
         .getAggregateResult(seriesPath, deviceMeasurements, AGGREGATION_NAMES,
             dataType, afterFilter, context);
     AggregateResult minTimeResult = aggregateResult.get(0);

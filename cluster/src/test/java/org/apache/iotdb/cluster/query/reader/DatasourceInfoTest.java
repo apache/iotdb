@@ -23,6 +23,7 @@ package org.apache.iotdb.cluster.query.reader;
 import static org.junit.Assert.assertFalse;
 
 import java.io.IOException;
+import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -34,6 +35,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -42,7 +44,8 @@ public class DatasourceInfoTest {
 
   @Before
   public void setUp() {
-    metaGroupMember = new TestMetaGroupMember() {
+    metaGroupMember = new TestMetaGroupMember();
+    metaGroupMember.setClientProvider(new DataClientProvider(new Factory()) {
       @Override
       public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
         return new AsyncDataClient(null, null, TestUtils.getNode(0), null) {
@@ -52,7 +55,7 @@ public class DatasourceInfoTest {
           }
         };
       }
-    };
+    });
   }
 
   @Test
