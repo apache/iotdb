@@ -20,6 +20,10 @@ package org.apache.iotdb.db.http.constant;
 
 public class HttpConstant {
 
+  private HttpConstant() {
+    throw new IllegalStateException("Constant class");
+  }
+
   //router
   public static final String ROUTING_STORAGE_GROUPS = "/storageGroups";
   public static final String ROUTING_TIME_SERIES = "/timeSeries";

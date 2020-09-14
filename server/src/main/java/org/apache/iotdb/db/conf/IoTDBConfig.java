@@ -65,6 +65,8 @@ public class IoTDBConfig {
 
   public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
 
+  private static final String ADDRESS = "0.0.0.0";
+
   /**
    * Port which the metrics service listens to.
    */
@@ -82,7 +84,7 @@ public class IoTDBConfig {
   /**
    * http binding address.
    */
-  private String httpAddress = "0.0.0.0";
+  private String httpAddress = ADDRESS;
 
   /**
    * whether to enable the mqtt service.
@@ -92,7 +94,7 @@ public class IoTDBConfig {
   /**
    * the mqtt service binding host.
    */
-  private String mqttHost = "0.0.0.0";
+  private String mqttHost = ADDRESS;
 
   /**
    * the mqtt service binding port.
@@ -118,7 +120,7 @@ public class IoTDBConfig {
   /**
    * Rpc binding address.
    */
-  private String rpcAddress = "0.0.0.0";
+  private String rpcAddress = ADDRESS;
 
   /**
    * whether to use thrift compression.
@@ -862,14 +864,6 @@ public class IoTDBConfig {
 
   void setRpcPort(int rpcPort) {
     this.rpcPort = rpcPort;
-  }
-
-  public int getHttpPort() {
-    return httpPort;
-  }
-
-  public void setHttpPort(int httpPort) {
-    this.httpPort = httpPort;
   }
 
   public String getHttpAddress() {

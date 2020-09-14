@@ -21,6 +21,9 @@ package org.apache.iotdb.db.http.utils;
 import org.apache.iotdb.db.http.constant.HttpConstant;
 
 public class URIUtils {
+  private URIUtils() {
+    throw new IllegalStateException("Utility class");
+  }
   public static String removeParameter(String uri) {
     int index = uri.indexOf(HttpConstant.QUESTION_MARK);
     if(index < 0) {

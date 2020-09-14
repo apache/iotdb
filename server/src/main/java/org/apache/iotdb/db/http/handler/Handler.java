@@ -51,7 +51,7 @@ abstract class Handler {
     }
   }
 
-  public String getUsername() {
+  public static String getUsername() {
     return username;
   }
 }

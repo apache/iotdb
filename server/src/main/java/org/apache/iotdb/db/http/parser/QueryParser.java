@@ -33,6 +33,8 @@ import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 public class QueryParser {
+
+  private QueryParser() {}
   /**
    * generate select statement operator
    */

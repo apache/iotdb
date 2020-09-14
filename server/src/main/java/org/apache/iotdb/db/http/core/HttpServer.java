@@ -28,6 +28,8 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
+import java.security.cert.CertificateException;
+import javax.net.ssl.SSLException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +50,7 @@ public class HttpServer {
     b = new ServerBootstrap();
   }
 
-  public void start() throws Exception{
+  public void start() throws CertificateException, SSLException, InterruptedException {
     // Configure SSL.
     final SslContext sslCtx;
     if (SSL) {
@@ -68,9 +70,8 @@ public class HttpServer {
 
       ch = b.bind(port).sync().channel();
 
-      logger.info("Open your web browser and navigate to " +
-          (SSL ? "https" : "http") + IoTDBDescriptor.getInstance().getConfig().getHttpAddress()
-          + port + '/');
+      logger.info("Open your web browser and navigate to {}{}{}/",
+          (SSL ? "https" : "http"), IoTDBDescriptor.getInstance().getConfig().getHttpAddress() ,port );
     } catch (Exception e) {
       stop();
     }

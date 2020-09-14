@@ -54,11 +54,11 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
   protected void channelRead0(ChannelHandlerContext ctx, Object msg) {
     HttpResponseStatus status;
     if (msg instanceof HttpRequest) {
-      FullHttpRequest request = this.request = (FullHttpRequest) msg;
+      this.request = (FullHttpRequest) msg;
       JSON result;
       try {
         result = router.route(request.method(), request.uri(),
-            JSONObject.parse(request.content().toString(CharsetUtil.UTF_8)));
+            JSON.parse(request.content().toString(CharsetUtil.UTF_8)));
         status = OK;
       } catch (Exception e) {
         result = new JSONObject();

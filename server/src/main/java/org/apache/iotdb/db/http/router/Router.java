@@ -59,7 +59,6 @@ public class Router {
       , StorageEngineException, UnsupportedHttpMethod, SQLException, InterruptedException, QueryFilterOptimizationException, IOException, TException {
     QueryStringDecoder decoder = new QueryStringDecoder(uri);
     uri = URIUtils.removeParameter(uri);
-    UsersHandler usersHandler;
     switch (uri) {
       case HttpConstant.ROUTING_STORAGE_GROUPS:
         StorageGroupsHandlers storageGroupsHandlers = new StorageGroupsHandlers();
@@ -68,22 +67,20 @@ public class Router {
         TimeSeriesHandler timeSeriesHandler = new TimeSeriesHandler();
         return timeSeriesHandler.handle(method, json);
       case HttpConstant.ROUTING_USER_LOGIN:
-        usersHandler = new UsersHandler();
-        if (usersHandler.userLogin(decoder.parameters())) {
+        if (UsersHandler.userLogin(decoder.parameters())) {
           JSONObject result = new JSONObject();
           result.put(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
           return result;
         } else {
-          throw new AuthException(String.format("%s can't log in", usersHandler.getUsername()));
+          throw new AuthException(String.format("%s can't log in", UsersHandler.getUsername()));
         }
       case HttpConstant.ROUTING_USER_LOGOUT:
-        usersHandler = new UsersHandler();
-        if (usersHandler.userLogout(decoder.parameters())) {
+        if (UsersHandler.userLogout(decoder.parameters())) {
           JSONObject result = new JSONObject();
           result.put(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
           return result;
         } else {
-          throw new AuthException(String.format("%s can't log out", usersHandler.getUsername()));
+          throw new AuthException(String.format("%s can't log out", UsersHandler.getUsername()));
         }
       case HttpConstant.ROUTING_QUERY:
         QueryHandler queryHandler = new QueryHandler();
