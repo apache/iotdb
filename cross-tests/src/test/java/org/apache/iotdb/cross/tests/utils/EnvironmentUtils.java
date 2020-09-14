@@ -24,7 +24,6 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
@@ -66,8 +65,6 @@ public class EnvironmentUtils {
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
   private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
-
-  private static int oldMaxMemTableNumber = config.getMaxMemtableNumber();
 
   private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
@@ -145,10 +142,8 @@ public class EnvironmentUtils {
     // delete all directory
     cleanAllDir();
 
-    config.setMaxMemtableNumber(oldMaxMemTableNumber);
     config.setTsFileSizeThreshold(oldTsFileThreshold);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
-    IoTDBConfigDynamicAdapter.getInstance().reset();
   }
 
   public static void cleanAllDir() throws IOException {
@@ -200,9 +195,6 @@ public class EnvironmentUtils {
     } catch (Exception e) {
       fail(e.getMessage());
     }
-
-    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
-    IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
 
     createAllDir();
     // disable the system monitor
