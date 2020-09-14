@@ -67,7 +67,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static String errorInsertInfo = "";
   private static boolean errorFlag;
 
-  private static String IOTDB_CLI_HOME = "IOTDB_CLI_HOME";
+  private static String iotdb_cli_home = "IOTDB_CLI_HOME";
 
   private static int count;
   private static Statement statement;
@@ -439,7 +439,7 @@ public class ImportCsv extends AbstractCsvTool {
   public static void importCsvFromFile(String ip, String port, String username,
       String password, String filename,
       String timeZone) throws SQLException {
-    String property = System.getProperty(IOTDB_CLI_HOME);
+    String property = System.getProperty(iotdb_cli_home);
     if (property == null) {
       errorInsertInfo = ERROR_INFO_STR;
     } else {

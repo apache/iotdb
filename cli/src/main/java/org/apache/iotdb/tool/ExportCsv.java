@@ -75,7 +75,7 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static final int EXPORT_PER_LINE_COUNT = 10000;
 
-  private static String TIMESTAMP_PRECISION = "ms";
+  private static String timestamp_precision = "ms";
 
   private static List<Integer> typeList = new ArrayList<>();
 
@@ -329,7 +329,7 @@ public class ExportCsv extends AbstractCsvTool {
         long timestamp = rs.getLong(1);
         String str = AbstractCli
             .parseLongToDateWithPrecision(DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId,
-                TIMESTAMP_PRECISION);
+                timestamp_precision);
         bw.write(str + ",");
         break;
       case "timestamp":
