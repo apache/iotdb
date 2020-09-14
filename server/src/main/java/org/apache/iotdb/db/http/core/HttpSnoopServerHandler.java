@@ -38,12 +38,16 @@ import io.netty.handler.codec.http.HttpUtil;
 import io.netty.util.CharsetUtil;
 import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.http.router.Router;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> {
 
   private FullHttpRequest request;
 
   private Router router = new Router();
+
+  private static final Logger logger = LoggerFactory.getLogger(HttpSnoopServerHandler.class);
 
   @Override
   public void channelReadComplete(ChannelHandlerContext ctx) {
@@ -100,7 +104,7 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
 
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-    cause.printStackTrace();
+    logger.debug(cause.getMessage());
     ctx.close();
   }
 }

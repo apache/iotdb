@@ -46,4 +46,8 @@ public class UsersHandler extends Handler{
     username = null;
     return true;
   }
+
+  public static String getUsername() {
+    return username;
+  }
 }

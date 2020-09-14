@@ -50,8 +50,4 @@ abstract class Handler {
       throw new AuthException("didn't log in iotdb");
     }
   }
-
-  public static String getUsername() {
-    return username;
-  }
 }
