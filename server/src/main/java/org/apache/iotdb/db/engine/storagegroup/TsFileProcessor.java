@@ -162,8 +162,8 @@ public class TsFileProcessor {
 
     while (SystemInfo.getInstance().isRejected()) {
       try {
-        TimeUnit.MILLISECONDS.sleep(1000);
-        logger.info("System rejected, waiting for memory releasing... "
+        TimeUnit.MILLISECONDS.sleep(100);
+        logger.debug("System rejected, waiting for memory releasing... "
             + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
             .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
       } catch (InterruptedException e) {
@@ -240,8 +240,8 @@ public class TsFileProcessor {
 
     while (SystemInfo.getInstance().isRejected()) {
       try {
-        TimeUnit.MILLISECONDS.sleep(1000);
-        logger.info("System rejected, waiting for memory releasing... "
+        TimeUnit.MILLISECONDS.sleep(100);
+        logger.debug("System rejected, waiting for memory releasing... "
             + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
             .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
       } catch (InterruptedException e) {

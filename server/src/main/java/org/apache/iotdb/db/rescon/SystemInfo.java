@@ -132,7 +132,7 @@ public class SystemInfo {
    */
   public synchronized void reportIncreasingArraySize(int increasingArraySize) {
     this.arrayPoolMemCost += increasingArraySize;
-    logger.info("Report Array Pool size to system. "
+    logger.debug("Report Array Pool size to system. "
         + "Current total array pool mem cost is {}, sg mem cost is {}.",
         arrayPoolMemCost, totalSgMemCost);
   }
@@ -169,7 +169,7 @@ public class SystemInfo {
           - storageGroupInfo.getSgMemCost();
       if (this.arrayPoolMemCost + this.totalSgMemCost 
           < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
-        logger.info("Some sg memery released, set system to normal status. "
+        logger.debug("Some sg memery released, set system to normal status. "
             + "Current array cost is {}, Sg cost is {}",
             arrayPoolMemCost, totalSgMemCost);
         rejected = false;
@@ -195,7 +195,7 @@ public class SystemInfo {
     TsFileProcessor processor = getLargestTsFileProcessor();
 
     if (processor != null && processor.getWorkMemTableSize() != 0) {
-      logger.info("Current buffed array size {}, OOB size {}", PrimitiveArrayManager.getBufferedArraysSize(),
+      logger.debug("Current buffed array size {}, OOB size {}", PrimitiveArrayManager.getBufferedArraysSize(),
           PrimitiveArrayManager.getOOBSize());
       if (processor.shouldClose()) {
         processor.startClose();
@@ -215,7 +215,7 @@ public class SystemInfo {
     return tsps.first();
   }
 
-  public synchronized boolean isRejected() {
+  public boolean isRejected() {
     return rejected;
   }
 
