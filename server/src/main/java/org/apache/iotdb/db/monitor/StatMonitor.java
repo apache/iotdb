@@ -219,6 +219,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
     }
   }
 
+  public void close() {
+    config.setEnableStatMonitor(false);
+  }
 
   // implements methods of StatMonitorMean from here
   @Override
