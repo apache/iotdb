@@ -213,6 +213,9 @@ public class IoTDBAdapterTest {
             "time=23; s2=null\n");
   }
 
+  /**
+   * Test simple value filter
+   */
   @Test
   public void testFilter1() {
     CalciteAssert.that()
@@ -227,6 +230,9 @@ public class IoTDBAdapterTest {
             "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
   }
 
+  /**
+   * Test filter with device column
+   */
   @Test
   public void testFilter2() {
     CalciteAssert.that()
@@ -242,6 +248,9 @@ public class IoTDBAdapterTest {
             "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
   }
 
+  /**
+   * Test filter with time(device) column and value filter at the same time
+   */
   @Test
   public void testFilter3() {
     CalciteAssert.that()
@@ -272,6 +281,9 @@ public class IoTDBAdapterTest {
             "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])\n");
   }
 
+  /**
+   * Test filter with different device, which need multiple queries
+   */
   @Test
   public void testFilter5() {
     CalciteAssert.that()
@@ -306,6 +318,9 @@ public class IoTDBAdapterTest {
             "    IoTDBTableScan(table=[[IoTDBSchema, root.vehicle]])");
   }
 
+  /**
+   * Test filter with global query
+   */
   @Test
   public void testFilter7() {
     CalciteAssert.that()
