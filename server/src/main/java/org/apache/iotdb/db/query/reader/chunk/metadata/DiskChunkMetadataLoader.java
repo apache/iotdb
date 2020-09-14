@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.reader.chunk.metadata;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
@@ -71,14 +72,14 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
    * @throws IOException
    */
   @Override
-  public void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) throws IOException {
+  public void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) {
     setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
   }
 
   public static void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList,
-      TsFileResource resource, Path seriesPath, QueryContext context) {
+      TsFileResource resource, PartialPath seriesPath, QueryContext context)  {
     List<Modification> pathModifications =
-        context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
+        context.getPathModifications(resource.getModFile(), seriesPath);
 
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);

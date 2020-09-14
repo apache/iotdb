@@ -48,11 +48,14 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTi
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -226,17 +229,18 @@ public class TsFileProcessor {
    * <p>
    * Delete data in both working MemTable and flushing MemTables.
    */
-  public void deleteDataInMemory(Deletion deletion) {
+  public void deleteDataInMemory(Deletion deletion) throws MetadataException {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
       logger
           .debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
-      if (workMemTable != null) {
-        workMemTable
-            .delete(deletion.getDevice(), deletion.getMeasurement(), deletion.getStartTime(),
-                deletion.getEndTime());
+      for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath().getDevicePath())) {
+        if (workMemTable != null) {
+          workMemTable
+                  .delete(p.getDevice(), p.getMeasurement(), deletion.getStartTime(), deletion.getEndTime());
+        }
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
       for (IMemTable memTable : flushingMemTables) {
@@ -719,7 +723,7 @@ public class TsFileProcessor {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void query(String deviceId, String measurementId, TSDataType dataType, TSEncoding encoding,
       Map<String, String> props, QueryContext context,
-      List<TsFileResource> tsfileResourcesForQuery) throws IOException {
+      List<TsFileResource> tsfileResourcesForQuery) throws IOException, MetadataException {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: {} get flushQueryLock and vmMergeLock read lock", storageGroupName,
           tsFileResource.getTsFile().getName());
@@ -747,7 +751,7 @@ public class TsFileProcessor {
 
       ModificationFile modificationFile = tsFileResource.getModFile();
       List<Modification> modifications = context.getPathModifications(modificationFile,
-          deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
+          new PartialPath(deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId));
 
       List<ChunkMetadata> chunkMetadataList = writer
           .getVisibleMetadataList(deviceId, measurementId, dataType);

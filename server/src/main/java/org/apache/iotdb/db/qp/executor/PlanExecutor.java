@@ -656,7 +656,9 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       Set<PartialPath> existingPaths = new HashSet<>();
       for (PartialPath p : deletePlan.getPaths()) {
-        existingPaths.addAll(getPathsName(p));
+        if (!getPathsName(p).isEmpty()) {
+          existingPaths.add(p);
+        }
       }
       if (existingPaths.isEmpty()) {
         throw new QueryProcessException("TimeSeries does not exist and its data cannot be deleted");
@@ -838,14 +840,14 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void delete(PartialPath path, long startTime, long endTime) throws QueryProcessException {
-    PartialPath deviceId = path.getDevicePath();
-    String measurementId = path.getMeasurement();
+    /*PartialPath deviceId = path.getDevicePath();
+    String measurementId = path.getMeasurement();*/
     try {
-      if (!mManager.isPathExist(path)) {
+      /*if (!mManager.isPathExist(path)) {
         throw new QueryProcessException(
             String.format("Time series %s does not exist.", path.getFullPath()));
-      }
-      StorageEngine.getInstance().delete(deviceId, measurementId, startTime, endTime);
+      }*/
+      StorageEngine.getInstance().delete(path, startTime, endTime);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }
@@ -980,7 +982,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       List<String> failedNames = new LinkedList<>();
       for (PartialPath path : deletePathList) {
-        StorageEngine.getInstance().deleteTimeseries(path.getDevicePath(), path.getMeasurement());
+        StorageEngine.getInstance().deleteTimeseries(path);
         String failedTimeseries = mManager.deleteTimeseries(path);
         if (!failedTimeseries.isEmpty()) {
           failedNames.add(failedTimeseries);

@@ -432,10 +432,19 @@ public class StorageEngine implements IService {
     // TODO
   }
 
+  public void delete(PartialPath path, long startTime, long endTime)
+          throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(path);
+    try {
+      storageGroupProcessor.delete(path, startTime, endTime);
+    } catch (IOException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+  }
   /**
    * delete data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
    */
-  public void delete(PartialPath deviceId, String measurementId, long startTime, long endTime)
+  /*public void delete(PartialPath deviceId, String measurementId, long startTime, long endTime)
       throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     try {
@@ -443,16 +452,16 @@ public class StorageEngine implements IService {
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }
-  }
+  }*/
 
   /**
    * delete data of timeseries "{deviceId}.{measurementId}"
    */
-  public void deleteTimeseries(PartialPath deviceId, String measurementId)
+  public void deleteTimeseries(PartialPath path)
       throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
+    StorageGroupProcessor storageGroupProcessor = getProcessor(path);
     try {
-      storageGroupProcessor.delete(deviceId, measurementId, Long.MIN_VALUE, Long.MAX_VALUE);
+      storageGroupProcessor.delete(path, Long.MIN_VALUE, Long.MAX_VALUE);
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }

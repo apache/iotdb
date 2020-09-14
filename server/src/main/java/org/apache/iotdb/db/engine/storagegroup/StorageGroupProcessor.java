@@ -1350,18 +1350,15 @@ public class StorageGroupProcessor {
     return true;
   }
 
-
   /**
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId the deviceId of the timeseries to be deleted.
-   * @param measurementId the measurementId of the timeseries to be deleted.
+   * @param path the timeseries path of the to be deleted.
    * @param startTime the startTime of delete range.
    * @param endTime the endTime of delete range.
    */
-  public void delete(PartialPath deviceId, String measurementId, long startTime, long endTime)
-      throws IOException {
+  public void delete(PartialPath path, long startTime, long endTime) throws IOException {
     // TODO: how to avoid partial deletion?
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
@@ -1373,25 +1370,30 @@ public class StorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Long lastUpdateTime = null;
-      for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
-        Long curTime = latestTimeMap.get(deviceId.getFullPath());
-        if (curTime != null && (lastUpdateTime == null || lastUpdateTime < curTime)) {
-          lastUpdateTime = curTime;
+      for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(path)) {
+        PartialPath deviceId = p.getDevicePath();
+        String measurementId = p.getMeasurement();
+        Long lastUpdateTime = null;
+        for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
+          Long curTime = latestTimeMap.get(deviceId.getFullPath());
+          if (curTime != null && (lastUpdateTime == null || lastUpdateTime < curTime)) {
+            lastUpdateTime = curTime;
+          }
         }
-      }
-
-      // There is no tsfile data, the delete operation is invalid
-      if (lastUpdateTime == null) {
-        logger.debug("No device {} in SG {}, deletion invalid", deviceId, storageGroupName);
-        return;
+        // There is no tsfile data, the delete operation is invalid
+        if (lastUpdateTime == null) {
+          logger.debug("No device {} in SG {}, deletion invalid", deviceId, storageGroupName);
+          return;
+        }
+        // delete Last cache record if necessary
+        tryToDeleteLastCache(deviceId, measurementId, startTime, endTime);
       }
 
       // write log to impacted working TsFileProcessors
-      logDeletion(startTime, endTime, deviceId, measurementId);
-      // delete Last cache record if necessary
-      tryToDeleteLastCache(deviceId, measurementId, startTime, endTime);
-      Deletion deletion = new Deletion(deviceId.concatNode(measurementId),MERGE_MOD_START_VERSION_NUM, startTime, endTime);
+      // TODO rewrite logDeletion
+      //logDeletion(startTime, endTime, deviceId, measurementId);
+
+      Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
       if (mergingModification != null) {
         mergingModification.write(deletion);
         updatedModFiles.add(mergingModification);
@@ -1437,13 +1439,15 @@ public class StorageGroupProcessor {
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
       List<ModificationFile> updatedModFiles)
-      throws IOException {
-    String deviceId = deletion.getDevice();
+          throws IOException, MetadataException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      if (!tsFileResource.containsDevice(deviceId) ||
-          deletion.getEndTime() < tsFileResource.getStartTime(deviceId) ||
-          deletion.getStartTime() > tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE)) {
-        continue;
+      for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath().getDevicePath())) {
+        String deviceId = p.getDevice();
+        if (!tsFileResource.containsDevice(deviceId) ||
+                deletion.getEndTime() < tsFileResource.getStartTime(deviceId) ||
+                deletion.getStartTime() > tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE)) {
+          continue;
+        }
       }
 
       long partitionId = tsFileResource.getTimePartition();

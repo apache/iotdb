@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -48,6 +49,11 @@ public class PartialPath extends Path implements Comparable<Path> {
   public PartialPath(String path) throws IllegalPathException {
     this.nodes = MetaUtils.splitPathToDetachedPath(path);
     this.fullPath = path;
+  }
+
+  public PartialPath(String device, String measurement) throws IllegalPathException {
+    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    this.nodes = MetaUtils.splitPathToDetachedPath(fullPath);
   }
 
   /**
@@ -97,6 +103,24 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   public String[] getNodes() {
     return nodes;
+  }
+
+  public boolean matchPath(String path) throws MetadataException {
+    return matchPath(path);
+  }
+
+  public boolean matchPath(PartialPath rhs) {
+    int len1 = nodes.length;
+    String[] rNodes = rhs.getNodes();
+    if (rNodes.length > len1 && !nodes[len1 - 1].equals(IoTDBConstant.PATH_WILDCARD)) {
+      return false;
+    }
+    for (int i = 0; i < nodes.length; i++) {
+      if (!nodes[i].equals(IoTDBConstant.PATH_WILDCARD) && !nodes[i].equals(rNodes[i])) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override
