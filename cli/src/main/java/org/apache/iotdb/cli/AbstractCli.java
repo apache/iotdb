@@ -97,7 +97,7 @@ public abstract class AbstractCli {
   private static int fetchSize = 1000;
   static int maxTimeLength = ISO_DATETIME_LEN;
   static int maxValueLength = 15;
-  static String TIMESTAMP_PRECISION = "ms";
+  static String timestamp_precision = "ms";
   private static int lineCount = 0;
   private static final String SUCCESS_MESSAGE = "The statement is executed successfully.";
 
@@ -132,7 +132,7 @@ public abstract class AbstractCli {
 
 
   private static String getTimestampPrecision() {
-    return TIMESTAMP_PRECISION;
+    return timestamp_precision;
   }
 
   private static void printCount(int cnt) {
