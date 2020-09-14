@@ -25,12 +25,13 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TAG;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ATTRIBUTE;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -127,12 +128,27 @@ public class QueryUtils {
     paths.add(new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false));
     dataTypes.add(TSDataType.TEXT);
 
-    Set<String> tagAndAttributeName = new TreeSet<>();
+    //check if timeseries result has tag or attribute
+    boolean hasTag = false;
+    boolean hasAttribute = false;
     for (ShowTimeSeriesResult result : timeseriesList) {
-      tagAndAttributeName.addAll(result.getTagAndAttribute().keySet());
+      if (result.getTag() != null) {
+        hasTag = true;
+      }
+      if (result.getAttribute() != null) {
+        hasAttribute = true;
+      }
+      if (hasTag && hasAttribute) {
+        break;
+      }
     }
-    for (String key : tagAndAttributeName) {
-      paths.add(new PartialPath(key, false));
+
+    if (hasTag) {
+      paths.add(new PartialPath(COLUMN_TAG, false));
+      dataTypes.add(TSDataType.TEXT);
+    }
+    if (hasAttribute) {
+      paths.add(new PartialPath(COLUMN_ATTRIBUTE, false));
       dataTypes.add(TSDataType.TEXT);
     }
   }
@@ -155,7 +171,8 @@ public class QueryUtils {
       updateRecord(record, result.getDataType());
       updateRecord(record, result.getEncoding());
       updateRecord(record, result.getCompressor());
-      updateRecord(record, result.getTagAndAttribute(), paths);
+      updateRecord(record, result.getTag());
+      updateRecord(record, result.getAttribute());
       showTimeseriesDataSet.putRecord(record);
     }
     return showTimeseriesDataSet;
@@ -175,17 +192,19 @@ public class QueryUtils {
       updateRecord(record, result.getDataType());
       updateRecord(record, result.getEncoding());
       updateRecord(record, result.getCompressor());
-      updateRecord(record, result.getTagAndAttribute(), paths);
+      updateRecord(record, result.getTag());
+      updateRecord(record, result.getAttribute());
       records.add(record);
     }
     return records;
   }
 
-  private static void updateRecord(
-      RowRecord record, Map<String, String> tagAndAttribute, List<PartialPath> paths) {
-    for (int i = 6; i < paths.size(); i++) {
-      updateRecord(record, tagAndAttribute.get(paths.get(i).getFullPath()));
-    }
+  private static void updateRecord(RowRecord record, Map<String, String> map) {
+    String text = map.entrySet().stream()
+        .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
+        .collect(Collectors.joining(","));
+
+    updateRecord(record, text.length() == 0 ? null : "{" + text + "}");
   }
 
   private static void updateRecord(RowRecord record, String s) {

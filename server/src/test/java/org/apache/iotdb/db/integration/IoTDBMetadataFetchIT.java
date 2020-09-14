@@ -89,20 +89,20 @@ public class IoTDBMetadataFetchIT {
           "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
       };
       String[] standards = new String[]{
-          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n",
 
-          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,\n",
 
-          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,\n",
 
-          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,\n",
 
           ""
       };

@@ -925,12 +925,11 @@ public class MManager {
           try {
             Pair<Map<String, String>, Map<String, String>> pair =
                 tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
-            pair.left.putAll(pair.right);
             MeasurementSchema measurementSchema = leaf.getSchema();
             res.add(new ShowTimeSeriesResult(leaf.getFullPath(), leaf.getAlias(),
                 getStorageGroupPath(leaf.getPartialPath()).getFullPath(), measurementSchema.getType().toString(),
                 measurementSchema.getEncodingType().toString(),
-                measurementSchema.getCompressor().toString(), pair.left));
+                measurementSchema.getCompressor().toString(), pair.left, pair.right));
             if (limit != 0) {
               count++;
             }
@@ -994,14 +993,13 @@ public class MManager {
           if (tagFileOffset < 0) {
             // no tags/attributes
             res.add(new ShowTimeSeriesResult(ansString.left.getFullPath(), ansString.right[0], ansString.right[1], ansString.right[2],
-                ansString.right[3], ansString.right[4], Collections.emptyMap()));
+                ansString.right[3], ansString.right[4], Collections.emptyMap(), Collections.emptyMap()));
           } else {
             // has tags/attributes
             Pair<Map<String, String>, Map<String, String>> pair =
                 tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
-            pair.left.putAll(pair.right);
             res.add(new ShowTimeSeriesResult(ansString.left.getFullPath(), ansString.right[0], ansString.right[1], ansString.right[2],
-                ansString.right[3], ansString.right[4], pair.left));
+                ansString.right[3], ansString.right[4], pair.left, pair.right));
           }
         } catch (IOException e) {
           throw new MetadataException(
