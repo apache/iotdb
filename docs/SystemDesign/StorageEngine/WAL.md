@@ -21,6 +21,22 @@
 
 # WAL
 
-## Related code
+## Work Process
+
+* In org.apache.iotdb.db.writelog.manager, nodeMap will continue to accumulate WAL
+* When org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager starts, a timing thread will be generated, and the nodeMap in the memory will be flushed to the disk according to the force_wal_period_in_ms timing call thread. The calling example is as follows
+  * Persistence(forceTask)-sleep({force_wal_period_in_ms})-Persistence(forceTask)-sleep({force_wal_period_in_ms})
+
+## Test Result
+
+* When running forceTask, The entire process is mainly blocked by org.apache.iotdb.db.writelog.io.LogWriter.force()
+* Test forceTask on SSD and HDD respectively
+  * In SSD, the speed is 75MB/s
+  * In HDD, the speed is 5MB/s
+  * So when in HDD, users must pay attention to adjustment force_wal_period_in_ms and let it not to be too small, otherwise it will seriously reduce write performance
+    * After testing, the optimal parameter configuration in HDD is 100ms-200ms, and the test results are as follows
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/24886743/93157479-e3319f80-f73c-11ea-836f-459d03cb2fab.png">
+
+## Related Code
 
 * org.apache.iotdb.db.writelog.*
