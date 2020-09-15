@@ -92,7 +92,7 @@ class StaticResps {
       Collections.singletonList(TSDataType.TEXT.toString()));
 
   static final TSExecuteStatementResp SHOW_CHILD_PATHS = getNoTimeExecuteResp(
-      Collections.singletonList (COLUMN_CHILD_PATHS),
+      Collections.singletonList(COLUMN_CHILD_PATHS),
       Collections.singletonList(TSDataType.TEXT.toString()));
 
   static final TSExecuteStatementResp COUNT_TIMESERIES = getNoTimeExecuteResp(
