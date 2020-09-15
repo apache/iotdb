@@ -153,7 +153,7 @@ public class TTLTest {
         new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     // ok without ttl
-    insertToStorageGroupProcessor(plan);
+    storageGroupProcessor.insert(plan);
 
     storageGroupProcessor.setDataTTL(1000);
     // with ttl
@@ -184,7 +184,7 @@ public class TTLTest {
     // sequence data
     for (int i = 1000; i < 2000; i++) {
       plan.setTime(initTime - 2000 + i);
-      insertToStorageGroupProcessor(plan);
+      storageGroupProcessor.insert(plan);
       if ((i + 1) % 300 == 0) {
         storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
@@ -192,7 +192,7 @@ public class TTLTest {
     // unsequence data
     for (int i = 0; i < 1000; i++) {
       plan.setTime(initTime - 2000 + i);
-      insertToStorageGroupProcessor(plan);
+      storageGroupProcessor.insert(plan);
       if ((i + 1) % 300 == 0) {
         storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }

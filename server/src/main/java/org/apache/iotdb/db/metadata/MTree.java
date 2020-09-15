@@ -40,7 +40,6 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +47,7 @@ import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -1070,7 +1070,7 @@ public class MTree implements Serializable {
         if (childrenSize == 0) {
           nodeStack.push(node);
         } else {
-          Map<String, MNode> childrenMap = new LinkedHashMap<>();
+          Map<String, MNode> childrenMap = new ConcurrentSkipListMap<>();
           for (int i = 0; i < childrenSize; i++) {
             MNode child = nodeStack.removeFirst();
             child.setParent(node);

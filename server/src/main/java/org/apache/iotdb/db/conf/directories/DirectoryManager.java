@@ -158,7 +158,7 @@ public class DirectoryManager {
   }
 
   public String getWALFolder() {
-    return IoTDBDescriptor.getInstance().getConfig().getWalDir();
+    return IoTDBDescriptor.getInstance().getConfig().getWalFolder();
   }
 
   public String getNextFolderForUnSequenceFile() throws DiskSpaceInsufficientException {

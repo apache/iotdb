@@ -263,7 +263,7 @@ public class OpenFileNumUtil {
     TOTAL_OPEN_FILE_NUM(null),
     SEQUENCE_FILE_OPEN_NUM(directoryManager.getAllSequenceFileFolders()),
     UNSEQUENCE_FILE_OPEN_NUM(directoryManager.getAllUnSequenceFileFolders()),
-    WAL_OPEN_FILE_NUM(Collections.singletonList(config.getWalDir())),
+    WAL_OPEN_FILE_NUM(Collections.singletonList(config.getWalFolder())),
     DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getSystemDir())),
     SOCKET_OPEN_FILE_NUM(null);
 

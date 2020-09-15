@@ -58,6 +58,8 @@ public class InsertRowPlan extends InsertPlan {
   // if values is object[], we could use the raw type of them, and we should set this to false
   private boolean isNeedInferType = false;
 
+  private List<Object> failedValues;
+
   public InsertRowPlan() {
     super(OperatorType.INSERT);
   }
@@ -164,7 +166,8 @@ public class InsertRowPlan extends InsertPlan {
       for (int i = 0; i < schemas.length; i++) {
         if (schemas[i] == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurementInsertion(i);
+            markFailedMeasurementInsertion(i, new QueryProcessException(new PathNotExistException(
+                deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i])));
           } else {
             throw new QueryProcessException(new PathNotExistException(
                 deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
@@ -178,7 +181,7 @@ public class InsertRowPlan extends InsertPlan {
           logger.warn("{}.{} data type is not consistent, input {}, registered {}", deviceId,
               measurements[i], values[i], dataTypes[i]);
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurementInsertion(i);
+            markFailedMeasurementInsertion(i, e);
             schemas[i] = null;
           } else {
             throw e;
@@ -189,8 +192,20 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @Override
-  public void markFailedMeasurementInsertion(int index) {
-    super.markFailedMeasurementInsertion(index);
+  public long getMinTime() {
+    return getTime();
+  }
+
+  @Override
+  public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
+    super.markFailedMeasurementInsertion(index, e);
+    if (failedValues == null) {
+      failedValues = new ArrayList<>();
+    }
+    failedValues.add(values[index]);
     values[index] = null;
   }
 
@@ -200,6 +215,15 @@ public class InsertRowPlan extends InsertPlan {
     for (String m : measurements) {
       PartialPath fullPath = deviceId.concatNode(m);
       ret.add(fullPath);
+    }
+    return ret;
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    for (String m : measurements) {
+      ret.add(deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + m);
     }
     return ret;
   }
@@ -431,5 +455,28 @@ public class InsertRowPlan extends InsertPlan {
     Object value = values[measurementIndex];
     return new TimeValuePair(time,
         TsPrimitiveType.getByType(schemas[measurementIndex].getType(), value));
+  }
+
+  @Override
+  public Object clone() {
+    long timeClone = this.time;
+    String[] measurementsClone = new String[this.measurements.length];
+    System.arraycopy(this.measurements, 0, measurementsClone, 0, measurementsClone.length);
+    Object[] valuesClone = new Object[this.values.length];
+    System.arraycopy(this.values, 0, valuesClone, 0, valuesClone.length);
+    TSDataType[] typesClone = new TSDataType[this.dataTypes.length];
+    System.arraycopy(this.dataTypes, 0, typesClone, 0, typesClone.length);
+    return new InsertRowPlan(deviceId, timeClone, measurementsClone, typesClone,
+        valuesClone);
+  }
+
+  @Override
+  public InsertPlan getPlanFromFailed() {
+    if (super.getPlanFromFailed() == null) {
+      return null;
+    }
+    values = failedValues.toArray(new Object[0]);
+    failedValues = null;
+    return this;
   }
 }

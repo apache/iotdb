@@ -34,8 +34,6 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -91,15 +89,7 @@ public class ChunkMetadataCacheTest {
     record.addTuple(DataPoint.getDataPoint(TSDataType.FLOAT, measurementId2, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.DOUBLE, measurementId3, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.BOOLEAN, measurementId4, "True"));
-    InsertRowPlan insertRowPlan = new InsertRowPlan(record);
-    MNode mNode = new MNode(null, storageGroup);
-    mNode.addChild(measurementId0, new MeasurementMNode(null, null, null, null));
-    mNode.addChild(measurementId1, new MeasurementMNode(null, null, null, null));
-    mNode.addChild(measurementId2, new MeasurementMNode(null, null, null, null));
-    mNode.addChild(measurementId3, new MeasurementMNode(null, null, null, null));
-    mNode.addChild(measurementId4, new MeasurementMNode(null, null, null, null));
-    insertRowPlan.setDeviceMNode(mNode);
-    storageGroupProcessor.insert(insertRowPlan);
+    storageGroupProcessor.insert(new InsertRowPlan(record));
   }
 
   protected void insertData() throws IOException, WriteProcessException, IllegalPathException {

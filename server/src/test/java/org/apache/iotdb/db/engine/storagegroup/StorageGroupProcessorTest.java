@@ -105,13 +105,13 @@ public class StorageGroupProcessorTest {
       throws WriteProcessException, IOException, IllegalPathException {
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
-    insertToStorageGroupProcessor(record);
+    processor.insert(new InsertRowPlan(record));
     processor.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 1; j <= 10; j++) {
       record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
     }
 
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
@@ -121,7 +121,7 @@ public class StorageGroupProcessorTest {
     for (int j = 11; j <= 20; j++) {
       record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
     }
 
     processor.delete(new PartialPath(deviceId), measurementId, 0, 15L);
@@ -152,7 +152,7 @@ public class StorageGroupProcessorTest {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
 
@@ -172,7 +172,7 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testIoTDBTabletWriteAndSyncClose()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws QueryProcessException, IllegalPathException {
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -206,7 +206,6 @@ public class StorageGroupProcessorTest {
     insertTabletPlan1.setTimes(times);
     insertTabletPlan1.setColumns(columns);
     insertTabletPlan1.setRowCount(times.length);
-    insertTabletPlan1.setDeviceMNode(deviceMNode);
 
     processor.insertTablet(insertTabletPlan1);
     processor.asyncCloseAllWorkingTsFileProcessors();
@@ -223,7 +222,6 @@ public class StorageGroupProcessorTest {
     insertTabletPlan2.setTimes(times);
     insertTabletPlan2.setColumns(columns);
     insertTabletPlan2.setRowCount(times.length);
-    insertTabletPlan2.setDeviceMNode(deviceMNode);
 
     processor.insertTablet(insertTabletPlan2);
     processor.asyncCloseAllWorkingTsFileProcessors();
@@ -247,7 +245,7 @@ public class StorageGroupProcessorTest {
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
     processor.syncCloseAllWorkingTsFileProcessors();
@@ -255,7 +253,7 @@ public class StorageGroupProcessorTest {
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
 
@@ -280,7 +278,7 @@ public class StorageGroupProcessorTest {
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
     processor.syncCloseAllWorkingTsFileProcessors();
@@ -288,7 +286,7 @@ public class StorageGroupProcessorTest {
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
 

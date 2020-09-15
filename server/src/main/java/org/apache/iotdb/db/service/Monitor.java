@@ -77,9 +77,9 @@ public class Monitor implements MonitorMBean, IService {
   }
 
   @Override
-  public String getSystemDirectory() {
+  public String getBaseDirectory() {
     try {
-      File file = SystemFileFactory.INSTANCE.getFile(config.getSystemDir());
+      File file = SystemFileFactory.INSTANCE.getFile(config.getBaseDir());
       return file.getAbsolutePath();
     } catch (Exception e) {
       logger.error("meet error while trying to get base dir.", e);

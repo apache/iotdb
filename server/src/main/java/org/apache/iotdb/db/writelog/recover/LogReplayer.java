@@ -189,7 +189,7 @@ public class LogReplayer {
   private void checkDataTypeAndMarkFailed(final MeasurementSchema[] schemas, InsertPlan tPlan) {
     for (int i = 0; i < schemas.length; i++) {
       if (schemas[i] == null || schemas[i].getType() != tPlan.getDataTypes()[i]) {
-        tPlan.markFailedMeasurementInsertion(i);
+        tPlan.markFailedMeasurementInsertion(i, new Exception("Inconsistent data type"));
       }
     }
   }

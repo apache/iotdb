@@ -135,6 +135,9 @@ public class IoTDBConfig {
 
   /**
    * Is dynamic parameter adapter enable.
+   * <p>
+   * the default value of this parameter should be kept true in iotdb-engine.properties, we set it
+   * as false here for convenient testing.
    */
   private boolean enableParameterAdapter = true;
 
@@ -213,7 +216,7 @@ public class IoTDBConfig {
   /**
    * Wal directory.
    */
-  private String walDir = baseDir + File.separator + "wal";
+  private String walFolder = baseDir + File.separator + "wal";
 
   /**
    * Maximum MemTable number in MemTable pool.
@@ -652,6 +655,16 @@ public class IoTDBConfig {
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
+  /**
+   * thrift max frame size, the default is 15MB, we change it to 64MB
+   */
+  private int thriftMaxFrameSize = 67108864;
+
+  /**
+   * thrift init buffer size, the default is 1KB.
+   */
+  private int thriftInitBufferSize = 1024;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -721,11 +734,12 @@ public class IoTDBConfig {
    * if the folders are relative paths, add IOTDB_HOME as the path prefix
    */
   private void formulateFolders() {
+    baseDir = addHomeDir(baseDir);
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
+    walFolder = addHomeDir(walFolder);
     tracingDir = addHomeDir(tracingDir);
-    walDir = addHomeDir(walDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -914,12 +928,12 @@ public class IoTDBConfig {
     this.queryDir = queryDir;
   }
 
-  public String getWalDir() {
-    return walDir;
+  public String getWalFolder() {
+    return walFolder;
   }
 
-  void setWalDir(String walDir) {
-    this.walDir = walDir;
+  void setWalFolder(String walFolder) {
+    this.walFolder = walFolder;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -1048,6 +1062,14 @@ public class IoTDBConfig {
 
   void setLanguageVersion(String languageVersion) {
     this.languageVersion = languageVersion;
+  }
+
+  public String getBaseDir() {
+    return baseDir;
+  }
+
+  void setBaseDir(String baseDir) {
+    this.baseDir = baseDir;
   }
 
   public String getIpWhiteList() {
@@ -1768,5 +1790,21 @@ public class IoTDBConfig {
 
   public long getStartUpNanosecond() {
     return startUpNanosecond;
+  }
+
+  public int getThriftMaxFrameSize() {
+    return thriftMaxFrameSize;
+  }
+
+  public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
+  }
+
+  public int getThriftInitBufferSize() {
+    return thriftInitBufferSize;
+  }
+
+  public void setThriftInitBufferSize(int thriftInitBufferSize) {
+    this.thriftInitBufferSize = thriftInitBufferSize;
   }
 }

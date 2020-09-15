@@ -104,7 +104,7 @@ public class WriteLogNodeTest {
     tabletPlan.setStart(0);
     tabletPlan.setEnd(4);
 
-    tabletPlan.markFailedMeasurementInsertion(1);
+    tabletPlan.markFailedMeasurementInsertion(1, new Exception());
 
     logNode.write(bwInsertPlan);
     logNode.write(deletePlan);
@@ -113,7 +113,7 @@ public class WriteLogNodeTest {
     logNode.close();
 
     File walFile = new File(
-        config.getWalDir() + File.separator + identifier + File.separator + "wal1");
+        config.getWalFolder() + File.separator + identifier + File.separator + "wal1");
     assertTrue(walFile.exists());
 
     ILogReader reader = logNode.getLogReader();
@@ -180,7 +180,7 @@ public class WriteLogNodeTest {
     logNode.write(bwInsertPlan);
 
     File walFile = new File(
-        config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
+        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal1");
     assertTrue(!walFile.exists());
 
     logNode.write(deletePlan);
@@ -209,7 +209,7 @@ public class WriteLogNodeTest {
     logNode.forceSync();
 
     File walFile = new File(
-        config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
+        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal1");
     assertTrue(walFile.exists());
 
     assertTrue(new File(logNode.getLogDirectory()).exists());

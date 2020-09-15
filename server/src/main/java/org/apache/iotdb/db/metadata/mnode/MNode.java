@@ -23,11 +23,12 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -59,6 +60,7 @@ public class MNode implements Serializable {
    */
   protected String fullPath;
 
+
   transient Map<String, MNode> children = null;
   private transient Map<String, MNode> aliasChildren = null;
 
@@ -85,7 +87,7 @@ public class MNode implements Serializable {
    */
   public void addChild(String name, MNode child) {
     if (children == null) {
-      children = new LinkedHashMap<>();
+      children = new ConcurrentSkipListMap<>();
     }
     children.put(name, child);
   }
@@ -154,7 +156,7 @@ public class MNode implements Serializable {
    */
   public void addAlias(String alias, MNode child) {
     if (aliasChildren == null) {
-      aliasChildren = new LinkedHashMap<>();
+      aliasChildren = new ConcurrentSkipListMap<>();
     }
     aliasChildren.put(alias, child);
   }
@@ -211,7 +213,7 @@ public class MNode implements Serializable {
 
   public Map<String, MNode> getChildren() {
     if (children == null) {
-      return new LinkedHashMap<>();
+      return Collections.emptyMap();
     }
     return children;
   }

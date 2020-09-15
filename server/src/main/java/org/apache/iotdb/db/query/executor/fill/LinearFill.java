@@ -144,7 +144,6 @@ public class LinearFill extends IFill {
 
   protected TimeValuePair calculateSucceedingPoint()
       throws IOException, StorageEngineException, QueryProcessException {
-    TimeValuePair result = new TimeValuePair(0, null);
 
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     AggregateResult minTimeResult = new MinTimeAggrResult();
@@ -154,6 +153,12 @@ public class LinearFill extends IFill {
     AggregationExecutor.aggregateOneSeries(
         seriesPath, deviceMeasurements, context, afterFilter, dataType, aggregateResultList, null);
 
+    return convertToResult(minTimeResult, firstValueResult);
+  }
+
+  protected TimeValuePair convertToResult(AggregateResult minTimeResult,
+      AggregateResult firstValueResult) {
+    TimeValuePair result = new TimeValuePair(0, null);
     if (minTimeResult.getResult() != null) {
       long timestamp = (long)(minTimeResult.getResult());
       result.setTimestamp(timestamp);

@@ -47,6 +47,15 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    for (PartialPath path : deletePathList) {
+      ret.add(path.getFullPath());
+    }
+    return ret;
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.DELETE_TIMESERIES.ordinal();
     stream.writeByte((byte) type);
@@ -73,5 +82,9 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
     for (int i = 0; i < pathNumber; i++) {
       deletePathList.add(new PartialPath(readString(buffer)));
     }
+  }
+
+  public void setPaths(List<PartialPath> fullPaths) {
+    this.deletePathList = fullPaths;
   }
 }

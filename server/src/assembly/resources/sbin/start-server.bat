@@ -95,11 +95,12 @@ set JAVA_OPTS=-ea^
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
 set CLASSPATH="%IOTDB_HOME%\lib\*"
-
+set CLASSPATH=%CLASSPATH%;iotdb.IoTDB
 goto okClasspath
 
 :append
 set CLASSPATH=%CLASSPATH%;%1
+
 goto :eof
 
 @REM -----------------------------------------------------------------------------

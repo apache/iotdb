@@ -48,7 +48,7 @@ public class IoTDBDescriptor {
   private IoTDBConfig conf = new IoTDBConfig();
   private static CommandLine commandLine;
 
-  private IoTDBDescriptor() {
+  protected IoTDBDescriptor() {
     loadProps();
   }
 
@@ -208,6 +208,8 @@ public class IoTDBDescriptor {
 
       loadWALProps(properties);
 
+      conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
+
       String systemDir = properties.getProperty("system_dir");
       if (systemDir == null) {
         systemDir = properties.getProperty("base_dir");
@@ -226,15 +228,15 @@ public class IoTDBDescriptor {
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
 
       conf.setTracingDir(FilePathUtils
-          .regularizePath(conf.getSystemDir() + IoTDBConstant.TRACING_FOLDER_NAME));
+          .regularizePath(conf.getBaseDir() + IoTDBConstant.TRACING_FOLDER_NAME));
 
       conf.setQueryDir(
-          FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
+          FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
 
-      conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
+      conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
 
       int walBufferSize = Integer.parseInt(properties.getProperty("wal_buffer_size",
           Integer.toString(conf.getWalBufferSize())));
@@ -450,6 +452,13 @@ public class IoTDBDescriptor {
       conf.setPrimitiveArraySize((Integer.parseInt(
           properties.getProperty(
               "primitive_array_size", String.valueOf(conf.getPrimitiveArraySize())))));
+
+      conf.setThriftMaxFrameSize(Integer.parseInt(properties
+          .getProperty("thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+
+      conf.setThriftInitBufferSize(Integer.parseInt(properties
+          .getProperty("thrift_init_buffer_size", String.valueOf(conf.getThriftInitBufferSize()))));
+
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {

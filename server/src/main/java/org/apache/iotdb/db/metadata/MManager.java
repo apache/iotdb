@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.metadata;
 
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -42,6 +44,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
@@ -1762,6 +1765,11 @@ public class MManager {
     }
   }
 
+  public void collectTimeseriesSchema(String prefixPath,
+      Collection<TimeseriesSchema> timeseriesSchemas) throws MetadataException {
+    collectTimeseriesSchema(getNodeByPath(new PartialPath(prefixPath)), timeseriesSchemas);
+  }
+
   public void collectMeasurementSchema(MNode startingNode,
       Collection<MeasurementSchema> timeseriesSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();
@@ -1770,7 +1778,7 @@ public class MManager {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof MeasurementMNode) {
         MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
-        timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(), nodeSchema.getType(),
+        timeseriesSchemas.add(new MeasurementSchema(node.getName(), nodeSchema.getType(),
             nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
       } else if (!node.getChildren().isEmpty()) {
         nodeDeque.addAll(node.getChildren().values());
@@ -1841,7 +1849,7 @@ public class MManager {
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
    * cache the path to mRemoteSchemaCache
    */
-  public void cacheMeta(String path, MeasurementMeta meta) {
+  public void cacheMeta(PartialPath path, MeasurementMeta meta) {
     // do nothing
   }
 
@@ -1940,27 +1948,36 @@ public class MManager {
     for (int i = 0; i < measurementList.length; i++) {
       try {
         // if do not has measurement
+        MeasurementSchema measurementSchema;
         if (!deviceNode.hasChild(measurementList[i])) {
           // could not create it
           if (!config.isAutoCreateSchemaEnabled()) {
-            throw new MetadataException(String.format(
-                "Current deviceId[%s] does not contain measurement:%s", deviceId,
-                measurementList[i]));
+            // but measurement not in MTree and cannot auto-create, try the cache
+            measurementSchema = getSeriesSchema(deviceId
+                , measurementList[i]);
+            if (measurementSchema == null) {
+              throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+            }
+          } else {
+            // create it
+
+            TSDataType dataType = getTypeInLoc(plan, i);
+            createTimeseries(
+                deviceId.concatNode(measurementList[i]),
+                dataType,
+                getDefaultEncoding(dataType),
+                TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                Collections.emptyMap());
+
+            MeasurementMNode measurementNode = (MeasurementMNode) getChild(deviceNode,
+                measurementList[i]);
+            measurementSchema = measurementNode.getSchema();
           }
-
-          // create it
-
-          TSDataType dataType = getTypeInLoc(plan, i);
-          createTimeseries(
-              deviceId.concatNode(measurementList[i]),
-              dataType,
-              getDefaultEncoding(dataType),
-              TSFileDescriptor.getInstance().getConfig().getCompressor(),
-              Collections.emptyMap());
+        } else {
+          MeasurementMNode measurementNode = (MeasurementMNode) getChild(deviceNode,
+              measurementList[i]);
+          measurementSchema = measurementNode.getSchema();
         }
-
-        MeasurementMNode measurementNode = (MeasurementMNode) getChild(deviceNode,
-            measurementList[i]);
 
         // check type is match
         TSDataType insertDataType = null;
@@ -1969,27 +1986,30 @@ public class MManager {
             // only when InsertRowPlan's values is object[], we should check type
             insertDataType = getTypeInLoc(plan, i);
           } else {
-            insertDataType = measurementNode.getSchema().getType();
+            insertDataType = measurementSchema.getType();
           }
         } else if (plan instanceof InsertTabletPlan) {
           insertDataType = getTypeInLoc(plan, i);
         }
 
-        if (measurementNode.getSchema().getType() != insertDataType) {
+        if (measurementSchema.getType() != insertDataType) {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-              measurementList[i], insertDataType, measurementNode.getSchema().getType());
+              measurementList[i], insertDataType, measurementSchema.getType());
           if (!config.isEnablePartialInsert()) {
             throw new MetadataException(String.format(
                 "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
-                measurementList[i], insertDataType, measurementNode.getSchema().getType()));
+                measurementList[i], insertDataType, measurementSchema.getType()));
           } else {
             // mark failed measurement
-            plan.markFailedMeasurementInsertion(i);
+            plan.markFailedMeasurementInsertion(i, new MetadataException(String.format(
+                "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
+                measurementList[i], insertDataType, measurementSchema.getType())));
             continue;
           }
         }
 
-        schemas[i] = measurementNode.getSchema();
+        schemas[i] = measurementSchema;
+
         if (schemas[i] != null) {
           measurementList[i] = schemas[i].getMeasurementId();
         }
@@ -1998,15 +2018,13 @@ public class MManager {
             e.getMessage());
         if (config.isEnablePartialInsert()) {
           // mark failed measurement
-          plan.markFailedMeasurementInsertion(i);
+          plan.markFailedMeasurementInsertion(i, e);
         } else {
           throw e;
         }
       }
     }
-
     plan.setDeviceMNode(deviceNode);
-
     return schemas;
   }
 
@@ -2064,7 +2082,7 @@ public class MManager {
     try {
       MNode mNode = getDeviceNode(deviceId);
       mNode.readUnlock();
-    } catch (MetadataException e) {
+    } catch (IllegalMonitorStateException | MetadataException e) {
       // ignore the exception
     }
   }
