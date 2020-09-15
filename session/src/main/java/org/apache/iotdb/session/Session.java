@@ -69,25 +69,26 @@ public class Session {
   private SessionConnection defaultSessionConnection;
   private boolean isClosed = true;
 
+  // Cluster version cache
   private SessionConnection metaSessionConnection;
   private Map<String, EndPoint> deviceIdToEndpoint;
   private Map<EndPoint, SessionConnection> endPointToSessionConnection;
 
 
-  public Session(String host, int port) {
-    this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
+  public Session(String host, int rpcPort) {
+    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
   }
 
-  public Session(String host, String port, String username, String password) {
-    this(host, Integer.parseInt(port), username, password);
+  public Session(String host, String rpcPort, String username, String password) {
+    this(host, Integer.parseInt(rpcPort), username, password);
   }
 
-  public Session(String host, int port, String username, String password) {
-    this(host, port, username, password, Config.DEFAULT_FETCH_SIZE);
+  public Session(String host, int rpcPort, String username, String password) {
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE);
   }
 
-  public Session(String host, int port, String username, String password, int fetchSize) {
-    this.defaultEndPoint = new EndPoint(host, port);
+  public Session(String host, int rpcPort, String username, String password, int fetchSize) {
+    this.defaultEndPoint = new EndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -108,7 +109,6 @@ public class Session {
     }
     this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
-
     defaultSessionConnection = new SessionConnection(this, defaultEndPoint);
     metaSessionConnection = defaultSessionConnection;
     isClosed = false;
