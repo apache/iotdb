@@ -56,7 +56,7 @@ public class HttpConstant {
 
   public static final String DEVICE_ID  = "deviceId";
   public static final String MEASUREMENTS = "measurements";
-  public static final String TIMESTAMPS = "timestamps";
+  public static final String TIMESTAMP = "timestamp";
   public static final String VALUES = "values";
   public static final String RANGE = "range";
   public static final String FROM = "from";

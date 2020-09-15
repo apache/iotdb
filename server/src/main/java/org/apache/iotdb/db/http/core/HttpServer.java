@@ -70,7 +70,7 @@ public class HttpServer {
 
       ch = b.bind(port).sync().channel();
 
-      logger.info("Open your web browser and navigate to {}{}{}/",
+      logger.info("Open your web browser and navigate to {}://{}:{}/",
           (SSL ? "https" : "http"), IoTDBDescriptor.getInstance().getConfig().getHttpAddress() ,port );
     } catch (Exception e) {
       stop();

@@ -65,7 +65,7 @@ public class QueryHandler extends Handler{
       JSONObject datapoint = new JSONObject();
       RowRecord rowRecord = dataSet.next();
       for(Field field : rowRecord.getFields()) {
-        datapoint.put(HttpConstant.TIMESTAMPS, rowRecord.getTimestamp());
+        datapoint.put(HttpConstant.TIMESTAMP, rowRecord.getTimestamp());
         datapoint.put(HttpConstant.VALUE,field.getObjectValue(field.getDataType()));
       }
       result.add(datapoint);

@@ -183,26 +183,22 @@ public abstract class HttpPrepData {
 
   JSONArray insertJsonExample(int i) {
     JSONArray inserts = new JSONArray();
-    JSONObject insert = new JSONObject();
-    insert.put("deviceId", "root.ln.wf01.wt0" + i);
-    JSONArray measurements = new JSONArray();
-    measurements.add("temperature");
-    measurements.add("status");
-    measurements.add("hardware");
-    insert.put("measurements", measurements);
-    JSONArray timestamps = new JSONArray();
-    JSONArray values = new JSONArray();
     for(int j = 0; j < 6; j++) {
-      timestamps.add(j);
-      JSONArray value = new JSONArray();
-      value.add(String.valueOf(j));
-      value.add("true");
-      value.add(String.valueOf(j));
-      values.add(value);
+      JSONObject row = new JSONObject();
+      row.put("deviceId", "root.ln.wf01.wt0" + i);
+      JSONArray measurements = new JSONArray();
+      measurements.add("temperature");
+      measurements.add("status");
+      measurements.add("hardware");
+      row.put("measurements", measurements);
+      row.put(HttpConstant.TIMESTAMP, j);
+      JSONArray values = new JSONArray();
+      values.add(String.valueOf(j));
+      values.add("true");
+      values.add(String.valueOf(j));
+      row.put(HttpConstant.VALUES, values);
+      inserts.add(row);
     }
-    insert.put("timestamps", timestamps);
-    insert.put("values", values);
-    inserts.add(insert);
     return inserts;
   }
 

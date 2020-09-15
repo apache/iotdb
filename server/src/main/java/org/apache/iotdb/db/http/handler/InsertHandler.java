@@ -43,20 +43,19 @@ public class InsertHandler extends Handler{
       JSONObject object = (JSONObject) o;
       String deviceID = (String) object.get(HttpConstant.DEVICE_ID);
       JSONArray measurements = (JSONArray) object.get(HttpConstant.MEASUREMENTS);
-      JSONArray timestamps = (JSONArray) object.get(HttpConstant.TIMESTAMPS);
+      long timestamps = (Integer) object.get(HttpConstant.TIMESTAMP);
       JSONArray values  = (JSONArray) object.get(HttpConstant.VALUES);
-      for(int i = 0; i < timestamps.size(); i++){
-        if (!insert(deviceID, (Integer) timestamps.get(i), getListString(measurements), (JSONArray)values.get(i))) {
-          throw new QueryProcessException(String.format("%s can't be inserted successfully", deviceID));
+      if (!insertByRow(deviceID, timestamps, getListString(measurements), values)) {
+          throw new QueryProcessException(
+              String.format("%s can't be inserted successfully", deviceID));
         }
-      }
     }
     JSONObject jsonObject = new JSONObject();
     jsonObject.put(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
     return jsonObject;
   }
 
-  public boolean insert(String deviceId, long time, List<String> measurements,
+  public boolean insertByRow(String deviceId, long time, List<String> measurements,
       List<Object> values)
       throws IllegalPathException, QueryProcessException, StorageEngineException, StorageGroupNotSetException {
     InsertRowPlan plan = new InsertRowPlan();
@@ -66,7 +65,7 @@ public class InsertHandler extends Handler{
     plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
     plan.setNeedInferType(true);
     plan.setValues(values.toArray(new Object[0]));
-    return  executor.processNonQuery(plan);
+    return executor.processNonQuery(plan);
   }
 
   /**

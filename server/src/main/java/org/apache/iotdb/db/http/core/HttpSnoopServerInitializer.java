@@ -42,6 +42,7 @@ public class HttpSnoopServerInitializer extends ChannelInitializer<SocketChannel
       p.addLast(sslCtx.newHandler(ch.alloc()));
     }
     p.addLast(new HttpRequestDecoder());
+    // set 1m max size
     p.addLast(new HttpObjectAggregator(1048576));
     p.addLast(new HttpResponseEncoder());
     p.addLast(new HttpContentCompressor());
