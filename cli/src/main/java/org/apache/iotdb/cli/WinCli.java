@@ -149,7 +149,7 @@ public class WinCli extends AbstractCli {
         .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-      TIMESTAMP_PRECISION = properties.getTimestampPrecision();
+      timestamp_precision = properties.getTimestampPrecision();
 
       echoStarting();
       displayLogo(properties.getVersion());

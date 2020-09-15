@@ -145,7 +145,7 @@ public class Cli extends AbstractCli {
       String s;
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-      TIMESTAMP_PRECISION = properties.getTimestampPrecision();
+      timestamp_precision = properties.getTimestampPrecision();
 
       echoStarting();
       displayLogo(properties.getVersion());
