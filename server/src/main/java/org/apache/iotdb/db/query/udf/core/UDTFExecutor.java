@@ -33,14 +33,14 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointWindowIterationStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointIterationStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointTumblingTimeWindowIterationStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointSlidingTimeWindowIterationStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordWindowIterationStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointTumblingTimeWindowIterationStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointWindowIterationStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordIterationStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordTumblingWindowIterationStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordSlidingTimeWindowIterationStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordTumblingWindowIterationStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordWindowIterationStrategy;
 import org.apache.iotdb.db.query.udf.api.iterator.DataPointIterator;
 import org.apache.iotdb.db.query.udf.api.iterator.Iterator;
 import org.apache.iotdb.db.query.udf.datastructure.ElasticSerializableRowRecordList;
@@ -295,12 +295,8 @@ public class UDTFExecutor extends UDFExecutor {
   }
 
   @Override
-  public void executeUDF() throws QueryProcessException {
-    try {
-      udtf.transform();
-    } catch (Exception e) {
-      throw new QueryProcessException(e.toString());
-    }
+  public void executeUDF() throws Exception {
+    udtf.transform();
   }
 
   @Override

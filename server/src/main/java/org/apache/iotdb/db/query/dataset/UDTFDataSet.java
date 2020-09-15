@@ -25,9 +25,12 @@ import static org.apache.iotdb.db.query.udf.datastructure.ElasticSerializableTVL
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.api.iterator.DataPointIterator;
@@ -40,6 +43,9 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 public abstract class UDTFDataSet extends QueryDataSet {
+
+  protected static final QueryTaskPoolManager TASK_POOL_MANAGER = QueryTaskPoolManager
+      .getInstance();
 
   protected final QueryContext context;
   protected final UDTFPlan udtfPlan;
@@ -107,11 +113,15 @@ public abstract class UDTFDataSet extends QueryDataSet {
   }
 
   private void setupAndExecuteUDFs() throws QueryProcessException {
-    for (UDTFExecutor executor : udtfPlan.getDeduplicatedExecutors()) {
-      executor.setupUDF(context, udtfPlan, rawDataColumns);
+    List<UDTFExecutor> executors = udtfPlan.getDeduplicatedExecutors();
+    CountDownLatch countDownLatch = new CountDownLatch(executors.size());
+    for (UDTFExecutor executor : executors) {
+      TASK_POOL_MANAGER.submit(new UDFExecutionTask(executor, countDownLatch));
     }
-    for (UDTFExecutor executor : udtfPlan.getDeduplicatedExecutors()) {
-      executor.executeUDF();
+    try {
+      countDownLatch.await();
+    } catch (InterruptedException e) {
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
@@ -218,5 +228,26 @@ public abstract class UDTFDataSet extends QueryDataSet {
 
   public void finalizeUDFs() {
     udtfPlan.finalizeUDFExecutors();
+  }
+
+  private class UDFExecutionTask extends WrappedRunnable {
+
+    private final UDTFExecutor executor;
+    private final CountDownLatch countDownLatch;
+
+    public UDFExecutionTask(UDTFExecutor executor, CountDownLatch countDownLatch) {
+      this.executor = executor;
+      this.countDownLatch = countDownLatch;
+    }
+
+    @Override
+    public void runMayThrow() throws Exception {
+      try {
+        executor.setupUDF(context, udtfPlan, rawDataColumns);
+        executor.executeUDF();
+      } finally {
+        countDownLatch.countDown();
+      }
+    }
   }
 }
