@@ -663,6 +663,19 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Get the count of storage group under the given prefix path.
+   *
+   * @param prefixPath a prefix path or a full path, may contain '*'.
+   */
+  int getStorageGroupNum(PartialPath prefixPath) throws MetadataException {
+    String[] nodes = prefixPath.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(prefixPath.getFullPath());
+    }
+    return getStorageGroupCount(root, nodes, 1, "");
+  }
+
+  /**
    * Get the count of nodes in the given level under the given prefix path.
    */
   int getNodesCountInGivenLevel(PartialPath prefixPath, int level) throws MetadataException {
@@ -730,6 +743,31 @@ public class MTree implements Serializable {
           deviceAdded = true;
         }
         cnt += getDevicesCount(child, nodes, idx + 1);
+      }
+    }
+    return cnt;
+  }
+
+  /**
+   * Traverse the MTree to get the count of storage group.
+   */
+  private int getStorageGroupCount(
+      MNode node, String[] nodes, int idx, String parent) throws MetadataException {
+    int cnt = 0;
+    if (node instanceof StorageGroupMNode && idx >= nodes.length) {
+      cnt++;
+      return cnt;
+    }
+    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
+    if (!(PATH_WILDCARD).equals(nodeReg)) {
+      if (node.hasChild(nodeReg)) {
+        cnt += getStorageGroupCount(node.getChild(nodeReg),
+            nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR);
+      }
+    } else {
+      for (MNode child : node.getChildren().values()) {
+        cnt += getStorageGroupCount(
+            child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR);
       }
     }
     return cnt;

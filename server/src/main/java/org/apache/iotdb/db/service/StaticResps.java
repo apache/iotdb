@@ -92,7 +92,7 @@ class StaticResps {
       Collections.singletonList(TSDataType.TEXT.toString()));
 
   static final TSExecuteStatementResp SHOW_CHILD_PATHS = getNoTimeExecuteResp(
-      Collections.singletonList(COLUMN_CHILD_PATHS),
+      Collections.singletonList (COLUMN_CHILD_PATHS),
       Collections.singletonList(TSDataType.TEXT.toString()));
 
   static final TSExecuteStatementResp COUNT_TIMESERIES = getNoTimeExecuteResp(
@@ -104,6 +104,10 @@ class StaticResps {
       Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
 
   static final TSExecuteStatementResp COUNT_DEVICES = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_COUNT),
+      Collections.singletonList(TSDataType.INT32.toString()));
+
+  static final TSExecuteStatementResp COUNT_STORAGE_GROUP = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_COUNT),
       Collections.singletonList(TSDataType.INT32.toString()));
 
