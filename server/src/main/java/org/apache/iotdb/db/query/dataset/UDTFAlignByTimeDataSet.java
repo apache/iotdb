@@ -46,7 +46,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
 
   protected TreeSet<Long> timeHeap;
 
-  // execute with value filter
+  // execute with value filters
   public UDTFAlignByTimeDataSet(QueryContext context, UDTFPlan udtfPlan,
       List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
       TimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries,
@@ -56,7 +56,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     initTimeHeap();
   }
 
-  // execute without value filter
+  // execute without value filters
   public UDTFAlignByTimeDataSet(QueryContext context, UDTFPlan udtfPlan,
       List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
       List<ManagedSeriesReader> readersOfSelectedSeries) throws QueryProcessException, IOException {

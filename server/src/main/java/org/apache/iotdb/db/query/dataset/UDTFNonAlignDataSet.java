@@ -24,6 +24,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -32,6 +34,7 @@ import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.api.iterator.DataPointIterator;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -46,7 +49,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
   protected int[] alreadyReturnedRowNumArray;
   protected int[] offsetArray;
 
-  // execute with value filter
+  // execute with value filters
   public UDTFNonAlignDataSet(QueryContext context, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
       List<TSDataType> deduplicatedDataTypes, TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries, List<Boolean> cached)
@@ -56,7 +59,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
     init();
   }
 
-  // execute without value filter
+  // execute without value filters
   public UDTFNonAlignDataSet(QueryContext context, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
       List<TSDataType> deduplicatedDataTypes, List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException {
@@ -73,19 +76,23 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
 
   @Override
   public TSQueryNonAlignDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
-      throws IOException {
+      throws IOException, InterruptedException {
     TSQueryNonAlignDataSet tsQueryNonAlignDataSet = new TSQueryNonAlignDataSet();
 
     int columnsNum = transformedDataColumns.length;
+    CountDownLatch countDownLatch = new CountDownLatch(columnsNum);
     List<ByteBuffer> timeBufferList = new ArrayList<>(columnsNum);
     List<ByteBuffer> valueBufferList = new ArrayList<>(columnsNum);
-
     for (int i = 0; i < columnsNum; ++i) {
-      Pair<ByteBuffer, ByteBuffer> timeValueByteBufferPair = fillColumnBuffer(i, fetchSize,
-          encoder); // todo: parallelization
-      timeBufferList.add(timeValueByteBufferPair.left);
-      valueBufferList.add(timeValueByteBufferPair.right);
+      timeBufferList.add(null);
+      valueBufferList.add(null);
     }
+    for (int i = 0; i < columnsNum; ++i) {
+      TASK_POOL_MANAGER.submit(
+          new FillBufferTask(i, fetchSize, encoder, timeBufferList, valueBufferList,
+              countDownLatch));
+    }
+    countDownLatch.await();
 
     tsQueryNonAlignDataSet.setTimeList(timeBufferList);
     tsQueryNonAlignDataSet.setValueList(valueBufferList);
@@ -162,11 +169,45 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
 
   @Override
   protected boolean hasNextWithoutConstraint() {
-    return false;
+    throw new NotImplementedException();
   }
 
   @Override
   protected RowRecord nextWithoutConstraint() {
-    return null;
+    throw new NotImplementedException();
+  }
+
+  private class FillBufferTask extends WrappedRunnable {
+
+    private final int transformedDataColumnIndex;
+    private final int fetchSize;
+    private final WatermarkEncoder encoder;
+    private final List<ByteBuffer> timeBufferList;
+    private final List<ByteBuffer> valueBufferList;
+
+    private final CountDownLatch countDownLatch;
+
+    public FillBufferTask(int transformedDataColumnIndex, int fetchSize, WatermarkEncoder encoder,
+        List<ByteBuffer> timeBufferList, List<ByteBuffer> valueBufferList,
+        CountDownLatch countDownLatch) {
+      this.transformedDataColumnIndex = transformedDataColumnIndex;
+      this.fetchSize = fetchSize;
+      this.encoder = encoder;
+      this.timeBufferList = timeBufferList;
+      this.valueBufferList = valueBufferList;
+      this.countDownLatch = countDownLatch;
+    }
+
+    @Override
+    public void runMayThrow() throws Exception {
+      try {
+        Pair<ByteBuffer, ByteBuffer> timeValueByteBufferPair = fillColumnBuffer(
+            transformedDataColumnIndex, fetchSize, encoder);
+        timeBufferList.set(transformedDataColumnIndex, timeValueByteBufferPair.left);
+        valueBufferList.set(transformedDataColumnIndex, timeValueByteBufferPair.right);
+      } finally {
+        countDownLatch.countDown();
+      }
+    }
   }
 }
