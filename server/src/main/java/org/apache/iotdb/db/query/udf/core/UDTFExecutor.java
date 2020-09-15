@@ -33,14 +33,14 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointBatchIterationStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointWindowIterationStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointIterationStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointSizeLimitedBatchIterationStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointTimeWindowBatchIterationStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordBatchIterationStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointTumblingTimeWindowIterationStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointSlidingTimeWindowIterationStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordWindowIterationStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordIterationStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordSizeLimitedBatchIterationStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordTimeWindowBatchIterationStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordTumblingWindowIterationStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordSlidingTimeWindowIterationStrategy;
 import org.apache.iotdb.db.query.udf.api.iterator.DataPointIterator;
 import org.apache.iotdb.db.query.udf.api.iterator.Iterator;
 import org.apache.iotdb.db.query.udf.datastructure.ElasticSerializableRowRecordList;
@@ -97,8 +97,8 @@ public class UDTFExecutor extends UDFExecutor {
     List<Iterator> dataPointIterators = new ArrayList<>();
 
     DataPointIterationStrategy[] strategies = configurations.getDataPointIterationStrategies();
-    DataPointBatchIterationStrategy[] batchIterationStrategies = configurations
-        .getDataPointBatchIterationStrategies();
+    DataPointWindowIterationStrategy[] windowIterationStrategies = configurations
+        .getDataPointWindowIterationStrategies();
 
     int size = strategies.length;
     for (int i = 0; i < size; ++i) {
@@ -113,26 +113,25 @@ public class UDTFExecutor extends UDFExecutor {
         case FETCH_BY_POINT:
           dataPointIterators.add(tvList.getDataPointIterator());
           break;
-        case FETCH_BY_SIZE_LIMITED_WINDOW:
-          DataPointSizeLimitedBatchIterationStrategy sizeLimitedBatchIterationStrategy
-              = (DataPointSizeLimitedBatchIterationStrategy) batchIterationStrategies[i];
-          int batchSize = sizeLimitedBatchIterationStrategy.getBatchSize();
-          dataPointIterators.add(!sizeLimitedBatchIterationStrategy.hasDisplayWindowBegin()
-              ? tvList.getSizeLimitedBatchIterator(batchSize)
-              : tvList.getSizeLimitedBatchIterator(batchSize,
-                  sizeLimitedBatchIterationStrategy.getDisplayWindowBegin()));
+        case FETCH_BY_TUMBLING_TIME_WINDOW:
+          DataPointTumblingTimeWindowIterationStrategy sizeLimitedWindowIterationStrategy
+              = (DataPointTumblingTimeWindowIterationStrategy) windowIterationStrategies[i];
+          int windowSize = sizeLimitedWindowIterationStrategy.getWindowSize();
+          dataPointIterators.add(!sizeLimitedWindowIterationStrategy.hasDisplayWindowBegin()
+              ? tvList.getTumblingTimeWindowIterator(windowSize)
+              : tvList.getTumblingTimeWindowIterator(windowSize,
+                  sizeLimitedWindowIterationStrategy.getDisplayWindowBegin()));
           break;
-        case FETCH_BY_TIME_WINDOW:
-          DataPointTimeWindowBatchIterationStrategy timeWindowBatchIterationStrategy
-              = (DataPointTimeWindowBatchIterationStrategy) batchIterationStrategies[i];
-          long timeInterval = timeWindowBatchIterationStrategy.getTimeInterval();
-          long slidingStep = timeWindowBatchIterationStrategy.getSlidingStep();
-          dataPointIterators.add(!timeWindowBatchIterationStrategy.hasDisplayWindowRange()
-              ? tvList.getTimeWindowBatchIterator(timeInterval, slidingStep)
-              : tvList.getTimeWindowBatchIterator(
-                  timeWindowBatchIterationStrategy.getDisplayWindowBegin(),
-                  timeWindowBatchIterationStrategy.getDisplayWindowEnd(),
-                  timeInterval, slidingStep));
+        case FETCH_BY_SLIDING_TIME_WINDOW:
+          DataPointSlidingTimeWindowIterationStrategy timeWindowWindowIterationStrategy
+              = (DataPointSlidingTimeWindowIterationStrategy) windowIterationStrategies[i];
+          long timeInterval = timeWindowWindowIterationStrategy.getTimeInterval();
+          long slidingStep = timeWindowWindowIterationStrategy.getSlidingStep();
+          dataPointIterators.add(!timeWindowWindowIterationStrategy.hasDisplayWindowRange()
+              ? tvList.getSlidingTimeWindowIterator(timeInterval, slidingStep)
+              : tvList.getSlidingTimeWindowIterator(timeInterval, slidingStep,
+                  timeWindowWindowIterationStrategy.getDisplayWindowBegin(),
+                  timeWindowWindowIterationStrategy.getDisplayWindowEnd()));
           break;
         case RANDOM_ACCESS_TO_OVERALL_DATA:
           dataPointIterators.add(tvList.asOverallDataPointIterator());
@@ -152,8 +151,8 @@ public class UDTFExecutor extends UDFExecutor {
     Map<String, RowRecordIterationStrategy> strategies = configurations
         .getRowRecordIterationStrategies();
     Map<String, List<Integer>> tablets = configurations.getTablets();
-    Map<String, RowRecordBatchIterationStrategy> batchIterationStrategies = configurations
-        .getRowRecordBatchIterationStrategies();
+    Map<String, RowRecordWindowIterationStrategy> windowIterationStrategies = configurations
+        .getRowRecordWindowIterationStrategies();
 
     for (Entry<String, RowRecordIterationStrategy> strategy : strategies.entrySet()) {
       List<Integer> pathIndexes = tablets.get(strategy.getKey());
@@ -164,36 +163,35 @@ public class UDTFExecutor extends UDFExecutor {
         case FETCH_BY_ROW:
           rowRecordIterators.put(strategy.getKey(), rowRecordList.getRowRecordIterator());
           break;
-        case FETCH_BY_SIZE_LIMITED_WINDOW:
-          RowRecordSizeLimitedBatchIterationStrategy sizeLimitedBatchIterationStrategy =
-              (RowRecordSizeLimitedBatchIterationStrategy) batchIterationStrategies
+        case FETCH_BY_TUMBLING_TIME_WINDOW:
+          RowRecordTumblingWindowIterationStrategy sizeLimitedWindowIterationStrategy =
+              (RowRecordTumblingWindowIterationStrategy) windowIterationStrategies
                   .get(strategy.getKey());
-          int batchSize = sizeLimitedBatchIterationStrategy.getBatchSize();
+          int windowSize = sizeLimitedWindowIterationStrategy.getWindowSize();
           rowRecordIterators.put(strategy.getKey(),
-              !sizeLimitedBatchIterationStrategy.hasDisplayWindowBegin()
-                  ? rowRecordList.getSizeLimitedBatchIterator(batchSize)
-                  : rowRecordList.getSizeLimitedBatchIterator(batchSize,
-                      sizeLimitedBatchIterationStrategy.getDisplayWindowBegin()));
+              !sizeLimitedWindowIterationStrategy.hasDisplayWindowBegin()
+                  ? rowRecordList.getTumblingTimeWindowIterator(windowSize)
+                  : rowRecordList.getTumblingTimeWindowIterator(windowSize,
+                      sizeLimitedWindowIterationStrategy.getDisplayWindowBegin()));
           break;
-        case FETCH_BY_TIME_WINDOW:
-          RowRecordTimeWindowBatchIterationStrategy timeWindowBatchIterationStrategy =
-              (RowRecordTimeWindowBatchIterationStrategy) batchIterationStrategies
+        case FETCH_BY_SLIDING_TIME_WINDOW:
+          RowRecordSlidingTimeWindowIterationStrategy timeWindowWindowIterationStrategy =
+              (RowRecordSlidingTimeWindowIterationStrategy) windowIterationStrategies
                   .get(strategy.getKey());
-          long timeInterval = timeWindowBatchIterationStrategy.getTimeInterval();
-          long slidingStep = timeWindowBatchIterationStrategy.getSlidingStep();
+          long timeInterval = timeWindowWindowIterationStrategy.getTimeInterval();
+          long slidingStep = timeWindowWindowIterationStrategy.getSlidingStep();
           rowRecordIterators.put(strategy.getKey(),
-              !timeWindowBatchIterationStrategy.hasDisplayWindowRange()
-                  ? rowRecordList.getTimeWindowBatchIterator(timeInterval, slidingStep)
-                  : rowRecordList.getTimeWindowBatchIterator(
-                      timeWindowBatchIterationStrategy.getDisplayWindowBegin(),
-                      timeWindowBatchIterationStrategy.getDisplayWindowBegin(),
-                      timeInterval, slidingStep));
+              !timeWindowWindowIterationStrategy.hasDisplayWindowRange()
+                  ? rowRecordList.getSlidingTimeWindowIterator(timeInterval, slidingStep)
+                  : rowRecordList.getSlidingTimeWindowIterator(timeInterval, slidingStep,
+                      timeWindowWindowIterationStrategy.getDisplayWindowBegin(),
+                      timeWindowWindowIterationStrategy.getDisplayWindowBegin()));
           break;
         case RANDOM_ACCESS_TO_OVERALL_DATA:
           rowRecordIterators.put(strategy.getKey(), rowRecordList.asOverallRowRecordIterator());
           break;
         default:
-          throw new QueryProcessException("Unsupported RowRecordBatchIterationStrategy!");
+          throw new QueryProcessException("Unsupported RowRecordWindowIterationStrategy!");
       }
     }
 

@@ -25,7 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.iterator.OverallRowRecordIterator;
-import org.apache.iotdb.db.query.udf.api.iterator.RowRecordBatchIterator;
+import org.apache.iotdb.db.query.udf.api.iterator.RowRecordWindowIterator;
 import org.apache.iotdb.db.query.udf.api.iterator.RowRecordIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -112,102 +112,102 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
   }
 
   @Override
-  public RowRecordBatchIterator getSizeLimitedBatchIterator(final int batchSize)
+  public RowRecordWindowIterator getTumblingTimeWindowIterator(final int windowSize)
       throws QueryProcessException {
-    if (batchSize <= 0) {
-      throw new QueryProcessException("Batch size should be larger than 0.");
+    if (windowSize <= 0) {
+      throw new QueryProcessException("Row record count should be larger than 0.");
     }
-    return new SizeLimitedBatchDataIterator(batchSize);
+    return new TumblingTimeWindowIterator(windowSize);
   }
 
   @Override
-  public RowRecordBatchIterator getSizeLimitedBatchIterator(final int batchSize,
+  public RowRecordWindowIterator getTumblingTimeWindowIterator(final int windowSize,
       final long displayWindowBegin) throws QueryProcessException {
-    if (batchSize <= 0) {
-      throw new QueryProcessException("Batch size should be larger than 0.");
+    if (windowSize <= 0) {
+      throw new QueryProcessException("Row record count should be larger than 0.");
     }
     try {
-      return new SizeLimitedBatchDataIterator(batchSize, displayWindowBegin);
+      return new TumblingTimeWindowIterator(windowSize, displayWindowBegin);
     } catch (IOException e) {
       throw new QueryProcessException(e.toString());
     }
   }
 
-  private class SizeLimitedBatchDataIterator implements RowRecordBatchIterator {
+  private class TumblingTimeWindowIterator implements RowRecordWindowIterator {
 
-    private final int batchSize;
+    private final int windowSize;
     private final int initialIndex;
-    private final int totalBatch;
-    private int currentBatchIndex;
-    private int currentBatchSize;
-    private int minIndexInCurrentBatch;
+    private final int totalWindow;
+    private int currentWindowIndex;
+    private int currentWindowSize;
+    private int minIndexInCurrentWindow;
 
-    SizeLimitedBatchDataIterator(int batchSize) {
-      this.batchSize = batchSize;
+    TumblingTimeWindowIterator(int windowSize) {
+      this.windowSize = windowSize;
       initialIndex = 0;
-      totalBatch = (int) Math.ceil(((double) size) / batchSize);
-      currentBatchIndex = -1;
-      currentBatchSize = 0;
-      minIndexInCurrentBatch = -batchSize;
+      totalWindow = (int) Math.ceil(((double) size) / windowSize);
+      currentWindowIndex = -1;
+      currentWindowSize = 0;
+      minIndexInCurrentWindow = -windowSize;
     }
 
-    SizeLimitedBatchDataIterator(int batchSize, long displayWindowBegin) throws IOException {
-      this.batchSize = batchSize;
+    TumblingTimeWindowIterator(int windowSize, long displayWindowBegin) throws IOException {
+      this.windowSize = windowSize;
       initialIndex = findIndexByTimestamp(displayWindowBegin);
-      totalBatch = (int) Math.ceil(((double) size - initialIndex) / batchSize);
-      currentBatchIndex = -1;
-      currentBatchSize = 0;
-      minIndexInCurrentBatch = initialIndex - batchSize;
+      totalWindow = (int) Math.ceil(((double) size - initialIndex) / windowSize);
+      currentWindowIndex = -1;
+      currentWindowSize = 0;
+      minIndexInCurrentWindow = initialIndex - windowSize;
     }
 
     @Override
-    public boolean hasNextBatch() {
-      return currentBatchIndex < totalBatch - 1;
+    public boolean hasNextWindow() {
+      return currentWindowIndex < totalWindow - 1;
     }
 
     @Override
     public void next() {
-      ++currentBatchIndex;
-      minIndexInCurrentBatch += batchSize;
-      int maxIndexInCurrentBatch = Math.min(size, minIndexInCurrentBatch + batchSize);
-      currentBatchSize = maxIndexInCurrentBatch - minIndexInCurrentBatch;
+      ++currentWindowIndex;
+      minIndexInCurrentWindow += windowSize;
+      int maxIndexInCurrentWindow = Math.min(size, minIndexInCurrentWindow + windowSize);
+      currentWindowSize = maxIndexInCurrentWindow - minIndexInCurrentWindow;
     }
 
     @Override
-    public int currentBatchIndex() {
-      return currentBatchIndex;
+    public int currentWindowIndex() {
+      return currentWindowIndex;
     }
 
     @Override
-    public RowRecordIterator currentBatch() {
-      return getRowRecordIteratorInBatch(currentBatchSize, minIndexInCurrentBatch);
+    public RowRecordIterator currentWindow() {
+      return getRowRecordIteratorInWindow(currentWindowSize, minIndexInCurrentWindow);
     }
 
     @Override
-    public int currentBatchSize() {
-      return currentBatchSize;
+    public int currentWindowSize() {
+      return currentWindowSize;
     }
 
     @Override
-    public long getTimeInCurrentBatch(int index) throws IOException {
-      return getTime(minIndexInCurrentBatch + index);
+    public long getTimeInCurrentWindow(int index) throws IOException {
+      return getTime(minIndexInCurrentWindow + index);
     }
 
     @Override
-    public RowRecord getRowRecordInCurrentBatch(int index) throws IOException {
-      return getRowRecord(minIndexInCurrentBatch + index);
+    public RowRecord getRowRecordInCurrentWindow(int index) throws IOException {
+      return getRowRecord(minIndexInCurrentWindow + index);
     }
 
     @Override
     public void reset() {
-      currentBatchIndex = -1;
-      currentBatchSize = 0;
-      minIndexInCurrentBatch = initialIndex - batchSize;
+      currentWindowIndex = -1;
+      currentWindowSize = 0;
+      minIndexInCurrentWindow = initialIndex - windowSize;
     }
   }
 
-  private RowRecordIterator getRowRecordIteratorInBatch(int currentBatchSize,
-      int minIndexInCurrentBatch) {
+  private RowRecordIterator getRowRecordIteratorInWindow(int currentWindowSize,
+      int minIndexInCurrentWindow) {
 
     return new RowRecordIterator() {
 
@@ -215,7 +215,7 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
 
       @Override
       public boolean hasNextRowRecord() {
-        return currentRowRecordIndex < currentBatchSize - 1;
+        return currentRowRecordIndex < currentWindowSize - 1;
       }
 
       @Override
@@ -230,22 +230,22 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
 
       @Override
       public RowRecord currentRowRecord() throws IOException {
-        return getRowRecord(minIndexInCurrentBatch + currentRowRecordIndex);
+        return getRowRecord(minIndexInCurrentWindow + currentRowRecordIndex);
       }
 
       @Override
       public long currentTime() throws IOException {
-        return getTime(minIndexInCurrentBatch + currentRowRecordIndex);
+        return getTime(minIndexInCurrentWindow + currentRowRecordIndex);
       }
 
       @Override
       public RowRecord nextRowRecord() throws IOException {
-        return getRowRecord(minIndexInCurrentBatch + currentRowRecordIndex + 1);
+        return getRowRecord(minIndexInCurrentWindow + currentRowRecordIndex + 1);
       }
 
       @Override
       public long nextTime() throws IOException {
-        return getTime(minIndexInCurrentBatch + currentRowRecordIndex + 1);
+        return getTime(minIndexInCurrentWindow + currentRowRecordIndex + 1);
       }
 
       @Override
@@ -256,7 +256,7 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
   }
 
   @Override
-  public RowRecordBatchIterator getTimeWindowBatchIterator(long timeInterval, long slidingStep)
+  public RowRecordWindowIterator getSlidingTimeWindowIterator(long timeInterval, long slidingStep)
       throws QueryProcessException {
     long displayWindowBegin = 0;
     long displayWindowEnd = 0;
@@ -268,13 +268,13 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
     } catch (IOException e) {
       throw new QueryProcessException(e.toString());
     }
-    return getTimeWindowBatchIterator(displayWindowBegin, displayWindowEnd, timeInterval,
-        slidingStep);
+    return getSlidingTimeWindowIterator(timeInterval, slidingStep, displayWindowBegin,
+        displayWindowEnd);
   }
 
   @Override
-  public RowRecordBatchIterator getTimeWindowBatchIterator(long displayWindowBegin,
-      long displayWindowEnd, long timeInterval, long slidingStep) throws QueryProcessException {
+  public RowRecordWindowIterator getSlidingTimeWindowIterator(long timeInterval, long slidingStep,
+      long displayWindowBegin, long displayWindowEnd) throws QueryProcessException {
     if (displayWindowEnd < displayWindowBegin) {
       throw new QueryProcessException(
           "The beginning time of the display window should not be larger than the ending time.");
@@ -292,67 +292,67 @@ public class ElasticSerializableRowRecordList implements OverallRowRecordIterato
     } catch (IOException e) {
       throw new QueryProcessException(e.toString());
     }
-    return new RowRecordBatchIterator() {
+    return new RowRecordWindowIterator() {
 
-      private int currentBatchIndex = -1;
-      private int minIndexInCurrentBatch = -1;
-      private int currentBatchSize = 0;
+      private int currentWindowIndex = -1;
+      private int minIndexInCurrentWindow = -1;
+      private int currentWindowSize = 0;
 
-      private long minTimeInNextBatch = displayWindowBegin;
-      private int minIndexInNextBatch = initialIndex;
+      private long minTimeInNextWindow = displayWindowBegin;
+      private int minIndexInNextWindow = initialIndex;
 
       @Override
-      public boolean hasNextBatch() {
-        return minTimeInNextBatch < displayWindowEnd;
+      public boolean hasNextWindow() {
+        return minTimeInNextWindow < displayWindowEnd;
       }
 
       @Override
       public void next() throws IOException {
-        ++currentBatchIndex;
-        long minTimeInCurrentBatch = minTimeInNextBatch;
-        minIndexInCurrentBatch = minIndexInNextBatch;
-        long maxTimeInCurrentBatch = Math
-            .min(minTimeInCurrentBatch + timeInterval, displayWindowEnd);
-        int maxIndexInCurrentBatch = findIndexByTimestamp(maxTimeInCurrentBatch);
-        currentBatchSize = maxIndexInCurrentBatch - minIndexInCurrentBatch;
+        ++currentWindowIndex;
+        long minTimeInCurrentWindow = minTimeInNextWindow;
+        minIndexInCurrentWindow = minIndexInNextWindow;
+        long maxTimeInCurrentWindow = Math
+            .min(minTimeInCurrentWindow + timeInterval, displayWindowEnd);
+        int maxIndexInCurrentWindow = findIndexByTimestamp(maxTimeInCurrentWindow);
+        currentWindowSize = maxIndexInCurrentWindow - minIndexInCurrentWindow;
 
-        minTimeInNextBatch = minTimeInCurrentBatch + slidingStep;
-        minIndexInNextBatch = findIndexByTimestamp(minTimeInNextBatch, minIndexInCurrentBatch);
+        minTimeInNextWindow = minTimeInCurrentWindow + slidingStep;
+        minIndexInNextWindow = findIndexByTimestamp(minTimeInNextWindow, minIndexInCurrentWindow);
       }
 
       @Override
-      public int currentBatchIndex() {
-        return currentBatchIndex;
+      public int currentWindowIndex() {
+        return currentWindowIndex;
       }
 
       @Override
-      public RowRecordIterator currentBatch() {
-        return getRowRecordIteratorInBatch(currentBatchSize, minIndexInCurrentBatch);
+      public RowRecordIterator currentWindow() {
+        return getRowRecordIteratorInWindow(currentWindowSize, minIndexInCurrentWindow);
       }
 
       @Override
-      public int currentBatchSize() {
-        return currentBatchSize;
+      public int currentWindowSize() {
+        return currentWindowSize;
       }
 
       @Override
-      public long getTimeInCurrentBatch(int index) throws IOException {
-        return getTime(minIndexInCurrentBatch + index);
+      public long getTimeInCurrentWindow(int index) throws IOException {
+        return getTime(minIndexInCurrentWindow + index);
       }
 
       @Override
-      public RowRecord getRowRecordInCurrentBatch(int index) throws IOException {
-        return getRowRecord(minIndexInCurrentBatch + index);
+      public RowRecord getRowRecordInCurrentWindow(int index) throws IOException {
+        return getRowRecord(minIndexInCurrentWindow + index);
       }
 
       @Override
       public void reset() {
-        currentBatchIndex = -1;
-        minIndexInCurrentBatch = -1;
-        currentBatchSize = 0;
+        currentWindowIndex = -1;
+        minIndexInCurrentWindow = -1;
+        currentWindowSize = 0;
 
-        minTimeInNextBatch = displayWindowBegin;
-        minIndexInNextBatch = initialIndex;
+        minTimeInNextWindow = displayWindowBegin;
+        minIndexInNextWindow = initialIndex;
       }
     };
   }

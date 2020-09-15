@@ -23,36 +23,35 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils.DurationUnit;
 
-public class DataPointSizeLimitedBatchIterationStrategy extends DataPointBatchIterationStrategy {
+public class RowRecordTumblingWindowIterationStrategy extends RowRecordWindowIterationStrategy {
 
-  private final int batchSize;
+  private final int windowSize;
 
   private Long displayWindowBegin;
 
-  public DataPointSizeLimitedBatchIterationStrategy(int seriesIndex, int batchSize) {
-    super(seriesIndex);
-    this.batchSize = batchSize;
+  public RowRecordTumblingWindowIterationStrategy(String tabletName, int windowSize) {
+    super(tabletName);
+    this.windowSize = windowSize;
   }
 
-  public DataPointSizeLimitedBatchIterationStrategy(int seriesIndex, int batchSize,
+  public RowRecordTumblingWindowIterationStrategy(String tabletName, int windowSize,
       long displayWindowBegin, DurationUnit displayWindowBeginTimeUnit) {
-    super(seriesIndex);
-    this.batchSize = batchSize;
+    super(tabletName);
+    this.windowSize = windowSize;
     this.displayWindowBegin = DatetimeUtils
         .convertDurationStrToLong(displayWindowBegin, displayWindowBeginTimeUnit.toString(), "ns");
   }
 
   @Override
   public void check() throws QueryProcessException {
-    super.check();
-    if (batchSize <= 0) {
+    if (windowSize <= 0) {
       throw new QueryProcessException(
-          String.format("Parameter batchSize(%d) should be positive.", batchSize));
+          String.format("Parameter windowSize(%d) should be positive.", windowSize));
     }
   }
 
-  public int getBatchSize() {
-    return batchSize;
+  public int getWindowSize() {
+    return windowSize;
   }
 
   public boolean hasDisplayWindowBegin() {

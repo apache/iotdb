@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
-public abstract class RowRecordBatchIterationStrategy implements IterationStrategy {
+public abstract class RowRecordWindowIterationStrategy implements IterationStrategy {
 
   private final String tabletName;
 
-  public RowRecordBatchIterationStrategy(String tabletName) {
+  public RowRecordWindowIterationStrategy(String tabletName) {
     this.tabletName = tabletName;
   }
 

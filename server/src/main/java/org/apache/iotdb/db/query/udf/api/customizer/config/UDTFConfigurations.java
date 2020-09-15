@@ -22,9 +22,9 @@ package org.apache.iotdb.db.query.udf.api.customizer.config;
 import java.util.HashMap;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointBatchIterationStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointWindowIterationStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.DataPointIterationStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordBatchIterationStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordWindowIterationStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowRecordIterationStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -37,10 +37,10 @@ public class UDTFConfigurations extends UDFConfigurations {
     this.paths = paths;
     int seriesNumber = paths.size();
     dataPointIterationStrategies = new DataPointIterationStrategy[seriesNumber];
-    dataPointBatchIterationStrategies = new DataPointBatchIterationStrategy[seriesNumber];
+    dataPointWindowIterationStrategies = new DataPointWindowIterationStrategy[seriesNumber];
     tablets = new HashMap<>();
     rowRecordIterationStrategies = new HashMap<>();
-    rowRecordBatchIterationStrategies = new HashMap<>();
+    rowRecordWindowIterationStrategies = new HashMap<>();
   }
 
 
@@ -59,12 +59,12 @@ public class UDTFConfigurations extends UDFConfigurations {
   }
 
 
-  protected DataPointBatchIterationStrategy[] dataPointBatchIterationStrategies;
+  protected DataPointWindowIterationStrategy[] dataPointWindowIterationStrategies;
 
-  public UDTFConfigurations setDataPointBatchIterationStrategy(
-      DataPointBatchIterationStrategy dataPointBatchIterationStrategy) {
-    dataPointBatchIterationStrategies[dataPointBatchIterationStrategy
-        .getSeriesIndex()] = dataPointBatchIterationStrategy;
+  public UDTFConfigurations setDataPointWindowIterationStrategy(
+      DataPointWindowIterationStrategy dataPointWindowIterationStrategy) {
+    dataPointWindowIterationStrategies[dataPointWindowIterationStrategy
+        .getSeriesIndex()] = dataPointWindowIterationStrategy;
     return this;
   }
 
@@ -86,12 +86,12 @@ public class UDTFConfigurations extends UDFConfigurations {
   }
 
 
-  protected HashMap<String, RowRecordBatchIterationStrategy> rowRecordBatchIterationStrategies;
+  protected HashMap<String, RowRecordWindowIterationStrategy> rowRecordWindowIterationStrategies;
 
-  public UDTFConfigurations setRowRecordBatchIterationStrategy(
-      RowRecordBatchIterationStrategy rowRecordBatchIterationStrategy) {
-    rowRecordBatchIterationStrategies
-        .put(rowRecordBatchIterationStrategy.getTabletName(), rowRecordBatchIterationStrategy);
+  public UDTFConfigurations setRowRecordWindowIterationStrategy(
+      RowRecordWindowIterationStrategy rowRecordWindowIterationStrategy) {
+    rowRecordWindowIterationStrategies
+        .put(rowRecordWindowIterationStrategy.getTabletName(), rowRecordWindowIterationStrategy);
     return this;
   }
 
@@ -105,15 +105,15 @@ public class UDTFConfigurations extends UDFConfigurations {
         continue;
       }
       switch (dataPointIterationStrategies[i]) {
-        case FETCH_BY_SIZE_LIMITED_WINDOW:
-        case FETCH_BY_TIME_WINDOW:
-          DataPointBatchIterationStrategy dataPointBatchIterationStrategy = dataPointBatchIterationStrategies[i];
-          if (dataPointBatchIterationStrategy == null) {
+        case FETCH_BY_TUMBLING_TIME_WINDOW:
+        case FETCH_BY_SLIDING_TIME_WINDOW:
+          DataPointWindowIterationStrategy dataPointWindowIterationStrategy = dataPointWindowIterationStrategies[i];
+          if (dataPointWindowIterationStrategy == null) {
             throw new QueryProcessException(String.format(
-                "DataPointBatchIterationStrategy is not set for corresponding data point batch iterator (seriesIndex: %d)",
+                "DataPointWindowIterationStrategy is not set for corresponding data point window iterator (seriesIndex: %d)",
                 i));
           }
-          dataPointBatchIterationStrategy.check();
+          dataPointWindowIterationStrategy.check();
           break;
       }
     }
@@ -125,16 +125,16 @@ public class UDTFConfigurations extends UDFConfigurations {
         throw new QueryProcessException("Row record iteration strategy is not set for tablet %s.");
       }
       switch (strategy) {
-        case FETCH_BY_SIZE_LIMITED_WINDOW:
-        case FETCH_BY_TIME_WINDOW:
-          RowRecordBatchIterationStrategy rowRecordBatchIterationStrategy = rowRecordBatchIterationStrategies
+        case FETCH_BY_TUMBLING_TIME_WINDOW:
+        case FETCH_BY_SLIDING_TIME_WINDOW:
+          RowRecordWindowIterationStrategy rowRecordWindowIterationStrategy = rowRecordWindowIterationStrategies
               .get(tabletName);
-          if (rowRecordBatchIterationStrategy == null) {
+          if (rowRecordWindowIterationStrategy == null) {
             throw new QueryProcessException(String.format(
-                "RowRecordBatchIterationStrategy is not set for corresponding row record batch iterator (tabletName: %s)",
+                "RowRecordWindowIterationStrategy is not set for corresponding row record window iterator (tabletName: %s)",
                 tabletName));
           }
-          rowRecordBatchIterationStrategy.check();
+          rowRecordWindowIterationStrategy.check();
           break;
       }
     }
@@ -145,8 +145,8 @@ public class UDTFConfigurations extends UDFConfigurations {
     return dataPointIterationStrategies;
   }
 
-  public DataPointBatchIterationStrategy[] getDataPointBatchIterationStrategies() {
-    return dataPointBatchIterationStrategies;
+  public DataPointWindowIterationStrategy[] getDataPointWindowIterationStrategies() {
+    return dataPointWindowIterationStrategies;
   }
 
   public HashMap<String, List<Integer>> getTablets() {
@@ -157,7 +157,7 @@ public class UDTFConfigurations extends UDFConfigurations {
     return rowRecordIterationStrategies;
   }
 
-  public HashMap<String, RowRecordBatchIterationStrategy> getRowRecordBatchIterationStrategies() {
-    return rowRecordBatchIterationStrategies;
+  public HashMap<String, RowRecordWindowIterationStrategy> getRowRecordWindowIterationStrategies() {
+    return rowRecordWindowIterationStrategies;
   }
 }

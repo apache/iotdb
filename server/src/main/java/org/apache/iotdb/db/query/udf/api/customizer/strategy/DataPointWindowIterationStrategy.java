@@ -17,26 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.iterator;
+package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
-import java.io.IOException;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 
-public interface RowRecordBatchIterator extends Iterator {
+public abstract class DataPointWindowIterationStrategy implements IterationStrategy {
 
-  boolean hasNextBatch();
+  private final int seriesIndex;
 
-  void next() throws IOException;
+  public DataPointWindowIterationStrategy(int seriesIndex) {
+    this.seriesIndex = seriesIndex;
+  }
 
-  int currentBatchIndex();
+  @Override
+  public void check() throws QueryProcessException {
+    if (seriesIndex < 0) {
+      throw new QueryProcessException(
+          String.format("Parameter seriesIndex(%d) can not be negative.", seriesIndex));
+    }
+  }
 
-  RowRecordIterator currentBatch();
-
-  int currentBatchSize();
-
-  long getTimeInCurrentBatch(int index) throws IOException;
-
-  RowRecord getRowRecordInCurrentBatch(int index) throws IOException;
-
-  void reset();
+  public int getSeriesIndex() {
+    return seriesIndex;
+  }
 }

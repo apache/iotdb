@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.api.iterator.DataPointBatchIterator;
+import org.apache.iotdb.db.query.udf.api.iterator.DataPointWindowIterator;
 import org.apache.iotdb.db.query.udf.api.iterator.DataPointIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -88,30 +88,30 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
 
     testOrderedAccessByDataPointIterator(dataType);
 
-    testOrderedAccessBySizeLimitedDataPointBatchIterator(dataType, 0);
-    testOrderedAccessBySizeLimitedDataPointBatchIterator(dataType, ITERATION_TIMES / 2);
+    testOrderedAccessByTumblingTimeWindowIterator(dataType, 0);
+    testOrderedAccessByTumblingTimeWindowIterator(dataType, ITERATION_TIMES / 2);
 
-    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, 0, ITERATION_TIMES, BATCH_SIZE,
+    testOrderedAccessBySlidingTimeWindowIterator(dataType, 0, ITERATION_TIMES, BATCH_SIZE,
         BATCH_SIZE);
-    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, (int) (0.25 * ITERATION_TIMES),
+    testOrderedAccessBySlidingTimeWindowIterator(dataType, (int) (0.25 * ITERATION_TIMES),
         (int) (0.75 * ITERATION_TIMES), BATCH_SIZE, BATCH_SIZE);
 
-    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, 0, ITERATION_TIMES,
+    testOrderedAccessBySlidingTimeWindowIterator(dataType, 0, ITERATION_TIMES,
         BATCH_SIZE / 2, 2 * BATCH_SIZE);
-    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, (int) (0.25 * ITERATION_TIMES),
+    testOrderedAccessBySlidingTimeWindowIterator(dataType, (int) (0.25 * ITERATION_TIMES),
         (int) (0.75 * ITERATION_TIMES), BATCH_SIZE / 2, 2 * BATCH_SIZE);
 
-    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, 0, ITERATION_TIMES,
+    testOrderedAccessBySlidingTimeWindowIterator(dataType, 0, ITERATION_TIMES,
         2 * BATCH_SIZE, BATCH_SIZE / 2);
-    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, (int) (0.25 * ITERATION_TIMES),
+    testOrderedAccessBySlidingTimeWindowIterator(dataType, (int) (0.25 * ITERATION_TIMES),
         (int) (0.75 * ITERATION_TIMES), 2 * BATCH_SIZE, BATCH_SIZE / 2);
 
-    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, 0, 0, 2 * BATCH_SIZE,
+    testOrderedAccessBySlidingTimeWindowIterator(dataType, 0, 0, 2 * BATCH_SIZE,
         BATCH_SIZE / 2);
 
-    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, (int) (0.25 * ITERATION_TIMES),
+    testOrderedAccessBySlidingTimeWindowIterator(dataType, (int) (0.25 * ITERATION_TIMES),
         (int) (0.6 * ITERATION_TIMES), 3 * BATCH_SIZE, (int) (0.3 * BATCH_SIZE));
-    testOrderedAccessByTimeWindowDataPointBatchIterator(dataType, (int) (0.25 * ITERATION_TIMES),
+    testOrderedAccessBySlidingTimeWindowIterator(dataType, (int) (0.25 * ITERATION_TIMES),
         (int) (0.6 * ITERATION_TIMES), (int) (0.3 * BATCH_SIZE), 3 * BATCH_SIZE);
   }
 
@@ -292,42 +292,42 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     assertEquals(ITERATION_TIMES, count);
   }
 
-  private void testOrderedAccessBySizeLimitedDataPointBatchIterator(TSDataType dataType,
+  private void testOrderedAccessByTumblingTimeWindowIterator(TSDataType dataType,
       int displayWindowBegin) {
     int iterationTimes = ITERATION_TIMES - displayWindowBegin;
     int totalInFirstExecution = 0;
     int totalInSecondExecution = 0;
     try {
       // test different constructors
-      DataPointBatchIterator batchIterator = iterationTimes == ITERATION_TIMES
-          ? tvList.getSizeLimitedBatchIterator(BATCH_SIZE)
-          : tvList.getSizeLimitedBatchIterator(BATCH_SIZE, displayWindowBegin);
+      DataPointWindowIterator windowIterator = iterationTimes == ITERATION_TIMES
+          ? tvList.getTumblingTimeWindowIterator(BATCH_SIZE)
+          : tvList.getTumblingTimeWindowIterator(BATCH_SIZE, displayWindowBegin);
 
-      int batchCount = 0;
-      while (batchIterator.hasNextBatch()) {
-        batchIterator.next();
-        testRandomAccessByIndexInDataPointBatch(dataType,
-            displayWindowBegin + totalInFirstExecution, batchIterator);
-        totalInFirstExecution = testDataPointIteratorGeneratedByDataPointBatchIterator(dataType,
-            displayWindowBegin + batchIterator.currentBatchIndex() * BATCH_SIZE,
-            batchIterator.currentBatch(), BATCH_SIZE, totalInFirstExecution);
-        ++batchCount;
+      int windowCount = 0;
+      while (windowIterator.hasNextWindow()) {
+        windowIterator.next();
+        testRandomAccessByIndexInDataPointWindow(dataType,
+            displayWindowBegin + totalInFirstExecution, windowIterator);
+        totalInFirstExecution = testDataPointIteratorGeneratedByDataPointWindowIterator(dataType,
+            displayWindowBegin + windowIterator.currentWindowIndex() * BATCH_SIZE,
+            windowIterator.currentWindow(), BATCH_SIZE, totalInFirstExecution);
+        ++windowCount;
       }
-      assertEquals(iterationTimes / BATCH_SIZE, batchCount);
+      assertEquals(iterationTimes / BATCH_SIZE, windowCount);
 
-      batchIterator.reset();
+      windowIterator.reset();
 
-      batchCount = 0;
-      while (batchIterator.hasNextBatch()) {
-        batchIterator.next();
-        testRandomAccessByIndexInDataPointBatch(dataType,
-            displayWindowBegin + totalInSecondExecution, batchIterator);
-        totalInSecondExecution = testDataPointIteratorGeneratedByDataPointBatchIterator(dataType,
-            displayWindowBegin + batchIterator.currentBatchIndex() * BATCH_SIZE,
-            batchIterator.currentBatch(), BATCH_SIZE, totalInSecondExecution);
-        ++batchCount;
+      windowCount = 0;
+      while (windowIterator.hasNextWindow()) {
+        windowIterator.next();
+        testRandomAccessByIndexInDataPointWindow(dataType,
+            displayWindowBegin + totalInSecondExecution, windowIterator);
+        totalInSecondExecution = testDataPointIteratorGeneratedByDataPointWindowIterator(dataType,
+            displayWindowBegin + windowIterator.currentWindowIndex() * BATCH_SIZE,
+            windowIterator.currentWindow(), BATCH_SIZE, totalInSecondExecution);
+        ++windowCount;
       }
-      assertEquals(iterationTimes / BATCH_SIZE, batchCount);
+      assertEquals(iterationTimes / BATCH_SIZE, windowCount);
 
       assertEquals(totalInFirstExecution, totalInSecondExecution);
     } catch (IOException | QueryProcessException e) {
@@ -336,69 +336,70 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     assertEquals(iterationTimes, totalInFirstExecution);
   }
 
-  private void testOrderedAccessByTimeWindowDataPointBatchIterator(TSDataType dataType,
+  private void testOrderedAccessBySlidingTimeWindowIterator(TSDataType dataType,
       int displayWindowBegin, int displayWindowEnd, int timeInterval, int slidingStep) {
     int timeWindow = displayWindowEnd - displayWindowBegin;
     try {
-      DataPointBatchIterator batchIterator = timeWindow == ITERATION_TIMES
-          ? tvList.getTimeWindowBatchIterator(timeInterval, slidingStep)
-          : tvList.getTimeWindowBatchIterator(displayWindowBegin, displayWindowEnd,
-              timeInterval, slidingStep); // test different constructors
+      DataPointWindowIterator windowIterator = timeWindow == ITERATION_TIMES
+          ? tvList.getSlidingTimeWindowIterator(timeInterval, slidingStep)
+          : tvList.getSlidingTimeWindowIterator(timeInterval, slidingStep,
+              displayWindowBegin, displayWindowEnd); // test different constructors
 
-      testOrderedAccessByTimeWindowDataPointBatchIteratorOnce(dataType, displayWindowBegin,
-          displayWindowEnd, timeInterval, slidingStep, batchIterator);
-      batchIterator.reset();
-      testOrderedAccessByTimeWindowDataPointBatchIteratorOnce(dataType, displayWindowBegin,
-          displayWindowEnd, timeInterval, slidingStep, batchIterator);
+      testOrderedAccessBySlidingTimeWindowIteratorOnce(dataType, displayWindowBegin,
+          displayWindowEnd, timeInterval, slidingStep, windowIterator);
+      windowIterator.reset();
+      testOrderedAccessBySlidingTimeWindowIteratorOnce(dataType, displayWindowBegin,
+          displayWindowEnd, timeInterval, slidingStep, windowIterator);
     } catch (IOException | QueryProcessException e) {
       fail(e.toString());
     }
   }
 
-  private void testOrderedAccessByTimeWindowDataPointBatchIteratorOnce(TSDataType dataType,
+  private void testOrderedAccessBySlidingTimeWindowIteratorOnce(TSDataType dataType,
       int displayWindowBegin, int displayWindowEnd, int timeInterval, int slidingStep,
-      DataPointBatchIterator batchIterator) throws IOException {
+      DataPointWindowIterator windowIterator) throws IOException {
     int timeWindow = displayWindowEnd - displayWindowBegin;
     int expectedTotal = 0;
     int actualTotal = 0;
-    int batchCount = 0;
+    int windowCount = 0;
 
-    while (batchIterator.hasNextBatch()) {
-      batchIterator.next();
-      int initialIndex = displayWindowBegin + batchIterator.currentBatchIndex() * slidingStep;
-      testRandomAccessByIndexInDataPointBatch(dataType, initialIndex, batchIterator);
-      int expectedBatchSize = displayWindowEnd < initialIndex + timeInterval
+    while (windowIterator.hasNextWindow()) {
+      windowIterator.next();
+      int initialIndex = displayWindowBegin + windowIterator.currentWindowIndex() * slidingStep;
+      testRandomAccessByIndexInDataPointWindow(dataType, initialIndex, windowIterator);
+      int expectedWindowSize = displayWindowEnd < initialIndex + timeInterval
           ? displayWindowEnd - initialIndex : timeInterval;
 
-      DataPointIterator dataPointIterator = batchIterator.currentBatch();
-      int actualTotalInFirstExecution = testDataPointIteratorGeneratedByDataPointBatchIterator(
-          dataType, initialIndex, dataPointIterator, expectedBatchSize, actualTotal);
+      DataPointIterator dataPointIterator = windowIterator.currentWindow();
+      int actualTotalInFirstExecution = testDataPointIteratorGeneratedByDataPointWindowIterator(
+          dataType, initialIndex, dataPointIterator, expectedWindowSize, actualTotal);
       dataPointIterator.reset();
-      actualTotal = testDataPointIteratorGeneratedByDataPointBatchIterator(dataType, initialIndex,
-          dataPointIterator, expectedBatchSize, actualTotal);
+      actualTotal = testDataPointIteratorGeneratedByDataPointWindowIterator(dataType, initialIndex,
+          dataPointIterator, expectedWindowSize, actualTotal);
       assertEquals(actualTotalInFirstExecution, actualTotal);
 
-      expectedTotal += expectedBatchSize;
-      ++batchCount;
+      expectedTotal += expectedWindowSize;
+      ++windowCount;
     }
 
-    assertEquals((int) Math.ceil((float) timeWindow / slidingStep), batchCount);
+    assertEquals((int) Math.ceil((float) timeWindow / slidingStep), windowCount);
     assertEquals(expectedTotal, actualTotal);
   }
 
-  private int testDataPointIteratorGeneratedByDataPointBatchIterator(TSDataType dataType,
+  private int testDataPointIteratorGeneratedByDataPointWindowIterator(TSDataType dataType,
       int initialIndex, DataPointIterator dataPointIterator, int expectedDataPointCount,
       int total) {
-    int totalInFirstExecution = testDataPointIteratorGeneratedByDataPointBatchIteratorOnce(dataType,
+    int totalInFirstExecution = testDataPointIteratorGeneratedByDataPointWindowIteratorOnce(
+        dataType,
         initialIndex, dataPointIterator, expectedDataPointCount, total);
     dataPointIterator.reset();
-    total = testDataPointIteratorGeneratedByDataPointBatchIteratorOnce(dataType, initialIndex,
+    total = testDataPointIteratorGeneratedByDataPointWindowIteratorOnce(dataType, initialIndex,
         dataPointIterator, expectedDataPointCount, total);
     assertEquals(totalInFirstExecution, total);
     return total;
   }
 
-  private int testDataPointIteratorGeneratedByDataPointBatchIteratorOnce(TSDataType dataType,
+  private int testDataPointIteratorGeneratedByDataPointWindowIteratorOnce(TSDataType dataType,
       int initialIndex, DataPointIterator dataPointIterator, int expectedDataPointCount,
       int total) {
     int actualDataPointCount = 0;
@@ -492,11 +493,11 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     return total;
   }
 
-  private void testRandomAccessByIndexInDataPointBatch(TSDataType dataType, int initialIndex,
-      DataPointBatchIterator batchIterator) {
-    int batchSize = batchIterator.currentBatchSize();
-    List<Integer> accessOrder = new ArrayList<>(batchSize);
-    for (int i = 0; i < batchSize; ++i) {
+  private void testRandomAccessByIndexInDataPointWindow(TSDataType dataType, int initialIndex,
+      DataPointWindowIterator windowIterator) {
+    int windowSize = windowIterator.currentWindowSize();
+    List<Integer> accessOrder = new ArrayList<>(windowSize);
+    for (int i = 0; i < windowSize; ++i) {
       accessOrder.add(i);
     }
     Collections.shuffle(accessOrder);
@@ -504,54 +505,54 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     try {
       switch (dataType) {
         case INT32:
-          for (int i = 0; i < batchSize; ++i) {
+          for (int i = 0; i < windowSize; ++i) {
             int accessIndex = accessOrder.get(i);
             int expected = initialIndex + accessIndex;
-            assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
-            assertEquals(expected, batchIterator.getIntInCurrentBatch(accessIndex));
+            assertEquals(expected, windowIterator.getTimeInCurrentWindow(accessIndex));
+            assertEquals(expected, windowIterator.getIntInCurrentWindow(accessIndex));
           }
           break;
         case INT64:
-          for (int i = 0; i < batchSize; ++i) {
+          for (int i = 0; i < windowSize; ++i) {
             int accessIndex = accessOrder.get(i);
             int expected = initialIndex + accessIndex;
-            assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
-            assertEquals(expected, batchIterator.getLongInCurrentBatch(accessIndex));
+            assertEquals(expected, windowIterator.getTimeInCurrentWindow(accessIndex));
+            assertEquals(expected, windowIterator.getLongInCurrentWindow(accessIndex));
           }
           break;
         case FLOAT:
-          for (int i = 0; i < batchSize; ++i) {
+          for (int i = 0; i < windowSize; ++i) {
             int accessIndex = accessOrder.get(i);
             int expected = initialIndex + accessIndex;
-            assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
-            assertEquals(expected, batchIterator.getFloatInCurrentBatch(accessIndex), 0);
+            assertEquals(expected, windowIterator.getTimeInCurrentWindow(accessIndex));
+            assertEquals(expected, windowIterator.getFloatInCurrentWindow(accessIndex), 0);
           }
           break;
         case DOUBLE:
-          for (int i = 0; i < batchSize; ++i) {
+          for (int i = 0; i < windowSize; ++i) {
             int accessIndex = accessOrder.get(i);
             int expected = initialIndex + accessIndex;
-            assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
-            assertEquals(expected, batchIterator.getDoubleInCurrentBatch(accessIndex), 0);
+            assertEquals(expected, windowIterator.getTimeInCurrentWindow(accessIndex));
+            assertEquals(expected, windowIterator.getDoubleInCurrentWindow(accessIndex), 0);
           }
           break;
         case BOOLEAN:
-          for (int i = 0; i < batchSize; ++i) {
+          for (int i = 0; i < windowSize; ++i) {
             int accessIndex = accessOrder.get(i);
             int expected = initialIndex + accessIndex;
-            assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
-            assertEquals(expected % 2 == 0, batchIterator.getBooleanInCurrentBatch(accessIndex));
+            assertEquals(expected, windowIterator.getTimeInCurrentWindow(accessIndex));
+            assertEquals(expected % 2 == 0, windowIterator.getBooleanInCurrentWindow(accessIndex));
           }
           break;
         case TEXT:
-          for (int i = 0; i < batchSize; ++i) {
+          for (int i = 0; i < windowSize; ++i) {
             int accessIndex = accessOrder.get(i);
             int expected = initialIndex + accessIndex;
             Binary value = Binary.valueOf(String.valueOf(expected));
-            assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
-            assertEquals(value, batchIterator.getBinaryInCurrentBatch(accessIndex));
+            assertEquals(expected, windowIterator.getTimeInCurrentWindow(accessIndex));
+            assertEquals(value, windowIterator.getBinaryInCurrentWindow(accessIndex));
             assertEquals(value.getStringValue(),
-                batchIterator.getStringInCurrentBatch(accessIndex));
+                windowIterator.getStringInCurrentWindow(accessIndex));
           }
           break;
       }

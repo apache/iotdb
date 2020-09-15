@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils.DurationUnit;
 
-public class RowRecordTimeWindowBatchIterationStrategy extends RowRecordBatchIterationStrategy {
+public class DataPointSlidingTimeWindowIterationStrategy extends DataPointWindowIterationStrategy {
 
   private final long timeInterval;
   private final long slidingStep;
@@ -31,12 +31,12 @@ public class RowRecordTimeWindowBatchIterationStrategy extends RowRecordBatchIte
   private Long displayWindowBegin;
   private Long displayWindowEnd;
 
-  public RowRecordTimeWindowBatchIterationStrategy(String tabletName,
+  public DataPointSlidingTimeWindowIterationStrategy(int seriesIndex,
       long displayWindowBegin, DurationUnit displayWindowBeginTimeUnit,
       long displayWindowEnd, DurationUnit displayWindowEndTimeUnit,
       long timeInterval, DurationUnit timeIntervalTimeUnit,
       long slidingStep, DurationUnit slidingStepTimeUnit) {
-    super(tabletName);
+    super(seriesIndex);
     this.displayWindowBegin = DatetimeUtils
         .convertDurationStrToLong(displayWindowBegin, displayWindowBeginTimeUnit.toString(), "ns");
     this.displayWindowEnd = DatetimeUtils
@@ -47,10 +47,10 @@ public class RowRecordTimeWindowBatchIterationStrategy extends RowRecordBatchIte
         .convertDurationStrToLong(slidingStep, slidingStepTimeUnit.toString(), "ns");
   }
 
-  public RowRecordTimeWindowBatchIterationStrategy(String tabletName,
+  public DataPointSlidingTimeWindowIterationStrategy(int seriesIndex,
       long timeInterval, DurationUnit timeIntervalTimeUnit,
       long slidingStep, DurationUnit slidingStepTimeUnit) {
-    super(tabletName);
+    super(seriesIndex);
     this.timeInterval = DatetimeUtils
         .convertDurationStrToLong(timeInterval, timeIntervalTimeUnit.toString(), "ns");
     this.slidingStep = DatetimeUtils
@@ -59,6 +59,7 @@ public class RowRecordTimeWindowBatchIterationStrategy extends RowRecordBatchIte
 
   @Override
   public void check() throws QueryProcessException {
+    super.check();
     if (timeInterval <= 0) {
       throw new QueryProcessException(
           String.format("Parameter timeInterval(%d) should be positive.", timeInterval));

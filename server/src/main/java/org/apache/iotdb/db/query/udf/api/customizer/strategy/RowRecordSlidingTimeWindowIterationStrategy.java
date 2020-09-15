@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils.DurationUnit;
 
-public class DataPointTimeWindowBatchIterationStrategy extends DataPointBatchIterationStrategy {
+public class RowRecordSlidingTimeWindowIterationStrategy extends RowRecordWindowIterationStrategy {
 
   private final long timeInterval;
   private final long slidingStep;
@@ -31,12 +31,12 @@ public class DataPointTimeWindowBatchIterationStrategy extends DataPointBatchIte
   private Long displayWindowBegin;
   private Long displayWindowEnd;
 
-  public DataPointTimeWindowBatchIterationStrategy(int seriesIndex,
+  public RowRecordSlidingTimeWindowIterationStrategy(String tabletName,
       long displayWindowBegin, DurationUnit displayWindowBeginTimeUnit,
       long displayWindowEnd, DurationUnit displayWindowEndTimeUnit,
       long timeInterval, DurationUnit timeIntervalTimeUnit,
       long slidingStep, DurationUnit slidingStepTimeUnit) {
-    super(seriesIndex);
+    super(tabletName);
     this.displayWindowBegin = DatetimeUtils
         .convertDurationStrToLong(displayWindowBegin, displayWindowBeginTimeUnit.toString(), "ns");
     this.displayWindowEnd = DatetimeUtils
@@ -47,10 +47,10 @@ public class DataPointTimeWindowBatchIterationStrategy extends DataPointBatchIte
         .convertDurationStrToLong(slidingStep, slidingStepTimeUnit.toString(), "ns");
   }
 
-  public DataPointTimeWindowBatchIterationStrategy(int seriesIndex,
+  public RowRecordSlidingTimeWindowIterationStrategy(String tabletName,
       long timeInterval, DurationUnit timeIntervalTimeUnit,
       long slidingStep, DurationUnit slidingStepTimeUnit) {
-    super(seriesIndex);
+    super(tabletName);
     this.timeInterval = DatetimeUtils
         .convertDurationStrToLong(timeInterval, timeIntervalTimeUnit.toString(), "ns");
     this.slidingStep = DatetimeUtils
@@ -59,7 +59,6 @@ public class DataPointTimeWindowBatchIterationStrategy extends DataPointBatchIte
 
   @Override
   public void check() throws QueryProcessException {
-    super.check();
     if (timeInterval <= 0) {
       throw new QueryProcessException(
           String.format("Parameter timeInterval(%d) should be positive.", timeInterval));

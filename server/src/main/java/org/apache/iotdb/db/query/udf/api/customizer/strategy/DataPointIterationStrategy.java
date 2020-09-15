@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 public enum DataPointIterationStrategy {
 
   FETCH_BY_POINT,
-  FETCH_BY_TIME_WINDOW,
-  FETCH_BY_SIZE_LIMITED_WINDOW,
+  FETCH_BY_SLIDING_TIME_WINDOW,
+  FETCH_BY_TUMBLING_TIME_WINDOW,
   RANDOM_ACCESS_TO_OVERALL_DATA,
 }

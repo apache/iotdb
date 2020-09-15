@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.api.iterator.RowRecordBatchIterator;
+import org.apache.iotdb.db.query.udf.api.iterator.RowRecordWindowIterator;
 import org.apache.iotdb.db.query.udf.api.iterator.RowRecordIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -64,28 +64,28 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
 
     testOrderedAccessByRowRecordIterator();
 
-    testOrderedAccessBySizeLimitedRowRecordBatchIterator(0);
-    testOrderedAccessBySizeLimitedRowRecordBatchIterator(ITERATION_TIMES / 2);
+    testOrderedAccessByTumblingTimeWindowIterator(0);
+    testOrderedAccessByTumblingTimeWindowIterator(ITERATION_TIMES / 2);
 
-    testOrderedAccessByTimeWindowRowRecordBatchIterator(0, ITERATION_TIMES, BATCH_SIZE, BATCH_SIZE);
-    testOrderedAccessByTimeWindowRowRecordBatchIterator((int) (0.25 * ITERATION_TIMES),
+    testOrderedAccessBySlidingTimeWindowIterator(0, ITERATION_TIMES, BATCH_SIZE, BATCH_SIZE);
+    testOrderedAccessBySlidingTimeWindowIterator((int) (0.25 * ITERATION_TIMES),
         (int) (0.75 * ITERATION_TIMES), BATCH_SIZE, BATCH_SIZE);
 
-    testOrderedAccessByTimeWindowRowRecordBatchIterator(0, ITERATION_TIMES, BATCH_SIZE / 2,
+    testOrderedAccessBySlidingTimeWindowIterator(0, ITERATION_TIMES, BATCH_SIZE / 2,
         2 * BATCH_SIZE);
-    testOrderedAccessByTimeWindowRowRecordBatchIterator((int) (0.25 * ITERATION_TIMES),
+    testOrderedAccessBySlidingTimeWindowIterator((int) (0.25 * ITERATION_TIMES),
         (int) (0.75 * ITERATION_TIMES), BATCH_SIZE / 2, 2 * BATCH_SIZE);
 
-    testOrderedAccessByTimeWindowRowRecordBatchIterator(0, ITERATION_TIMES, 2 * BATCH_SIZE,
+    testOrderedAccessBySlidingTimeWindowIterator(0, ITERATION_TIMES, 2 * BATCH_SIZE,
         BATCH_SIZE / 2);
-    testOrderedAccessByTimeWindowRowRecordBatchIterator((int) (0.25 * ITERATION_TIMES),
+    testOrderedAccessBySlidingTimeWindowIterator((int) (0.25 * ITERATION_TIMES),
         (int) (0.75 * ITERATION_TIMES), 2 * BATCH_SIZE, BATCH_SIZE / 2);
 
-    testOrderedAccessByTimeWindowRowRecordBatchIterator(0, 0, 2 * BATCH_SIZE, BATCH_SIZE / 2);
+    testOrderedAccessBySlidingTimeWindowIterator(0, 0, 2 * BATCH_SIZE, BATCH_SIZE / 2);
 
-    testOrderedAccessByTimeWindowRowRecordBatchIterator((int) (0.25 * ITERATION_TIMES),
+    testOrderedAccessBySlidingTimeWindowIterator((int) (0.25 * ITERATION_TIMES),
         (int) (0.6 * ITERATION_TIMES), 3 * BATCH_SIZE, (int) (0.3 * BATCH_SIZE));
-    testOrderedAccessByTimeWindowRowRecordBatchIterator((int) (0.25 * ITERATION_TIMES),
+    testOrderedAccessBySlidingTimeWindowIterator((int) (0.25 * ITERATION_TIMES),
         (int) (0.6 * ITERATION_TIMES), (int) (0.3 * BATCH_SIZE), 3 * BATCH_SIZE);
   }
 
@@ -194,41 +194,41 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
     assertEquals(ITERATION_TIMES, count);
   }
 
-  private void testOrderedAccessBySizeLimitedRowRecordBatchIterator(int displayWindowBegin) {
+  private void testOrderedAccessByTumblingTimeWindowIterator(int displayWindowBegin) {
     int iterationTimes = ITERATION_TIMES - displayWindowBegin;
     int totalInFirstExecution = 0;
     int totalInSecondExecution = 0;
     try {
       // test different constructors
-      RowRecordBatchIterator batchIterator = iterationTimes == ITERATION_TIMES
-          ? rowRecordList.getSizeLimitedBatchIterator(BATCH_SIZE)
-          : rowRecordList.getSizeLimitedBatchIterator(BATCH_SIZE, displayWindowBegin);
+      RowRecordWindowIterator windowIterator = iterationTimes == ITERATION_TIMES
+          ? rowRecordList.getTumblingTimeWindowIterator(BATCH_SIZE)
+          : rowRecordList.getTumblingTimeWindowIterator(BATCH_SIZE, displayWindowBegin);
 
-      int batchCount = 0;
-      while (batchIterator.hasNextBatch()) {
-        batchIterator.next();
-        testRandomAccessByIndexInRowRecordBatch(displayWindowBegin + totalInFirstExecution,
-            batchIterator);
-        totalInFirstExecution = testRowRecordIteratorGeneratedByRowRecordBatchIterator(
-            displayWindowBegin + batchIterator.currentBatchIndex() * BATCH_SIZE,
-            batchIterator.currentBatch(), BATCH_SIZE, totalInFirstExecution);
-        ++batchCount;
+      int windowCount = 0;
+      while (windowIterator.hasNextWindow()) {
+        windowIterator.next();
+        testRandomAccessByIndexInRowRecordWindow(displayWindowBegin + totalInFirstExecution,
+            windowIterator);
+        totalInFirstExecution = testRowRecordIteratorGeneratedByRowRecordWindowIterator(
+            displayWindowBegin + windowIterator.currentWindowIndex() * BATCH_SIZE,
+            windowIterator.currentWindow(), BATCH_SIZE, totalInFirstExecution);
+        ++windowCount;
       }
-      assertEquals(iterationTimes / BATCH_SIZE, batchCount);
+      assertEquals(iterationTimes / BATCH_SIZE, windowCount);
 
-      batchIterator.reset();
+      windowIterator.reset();
 
-      batchCount = 0;
-      while (batchIterator.hasNextBatch()) {
-        batchIterator.next();
-        testRandomAccessByIndexInRowRecordBatch(displayWindowBegin + totalInSecondExecution,
-            batchIterator);
-        totalInSecondExecution = testRowRecordIteratorGeneratedByRowRecordBatchIterator(
-            displayWindowBegin + batchIterator.currentBatchIndex() * BATCH_SIZE,
-            batchIterator.currentBatch(), BATCH_SIZE, totalInSecondExecution);
-        ++batchCount;
+      windowCount = 0;
+      while (windowIterator.hasNextWindow()) {
+        windowIterator.next();
+        testRandomAccessByIndexInRowRecordWindow(displayWindowBegin + totalInSecondExecution,
+            windowIterator);
+        totalInSecondExecution = testRowRecordIteratorGeneratedByRowRecordWindowIterator(
+            displayWindowBegin + windowIterator.currentWindowIndex() * BATCH_SIZE,
+            windowIterator.currentWindow(), BATCH_SIZE, totalInSecondExecution);
+        ++windowCount;
       }
-      assertEquals(iterationTimes / BATCH_SIZE, batchCount);
+      assertEquals(iterationTimes / BATCH_SIZE, windowCount);
 
       assertEquals(totalInFirstExecution, totalInSecondExecution);
     } catch (IOException | QueryProcessException e) {
@@ -237,68 +237,69 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
     assertEquals(iterationTimes, totalInFirstExecution);
   }
 
-  private void testOrderedAccessByTimeWindowRowRecordBatchIterator(int displayWindowBegin,
+  private void testOrderedAccessBySlidingTimeWindowIterator(int displayWindowBegin,
       int displayWindowEnd, int timeInterval, int slidingStep) {
     int timeWindow = displayWindowEnd - displayWindowBegin;
     try {
-      RowRecordBatchIterator batchIterator = timeWindow == ITERATION_TIMES
-          ? rowRecordList.getTimeWindowBatchIterator(timeInterval, slidingStep)
-          : rowRecordList.getTimeWindowBatchIterator(displayWindowBegin, displayWindowEnd,
-              timeInterval, slidingStep); // test different constructors
+      RowRecordWindowIterator windowIterator = timeWindow == ITERATION_TIMES
+          ? rowRecordList.getSlidingTimeWindowIterator(timeInterval, slidingStep)
+          : rowRecordList.getSlidingTimeWindowIterator(timeInterval, slidingStep,
+              displayWindowBegin, displayWindowEnd); // test different constructors
 
-      testOrderedAccessByTimeWindowRowRecordBatchIteratorOnce(displayWindowBegin, displayWindowEnd,
-          timeInterval, slidingStep, batchIterator);
-      batchIterator.reset();
-      testOrderedAccessByTimeWindowRowRecordBatchIteratorOnce(displayWindowBegin, displayWindowEnd,
-          timeInterval, slidingStep, batchIterator);
+      testOrderedAccessBySlidingTimeWindowIteratorOnce(displayWindowBegin, displayWindowEnd,
+          timeInterval, slidingStep, windowIterator);
+      windowIterator.reset();
+      testOrderedAccessBySlidingTimeWindowIteratorOnce(displayWindowBegin, displayWindowEnd,
+          timeInterval, slidingStep, windowIterator);
     } catch (IOException | QueryProcessException e) {
       fail(e.toString());
     }
   }
 
-  private void testOrderedAccessByTimeWindowRowRecordBatchIteratorOnce(int displayWindowBegin,
-      int displayWindowEnd, int timeInterval, int slidingStep, RowRecordBatchIterator batchIterator)
+  private void testOrderedAccessBySlidingTimeWindowIteratorOnce(int displayWindowBegin,
+      int displayWindowEnd, int timeInterval, int slidingStep,
+      RowRecordWindowIterator windowIterator)
       throws IOException {
     int timeWindow = displayWindowEnd - displayWindowBegin;
     int expectedTotal = 0;
     int actualTotal = 0;
-    int batchCount = 0;
+    int windowCount = 0;
 
-    while (batchIterator.hasNextBatch()) {
-      batchIterator.next();
-      int initialIndex = displayWindowBegin + batchIterator.currentBatchIndex() * slidingStep;
-      testRandomAccessByIndexInRowRecordBatch(initialIndex, batchIterator);
-      int expectedBatchSize = displayWindowEnd < initialIndex + timeInterval
+    while (windowIterator.hasNextWindow()) {
+      windowIterator.next();
+      int initialIndex = displayWindowBegin + windowIterator.currentWindowIndex() * slidingStep;
+      testRandomAccessByIndexInRowRecordWindow(initialIndex, windowIterator);
+      int expectedWindowSize = displayWindowEnd < initialIndex + timeInterval
           ? displayWindowEnd - initialIndex : timeInterval;
 
-      RowRecordIterator rowRecordIterator = batchIterator.currentBatch();
-      int actualTotalInFirstExecution = testRowRecordIteratorGeneratedByRowRecordBatchIterator(
-          initialIndex, rowRecordIterator, expectedBatchSize, actualTotal);
+      RowRecordIterator rowRecordIterator = windowIterator.currentWindow();
+      int actualTotalInFirstExecution = testRowRecordIteratorGeneratedByRowRecordWindowIterator(
+          initialIndex, rowRecordIterator, expectedWindowSize, actualTotal);
       rowRecordIterator.reset();
-      actualTotal = testRowRecordIteratorGeneratedByRowRecordBatchIterator(initialIndex,
-          rowRecordIterator, expectedBatchSize, actualTotal);
+      actualTotal = testRowRecordIteratorGeneratedByRowRecordWindowIterator(initialIndex,
+          rowRecordIterator, expectedWindowSize, actualTotal);
       assertEquals(actualTotalInFirstExecution, actualTotal);
 
-      expectedTotal += expectedBatchSize;
-      ++batchCount;
+      expectedTotal += expectedWindowSize;
+      ++windowCount;
     }
 
-    assertEquals((int) Math.ceil((float) timeWindow / slidingStep), batchCount);
+    assertEquals((int) Math.ceil((float) timeWindow / slidingStep), windowCount);
     assertEquals(expectedTotal, actualTotal);
   }
 
-  private int testRowRecordIteratorGeneratedByRowRecordBatchIterator(int initialIndex,
+  private int testRowRecordIteratorGeneratedByRowRecordWindowIterator(int initialIndex,
       RowRecordIterator rowRecordIterator, int expectedRowRecordCount, int total) {
-    int totalInFirstExecution = testRowRecordIteratorGeneratedByRowRecordBatchIteratorOnce(
+    int totalInFirstExecution = testRowRecordIteratorGeneratedByRowRecordWindowIteratorOnce(
         initialIndex, rowRecordIterator, expectedRowRecordCount, total);
     rowRecordIterator.reset();
-    total = testRowRecordIteratorGeneratedByRowRecordBatchIteratorOnce(initialIndex,
+    total = testRowRecordIteratorGeneratedByRowRecordWindowIteratorOnce(initialIndex,
         rowRecordIterator, expectedRowRecordCount, total);
     assertEquals(totalInFirstExecution, total);
     return total;
   }
 
-  private int testRowRecordIteratorGeneratedByRowRecordBatchIteratorOnce(int initialIndex,
+  private int testRowRecordIteratorGeneratedByRowRecordWindowIteratorOnce(int initialIndex,
       RowRecordIterator rowRecordIterator, int expectedRowRecordCount, int total) {
     int actualRowRecordCount = 0;
     try {
@@ -319,21 +320,21 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
     return total;
   }
 
-  private void testRandomAccessByIndexInRowRecordBatch(int initialIndex,
-      RowRecordBatchIterator batchIterator) {
-    int batchSize = batchIterator.currentBatchSize();
-    List<Integer> accessOrder = new ArrayList<>(batchSize);
-    for (int i = 0; i < batchSize; ++i) {
+  private void testRandomAccessByIndexInRowRecordWindow(int initialIndex,
+      RowRecordWindowIterator windowIterator) {
+    int windowSize = windowIterator.currentWindowSize();
+    List<Integer> accessOrder = new ArrayList<>(windowSize);
+    for (int i = 0; i < windowSize; ++i) {
       accessOrder.add(i);
     }
     Collections.shuffle(accessOrder);
 
     try {
-      for (int i = 0; i < batchSize; ++i) {
+      for (int i = 0; i < windowSize; ++i) {
         int accessIndex = accessOrder.get(i);
         int expected = initialIndex + accessIndex;
-        assertEquals(expected, batchIterator.getTimeInCurrentBatch(accessIndex));
-        testRowRecord(batchIterator.getRowRecordInCurrentBatch(accessIndex), expected);
+        assertEquals(expected, windowIterator.getTimeInCurrentWindow(accessIndex));
+        testRowRecord(windowIterator.getRowRecordInCurrentWindow(accessIndex), expected);
       }
     } catch (IOException e) {
       fail(e.toString());

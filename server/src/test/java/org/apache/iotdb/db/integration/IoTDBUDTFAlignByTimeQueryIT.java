@@ -45,7 +45,7 @@ import org.junit.Test;
 
 public class IoTDBUDTFAlignByTimeQueryIT {
 
-  protected final static int ITERATION_TIMES = 10_000;
+  protected final static int ITERATION_TIMES = 100_000;
 
   protected final static int ADDEND = 500_000;
 

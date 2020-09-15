@@ -27,17 +27,17 @@ public interface OverallRowRecordIterator extends Iterator {
 
   RowRecordIterator getRowRecordIterator();
 
-  RowRecordBatchIterator getSizeLimitedBatchIterator(final int batchSize)
+  RowRecordWindowIterator getTumblingTimeWindowIterator(final int windowSize)
       throws QueryProcessException;
 
-  RowRecordBatchIterator getSizeLimitedBatchIterator(final int batchSize,
+  RowRecordWindowIterator getTumblingTimeWindowIterator(final int windowSize,
       final long displayWindowBegin) throws QueryProcessException;
 
-  RowRecordBatchIterator getTimeWindowBatchIterator(final long timeInterval,
+  RowRecordWindowIterator getSlidingTimeWindowIterator(final long timeInterval,
       final long slidingStep) throws QueryProcessException;
 
-  RowRecordBatchIterator getTimeWindowBatchIterator(final long displayWindowBegin,
-      final long displayWindowEnd, final long timeInterval, final long slidingStep)
+  RowRecordWindowIterator getSlidingTimeWindowIterator(final long timeInterval,
+      final long slidingStep, final long displayWindowBegin, final long displayWindowEnd)
       throws QueryProcessException;
 
   int size();

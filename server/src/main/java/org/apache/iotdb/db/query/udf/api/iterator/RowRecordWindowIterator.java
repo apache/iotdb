@@ -20,35 +20,23 @@
 package org.apache.iotdb.db.query.udf.api.iterator;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-public interface DataPointBatchIterator extends Iterator {
+public interface RowRecordWindowIterator extends Iterator {
 
-  boolean hasNextBatch();
+  boolean hasNextWindow();
 
   void next() throws IOException;
 
-  int currentBatchIndex();
+  int currentWindowIndex();
 
-  DataPointIterator currentBatch();
+  RowRecordIterator currentWindow();
 
-  int currentBatchSize();
+  int currentWindowSize();
 
-  long getTimeInCurrentBatch(int index) throws IOException;
+  long getTimeInCurrentWindow(int index) throws IOException;
 
-  int getIntInCurrentBatch(int index) throws IOException;
-
-  long getLongInCurrentBatch(int index) throws IOException;
-
-  boolean getBooleanInCurrentBatch(int index) throws IOException;
-
-  float getFloatInCurrentBatch(int index) throws IOException;
-
-  double getDoubleInCurrentBatch(int index) throws IOException;
-
-  Binary getBinaryInCurrentBatch(int index) throws IOException;
-
-  String getStringInCurrentBatch(int index) throws IOException;
+  RowRecord getRowRecordInCurrentWindow(int index) throws IOException;
 
   void reset();
 }

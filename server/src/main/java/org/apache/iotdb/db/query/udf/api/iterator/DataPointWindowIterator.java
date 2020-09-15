@@ -22,45 +22,33 @@ package org.apache.iotdb.db.query.udf.api.iterator;
 import java.io.IOException;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-public interface DataPointIterator extends Iterator {
+public interface DataPointWindowIterator extends Iterator {
 
-  boolean hasNextPoint();
+  boolean hasNextWindow();
 
-  void next();
+  void next() throws IOException;
 
-  int currentPointIndex();
+  int currentWindowIndex();
 
-  long currentTime() throws IOException;
+  DataPointIterator currentWindow();
 
-  int currentInt() throws IOException;
+  int currentWindowSize();
 
-  long currentLong() throws IOException;
+  long getTimeInCurrentWindow(int index) throws IOException;
 
-  float currentFloat() throws IOException;
+  int getIntInCurrentWindow(int index) throws IOException;
 
-  double currentDouble() throws IOException;
+  long getLongInCurrentWindow(int index) throws IOException;
 
-  boolean currentBoolean() throws IOException;
+  boolean getBooleanInCurrentWindow(int index) throws IOException;
 
-  Binary currentBinary() throws IOException;
+  float getFloatInCurrentWindow(int index) throws IOException;
 
-  String currentString() throws IOException;
+  double getDoubleInCurrentWindow(int index) throws IOException;
 
-  long nextTime() throws IOException;
+  Binary getBinaryInCurrentWindow(int index) throws IOException;
 
-  int nextInt() throws IOException;
-
-  long nextLong() throws IOException;
-
-  float nextFloat() throws IOException;
-
-  double nextDouble() throws IOException;
-
-  boolean nextBoolean() throws IOException;
-
-  Binary nextBinary() throws IOException;
-
-  String nextString() throws IOException;
+  String getStringInCurrentWindow(int index) throws IOException;
 
   void reset();
 }
