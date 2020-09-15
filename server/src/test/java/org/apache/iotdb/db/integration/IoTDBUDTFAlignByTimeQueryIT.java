@@ -49,6 +49,12 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
   protected final static int ADDEND = 500_000;
 
+  protected final static int LIMIT = (int) (0.1 * ITERATION_TIMES);
+  protected final static int OFFSET = (int) (0.1 * ITERATION_TIMES);
+
+  protected final static int SLIMIT = 10;
+  protected final static int SOFFSET = 2;
+
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
@@ -413,6 +419,60 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
           assertEquals(i - 2 < 6 ? index : 2 * index, Float.parseFloat(actualString), 0);
+        }
+        ++index;
+      }
+      assertEquals((int) (0.4 * ITERATION_TIMES), index - (int) (0.3 * ITERATION_TIMES));
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithValueFilter6() {
+    String sqlStr =
+        "select *, udf(*, *), udf(*, *) from root.vehicle.d2, root.vehicle.d3, root.vehicle.d2"
+            + String.format(" where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d ",
+            (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES))
+            + String.format(" limit %d offset %d", LIMIT, OFFSET);
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      int index = (int) (0.3 * ITERATION_TIMES) + OFFSET;
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 6 + 2 * 2 * 3 * 2 * 3, columnCount); // time + * + 2 * udf(*, *)
+      while (resultSet.next()) {
+        for (int i = 2; i <= columnCount; ++i) {
+          String actualString = resultSet.getString(i);
+          assertEquals(i - 2 < 6 ? index : 2 * index, Float.parseFloat(actualString), 0);
+        }
+        ++index;
+      }
+      assertEquals(LIMIT, index - ((int) (0.3 * ITERATION_TIMES) + OFFSET));
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithValueFilter7() {
+    String sqlStr =
+        "select *, udf(*, *), udf(*, *) from root.vehicle.d2, root.vehicle.d3, root.vehicle.d2"
+            + String.format(" where root.vehicle.d2.s1 >= %d and root.vehicle.d3.s2 < %d ",
+            (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES))
+            + String.format(" slimit %d soffset %d", SLIMIT, SOFFSET);
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      int index = (int) (0.3 * ITERATION_TIMES);
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + SLIMIT, columnCount);
+      while (resultSet.next()) {
+        for (int i = 2; i <= columnCount; ++i) {
+          String actualString = resultSet.getString(i);
+          assertEquals(i - 2 + SOFFSET < 6 ? index : 2 * index, Float.parseFloat(actualString), 0);
         }
         ++index;
       }

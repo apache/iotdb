@@ -106,9 +106,11 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
           }
           continue;
         }
+
+        dataPointIterator.next();
+
         if (rowOffset == 0) {
           currentBitmapList[i] = (currentBitmapList[i] << 1) | FLAG;
-          dataPointIterator.next();
           TSDataType type = transformedDataColumnDataTypes[i];
           switch (type) {
             case INT32:

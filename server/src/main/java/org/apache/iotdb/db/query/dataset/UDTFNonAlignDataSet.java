@@ -71,12 +71,13 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
     int columnsNum = transformedDataColumns.length;
     alreadyReturnedRowNumArray = new int[columnsNum];
     offsetArray = new int[columnsNum];
-    Arrays.fill(offsetArray, rowOffset);
   }
 
   @Override
   public TSQueryNonAlignDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
       throws IOException, InterruptedException {
+    // offsetArray can not be filled in init(), because rowOffset is set after the DataSet's construction
+    Arrays.fill(offsetArray, rowOffset);
     TSQueryNonAlignDataSet tsQueryNonAlignDataSet = new TSQueryNonAlignDataSet();
 
     int columnsNum = transformedDataColumns.length;
@@ -111,9 +112,9 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
         && (rowLimit <= 0 || alreadyReturnedRowNumArray[transformedDataColumnIndex] < rowLimit)
         && dataPointIterator.hasNextPoint()) {
 
-      if (offsetArray[transformedDataColumnIndex] == 0) {
-        dataPointIterator.next();
+      dataPointIterator.next();
 
+      if (offsetArray[transformedDataColumnIndex] == 0) {
         long timestamp = dataPointIterator.currentTime();
         ReadWriteIOUtils.write(timestamp, timeBAOS);
 
