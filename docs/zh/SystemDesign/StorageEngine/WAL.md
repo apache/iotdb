@@ -37,6 +37,7 @@
 
 * 整个 forceTask 主要耗时都集中在 org.apache.iotdb.db.writelog.io.LogWriter.force()，且因磁盘属性不同差别巨大
 * 分别对 SSD 和 HDD 进行 forceTask 的测试
+  * 测试负载为1sg,1device,100sensor,每个sensor写100W个点，force_wal_period_in_ms=10
   * 在 SSD 中，每秒可以刷大约 75MB 的数据到磁盘中
   * 在 HDD 中，每秒可以刷大约 5MB 的数据到磁盘中
   * 所以在 HDD 环境中，用户必须注意调节 force_wal_period_in_ms 不会太小，否则会严重影响写入性能
