@@ -236,7 +236,7 @@ public class TsFileProcessor {
           .debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
-      for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath().getDevicePath())) {
+      for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath())) {
         if (workMemTable != null) {
           workMemTable
                   .delete(p.getDevice(), p.getMeasurement(), deletion.getStartTime(), deletion.getEndTime());

@@ -1445,7 +1445,7 @@ public class StorageGroupProcessor {
       List<ModificationFile> updatedModFiles)
           throws IOException, MetadataException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath().getDevicePath())) {
+      for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath())) {
         String deviceId = p.getDevice();
         if (!tsFileResource.containsDevice(deviceId) ||
                 deletion.getEndTime() < tsFileResource.getStartTime(deviceId) ||
