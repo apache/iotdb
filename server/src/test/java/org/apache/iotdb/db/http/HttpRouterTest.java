@@ -118,7 +118,7 @@ public class HttpRouterTest extends HttpPrepData{
     prepareData();
     JSONObject query = queryJsonExample();
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
-    Assert.assertEquals("[{\"timestamps\":1,\"value\":1.0},{\"timestamps\":2,\"value\":2.0},{\"timestamps\":3,\"value\":3.0},{\"timestamps\":4,\"value\":4.0},{\"timestamps\":5,\"value\":5.0}]"
+    Assert.assertEquals("[{\"value\":1.0,\"timestamp\":1},{\"value\":2.0,\"timestamp\":2},{\"value\":3.0,\"timestamp\":3},{\"value\":4.0,\"timestamp\":4},{\"value\":5.0,\"timestamp\":5}]"
         , router.route(HttpMethod.POST, HttpConstant.ROUTING_QUERY, query).toString());
   }
 

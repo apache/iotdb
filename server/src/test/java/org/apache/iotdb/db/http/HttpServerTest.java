@@ -165,7 +165,7 @@ public class HttpServerTest extends HttpPrepData {
     JSONObject query = queryJsonExample();
     Response response = client.target(QUERY_URI)
         .request(MediaType.APPLICATION_JSON).post(Entity.entity(query, MediaType.APPLICATION_JSON));
-    Assert.assertEquals("[{\"timestamps\":1,\"value\":1.0},{\"timestamps\":2,\"value\":2.0},{\"timestamps\":3,\"value\":3.0},{\"timestamps\":4,\"value\":4.0},{\"timestamps\":5,\"value\":5.0}]"
+    Assert.assertEquals("[{\"value\":1.0,\"timestamp\":1},{\"value\":2.0,\"timestamp\":2},{\"value\":3.0,\"timestamp\":3},{\"value\":4.0,\"timestamp\":4},{\"value\":5.0,\"timestamp\":5}]"
         , response.readEntity(String.class));
   }
 
