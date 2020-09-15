@@ -36,19 +36,18 @@ import java.util.List;
  */
 public class MemChunkReader implements IChunkReader, IPointReader {
 
-  private ReadOnlyMemChunk readOnlyMemChunk;
   private IPointReader timeValuePairIterator;
   private Filter filter;
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
+  private List<IPageReader> pageReaderList;
 
-  private TSDataType dataType;
 
   public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter filter) {
-    this.readOnlyMemChunk = readableChunk;
     timeValuePairIterator = readableChunk.getPointReader();
     this.filter = filter;
-    this.dataType = readableChunk.getDataType();
+    this.pageReaderList = Collections.singletonList(
+        new MemPageReader(timeValuePairIterator, readableChunk.getChunkMetaData(), filter));
   }
 
   @Override
@@ -94,20 +93,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
 
   @Override
   public BatchData nextPageData() throws IOException {
-    BatchData batchData = new BatchData(dataType);
-    if (hasCachedTimeValuePair) {
-      hasCachedTimeValuePair = false;
-      batchData.putAnObject(cachedTimeValuePair.getTimestamp(),
-          cachedTimeValuePair.getValue().getValue());
-    }
-    while (timeValuePairIterator.hasNextTimeValuePair()) {
-      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
-      if (filter == null || filter
-          .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
-        batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
-      }
-    }
-    return batchData;
+    return pageReaderList.remove(0).getAllSatisfiedPageData();
   }
 
   @Override
@@ -118,7 +104,8 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   @Override
   public List<IPageReader> loadPageReaderList() throws IOException {
     // we treat one ReadOnlyMemChunk as one Page
-    return Collections.singletonList(
-        new MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
+//    return Collections.singletonList(
+//        new MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
+    return this.pageReaderList;
   }
 }

@@ -248,7 +248,12 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     while (reader.hasNextChunk()) {
       Statistics chunkStatistics = reader.currentChunkStatistics();
       if (chunkStatistics.getStartTime() >= curEndTime) {
-        return true;
+        if (ascending) {
+          return true;
+        } else {
+          reader.skipCurrentChunk();
+          continue;
+        }
       }
       // calc from chunkMetaData
       if (reader.canUseCurrentChunkStatistics()
@@ -273,7 +278,12 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       if (pageStatistics != null) {
         // current page max than time range
         if (pageStatistics.getStartTime() >= curEndTime) {
-          return true;
+          if (ascending) {
+            return true;
+          } else {
+            reader.skipCurrentPage();
+            continue;
+          }
         }
         // can use pageHeader
         if (reader.canUseCurrentPageStatistics()
