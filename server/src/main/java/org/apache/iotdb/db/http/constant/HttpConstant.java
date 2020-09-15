@@ -65,4 +65,5 @@ public class HttpConstant {
   public static final String END = "end";
   public static final String ERROR = "error";
   public static final String ERROR_CLASS = "errorClass";
+  public static final String IS_NEED_INFER_TYPE = "isNeedInferType";
 }

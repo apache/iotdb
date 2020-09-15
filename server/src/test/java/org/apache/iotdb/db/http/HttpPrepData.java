@@ -185,17 +185,18 @@ public abstract class HttpPrepData {
     JSONArray inserts = new JSONArray();
     for(int j = 0; j < 6; j++) {
       JSONObject row = new JSONObject();
-      row.put("deviceId", "root.ln.wf01.wt0" + i);
+      row.put(HttpConstant.IS_NEED_INFER_TYPE, false);
+      row.put(HttpConstant.DEVICE_ID, "root.ln.wf01.wt0" + i);
       JSONArray measurements = new JSONArray();
       measurements.add("temperature");
       measurements.add("status");
       measurements.add("hardware");
-      row.put("measurements", measurements);
+      row.put(HttpConstant.MEASUREMENTS, measurements);
       row.put(HttpConstant.TIMESTAMP, j);
       JSONArray values = new JSONArray();
-      values.add(String.valueOf(j));
-      values.add("true");
-      values.add(String.valueOf(j));
+      values.add(j);
+      values.add(true);
+      values.add(j);
       row.put(HttpConstant.VALUES, values);
       inserts.add(row);
     }
@@ -208,9 +209,9 @@ public abstract class HttpPrepData {
     pathList.add(new PartialPath("root.ln.wf01.wt0" + i + ".status"));
     pathList.add(new PartialPath("root.ln.wf01.wt0" + i + ".hardware"));
     List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.FLOAT);
+    dataTypes.add(TSDataType.INT32);
     dataTypes.add(TSDataType.BOOLEAN);
-    dataTypes.add(TSDataType.FLOAT);
+    dataTypes.add(TSDataType.INT32);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);

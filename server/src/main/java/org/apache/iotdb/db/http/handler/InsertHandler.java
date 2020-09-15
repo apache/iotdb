@@ -45,7 +45,8 @@ public class InsertHandler extends Handler{
       JSONArray measurements = (JSONArray) object.get(HttpConstant.MEASUREMENTS);
       long timestamps = (Integer) object.get(HttpConstant.TIMESTAMP);
       JSONArray values  = (JSONArray) object.get(HttpConstant.VALUES);
-      if (!insertByRow(deviceID, timestamps, getListString(measurements), values)) {
+      Boolean isNeedInferType = (Boolean) object.get(HttpConstant.IS_NEED_INFER_TYPE);
+      if (!insertByRow(deviceID, timestamps, getListString(measurements), values, isNeedInferType)) {
           throw new QueryProcessException(
               String.format("%s can't be inserted successfully", deviceID));
         }
@@ -55,15 +56,34 @@ public class InsertHandler extends Handler{
     return jsonObject;
   }
 
-  public boolean insertByRow(String deviceId, long time, List<String> measurements,
-      List<Object> values)
+  private boolean insertByRow(String deviceId, long time, List<String> measurements,
+      List<Object> values, boolean isNeedInferType)
       throws IllegalPathException, QueryProcessException, StorageEngineException, StorageGroupNotSetException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setDeviceId(new PartialPath(deviceId));
     plan.setTime(time);
     plan.setMeasurements(measurements.toArray(new String[0]));
     plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
-    plan.setNeedInferType(true);
+    if(isNeedInferType) {
+      plan.setNeedInferType(true);
+    } else {
+      TSDataType[] dataTypes = new TSDataType[measurements.size()];
+      for(int i = 0; i < measurements.size(); i++) {
+        if(values.get(i) instanceof Integer) {
+          dataTypes[i] = TSDataType.INT32;
+        } else if(values.get(i) instanceof String) {
+          dataTypes[i] = TSDataType.TEXT;
+        } else if(values.get(i) instanceof Float) {
+          dataTypes[i] = TSDataType.FLOAT;
+        } else if(values.get(i) instanceof Boolean) {
+          dataTypes[i] = TSDataType.BOOLEAN;
+        } else {
+          throw new QueryProcessException("Unsupported json data type:" + dataTypes[i]);
+        }
+      }
+      plan.setDataTypes(dataTypes);
+      plan.setNeedInferType(false);
+    }
     plan.setValues(values.toArray(new Object[0]));
     return executor.processNonQuery(plan);
   }
