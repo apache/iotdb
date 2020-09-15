@@ -39,30 +39,6 @@
     </distributionManagement>
     <build>
         <plugins>
-            <!-- copy source codes into vue required folders-->
-            <plugin>
-                <artifactId>maven-resources-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>copy-source-code-to-docs-folder</id>
-                        <!-- here the phase you need -->
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/vue-source/src</outputDirectory>
-                            <!-- output directory -->
-                            <resources>
-                                <resource>
-                                    <directory>${basedir}/src/main/</directory>
-                                    <filtering>true</filtering>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <!-- Copy master documents-->
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
