@@ -25,6 +25,7 @@
 * WAL overall recording principle
   * For each Memtable, a corresponding WAL file will be recorded. When the Memtable is flushed, the WAL will be deleted.
 * WAL record details
+  * In org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode, the WAL buffer size will be allocated according to the wal_buffer_size in the configuration. If the buffer size is exceeded during the process of putting WAL, it will be flushed to disk
   * In org.apache.iotdb.db.writelog.manager, nodeMap will continue to accumulate WAL
   * WAL has two ways to be flashed to disk (enable at the same time)
     * Each time a record is written in org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode, it will be judged whether the accumulated WAL size of the current node exceeds the flush_wal_threshold in the configuration. If it exceeds, it will be flushed to the disk.
