@@ -22,10 +22,14 @@
 # WAL
 
 ## Work Process
-
-* In org.apache.iotdb.db.writelog.manager, nodeMap will continue to accumulate WAL
-* When org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager starts, a timing thread will be generated, and the nodeMap in the memory will be flushed to the disk according to the force_wal_period_in_ms timing call thread. The calling example is as follows
-  * Persistence(forceTask)-sleep({force_wal_period_in_ms})-Persistence(forceTask)-sleep({force_wal_period_in_ms})
+* WAL overall recording principle
+  * For each Memtable, a corresponding WAL file will be recorded. When the Memtable is flushed, the WAL will be deleted.
+* WAL record details
+  * In org.apache.iotdb.db.writelog.manager, nodeMap will continue to accumulate WAL
+  * WAL has two ways to be flashed to disk (enable at the same time)
+    * Each time a record is written in org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode, it will be judged whether the accumulated WAL size of the current node exceeds the flush_wal_threshold in the configuration. If it exceeds, it will be flushed to the disk.
+    * When org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager starts, a timing thread will be generated, and the nodeMap in the memory will be flushed to the disk according to the force_wal_period_in_ms timing call thread. The calling example is as follows
+      * Persistence(forceTask)-sleep({force_wal_period_in_ms})-Persistence(forceTask)-sleep({force_wal_period_in_ms})
 
 ## Test Result
 
