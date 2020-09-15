@@ -51,11 +51,11 @@ Here we show the commonly used interfaces and their parameters in the Native API
 * Initialize a Session
 
   ```
-  Session(String host, int port)
+  Session(String host, int rpcPort)
 
-  Session(String host, String port, String username, String password)
+  Session(String host, String rpcPort, String username, String password)
 
-  Session(String host, int port, String username, String password)
+  Session(String host, int rpcPort, String username, String password)
   ```
 
 * Open a Session
