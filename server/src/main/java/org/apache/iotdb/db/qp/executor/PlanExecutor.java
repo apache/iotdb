@@ -880,13 +880,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void delete(PartialPath path, long startTime, long endTime) throws QueryProcessException {
-    /*PartialPath deviceId = path.getDevicePath();
-    String measurementId = path.getMeasurement();*/
     try {
-      /*if (!mManager.isPathExist(path)) {
-        throw new QueryProcessException(
-            String.format("Time series %s does not exist.", path.getFullPath()));
-      }*/
       StorageEngine.getInstance().delete(path, startTime, endTime);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);

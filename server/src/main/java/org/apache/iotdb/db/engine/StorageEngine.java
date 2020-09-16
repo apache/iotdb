@@ -456,18 +456,6 @@ public class StorageEngine implements IService {
       throw new StorageEngineException(e.getMessage());
     }
   }
-  /**
-   * delete data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
-   */
-  /*public void delete(PartialPath deviceId, String measurementId, long startTime, long endTime)
-      throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    try {
-      storageGroupProcessor.delete(deviceId, measurementId, startTime, endTime);
-    } catch (IOException e) {
-      throw new StorageEngineException(e.getMessage());
-    }
-  }*/
 
   /**
    * delete data of timeseries "{deviceId}.{measurementId}"
