@@ -29,12 +29,21 @@ public class OrNode implements Node {
   private long cachedLeftValue;
   private boolean hasCachedRightValue;
   private long cachedRightValue;
+  private boolean ascending = true;
 
   public OrNode(Node leftChild, Node rightChild) {
     this.leftChild = leftChild;
     this.rightChild = rightChild;
     this.hasCachedLeftValue = false;
     this.hasCachedRightValue = false;
+  }
+
+  public OrNode(Node leftChild, Node rightChild, boolean ascending) {
+    this.leftChild = leftChild;
+    this.rightChild = rightChild;
+    this.hasCachedLeftValue = false;
+    this.hasCachedRightValue = false;
+    this.ascending = ascending;
   }
 
   @Override
@@ -78,19 +87,28 @@ public class OrNode implements Node {
     } else if (hasLeftValue() && hasRightValue()) {
       long leftValue = getLeftValue();
       long rightValue = getRightValue();
-      if (leftValue < rightValue) {
-        hasCachedRightValue = true;
-        cachedRightValue = rightValue;
-        return leftValue;
-      } else if (leftValue > rightValue) {
-        hasCachedLeftValue = true;
-        cachedLeftValue = leftValue;
-        return rightValue;
-      } else {
-        return leftValue;
+      if (ascending) {
+        return popAndFillNextCache(leftValue < rightValue, leftValue > rightValue, leftValue,
+            rightValue);
       }
+      return popAndFillNextCache(leftValue > rightValue, leftValue < rightValue, leftValue,
+          rightValue);
     }
     throw new IOException("no more data");
+  }
+
+  private long popAndFillNextCache(boolean popLeft, boolean popRight, long left, long right) {
+    if (popLeft) {
+      hasCachedRightValue = true;
+      cachedRightValue = right;
+      return left;
+    } else if (popRight) {
+      hasCachedLeftValue = true;
+      cachedLeftValue = left;
+      return right;
+    } else {
+      return left;
+    }
   }
 
   @Override

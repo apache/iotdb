@@ -52,6 +52,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class LastQueryExecutor {
+
   private List<PartialPath> selectedSeries;
   private List<TSDataType> dataTypes;
 
@@ -104,6 +105,9 @@ public class LastQueryExecutor {
       }
     }
 
+    if (!lastQueryPlan.isAscending()) {
+      dataSet.sortByTime();
+    }
     return dataSet;
   }
 
@@ -151,14 +155,14 @@ public class LastQueryExecutor {
     if (!seqFileResources.isEmpty()) {
       for (int i = seqFileResources.size() - 1; i >= 0; i--) {
         TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
-                seqFileResources.get(i), seriesPath, context, null, deviceMeasurements);
+            seqFileResources.get(i), seriesPath, context, null, deviceMeasurements);
         if (timeseriesMetadata != null) {
           if (!timeseriesMetadata.isModified()) {
             Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
             resultPair = constructLastPair(
-                    timeseriesMetadataStats.getEndTime(),
-                    timeseriesMetadataStats.getLastValue(),
-                    tsDataType);
+                timeseriesMetadataStats.getEndTime(),
+                timeseriesMetadataStats.getLastValue(),
+                tsDataType);
             break;
           } else {
             List<ChunkMetadata> chunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
@@ -181,7 +185,8 @@ public class LastQueryExecutor {
         continue;
       }
       TimeseriesMetadata timeseriesMetadata =
-          FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, deviceMeasurements);
+          FileLoaderUtils
+              .loadTimeSeriesMetadata(resource, seriesPath, context, null, deviceMeasurements);
       if (timeseriesMetadata != null) {
         for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
           if (chunkMetaData.getEndTime() > resultPair.getTimestamp()
@@ -203,7 +208,8 @@ public class LastQueryExecutor {
     return resultPair;
   }
 
-  private static TimeValuePair constructLastPair(long timestamp, Object value, TSDataType dataType) {
+  private static TimeValuePair constructLastPair(long timestamp, Object value,
+      TSDataType dataType) {
     return new TimeValuePair(timestamp, TsPrimitiveType.getByType(dataType, value));
   }
 }

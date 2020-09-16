@@ -49,4 +49,8 @@ public class ListDataSet extends QueryDataSet {
   public void putRecord(RowRecord newRecord) {
     records.add(newRecord);
   }
+
+  public void sortByTime() {
+    records.sort(((o1, o2) -> Long.compare(o2.getTimestamp(), o1.getTimestamp())));
+  }
 }

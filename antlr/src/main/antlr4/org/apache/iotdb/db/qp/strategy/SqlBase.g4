@@ -220,11 +220,12 @@ fromClause
 
 specialClause
     : specialLimit
-    | groupByTimeClause specialLimit?
-    | groupByFillClause specialLimit?
+    | orderByTimeClause specialLimit?
+    | groupByTimeClause orderByTimeClause? specialLimit?
+    | groupByFillClause orderByTimeClause? specialLimit?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
-    | groupByLevelClause specialLimit?
+    | groupByLevelClause orderByTimeClause? specialLimit?
     ;
 
 specialLimit
@@ -232,6 +233,11 @@ specialLimit
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
     ;
+
+orderByTimeClause
+    : ORDER BY TIME (DESC | ASC)?
+    ;
+
 
 limitClause
     : LIMIT INT offsetClause?
@@ -702,6 +708,10 @@ TO
     : T O
     ;
 
+ORDER
+    : O R D E R
+    ;
+
 BY
     : B Y
     ;
@@ -1160,6 +1170,12 @@ SCHEMA
     : S C H E M A
     ;
 
+DESC
+    : D E S C
+    ;
+ASC
+    : A S C
+    ;
 //============================
 // End of the keywords list
 //============================
