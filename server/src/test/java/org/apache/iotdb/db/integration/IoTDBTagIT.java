@@ -71,8 +71,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -116,8 +116,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           assertEquals(ret[count], ans);
           count++;
@@ -162,8 +162,8 @@ public class IoTDBTagIT {
               + "," + resultSet.getString("dataType")
               + "," + resultSet.getString("encoding")
               + "," + resultSet.getString("compression")
-              + "," + resultSet.getString("tag")
-              + "," + resultSet.getString("attribute");
+              + "," + resultSet.getString("tags")
+              + "," + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -268,8 +268,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -310,8 +310,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -355,8 +355,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           assertEquals(ret1[count], ans);
           count++;
@@ -376,8 +376,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           assertEquals(ret2[count], ans);
           count++;
@@ -423,8 +423,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           assertEquals(ret1[count], ans);
           count++;
@@ -444,8 +444,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           assertEquals(ret2[count], ans);
           count++;
@@ -535,8 +535,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           assertEquals(ret1[count], ans);
           count++;
@@ -556,8 +556,8 @@ public class IoTDBTagIT {
                           + "," + resultSet.getString("dataType")
                           + "," + resultSet.getString("encoding")
                           + "," + resultSet.getString("compression")
-                          + "," + resultSet.getString("tag")
-                          + "," + resultSet.getString("attribute");
+                          + "," + resultSet.getString("tags")
+                          + "," + resultSet.getString("attributes");
           res.add(ans);
           count++;
         }
@@ -627,8 +627,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           res.add(ans);
           count++;
@@ -650,8 +650,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           res.add(ans);
           count++;
@@ -734,8 +734,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           res.add(ans);
           count++;
@@ -812,8 +812,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           System.out.println(ans);
           res.add(ans);
@@ -835,8 +835,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           res.add(ans);
           count++;
@@ -939,8 +939,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("tag")
-                  + "," + resultSet.getString("attribute");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
