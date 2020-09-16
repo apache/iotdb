@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.cross.tests.tools.importCsv;
 
-import org.apache.iotdb.cross.tests.utils.EnvironmentUtils;
+
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Before;
@@ -59,7 +60,6 @@ public class ImportCsvTestIT extends AbstractScript {
 
   @After
   public void tearDown() throws Exception {
-
     EnvironmentUtils.cleanEnv();
   }
 
