@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.util.List;
 import java.util.Map;
 
-public interface TimeIndexer {
+public interface FileTimeIndexer {
   /**
    * init the Indexer when IoTDB start
    * @return whether success

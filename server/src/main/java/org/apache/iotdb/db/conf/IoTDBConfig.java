@@ -783,8 +783,8 @@ public class IoTDBConfig {
   private boolean debugState = false;
 
   // enable new indexer
-  private boolean enableDeviceIndexer = false;
-  private int deviceIndexerType = 0;
+  private boolean enableFileTimeIndexer = false;
+  private int fileTimeIndexerType = 0;
 
   public IoTDBConfig() {
     // empty constructor
@@ -2098,19 +2098,19 @@ public class IoTDBConfig {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
   }
 
-  public boolean isEnableDeviceIndexer() {
-    return enableDeviceIndexer;
+  public boolean isEnableFileTimeIndexer() {
+    return enableFileTimeIndexer;
   }
 
-  public void setEnableDeviceIndexer(boolean enableDeviceIndexer) {
-    this.enableDeviceIndexer = enableDeviceIndexer;
+  public void setEnableFileTimeIndexer(boolean enableFileTimeIndexer) {
+    this.enableFileTimeIndexer = enableFileTimeIndexer;
   }
 
-  public int getDeviceIndexerType() {
-    return deviceIndexerType;
+  public int getFileTimeIndexerType() {
+    return fileTimeIndexerType;
   }
 
-  public void setDeviceIndexerType(int deviceIndexerType) {
-    this.deviceIndexerType = deviceIndexerType;
+  public void setFileTimeIndexerType(int fileTimeIndexerType) {
+    this.fileTimeIndexerType = fileTimeIndexerType;
   }
 }

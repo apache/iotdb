@@ -50,11 +50,8 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTi
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-<<<<<<< HEAD
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-=======
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
->>>>>>> fix conflict
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -63,8 +60,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
-import org.apache.iotdb.db.timeIndex.IndexerManager;
-import org.apache.iotdb.db.timeIndex.TimeIndexer;
+import org.apache.iotdb.db.timeIndex.FileIndexerManager;
+import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.writelog.WALFlushListener;
@@ -818,16 +815,16 @@ public class TsFileProcessor {
 
   private void endFile() throws IOException, TsFileProcessorException {
     long closeStartTime = System.currentTimeMillis();
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
       // update device index
       try {
-        TimeIndexer timeIndexer = null;
+        FileTimeIndexer fileTimeIndexer = null;
         if (sequence) {
-          timeIndexer = IndexerManager.getInstance().getSeqIndexer(storageGroupName);
+          fileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(storageGroupName);
         } else {
-          timeIndexer = IndexerManager.getInstance().getUnseqIndexer(storageGroupName);
+          fileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(storageGroupName);
         }
-        timeIndexer.addIndexForPaths(tsFileResource.deviceToIndex, tsFileResource.startTimes,
+        fileTimeIndexer.addIndexForPaths(tsFileResource.deviceToIndex, tsFileResource.startTimes,
             tsFileResource.endTimes, tsFileResource.getTsFilePath());
       } catch (IllegalPathException e) {
         logger.error("Failed to endFile {} for storage group {}, err:{}", tsFileResource.getTsFile(),

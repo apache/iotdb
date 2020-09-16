@@ -20,16 +20,16 @@ package org.apache.iotdb.db.timeIndex.device;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.timeIndex.TimeIndexer;
+import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
 import org.apache.iotdb.db.timeIndex.UpdateIndexsParam;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
 import java.util.Map;
 
-public class LoadAllTimeIndexer implements TimeIndexer {
+public class LoadAllDeviceTimeIndexer implements FileTimeIndexer {
 
-  public LoadAllTimeIndexer() {
+  public LoadAllDeviceTimeIndexer() {
 
   }
 

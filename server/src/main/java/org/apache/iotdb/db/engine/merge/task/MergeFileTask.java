@@ -41,8 +41,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.timeIndex.IndexerManager;
-import org.apache.iotdb.db.timeIndex.TimeIndexer;
+import org.apache.iotdb.db.timeIndex.FileIndexerManager;
+import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -202,11 +202,11 @@ class MergeFileTask {
       fsFactory.moveFile(fileWriter.getFile(), newMergeFile);
       seqFile.setFile(newMergeFile);
 
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
         // add new device index
         // may Indexer need delete old index background
-        TimeIndexer timeIndexer = IndexerManager.getInstance().getSeqIndexer(seqFile.getStorageGroupName());
-        timeIndexer.addIndexForPaths(seqFile.getDeviceToIndexMap(), seqFile.getStartTimes(), seqFile.getEndTimes(), seqFile.getTsFilePath());
+        FileTimeIndexer fileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(seqFile.getStorageGroupName());
+        fileTimeIndexer.addIndexForPaths(seqFile.getDeviceToIndexMap(), seqFile.getStartTimes(), seqFile.getEndTimes(), seqFile.getTsFilePath());
       }
     } catch (Exception e) {
       logger.error(e.getMessage(), e);

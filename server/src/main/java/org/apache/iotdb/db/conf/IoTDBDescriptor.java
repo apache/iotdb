@@ -517,13 +517,14 @@ public class IoTDBDescriptor {
       conf.setDebugState(Boolean.parseBoolean(properties
           .getProperty("debug_state", String.valueOf(conf.isDebugOn()))));
 
-      conf.setEnableDeviceIndexer((Boolean.parseBoolean(
-        properties.getProperty(
-          "enable_device_indexer", String.valueOf(conf.isEnableDeviceIndexer())))));
 
-      conf.setDeviceIndexerType((Integer.parseInt(
+      conf.setEnableFileTimeIndexer((Boolean.parseBoolean(
         properties.getProperty(
-          "device_indexer_type", String.valueOf(conf.getDeviceIndexerType())))));
+          "enable_file_time_indexer", String.valueOf(conf.isEnableFileTimeIndexer())))));
+
+      conf.setFileTimeIndexerType((Integer.parseInt(
+        properties.getProperty(
+          "file_time_indexer_type", String.valueOf(conf.getFileTimeIndexerType())))));
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
