@@ -50,6 +50,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
@@ -1132,10 +1133,10 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       switch (authorType) {
         case LIST_ROLE:
-          dataSet = executeListRole();
+          dataSet = executeListRole(plan);
           break;
         case LIST_USER:
-          dataSet = executeListUser();
+          dataSet = executeListUser(plan);
           break;
         case LIST_ROLE_USERS:
           dataSet = executeListRoleUsers(roleName);
@@ -1158,13 +1159,21 @@ public class PlanExecutor implements IPlanExecutor {
     return dataSet;
   }
 
-  private ListDataSet executeListRole() {
+  private ListDataSet executeListRole(AuthorPlan plan) throws AuthException {
     int index = 0;
     List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new PartialPath(COLUMN_ROLE, false));
     typeList.add(TSDataType.TEXT);
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
+
+    // check if current user is granted list_role privilege
+    boolean hasListRolePrivilege = AuthorityChecker
+        .check(plan.getLoginUserName(), Collections.emptyList(), plan.getOperatorType(), plan.getLoginUserName());
+    if (!hasListRolePrivilege) {
+      return dataSet;
+    }
+
     List<String> roleList = authorizer.listAllRoles();
     for (String role : roleList) {
       RowRecord record = new RowRecord(index++);
@@ -1176,14 +1185,22 @@ public class PlanExecutor implements IPlanExecutor {
     return dataSet;
   }
 
-  private ListDataSet executeListUser() {
-    List<String> userList = authorizer.listAllUsers();
+  private ListDataSet executeListUser(AuthorPlan plan) throws AuthException {
+    int index = 0;
     List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     headerList.add(new PartialPath(COLUMN_USER, false));
     typeList.add(TSDataType.TEXT);
-    int index = 0;
     ListDataSet dataSet = new ListDataSet(headerList, typeList);
+
+    // check if current user is granted list_user privilege
+    boolean hasListUserPrivilege = AuthorityChecker
+        .check(plan.getLoginUserName(), Collections.singletonList((plan.getNodeName())), plan.getOperatorType(), plan.getLoginUserName());
+    if (!hasListUserPrivilege) {
+      return dataSet;
+    }
+
+    List<String> userList = authorizer.listAllUsers();
     for (String user : userList) {
       RowRecord record = new RowRecord(index++);
       Field field = new Field(TSDataType.TEXT);

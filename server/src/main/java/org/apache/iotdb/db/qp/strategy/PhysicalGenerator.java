@@ -591,6 +591,7 @@ public class PhysicalGenerator {
 
     queryPlan.setRowLimit(queryOperator.getRowLimit());
     queryPlan.setRowOffset(queryOperator.getRowOffset());
+    queryPlan.setAscending(queryOperator.isAscending());
 
     return queryPlan;
   }
