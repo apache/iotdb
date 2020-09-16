@@ -166,8 +166,8 @@ public class IoTDBSortedShowTimeseriesIT {
             + "," + resultSet.getString("dataType")
             + "," + resultSet.getString("encoding")
             + "," + resultSet.getString("compression")
-            + "," + resultSet.getString("tag")
-            + "," + resultSet.getString("attribute");
+            + "," + resultSet.getString("tags")
+            + "," + resultSet.getString("attributes");
 
         assertEquals(retArray1[count], ans);
         count++;
@@ -185,8 +185,8 @@ public class IoTDBSortedShowTimeseriesIT {
             + "," + resultSet.getString("dataType")
             + "," + resultSet.getString("encoding")
             + "," + resultSet.getString("compression")
-            + "," + resultSet.getString("tag")
-            + "," + resultSet.getString("attribute");
+            + "," + resultSet.getString("tags")
+            + "," + resultSet.getString("attributes");
         System.out.println("\"" + ans + "\",");
         assertEquals(retArray2[count], ans);
         count++;
@@ -231,8 +231,8 @@ public class IoTDBSortedShowTimeseriesIT {
             + "," + resultSet.getString("dataType")
             + "," + resultSet.getString("encoding")
             + "," + resultSet.getString("compression")
-            + "," + resultSet.getString("tag")
-            + "," + resultSet.getString("attribute");
+            + "," + resultSet.getString("tags")
+            + "," + resultSet.getString("attributes");
 
         assertEquals(retArray[count], ans);
         count++;
@@ -273,8 +273,8 @@ public class IoTDBSortedShowTimeseriesIT {
             + "," + resultSet.getString("dataType")
             + "," + resultSet.getString("encoding")
             + "," + resultSet.getString("compression")
-            + "," + resultSet.getString("tag")
-            + "," + resultSet.getString("attribute");
+            + "," + resultSet.getString("tags")
+            + "," + resultSet.getString("attributes");
 
         assertEquals(retArray[count], ans);
         count++;

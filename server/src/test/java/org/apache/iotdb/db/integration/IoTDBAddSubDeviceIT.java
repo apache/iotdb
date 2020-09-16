@@ -135,7 +135,7 @@ public class IoTDBAddSubDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("timeseries,alias,storage group,dataType,encoding,compression,tag,attribute,",
+        Assert.assertEquals("timeseries,alias,storage group,dataType,encoding,compression,tags,attributes,",
             header.toString());
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(1));
 
