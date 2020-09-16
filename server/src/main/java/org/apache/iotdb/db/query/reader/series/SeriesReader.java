@@ -138,7 +138,9 @@ public class SeriesReader {
   }
 
   @TestOnly
-  SeriesReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType, QueryContext context,
+  @SuppressWarnings("squid:S107")
+  SeriesReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType,
+      QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
       Filter timeFilter, Filter valueFilter, boolean ascending) {
     this.seriesPath = seriesPath;
@@ -165,8 +167,8 @@ public class SeriesReader {
         versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
   }
 
-  public boolean isEmpty() {
-    return seqFileResource.isEmpty() && unseqFileResource.isEmpty();
+  public boolean isEmpty() throws IOException {
+    return !(hasNextPage() || hasNextChunk() || hasNextFile());
   }
 
   boolean hasNextFile() throws IOException {
@@ -343,7 +345,8 @@ public class SeriesReader {
    * This method should be called after hasNextChunk() until no next page, make sure that all
    * overlapped pages are consumed
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings("squid:S3776")
+  // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
 
     /*
@@ -797,15 +800,15 @@ public class SeriesReader {
 
   public interface TimeOrderUtils {
 
-    long getOrderTime(Statistics statistics);
+    long getOrderTime(Statistics<? extends Object> statistics);
 
     long getOrderTime(TsFileResource fileResource);
 
-    long getOverlapCheckTime(Statistics range);
+    long getOverlapCheckTime(Statistics<? extends Object> range);
 
-    boolean isOverlapped(Statistics left, Statistics right);
+    boolean isOverlapped(Statistics<? extends Object> left, Statistics<? extends Object> right);
 
-    boolean isOverlapped(long time, Statistics right);
+    boolean isOverlapped(long time, Statistics<? extends Object> right);
 
     boolean isOverlapped(long time, TsFileResource right);
 

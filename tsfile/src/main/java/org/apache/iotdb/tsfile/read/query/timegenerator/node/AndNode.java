@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
+import java.util.function.BiPredicate;
 
 public class AndNode implements Node {
 
@@ -55,46 +56,37 @@ public class AndNode implements Node {
       return true;
     }
     if (leftChild.hasNext() && rightChild.hasNext()) {
-      long leftValue = leftChild.next();
-      long rightValue = rightChild.next();
-      while (true) {
-        if (leftValue == rightValue) {
-          this.hasCachedValue = true;
-          this.cachedValue = leftValue;
-          return true;
-        }
-        if (ascending) {
-          if (leftValue > rightValue) {
-            if (rightChild.hasNext()) {
-              rightValue = rightChild.next();
-            } else {
-              return false;
-            }
-          } else { // leftValue < rightValue
-            if (leftChild.hasNext()) {
-              leftValue = leftChild.next();
-            } else {
-              return false;
-            }
-          }
+      if (ascending) {
+        return fillNextCache((l, r) -> l > r);
+      }
+      return fillNextCache((l, r) -> l < r);
+    }
+    return false;
+  }
+
+  private boolean fillNextCache(BiPredicate<Long, Long> seekRight) throws IOException {
+    long leftValue = leftChild.next();
+    long rightValue = rightChild.next();
+    while (true) {
+      if (leftValue == rightValue) {
+        this.hasCachedValue = true;
+        this.cachedValue = leftValue;
+        return true;
+      }
+      if (seekRight.test(leftValue, rightValue)) {
+        if (rightChild.hasNext()) {
+          rightValue = rightChild.next();
         } else {
-          if (leftValue < rightValue) {
-            if (rightChild.hasNext()) {
-              rightValue = rightChild.next();
-            } else {
-              return false;
-            }
-          } else { // leftValue > rightValue
-            if (leftChild.hasNext()) {
-              leftValue = leftChild.next();
-            } else {
-              return false;
-            }
-          }
+          return false;
+        }
+      } else { // leftValue > rightValue
+        if (leftChild.hasNext()) {
+          leftValue = leftChild.next();
+        } else {
+          return false;
         }
       }
     }
-    return false;
   }
 
   @Override

@@ -215,7 +215,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public Pair<Long, Object> peekNextNotNullValue(int i, long nextStartTime, long nextEndTime)
+  public Pair<Long, Object> peekNextNotNullValue(long nextStartTime, long nextEndTime)
       throws IOException {
     try {
       if (preCachedData != null && preCachedData.hasCurrent()) {
@@ -223,18 +223,20 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         int readCurListIndex = preCachedData.getReadCurListIndex();
 
         List<AggregateResult> aggregateResults = calcResult(nextStartTime, nextEndTime);
-        if (aggregateResults == null || aggregateResults.get(i).getResult() == null) {
+        if (aggregateResults == null || aggregateResults.get(0).getResult() == null) {
           return null;
         }
         preCachedData.resetBatchData(readCurArrayIndex, readCurListIndex);
-        return new Pair<>(nextStartTime, aggregateResults.get(i).getResult());
+        return new Pair<>(nextStartTime, aggregateResults.get(0).getResult());
       } else {
         List<AggregateResult> aggregateResults = calcResult(nextStartTime, nextEndTime);
-        if (aggregateResults == null || aggregateResults.get(i) == null) {
+        if (aggregateResults == null || aggregateResults.get(0) == null) {
           return null;
         }
-        preCachedData.resetBatchData();
-        return new Pair<>(nextStartTime, aggregateResults.get(i).getResult());
+        if (preCachedData != null) {
+          preCachedData.resetBatchData();
+        }
+        return new Pair<>(nextStartTime, aggregateResults.get(0).getResult());
       }
     } catch (QueryProcessException e) {
       throw new IOException(e.getMessage(), e);
@@ -246,7 +248,12 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     while (reader.hasNextChunk()) {
       Statistics chunkStatistics = reader.currentChunkStatistics();
       if (chunkStatistics.getStartTime() >= curEndTime) {
-        return true;
+        if (ascending) {
+          return true;
+        } else {
+          reader.skipCurrentChunk();
+          continue;
+        }
       }
       // calc from chunkMetaData
       if (reader.canUseCurrentChunkStatistics()
@@ -271,7 +278,12 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       if (pageStatistics != null) {
         // current page max than time range
         if (pageStatistics.getStartTime() >= curEndTime) {
-          return true;
+          if (ascending) {
+            return true;
+          } else {
+            reader.skipCurrentPage();
+            continue;
+          }
         }
         // can use pageHeader
         if (reader.canUseCurrentPageStatistics()
@@ -302,7 +314,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
 
       // judge whether the calculation finished
       if (isEndCalc() || (batchData.hasCurrent() && (ascending ?
-          batchData.currentTime() >= curEndTime : batchData.currentTime() <= curStartTime))) {
+          batchData.currentTime() >= curEndTime : batchData.currentTime() < curStartTime))) {
         return true;
       }
     }

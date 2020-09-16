@@ -88,32 +88,27 @@ public class OrNode implements Node {
       long leftValue = getLeftValue();
       long rightValue = getRightValue();
       if (ascending) {
-        if (leftValue < rightValue) {
-          hasCachedRightValue = true;
-          cachedRightValue = rightValue;
-          return leftValue;
-        } else if (leftValue > rightValue) {
-          hasCachedLeftValue = true;
-          cachedLeftValue = leftValue;
-          return rightValue;
-        } else {
-          return leftValue;
-        }
-      } else {
-        if (leftValue > rightValue) {
-          hasCachedRightValue = true;
-          cachedRightValue = rightValue;
-          return leftValue;
-        } else if (leftValue < rightValue) {
-          hasCachedLeftValue = true;
-          cachedLeftValue = leftValue;
-          return rightValue;
-        } else {
-          return leftValue;
-        }
+        return popAndFillNextCache(leftValue < rightValue, leftValue > rightValue, leftValue,
+            rightValue);
       }
+      return popAndFillNextCache(leftValue > rightValue, leftValue < rightValue, leftValue,
+          rightValue);
     }
     throw new IOException("no more data");
+  }
+
+  private long popAndFillNextCache(boolean popLeft, boolean popRight, long left, long right) {
+    if (popLeft) {
+      hasCachedRightValue = true;
+      cachedRightValue = right;
+      return left;
+    } else if (popRight) {
+      hasCachedLeftValue = true;
+      cachedLeftValue = left;
+      return right;
+    } else {
+      return left;
+    }
   }
 
   @Override

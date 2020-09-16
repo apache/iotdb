@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.common;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiPredicate;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -55,7 +56,7 @@ public class BatchData implements Serializable {
   private static final int capacityThreshold = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
   protected int capacity = 16;
 
-  private TSDataType dataType;
+  protected TSDataType dataType;
 
   // outer list index for read
   protected int readCurListIndex;
@@ -560,16 +561,27 @@ public class BatchData implements Serializable {
     return null;
   }
 
+  public Object getValueInTimestamp(long time, BiPredicate<Long, Long> compare) {
+    while (hasCurrent()) {
+      if (compare.test(currentTime(), time)) {
+        next();
+      } else if (currentTime() == time) {
+        Object value = currentValue();
+        next();
+        return value;
+      } else {
+        return null;
+      }
+    }
+    return null;
+  }
+
   public long getMaxTimestamp() {
     return getTimeByIndex(length() - 1);
   }
 
   public long getMinTimestamp() {
     return getTimeByIndex(0);
-  }
-
-  public TimeColumn getTimeColumn() {
-    return new TimeColumn(timeRet, count, capacity);
   }
 
   public BatchDataIterator getBatchDataIterator() {
@@ -599,8 +611,8 @@ public class BatchData implements Serializable {
   }
 
   /**
-   * When put data, the writeIndex increases while the readIndex remains 0.
-   * For ascending read, we could read from 0 to writeIndex. So no need to flip.
+   * When put data, the writeIndex increases while the readIndex remains 0. For ascending read, we
+   * could read from 0 to writeIndex. So no need to flip.
    */
   public BatchData flip() {
     return this;

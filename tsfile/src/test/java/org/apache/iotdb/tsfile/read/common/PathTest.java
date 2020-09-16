@@ -36,6 +36,9 @@ public class PathTest {
     Path d = new Path("s1", true);
     Assert.assertEquals("s1", d.getMeasurement());
     Assert.assertEquals("", d.getDevice());
+    Path e = new Path("root.\"s.g\".d1.\"s..\\\"s1\"", true);
+    Assert.assertEquals("root.\"s.g\".d1", e.getDevice());
+    Assert.assertEquals("\"s..\\\"s1\"", e.getMeasurement());
   }
 
   @Test(expected = IllegalArgumentException.class)

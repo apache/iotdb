@@ -36,7 +36,7 @@ public class DescBatchData extends BatchData {
   public void next() {
     super.readCurArrayIndex--;
     if (super.readCurArrayIndex == -1) {
-      super.readCurArrayIndex = capacity;
+      super.readCurArrayIndex = capacity - 1;
       super.readCurListIndex--;
     }
   }
@@ -49,10 +49,11 @@ public class DescBatchData extends BatchData {
 
 
   /**
-   * When put data, the writeIndex increases while the readIndex remains 0.
-   * For descending read, we need to read from writeIndex to 0 (set the readIndex to writeIndex)
+   * When put data, the writeIndex increases while the readIndex remains 0. For descending read, we
+   * need to read from writeIndex to 0 (set the readIndex to writeIndex)
    */
-  @Override public BatchData flip() {
+  @Override
+  public BatchData flip() {
     super.readCurArrayIndex = writeCurArrayIndex - 1;
     super.readCurListIndex = writeCurListIndex;
     return this;
@@ -60,17 +61,6 @@ public class DescBatchData extends BatchData {
 
   @Override
   public Object getValueInTimestamp(long time) {
-    while (hasCurrent()) {
-      if (currentTime() > time) {
-        next();
-      } else if (currentTime() == time) {
-        Object value = currentValue();
-        next();
-        return value;
-      } else {
-        return null;
-      }
-    }
-    return null;
+    return super.getValueInTimestamp(time, (current, cmpTime) -> current > cmpTime);
   }
 }
