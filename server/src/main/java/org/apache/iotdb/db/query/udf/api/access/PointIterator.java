@@ -17,24 +17,48 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.collector;
+package org.apache.iotdb.db.query.udf.api.access;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-public interface DataPointCollector {
+public interface PointIterator {
 
-  void putInt(long timestamp, int value) throws IOException;
+  boolean hasNextPoint();
 
-  void putLong(long timestamp, long value) throws IOException;
+  void next();
 
-  void putFloat(long timestamp, float value) throws IOException;
+  long currentTime() throws IOException;
 
-  void putDouble(long timestamp, double value) throws IOException;
+  int currentInt() throws IOException;
 
-  void putBoolean(long timestamp, boolean value) throws IOException;
+  long currentLong() throws IOException;
 
-  void putBinary(long timestamp, Binary value) throws IOException;
+  float currentFloat() throws IOException;
 
-  void putString(long timestamp, String value) throws IOException;
+  double currentDouble() throws IOException;
+
+  boolean currentBoolean() throws IOException;
+
+  Binary currentBinary() throws IOException;
+
+  String currentString() throws IOException;
+
+  long nextTime() throws IOException;
+
+  int nextInt() throws IOException;
+
+  long nextLong() throws IOException;
+
+  float nextFloat() throws IOException;
+
+  double nextDouble() throws IOException;
+
+  boolean nextBoolean() throws IOException;
+
+  Binary nextBinary() throws IOException;
+
+  String nextString() throws IOException;
+
+  void reset();
 }

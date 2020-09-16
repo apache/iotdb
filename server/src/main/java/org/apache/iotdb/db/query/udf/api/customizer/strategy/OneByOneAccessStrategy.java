@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
-public enum DataPointIterationStrategy {
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 
-  FETCH_BY_POINT,
-  FETCH_BY_SLIDING_TIME_WINDOW,
-  FETCH_BY_TUMBLING_TIME_WINDOW,
-  RANDOM_ACCESS_TO_OVERALL_DATA,
+public class OneByOneAccessStrategy implements AccessStrategy {
+
+  @Override
+  public void check() throws QueryProcessException {
+  }
 }

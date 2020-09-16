@@ -17,22 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.customizer.config;
+package org.apache.iotdb.db.query.udf.api.access;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import java.io.IOException;
 
-public abstract class UDFConfigurations {
+public interface RowIterator {
 
-  protected TSDataType outputDataType;
+  boolean hasNextRow();
 
-  public TSDataType getOutputDataType() {
-    return outputDataType;
-  }
+  void next();
 
-  public void check() throws QueryProcessException {
-    if (outputDataType == null) {
-      throw new QueryProcessException("UDF outputDataType is not set.");
-    }
-  }
+  Row currentRow() throws IOException;
+
+  String nextRow() throws IOException;
+
+  void reset();
 }

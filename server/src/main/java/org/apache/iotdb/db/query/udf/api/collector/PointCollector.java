@@ -17,11 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.customizer.strategy;
+package org.apache.iotdb.db.query.udf.api.collector;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import java.io.IOException;
+import org.apache.iotdb.tsfile.utils.Binary;
 
-public interface IterationStrategy {
+public interface PointCollector {
 
-  void check() throws QueryProcessException;
+  void putInt(long timestamp, int value) throws IOException;
+
+  void putLong(long timestamp, long value) throws IOException;
+
+  void putFloat(long timestamp, float value) throws IOException;
+
+  void putDouble(long timestamp, double value) throws IOException;
+
+  void putBoolean(long timestamp, boolean value) throws IOException;
+
+  void putBinary(long timestamp, Binary value) throws IOException;
+
+  void putString(long timestamp, String value) throws IOException;
 }

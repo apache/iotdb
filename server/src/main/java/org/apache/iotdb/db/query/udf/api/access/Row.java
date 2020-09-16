@@ -17,17 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.customizer.strategy;
+package org.apache.iotdb.db.query.udf.api.access;
 
-public abstract class RowRecordWindowIterationStrategy implements IterationStrategy {
+import org.apache.iotdb.tsfile.utils.Binary;
 
-  private final String tabletName;
+public interface Row {
 
-  public RowRecordWindowIterationStrategy(String tabletName) {
-    this.tabletName = tabletName;
-  }
+  long getTime();
 
-  public String getTabletName() {
-    return tabletName;
-  }
+  int getInt(int index);
+
+  long getLong(int index);
+
+  float getFloat(int index);
+
+  double getDouble(int index);
+
+  boolean getBoolean(int index);
+
+  Binary getBinary(int index);
+
+  String getString(int index);
 }

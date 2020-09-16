@@ -19,89 +19,37 @@
 
 package org.apache.iotdb.db.query.udf.api;
 
-import java.util.List;
-import java.util.Map;
-import org.apache.iotdb.db.query.udf.api.collector.DataPointCollector;
+import org.apache.iotdb.db.query.udf.api.access.Point;
+import org.apache.iotdb.db.query.udf.api.access.PointIterator;
+import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.db.query.udf.api.access.RowIterator;
+import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.iterator.DataPointWindowIterator;
-import org.apache.iotdb.db.query.udf.api.iterator.DataPointIterator;
-import org.apache.iotdb.db.query.udf.api.iterator.Iterator;
-import org.apache.iotdb.db.query.udf.api.iterator.OverallDataPointIterator;
-import org.apache.iotdb.db.query.udf.api.iterator.OverallRowRecordIterator;
-import org.apache.iotdb.db.query.udf.api.iterator.RowRecordWindowIterator;
-import org.apache.iotdb.db.query.udf.api.iterator.RowRecordIterator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public abstract class UDTF implements UDF {
 
-  protected List<Path> paths;
-  protected List<TSDataType> dataTypes;
+  protected PointCollector collector;
 
-  protected List<Iterator> dataPointIterators;
-  protected Map<String, Iterator> rowRecordIterators;
-
-  protected DataPointCollector collector;
-
-  /**
-   * @param parameters
-   * @param configurations
-   */
   public abstract void initializeUDF(UDFParameters parameters, UDTFConfigurations configurations);
 
-  /**
-   *
-   */
-  public abstract void transform() throws Exception;
-
-  public final DataPointIterator getDataPointIterator(int index) {
-    return (DataPointIterator) dataPointIterators.get(index);
+  public void transformPoint(Point point) throws Exception {
   }
 
-  public final DataPointWindowIterator getDataPointWindowIterator(int index) {
-    return (DataPointWindowIterator) dataPointIterators.get(index);
+  public void transformPoints(PointIterator points) throws Exception {
   }
 
-  public final OverallDataPointIterator getOverallDataPointIterator(int index) {
-    return (OverallDataPointIterator) dataPointIterators.get(index);
+  public void transformRow(Row row) throws Exception {
   }
 
-  public final RowRecordIterator getRowRecordIterator(String tabletName) {
-    return (RowRecordIterator) rowRecordIterators.get(tabletName);
+  public void transformRows(RowIterator rows) throws Exception {
   }
 
-  public final RowRecordWindowIterator getRowRecordWindowIterator(String tabletName) {
-    return (RowRecordWindowIterator) rowRecordIterators.get(tabletName);
-  }
-
-  public final OverallRowRecordIterator getOverallRowRecordIterator(String tabletName) {
-    return (OverallRowRecordIterator) rowRecordIterators.get(tabletName);
-  }
-
-  // The following methods are not for users
-
-  public final void setPaths(List<Path> paths) {
-    this.paths = paths;
-  }
-
-  public final void setDataTypes(List<TSDataType> dataTypes) {
-    this.dataTypes = dataTypes;
-  }
-
-  public final void setDataPointIterators(List<Iterator> dataPointIterators) {
-    this.dataPointIterators = dataPointIterators;
-  }
-
-  public final void setRowRecordIterators(Map<String, Iterator> rowRecordIterators) {
-    this.rowRecordIterators = rowRecordIterators;
-  }
-
-  public final void setCollector(DataPointCollector collector) {
+  public final void setCollector(PointCollector collector) {
     this.collector = collector;
   }
 
-  public final DataPointCollector getCollector() {
+  public final PointCollector getCollector() {
     return collector;
   }
 }

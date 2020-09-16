@@ -17,12 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.customizer.strategy;
+package org.apache.iotdb.db.query.udf.api.access;
 
-public enum RowRecordIterationStrategy {
+import org.apache.iotdb.tsfile.utils.Binary;
 
-  FETCH_BY_ROW,
-  FETCH_BY_SLIDING_TIME_WINDOW,
-  FETCH_BY_TUMBLING_TIME_WINDOW,
-  RANDOM_ACCESS_TO_OVERALL_DATA,
+public interface Point {
+
+  long getTime();
+
+  int getInt();
+
+  long getLong();
+
+  float getFloat();
+
+  double getDouble();
+
+  boolean getBoolean();
+
+  Binary getBinary();
+
+  String getString();
 }

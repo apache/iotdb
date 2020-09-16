@@ -21,23 +21,7 @@ package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 
-public abstract class DataPointWindowIterationStrategy implements IterationStrategy {
+public interface AccessStrategy {
 
-  private final int seriesIndex;
-
-  public DataPointWindowIterationStrategy(int seriesIndex) {
-    this.seriesIndex = seriesIndex;
-  }
-
-  @Override
-  public void check() throws QueryProcessException {
-    if (seriesIndex < 0) {
-      throw new QueryProcessException(
-          String.format("Parameter seriesIndex(%d) can not be negative.", seriesIndex));
-    }
-  }
-
-  public int getSeriesIndex() {
-    return seriesIndex;
-  }
+  void check() throws QueryProcessException;
 }

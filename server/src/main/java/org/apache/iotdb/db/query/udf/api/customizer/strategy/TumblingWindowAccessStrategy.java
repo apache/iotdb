@@ -23,20 +23,18 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils.DurationUnit;
 
-public class RowRecordTumblingWindowIterationStrategy extends RowRecordWindowIterationStrategy {
+public class TumblingWindowAccessStrategy implements AccessStrategy {
 
   private final int windowSize;
 
   private Long displayWindowBegin;
 
-  public RowRecordTumblingWindowIterationStrategy(String tabletName, int windowSize) {
-    super(tabletName);
+  public TumblingWindowAccessStrategy(int windowSize) {
     this.windowSize = windowSize;
   }
 
-  public RowRecordTumblingWindowIterationStrategy(String tabletName, int windowSize,
+  public TumblingWindowAccessStrategy(int windowSize,
       long displayWindowBegin, DurationUnit displayWindowBeginTimeUnit) {
-    super(tabletName);
     this.windowSize = windowSize;
     this.displayWindowBegin = DatetimeUtils
         .convertDurationStrToLong(displayWindowBegin, displayWindowBeginTimeUnit.toString(), "ns");

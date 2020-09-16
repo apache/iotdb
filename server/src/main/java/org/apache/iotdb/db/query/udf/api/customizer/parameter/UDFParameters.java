@@ -21,20 +21,28 @@ package org.apache.iotdb.db.query.udf.api.customizer.parameter;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class UDFParameters {
 
   private final List<Path> paths;
+  private final List<TSDataType> dataTypes;
   private final Map<String, String> attributes;
 
-  public UDFParameters(List<Path> paths, Map<String, String> attributes) {
+  public UDFParameters(List<Path> paths, List<TSDataType> dataTypes,
+      Map<String, String> attributes) {
     this.paths = paths;
+    this.dataTypes = dataTypes;
     this.attributes = attributes;
   }
 
   public List<Path> getPaths() {
     return paths;
+  }
+
+  public List<TSDataType> getDataTypes() {
+    return dataTypes;
   }
 
   public Map<String, String> getAttributes() {
