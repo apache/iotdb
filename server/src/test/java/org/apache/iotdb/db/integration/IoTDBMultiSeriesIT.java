@@ -27,6 +27,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -269,15 +270,13 @@ public class IoTDBMultiSeriesIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(
-                  TestConstant.d0s0)
-                  + "," + resultSet.getString(
-                  TestConstant.d0s1) + "," + resultSet
-                  .getString(TestConstant.d0s2) + ","
-                  + resultSet.getString(TestConstant.d0s3) + "," + resultSet.getString(
-                  TestConstant.d0s4)
-                  + ","
-                  + resultSet.getString(TestConstant.d0s5);
+              resultSet.getString(TestConstant.TIMESTAMP_STR)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s2)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s3)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s4)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s5);
           cnt++;
         }
         assertEquals(23400, cnt);
@@ -306,7 +305,7 @@ public class IoTDBMultiSeriesIT {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet
-                  .getString(TestConstant.d0s0);
+                  .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0);
           // System.out.println("===" + ans);
           cnt++;
         }
@@ -337,7 +336,7 @@ public class IoTDBMultiSeriesIT {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet
-                  .getString(TestConstant.d0s0);
+                  .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0);
           // System.out.println(ans);
           cnt++;
         }
@@ -366,9 +365,9 @@ public class IoTDBMultiSeriesIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
-          long time = Long.valueOf(resultSet.getString(
+          long time = Long.parseLong(resultSet.getString(
               TestConstant.TIMESTAMP_STR));
-          String value = resultSet.getString(TestConstant.d0s1);
+          String value = resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1);
           if (time > 200900) {
             assertEquals("7777", value);
           }

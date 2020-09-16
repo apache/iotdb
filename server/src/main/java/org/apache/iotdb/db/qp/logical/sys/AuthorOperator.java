@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
@@ -32,7 +32,7 @@ public class AuthorOperator extends RootOperator {
   private String password;
   private String newPassword;
   private String[] privilegeList;
-  private Path nodeName;
+  private PartialPath nodeName;
 
   /**
    * AuthorOperator Constructor with AuthorType.
@@ -102,11 +102,11 @@ public class AuthorOperator extends RootOperator {
     this.privilegeList = authorizationList;
   }
 
-  public Path getNodeName() {
+  public PartialPath getNodeName() {
     return nodeName;
   }
 
-  public void setNodeNameList(Path nodePath) {
+  public void setNodeNameList(PartialPath nodePath) {
     this.nodeName = nodePath;
   }
 

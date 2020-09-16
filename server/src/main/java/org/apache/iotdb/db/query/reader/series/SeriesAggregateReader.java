@@ -18,28 +18,27 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import java.io.IOException;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
-import java.io.IOException;
-import java.util.Set;
 
 
 public class SeriesAggregateReader implements IAggregateReader {
 
   private final SeriesReader seriesReader;
 
-  public SeriesAggregateReader(Path seriesPath, Set<String> allSensors,  TSDataType dataType,
+  public SeriesAggregateReader(PartialPath seriesPath, Set<String> allSensors,  TSDataType dataType,
       QueryContext context, QueryDataSource dataSource, Filter timeFilter, Filter valueFilter,
-      TsFileFilter fileFilter) {
+      TsFileFilter fileFilter, boolean ascending) {
     this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, dataSource,
-        timeFilter, valueFilter, fileFilter);
+        timeFilter, valueFilter, fileFilter, ascending);
   }
 
   @Override
@@ -113,7 +112,7 @@ public class SeriesAggregateReader implements IAggregateReader {
 
   @Override
   public BatchData nextPage() throws IOException {
-    return seriesReader.nextPage();
+    return seriesReader.nextPage().flip();
   }
 
   private boolean containedByTimeFilter(Statistics statistics) {

@@ -85,6 +85,7 @@ public class IoTDBConstant {
   public static final String COLUMN_DONE = "done";
 
   public static final String PATH_WILDCARD = "*";
+  public static final String TIME = "time";
 
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";

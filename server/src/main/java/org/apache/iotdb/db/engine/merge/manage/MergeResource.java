@@ -34,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -42,7 +42,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -60,7 +60,7 @@ public class MergeResource {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>(); //is this too waste?
+  private Map<PartialPath, MeasurementSchema> measurementSchemaMap = new HashMap<>(); //is this too waste?
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
   private long timeLowerBound = Long.MIN_VALUE;
@@ -102,7 +102,7 @@ public class MergeResource {
     chunkWriterCache.clear();
   }
 
-  public MeasurementSchema getSchema(Path path) {
+  public MeasurementSchema getSchema(PartialPath path) {
     return measurementSchemaMap.get(path);
   }
 
@@ -115,7 +115,7 @@ public class MergeResource {
     RestorableTsFileIOWriter writer = fileWriterCache.get(resource);
     if (writer == null) {
       writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory()
-          .getFile(resource.getPath() + MERGE_SUFFIX));
+          .getFile(resource.getTsFilePath() + MERGE_SUFFIX));
       fileWriterCache.put(resource, writer);
     }
     return writer;
@@ -126,7 +126,7 @@ public class MergeResource {
    * is not cached since it is usually huge.
    * @param path name of the time series
    */
-  public List<ChunkMetadata> queryChunkMetadata(Path path, TsFileResource seqFile)
+  public List<ChunkMetadata> queryChunkMetadata(PartialPath path, TsFileResource seqFile)
       throws IOException {
     TsFileSequenceReader sequenceReader = getFileReader(seqFile);
     return sequenceReader.getChunkMetadataList(path);
@@ -139,7 +139,7 @@ public class MergeResource {
   public TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
     TsFileSequenceReader reader = fileReaderCache.get(tsFileResource);
     if (reader == null) {
-      reader = new TsFileSequenceReader(tsFileResource.getPath(), true, cacheDeviceMeta);
+      reader = new TsFileSequenceReader(tsFileResource.getTsFilePath(), true, cacheDeviceMeta);
       fileReaderCache.put(tsFileResource, reader);
     }
     return reader;
@@ -151,7 +151,7 @@ public class MergeResource {
    * @param paths names of the timeseries
    * @return an array of UnseqResourceMergeReaders each corresponding to a timeseries in paths
    */
-  public IPointReader[] getUnseqReaders(List<Path> paths) throws IOException {
+  public IPointReader[] getUnseqReaders(List<PartialPath> paths) throws IOException {
     List<Chunk>[] pathChunks = MergeUtils.collectUnseqChunks(paths, unseqFiles, this);
     IPointReader[] ret = new IPointReader[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
@@ -175,7 +175,7 @@ public class MergeResource {
    * the next query, so two calls of the same file and timeseries are forbidden.
    * @param path name of the time series
    */
-  public List<Modification> getModifications(TsFileResource tsFileResource, Path path) {
+  public List<Modification> getModifications(TsFileResource tsFileResource, PartialPath path) {
     // copy from TsFileResource so queries are not affected
     List<Modification> modifications = modificationCache.computeIfAbsent(tsFileResource,
         resource -> new LinkedList<>(resource.getModFile().getModifications()));
@@ -251,7 +251,7 @@ public class MergeResource {
     this.cacheDeviceMeta = cacheDeviceMeta;
   }
 
-  public void setMeasurementSchemaMap(Map<Path, MeasurementSchema> measurementSchemaMap) {
+  public void setMeasurementSchemaMap(Map<PartialPath, MeasurementSchema> measurementSchemaMap) {
     this.measurementSchemaMap = measurementSchemaMap;
   }
 

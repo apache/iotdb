@@ -41,7 +41,7 @@ Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.excepti
 
 ## Show Storage Group
 
-After the storage group is created, we can use the [SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.html) statement to view all the storage groups. The SQL statement is as follows:
+After the storage group is created, we can use the [SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md) statement to view all the storage groups. The SQL statement is as follows:
 
 ```
 IoTDB> show storage group
@@ -49,6 +49,15 @@ IoTDB> show storage group
 
 The result is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
+
+## Delete Storage Group
+
+User can delete a specified storage group by using [DELETE STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md). Please note the data in the storage group will also be deleted. 
+
+```
+IoTDB > DELETE STORAGE GROUP root.ln
+IoTDB > DELETE STORAGE GROUP root.sgcc
+```
 
 ## Create Timeseries
 
@@ -70,7 +79,7 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-Please refer to [Encoding](../Concept/Encoding.html) for correspondence between data type and encoding.
+Please refer to [Encoding](../Concept/Encoding.md) for correspondence between data type and encoding.
 
 ### Tag and attribute management
 
@@ -83,9 +92,11 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 
 The `temprature` in the brackets is an alias for the sensor `s1`. So we can use `temprature` to replace `s1` anywhere.
 
-> Notice that the size of the extra tag and attribute information shouldn't exceed the `tag_attribute_total_size`.
+> IoTDB also supports [using AS function](../Operation%20Manual/DML%20Data%20Manipulation%20Language.md) to set alias. The difference between the two is: the alias set by the AS function is used to replace the whole time series name, temporary and not bound with the time series; while the alias mentioned above is only used as the alias of the sensor, which is bound with it and can be used equivalent to the original sensor name.
 
 The only difference between tag and attribute is that we will maintain an inverted index on the tag, so we can use tag property in the show timeseries where clause which you can see in the following `Show Timeseries` section.
+
+> Notice that the size of the extra tag and attribute information shouldn't exceed the `tag_attribute_total_size`.
 
 
 ## UPDATE TAG OPERATION

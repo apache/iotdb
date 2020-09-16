@@ -50,7 +50,7 @@ Edit user config in `iotdb-engine.properties`. Related configurations are:
 |Description| The storage file system of Tsfile and related data files. Currently LOCAL file system and HDFS are supported.|
 |Type| String |
 |Default|LOCAL |
-|Effective|After restart system|
+|Effective|Only allowed to be modified in first start up|
 
 * core\_site\_path
 

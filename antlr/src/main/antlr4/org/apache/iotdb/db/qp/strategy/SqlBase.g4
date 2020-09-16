@@ -19,70 +19,73 @@
 
 grammar SqlBase;
 
+@parser::members {public static boolean hasSingleQuoteString;}
+
 singleStatement
     : statement EOF
     ;
 
 statement
-    : CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
-    | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
-    | ALTER TIMESERIES fullPath alterClause #alterTimeseries
-    | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
-    | UPDATE prefixPath setClause whereClause? #updateStatement
-    | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
-    | SET STORAGE GROUP TO fullPath #setStorageGroup
-    | DELETE STORAGE GROUP fullPath (COMMA fullPath)* #deleteStorageGroup
+    : {hasSingleQuoteString = false;} CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
+    | {hasSingleQuoteString = false;} DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
+    | {hasSingleQuoteString = false;} ALTER TIMESERIES fullPath alterClause #alterTimeseries
+    | {hasSingleQuoteString = false;} INSERT INTO prefixPath insertColumnSpec VALUES insertValuesSpec #insertStatement
+    | {hasSingleQuoteString = false;} UPDATE prefixPath setClause whereClause? #updateStatement
+    | {hasSingleQuoteString = false;} DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
+    | {hasSingleQuoteString = false;} SET STORAGE GROUP TO prefixPath #setStorageGroup
+    | {hasSingleQuoteString = false;} DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
     | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
     | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
     | MERGE #merge
-    | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
+    | {hasSingleQuoteString = false;}FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
     | FULL MERGE #fullMerge
     | CLEAR CACHE #clearcache
-    | CREATE USER userName=ID password=STRING_LITERAL #createUser
-    | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
+    | {hasSingleQuoteString = true;} CREATE USER userName=ID password= stringLiteral#createUser
+    | {hasSingleQuoteString = true;} ALTER USER userName=(ROOT|ID) SET PASSWORD password=stringLiteral #alterUser
     | DROP USER userName=ID #dropUser
     | CREATE ROLE roleName=ID #createRole
     | DROP ROLE roleName=ID #dropRole
-    | GRANT USER userName=ID PRIVILEGES privileges ON prefixPath #grantUser
-    | GRANT ROLE roleName=ID PRIVILEGES privileges ON prefixPath #grantRole
-    | REVOKE USER userName=ID PRIVILEGES privileges ON prefixPath #revokeUser
-    | REVOKE ROLE roleName=ID PRIVILEGES privileges ON prefixPath #revokeRole
+    | GRANT USER userName=ID PRIVILEGES privileges ON {hasSingleQuoteString = false;} prefixPath #grantUser
+    | GRANT ROLE roleName=ID PRIVILEGES privileges ON {hasSingleQuoteString = false;} prefixPath #grantRole
+    | REVOKE USER userName=ID PRIVILEGES privileges ON {hasSingleQuoteString = false;} prefixPath #revokeUser
+    | REVOKE ROLE roleName=ID PRIVILEGES privileges ON {hasSingleQuoteString = false;} prefixPath #revokeRole
     | GRANT roleName=ID TO userName=ID #grantRoleToUser
     | REVOKE roleName = ID FROM userName = ID #revokeRoleFromUser
-    | LOAD TIMESERIES (fileName=STRING_LITERAL) prefixPath #loadStatement
+    | {hasSingleQuoteString = true;} LOAD TIMESERIES (fileName=stringLiteral) prefixPath#loadStatement
     | GRANT WATERMARK_EMBEDDING TO rootOrId (COMMA rootOrId)* #grantWatermarkEmbedding
     | REVOKE WATERMARK_EMBEDDING FROM rootOrId (COMMA rootOrId)* #revokeWatermarkEmbedding
     | LIST USER #listUser
     | LIST ROLE #listRole
-    | LIST PRIVILEGES USER username=ID ON prefixPath #listPrivilegesUser
-    | LIST PRIVILEGES ROLE roleName=ID ON prefixPath #listPrivilegesRole
-    | LIST USER PRIVILEGES username = ID #listUserPrivileges
+    | LIST PRIVILEGES USER username=rootOrId ON {hasSingleQuoteString = false;} prefixPath #listPrivilegesUser
+    | LIST PRIVILEGES ROLE roleName=ID ON {hasSingleQuoteString = false;} prefixPath #listPrivilegesRole
+    | LIST USER PRIVILEGES username =rootOrId #listUserPrivileges
     | LIST ROLE PRIVILEGES roleName = ID #listRolePrivileges
-    | LIST ALL ROLE OF USER username = ID #listAllRoleOfUser
+    | LIST ALL ROLE OF USER username = rootOrId #listAllRoleOfUser
     | LIST ALL USER OF ROLE roleName = ID #listAllUserOfRole
-    | SET TTL TO path=prefixPath time=INT #setTTLStatement
-    | UNSET TTL TO path=prefixPath #unsetTTLStatement
-    | SHOW TTL ON prefixPath (COMMA prefixPath)* #showTTLStatement
+    | {hasSingleQuoteString = false;} SET TTL TO path=prefixPath time=INT #setTTLStatement
+    | {hasSingleQuoteString = false;} UNSET TTL TO path=prefixPath #unsetTTLStatement
+    | {hasSingleQuoteString = false;} SHOW TTL ON prefixPath (COMMA prefixPath)* #showTTLStatement
     | SHOW ALL TTL #showAllTTLStatement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
-    | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
-    | SHOW STORAGE GROUP #showStorageGroup
-    | SHOW CHILD PATHS prefixPath? #showChildPaths
-    | SHOW DEVICES prefixPath? #showDevices
+    | {hasSingleQuoteString = false;} SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
+    | {hasSingleQuoteString = false;} SHOW STORAGE GROUP prefixPath? #showStorageGroup
+    | {hasSingleQuoteString = false;} SHOW CHILD PATHS prefixPath? #showChildPaths
+    | {hasSingleQuoteString = false;} SHOW DEVICES prefixPath? #showDevices
     | SHOW MERGE #showMergeStatus
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
+    | COUNT DEVICES prefixPath? #countDevices
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
-    | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
-    | REMOVE STRING_LITERAL #removeFile
-    | MOVE STRING_LITERAL STRING_LITERAL #moveFile
-    | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
+    | {hasSingleQuoteString = true;} LOAD stringLiteral autoCreateSchema?#loadFiles
+    | {hasSingleQuoteString = true;} REMOVE stringLiteral #removeFile
+    | {hasSingleQuoteString = true;} MOVE stringLiteral stringLiteral #moveFile
+    | {hasSingleQuoteString = false;} DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
@@ -92,7 +95,7 @@ statement
     fromClause
     whereClause?
     specialClause? #selectIndexStatement
-    | SELECT selectElements
+    | {hasSingleQuoteString = true;} SELECT selectElements
     fromClause
     whereClause?
     specialClause? #selectStatement
@@ -101,8 +104,9 @@ statement
 selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
-    | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
     | lastClause #lastElement
+    | asClause (COMMA asClause)* #asElement
+    | functionAsClause (COMMA functionAsClause)* #functionAsElement
     ;
 
 functionCall
@@ -121,8 +125,17 @@ functionName
     | LAST_VALUE
     ;
 
+functionAsClause
+    : functionCall (AS ID)?
+    ;
+
 lastClause
     : LAST suffixPath (COMMA suffixPath)*
+    | LAST asClause (COMMA asClause)*
+    ;
+
+asClause
+    : suffixPath (AS ID)?
     ;
 
 alias
@@ -202,16 +215,17 @@ inClause
     ;
 
 fromClause
-    : FROM prefixPath (COMMA prefixPath)*
+    : {hasSingleQuoteString = false;} FROM prefixPath (COMMA prefixPath)*
     ;
 
 specialClause
     : specialLimit
-    | groupByTimeClause specialLimit?
-    | groupByFillClause
+    | orderByTimeClause specialLimit?
+    | groupByTimeClause orderByTimeClause? specialLimit?
+    | groupByFillClause orderByTimeClause? specialLimit?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
-    | groupByLevelClause specialLimit?
+    | groupByLevelClause orderByTimeClause? specialLimit?
     ;
 
 specialLimit
@@ -219,6 +233,11 @@ specialLimit
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
     ;
+
+orderByTimeClause
+    : ORDER BY TIME (DESC | ASC)?
+    ;
+
 
 limitClause
     : LIMIT INT offsetClause?
@@ -332,7 +351,7 @@ setCol
     ;
 
 privileges
-    : STRING_LITERAL (COMMA STRING_LITERAL)*
+    : {hasSingleQuoteString = true;} stringLiteral (COMMA stringLiteral)*
     ;
 
 rootOrId
@@ -354,7 +373,7 @@ timeValue
 propertyValue
     : INT
     | ID
-    | STRING_LITERAL
+    | {hasSingleQuoteString = true;} stringLiteral
     | constant
     ;
 
@@ -373,7 +392,7 @@ suffixPath
 nodeName
     : ID
     | STAR
-    | STRING_LITERAL
+    | stringLiteral
     | ID STAR
     | DURATION
     | encoding
@@ -382,13 +401,109 @@ nodeName
     | MINUS? EXPONENT
     | MINUS? INT
     | booleanClause
+    | CREATE
+    | INSERT
+    | UPDATE
+    | DELETE
+    | SELECT
+    | SHOW
+    | GRANT
+    | INTO
+    | SET
+    | WHERE
+    | FROM
+    | TO
+    | BY
+    | DEVICE
+    | CONFIGURATION
+    | DESCRIBE
+    | SLIMIT
+    | LIMIT
+    | UNLINK
+    | OFFSET
+    | SOFFSET
+    | FILL
+    | LINEAR
+    | PREVIOUS
+    | PREVIOUSUNTILLAST
+    | METADATA
+    | TIMESERIES
+    | TIMESTAMP
+    | PROPERTY
+    | WITH
+    | DATATYPE
+    | COMPRESSOR
+    | STORAGE
+    | GROUP
+    | LABEL
+    | ADD
+    | UPSERT
+    | VALUES
+    | NOW
+    | LINK
+    | INDEX
+    | USING
+    | ON
+    | DROP
+    | MERGE
+    | LIST
+    | USER
+    | PRIVILEGES
+    | ROLE
+    | ALL
+    | OF
+    | ALTER
+    | PASSWORD
+    | REVOKE
+    | LOAD
+    | WATERMARK_EMBEDDING
+    | UNSET
+    | TTL
+    | FLUSH
+    | TASK
+    | INFO
+    | DYNAMIC
+    | PARAMETER
+    | VERSION
+    | REMOVE
+    | MOVE
+    | CHILD
+    | PATHS
+    | DEVICES
+    | COUNT
+    | NODES
+    | LEVEL
+    | MIN_TIME
+    | MAX_TIME
+    | MIN_VALUE
+    | MAX_VALUE
+    | AVG
+    | FIRST_VALUE
+    | SUM
+    | LAST_VALUE
+    | LAST
+    | DISABLE
+    | ALIGN
+    | COMPRESSION
+    | TIME
+    | ATTRIBUTES
+    | TAGS
+    | RENAME
+    | FULL
+    | CLEAR
+    | CACHE
+    | SNAPSHOT
+    | FOR
+    | SCHEMA
+    | TRACING
+    | OFF
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     | compressor
     ;
 
 nodeNameWithoutStar
     : ID
-    | STRING_LITERAL
+    | stringLiteral
     | DURATION
     | encoding
     | dataType
@@ -396,6 +511,102 @@ nodeNameWithoutStar
     | MINUS? EXPONENT
     | MINUS? INT
     | booleanClause
+    | CREATE
+    | INSERT
+    | UPDATE
+    | DELETE
+    | SELECT
+    | SHOW
+    | GRANT
+    | INTO
+    | SET
+    | WHERE
+    | FROM
+    | TO
+    | BY
+    | DEVICE
+    | CONFIGURATION
+    | DESCRIBE
+    | SLIMIT
+    | LIMIT
+    | UNLINK
+    | OFFSET
+    | SOFFSET
+    | FILL
+    | LINEAR
+    | PREVIOUS
+    | PREVIOUSUNTILLAST
+    | METADATA
+    | TIMESERIES
+    | TIMESTAMP
+    | PROPERTY
+    | WITH
+    | DATATYPE
+    | COMPRESSOR
+    | STORAGE
+    | GROUP
+    | LABEL
+    | ADD
+    | UPSERT
+    | VALUES
+    | NOW
+    | LINK
+    | INDEX
+    | USING
+    | ON
+    | DROP
+    | MERGE
+    | LIST
+    | USER
+    | PRIVILEGES
+    | ROLE
+    | ALL
+    | OF
+    | ALTER
+    | PASSWORD
+    | REVOKE
+    | LOAD
+    | WATERMARK_EMBEDDING
+    | UNSET
+    | TTL
+    | FLUSH
+    | TASK
+    | INFO
+    | DYNAMIC
+    | PARAMETER
+    | VERSION
+    | REMOVE
+    | MOVE
+    | CHILD
+    | PATHS
+    | DEVICES
+    | COUNT
+    | NODES
+    | LEVEL
+    | MIN_TIME
+    | MAX_TIME
+    | MIN_VALUE
+    | MAX_VALUE
+    | AVG
+    | FIRST_VALUE
+    | SUM
+    | LAST_VALUE
+    | LAST
+    | DISABLE
+    | ALIGN
+    | COMPRESSION
+    | TIME
+    | ATTRIBUTES
+    | TAGS
+    | RENAME
+    | FULL
+    | CLEAR
+    | CACHE
+    | SNAPSHOT
+    | FOR
+    | SCHEMA
+    | TRACING
+    | OFF
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     | compressor
     ;
@@ -414,7 +625,7 @@ constant
     | NaN
     | MINUS? realLiteral
     | MINUS? INT
-    | STRING_LITERAL
+    | {hasSingleQuoteString = true;} stringLiteral
     | booleanClause
     ;
 
@@ -495,6 +706,10 @@ FROM
 
 TO
     : T O
+    ;
+
+ORDER
+    : O R D E R
     ;
 
 BY
@@ -862,6 +1077,10 @@ COMPRESSION
     : C O M P R E S S I O N
     ;
 
+AS
+    : A S
+    ;
+
 TIME
     : T I M E
     ;
@@ -951,6 +1170,12 @@ SCHEMA
     : S C H E M A
     ;
 
+DESC
+    : D E S C
+    ;
+ASC
+    : A S C
+    ;
 //============================
 // End of the keywords list
 //============================
@@ -1014,9 +1239,9 @@ UNDERLINE : '_';
 
 NaN : 'NaN';
 
-STRING_LITERAL
-   : DOUBLE_QUOTE_STRING_LITERAL
-   | SINGLE_QUOTE_STRING_LITERAL
+stringLiteral
+   : {hasSingleQuoteString}? SINGLE_QUOTE_STRING_LITERAL
+   | DOUBLE_QUOTE_STRING_LITERAL
    ;
 
 INT : [0-9]+;
@@ -1076,11 +1301,11 @@ fragment CN_CHAR
   : '\u2E80'..'\u9FFF'
   ;
 
-fragment DOUBLE_QUOTE_STRING_LITERAL
+DOUBLE_QUOTE_STRING_LITERAL
     : '"' ('\\' . | ~'"' )*? '"'
     ;
 
-fragment SINGLE_QUOTE_STRING_LITERAL
+SINGLE_QUOTE_STRING_LITERAL
     : '\'' ('\\' . | ~'\'' )*? '\''
     ;
 

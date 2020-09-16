@@ -570,6 +570,46 @@ public class IoTDBGroupByFillIT {
     }
   }
 
+  @Test
+  public void usingLimit() {
+
+    String[] retArray = new String[] {
+          "27,26",
+          "32,29",
+          "37,40",
+          "42,40",
+          "47,40",
+    };
+
+    try (Connection connection = DriverManager.
+            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+              "select last_value(temperature) from "
+                      + "root.ln.wf01.wt01 "
+                      + "GROUP BY ([17, 48), 5ms) FILL(int32[previous]) "
+                      + "limit 5 offset 2");
+
+      assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
+                  .getString(last_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+  }
+
   private void prepareData() {
     try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",

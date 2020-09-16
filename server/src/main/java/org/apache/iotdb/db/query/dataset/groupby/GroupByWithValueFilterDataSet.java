@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -29,6 +34,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.series.DescSeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
@@ -37,10 +43,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -50,19 +53,13 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * cached timestamp for next group by partition.
    */
-  private long timestamp;
-  /**
-   * if this object has cached timestamp for next group by partition.
-   */
-  private boolean hasCachedTimestamp;
-
+  private LinkedList<Long> cachedTimestamps = new LinkedList<>();
   /**
    * group by batch calculation size.
    */
   protected int timeStampFetchSize;
 
-  public GroupByWithValueFilterDataSet() {
-  }
+  private long lastTimestamp;
 
   /**
    * constructor.
@@ -85,27 +82,35 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    */
   protected void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
-    this.timestampGenerator = getTimeGenerator(groupByTimePlan.getExpression(), context, groupByTimePlan);
+    this.timestampGenerator = getTimeGenerator(groupByTimePlan.getExpression(), context,
+        groupByTimePlan);
     this.allDataReaderList = new ArrayList<>();
     this.groupByTimePlan = groupByTimePlan;
     for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
-      allDataReaderList.add(getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
+      PartialPath path = (PartialPath) paths.get(i);
+      allDataReaderList
+          .add(getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
     }
   }
 
-  protected TimeGenerator getTimeGenerator(IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
+  protected TimeGenerator getTimeGenerator(IExpression expression, QueryContext context,
+      RawDataQueryPlan queryPlan)
       throws StorageEngineException {
     return new ServerTimeGenerator(expression, context, queryPlan);
   }
 
-  protected IReaderByTimestamp getReaderByTime(Path path, RawDataQueryPlan queryPlan,
+  protected IReaderByTimestamp getReaderByTime(PartialPath path, RawDataQueryPlan queryPlan,
       TSDataType dataType, QueryContext context, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
-    return new SeriesReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
+    return ascending ? new SeriesReaderByTimestamp(path,
+        queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter)
+        : new DescSeriesReaderByTimestamp(path,
+            queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
+            QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   protected RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedTimeInterval) {
@@ -122,17 +127,24 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
     long[] timestampArray = new long[timeStampFetchSize];
     int timeArrayLength = 0;
-    if (hasCachedTimestamp) {
+
+    if (!cachedTimestamps.isEmpty()) {
+      long timestamp = cachedTimestamps.remove();
       if (timestamp < curEndTime) {
+        if (!groupByTimePlan.isAscending() && timestamp < curStartTime) {
+          cachedTimestamps.addFirst(timestamp);
+          return constructRowRecord(aggregateResultList);
+        }
         if (timestamp >= curStartTime) {
-          hasCachedTimestamp = false;
           timestampArray[timeArrayLength++] = timestamp;
         }
       } else {
+        cachedTimestamps.addFirst(timestamp);
         return constructRowRecord(aggregateResultList);
       }
     }
-    while (timestampGenerator.hasNext()) {
+
+    while (!cachedTimestamps.isEmpty() || timestampGenerator.hasNext()) {
       // construct timestamp array
       timeArrayLength = constructTimeArrayForOneCal(timestampArray, timeArrayLength);
 
@@ -144,8 +156,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
       timeArrayLength = 0;
       // judge if it's end
-      if (timestamp >= curEndTime) {
-        hasCachedTimestamp = true;
+      if ((groupByTimePlan.isAscending() && lastTimestamp >= curEndTime)
+          || (!groupByTimePlan.isAscending() && lastTimestamp < curStartTime)) {
         break;
       }
     }
@@ -160,6 +172,51 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     return constructRowRecord(aggregateResultList);
   }
 
+  @Override
+  @SuppressWarnings("squid:S3776")
+  public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
+    if ((!timestampGenerator.hasNext() && cachedTimestamps.isEmpty())
+        || allDataReaderList.get(i).readerIsEmpty()) {
+      return null;
+    }
+
+    long[] timestampArray = new long[1];
+    AggregateResult aggrResultByName = AggregateResultFactory.getAggrResultByName(
+        groupByTimePlan.getDeduplicatedAggregations().get(i),
+        groupByTimePlan.getDeduplicatedDataTypes().get(i));
+
+    long tmpStartTime = curStartTime - slidingStep;
+    int index = 0;
+    while (tmpStartTime >= startTime
+        && (timestampGenerator.hasNext() || !cachedTimestamps.isEmpty())) {
+      long timestamp = Long.MIN_VALUE;
+      if (timestampGenerator.hasNext()) {
+        cachedTimestamps.add(timestampGenerator.next());
+      }
+      if (!cachedTimestamps.isEmpty() && index < cachedTimestamps.size()) {
+        timestamp = cachedTimestamps.get(index++);
+      }
+      if (timestamp >= tmpStartTime) {
+        timestampArray[0] = timestamp;
+      } else {
+        do {
+          tmpStartTime -= slidingStep;
+          if (timestamp >= tmpStartTime) {
+            timestampArray[0] = timestamp;
+            break;
+          }
+        } while (tmpStartTime >= startTime);
+      }
+      aggrResultByName
+          .updateResultUsingTimestamps(timestampArray, 1, allDataReaderList.get(i));
+
+      if (aggrResultByName.getResult() != null) {
+        return new Pair<>(tmpStartTime, aggrResultByName.getResult());
+      }
+    }
+    return null;
+  }
+
   /**
    * construct an array of timestamps for one batch of a group by partition calculating.
    *
@@ -167,14 +224,27 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    * @param timeArrayLength the current size of timestamp array
    * @return time array size
    */
+  @SuppressWarnings("squid:S3776")
   private int constructTimeArrayForOneCal(long[] timestampArray, int timeArrayLength)
       throws IOException {
-    for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt++) {
-      timestamp = timestampGenerator.next();
-      if (timestamp < curEndTime) {
-        timestampArray[timeArrayLength++] = timestamp;
+    for (int cnt = 1; cnt < timeStampFetchSize - 1
+        && (!cachedTimestamps.isEmpty() || timestampGenerator.hasNext()); cnt++) {
+      if (!cachedTimestamps.isEmpty()) {
+        lastTimestamp = cachedTimestamps.remove();
       } else {
-        hasCachedTimestamp = true;
+        lastTimestamp = timestampGenerator.next();
+      }
+      if (groupByTimePlan.isAscending() && lastTimestamp < curEndTime) {
+        timestampArray[timeArrayLength++] = lastTimestamp;
+      } else if (!groupByTimePlan.isAscending() && lastTimestamp >= curStartTime) {
+        timestampArray[timeArrayLength++] = lastTimestamp;
+      } else {
+        //may lastTimestamp get from cache
+        if (!cachedTimestamps.isEmpty() && lastTimestamp <= cachedTimestamps.peek()) {
+          cachedTimestamps.addFirst(lastTimestamp);
+        } else {
+          cachedTimestamps.add(lastTimestamp);
+        }
         break;
       }
     }
@@ -186,7 +256,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     if (leftCRightO) {
       record = new RowRecord(curStartTime);
     } else {
-      record = new RowRecord(curEndTime-1);
+      record = new RowRecord(curEndTime - 1);
     }
     for (int i = 0; i < paths.size(); i++) {
       AggregateResult aggregateResult = aggregateResultList.get(i);

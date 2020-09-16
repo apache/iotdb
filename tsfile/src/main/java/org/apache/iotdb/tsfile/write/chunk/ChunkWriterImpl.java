@@ -260,6 +260,7 @@ public class ChunkWriterImpl implements IChunkWriter {
    *
    * @NOTE: for upgrading 0.9/v1 to 0.10/v2 TsFile
    */
+  @Override
   public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
       throws PageException {
     numOfPages++;

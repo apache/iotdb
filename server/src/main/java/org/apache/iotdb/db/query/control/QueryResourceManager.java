@@ -37,9 +37,9 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
@@ -113,12 +113,13 @@ public class QueryResourceManager {
     externalSortFileMap.computeIfAbsent(queryId, x -> new ArrayList<>()).add(deserializer);
   }
 
-  public QueryDataSource getQueryDataSource(Path selectedPath,
+  public QueryDataSource getQueryDataSource(PartialPath selectedPath,
       QueryContext context, Filter filter) throws StorageEngineException, QueryProcessException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath,
         filter);
-    QueryDataSource queryDataSource = StorageEngine.getInstance()
+    QueryDataSource queryDataSource;
+    queryDataSource = StorageEngine.getInstance()
         .query(singleSeriesExpression, context, filePathsManager);
     // calculate the distinct number of seq and unseq tsfiles
     if (config.isEnablePerformanceTracing()) {
@@ -136,6 +137,7 @@ public class QueryResourceManager {
    * Whenever the jdbc request is closed normally or abnormally, this method must be invoked. All
    * query tokens created by this jdbc request must be cleared.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endQuery(long queryId) throws StorageEngineException {
     try {
       if (config.isEnablePerformanceTracing()) {

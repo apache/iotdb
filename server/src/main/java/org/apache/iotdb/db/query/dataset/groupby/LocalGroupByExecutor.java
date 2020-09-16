@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -31,37 +36,40 @@ import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class LocalGroupByExecutor implements GroupByExecutor {
 
-  private IAggregateReader reader;
+  private final IAggregateReader reader;
   private BatchData preCachedData;
 
   // Aggregate result buffer of this path
-  private List<AggregateResult> results = new ArrayList<>();
-  private TimeRange timeRange;
+  private final List<AggregateResult> results = new ArrayList<>();
+  private final TimeRange timeRange;
+
+  // used for resetting the batch data to the last index
+  private int lastReadCurArrayIndex;
+  private int lastReadCurListIndex;
+  private boolean ascending;
 
   private QueryDataSource queryDataSource;
 
-  public LocalGroupByExecutor(Path path, Set<String> allSensors, TSDataType dataType,
-      QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
+  public LocalGroupByExecutor(PartialPath path, Set<String> allSensors, TSDataType dataType,
+      QueryContext context, Filter timeFilter, TsFileFilter fileFilter, boolean ascending)
       throws StorageEngineException, QueryProcessException {
     queryDataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
     this.reader = new SeriesAggregateReader(path, allSensors, dataType, context, queryDataSource,
-        timeFilter, null, fileFilter);
+        timeFilter, null, fileFilter, ascending);
     this.preCachedData = null;
     timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
+    lastReadCurArrayIndex = 0;
+    lastReadCurListIndex = 0;
+    this.ascending = ascending;
   }
 
   public boolean isEmpty() {
@@ -83,17 +91,22 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     return true;
   }
 
+
+  /**
+   * @return if already get the result
+   */
   private boolean calcFromCacheData(long curStartTime, long curEndTime) throws IOException {
     calcFromBatch(preCachedData, curStartTime, curEndTime);
     // The result is calculated from the cache
-    return (preCachedData != null && preCachedData.getMaxTimestamp() >= curEndTime) || isEndCalc();
+    return (preCachedData != null && (ascending ? preCachedData.getMaxTimestamp() >= curEndTime
+        : preCachedData.getMinTimestamp() < curStartTime)) || isEndCalc();
   }
 
+  @SuppressWarnings("squid:S3776")
   private void calcFromBatch(BatchData batchData, long curStartTime, long curEndTime)
       throws IOException {
-    // is error data
-    if (batchData == null || !batchData.hasCurrent() || batchData.getMaxTimestamp() < curStartTime
-        || batchData.currentTime() >= curEndTime) {
+    // check if the batchData does not contain points in current interval
+    if (!satisfied(batchData, curStartTime, curEndTime)) {
       return;
     }
 
@@ -103,19 +116,45 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         continue;
       }
       // lazy reset batch data for calculation
-      batchData.resetBatchData();
-      // skip points that cannot be calculated
-      while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
-        batchData.next();
+      batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
+      if (ascending) {
+        // skip points that cannot be calculated
+        while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
+          batchData.next();
+        }
+      } else {
+        while (batchData.hasCurrent() && batchData.currentTime() >= curEndTime) {
+          batchData.next();
+        }
       }
+
       if (batchData.hasCurrent()) {
-        result.updateResultFromPageData(batchData, curEndTime);
+        result.updateResultFromPageData(batchData, curStartTime, curEndTime);
       }
     }
+    lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
+    lastReadCurListIndex = batchData.getReadCurListIndex();
     // can calc for next interval
-    if (batchData.getMaxTimestamp() >= curEndTime) {
+    if (batchData.hasCurrent()) {
       preCachedData = batchData;
     }
+  }
+
+  private boolean satisfied(BatchData batchData, long curStartTime, long curEndTime) {
+    if (batchData == null || !batchData.hasCurrent()) {
+      return false;
+    }
+
+    if (ascending && (batchData.getMaxTimestamp() < curStartTime
+        || batchData.currentTime() >= curEndTime)) {
+      return false;
+    }
+    if (!ascending && (batchData.getTimeByIndex(0) >= curEndTime
+        || batchData.currentTime() < curStartTime)) {
+      preCachedData = batchData;
+      return false;
+    }
+    return true;
   }
 
   private void calcFromStatistics(Statistics pageStatistics) throws QueryProcessException {
@@ -175,12 +214,46 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     return results;
   }
 
+  @Override
+  public Pair<Long, Object> peekNextNotNullValue(long nextStartTime, long nextEndTime)
+      throws IOException {
+    try {
+      if (preCachedData != null && preCachedData.hasCurrent()) {
+        int readCurArrayIndex = preCachedData.getReadCurArrayIndex();
+        int readCurListIndex = preCachedData.getReadCurListIndex();
+
+        List<AggregateResult> aggregateResults = calcResult(nextStartTime, nextEndTime);
+        if (aggregateResults == null || aggregateResults.get(0).getResult() == null) {
+          return null;
+        }
+        preCachedData.resetBatchData(readCurArrayIndex, readCurListIndex);
+        return new Pair<>(nextStartTime, aggregateResults.get(0).getResult());
+      } else {
+        List<AggregateResult> aggregateResults = calcResult(nextStartTime, nextEndTime);
+        if (aggregateResults == null || aggregateResults.get(0) == null) {
+          return null;
+        }
+        if (preCachedData != null) {
+          preCachedData.resetBatchData();
+        }
+        return new Pair<>(nextStartTime, aggregateResults.get(0).getResult());
+      }
+    } catch (QueryProcessException e) {
+      throw new IOException(e.getMessage(), e);
+    }
+  }
+
   private boolean readAndCalcFromChunk(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
     while (reader.hasNextChunk()) {
       Statistics chunkStatistics = reader.currentChunkStatistics();
       if (chunkStatistics.getStartTime() >= curEndTime) {
-        return true;
+        if (ascending) {
+          return true;
+        } else {
+          reader.skipCurrentChunk();
+          continue;
+        }
       }
       // calc from chunkMetaData
       if (reader.canUseCurrentChunkStatistics()
@@ -196,6 +269,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     return false;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean readAndCalcFromPage(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
     while (reader.hasNextPage()) {
@@ -204,7 +278,12 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       if (pageStatistics != null) {
         // current page max than time range
         if (pageStatistics.getStartTime() >= curEndTime) {
-          return true;
+          if (ascending) {
+            return true;
+          } else {
+            reader.skipCurrentPage();
+            continue;
+          }
         }
         // can use pageHeader
         if (reader.canUseCurrentPageStatistics()
@@ -223,15 +302,19 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         continue;
       }
       // stop calc and cached current batchData
-      if (batchData.currentTime() >= curEndTime) {
+      if (ascending && batchData.currentTime() >= curEndTime) {
         preCachedData = batchData;
         return true;
       }
 
+      // reset the last position to current Index
+      lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
+      lastReadCurListIndex = batchData.getReadCurListIndex();
       calcFromBatch(batchData, curStartTime, curEndTime);
 
       // judge whether the calculation finished
-      if (isEndCalc() || (batchData.hasCurrent() && batchData.currentTime() >= curEndTime)) {
+      if (isEndCalc() || (batchData.hasCurrent() && (ascending ?
+          batchData.currentTime() >= curEndTime : batchData.currentTime() < curStartTime))) {
         return true;
       }
     }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import java.io.IOException;
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
+import org.apache.iotdb.db.engine.tsfilemanagement.HotCompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
@@ -38,8 +40,6 @@ import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class IoTDB implements IoTDBMBean {
 
@@ -128,6 +128,7 @@ public class IoTDB implements IoTDBMBean {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
         logger.warn("IoTDB failed to set up for:" + e.getMessage());
+        Thread.currentThread().interrupt();
         return;
       }
     }
@@ -135,6 +136,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SyncServerManager.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(MergeManager.getINSTANCE());
+    registerManager.register(HotCompactionMergeTaskPoolManager.getInstance());
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }

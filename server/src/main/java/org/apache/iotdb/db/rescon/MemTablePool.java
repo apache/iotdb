@@ -96,7 +96,7 @@ public class MemTablePool {
       }
       memTable.clear();
       availableMemTables.push(memTable);
-      availableMemTables.notify();
+      availableMemTables.notifyAll();
       logger.debug("{} return a memtable, stack size {}", storageGroup, availableMemTables.size());
     }
   }

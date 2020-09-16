@@ -23,9 +23,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.junit.Test;
-
-import org.apache.iotdb.tsfile.utils.StringContainer;
 
 public class StringContainerTest {
 
@@ -157,7 +156,7 @@ public class StringContainerTest {
     c1.addHead("a", "b", "c123");
     c1.addTail("a", "12", "c");
     c1.addTail("1284736", "b", "c");
-    StringContainer c2 = new StringContainer(".");
+    StringContainer c2 = new StringContainer(TsFileConstant.PATH_SEPARATOR);
     c2.addHead("a", "b", "c123");
     c2.addTail("a", "12", "c");
     c2.addTail("1284736", "b", "c");

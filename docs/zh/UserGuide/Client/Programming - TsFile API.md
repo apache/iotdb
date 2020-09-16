@@ -175,7 +175,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     ```
     在上面的例子中，数据文件将存储在 HDFS 中，而不是本地文件系统中。如果你想在本地文件系统中存储数据文件，你可以使用`conf.setTSFileStorageFs("LOCAL")`，这也是默认的配置。
     
-    您还可以通过`config.setHdfsIp(...)`和`config.setHdfsPort(...)`来配置 HDFS 的 IP 和端口。默认的 IP是`localhost`，默认的端口是`9000`.
+    您还可以通过`config.setHdfsIp(...)`和`config.setHdfsPort(...)`来配置 HDFS 的 IP 和端口。默认的 IP是`localhost`，默认的`RPC`端口是`9000`.
     
     **参数:**
     
@@ -226,7 +226,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
       
     * type: 数据类型，现在支持六种类型: `BOOLEAN`, `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `TEXT`;
     
-    * encoding: 编码类型. 参见 [Chapter 2-3](../Concept/Encoding.html).
+    * encoding: 编码类型. 参见 [Chapter 2-3](../Concept/Encoding.md).
     
     * compression: 压缩方式. 现在支持 `UNCOMPRESSED` 和 `SNAPPY`.
     

@@ -26,7 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -42,13 +44,15 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   private final ShowTimeSeriesPlan plan;
   private List<RowRecord> result = new ArrayList<>();
   private int index = 0;
+  private QueryContext context;
 
   public boolean hasLimit = true;
 
-  public ShowTimeseriesDataSet(List<Path> paths, List<TSDataType> dataTypes,
-      ShowTimeSeriesPlan showTimeSeriesPlan) {
-    super(paths, dataTypes);
+  public ShowTimeseriesDataSet(List<PartialPath> paths, List<TSDataType> dataTypes,
+      ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context) {
+    super(new ArrayList<>(paths), dataTypes);
     this.plan = showTimeSeriesPlan;
+    this.context = context;
   }
 
   @Override
@@ -57,7 +61,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
       plan.setOffset(plan.getOffset() + plan.getLimit());
       try {
         List<ShowTimeSeriesResult> showTimeSeriesResults = MManager.getInstance()
-            .showTimeseries(plan);
+            .showTimeseries(plan, context);
         result = transferShowTimeSeriesResultToRecordList(showTimeSeriesResults);
         index = 0;
       } catch (MetadataException e) {

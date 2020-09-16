@@ -52,15 +52,18 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
-    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
+    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
+      throws IOException {
     if (hasResult()) {
       return;
     }
-    if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+    if (dataInThisPage.hasCurrent()
+        && dataInThisPage.currentTime() < maxBound
+        && dataInThisPage.currentTime() >= minBound) {
       setLongValue(dataInThisPage.currentTime());
     }
   }

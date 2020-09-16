@@ -69,7 +69,7 @@ public class PrecisionTest {
 
       String str = "1.23";
       while(resultSet.next()) {
-        assertEquals(str, resultSet.getDouble("root.turbine1.d1.s1"));
+        assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
       }
     } catch (SQLException e) {
       e.printStackTrace();

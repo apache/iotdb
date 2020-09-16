@@ -33,7 +33,6 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -768,8 +767,11 @@ public class TsFileSequenceReader implements AutoCloseable {
         throw new IOException("reach the end of the data");
       }
     } else {
-      if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer, position, size) != size) {
-        throw new IOException("reach the end of the data");
+      long actualReadSize = ReadWriteIOUtils.readAsPossible(tsFileInput, buffer, position, size);
+      if (actualReadSize != size) {
+        throw new IOException(
+            String.format("reach the end of the data. Size of data that want to read: %s,"
+                + "actual read size: %s, posiotion: %s", size, actualReadSize, position));
       }
     }
     buffer.flip();
@@ -807,7 +809,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return the position of the file that is fine. All data after the position in the file should
    * be truncated.
    */
-
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public long selfCheck(Map<Path, MeasurementSchema> newSchema,
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       List<Pair<Long, Long>> versionInfo,
@@ -833,15 +835,15 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (fileSize < headerLength) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
-    String magic = readHeadMagic();
-    tsFileInput.position(headerLength);
-    if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
+    if (!TSFileConfig.MAGIC_STRING.equals(readHeadMagic()) || !TSFileConfig.VERSION_NUMBER
+        .equals(readVersionNumber())) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
 
+    tsFileInput.position(headerLength);
     if (fileSize == headerLength) {
-      return TsFileCheckStatus.ONLY_MAGIC_HEAD;
-    } else if (readTailMagic().equals(magic)) {
+      return headerLength;
+    } else if (isComplete()) {
       loadMetadataSize();
       if (fastFinish) {
         return TsFileCheckStatus.COMPLETE_FILE;
@@ -849,7 +851,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     boolean newChunkGroup = true;
     // not a complete file, we will recover it...
-    long truncatedPosition = TSFileConfig.MAGIC_STRING.getBytes().length;
+    long truncatedSize = headerLength;
     byte marker;
     int chunkCnt = 0;
     List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
@@ -898,7 +900,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             }
             chunkGroupMetadataList.add(new ChunkGroupMetadata(deviceID, chunkMetadataList));
             newChunkGroup = true;
-            truncatedPosition = this.position();
+            truncatedSize = this.position();
 
             totalChunkNum += chunkCnt;
             chunkCnt = 0;
@@ -907,7 +909,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           case MetaMarker.VERSION:
             long version = readVersion();
             versionInfo.add(new Pair<>(position(), version));
-            truncatedPosition = this.position();
+            truncatedSize = this.position();
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous
@@ -916,14 +918,14 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
       // now we read the tail of the data section, so we are sure that the last
       // ChunkGroupFooter is complete.
-      truncatedPosition = this.position() - 1;
+      truncatedSize = this.position() - 1;
     } catch (Exception e) {
       logger.info("TsFile {} self-check cannot proceed at position {} " + "recovered, because : {}",
           file, this.position(), e.getMessage());
     }
     // Despite the completeness of the data section, we will discard current FileMetadata
     // so that we can continue to write data into this tsfile.
-    return truncatedPosition;
+    return truncatedSize;
   }
 
   public int getTotalChunkNum() {

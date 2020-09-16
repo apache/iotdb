@@ -89,12 +89,13 @@ public class IoTDBMultiOverlappedPageIT {
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
       String sql = "select s0 from root.vehicle.d0 where time >= 1 and time <= 50 AND root.vehicle.d0.s0 >= 111";
-      ResultSet resultSet = statement.executeQuery(sql);
       int cnt = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString("root.vehicle.d0.s0");
-        assertEquals(res[cnt], ans);
-        cnt++;
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString("root.vehicle.d0.s0");
+          assertEquals(res[cnt], ans);
+          cnt++;
+        }
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -109,10 +110,11 @@ public class IoTDBMultiOverlappedPageIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       String sql = "select first_value(s0) from root.vehicle.d0 where time > 18";
-      ResultSet resultSet = statement.executeQuery(sql);
-      while (resultSet.next()) {
-        String ans = resultSet.getString(first_value("root.vehicle.d0.s0"));
-        assertEquals("219", ans);
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(first_value("root.vehicle.d0.s0"));
+          assertEquals("219", ans);
+        }
       }
     } catch (Exception e) {
       e.printStackTrace();

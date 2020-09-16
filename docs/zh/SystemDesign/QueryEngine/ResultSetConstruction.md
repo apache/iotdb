@@ -63,7 +63,7 @@ SQL2：`SELECT count(s1), max_time(s1) FROM root.sg.d1;` ->
 
 - org.apache.iotdb.db.service.TSServiceImpl.getAlignByDeviceQueryHeaders
 
-按设备对齐查询的结果集构造依赖于物理查询计划中生成的**未去重**的度量（Measurements）列表。在此作简单介绍，度量列表是由 SELECT 子句中的后缀路径（包括通配符）生成的列表，其中共有三种类型，分别为常量（Constant）、存在的时间序列（Exist）以及不存在的时间序列（NonExist）。详细可以参考 [Align by device query](/SystemDesign/DataQuery/AlignByDeviceQuery.html)
+按设备对齐查询的结果集构造依赖于物理查询计划中生成的**未去重**的度量（Measurements）列表。在此作简单介绍，度量列表是由 SELECT 子句中的后缀路径（包括通配符）生成的列表，其中共有三种类型，分别为常量（Constant）、存在的时间序列（Exist）以及不存在的时间序列（NonExist）。详细可以参考 [Align by device query](../DataQuery/AlignByDeviceQuery.md)
 
 由于按设备对齐查询采用关系表结构，因此首先在表头中加入设备列，其对应的数据类型为文本类型。
 
@@ -122,7 +122,7 @@ SQL：`SELECT last s1, s2 FROM root.sg.d1;`
 
 - org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet.hasNextWithoutConstraint()
 
-由于按设备对齐查询需要按设备依次组织其查询计划，每个设备查询的路径未必相同，且允许包含常量列以及不存在的时间序列，因此不能简单地与其他查询一起去重。去重时**不仅需要去除重复查询的时间序列路径，还需要去除查询中出现的常量列以及当前设备中不存在的时间序列**。实现方法可以参考 [Align by device query](/SystemDesign/DataQuery/AlignByDeviceQuery.html).
+由于按设备对齐查询需要按设备依次组织其查询计划，每个设备查询的路径未必相同，且允许包含常量列以及不存在的时间序列，因此不能简单地与其他查询一起去重。去重时**不仅需要去除重复查询的时间序列路径，还需要去除查询中出现的常量列以及当前设备中不存在的时间序列**。实现方法可以参考 [Align by device query](../DataQuery/AlignByDeviceQuery.md).
 
 在查询计划中的去重路径构造完成后，即可调用 IoTDB 的查询执行器来执行查询，并得到去重后的结果集。
 

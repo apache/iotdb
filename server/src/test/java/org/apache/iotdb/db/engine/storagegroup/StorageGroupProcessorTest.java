@@ -18,37 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
-import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
-import org.apache.iotdb.db.engine.merge.manage.MergeManager;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.assertFalse;
 
 import java.io.File;
 import java.io.IOException;
@@ -56,8 +26,37 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static org.junit.Assert.assertFalse;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
+import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.merge.manage.MergeManager;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 public class StorageGroupProcessorTest {
 
@@ -72,6 +71,8 @@ public class StorageGroupProcessorTest {
 
   @Before
   public void setUp() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig()
+        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
@@ -88,16 +89,20 @@ public class StorageGroupProcessorTest {
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     MergeManager.getINSTANCE().stop();
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig()
+        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
   }
 
-  private void insertToStorageGroupProcessor(TSRecord record) throws WriteProcessException {
+  private void insertToStorageGroupProcessor(TSRecord record)
+      throws WriteProcessException, IllegalPathException {
     InsertRowPlan insertRowPlan = new InsertRowPlan(record);
     insertRowPlan.setDeviceMNode(deviceMNode);
     processor.insert(insertRowPlan);
   }
 
   @Test
-  public void testUnseqUnsealedDelete() throws WriteProcessException, IOException {
+  public void testUnseqUnsealedDelete()
+      throws WriteProcessException, IOException, IllegalPathException {
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     insertToStorageGroupProcessor(record);
@@ -119,18 +124,18 @@ public class StorageGroupProcessorTest {
       insertToStorageGroupProcessor(record);
     }
 
-    processor.delete(deviceId, measurementId, 0, 15L);
+    processor.delete(new PartialPath(deviceId), measurementId, 0, 15L);
 
-    Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = null;
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
-      pair = tsfileProcessor
+      tsfileProcessor
           .query(deviceId, measurementId, TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
-              new QueryContext());
-      break;
+              new QueryContext(), tsfileResourcesForQuery);
     }
 
-    List<ReadOnlyMemChunk> memChunks = pair.left;
-
+    Assert.assertEquals(1, tsfileResourcesForQuery.size());
+    Assert.assertEquals(0, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
+    List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
     long time = 16;
     for (ReadOnlyMemChunk memChunk : memChunks) {
       IPointReader iterator = memChunk.getPointReader();
@@ -139,12 +144,11 @@ public class StorageGroupProcessorTest {
         Assert.assertEquals(time++, timeValuePair.getTimestamp());
       }
     }
-
-    Assert.assertEquals(0, pair.right.size());
   }
 
   @Test
-  public void testSequenceSyncClose() throws WriteProcessException, QueryProcessException {
+  public void testSequenceSyncClose()
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -152,10 +156,14 @@ public class StorageGroupProcessorTest {
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
 
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     processor.syncCloseAllWorkingTsFileProcessors();
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
+    QueryDataSource queryDataSource = processor.query(new PartialPath(deviceId), measurementId, context,
         null, null);
-
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
@@ -164,7 +172,7 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testIoTDBTabletWriteAndSyncClose()
-      throws WriteProcessException, QueryProcessException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -181,7 +189,7 @@ public class StorageGroupProcessorTest {
     deviceMNode.addChild("s0", new MeasurementMNode(null, null, null, null));
     deviceMNode.addChild("s1", new MeasurementMNode(null, null, null, null));
 
-    InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan("root.vehicle.d0", measurements,
+    InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements,
         dataTypes);
     insertTabletPlan1.setSchemas(schemas);
 
@@ -203,7 +211,7 @@ public class StorageGroupProcessorTest {
     processor.insertTablet(insertTabletPlan1);
     processor.asyncCloseAllWorkingTsFileProcessors();
 
-    InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan("root.vehicle.d0", measurements,
+    InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements,
         dataTypes);
     insertTabletPlan2.setSchemas(schemas);
 
@@ -221,7 +229,7 @@ public class StorageGroupProcessorTest {
     processor.asyncCloseAllWorkingTsFileProcessors();
     processor.syncCloseAllWorkingTsFileProcessors();
 
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
+    QueryDataSource queryDataSource = processor.query(new PartialPath(deviceId), measurementId, context,
         null, null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
@@ -233,7 +241,8 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testSeqAndUnSeqSyncClose() throws WriteProcessException, QueryProcessException {
+  public void testSeqAndUnSeqSyncClose()
+      throws WriteProcessException, QueryProcessException, IllegalPathException {
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -252,7 +261,7 @@ public class StorageGroupProcessorTest {
 
     processor.syncCloseAllWorkingTsFileProcessors();
 
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
+    QueryDataSource queryDataSource = processor.query(new PartialPath(deviceId), measurementId, context,
         null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
@@ -265,7 +274,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testMerge() throws WriteProcessException, QueryProcessException {
+  public void testMerge() throws WriteProcessException, QueryProcessException, IllegalPathException {
 
     mergeLock = new AtomicLong(0);
     for (int j = 21; j <= 30; j++) {
@@ -289,7 +298,7 @@ public class StorageGroupProcessorTest {
       // wait
     }
 
-    QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
+    QueryDataSource queryDataSource = processor.query(new PartialPath(deviceId), measurementId, context,
         null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());

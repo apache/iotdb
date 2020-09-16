@@ -21,21 +21,6 @@
 
 # SQL 参考文档
 
-## 关键字
-
-不要使用这些关键字作为标识符。如果有需求或者建议，可以在[issue](https://issues.apache.org/jira/projects/IOTDB/issues)上提出。
-
-```
-CREATE, INSERT, UPDATE, DELETE, SELECT, SHOW, GRANT, INTO, SET, WHERE, FROM, TO, BY, DEVICE,
-CONFIGURATION, DESCRIBE, SLIMIT, LIMIT, UNLINK, OFFSET, SOFFSET, FILL, LINEAR, PREVIOUS, PREVIOUSUNTILLAST,
-METADATA, TIMESERIES, TIMESTAMP, PROPERTY, WITH, ROOT, DATATYPE, COMPRESSOR, STORAGE, GROUP, LABEL, ADD,
-UPSERT, VALUES, NOW, LINK, INDEX, USING, ON, DROP, MERGE, LIST, USER, PRIVILEGES, ROLE, ALL, OF,
-ALTER, PASSWORD, REVOKE, LOAD, WATERMARK_EMBEDDING, UNSET, TTL, FLUSH, TASK, INFO, DYNAMIC, PARAMETER, VERSION,
-REMOVE, MOVE, CHILD, PATHS, DEVICES, COUNT, NODES, LEVEL, MIN_TIME, MAX_TIME, MIN_VALUE, MAX_VALUE, AVG, FIRST_VALUE,
-SUM, LAST_VALUE, LAST, DISABLE, ALIGN, COMPRESSION, TIME, ATTRIBUTES, TAGS,RENAME, FULL, CLEAR, CACHE,
-SNAPSHOT, FOR, SCHEMA, TRACING, OFF
-```
-
 ## 显示版本号
 
 ```sql
@@ -440,6 +425,19 @@ Note: Now, only last_value aggregation function is supported in group by fill.
 Note: Linear fill is not supported in group by fill.
 ```
 
+* Order by time 语句
+
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause> (FILL <GROUPBYFillClause>)? orderByTimeClause?
+orderByTimeClause: order by time (asc | desc)?
+
+Eg: SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([20, 100), 5m) FILL (float[PREVIOUS]) order by time desc
+Eg: SELECT * from root order by time desc
+Eg: SELECT * from root order by time desc align by device 
+Eg: SELECT * from root order by time desc disable align
+Eg: SELECT last * from root order by time desc
+```
+
 * Limit & SLimit 语句
 
 ```
@@ -618,6 +616,53 @@ Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2
 
 ```
 
+* As 语句
+
+As 语句为 SELECT 语句中出现的时间序列规定一个别名
+
+```
+在每个查询中都可以使用 As 语句来规定时间序列的别名，但是对于通配符的使用有一定限制。
+
+1. 原始数据查询：
+select s1 as speed, s2 as temperature from root.sg.d1
+
+结果集将显示为：
+| Time | speed | temperature |
+|  ... |  ...  |     ....    |
+
+2. 聚合查询
+select count(s1) as s1_num, max_value(s2) as s2_max from root.sg.d1
+
+3. 降频聚合查询
+select count(s1) as s1_num from root.sg.d1 group by ([100,500), 80ms)
+
+4. 按设备对齐查询
+select s1 as speed, s2 as temperature from root.sg.d1 align by device
+
+select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg.d2 align by device
+
+5. 最新数据查询
+select last s1 as speed, s2 from root.sg.d1
+
+规则：
+1. 除按设备对齐查询外，每一个 AS 语句必须唯一对应一个时间序列。
+
+E.g. select s1 as temperature from root.sg.*
+
+此时如果存储组 root.sg.* 中含有多个设备，则会抛出异常。
+
+2. 按设备对齐查询中，每个 AS 语句对应的前缀路径可以含多个设备，而后缀路径不能含多个传感器。
+
+E.g. select s1 as temperature from root.sg.*
+
+这种情况即使有多个设备，也可以正常显示。
+
+E.g. select * as temperature from root.sg.d1
+
+这种情况如果 * 匹配多个传感器，则无法正常显示。
+
+```
+
 ## 数据库管理语句
 
 * 创建用户
@@ -708,7 +753,7 @@ Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
 REVOKE <roleName> FROM <userName>;
 roleName:=identifier
 userName:=identifier
-Eg: IoTDB > REVOKE temproleFROM tempuser;
+Eg: IoTDB > REVOKE temprole FROM tempuser;
 ```
 
 * 列出用户
@@ -731,7 +776,7 @@ Eg: IoTDB > LIST ROLE
 LIST PRIVILEGES USER  <username> ON <path>;    
 username:=identifier    
 path=‘root’ (DOT identifier)*
-Eg: IoTDB > LIST PRIVIEGES USER sgcc_wirte_user ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;
 ```
 
 * 列出角色权限
@@ -740,7 +785,7 @@ Eg: IoTDB > LIST PRIVIEGES USER sgcc_wirte_user ON root.sgcc;
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
 roleName:=identifier  
 path=‘root’ (DOT identifier)*
-Eg: IoTDB > LIST PRIVIEGES ROLE wirte_role ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES ROLE wirte_role ON root.sgcc;
 ```
 
 * 列出用户权限
@@ -748,7 +793,7 @@ Eg: IoTDB > LIST PRIVIEGES ROLE wirte_role ON root.sgcc;
 ```
 LIST USER PRIVILEGES <username> ;   
 username:=identifier  
-Eg: IoTDB > LIST USER PRIVIEGES tempuser;
+Eg: IoTDB > LIST USER PRIVILEGES tempuser;
 ```
 
 * 列出角色权限
@@ -756,7 +801,7 @@ Eg: IoTDB > LIST USER PRIVIEGES tempuser;
 ```
 LIST ROLE PRIVILEGES <roleName>
 roleName:=identifier
-Eg: IoTDB > LIST ROLE PRIVIEGES actor;
+Eg: IoTDB > LIST ROLE PRIVILEGES actor;
 ```
 
 * 列出用户角色 
@@ -781,7 +826,7 @@ Eg: IoTDB > LIST ALL USER OF ROLE roleuser;
 ALTER USER <username> SET PASSWORD <password>;
 roleName:=identifier
 password:=string
-Eg: IoTDB > ALTER USER tempuser SET PASSWORD newpwd;
+Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 ```
 
 ## 功能
