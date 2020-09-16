@@ -178,6 +178,7 @@ public class LogAnalyzer {
     resource.setUnseqFiles(mergeUnseqFiles);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void analyzeMergedSeries(BufferedReader bufferedReader, List<PartialPath> unmergedPaths) throws IOException {
     if (!STR_MERGE_START.equals(currLine)) {
       return;
