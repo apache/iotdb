@@ -87,8 +87,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
-import org.apache.iotdb.db.timeIndex.IndexerManager;
-import org.apache.iotdb.db.timeIndex.TimeIndexer;
+import org.apache.iotdb.db.timeIndex.FileIndexerManager;
+import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -262,8 +262,8 @@ public class StorageGroupProcessor {
    * unseqDeviceTimeIndexer manage the device Index of unseq tsfiles
    *
    */
-  private TimeIndexer seqTimeIndexer;
-  private TimeIndexer unseqTimeIndexer;
+  private FileTimeIndexer seqFileTimeIndexer;
+  private FileTimeIndexer unseqFileTimeIndexer;
 
   public StorageGroupProcessor(String systemDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
@@ -376,14 +376,14 @@ public class StorageGroupProcessor {
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
       // init TimeIndexer
       try {
-        seqTimeIndexer = IndexerManager.getInstance().getSeqIndexer(storageGroupName);
-        unseqTimeIndexer = IndexerManager.getInstance().getUnseqIndexer(storageGroupName);
-        if (seqTimeIndexer != null) {
-          seqTimeIndexer.init();
-          unseqTimeIndexer.init();
+        seqFileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(storageGroupName);
+        unseqFileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(storageGroupName);
+        if (seqFileTimeIndexer != null) {
+          seqFileTimeIndexer.init();
+          unseqFileTimeIndexer.init();
         }
       } catch (IllegalPathException e) {
         throw new StorageGroupProcessorException(e);
@@ -1188,15 +1188,15 @@ public class StorageGroupProcessor {
           }
           tsFileManagement.remove(resource, isSeq);
           if (isSeq) {
-            if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
-              TimeIndexer timeIndexer = IndexerManager.getInstance().getSeqIndexer(resource.getStorageGroupName());
-              timeIndexer.deleteIndexForPaths(resource.getDeviceToIndexMap(), resource.getStartTimes(),
+            if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
+              FileTimeIndexer fileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(resource.getStorageGroupName());
+              fileTimeIndexer.deleteIndexForPaths(resource.getDeviceToIndexMap(), resource.getStartTimes(),
                   resource.getEndTimes(), resource.getTsFilePath());
             }
           } else {
-            if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
-              TimeIndexer timeIndexer = IndexerManager.getInstance().getUnseqIndexer(resource.getStorageGroupName());
-              timeIndexer.deleteIndexForPaths(resource.getDeviceToIndexMap(), resource.getStartTimes(),
+            if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
+              FileTimeIndexer fileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(resource.getStorageGroupName());
+              fileTimeIndexer.deleteIndexForPaths(resource.getDeviceToIndexMap(), resource.getStartTimes(),
                     resource.getEndTimes(), resource.getTsFilePath());
             }
           }
@@ -1290,9 +1290,9 @@ public class StorageGroupProcessor {
     List<TsFileResource> unseqResources;
     tsFileManagement.readLock();
     try {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
-        seqResources = seqTimeIndexer.filterByPath(deviceId, timeFilter);
-        unseqResources = unseqTimeIndexer.filterByPath(deviceId, timeFilter);
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
+        seqResources = seqFileTimeIndexer.filterByPath(deviceId, timeFilter);
+        unseqResources = unseqFileTimeIndexer.filterByPath(deviceId, timeFilter);
         List<TsFileResource> unsealedSeqFiles = getUnSealedListResourceForQuery(
           tsFileManagement.getTsFileList(true),
           deviceId, measurementId, context, timeFilter, true);
@@ -1947,14 +1947,14 @@ public class StorageGroupProcessor {
           newFilePartitionId)) {
         updateLatestTimeMap(newTsFileResource);
       }
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
-        TimeIndexer timeIndexer = null;
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
+        FileTimeIndexer fileTimeIndexer = null;
         if (newTsFileResource.isSeq()) {
-          timeIndexer = IndexerManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
+          fileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
         } else {
-          timeIndexer = IndexerManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
+          fileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
         }
-        timeIndexer.addIndexForPaths(newTsFileResource.getDeviceToIndexMap(), newTsFileResource.getStartTimes(),
+        fileTimeIndexer.addIndexForPaths(newTsFileResource.getDeviceToIndexMap(), newTsFileResource.getStartTimes(),
             newTsFileResource.getEndTimes(), newTsFileResource.getTsFilePath());
       }
     } catch (DiskSpaceInsufficientException | IllegalPathException e) {
@@ -2019,15 +2019,15 @@ public class StorageGroupProcessor {
             newFilePartitionId);
       }
 
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
         try {
-          TimeIndexer timeIndexer = null;
+          FileTimeIndexer fileTimeIndexer = null;
           if (newTsFileResource.isSeq()) {
-            timeIndexer = IndexerManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
+            fileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
           } else {
-            timeIndexer = IndexerManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
+            fileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
           }
-          timeIndexer.addIndexForPaths(newTsFileResource.getDeviceToIndexMap(), newTsFileResource.getStartTimes(),
+          fileTimeIndexer.addIndexForPaths(newTsFileResource.getDeviceToIndexMap(), newTsFileResource.getStartTimes(),
               newTsFileResource.getEndTimes(), newTsFileResource.getTsFilePath());
         } catch (IllegalPathException e) {
           logger.error("Fail to get DeviceTimeIndexer for storage group {}, err:{}", newTsFileResource.getStorageGroupName(), e.getMessage());
@@ -2437,16 +2437,16 @@ public class StorageGroupProcessor {
     tsFileResourceToBeDeleted.writeLock();
     try {
       tsFileResourceToBeDeleted.remove();
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
         try {
-          TimeIndexer timeIndexer = null;
+          FileTimeIndexer fileTimeIndexer = null;
           if (tsFileResourceToBeDeleted.isSeq()) {
-            timeIndexer = IndexerManager.getInstance().getSeqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
+            fileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
           } else {
-            timeIndexer = IndexerManager.getInstance().getUnseqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
+            fileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
           }
-          if (timeIndexer != null) {
-            timeIndexer.deleteIndexForPaths(tsFileResourceToBeDeleted.getDeviceToIndexMap(),
+          if (fileTimeIndexer != null) {
+            fileTimeIndexer.deleteIndexForPaths(tsFileResourceToBeDeleted.getDeviceToIndexMap(),
                 tsFileResourceToBeDeleted.getStartTimes(), tsFileResourceToBeDeleted.getEndTimes(),
                 tsFileResourceToBeDeleted.getTsFilePath());
           }

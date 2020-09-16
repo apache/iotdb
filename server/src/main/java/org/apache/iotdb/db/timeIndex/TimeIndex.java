@@ -21,7 +21,7 @@ package org.apache.iotdb.db.timeIndex;
 import org.apache.iotdb.db.metadata.PartialPath;
 
 /**
- * Time Index, like deviceIndexer: [(deviceId, startTime, endTime, TsFilePath)] to accelerate query
+ * Time Index, like deviceIndex: [(deviceId, startTime, endTime, TsFilePath)] to accelerate query
  */
 public class TimeIndex {
   private PartialPath[] paths;

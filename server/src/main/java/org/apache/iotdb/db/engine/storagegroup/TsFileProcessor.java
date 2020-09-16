@@ -54,8 +54,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
-import org.apache.iotdb.db.timeIndex.IndexerManager;
-import org.apache.iotdb.db.timeIndex.TimeIndexer;
+import org.apache.iotdb.db.timeIndex.FileIndexerManager;
+import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -650,16 +650,16 @@ public class TsFileProcessor {
 
   private void endFile() throws IOException, TsFileProcessorException {
     long closeStartTime = System.currentTimeMillis();
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableDeviceIndexer()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
       // update device index
       try {
-        TimeIndexer timeIndexer = null;
+        FileTimeIndexer fileTimeIndexer = null;
         if (sequence) {
-          timeIndexer = IndexerManager.getInstance().getSeqIndexer(storageGroupName);
+          fileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(storageGroupName);
         } else {
-          timeIndexer = IndexerManager.getInstance().getUnseqIndexer(storageGroupName);
+          fileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(storageGroupName);
         }
-        timeIndexer.addIndexForPaths(tsFileResource.deviceToIndex, tsFileResource.startTimes,
+        fileTimeIndexer.addIndexForPaths(tsFileResource.deviceToIndex, tsFileResource.startTimes,
             tsFileResource.endTimes, tsFileResource.getTsFilePath());
       } catch (IllegalPathException e) {
         logger.error("Failed to endFile {} for storage group {}, err:{}", tsFileResource.getTsFile(),

@@ -29,12 +29,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class IndexerManager {
+public class FileIndexerManager {
   private String indexerFilePath;
-  private Map<PartialPath, TimeIndexer> seqIndexers;
-  private Map<PartialPath, TimeIndexer> unseqIndexers;
+  private Map<PartialPath, FileTimeIndexer> seqIndexers;
+  private Map<PartialPath, FileTimeIndexer> unseqIndexers;
   private ReentrantReadWriteLock lock;
-  private static final Logger logger = LoggerFactory.getLogger(IndexerManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(FileIndexerManager.class);
 
   private static class IndexerManagerHolder {
 
@@ -42,14 +42,14 @@ public class IndexerManager {
       // allowed to do nothing
     }
 
-    private static final IndexerManager INSTANCE = new IndexerManager();
+    private static final FileIndexerManager INSTANCE = new FileIndexerManager();
   }
 
-  public static IndexerManager getInstance() {
+  public static FileIndexerManager getInstance() {
     return IndexerManagerHolder.INSTANCE;
   }
 
-  private IndexerManager() {
+  private FileIndexerManager() {
     indexerFilePath = IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
       + File.pathSeparator + IndexConstants.INDEXER_FILE;
     seqIndexers = new ConcurrentHashMap<>();
@@ -68,19 +68,19 @@ public class IndexerManager {
     return true;
   }
 
-  public void addSeqIndexer(PartialPath storageGroup, TimeIndexer TimeIndexer) {
+  public void addSeqIndexer(PartialPath storageGroup, FileTimeIndexer fileTimeIndexer) {
     lock.writeLock().lock();
     try {
-      seqIndexers.put(storageGroup, TimeIndexer);
+      seqIndexers.put(storageGroup, fileTimeIndexer);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public void addUnseqIndexer(PartialPath storageGroup, TimeIndexer TimeIndexer) {
+  public void addUnseqIndexer(PartialPath storageGroup, FileTimeIndexer fileTimeIndexer) {
     lock.writeLock().lock();
     try {
-      unseqIndexers.put(storageGroup, TimeIndexer);
+      unseqIndexers.put(storageGroup, fileTimeIndexer);
     } finally {
       lock.writeLock().unlock();
     }
@@ -104,7 +104,7 @@ public class IndexerManager {
     }
   }
 
-  public TimeIndexer getSeqIndexer(PartialPath storageGroup) {
+  public FileTimeIndexer getSeqIndexer(PartialPath storageGroup) {
     lock.readLock().lock();
     try {
       return seqIndexers.get(storageGroup);
@@ -113,7 +113,7 @@ public class IndexerManager {
     }
   }
 
-  public TimeIndexer getSeqIndexer(String storageGroup) throws IllegalPathException {
+  public FileTimeIndexer getSeqIndexer(String storageGroup) throws IllegalPathException {
     PartialPath sgName;
     try {
       sgName = new PartialPath(storageGroup);
@@ -129,7 +129,7 @@ public class IndexerManager {
     }
   }
 
-  public TimeIndexer getUnseqIndexer(PartialPath storageGroup) {
+  public FileTimeIndexer getUnseqIndexer(PartialPath storageGroup) {
     lock.readLock().lock();
     try {
       return unseqIndexers.get(storageGroup);
@@ -138,7 +138,7 @@ public class IndexerManager {
     }
   }
 
-  public TimeIndexer getUnseqIndexer(String storageGroup) throws IllegalPathException {
+  public FileTimeIndexer getUnseqIndexer(String storageGroup) throws IllegalPathException {
     PartialPath sgName;
     try {
       sgName = new PartialPath(storageGroup);
