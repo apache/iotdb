@@ -314,7 +314,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
 
       // judge whether the calculation finished
       if (isEndCalc() || (batchData.hasCurrent() && (ascending ?
-          batchData.currentTime() >= curEndTime : batchData.currentTime() <= curStartTime))) {
+          batchData.currentTime() >= curEndTime : batchData.currentTime() < curStartTime))) {
         return true;
       }
     }

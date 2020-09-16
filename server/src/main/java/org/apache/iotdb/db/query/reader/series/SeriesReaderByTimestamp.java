@@ -58,7 +58,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
   @Override
   public boolean readerIsEmpty() throws IOException {
-    return seriesReader.isEmpty()&& isEmpty(batchData);
+    return seriesReader.isEmpty() && isEmpty(batchData);
   }
 
   protected boolean hasNext(long timestamp) throws IOException {

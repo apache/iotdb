@@ -46,6 +46,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter filter) {
     timeValuePairIterator = readableChunk.getPointReader();
     this.filter = filter;
+    // we treat one ReadOnlyMemChunk as one Page
     this.pageReaderList = Collections.singletonList(
         new MemPageReader(timeValuePairIterator, readableChunk.getChunkMetaData(), filter));
   }
@@ -103,9 +104,6 @@ public class MemChunkReader implements IChunkReader, IPointReader {
 
   @Override
   public List<IPageReader> loadPageReaderList() throws IOException {
-    // we treat one ReadOnlyMemChunk as one Page
-//    return Collections.singletonList(
-//        new MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
     return this.pageReaderList;
   }
 }

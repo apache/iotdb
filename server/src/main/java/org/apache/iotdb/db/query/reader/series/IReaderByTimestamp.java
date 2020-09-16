@@ -36,6 +36,10 @@ public interface IReaderByTimestamp {
    */
   Object getValueInTimestamp(long timestamp) throws IOException;
 
+  /**
+   * Returns whether there is no more data in reader.
+   * <p>True means no more data. False means you can still get more data</p>
+   */
   default boolean readerIsEmpty() throws IOException {
     return false;
   }
