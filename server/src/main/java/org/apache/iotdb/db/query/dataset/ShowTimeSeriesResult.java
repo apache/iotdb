@@ -35,19 +35,19 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
   private String dataType;
   private String encoding;
   private String compressor;
-  private Map<String, String> tag;
-  private Map<String, String> attribute;
+  private Map<String, String> tags;
+  private Map<String, String> attributes;
 
   public ShowTimeSeriesResult(String name, String alias, String sgName, String dataType,
-      String encoding, String compressor, Map<String, String> tag, Map<String, String> attribute) {
+      String encoding, String compressor, Map<String, String> tags, Map<String, String> attributes) {
     this.name = name;
     this.alias = alias;
     this.sgName = sgName;
     this.dataType = dataType;
     this.encoding = encoding;
     this.compressor = compressor;
-    this.tag = tag;
-    this.attribute = attribute;
+    this.tags = tags;
+    this.attributes = attributes;
   }
 
   public ShowTimeSeriesResult() {
@@ -79,11 +79,11 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
   }
 
   public Map<String, String> getTag() {
-    return tag;
+    return tags;
   }
 
   public Map<String, String> getAttribute() {
-    return attribute;
+    return attributes;
   }
 
   @Override
@@ -120,20 +120,20 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
     ReadWriteIOUtils.write(compressor, outputStream);
 
     //flag for tag
-    ReadWriteIOUtils.write(tag != null, outputStream);
-    if (tag != null) {
-      ReadWriteIOUtils.write(tag.size(), outputStream);
-      for (Entry<String, String> stringStringEntry : tag.entrySet()) {
+    ReadWriteIOUtils.write(tags != null, outputStream);
+    if (tags != null) {
+      ReadWriteIOUtils.write(tags.size(), outputStream);
+      for (Entry<String, String> stringStringEntry : tags.entrySet()) {
         ReadWriteIOUtils.write(stringStringEntry.getKey(), outputStream);
         ReadWriteIOUtils.write(stringStringEntry.getValue(), outputStream);
       }
     }
 
     //flag for attribute
-    ReadWriteIOUtils.write(attribute != null, outputStream);
-    if (attribute != null) {
-      ReadWriteIOUtils.write(attribute.size(), outputStream);
-      for (Entry<String, String> stringStringEntry : attribute.entrySet()) {
+    ReadWriteIOUtils.write(attributes != null, outputStream);
+    if (attributes != null) {
+      ReadWriteIOUtils.write(attributes.size(), outputStream);
+      for (Entry<String, String> stringStringEntry : attributes.entrySet()) {
         ReadWriteIOUtils.write(stringStringEntry.getKey(), outputStream);
         ReadWriteIOUtils.write(stringStringEntry.getValue(), outputStream);
       }
@@ -154,22 +154,22 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
     //flag for tag
     if (buffer.get() == 1) {
       int tagSize = buffer.getInt();
-      result.tag = new HashMap<>(tagSize);
+      result.tags = new HashMap<>(tagSize);
       for (int i = 0; i < tagSize; i++) {
         String key = ReadWriteIOUtils.readString(buffer);
         String value = ReadWriteIOUtils.readString(buffer);
-        result.tag.put(key, value);
+        result.tags.put(key, value);
       }
     }
 
     //flag for attribute
     if (buffer.get() == 1) {
       int attributeSize = buffer.getInt();
-      result.attribute = new HashMap<>(attributeSize);
+      result.attributes = new HashMap<>(attributeSize);
       for (int i = 0; i < attributeSize; i++) {
         String key = ReadWriteIOUtils.readString(buffer);
         String value = ReadWriteIOUtils.readString(buffer);
-        result.attribute.put(key, value);
+        result.attributes.put(key, value);
       }
     }
     return result;

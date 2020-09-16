@@ -70,8 +70,8 @@ public class IoTDBConstant {
   public static final String COLUMN_DEVICES = "devices";
   public static final String COLUMN_COLUMN = "column";
   public static final String COLUMN_COUNT = "count";
-  public static final String COLUMN_TAG = "tag";
-  public static final String COLUMN_ATTRIBUTE = "attribute";
+  public static final String COLUMN_TAG = "tags";
+  public static final String COLUMN_ATTRIBUTE = "attributes";
 
   public static final String COLUMN_ROLE = "role";
   public static final String COLUMN_USER = "user";
