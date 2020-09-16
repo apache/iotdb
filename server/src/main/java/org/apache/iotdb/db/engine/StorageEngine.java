@@ -449,10 +449,12 @@ public class StorageEngine implements IService {
 
   public void delete(PartialPath path, long startTime, long endTime)
           throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(path);
     try {
-      storageGroupProcessor.delete(path, startTime, endTime);
-    } catch (IOException e) {
+      for (PartialPath storageGroupPath : IoTDB.metaManager.getStorageGroupPaths(path)) {
+        StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
+        storageGroupProcessor.delete(path, startTime, endTime);
+      }
+    } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
     }
   }

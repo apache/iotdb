@@ -184,7 +184,7 @@ public class MergeResource {
     // each path is visited only once in a merge, so the modifications can be removed after visiting
     while (modificationIterator.hasNext()) {
       Modification modification = modificationIterator.next();
-      if (modification.getPath().matchPath(path)) {
+      if (modification.getPath().matchFullPath(path)) {
         pathModifications.add(modification);
         modificationIterator.remove();
       }
