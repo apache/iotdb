@@ -26,10 +26,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * QueryContext contains the shared information with in a query.
