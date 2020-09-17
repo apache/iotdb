@@ -452,7 +452,8 @@ public class StorageEngine implements IService {
     try {
       for (PartialPath storageGroupPath : IoTDB.metaManager.getStorageGroupPaths(path)) {
         StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
-        storageGroupProcessor.delete(path, startTime, endTime);
+        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
+        storageGroupProcessor.delete(newPath, startTime, endTime);
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
@@ -464,10 +465,13 @@ public class StorageEngine implements IService {
    */
   public void deleteTimeseries(PartialPath path)
       throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(path);
     try {
-      storageGroupProcessor.delete(path, Long.MIN_VALUE, Long.MAX_VALUE);
-    } catch (IOException e) {
+      for (PartialPath storageGroupPath : IoTDB.metaManager.getStorageGroupPaths(path)) {
+        StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
+        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
+        storageGroupProcessor.delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE);
+      }
+    } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
     }
   }

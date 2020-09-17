@@ -105,14 +105,25 @@ public class PartialPath extends Path implements Comparable<Path> {
     return nodes;
   }
 
-  public boolean matchFullPath(String rPath) throws MetadataException {
+  public int getNodeLength() {
+    return nodes.length;
+  }
+
+  public PartialPath alterPrefixPath(PartialPath prefixPath) {
+    String[] newNodes = Arrays.copyOf(nodes, Math.max(nodes.length, prefixPath.getNodeLength()));
+    System.arraycopy(prefixPath.getNodes(), 0, newNodes, 0, prefixPath.getNodeLength());
+    return new PartialPath(newNodes);
+  }
+
+  public boolean matchFullPath(String rPath) throws IllegalPathException {
     return matchFullPath(new PartialPath(rPath));
   }
 
   public boolean matchFullPath(PartialPath rPath) {
     String[] rNodes = rPath.getNodes();
     if ((rNodes.length < nodes.length) ||
-        (rNodes.length > nodes.length && !nodes[nodes.length - 1].equals(IoTDBConstant.PATH_WILDCARD))) {
+        (rNodes.length > nodes.length && !nodes[nodes.length - 1]
+            .equals(IoTDBConstant.PATH_WILDCARD))) {
       return false;
     }
     for (int i = 0; i < nodes.length; i++) {
@@ -191,7 +202,9 @@ public class PartialPath extends Path implements Comparable<Path> {
     return measurementAlias;
   }
 
-  public void setMeasurementAlias(String measurementAlias) { this.measurementAlias = measurementAlias; }
+  public void setMeasurementAlias(String measurementAlias) {
+    this.measurementAlias = measurementAlias;
+  }
 
   public String getTsAlias() {
     return tsAlias;
