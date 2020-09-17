@@ -110,6 +110,11 @@ public abstract class RaftLogManager {
       .getMaxNumOfLogsInMem();
 
   private static final int LOG_APPLIER_WAIT_TIME_MS = 10_000;
+  /**
+   * Each time new logs are appended, this condition will be notified so logs that have larger
+   * indices but arrived earlier can proceed.
+   */
+  private final Object logUpdateCondition = new Object();
 
   private IOException logApplierWaitTimeOutException = new IOException(
       "wait all log applied time out");
@@ -117,13 +122,6 @@ public abstract class RaftLogManager {
   private List<Log> blockedUnappliedLogList;
 
   private ExecutorService logApplierExecutor;
-
-  /**
-   * Each time new logs are appended, this condition will be notified so logs that have larger
-   * indices but arrived earlier can proceed.
-   */
-  private final Object logUpdateCondition = new Object();
-
 
   public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
@@ -817,6 +815,11 @@ public abstract class RaftLogManager {
     }
   }
 
+
+  public Object getLogUpdateCondition() {
+    return logUpdateCondition;
+  }
+
   void applyAllCommittedLogWhenStartUp() {
     long lo = maxHaveAppliedCommitIndex;
     long hi = getCommittedEntryManager().getLastIndex() + 1;
@@ -900,9 +903,5 @@ public abstract class RaftLogManager {
 
   public String getName() {
     return name;
-  }
-
-  public Object getLogUpdateCondition() {
-    return logUpdateCondition;
   }
 }

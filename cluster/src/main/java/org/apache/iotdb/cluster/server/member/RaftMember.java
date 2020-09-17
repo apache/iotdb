@@ -73,6 +73,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.utils.ClientUtils;
@@ -460,6 +461,7 @@ public abstract class RaftMember {
    * finally see if we can find a position to append the log.
    */
   public long appendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
+    long start = System.nanoTime();
     logger.debug("{} received an AppendEntryRequest: {}", name, request);
     // the term checked here is that of the leader, not that of the log
     long checkResult = checkRequestTerm(request.term, request.leader);
@@ -467,10 +469,15 @@ public abstract class RaftMember {
       return checkResult;
     }
 
+    long start1 = System.nanoTime();
     Log log = LogParser.getINSTANCE().parse(request.entry);
+    Timer.raftMemberLogParse.add(System.nanoTime() - start1);
+
     long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
         log);
     logger.debug("{} AppendEntryRequest of {} completed with result {}", name, log, result);
+
+    Timer.raftFollowerAppendEntry.add(System.nanoTime() - start);
     return result;
   }
 
@@ -488,17 +495,21 @@ public abstract class RaftMember {
 
     long response;
     List<Log> logs = new ArrayList<>();
+    long start = System.nanoTime();
     for (ByteBuffer buffer : request.getEntries()) {
       buffer.mark();
       Log log;
       try {
         log = LogParser.getINSTANCE().parse(buffer);
+
       } catch (BufferUnderflowException e) {
         buffer.reset();
         throw e;
       }
       logs.add(log);
     }
+
+    Timer.raftMemberLogParse.add(System.nanoTime() - start);
 
     response = appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
         logs);
@@ -537,6 +548,22 @@ public abstract class RaftMember {
    */
   public Client getSyncHeartbeatClient(Node node) {
     return getSyncClient(syncHeartbeatClientPool, node);
+  }
+
+  private void sendLogAsync(Log log, AtomicInteger voteCounter, Node node,
+      AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request,
+      Peer peer) {
+    AsyncClient client = getAsyncClient(node);
+    if (client != null) {
+      AppendNodeEntryHandler handler = getAppendNodeEntryHandler(log, voteCounter, node,
+          leaderShipStale, newLeaderTerm, peer);
+      try {
+        client.appendEntry(request, handler);
+        logger.debug("{} sending a log to {}: {}", name, node, log);
+      } catch (Exception e) {
+        logger.warn("{} cannot append log to node {}", name, node, e);
+      }
+    }
   }
 
   private Client getSyncClient(SyncClientPool pool, Node node) {
@@ -762,42 +789,139 @@ public abstract class RaftMember {
       if (leaderCommitId == Long.MAX_VALUE) {
         // Long.MAX_VALUE representing there is a network issue
         return false;
-      }
+    }
     } catch (TException e) {
-      logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader, e);
-      return false;
+    logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader, e);
+    return false;
     } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader, e);
-      return false;
+    Thread.currentThread().interrupt();
+    logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader, e);
+    return false;
     }
 
     while (waitedTime < RaftServer.getSyncLeaderMaxWaitMs()) {
-      try {
-        long localCommitId = logManager.getCommitLogIndex();
-        logger.debug("{}: synchronizing commitIndex {}/{}", name, localCommitId, leaderCommitId);
-        if (leaderCommitId <= localCommitId) {
-          // this node has caught up
-          if (logger.isDebugEnabled()) {
-            waitedTime = System.currentTimeMillis() - startTime;
-            logger.debug("{}: synchronized with the leader after {}ms", name, waitedTime);
-          }
-          return true;
-        }
-        // wait for next heartbeat to catch up
-        // the local node will not perform a commit here according to the leaderCommitId because
-        // the node may have some inconsistent logs with the leader
-        waitedTime = System.currentTimeMillis() - startTime;
-        synchronized (syncLock) {
-          syncLock.wait(RaftServer.getHeartBeatIntervalMs());
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader, e);
-      }
+    try {
+    long localCommitId = logManager.getCommitLogIndex();
+    logger.debug("{}: synchronizing commitIndex {}/{}", name, localCommitId, leaderCommitId);
+    if (leaderCommitId <= localCommitId) {
+    // this node has caught up
+    if (logger.isDebugEnabled()) {
+    waitedTime = System.currentTimeMillis() - startTime;
+    logger.debug("{}: synchronized with the leader after {}ms", name, waitedTime);
+    }
+    return true;
+    }
+    // wait for next heartbeat to catch up
+    // the local node will not perform a commit here according to the leaderCommitId because
+    // the node may have some inconsistent logs with the leader
+    waitedTime = System.currentTimeMillis() - startTime;
+synchronized (syncLock) {
+    syncLock.wait(RaftServer.getHeartBeatIntervalMs());
+    }
+    } catch (InterruptedException e) {
+    Thread.currentThread().interrupt();
+    logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader, e);
+    }
     }
     logger.warn("{}: Failed to synchronize with the leader after {}ms", name, waitedTime);
     return false;
+    }
+
+  /**
+   * Create a log for "plan" and append it locally and to all followers. Only the group leader can
+   * call this method. Will commit the log locally and send it to followers
+   *
+   * @return OK if over half of the followers accept the log or null if the leadership is lost
+   * during the appending
+   */
+  TSStatus processPlanLocally(PhysicalPlan plan) {
+    if (true) {
+      return processPlanLocallyV2(plan);
+    }
+
+    logger.debug("{}: Processing plan {}", name, plan);
+    if (readOnly) {
+      return StatusUtils.NODE_READ_ONLY;
+    }
+    long start = System.nanoTime();
+    PhysicalPlanLog log = new PhysicalPlanLog();
+    // assign term and index to the new log and append it
+    synchronized (logManager) {
+      log.setCurrLogTerm(getTerm().get());
+      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+      log.setPlan(plan);
+      logManager.append(log);
+    }
+    Timer.raftMemberAppendLog.add(System.nanoTime() - start);
+
+    try {
+      if (appendLogInGroup(log)) {
+        return StatusUtils.OK;
+      }
+    } catch (LogExecutionException e) {
+      return handleLogExecutionException(log, e);
+    }
+    return StatusUtils.TIME_OUT;
+  }
+
+  private TSStatus processPlanLocallyV2(PhysicalPlan plan) {
+    logger.debug("{}: Processing plan {}", name, plan);
+    if (readOnly) {
+      return StatusUtils.NODE_READ_ONLY;
+    }
+    PhysicalPlanLog log = new PhysicalPlanLog();
+    // assign term and index to the new log and append it
+    SendLogRequest sendLogRequest;
+    long start = System.nanoTime();
+    synchronized (logManager) {
+      log.setCurrLogTerm(getTerm().get());
+      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+      log.setPlan(plan);
+      logManager.append(log);
+
+      sendLogRequest = buildSendLogRequest(log);
+      sendLogRequest.setCreateTime(System.nanoTime());
+      getLogDispatcher().offer(sendLogRequest);
+    }
+    Timer.raftMemberOfferLog.add(System.nanoTime() - start);
+
+    try {
+      start = System.nanoTime();
+      AppendLogResult appendLogResult = waitAppendResult(sendLogRequest.getVoteCounter(),
+          sendLogRequest.getLeaderShipStale(),
+          sendLogRequest.getNewLeaderTerm());
+      Timer.raftMemberAppendLogResult.add(System.nanoTime() - start);
+      Timer.raftMemberFromCreateToAppendLog.add(System.nanoTime() - sendLogRequest.getCreateTime());
+      switch (appendLogResult) {
+        case OK:
+          logger.debug("{}: log {} is accepted", name, log);
+          start = System.nanoTime();
+          commitLog(log);
+          Timer.raftMemberCommitLogResult.add(System.nanoTime() - start);
+          return StatusUtils.OK;
+        case TIME_OUT:
+          logger.debug("{}: log {} timed out...", name, log);
+          break;
+        case LEADERSHIP_STALE:
+          // abort the appending, the new leader will fix the local logs by catch-up
+        default:
+          break;
+      }
+    } catch (LogExecutionException e) {
+      return handleLogExecutionException(log, e);
+    }
+    return StatusUtils.TIME_OUT;
+  }
+
+  private SendLogRequest buildSendLogRequest(Log log) {
+    AtomicInteger voteCounter = new AtomicInteger(allNodes.size() / 2);
+    AtomicBoolean leaderShipStale = new AtomicBoolean(false);
+    AtomicLong newLeaderTerm = new AtomicLong(term.get());
+    AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(log);
+
+    return new SendLogRequest(log, voteCounter, leaderShipStale, newLeaderTerm, appendEntryRequest);
   }
 
   /**
@@ -1079,74 +1203,12 @@ public abstract class RaftMember {
     return getSyncClient(syncClientPool, node);
   }
 
-  /**
-   * Create a log for "plan" and append it locally and to all followers. Only the group leader can
-   * call this method. Will commit the log locally and send it to followers
-   *
-   * @return OK if over half of the followers accept the log or null if the leadership is lost
-   * during the appending
-   */
-  TSStatus processPlanLocally(PhysicalPlan plan) {
-    logger.debug("{}: Processing plan {}", name, plan);
-    if (readOnly) {
-      return StatusUtils.NODE_READ_ONLY;
-    }
-    PhysicalPlanLog log = new PhysicalPlanLog();
-    // assign term and index to the new log and append it
-    SendLogRequest sendLogRequest;
-    synchronized (logManager) {
-      log.setCurrLogTerm(getTerm().get());
-      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-
-      log.setPlan(plan);
-      logManager.append(log);
-
-      // logDispatcher will send logs to followers in an ordered manner to reduce follower side
-      // waits for previous logs
-      sendLogRequest = buildSendLogRequest(log);
-      getLogDispatcher().offer(sendLogRequest);
-    }
-
-    try {
-      AppendLogResult appendLogResult = waitAppendResult(sendLogRequest.getVoteCounter(),
-          sendLogRequest.getLeaderShipStale(),
-          sendLogRequest.getNewLeaderTerm());
-
-      switch (appendLogResult) {
-        case OK:
-          logger.debug("{}: log {} is accepted", name, log);
-          commitLog(log);
-          return StatusUtils.OK;
-        case TIME_OUT:
-          logger.debug("{}: log {} timed out...", name, log);
-          break;
-        case LEADERSHIP_STALE:
-          // abort the appending, the new leader will fix the local logs by catch-up
-        default:
-          break;
-      }
-    } catch (LogExecutionException e) {
-      return handleLogExecutionException(log, e);
-    }
-    return StatusUtils.TIME_OUT;
-  }
-
   public AtomicLong getTerm() {
     return term;
   }
 
-  private SendLogRequest buildSendLogRequest(Log log) {
-    AtomicInteger voteCounter = new AtomicInteger(allNodes.size() / 2);
-    AtomicBoolean leaderShipStale = new AtomicBoolean(false);
-    AtomicLong newLeaderTerm = new AtomicLong(term.get());
-    AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(log);
-
-    return new SendLogRequest(log, voteCounter, leaderShipStale, newLeaderTerm, appendEntryRequest);
-  }
-
   private synchronized LogDispatcher getLogDispatcher() {
     if (logDispatcher == null) {
-      // we cannot initialize logDispatcher in constructor because "this" is null there
       logDispatcher = new LogDispatcher(this);
     }
     return logDispatcher;
@@ -1160,6 +1222,7 @@ public abstract class RaftMember {
   private AppendLogResult waitAppendResult(AtomicInteger voteCounter,
       AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm) {
     // wait for the followers to vote
+    long start = System.nanoTime();
     synchronized (voteCounter) {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
@@ -1173,6 +1236,7 @@ public abstract class RaftMember {
         alreadyWait = System.currentTimeMillis() - waitStart;
       }
     }
+    Timer.raftMemberVoteCounter.add(System.nanoTime() - start);
 
     // a node has a larger term than the local node, so this node is no longer a valid leader
     if (leaderShipStale.get()) {
@@ -1335,12 +1399,16 @@ public abstract class RaftMember {
 
     int retryTime = 0;
     while (true) {
+      long start = System.nanoTime();
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
       AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
+      Timer.raftMemberSendLogToFollower.add(System.nanoTime() - start);
       switch (result) {
         case OK:
+          start = System.nanoTime();
           logger.debug("{}: log {} is accepted", name, log);
           commitLog(log);
+          Timer.raftMemberCommitLog.add(System.nanoTime() - start);
           return true;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
@@ -1441,21 +1509,25 @@ public abstract class RaftMember {
      * if the peer's log progress is too stale, wait until it catches up, otherwise, there may be
      * too many waiting requests on the peer's side.
      */
+    long start = System.nanoTime();
     Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
     if (!waitForPrevLog(peer, log)) {
       logger.warn("{}: node {} timed out when appending {}", name, node, log);
       return;
     }
+    Timer.raftMemberWaitForPrevLog.add(System.nanoTime() - start);
 
     if (character != NodeCharacter.LEADER) {
       return;
     }
 
+    start = System.nanoTime();
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       sendLogAsync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
     } else {
       sendLogSync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
     }
+    Timer.raftMemberSendLogAync.add(System.nanoTime() - start);
   }
 
   /**
@@ -1466,7 +1538,7 @@ public abstract class RaftMember {
    * @return
    */
   @SuppressWarnings("java:S2445") // safe synchronized
-  private boolean waitForPrevLog(Peer peer, Log log) {
+  public boolean waitForPrevLog(Peer peer, Log log) {
     final int maxLogDiff = 10;
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
@@ -1487,22 +1559,6 @@ public abstract class RaftMember {
       alreadyWait = System.currentTimeMillis() - waitStart;
     }
     return alreadyWait <= RaftServer.getWriteOperationTimeoutMS();
-  }
-
-  private void sendLogAsync(Log log, AtomicInteger voteCounter, Node node,
-      AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request,
-      Peer peer) {
-    AsyncClient client = getAsyncClient(node);
-    if (client != null) {
-      AppendNodeEntryHandler handler = getAppendNodeEntryHandler(log, voteCounter, node,
-          leaderShipStale, newLeaderTerm, peer);
-      try {
-        client.appendEntry(request, handler);
-        logger.debug("{} sending a log to {}: {}", name, node, log);
-      } catch (Exception e) {
-        logger.warn("{} cannot append log to node {}", name, node, e);
-      }
-    }
   }
 
   private void sendLogSync(Log log, AtomicInteger voteCounter, Node node,
@@ -1560,15 +1616,20 @@ public abstract class RaftMember {
     long resp;
 
     long lastLogIndex = logManager.getLastLogIndex();
+    long start = System.nanoTime();
     if (lastLogIndex < prevLogIndex && !waitForPrevLog(prevLogIndex)) {
       // there are logs missing between the incoming log and the local last log, and such logs
       // did not come within a timeout, report a mismatch to the sender and it shall fix this
       // through catch-up
+      Timer.indexDiff.add(prevLogIndex - lastLogIndex);
       return Response.RESPONSE_LOG_MISMATCH;
     }
+    Timer.rafTMemberReceiverWaitForPrevLog.add(System.nanoTime() - start);
 
     synchronized (logManager) {
+      start = System.nanoTime();
       long success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
+      Timer.raftFollowerAppendEntry.add(System.nanoTime() - start);
       if (success != -1) {
         logger.debug("{} append a new log {}", name, log);
         resp = Response.RESPONSE_AGREE;
@@ -1617,9 +1678,21 @@ public abstract class RaftMember {
       return Response.RESPONSE_AGREE;
     }
 
+    long lastLogIndex = logManager.getLastLogIndex();
+    long start = System.nanoTime();
+          if (lastLogIndex < prevLogIndex && !waitForPrevLog(prevLogIndex)) {
+            // there are logs missing between the incoming log and the local last log, and such logs
+            // did not come within a timeout, report a mismatch to the sender and it shall fix this
+            // through catch-up
+            return Response.RESPONSE_LOG_MISMATCH;
+          }
+    Timer.rafTMemberReceiverWaitForPrevLog.add(System.nanoTime() - start);
+
     long resp;
     synchronized (logManager) {
+      start = System.nanoTime();
       resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, logs);
+      Timer.raftFollowerAppendEntry.add(System.nanoTime() - start);
       if (resp != -1) {
         if (logger.isDebugEnabled()) {
           logger.debug("{} append a new log list {}, commit to {}", name, logs, leaderCommit);

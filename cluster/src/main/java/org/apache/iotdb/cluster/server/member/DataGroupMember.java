@@ -81,6 +81,7 @@ import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.PullSnapshotHintService;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -657,15 +658,22 @@ public class DataGroupMember extends RaftMember {
    */
   TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
+      long start = System.nanoTime();
       TSStatus status = processPlanLocally(plan);
+      Timer.dataGroupMemberForwardPlan.add(System.nanoTime() - start);
       if (status != null) {
         return status;
       }
     } else if (leader != null) {
-      return forwardPlan(plan, leader, getHeader());
+      long  start = System.nanoTime();
+      TSStatus result =  forwardPlan(plan, leader, getHeader());
+      Timer.dataGroupMemberForwardPlan.add(System.nanoTime() - start);
+      return  result;
     }
 
+    long start = System.nanoTime();
     waitLeader();
+    Timer.dataGroupMemberWaitLeader.add(System.nanoTime() - start);
     // the leader can be itself after waiting
     if (character == NodeCharacter.LEADER) {
       TSStatus status = processPlanLocally(plan);

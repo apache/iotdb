@@ -107,6 +107,7 @@ import org.apache.iotdb.cluster.server.NodeReport;
 import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
@@ -1267,21 +1268,25 @@ public class MetaGroupMember extends RaftMember {
    */
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+    TSStatus result;
+    long start = System.nanoTime();
     if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
-      return executeNonQueryLocally(plan);
+      result = executeNonQueryLocally(plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
-      return processNonPartitionedMetaPlan(plan);
+      result = processNonPartitionedMetaPlan(plan);
     } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all data group nodes
-      return processNonPartitionedDataPlan(plan);
+      result = processNonPartitionedDataPlan(plan);
     } else { //split the plan and forward them to some PartitionGroups
       try {
-        return processPartitionedPlan(plan);
+        result = processPartitionedPlan(plan);
       } catch (UnsupportedPlanException e) {
         TSStatus status = StatusUtils.UNSUPPORTED_OPERATION.deepCopy();
         status.setMessage(e.getMessage());
-        return status;
+        result = status;
       }
     }
+    Timer.metaGroupMemberExecuteNonQuery.add(System.nanoTime() - start);
+    return result;
   }
 
   /**
@@ -1525,18 +1530,24 @@ public class MetaGroupMember extends RaftMember {
   }
 
   private TSStatus forwardToSingleGroup(Map.Entry<PhysicalPlan, PartitionGroup> entry) {
+    TSStatus result;
     if (entry.getValue().contains(thisNode)) {
-      // the query should be handled by a group the local node is in, handle it within the group
+      // the query should be handled by a group the local node is in, handle it with in the group
+      long start = System.nanoTime();
       logger.debug("Execute {} in a local group of {}", entry.getKey(),
           entry.getValue().getHeader());
-      return getLocalDataMember(entry.getValue().getHeader())
+      result = getLocalDataMember(entry.getValue().getHeader())
           .executeNonQueryPlan(entry.getKey());
+      Timer.metaGroupMemberExecuteNonQueryInLocalGroup.add(System.nanoTime() - start);
     } else {
       // forward the query to the group that should handle it
+      long start = System.nanoTime();
       logger.debug("Forward {} to a remote group of {}", entry.getKey(),
           entry.getValue().getHeader());
-      return forwardPlan(entry.getKey(), entry.getValue());
+      result = forwardPlan(entry.getKey(), entry.getValue());
+      Timer.metaGroupMemberExecuteNonQueryInRemoteGroup.add(System.nanoTime() - start);
     }
+    return result;
   }
 
   /**
