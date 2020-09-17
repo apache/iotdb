@@ -135,6 +135,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameWithoutStarContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OffsetClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OrExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OrderByTimeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PredicateContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrefixPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrivilegesContext;
@@ -906,6 +907,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
     queryOp.setStartTime(startTime);
     queryOp.setEndTime(endTime);
+    if (startTime >= endTime) {
+      throw new SQLParserException("start time should be smaller than endTime in GroupBy");
+    }
   }
 
   @Override
@@ -1056,6 +1060,15 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       ((ShowTimeSeriesOperator) initializedOperator).setOffset(offset);
     } else {
       queryOp.setRowOffset(offset);
+    }
+  }
+
+  @Override
+  public void enterOrderByTimeClause(OrderByTimeClauseContext ctx) {
+    super.enterOrderByTimeClause(ctx);
+    queryOp.setColumn(ctx.TIME().getText());
+    if (ctx.DESC() != null) {
+      queryOp.setAscending(false);
     }
   }
 

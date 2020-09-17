@@ -53,7 +53,8 @@ public class ServerTimeGenerator extends TimeGenerator {
   /**
    * Constructor of EngineTimeGenerator.
    */
-  public ServerTimeGenerator(IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
+  public ServerTimeGenerator(IExpression expression, QueryContext context,
+      RawDataQueryPlan queryPlan)
       throws StorageEngineException {
     this.context = context;
     this.queryPlan = queryPlan;
@@ -79,11 +80,13 @@ public class ServerTimeGenerator extends TimeGenerator {
     } catch (Exception e) {
       throw new IOException(e);
     }
-    
+
     // get the TimeFilter part in SingleSeriesExpression
     Filter timeFilter = getTimeFilter(valueFilter);
 
-    return new SeriesRawDataBatchReader(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource, timeFilter, valueFilter, null);
+    return new SeriesRawDataBatchReader(path,
+        queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource,
+        timeFilter, valueFilter, null, queryPlan.isAscending());
   }
 
   /**
@@ -105,5 +108,11 @@ public class ServerTimeGenerator extends TimeGenerator {
       }
     }
     return null;
+  }
+
+
+  @Override
+  protected boolean isAscending() {
+    return queryPlan.isAscending();
   }
 }

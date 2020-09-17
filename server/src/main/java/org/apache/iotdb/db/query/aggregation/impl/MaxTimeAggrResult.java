@@ -58,8 +58,11 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
-    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
+      throws IOException {
+    while (dataInThisPage.hasCurrent()
+        && dataInThisPage.currentTime() < maxBound
+        && dataInThisPage.currentTime() >= minBound) {
       updateMaxTimeResult(dataInThisPage.currentTime());
       dataInThisPage.next();
     }
