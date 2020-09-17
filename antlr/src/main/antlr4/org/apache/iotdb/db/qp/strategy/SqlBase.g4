@@ -80,6 +80,7 @@ statement
     | TRACING OFF #tracingOff
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT DEVICES prefixPath? #countDevices
+    | COUNT STORAGE GROUP prefixPath? #countStorageGroup
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
     | {hasSingleQuoteString = true;} LOAD stringLiteral autoCreateSchema?#loadFiles
