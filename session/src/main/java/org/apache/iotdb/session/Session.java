@@ -83,8 +83,8 @@ public class Session {
     this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
   }
 
-  public Session(String host, int port, Map<String,String> params) {
-    this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, params);
+  public Session(String host, int rpcPort, Map<String,String> params) {
+    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, params);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
@@ -103,9 +103,9 @@ public class Session {
     this.params = new HashMap<>();
   }
 
-  public Session(String host, int port, String username, String password, Map<String,String> params) {
+  public Session(String host, int rpcPort, String username, String password, Map<String,String> params) {
     this.host = host;
-    this.port = port;
+    this.rpcPort = rpcPort;
     this.username = username;
     this.password = password;
     this.params = params;
@@ -120,9 +120,9 @@ public class Session {
     this.params = new HashMap<>();
   }
 
-  public Session(String host, int port, String username, String password, int fetchSize, Map<String,String> params) {
+  public Session(String host, int rpcPort, String username, String password, int fetchSize, Map<String,String> params) {
     this.host = host;
-    this.port = port;
+    this.rpcPort = rpcPort;
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
