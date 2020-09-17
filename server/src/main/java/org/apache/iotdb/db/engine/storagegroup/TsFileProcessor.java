@@ -173,56 +173,25 @@ public class TsFileProcessor {
     }
 
     boolean needToReport = checkMemCostAndAddToTspInfo(insertRowPlan);
-    if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable();
-    }
-    // If there are enough size of arrays in memtable, insert insertRowPlan to
-    // the work memtable directly
-    if (workMemTable.checkIfArrayIsEnough(insertRowPlan)) {
-      logger.debug("Array in work MemTable is enough");
-      workMemTable.insert(insertRowPlan);
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        try {
-          getLogNode().write(insertRowPlan);
-        } catch (Exception e) {
-          throw new WriteProcessException(String.format("%s: %s write WAL failed",
-              storageGroupName, tsFileResource.getTsFile().getAbsolutePath()), e);
-        }
-      }
-
-      // update start time of this memtable
-      tsFileResource.updateStartTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
-      //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
-      //for unsequence tsfile, we have to update the endTime for each insertion.
-      if (!sequence) {
-        tsFileResource.updateEndTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
-      }
-      if (needToReport) {
-        SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-      }
-    }
-    // If there aren't enough size of arrays in memtable, it may apply buffered array
-    // from the array pool or get OOB array before inserting into the memtable
-    else {
+    workMemTable.insert(insertRowPlan);
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
-        logger.debug("Array in work MemTable isn't enough");
-        workMemTable.insert(insertRowPlan);
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-          getLogNode().write(insertRowPlan);
-        }
-        // update start time of this memtable
-        tsFileResource.updateStartTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
-        //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
-        //for unsequence tsfile, we have to update the endTime for each insertion.
-        if (!sequence) {
-          tsFileResource.updateEndTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
-        }
-        if (needToReport) {
-          SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-        }
+        getLogNode().write(insertRowPlan);
       } catch (Exception e) {
-        throw new WriteProcessException(e);
+        throw new WriteProcessException(String.format("%s: %s write WAL failed",
+            storageGroupName, tsFileResource.getTsFile().getAbsolutePath()), e);
       }
+    }
+
+    // update start time of this memtable
+    tsFileResource.updateStartTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
+    //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+    //for unsequence tsfile, we have to update the endTime for each insertion.
+    if (!sequence) {
+      tsFileResource.updateEndTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
+    }
+    if (needToReport) {
+      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
     }
   }
 
@@ -251,78 +220,35 @@ public class TsFileProcessor {
     }
 
     boolean needToReport = checkMemCostAndAddToTspInfo(insertTabletPlan);
-    if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable();
-    }
-    // If there are enough size of arrays in memtable, insert insertRowPlan to
-    // the work memtable directly
-    if (workMemTable.checkIfArrayIsEnough(insertTabletPlan)) {
-      // insert insertRowPlan to the work memtable
-      try {
-        workMemTable.insertTablet(insertTabletPlan, start, end);
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-          insertTabletPlan.setStart(start);
-          insertTabletPlan.setEnd(end);
-          getLogNode().write(insertTabletPlan);
-        }
-      } catch (Exception e) {
-        for (int i = start; i < end; i++) {
-          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-        }
-        throw new WriteProcessException(e);
+    try {
+      workMemTable.insertTablet(insertTabletPlan, start, end);
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+        insertTabletPlan.setStart(start);
+        insertTabletPlan.setEnd(end);
+        getLogNode().write(insertTabletPlan);
       }
+    } catch (Exception e) {
       for (int i = start; i < end; i++) {
-        results[i] = RpcUtils.SUCCESS_STATUS;
+        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
       }
-
-      tsFileResource
-          .updateStartTime(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[start]);
-
-      //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
-      //for unsequence tsfile, we have to update the endTime for each insertion.
-      if (!sequence) {
-        tsFileResource
-            .updateEndTime(
-                insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
-      }
-      if (needToReport) {
-        SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-      }
+      throw new WriteProcessException(e);
     }
-    // If there aren't enough size of arrays in memtable, it may apply buffered array
-    // from the array pool or get OOB array before inserting into the memtable
-    else {
-      try {
-        // if get buffered or OOB array successfully, estimate the memory cost
-        for (int i = start; i < end; i++) {
-          results[i] = RpcUtils.SUCCESS_STATUS;
-        }
-        
-        workMemTable.insertTablet(insertTabletPlan, start, end);
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-          insertTabletPlan.setStart(start);
-          insertTabletPlan.setEnd(end);
-          getLogNode().write(insertTabletPlan);
-        }
-        tsFileResource
-            .updateStartTime(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[start]);
-
-        //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
-        //for unsequence tsfile, we have to update the endTime for each insertion.
-        if (!sequence) {
-          tsFileResource
-              .updateEndTime(
-                  insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
-        }
-      } catch (Exception e) {
-        for (int i = start; i < end; i++) {
-          results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-        }
-        throw new WriteProcessException(e);
-      }
-      if (needToReport) {
-        SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-      }
+    // if get buffered or OOB array successfully, estimate the memory cost
+    for (int i = start; i < end; i++) {
+      results[i] = RpcUtils.SUCCESS_STATUS;
+    }
+    tsFileResource
+        .updateStartTime(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[start]);
+  
+    //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+    //for unsequence tsfile, we have to update the endTime for each insertion.
+    if (!sequence) {
+      tsFileResource
+          .updateEndTime(
+              insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
+    }
+    if (needToReport) {
+      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
     }
   }
 
@@ -576,7 +502,7 @@ public class TsFileProcessor {
           .debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
-      if (workMemTable == null || workMemTable.size() == 0) {
+      if (workMemTable == null) {
         return;
       }
       addAMemtableIntoFlushingList(workMemTable);
@@ -950,5 +876,4 @@ public class TsFileProcessor {
         getTsFileResource().getTsFile().getAbsolutePath());
   }
 
-  
 }

@@ -126,7 +126,7 @@ public class IoTDBConfig {
   /**
    * Memory allocated for the write process
    */
-  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 5 / 10;
+  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 4 / 10;
 
   /**
    * Memory allocated for the read process
@@ -134,9 +134,14 @@ public class IoTDBConfig {
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /**
+   * Memory allocated for the mtree
+   */
+  private long allocateMemoryForMTree = allocateMemoryForWrite * 2 / 10;
+
+  /**
    * Is active timeseries counter enable.
    */
-  private boolean enableActiveTimeseriesCounter = false;
+  private boolean enableActiveTimeseriesCounter = true;
 
   /**
    * Ratio of memory allocated for buffered arrays
@@ -255,7 +260,7 @@ public class IoTDBConfig {
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
    */
-  private long tsFileSizeThreshold = 512 * 1024 * 1024L;
+  private long tsFileSizeThreshold = 0L;
 
   /**
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
@@ -624,7 +629,7 @@ public class IoTDBConfig {
   /**
    * The default value of primitive array size in array pool
    */
-  private int primitiveArraySize = 128;
+  private int primitiveArraySize = 32;
 
   /**
    * whether enable data partition. If disabled, all data belongs to partition 0
@@ -1185,6 +1190,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForWrite(long allocateMemoryForWrite) {
     this.allocateMemoryForWrite = allocateMemoryForWrite;
+  }
+
+  public long getAllocateMemoryForMTree() {
+    return allocateMemoryForMTree;
+  }
+
+  void setAllocateMemoryForMTree(long allocateMemoryForMTree) {
+    this.allocateMemoryForMTree = allocateMemoryForMTree;
   }
 
   long getAllocateMemoryForRead() {

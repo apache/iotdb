@@ -23,14 +23,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -100,29 +95,6 @@ public class PrimitiveMemTableTest {
       Assert.assertEquals(i, timeValuePair.getTimestamp());
       Assert.assertEquals(i, timeValuePair.getValue().getValue());
     }
-  }
-
-  @Test
-  public void testCheckArrayInMemTable()
-      throws QueryProcessException, IOException, WriteProcessException, IllegalPathException {
-    IMemTable memTable = new PrimitiveMemTable();
-    String deviceId = "root.sg.device99";
-    String sensorId = "sensor4";
-    int arraySize = IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
-    InsertPlan insertPlan = new InsertRowPlan(new PartialPath(deviceId), 64, sensorId, TSDataType.INT64, "4");
-    Assert.assertFalse(memTable.checkIfArrayIsEnough(insertPlan));
-
-    for (long i = 0; i < arraySize - 1; i++) {
-      memTable.write(deviceId, sensorId, new MeasurementSchema(sensorId, TSDataType.INT64, TSEncoding.RLE), i,
-          i + 10);
-    }
-
-    Assert.assertTrue(memTable.checkIfArrayIsEnough(insertPlan));
-    memTable.write(deviceId, sensorId, new MeasurementSchema(sensorId, TSDataType.INT64, TSEncoding.RLE), arraySize - 1,
-        10L);
-    Assert.assertFalse(memTable.checkIfArrayIsEnough(insertPlan));
-    insertPlan = new InsertRowPlan(new PartialPath(deviceId), 11, "sensor3", TSDataType.INT32, "4");
-    Assert.assertFalse(memTable.checkIfArrayIsEnough(insertPlan));
   }
 
   private void write(IMemTable memTable, String deviceId, String sensorId, TSDataType dataType,

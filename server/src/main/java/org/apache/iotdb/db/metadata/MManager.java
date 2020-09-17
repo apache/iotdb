@@ -124,13 +124,23 @@ public class MManager {
   // storage group name -> the series number
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
+  private long totalSeriesNumber = 0L;
   private boolean initialized;
-  protected IoTDBConfig config;
+  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();;
 
   private File logFile;
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
   private ScheduledExecutorService timedCreateMTreeSnapshotThread;
+
+  /**
+   * threshold total size of MTree
+   */
+  private static final long MTREE_SIZE_THRESHOLD = config.getAllocateMemoryForMTree();
+
+  private boolean allowToCreateNewSeries = true;
+
+  private static final int ESTIMATED_SERIES_SIZE = 300;
 
   private static class MManagerHolder {
 
@@ -212,6 +222,7 @@ public class MManager {
         for (PartialPath sg : storageGroups) {
           MNode node = mtree.getNodeByPath(sg);
           seriesNumberInStorageGroups.put(sg.getFullPath(), node.getLeafCount());
+          totalSeriesNumber += node.getLeafCount();
         }
         maxSeriesNumberAmongStorageGroup =
             seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
@@ -286,6 +297,7 @@ public class MManager {
       this.tagIndex.clear();
       this.seriesNumberInStorageGroups.clear();
       this.maxSeriesNumberAmongStorageGroup = 0;
+      this.totalSeriesNumber = 0;
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
@@ -378,6 +390,10 @@ public class MManager {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
+    if (!allowToCreateNewSeries) {
+      throw new MetadataException("IoTDB system load is too large to create timeseries, "
+          + "please increase memory");
+    }
     lock.writeLock().lock();
     try {
       PartialPath path = plan.getPath();
@@ -418,6 +434,11 @@ public class MManager {
         seriesNumberInStorageGroups.put(storageGroupPath.getFullPath(), size + 1);
         if (size + 1 > maxSeriesNumberAmongStorageGroup) {
           maxSeriesNumberAmongStorageGroup = size + 1L;
+        }
+        totalSeriesNumber++;
+        if (totalSeriesNumber * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+          logger.warn("Current series number {} is too large...", totalSeriesNumber);
+          allowToCreateNewSeries = false;
         }
       }
 
@@ -473,6 +494,7 @@ public class MManager {
       if (config.isEnableActiveTimeseriesCounter()) {
         int size = seriesNumberInStorageGroups.get(prefixPath.getFullPath());
         seriesNumberInStorageGroups.put(prefixPath.getFullPath(), 0);
+        totalSeriesNumber -= size;
         if (size == maxSeriesNumberAmongStorageGroup) {
           seriesNumberInStorageGroups.values().stream()
               .max(Integer::compareTo)
@@ -571,6 +593,7 @@ public class MManager {
         PartialPath storageGroup = getStorageGroupPath(path);
         int size = seriesNumberInStorageGroups.get(storageGroup.getFullPath());
         seriesNumberInStorageGroups.put(storageGroup.getFullPath(), size - 1);
+        totalSeriesNumber--;
         if (size == maxSeriesNumberAmongStorageGroup) {
           seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
               .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
@@ -630,6 +653,7 @@ public class MManager {
         if (config.isEnableActiveTimeseriesCounter()) {
           int size = seriesNumberInStorageGroups.get(storageGroup.getFullPath());
           ActiveTimeSeriesCounter.getInstance().delete(storageGroup.getFullPath());
+          totalSeriesNumber -= size;
           seriesNumberInStorageGroups.remove(storageGroup.getFullPath());
           if (size == maxSeriesNumberAmongStorageGroup) {
             maxSeriesNumberAmongStorageGroup =

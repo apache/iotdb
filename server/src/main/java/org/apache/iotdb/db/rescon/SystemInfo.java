@@ -39,6 +39,7 @@ public class SystemInfo {
 
   private long totalSgMemCost;
   private long arrayPoolMemCost;
+  private long mTreeMemCost = config.getAllocateMemoryForMTree();
   private boolean rejected = false;
 
   private Map<StorageGroupInfo, Long> reportedSgMemCostMap = new HashMap<>();
@@ -56,25 +57,25 @@ public class SystemInfo {
    */
   public synchronized boolean applyNewOOBArray(TSDataType dataType, int size) {
     // if current memory is enough
-    if (arrayPoolMemCost + totalSgMemCost + dataType.getDataTypeSize() * size
+    if (getTotalMemCost() + dataType.getDataTypeSize() * size
         < config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       arrayPoolMemCost += dataType.getDataTypeSize() * size;
-      logger.debug("Current total mem cost is {}", (arrayPoolMemCost + totalSgMemCost));
+      logger.debug("Current total mem cost is {}", getTotalMemCost());
       rejected = false;
       return true;
-    } else if (arrayPoolMemCost + totalSgMemCost + dataType.getDataTypeSize() * size
+    } else if (getTotalMemCost() + dataType.getDataTypeSize() * size
         < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
       arrayPoolMemCost += dataType.getDataTypeSize() * size;
       // invoke flush()
       logger.debug("Out of buffer arraies are too large, call for flushing. "
-          + "Current total mem cost is {}", (arrayPoolMemCost + totalSgMemCost));
+          + "Current total mem cost is {}", getTotalMemCost());
       rejected = false;
       flush();
       return true;
     } else {
       logger.debug("Out of buffer arraies are too large, call for flushing "
           + "and change system to rejected status...Current total mem cost is {}", 
-          (arrayPoolMemCost + totalSgMemCost));
+          getTotalMemCost());
       rejected = true;
       flush();
       return false;
@@ -98,14 +99,12 @@ public class SystemInfo {
 
     long newSgReportThreshold = calculateNewSgReportThreshold(storageGroupInfo);
     storageGroupInfo.setStorageGroupReportThreshold(newSgReportThreshold);
-    if (arrayPoolMemCost + totalSgMemCost
-        >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
+    if (getTotalMemCost() >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       logger.debug("The total storage group mem costs are too large, call for flushing. "
           + "Current sg cost is {}, array pool cost is {}", totalSgMemCost, arrayPoolMemCost);
       flush();
-    } 
-    if (arrayPoolMemCost + totalSgMemCost
-        >= config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
+    }
+    if (getTotalMemCost() >= config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
       logger.debug("Change system to reject status...");
       rejected = true;
     }
@@ -146,8 +145,10 @@ public class SystemInfo {
    */
   public synchronized void reportReleaseOOBArray(TSDataType dataType, int size) {
     this.arrayPoolMemCost -= dataType.getDataTypeSize() * size;
-    if (this.arrayPoolMemCost + this.totalSgMemCost 
-        < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
+    if (getTotalMemCost() >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
+      flush();
+    }
+    if (getTotalMemCost() < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
       logger.debug("OOB array released, change system to normal status. "
           + "Current total array cost {}.", arrayPoolMemCost);
       this.rejected = false;
@@ -167,8 +168,7 @@ public class SystemInfo {
     if (reportedSgMemCostMap.containsKey(storageGroupInfo)) {
       this.totalSgMemCost -= reportedSgMemCostMap.get(storageGroupInfo)
           - storageGroupInfo.getSgMemCost();
-      if (this.arrayPoolMemCost + this.totalSgMemCost 
-          < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
+      if (getTotalMemCost() < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
         logger.debug("Some sg memery released, set system to normal status. "
             + "Current array cost is {}, Sg cost is {}",
             arrayPoolMemCost, totalSgMemCost);
@@ -177,6 +177,7 @@ public class SystemInfo {
       else {
         logger.warn("Some sg memery released, but system is still in reject status. "
             + "Current array cost is {}, Sg cost is {}", arrayPoolMemCost, totalSgMemCost);
+        flush();
       }
       reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
     }
@@ -195,7 +196,8 @@ public class SystemInfo {
     TsFileProcessor processor = getLargestTsFileProcessor();
 
     if (processor != null && processor.getWorkMemTableSize() != 0) {
-      logger.debug("Current buffed array size {}, OOB size {}", PrimitiveArrayManager.getBufferedArraysSize(),
+      logger.debug("Current buffed array size {}, OOB size {}",
+          PrimitiveArrayManager.getBufferedArraysSize(),
           PrimitiveArrayManager.getOOBSize());
       if (processor.shouldClose()) {
         processor.startClose();
@@ -227,14 +229,15 @@ public class SystemInfo {
     return arrayPoolMemCost;
   }
 
-  public synchronized long getTotalMemCost() {
-    return totalSgMemCost + arrayPoolMemCost;
+  public long getTotalMemCost() {
+    return totalSgMemCost + arrayPoolMemCost + mTreeMemCost;
   }
 
   public void close() {
     reportedSgMemCostMap.clear();
     totalSgMemCost = 0;
     arrayPoolMemCost = 0;
+    mTreeMemCost = 0;
     rejected = false;
   }
 
