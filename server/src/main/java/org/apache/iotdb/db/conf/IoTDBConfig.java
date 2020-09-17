@@ -141,7 +141,7 @@ public class IoTDBConfig {
   /**
    * Is active timeseries counter enable.
    */
-  private boolean enableActiveTimeseriesCounter = true;
+  private boolean enableActiveTimeseriesCounter = false;
 
   /**
    * Ratio of memory allocated for buffered arrays
@@ -260,7 +260,7 @@ public class IoTDBConfig {
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
    */
-  private long tsFileSizeThreshold = 0L;
+  private long tsFileSizeThreshold = 512 * 1024 * 1024L;
 
   /**
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
@@ -629,7 +629,7 @@ public class IoTDBConfig {
   /**
    * The default value of primitive array size in array pool
    */
-  private int primitiveArraySize = 32;
+  private int primitiveArraySize = 128;
 
   /**
    * whether enable data partition. If disabled, all data belongs to partition 0

@@ -257,6 +257,9 @@ public class TsFileProcessor {
     long unsealedResourceCost = 0L;
     long chunkMetadataCost = 0L;
     unsealedResourceCost = tsFileResource.estimateRamIncrement(insertPlan.getDeviceId().getFullPath());
+    if (workMemTable == null) {
+      workMemTable = new PrimitiveMemTable();
+    }
     for (int i = 0; i < insertPlan.getDataTypes().length; i++) {
       // skip failed Measurements
       if (insertPlan.getDataTypes()[i] == null) {
@@ -272,9 +275,6 @@ public class TsFileProcessor {
             bytesCost += RamUsageEstimator.sizeOf(bytes);
           }
         }
-      }
-      if (workMemTable == null) {
-        workMemTable = new PrimitiveMemTable();
       }
       // ChunkMetadataCost
       if (workMemTable.checkIfNeedStartNewChunk(insertPlan.getDeviceId().getFullPath(),
