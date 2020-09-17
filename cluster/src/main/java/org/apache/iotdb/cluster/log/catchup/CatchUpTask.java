@@ -80,7 +80,7 @@ public class CatchUpTask implements Runnable {
         return true;
       }
       if (isLogDebug) {
-        logger.debug(
+        logger.info(
             "{}: use {} logs of [{}, {}] to fix log inconsistency with node [{}], "
                 + "local first index: {}",
             raftMember.getName(), logs.size(), lo, hi, node, localFirstIndex);
@@ -96,7 +96,7 @@ public class CatchUpTask implements Runnable {
     // if index >= 0 but there is no matched log, still send Snapshot and all the logs in logManager
     while (index >= 0) {
       if (checkMatchIndex(index)) {
-        logger.debug("{}: Find a match index {} of {}", raftMember.getName(), index, node);
+        logger.info("{}: Find a match index {} of {}", raftMember.getName(), index, node);
         return true;
       }
       index--;

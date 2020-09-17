@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 public class DataHeartbeatThread extends HeartbeatThread {
 
   private DataGroupMember dataGroupMember;
+  int number = 1;
 
   public DataHeartbeatThread(DataGroupMember raftMember) {
     super(raftMember);
@@ -45,16 +46,27 @@ public class DataHeartbeatThread extends HeartbeatThread {
 
   /**
    * Different from the election of the meta group, the leader of a data group should have the
-   * newest meta log to guarantee it will not receive the data of the slots that no longer
-   * belongs to it. So the progress of meta logs is also examined.
+   * newest meta log to guarantee it will not receive the data of the slots that no longer belongs
+   * to it. So the progress of meta logs is also examined.
    */
   @Override
   void startElection() {
+    if (!dataGroupMember.getThisNode().equals(dataGroupMember.getHeader())) {
+      if (number % 60 != 0) {
+        number++;
+        return;
+      } else {
+        number = 1;
+      }
+    }
     electionRequest.setHeader(dataGroupMember.getHeader());
-    electionRequest.setLastLogTerm(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogTerm());
-    electionRequest.setLastLogIndex(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogIndex());
+    electionRequest
+        .setLastLogTerm(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogTerm());
+    electionRequest
+        .setLastLogIndex(dataGroupMember.getMetaGroupMember().getLogManager().getLastLogIndex());
     electionRequest.setDataLogLastIndex(dataGroupMember.getLogManager().getLastLogIndex());
     electionRequest.setDataLogLastTerm(dataGroupMember.getLogManager().getLastLogTerm());
+
     super.startElection();
   }
 }

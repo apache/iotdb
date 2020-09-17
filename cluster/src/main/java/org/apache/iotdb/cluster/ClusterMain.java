@@ -29,6 +29,8 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.Response;
@@ -257,33 +259,42 @@ public class ClusterMain {
   private static void preStartCustomize() {
     // customize data distribution
     // The given example tries to divide storage groups like "root.sg_0", "root.sg_1"... into k
-    // nodes evenly.
-    /*SlotPartitionTable.slotStrategy = new SlotStrategy() {
+    // nodes evenly, and use hash for other groups
+    SlotPartitionTable.setSlotStrategy(new SlotStrategy() {
+      SlotStrategy defaultStrategy = new SlotStrategy.DefaultStrategy();
       int k = 3;
       @Override
       public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-        return maxSlotNum / k * sgSerialNum ;
+        if (sgSerialNum >= 0) {
+          return maxSlotNum / k * sgSerialNum;
+        } else {
+          return defaultStrategy.calculateSlotByTime(storageGroupName, timestamp, maxSlotNum);
+        }
       }
 
       @Override
       public int calculateSlotByPartitionNum(String storageGroupName, long partitionId,
           int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-        return maxSlotNum / k * sgSerialNum ;
+        if (sgSerialNum >= 0) {
+          return maxSlotNum / k * sgSerialNum;
+        } else {
+          return defaultStrategy.calculateSlotByPartitionNum(storageGroupName, partitionId, maxSlotNum);
+        }
       }
 
       private int extractSerialNumInSGName(String storageGroupName) {
         String[] s = storageGroupName.split("_");
         if (s.length != 2) {
-          return 0;
+          return -1;
         }
         try {
           return Integer.parseInt(s[1]);
         } catch (NumberFormatException e) {
-          return 0;
+          return -1;
         }
       }
-    };*/
+    });
   }
 }

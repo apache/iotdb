@@ -86,6 +86,24 @@ public class AsyncDataClient extends AsyncClient {
     }
   }
 
+  public static class SingleManagerFactory extends AsyncClientFactory {
+
+    private TAsyncClientManager manager;
+
+    public SingleManagerFactory(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
+      this.protocolFactory = protocolFactory;
+      try {
+        manager = new TAsyncClientManager();
+      } catch (IOException e) {
+        logger.error("Cannot init manager of SingleThreadFactoryAsync", e);
+      }
+    }
+
+    public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool) throws IOException {
+      return new AsyncDataClient(protocolFactory, manager, node, pool);
+    }
+  }
+
   @Override
   public String toString() {
     return "DataClient{" +

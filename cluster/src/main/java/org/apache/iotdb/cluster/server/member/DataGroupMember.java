@@ -40,6 +40,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient.SingleManagerFactory;
 import org.apache.iotdb.cluster.client.async.AsyncDataHeartbeatClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
@@ -81,6 +82,8 @@ import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.PullSnapshotHintService;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.Timer;
+import org.apache.iotdb.cluster.server.Timer.Statistic;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -151,7 +154,8 @@ public class DataGroupMember extends RaftMember {
         new AsyncClientPool(new AsyncDataClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncDataClient.FactorySync(factory)),
         new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory)),
-        new SyncClientPool(new SyncDataHeartbeatClient.FactorySync(factory)));
+        new SyncClientPool(new SyncDataHeartbeatClient.FactorySync(factory)),
+        new AsyncClientPool(new SingleManagerFactory(factory)));
     this.thisNode = thisNode;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
@@ -659,33 +663,54 @@ public class DataGroupMember extends RaftMember {
    */
   TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
+      long start;
+      if (Timer.ENABLE_INSTRUMENTING) {
+        start = System.nanoTime();
+      }
       TSStatus status = processPlanLocally(plan);
+      Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.addNanoFromStart(start);
       if (status != null) {
         return status;
       }
     } else if (leader != null) {
-      TSStatus result = forwardPlan(plan, leader, getHeader());
-      // If result equals StatusUtils.NO_LEADER, block this request until the new leader is elected.
+      long start;
+      if (Timer.ENABLE_INSTRUMENTING) {
+        start = System.nanoTime();
+      }
+      TSStatus result =  forwardPlan(plan, leader, getHeader());
+      Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.addNanoFromStart(start);
       if (!StatusUtils.NO_LEADER.equals(result)) {
         result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
         return result;
       }
     }
 
+    long start;
+    if (Timer.ENABLE_INSTRUMENTING) {
+      start = System.nanoTime();
+    }
     waitLeader();
+    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.addNanoFromStart(start);
     // the leader can be itself after waiting
     if (character == NodeCharacter.LEADER) {
+      if (Timer.ENABLE_INSTRUMENTING) {
+        start = System.nanoTime();
+      }
       TSStatus status = processPlanLocally(plan);
+      Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.addNanoFromStart(start);
       if (status != null) {
         return status;
       }
     }
-    TSStatus result = forwardPlan(plan, leader, getHeader());
-    // If result equals StatusUtils.NO_LEADER too, return StatusUtils.NO_LEADER.
-    if (!StatusUtils.NO_LEADER.equals(result)) {
-      result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
+    if (Timer.ENABLE_INSTRUMENTING) {
+      start = System.nanoTime();
     }
-    return result;
+    TSStatus tsStatus = forwardPlan(plan, leader, getHeader());
+    Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.addNanoFromStart(start);
+    if (!StatusUtils.NO_LEADER.equals(tsStatus)) {
+      tsStatus.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
+    }
+    return tsStatus;
   }
 
   /**
@@ -767,7 +792,8 @@ public class DataGroupMember extends RaftMember {
         logManager.getLastLogTerm(), lastReportedLogIndex, logManager.getCommitLogIndex(),
         logManager.getCommitLogTerm(), getHeader(), readOnly,
         QueryCoordinator.getINSTANCE()
-            .getLastResponseLatency(getHeader()), lastHeartbeatReceivedTime, prevLastLogIndex);
+            .getLastResponseLatency(getHeader()), lastHeartbeatReceivedTime, prevLastLogIndex,
+        logManager.getMaxHaveAppliedCommitIndex());
   }
 
   @TestOnly
