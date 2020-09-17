@@ -773,7 +773,7 @@ public abstract class RaftLogManager {
     this.stableEntryManager = stableEntryManager;
   }
 
-  long getMaxHaveAppliedCommitIndex() {
+  public long getMaxHaveAppliedCommitIndex() {
     return maxHaveAppliedCommitIndex;
   }
 
@@ -801,9 +801,10 @@ public abstract class RaftLogManager {
         .min(committedEntryManager.getDummyIndex() + removeSize, maxHaveAppliedCommitIndex - 1);
     try {
       logger.info(
-          "{}: Before compaction index {}-{}, compactIndex {}, removeSize {}, committedLogSize {}",
+          "{}: Before compaction index {}-{}, compactIndex {}, removeSize {}, committedLogSize "
+              + "{}, maxAppliedLog {}",
           name, getFirstIndex(), getLastLogIndex(), compactIndex, removeSize,
-          committedEntryManager.getTotalSize());
+          committedEntryManager.getTotalSize(), maxHaveAppliedCommitIndex);
       getCommittedEntryManager().compactEntries(compactIndex);
       if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
         getStableEntryManager().removeCompactedEntries(compactIndex);
@@ -864,7 +865,10 @@ public abstract class RaftLogManager {
           // wait until the log is applied
           log.wait();
         }
-        maxHaveAppliedCommitIndex = nextToCheckIndex;
+        synchronized (this) {
+          // maxHaveAppliedCommitIndex may change if a snapshot is applied concurrently
+          maxHaveAppliedCommitIndex = Math.max(maxHaveAppliedCommitIndex, nextToCheckIndex);
+        }
         logger.debug(
             "{}: log={} is applied, nextToCheckIndex={}, commitIndex={}, maxHaveAppliedCommitIndex={}",
             name, log, nextToCheckIndex, commitIndex, maxHaveAppliedCommitIndex);

@@ -1269,7 +1269,10 @@ public class MetaGroupMember extends RaftMember {
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     TSStatus result;
-    long start = System.nanoTime();
+    long start;
+    if (Timer.ENABLE_INSTRUMENTING) {
+      start = System.nanoTime();
+    }
     if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
       result = executeNonQueryLocally(plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
@@ -1285,7 +1288,7 @@ public class MetaGroupMember extends RaftMember {
         result = status;
       }
     }
-    Timer.metaGroupMemberExecuteNonQuery.add(System.nanoTime() - start);
+    Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.addNanoFromStart(start);
     return result;
   }
 
@@ -1533,19 +1536,25 @@ public class MetaGroupMember extends RaftMember {
     TSStatus result;
     if (entry.getValue().contains(thisNode)) {
       // the query should be handled by a group the local node is in, handle it with in the group
-      long start = System.nanoTime();
+      long start;
+      if (Timer.ENABLE_INSTRUMENTING) {
+        start = System.nanoTime();
+      }
       logger.debug("Execute {} in a local group of {}", entry.getKey(),
           entry.getValue().getHeader());
       result = getLocalDataMember(entry.getValue().getHeader())
           .executeNonQueryPlan(entry.getKey());
-      Timer.metaGroupMemberExecuteNonQueryInLocalGroup.add(System.nanoTime() - start);
+      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP.addNanoFromStart(start);
     } else {
       // forward the query to the group that should handle it
-      long start = System.nanoTime();
+      long start;
+      if (Timer.ENABLE_INSTRUMENTING) {
+        start = System.nanoTime();
+      }
       logger.debug("Forward {} to a remote group of {}", entry.getKey(),
           entry.getValue().getHeader());
       result = forwardPlan(entry.getKey(), entry.getValue());
-      Timer.metaGroupMemberExecuteNonQueryInRemoteGroup.add(System.nanoTime() - start);
+      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_REMOTE_GROUP.addNanoFromStart(start);
     }
     return result;
   }
@@ -1936,7 +1945,8 @@ public class MetaGroupMember extends RaftMember {
     lastReportedLogIndex = logManager.getLastLogIndex();
     return new MetaMemberReport(character, leader, term.get(),
         logManager.getLastLogTerm(), lastReportedLogIndex, logManager.getCommitLogIndex()
-        , logManager.getCommitLogTerm(), readOnly, lastHeartbeatReceivedTime, prevLastLogIndex);
+        , logManager.getCommitLogTerm(), readOnly, lastHeartbeatReceivedTime, prevLastLogIndex,
+        logManager.getMaxHaveAppliedCommitIndex());
   }
 
   /**

@@ -198,7 +198,7 @@ public class LogDispatcher {
             logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
           }
           if (currBatch.size() > 1) {
-            sendLogs();
+            sendLogs(currBatch);
           } else {
             sendLog(currBatch.get(0));
           }
@@ -216,7 +216,7 @@ public class LogDispatcher {
     private void appendEntriesAsync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch)
         throws TException {
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
-      AsyncClient client = member.getAsyncClient(receiver);
+      AsyncClient client = member.getSendLogAsyncClient(receiver);
       if (logger.isDebugEnabled()) {
         logger.debug("{}: Catching up {} with {} logs", member.getName(), receiver, logList.size());
       }
@@ -225,21 +225,26 @@ public class LogDispatcher {
 
     private void appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch) {
 
-      long start = System.nanoTime();
+      long start;
+      if (Timer.ENABLE_INSTRUMENTING) {
+        start = System.nanoTime();
+      }
       if (!member.waitForPrevLog(peer, currBatch.get(0).getLog())) {
         logger.warn("{}: node {} timed out when appending {}", member.getName(), receiver,
             currBatch.get(0).getLog());
         return;
       }
-      Timer.raftMemberWaitForPrevLog.add(System.nanoTime() - start);
+      Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.addNanoFromStart(start);
 
 
       Client client = member.getSyncClient(receiver);
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
       try {
-        start = System.nanoTime();
+        if (Timer.ENABLE_INSTRUMENTING) {
+          start = System.nanoTime();
+        }
         long result = client.appendEntries(request);
-        Timer.raftMemberSendLogAync.add(System.nanoTime() - start);
+        Timer.Statistic.RAFT_SENDER_SEND_LOG.addNanoFromStart(start);
         if (result != -1 && logger.isInfoEnabled()) {
           logger.info("{}: Append {} logs to {}, resp: {}", member.getName(), logList.size(), receiver, result);
         }
@@ -276,10 +281,10 @@ public class LogDispatcher {
       return request;
     }
 
-    private void sendLogs() throws TException {
+    private void sendLogs(List<SendLogRequest> currBatch) throws TException {
       List<ByteBuffer> logList = new ArrayList<>();
       for (SendLogRequest request : currBatch) {
-        Timer.logDispatcherLogInQueue.add(System.nanoTime() - request.getCreateTime());
+        Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.addNanoFromStart(request.getCreateTime());
         logList.add(request.getAppendEntryRequest().entry);
       }
 
@@ -290,16 +295,16 @@ public class LogDispatcher {
         appendEntriesSync(logList, appendEntriesReques, currBatch);
       }
       for (SendLogRequest batch : currBatch) {
-        Timer.logDispatcherFromCreateToEnd.add(System.nanoTime() - batch.getCreateTime());
+        Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.addNanoFromStart(batch.getCreateTime());
       }
     }
 
     private void sendLog(SendLogRequest logRequest) {
-      Timer.logDispatcherLogInQueue.add(System.nanoTime() - logRequest.getCreateTime());
+      Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.addNanoFromStart(logRequest.getCreateTime());
       member.sendLogToFollower(logRequest.getLog(), logRequest.getVoteCounter(), receiver,
           logRequest.getLeaderShipStale(), logRequest.getNewLeaderTerm(),
           logRequest.getAppendEntryRequest());
-      Timer.logDispatcherFromCreateToEnd.add(System.nanoTime() - logRequest.getCreateTime());
+      Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.addNanoFromStart(logRequest.getCreateTime());
     }
 
     class AppendEntriesHandler implements AsyncMethodCallback<Long> {

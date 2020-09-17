@@ -18,21 +18,22 @@
  */
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.Peer;
-import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.thrift.async.AsyncMethodCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
 
 import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.Peer;
+import org.apache.iotdb.cluster.server.Timer;
+import org.apache.iotdb.cluster.server.Timer.Statistic;
+import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.thrift.async.AsyncMethodCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * AppendNodeEntryHandler checks if the log is successfully appended by the quorum or some node has
@@ -55,8 +56,21 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
   // an exception, upon decreased to zero, the request will be early-aborted
   private int failedDecreasingCounter;
 
+  // nano start time when the send begins
+  private long sendStart;
+
+
+  public AppendNodeEntryHandler() {
+    if (Timer.ENABLE_INSTRUMENTING) {
+      sendStart = System.nanoTime();
+    }
+  }
+
   @Override
   public void onComplete(Long response) {
+    if (Timer.ENABLE_INSTRUMENTING) {
+      Statistic.RAFT_SENDER_SEND_LOG.addNanoFromStart(sendStart);
+    }
     logger.debug("{}: Append response {} from {}", member.getName(), response, receiver);
     if (leaderShipStale.get()) {
       // someone has rejected this log because the leadership is stale

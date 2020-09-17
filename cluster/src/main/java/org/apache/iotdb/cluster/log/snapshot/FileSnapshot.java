@@ -140,16 +140,6 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
   }
 
   @Override
-  public String toString() {
-    return "FileSnapshot{" +
-        "timeseriesSchemas=" + timeseriesSchemas.size() +
-        ", dataFiles=" + dataFiles.size() +
-        ", lastLogIndex=" + lastLogIndex +
-        ", lastLogTerm=" + lastLogTerm +
-        '}';
-  }
-
-  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -170,6 +160,12 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
   @Override
   public SnapshotInstaller getDefaultInstaller(RaftMember member) {
     return new Installer((DataGroupMember) member);
+  }
+
+  @Override
+  public String toString() {
+    return String.format("FileSnapshot{%d files, %d series, index-term: %d-%d}", dataFiles.size()
+        , timeseriesSchemas.size(), lastLogIndex, lastLogTerm);
   }
 
   public static class Installer implements SnapshotInstaller<FileSnapshot> {
@@ -196,6 +192,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
     @Override
     public void install(FileSnapshot snapshot, int slot) throws SnapshotInstallationException {
       try {
+        logger.info("Starting to install a snapshot {} into slot[{}]", snapshot, slot);
         installFileSnapshotSchema(snapshot);
         installFileSnapshotVersions(snapshot, slot);
         installFileSnapshotFiles(snapshot, slot);
@@ -207,6 +204,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
     @Override
     public void install(Map<Integer, FileSnapshot> snapshotMap)
         throws SnapshotInstallationException {
+      logger.info("Starting to install snapshots {}", snapshotMap);
       installSnapshot(snapshotMap);
     }
 

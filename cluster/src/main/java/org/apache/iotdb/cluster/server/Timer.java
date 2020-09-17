@@ -1,115 +1,178 @@
 package org.apache.iotdb.cluster.server;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 
 public class Timer {
 
-  public static Statistic dataGroupMemberProcessPlanLocally = new Statistic(
-      "Data group member - process plan locally: ", 1000000L);
-  public static Statistic dataGroupMemberWaitLeader = new Statistic(
-      "Data group member - wait leader: ", 1000000L);
-  public static Statistic metaGroupMemberExecuteNonQuery = new Statistic(
-      "Meta group member - execute non query: ", 1000000L);
-  public static Statistic metaGroupMemberExecuteNonQueryInLocalGroup = new Statistic(
-      "Meta group member - execute in local group: ", 1000000L);
-  public static Statistic metaGroupMemberExecuteNonQueryInRemoteGroup = new Statistic(
-      "Meta group member - execute in remote group: ", 1000000L);
-  public static Statistic raftMemberAppendLog = new Statistic("Raft member - append log: ",
-      1000000L);
-  public static Statistic raftMemberSendLogToFollower = new Statistic(
-      "Raft member - send log to follower: ", 1000000L);
-  public static Statistic raftMemberCommitLog = new Statistic("Raft member - commit log: ",
-      1000000L);
-  public static Statistic raftFollowerAppendEntry = new Statistic(
-      "Raft member - follower append entry: ", 1000000L);
-  public static Statistic dataGroupMemberForwardPlan = new Statistic(
-      "Data group member - forward plan: ", 1000000L);
-  public static Statistic raftMemberWaitForPrevLog = new Statistic(
-      "Raft member - wait for prev log: ", 1000000L);
-  public static Statistic raftMemberSendLogAync = new Statistic("Raft member - send log aync: ",
-      1000000L);
-  public static Statistic raftMemberVoteCounter = new Statistic("Raft member - vote counter: ",
-      1000000L);
-  public static Statistic raftMemberLogParse = new Statistic("Raft member - log parse: ", 1000000L);
-  public static Statistic rafTMemberReceiverWaitForPrevLog = new Statistic(
-      "Raft member - receiver wait for prev log: ", 1000000L);
-  public static Statistic rafTMemberMayBeAppend = new Statistic("rafTMemberMayBeAppendMS",
-      1000000L);
-  public static Statistic raftMemberOfferLog = new Statistic("Raft member - offer log: ", 1000000L);
-  public static Statistic raftMemberCommitLogResult = new Statistic(
-      "aft member - commit log result: ", 1000000L);
-  public static Statistic raftMemberAppendLogResult = new Statistic(
-      "Raft member - append log result: ", 1000000L);
-  public static Statistic indexDiff = new Statistic("Raft member - index diff: ", 1L);
-  public static Statistic logDispatcherLogInQueue = new Statistic("Log dispatcher - in queue: ",
-      1000000L);
-  public static Statistic raftMemberFromCreateToAppendLog = new Statistic("Raft member - from create to append log: ", 1000000L);
-  public static Statistic logDispatcherFromCreateToEnd= new Statistic("Log dispatcher - from create to end: ", 1000000L);
+  public static final boolean ENABLE_INSTRUMENTING = true;
 
-//  public static int[] queueHisto = new int[180];
-//  public static int[] currentBatchHisto = new int[180];
+  private static final String META_GROUP_MEMBER = "Meta group member";
+  private static final String DATA_GROUP_MEMBER = "Data group member";
+  private static final String RAFT_MEMBER_SENDER = " Raft member(sender)";
+  private static final String RAFT_MEMBER_RECEIVER = " Raft member(receiver)";
+  private static final String LOG_DISPATCHER = "Log dispatcher";
 
-  static Statistic[] statistics = new Statistic[]{dataGroupMemberProcessPlanLocally,
-      dataGroupMemberWaitLeader,
-      metaGroupMemberExecuteNonQuery,
-      metaGroupMemberExecuteNonQueryInLocalGroup,
-      metaGroupMemberExecuteNonQueryInRemoteGroup,
-      raftMemberAppendLog,
-      raftMemberSendLogToFollower,
-      raftMemberCommitLog,
-      raftFollowerAppendEntry,
-      dataGroupMemberForwardPlan,
-      raftMemberWaitForPrevLog,
-      raftMemberSendLogAync,
-      raftMemberVoteCounter,
-      raftMemberLogParse,
-      rafTMemberReceiverWaitForPrevLog,
-      rafTMemberMayBeAppend,
-      raftMemberOfferLog,
-      raftMemberCommitLogResult,
-      raftMemberAppendLogResult,
-      indexDiff,
-      logDispatcherLogInQueue,
-      raftMemberFromCreateToAppendLog,
-      logDispatcherFromCreateToEnd};
+  // convert nano to milli
+  private static final double TIME_SCALE = 1_000_000.0;
 
-  public static class Statistic {
+  public enum Statistic {
+    // A dummy root for the convenience of prints
+    ROOT(
+        "ClassName", "BlockName", TIME_SCALE, true, null),
+    // meta group member
+    META_GROUP_MEMBER_EXECUTE_NON_QUERY(
+        META_GROUP_MEMBER, "execute non query", TIME_SCALE, true, ROOT),
+    META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP(
+        META_GROUP_MEMBER, "execute in local group", TIME_SCALE, true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY),
+    META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_REMOTE_GROUP(
+        META_GROUP_MEMBER, "execute in remote group", TIME_SCALE, true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY),
+    // data group member
+    DATA_GROUP_MEMBER_LOCAL_EXECUTION(
+        DATA_GROUP_MEMBER, "execute locally", TIME_SCALE, true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    DATA_GROUP_MEMBER_WAIT_LEADER(
+        DATA_GROUP_MEMBER, "wait for leader", TIME_SCALE, true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    DATA_GROUP_MEMBER_FORWARD_PLAN(
+        DATA_GROUP_MEMBER, "forward to leader", TIME_SCALE, true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    // raft member - sender
+    RAFT_SENDER_APPEND_LOG(
+        RAFT_MEMBER_SENDER, "locally append log", TIME_SCALE, !RaftMember.USE_LOG_DISPATCHER,
+        DATA_GROUP_MEMBER_LOCAL_EXECUTION),
+    RAFT_SENDER_APPEND_AND_OFFER_LOG(
+        RAFT_MEMBER_SENDER, "append and offer log to dispatcher", TIME_SCALE,
+        RaftMember.USE_LOG_DISPATCHER, DATA_GROUP_MEMBER_LOCAL_EXECUTION),
+    RAFT_SENDER_SEND_LOG_TO_FOLLOWERS(
+        RAFT_MEMBER_SENDER, "send log to followers", TIME_SCALE, !RaftMember.USE_LOG_DISPATCHER,
+        DATA_GROUP_MEMBER_LOCAL_EXECUTION),
+    RAFT_SENDER_WAIT_FOR_PREV_LOG(
+        RAFT_MEMBER_SENDER, "sender wait for prev log", TIME_SCALE, true,
+        RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_SENDER_SEND_LOG(
+        RAFT_MEMBER_SENDER, "send log", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_SENDER_VOTE_COUNTER(
+        RAFT_MEMBER_SENDER, "wait for votes", TIME_SCALE, true,
+        RaftMember.USE_LOG_DISPATCHER ? DATA_GROUP_MEMBER_LOCAL_EXECUTION : RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_SENDER_COMMIT_LOG(
+        RAFT_MEMBER_SENDER, "locally commit log", TIME_SCALE, !RaftMember.USE_LOG_DISPATCHER,
+        DATA_GROUP_MEMBER_LOCAL_EXECUTION),
+    RAFT_SENDER_COMMIT_LOG_V2(
+        RAFT_MEMBER_SENDER, "locally commit log(using dispatcher)", TIME_SCALE,
+        RaftMember.USE_LOG_DISPATCHER, DATA_GROUP_MEMBER_LOCAL_EXECUTION),
+    RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT(
+        RAFT_MEMBER_SENDER, "log from create to accept", TIME_SCALE,
+        RaftMember.USE_LOG_DISPATCHER, DATA_GROUP_MEMBER_LOCAL_EXECUTION),
+    // raft member - receiver
+    RAFT_RECEIVER_LOG_PARSE(
+        RAFT_MEMBER_RECEIVER, "log parse", TIME_SCALE, true, RAFT_SENDER_SEND_LOG),
+    RAFT_RECEIVER_WAIT_FOR_PREV_LOG(
+        RAFT_MEMBER_RECEIVER, "receiver wait for prev log", TIME_SCALE, true, RAFT_SENDER_SEND_LOG),
+    RAFT_RECEIVER_APPEND_ENTRY(
+        RAFT_MEMBER_RECEIVER, "append entrys", TIME_SCALE, true, RAFT_SENDER_SEND_LOG),
+    RAFT_RECEIVER_INDEX_DIFF(
+        RAFT_MEMBER_RECEIVER, "index diff", 1.0, true, ROOT),
+    // log dispatcher
+    LOG_DISPATCHER_LOG_IN_QUEUE(
+        LOG_DISPATCHER, "in queue", TIME_SCALE, true, META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+    LOG_DISPATCHER_FROM_CREATE_TO_END(
+        LOG_DISPATCHER, "from create to end", TIME_SCALE, true, META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP);
 
-    String name;
+    String className;
+    String blockName;
     AtomicLong sum = new AtomicLong(0);
     AtomicLong counter = new AtomicLong(0);
-    long scale;
+    double scale;
+    boolean valid;
+    int level;
+    Statistic parent;
+    List<Statistic> children = new ArrayList<>();
 
-    Statistic(String name, long scale) {
-      this.name = name;
+    Statistic(String className, String blockName, double scale, boolean valid, Statistic parent) {
+      this.className = className;
+      this.blockName = blockName;
       this.scale = scale;
+      this.valid = valid;
+      this.parent = parent;
+      if (parent == null) {
+        level = -1;
+      } else {
+        level = parent.level + 1;
+        parent.children.add(this);
+      }
     }
 
     public void add(long val) {
-      sum.addAndGet(val);
-      counter.incrementAndGet();
+      if (ENABLE_INSTRUMENTING) {
+        sum.addAndGet(val);
+        counter.incrementAndGet();
+      }
+    }
+
+    /**
+     * This method equals `add(System.nanoTime() - start)`. We wrap `System.nanoTime()` in this
+     * method to avoid unnecessary calls when instrumenting is disabled.
+     * @param start
+     */
+    public void addNanoFromStart(long start) {
+      if (ENABLE_INSTRUMENTING) {
+        add(System.nanoTime() - start);
+      }
+    }
+
+    /**
+     * WARN: no current safety guarantee.
+     */
+    public void reset() {
+      sum.set(0);
+      counter.set(0);
+    }
+
+    /**
+     * WARN: no current safety guarantee.
+     */
+    public static void resetAll() {
+      for (Statistic value : values()) {
+        value.reset();
+      }
     }
 
     @Override
     public String toString() {
-      return name
-          + sum.get() / scale + ", "
-          + counter + ", "
-          + (double) sum.get() / scale
-          / counter.get();
+      double s = sum.get() / scale;
+      long cnt = counter.get();
+      double avg = s / cnt;
+      return String.format("%s - %s: %.2f, %d, %.2f", className, blockName, s, cnt, avg);
     }
   }
 
   public static String getReport() {
-    String result = "\n";
-    for (Statistic s : statistics) {
-      result += s.toString() + "\n";
+    if (!ENABLE_INSTRUMENTING) {
+      return "";
     }
-//    result += Arrays.toString(queueHisto) + "\n";
-//    result += Arrays.toString(currentBatchHisto) + "\n";
-    return result;
+    StringBuilder result = new StringBuilder();
+    printTo(Statistic.ROOT, result);
+    return result.toString();
+  }
+
+  private static void printTo(Statistic currNode, StringBuilder out) {
+    if (currNode != Statistic.ROOT && currNode.valid) {
+      indent(out, currNode.level);
+      out.append(currNode.toString()).append("\n");
+    }
+    for (Statistic child : currNode.children) {
+      printTo(child, out);
+    }
+  }
+
+  private static void indent(StringBuilder out, int indents) {
+    for (int i = 0; i < indents; i++) {
+      out.append("  ");
+    }
   }
 }
