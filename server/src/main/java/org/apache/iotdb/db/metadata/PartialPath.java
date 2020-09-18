@@ -114,10 +114,6 @@ public class PartialPath extends Path implements Comparable<Path> {
     return new PartialPath(newNodes);
   }
 
-  public boolean matchFullPath(String rPath) throws IllegalPathException {
-    return matchFullPath(new PartialPath(rPath));
-  }
-
   public boolean matchFullPath(PartialPath rPath) {
     String[] rNodes = rPath.getNodes();
     if ((rNodes.length < nodes.length) ||
