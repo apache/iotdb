@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 /**
  * A placeholder when the remote node does not contain satisfying data of a series.
@@ -170,6 +171,11 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
 
   @Override
   public Object getValueInTimestamp(long timestamp) {
+    return null;
+  }
+
+  @Override
+  public Pair<Long, Object> peekNextNotNullValue(long nextStartTime, long nextEndTime) {
     return null;
   }
 }

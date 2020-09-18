@@ -54,27 +54,26 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
   }
 
   @Override
-  protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context,
-      RawDataQueryPlan dataQueryPlan)
+  protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
       throws StorageEngineException {
     Filter timeFilter = null;
-    if (optimizedExpression != null) {
-      timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
+    if (queryPlan.getExpression() != null) {
+      timeFilter = ((GlobalTimeExpression) queryPlan.getExpression()).getFilter();
     }
 
     List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
-    for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      PartialPath path = deduplicatedPaths.get(i);
-      TSDataType dataType = deduplicatedDataTypes.get(i);
+    for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
+      PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
+      TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
 
       ManagedSeriesReader reader;
       reader = readerFactory.getSeriesReader(path,
-          dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, timeFilter,
-          null, context);
+          queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, timeFilter,
+          null, context, queryPlan.isAscending());
       readersOfSelectedSeries.add(reader);
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("Initialized {} readers for {}", readersOfSelectedSeries.size(), dataQueryPlan);
+      logger.debug("Initialized {} readers for {}", readersOfSelectedSeries.size(), queryPlan);
     }
     return readersOfSelectedSeries;
   }
@@ -84,7 +83,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       Set<String> deviceMeasurements, TSDataType dataType,
       QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    return readerFactory.getReaderByTimestamp(path, deviceMeasurements, dataType, context);
+    return readerFactory.getReaderByTimestamp(path, deviceMeasurements, dataType, context,
+        queryPlan.isAscending());
   }
 
   @Override

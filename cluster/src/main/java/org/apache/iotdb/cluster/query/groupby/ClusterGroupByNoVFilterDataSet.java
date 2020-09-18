@@ -54,6 +54,7 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
     this.curStartTime = this.startTime - slidingStep;
     this.curEndTime = -1;
     this.metaGroupMember = metaGroupMember;
+    this.ascending = groupByPlan.isAscending();
 
     initGroupBy(context, groupByPlan);
   }
@@ -61,8 +62,8 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
   @Override
   protected GroupByExecutor getGroupByExecutor(PartialPath path,
       Set<String> deviceMeasurements, TSDataType dataType, QueryContext context,
-      Filter timeFilter, TsFileFilter fileFilter) {
+      Filter timeFilter, TsFileFilter fileFilter, boolean ascending) {
     return new MergeGroupByExecutor(path, deviceMeasurements, dataType, context, timeFilter,
-        metaGroupMember);
+        metaGroupMember, ascending);
   }
 }

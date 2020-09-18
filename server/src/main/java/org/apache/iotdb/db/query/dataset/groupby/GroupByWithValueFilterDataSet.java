@@ -61,6 +61,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   private long lastTimestamp;
 
+  protected GroupByWithValueFilterDataSet() {
+  }
+
   /**
    * constructor.
    */

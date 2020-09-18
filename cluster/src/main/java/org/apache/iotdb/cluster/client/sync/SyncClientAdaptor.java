@@ -371,6 +371,19 @@ public class SyncClientAdaptor {
     return fetchResult.get();
   }
 
+  public static ByteBuffer peekNextNotNullValue(AsyncDataClient client, Node header,
+      long executorId
+      , long curStartTime, long curEndTime) throws InterruptedException, TException {
+    AtomicReference<ByteBuffer> fetchResult = new AtomicReference<>();
+    GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), fetchResult);
+    synchronized (fetchResult) {
+      fetchResult.set(null);
+      client.peekNextNotNullValue(header, executorId, curStartTime, curEndTime, handler);
+      fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
+    }
+    return fetchResult.get();
+  }
+
   public static Map<Integer, Snapshot> pullSnapshot(AsyncDataClient client,
       PullSnapshotRequest request, List<Integer> slots, SnapshotFactory<Snapshot> factory)
       throws TException, InterruptedException {

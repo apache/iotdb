@@ -52,7 +52,7 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
  */
 public class RawDataQueryExecutor {
 
-  private RawDataQueryPlan queryPlan;
+  protected RawDataQueryPlan queryPlan;
 
   public RawDataQueryExecutor(RawDataQueryPlan queryPlan) {
     this.queryPlan = queryPlan;

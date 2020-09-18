@@ -230,7 +230,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   // request, and forward the request to it. See methods in DataGroupMember for details.
 
   @Override
-  public void sendHeartbeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
+  public void sendHeartbeat(HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler) {
     Node header = request.getHeader();
     DataAsyncService service = getDataAsyncService(header, resultHandler, request);
     if (service != null) {
@@ -239,7 +239,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void startElection(ElectionRequest request, AsyncMethodCallback resultHandler) {
+  public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {
     Node header = request.getHeader();
     DataAsyncService service = getDataAsyncService(header, resultHandler, request);
     if (service != null) {
@@ -248,7 +248,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
+  public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback<Long> resultHandler) {
     Node header = request.getHeader();
     DataAsyncService service = getDataAsyncService(header, resultHandler, request);
     if (service != null) {
@@ -257,7 +257,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
+  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
     Node header = request.getHeader();
     DataAsyncService service = getDataAsyncService(header, resultHandler, request);
     if (service != null) {
@@ -266,7 +266,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
+  public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback<Void> resultHandler) {
     Node header = request.getHeader();
     DataAsyncService service = getDataAsyncService(header, resultHandler, request);
     if (service != null) {
@@ -275,7 +275,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
+  public void pullSnapshot(PullSnapshotRequest request,
+      AsyncMethodCallback<PullSnapshotResp> resultHandler) {
     Node header = request.getHeader();
     DataAsyncService service = getDataAsyncService(header, resultHandler, request);
     if (service != null) {
@@ -808,5 +809,17 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public boolean matchTerm(long index, long term, Node header) {
     return getDataSyncService(header).matchTerm(index, term, header);
+  }
+
+  @Override
+  public ByteBuffer peekNextNotNullValue(Node header, long executorId, long startTime, long endTime)
+      throws TException {
+    return getDataSyncService(header).peekNextNotNullValue(header, executorId, startTime, endTime);
+  }
+
+  @Override
+  public void peekNextNotNullValue(Node header, long executorId, long startTime, long endTime,
+      AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
+    resultHandler.onComplete(getDataSyncService(header).peekNextNotNullValue(header, executorId, startTime, endTime));
   }
 }

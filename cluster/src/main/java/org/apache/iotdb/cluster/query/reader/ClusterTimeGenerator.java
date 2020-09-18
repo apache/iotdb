@@ -69,7 +69,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
               null).left.get(0);
       return readerFactory.getSeriesReader(path,
           queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType,
-          null, filter, context);
+          null, filter, context, queryPlan.isAscending());
     } catch (Exception e) {
       throw new IOException(e);
     }

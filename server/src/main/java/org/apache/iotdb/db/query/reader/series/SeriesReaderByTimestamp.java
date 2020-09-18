@@ -44,6 +44,9 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
         dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter, true);
   }
 
+  public SeriesReaderByTimestamp(SeriesReader seriesReader) {
+    this.seriesReader = seriesReader;
+  }
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
