@@ -60,7 +60,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   public void syncFlushAllProcessor() {
     logger.info("{}: Start flush all storage group processor in one data group", getName());
     Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions = StorageEngine.getInstance()
-        .getStorageGroupPartitions();
+        .getWorkingStorageGroupPartitions();
     if (storageGroupPartitions.size() == 0) {
       logger.info("{}: no need to flush processor", getName());
       return;
