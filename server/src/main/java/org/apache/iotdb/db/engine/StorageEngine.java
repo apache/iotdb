@@ -449,14 +449,11 @@ public class StorageEngine implements IService {
 
   public void delete(PartialPath path, long startTime, long endTime)
           throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(path);
     try {
-      for (PartialPath storageGroupPath : IoTDB.metaManager.getStorageGroupPaths(path)) {
-        StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
-        path.setPrefixPath(storageGroupPath);
-        System.out.println("delete path :" + path + " from " + startTime + " to " + endTime);
-        storageGroupProcessor.delete(path, startTime, endTime);
-      }
-    } catch (IOException | MetadataException e) {
+      System.out.println("delete path :" + path + " from " + startTime + " to " + endTime);
+      storageGroupProcessor.delete(path, startTime, endTime);
+    } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }
   }
@@ -466,13 +463,10 @@ public class StorageEngine implements IService {
    */
   public void deleteTimeseries(PartialPath path)
       throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(path);
     try {
-      for (PartialPath storageGroupPath : IoTDB.metaManager.getStorageGroupPaths(path)) {
-        StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
-        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
-        storageGroupProcessor.delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE);
-      }
-    } catch (IOException | MetadataException e) {
+      storageGroupProcessor.delete(path, Long.MIN_VALUE, Long.MAX_VALUE);
+    } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }
   }
