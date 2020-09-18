@@ -40,7 +40,6 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
 
   private static final Logger logger = LoggerFactory.getLogger(ShowTimeseriesDataSet.class);
 
-
   private final ShowTimeSeriesPlan plan;
   private List<RowRecord> result = new ArrayList<>();
   private int index = 0;

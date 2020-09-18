@@ -29,6 +29,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TAG;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ATTRIBUTE;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -51,6 +52,14 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class QueryUtils {
+
+  private static PartialPath[] resourcePaths = {new PartialPath(COLUMN_TIMESERIES, false),
+      new PartialPath(COLUMN_TIMESERIES_ALIAS, false), new PartialPath(COLUMN_STORAGE_GROUP, false),
+      new PartialPath(COLUMN_TIMESERIES_DATATYPE, false), new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
+      new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false), new PartialPath(COLUMN_TAG, false),
+      new PartialPath(COLUMN_ATTRIBUTE, false)};
+  private static TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
+      TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT};
 
   private QueryUtils() {
     // util class
@@ -113,51 +122,16 @@ public class QueryUtils {
     unseqResources.removeIf(fileFilter::fileNotSatisfy);
   }
 
-  public static void constructPathAndDataTypes(List<PartialPath> paths, List<TSDataType> dataTypes,
-      List<ShowTimeSeriesResult> timeseriesList) {
-    paths.add(new PartialPath(COLUMN_TIMESERIES, false));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new PartialPath(COLUMN_TIMESERIES_ALIAS, false));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new PartialPath(COLUMN_STORAGE_GROUP, false));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new PartialPath(COLUMN_TIMESERIES_DATATYPE, false));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new PartialPath(COLUMN_TIMESERIES_ENCODING, false));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false));
-    dataTypes.add(TSDataType.TEXT);
-
-    //check if timeseries result has tag or attribute
-    boolean hasTag = false;
-    boolean hasAttribute = false;
-    for (ShowTimeSeriesResult result : timeseriesList) {
-      if (result.getTag() != null) {
-        hasTag = true;
-      }
-      if (result.getAttribute() != null) {
-        hasAttribute = true;
-      }
-      if (hasTag && hasAttribute) {
-        break;
-      }
-    }
-
-    if (hasTag) {
-      paths.add(new PartialPath(COLUMN_TAG, false));
-      dataTypes.add(TSDataType.TEXT);
-    }
-    if (hasAttribute) {
-      paths.add(new PartialPath(COLUMN_ATTRIBUTE, false));
-      dataTypes.add(TSDataType.TEXT);
-    }
+  public static void constructPathAndDataTypes(List<PartialPath> paths, List<TSDataType> dataTypes) {
+    Collections.addAll(paths, resourcePaths);
+    Collections.addAll(dataTypes, resourceTypes);
   }
 
   public static QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList,
       ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context) {
     List<PartialPath> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    constructPathAndDataTypes(paths, dataTypes, timeseriesList);
+    constructPathAndDataTypes(paths, dataTypes);
     ShowTimeseriesDataSet showTimeseriesDataSet = new ShowTimeseriesDataSet(paths, dataTypes,
         showTimeSeriesPlan, context);
 
@@ -168,9 +142,9 @@ public class QueryUtils {
       updateRecord(record, result.getName());
       updateRecord(record, result.getAlias());
       updateRecord(record, result.getSgName());
-      updateRecord(record, result.getDataType());
-      updateRecord(record, result.getEncoding());
-      updateRecord(record, result.getCompressor());
+      updateRecord(record, result.getDataType().toString());
+      updateRecord(record, result.getEncoding().toString());
+      updateRecord(record, result.getCompressor().toString());
       updateRecord(record, result.getTag());
       updateRecord(record, result.getAttribute());
       showTimeseriesDataSet.putRecord(record);
@@ -183,15 +157,15 @@ public class QueryUtils {
     List<RowRecord> records = new ArrayList<>();
     List<PartialPath> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    constructPathAndDataTypes(paths, dataTypes, timeseriesList);
+    constructPathAndDataTypes(paths, dataTypes);
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
       updateRecord(record, result.getName());
       updateRecord(record, result.getAlias());
       updateRecord(record, result.getSgName());
-      updateRecord(record, result.getDataType());
-      updateRecord(record, result.getEncoding());
-      updateRecord(record, result.getCompressor());
+      updateRecord(record, result.getDataType().toString());
+      updateRecord(record, result.getEncoding().toString());
+      updateRecord(record, result.getCompressor().toString());
       updateRecord(record, result.getTag());
       updateRecord(record, result.getAttribute());
       records.add(record);
