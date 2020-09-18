@@ -851,6 +851,18 @@ public class MManager {
   }
 
   /**
+   * To calculate the count of storage group for given prefix path.
+   */
+  public int getStorageGroupNum(PartialPath prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupNum(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * To calculate the count of nodes in the given level for given prefix path.
    *
    * @param prefixPath a prefix path or a full path, can not contain '*'

@@ -225,7 +225,7 @@ public class TTLTest {
     Set<String> allSensors = new HashSet<>();
     allSensors.add(s1);
     IBatchReader reader = new SeriesRawDataBatchReader(path, allSensors, TSDataType.INT64,
-        EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource, null, null, null);
+        EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource, null, null, null, true);
 
     int cnt = 0;
     while (reader.hasNextBatch()) {
