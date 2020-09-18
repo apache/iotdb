@@ -529,7 +529,7 @@ public class MTree implements Serializable {
   private void findStorageGroupPaths(MNode node, String[] nodes, int idx, String parent,
       List<PartialPath> storageGroupPaths) {
     System.out.println("current node:" + node.getName());
-    if (node instanceof StorageGroupMNode && idx >= nodes.length) {
+    if (node instanceof StorageGroupMNode) {
       storageGroupPaths.add(node.getPartialPath());
       return;
     }
