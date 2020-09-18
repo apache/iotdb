@@ -38,7 +38,7 @@ public abstract class InsertPlan extends PhysicalPlan {
   // for updating last cache
   private MNode deviceMNode;
 
-  // record the failed measurements
+  // record the failed measurements, their reasons, and positions in "measurements"
   List<String> failedMeasurements;
   private List<Exception> failedExceptions;
   private List<Integer> failedIndices;
@@ -122,6 +122,11 @@ public abstract class InsertPlan extends PhysicalPlan {
     dataTypes[index] = null;
   }
 
+
+  /**
+   * Reconstruct this plan with the failed measurements.
+   * @return the plan itself, with measurements replaced with the previously failed ones.
+   */
   public InsertPlan getPlanFromFailed() {
     if (failedMeasurements == null) {
       return null;
@@ -142,6 +147,8 @@ public abstract class InsertPlan extends PhysicalPlan {
         schemas[i] = temp[failedIndices.get(i)];
       }
     }
+    failedIndices = null;
+    failedExceptions = null;
     return this;
   }
 

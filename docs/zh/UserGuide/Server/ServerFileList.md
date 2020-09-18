@@ -76,16 +76,16 @@
 
 #### TsFileResource
 1. ${TsFileName}.tsfile.resource
-    + TsFile的索引文件
+    + TsFile的概要与索引文件
 2. ${TsFileName}.tsfile.resource.temp
     + 临时文件，用于避免更新tsfile.resource时损坏tsfile.resource
 3. ${TsFileName}.tsfile.resource.closing
-    + 关闭标记文件，用于标记TsFile处于关闭状态
+    + 关闭标记文件，用于标记TsFile处于关闭状态，重启后可以据此选择是关闭或继续写入该文件
 
 #### Version
 > 在basedir/system/storage_groups/${StorageGroupName}/${TimePartitionId} or upgrade目录下
 1. Version-${version}
-    + 版本文件，使用文件名来记录最大的版本号
+    + 版本号文件，使用文件名来记录当前最大的版本号
 
 #### Upgrade
 > 在basedir/system/upgrade目录下
@@ -95,7 +95,7 @@
 #### Merge
 > 在basedir/system/storage_groups/${StrorageGroup}/目录下
 1. merge.mods
-    + 记录合并过程中发生的修改操作
+    + 记录合并过程中发生的删除等操作
 2. merge.log
     + 记录合并进展
 3. tsfile.merge

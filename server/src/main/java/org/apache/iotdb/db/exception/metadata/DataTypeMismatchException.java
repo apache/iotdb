@@ -16,31 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception.metadata;
 
-package org.apache.iotdb.db.query.dataset.groupby;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
-
-import java.io.IOException;
-import java.util.List;
-import org.apache.iotdb.tsfile.utils.Pair;
-
-
-/**
- * Each executor calculates results of all aggregations on this series
- */
-public interface GroupByExecutor {
-
-  /**
-   * add reusable result cache in executor
-   */
-  void addAggregateResult(AggregateResult aggrResult);
-
-  /**
-   * calculate result in [curStartTime, curEndTime)
-   */
-  List<AggregateResult> calcResult(long curStartTime, long curEndTime) throws IOException, QueryProcessException;
-
-  Pair<Long, Object> peekNextNotNullValue(long nextStartTime, long nextEndTime) throws IOException;
+public class DataTypeMismatchException extends MetadataException{
+    public DataTypeMismatchException(String measurementName, TSDataType insertType, TSDataType realType) {
+        super(String.format(
+                "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
+                measurementName, insertType, realType));
+    }
 }

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import static org.junit.Assert.fail;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -40,10 +42,10 @@ public class ReadWriteIOUtilsTest {
     try {
       ReadWriteIOUtils.write(str, stream);
     } catch (IOException e) {
-      Assert.assertEquals("why failed?", e.toString());
+      fail(e.toString());
     }
 
-    String result = null;
+    String result;
     result = ReadWriteIOUtils.readString(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNotNull(result);
     Assert.assertEquals(str, result);
@@ -55,10 +57,9 @@ public class ReadWriteIOUtilsTest {
     try {
       ReadWriteIOUtils.write(str, stream);
     } catch (IOException e) {
-      Assert.assertEquals("why failed?", e.toString());
+      fail(e.toString());
     }
 
-    result = null;
     result = ReadWriteIOUtils.readString(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNull(result);
     Assert.assertEquals(str, result);
@@ -69,17 +70,17 @@ public class ReadWriteIOUtilsTest {
     // 1. key: not null; value: not null
     String key = "string";
     String value = "string";
-    Map map = new HashMap<String, String>();
+    Map<String, String> map = new HashMap<>();
     map.put(key, value);
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
     DataOutputStream stream = new DataOutputStream(byteArrayOutputStream);
     try {
       ReadWriteIOUtils.write(map, stream);
     } catch (IOException e) {
-      Assert.assertEquals("why failed?", e.toString());
+      fail(e.toString());
     }
 
-    Map result = null;
+    Map<String, String> result;
     result = ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNotNull(result);
     Assert.assertEquals(map, result);
@@ -94,10 +95,9 @@ public class ReadWriteIOUtilsTest {
     try {
       ReadWriteIOUtils.write(map, stream);
     } catch (IOException e) {
-      Assert.assertEquals("why failed?", e.toString());
+      fail(e.toString());
     }
 
-    result = null;
     result = ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNotNull(result);
     Assert.assertEquals(map, result);
@@ -112,10 +112,9 @@ public class ReadWriteIOUtilsTest {
     try {
       ReadWriteIOUtils.write(map, stream);
     } catch (IOException e) {
-      Assert.assertEquals("why failed?", e.toString());
+      fail(e.toString());
     }
 
-    result = null;
     result = ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNotNull(result);
     Assert.assertEquals(map, result);
@@ -130,10 +129,9 @@ public class ReadWriteIOUtilsTest {
     try {
       ReadWriteIOUtils.write(map, stream);
     } catch (IOException e) {
-      Assert.assertEquals("why failed?", e.toString());
+      fail(e.toString());
     }
 
-    result = null;
     result = ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNotNull(result);
     Assert.assertEquals(map, result);

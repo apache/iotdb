@@ -137,7 +137,8 @@ public class LinearFill extends IFill {
     QueryDataSource dataSource =
         QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, beforeFilter);
     LastPointReader lastReader =
-        new LastPointReader(seriesPath, dataType, deviceMeasurements, context, dataSource, queryTime, beforeFilter);
+        new LastPointReader(seriesPath, dataType, deviceMeasurements, context, dataSource,
+            queryTime, beforeFilter);
 
     return lastReader.readLastPoint();
   }
@@ -151,7 +152,8 @@ public class LinearFill extends IFill {
     aggregateResultList.add(minTimeResult);
     aggregateResultList.add(firstValueResult);
     AggregationExecutor.aggregateOneSeries(
-        seriesPath, deviceMeasurements, context, afterFilter, dataType, aggregateResultList, null);
+        seriesPath, deviceMeasurements, context, afterFilter, dataType, aggregateResultList, null,
+        true);
 
     return convertToResult(minTimeResult, firstValueResult);
   }
@@ -160,7 +162,7 @@ public class LinearFill extends IFill {
       AggregateResult firstValueResult) {
     TimeValuePair result = new TimeValuePair(0, null);
     if (minTimeResult.getResult() != null) {
-      long timestamp = (long)(minTimeResult.getResult());
+      long timestamp = (long) (minTimeResult.getResult());
       result.setTimestamp(timestamp);
     }
     if (firstValueResult.getResult() != null) {

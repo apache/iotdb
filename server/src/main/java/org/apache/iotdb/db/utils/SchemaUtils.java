@@ -43,8 +43,7 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class
-SchemaUtils {
+public class SchemaUtils {
 
   private SchemaUtils() {
 
@@ -100,6 +99,7 @@ SchemaUtils {
     try {
       path = new PartialPath(schema.getFullPath());
     } catch (IllegalPathException e) {
+      logger.error("Cannot cache an illegal path {}", schema.getFullPath());
       return;
     }
     TSDataType dataType = schema.getType();
@@ -137,6 +137,15 @@ SchemaUtils {
     return dataTypes;
   }
 
+  /**
+   * If the datatype of 'aggregation' depends on 'measurementDataType' (min_value, max_value), return
+   * 'measurementDataType' directly, or return a list whose elements are all the datatype of 'aggregation' and its length
+   * is the same as 'measurementDataType'.
+   * @param measurementDataType
+   * @param aggregation
+   * @return
+   * @throws MetadataException
+   */
   public static List<TSDataType> getAggregatedDataTypes(List<TSDataType> measurementDataType,
       String aggregation) throws MetadataException {
     TSDataType dataType = getAggregationType(aggregation);

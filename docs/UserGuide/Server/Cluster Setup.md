@@ -58,11 +58,11 @@ Users can configure the relevant system configuration items of JAVA-JVM in the f
 
 * system configuration file (`iotdb-engine.properties`). The default configuration file for the IoTDB engine layer configuration item. 
 Users can configure the IoTDB engine related parameters in the file, such as the precision of timestamp(`timestamp_precision`), etc. 
-What's more, Users can configure the information about the TsFile, such as the data size written to the disk per time(`group_size_in_byte`). 
+What's more, Users can configure settings of TsFile (the data files), such as the data size written to the disk per time(`group_size_in_byte`). 
 
-* log configuration file (`logback.xml`). The default log configuration file, such as the log level.
+* log configuration file (`logback.xml`). The default log configuration file, such as the log levels.
 
-* `iotdb-cluster.properties`. Some configuration required by IoTDB cluster. Such as replication number(`default_replica_num`), etc.
+* `iotdb-cluster.properties`. Some configurations required by IoTDB cluster. Such as replication number(`default_replica_num`), etc.
 
 For detailed description of the two configuration files `iotdb-engine.properties`, `cluster-env.sh`/`cluster-env.bat`, please refer to [Configuration Manual](Config%20Manual.md). 
 The configuration items described below are in the `iotdb-cluster.properties` file.
@@ -71,25 +71,25 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 
 |Name|internal\_meta\_port|
 |:---:|:---|
-|Description|IoTDB meta service port, **IoTDB will automatically create a heartbeat port for each meta service. The default meta service heartbeat port is `internal_meta_port+1`, please confirm that these two ports are not reserved by the system and are not occupied**|
+|Description|IoTDB meta service port, for meta group's communication, which involves all nodes and manages the cluster configuration and storage groups. **IoTDB will automatically create a heartbeat port for each meta service. The default meta service heartbeat port is `internal_meta_port+1`, please confirm that these two ports are not reserved by the system and are not occupied**|
 |Type|Int32|
 |Default|9003|
-|Effective|After restart system|
+|Effective| After restart system, shall NOT change after cluster is up|
 
 * internal\_data\_port
 
 |Name|internal\_data\_port|
 |:---:|:---|
-|Description|IoTDB data service port, **IoTDB will automatically create a heartbeat port for each data service. The default data service heartbeat port is `internal_data_port+1`. Please confirm that these two ports are not reserved by the system and are not occupied**|
+|Description|IoTDB data service port, for data groups' communication, each consists of one node and its replicas, managing timeseries schemas and data. **IoTDB will automatically create a heartbeat port for each data service. The default data service heartbeat port is `internal_data_port+1`. Please confirm that these two ports are not reserved by the system and are not occupied**|
 |Type|Int32|
 |Default|40010|
-|Effective| After restart system|
+|Effective| After restart system, shall NOT change after cluster is up|
 
 * cluster\_rpc\_port
 
 |Name|cluster\_rpc\_port|
 |:---:|:---|
-|Description|The port used to communicate with the client, please confirm that the port is not reserved by the system and is not occupied|
+|Description|The port used to communicate with the clients (JDBC, CLI, Session API...), please confirm that the port is not reserved by the system and is not occupied|
 |Type|Int32|
 |Default|55560|
 |Effective| After restart system|
@@ -98,7 +98,7 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 
 |Name|seed\_nodes|
 |:---:|:---|
-|Description|The address of the nodes in the cluster, `{IP/DOMAIN}:internal\_meta\_port:internal\_data\_port` format, separated by commas; for the pseudo-distributed mode, you can fill in `localhost`, or `127.0.0.1` or mixed, But the real ip address cannot appear; for the distributed mode, real ip or hostname is supported, but `localhost` or `127.0.0.1` cannot appear. when used by `start-node.sh(.bat)`, this configuration means the nodes that will form the initial cluster, so every node that use `start-node.sh(.bat)` should have the same `seed_nodes`, or the building of the initial cluster will fail. WARNING: if the initial cluster is built, this should not be changed before the environment is cleaned. when used by `add-node.sh(.bat)`, this means the nodes to which that the application of joining the cluster will be sent, as all nodes can respond to a request, this configuration can be any nodes that already in the cluster, unnecessary to be the nodes that were used to build the initial cluster by `start-node.sh(.bat)`. Several nodes will be picked randomly to send the request, the number of nodes picked depends on the number of retries.|
+|Description|The address of the nodes in the cluster, `{IP/DOMAIN}:internal\_meta\_port:internal\_data\_port` format, separated by commas; for the pseudo-distributed mode, you can fill in `localhost`, or `127.0.0.1` or mixed, but the real ip address cannot appear; for the distributed mode, real ip or hostname is supported, but `localhost` or `127.0.0.1` cannot appear. When used by `start-node.sh(.bat)`, this configuration means the nodes that will form the initial cluster, so every node that use `start-node.sh(.bat)` should have the same `seed_nodes`, or the building of the initial cluster will fail. WARNING: if the initial cluster is built, this should not be changed before the environment is cleaned. When used by `add-node.sh(.bat)`, this means the nodes to which that the application of joining the cluster will be sent, as all nodes can respond to a request, this configuration can be any nodes that already in the cluster, unnecessary to be the nodes that were used to build the initial cluster by `start-node.sh(.bat)`. Several nodes will be picked randomly to send the request, the number of nodes picked depends on the number of retries.|
 |Type|String|
 |Default|127.0.0.1:9003:40010,127.0.0.1:9005:40012,127.0.0.1:9007:40014|
 |Effective| After restart system|
@@ -110,22 +110,22 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 |Description|Whether to enable thrift compression, **Note that this parameter should be consistent with each node and with the client, and also consistent with the `rpc_thrift_compression_enable` parameter in `iotdb-engine.properties`**|
 |Type| Boolean|
 |Default|false|
-|Effective| After restart system|
+|Effective| After restart system, must be changed with all other nodes|
 
 * default\_replica\_num
 
 |Name|default\_replica\_num|
 |:---:|:---|
-|Description|Number of cluster replicas|
+|Description|Number of cluster replicas of timeseries schema and data. Storage group info is always fully replicated in all nodes.|
 |Type|Int32|
 |Default|2|
-|Effective| After restart system|
+|Effective| After restart system, shall NOT change after cluster is up|
 
 * cluster\_name
 
 |Name|cluster\_name|
 |:---:|:---|
-|Description|Cluster name is used to identify different clusters, **`cluster_name` of all nodes in a cluster are the same**|
+|Description|Cluster name is used to identify different clusters, **`cluster_name` of all nodes in a cluster must be the same**|
 |Type|String|
 |Default|default|
 |Effective| After restart system|
@@ -170,7 +170,7 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 
 |Name|max\_num\_of\_logs\_in\_mem|
 |:---:|:---|
-|Description|maximum number of committed logs in memory, when reached, a log deletion will be triggered. Increasing the number will reduce the chance to use snapshot in catch-ups, but will also increase memory footprint|
+|Description|Maximum number of committed logs in memory, when reached, a log deletion will be triggered. Increasing the number will reduce the chance to use snapshot in catch-ups, but will also increase memory footprint|
 |Type|Int32|
 |Default|1000|
 |Effective| After restart system|
@@ -179,7 +179,7 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 
 |Name|log\_deletion\_check\_interval\_second|
 |:---:|:---|
-|Description|The interval for checking and deleting the submitted log task, in seconds|
+|Description|The interval for checking and deleting the committed log task, which removes oldest in-memory committed logs when their size exceeds `min\_num\_of\_logs\_in\_mem` , in seconds|
 |Type|Int32|
 |Default|60|
 |Effective| After restart system|

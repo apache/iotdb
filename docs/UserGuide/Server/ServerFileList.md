@@ -21,7 +21,7 @@
 
 > Here are all files generated or used by IoTDB
 >
-> Continuous Update...
+> Continuously Updating...
 
 # Stand-alone
 
@@ -37,7 +37,7 @@
 
 > under directory basedir/system/schema
 1. system.properties
-    + record all immutable properties, will check when starting IoTDB to avoid system error
+    + record all immutable properties, will be checked when starting IoTDB to avoid system error
 
 ## State Related Files
 
@@ -50,20 +50,20 @@
 2. mtree-1.snapshot
     + snapshot of metadata
 3. mtree-1.snapshot.tmp
-    + temp file, to avoid damaging snapshot when updating
+    + temp file, to avoid damaging the snapshot when updating it
 
 #### Tags&Attributes
 1. tlog.txt
-    + store tags and attributes fo each TimeSeries
-    + 700 bytes for each TimeSeries
+    + store tags and attributes of each TimeSeries
+    + about 700 bytes for each TimeSeries
 
 ### Data Related Files
 > under directory basedir/data/
 
 #### WAL
 > under directory basedir/wal
-1. ${StroageName}-${TsFileName}/wal1
-    + every storage group has several wal files, every memtable has one related wal
+1. ${StorageGroupName}-${TsFileName}/wal1
+    + every storage group has several wal files, and every memtable has one associated wal file before it is flushed into a TsFile 
 
 #### TsFile
 > under directory data/sequence or unsequence/${StorageGroupName}/${TimePartitionId}/
@@ -71,38 +71,38 @@
     + normal data file
 2. ${TsFileName}-${level}-${time}.vm
     + virtual merged TsFile
-    + optimize query, more details in https://issues.apache.org/jira/browse/IOTDB-706
+    + to optimize query performance, more details in https://issues.apache.org/jira/browse/IOTDB-706
 3. ${TsFileName}.tsfile.mod
     + modification file
     + record delete operation
 
 #### TsFileResource
 1. ${TsFileName}.tsfile.resource
-    + statistic file for TsFile
+    + descriptor and statistic file of a TsFile
 2. ${TsFileName}.tsfile.resource.temp
     + temp file
-    + avoid damaging the tsfile.resource when updating
+    + avoid damaging the tsfile.resource when updating it
 3. ${TsFileName}.tsfile.resource.closing
-    + close flag file, to mark closing tsfile
+    + close flag file, to mark a tsfile closing so during restarts we can continue to close it or reopen it
 
 #### Version
 > under directory basedir/system/storage_groups/${StorageGroupName}/${TimePartitionId} or upgrade
 1. Version-${version}
-    + version file, record the max version in fileName
+    + version file, record the max version in fileName of a stroage group
 
 #### Upgrade
 > under directory basedir/system/upgrade
 1. upgrade.txt
-    + record which file has been upgraded
+    + record which files have been upgraded
 
 #### Merge
 > under directory basedir/system/storage_groups/${StrorageGroup}/
 1. merge.mods
-    + modification file generated when merging
+    + modification file generated during a merge
 2. merge.log
-    + record the progress of merge
+    + record the progress of a merge
 3. tsfile.merge
-    + temp file, a sequence tsfile has one when merging
+    + temporary merge result file, an involved sequence tsfile may have one during a merge
 
 #### Authority
 > under directory basedir/system/users/
@@ -116,7 +116,7 @@
 ---
 
 # Cluster-Mode
-> Attention: the following files are newly added to the stand-alone
+> Attention: the following files are newly added
 
 ## Configuration Files
 1. iotdb-cluster.properties
@@ -125,12 +125,12 @@
 ## State Related Files
 > under directory basedir/
 1. node_identifier
-    + the identifier of local node in cluster
+    + the identifier of the local node in a cluster
 2. partitions
     + partition table file, records the distribution of data
 3. ${time}_${random}.task
-    + pullSnapshotTask file, record the slots and owner, when a node join into cluster,
-    it will create pullSnapshotTask file to trace which data to be pulled
+    + pullSnapshotTask file, record the slots and owners. When a node joins a cluster,
+    it will create pullSnapshotTask file to track which data to be pulled
     + under directory basedir/raft/${nodeIdentifier}/snapshot_task/
 
 ## Raft Related Files
@@ -138,7 +138,7 @@
 
 ### Raft Log
 1. .data-${version}
-    + raft committed log, only save the latest 1000(configurable) committed log
+    + raft committed logs, only save the latest 1000(configurable) committed logs
 
 ### Raft Meta
 1. logMeta
@@ -147,11 +147,11 @@
         + Meta: commitLogTerm, commitLogIndex, lastLogTerm, lastLogIndex
         + ...
 2. logMeta.tmp
-    + temp file, to avoid damaging the logMeta when updating
+    + temp file, to avoid damaging the logMeta when updating it
 
 ### Raft Catch Up
 > under directory basedir/remote/${nodeIdentifier}/${storageGroupName}/${partitionNum}/
 1. ${fileName}.tsfile
-    + remote TsFile, will be loaded after pull successfully
+    + remote TsFile, will be loaded during snapshot installation
 2. ${fileName}.tsfile.mod
-    + remote TsFile modification file, will be loaded after pull successfully
+    + remote TsFile modification file, will be loaded during snapshot installation

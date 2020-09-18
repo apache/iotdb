@@ -27,13 +27,13 @@ public class PathNotExistException extends MetadataException {
 
   public PathNotExistException(String path) {
     super(String.format("Path [%s] does not exist", path),
-        TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
+            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
   }
 
   public PathNotExistException(List<String> paths) {
     super(String.format("Path [%s] does not exist",
-        paths.size() == 1 ? paths.get(0) : paths.get(0) + " ... " + paths.get(paths.size() - 1)),
-        TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
+            paths.size() == 1 ? paths.get(0) : paths.get(0) + " ... " + paths.get(paths.size() - 1)),
+            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
   }
 
 }

@@ -32,6 +32,7 @@ public abstract class QueryDataSet {
   protected int rowLimit = 0; // rowLimit > 0 means the LIMIT constraint exists
   protected int rowOffset = 0;
   protected int alreadyReturnedRowNum = 0;
+  protected boolean ascending;
 
   public QueryDataSet() {
   }
@@ -39,6 +40,13 @@ public abstract class QueryDataSet {
   public QueryDataSet(List<Path> paths, List<TSDataType> dataTypes) {
     this.paths = paths;
     this.dataTypes = dataTypes;
+    this.ascending = true;
+  }
+
+  public QueryDataSet(List<Path> paths, List<TSDataType> dataTypes, boolean ascending) {
+    this.paths = paths;
+    this.dataTypes = dataTypes;
+    this.ascending = ascending;
   }
 
   public boolean hasNext() throws IOException {
