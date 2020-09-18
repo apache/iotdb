@@ -309,7 +309,7 @@ public class PlanExecutor implements IPlanExecutor {
                 .closeProcessor(storageGroupName, plan.isSeq(), plan.isSync());
           }
         }
-        // for snapshot flush plan
+        // partition specified flush, for snapshot flush plan
         else {
           List<Pair<Long, Boolean>> partitionIdSequencePairs = entry.getValue();
           for (Pair<Long, Boolean> pair : partitionIdSequencePairs) {

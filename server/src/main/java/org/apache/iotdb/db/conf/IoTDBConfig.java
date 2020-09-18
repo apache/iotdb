@@ -135,9 +135,6 @@ public class IoTDBConfig {
 
   /**
    * Is dynamic parameter adapter enable.
-   * <p>
-   * the default value of this parameter should be kept true in iotdb-engine.properties, we set it
-   * as false here for convenient testing.
    */
   private boolean enableParameterAdapter = true;
 

@@ -41,11 +41,13 @@ public class FlushPlan extends PhysicalPlan {
   /**
    * key-> storage group, value->list of pair, Pair<PartitionId, isSequence>,
    * <p>
-   * Notice, the value maybe null, so do not use {@link java.util.concurrent.ConcurrentHashMap} when
+   * Notice, the value maybe null, when it is null, all partitions under the storage groups are flushed,
+   * so do not use {@link java.util.concurrent.ConcurrentHashMap} when
    * initializing as ConcurrentMap dose not support null key and value
    */
   private Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds;
 
+  // being null indicates flushing both seq and unseq data
   private Boolean isSeq;
 
   private boolean isSync;
@@ -117,7 +119,12 @@ public class FlushPlan extends PhysicalPlan {
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeByte((byte) PhysicalPlanType.FLUSH.ordinal());
-    stream.writeByte((isSeq == null || !isSeq) ? 0 : 1);
+    if (isSeq == null) {
+      stream.writeByte(2);
+    } else {
+      stream.writeByte(isSeq ? 1 : 0);
+    }
+
     stream.writeByte(isSync ? 1 : 0);
     if (storageGroupPartitionIds == null) {
       // null value
@@ -147,7 +154,11 @@ public class FlushPlan extends PhysicalPlan {
   public void serialize(ByteBuffer buffer) {
     int type = PhysicalPlanType.FLUSH.ordinal();
     buffer.put((byte) type);
-    buffer.put((byte) ((isSeq == null || !isSeq) ? 0 : 1));
+    if (isSeq == null) {
+      buffer.put((byte) 2);
+    } else {
+      buffer.put((byte) (isSeq ? 1 : 0));
+    }
     buffer.put((byte) (isSync ? 1 : 0));
     if (storageGroupPartitionIds == null) {
       // null value
@@ -176,7 +187,12 @@ public class FlushPlan extends PhysicalPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    this.isSeq = (buffer.get() == 1) ? true : null;
+    byte isSeqFlag = buffer.get();
+    if (isSeqFlag == 2) {
+      this.isSeq = null;
+    } else {
+      this.isSeq = isSeqFlag == 1;
+    }
     this.isSync = buffer.get() == 1;
     byte flag = buffer.get();
     if (flag == 0) {
