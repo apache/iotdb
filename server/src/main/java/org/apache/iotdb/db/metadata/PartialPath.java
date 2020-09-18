@@ -105,21 +105,36 @@ public class PartialPath extends Path implements Comparable<Path> {
     return nodes;
   }
 
-  public boolean matchPath(String path) throws MetadataException {
-    return matchPath(path);
+  public int getNodeLength() {
+    return nodes.length;
   }
 
-  public boolean matchPath(PartialPath rhs) {
-    if (!fullPath.equals(rhs.fullPath)) {
-      int len1 = nodes.length;
-      String[] rNodes = rhs.getNodes();
-      if (rNodes.length > len1 && !nodes[len1 - 1].equals(IoTDBConstant.PATH_WILDCARD)) {
+  public PartialPath alterPrefixPath(PartialPath prefixPath) {
+    String[] newNodes = Arrays.copyOf(nodes, Math.max(nodes.length, prefixPath.getNodeLength()));
+    System.arraycopy(prefixPath.getNodes(), 0, newNodes, 0, prefixPath.getNodeLength());
+    return new PartialPath(newNodes);
+  }
+
+  public void setPrefixPath(PartialPath prefixPath) {
+    this.nodes = Arrays.copyOf(nodes, Math.max(nodes.length, prefixPath.getNodeLength()));
+    System.arraycopy(prefixPath.getNodes(), 0, nodes, 0, prefixPath.getNodeLength());
+    fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
+  }
+
+  public boolean matchFullPath(String rPath) throws IllegalPathException {
+    return matchFullPath(new PartialPath(rPath));
+  }
+
+  public boolean matchFullPath(PartialPath rPath) {
+    String[] rNodes = rPath.getNodes();
+    if ((rNodes.length < nodes.length) ||
+        (rNodes.length > nodes.length && !nodes[nodes.length - 1]
+            .equals(IoTDBConstant.PATH_WILDCARD))) {
+      return false;
+    }
+    for (int i = 0; i < nodes.length; i++) {
+      if (!nodes[i].equals(IoTDBConstant.PATH_WILDCARD) && !nodes[i].equals(rNodes[i])) {
         return false;
-      }
-      for (int i = 0; i < nodes.length; i++) {
-        if (!nodes[i].equals(IoTDBConstant.PATH_WILDCARD) && !nodes[i].equals(rNodes[i])) {
-          return false;
-        }
       }
     }
     return true;
@@ -193,7 +208,9 @@ public class PartialPath extends Path implements Comparable<Path> {
     return measurementAlias;
   }
 
-  public void setMeasurementAlias(String measurementAlias) { this.measurementAlias = measurementAlias; }
+  public void setMeasurementAlias(String measurementAlias) {
+    this.measurementAlias = measurementAlias;
+  }
 
   public String getTsAlias() {
     return tsAlias;

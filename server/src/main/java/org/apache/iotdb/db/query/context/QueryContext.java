@@ -73,7 +73,7 @@ public class QueryContext {
       List<Modification> finalPathModifications = new ArrayList<>();
       if (!allModifications.isEmpty()) {
         allModifications.forEach(modification -> {
-          if (modification.getPath().matchPath(path)) {
+          if (modification.getPath().matchFullPath(path)) {
             finalPathModifications.add(modification);
           }
         });
