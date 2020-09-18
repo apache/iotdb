@@ -115,6 +115,12 @@ public class PartialPath extends Path implements Comparable<Path> {
     return new PartialPath(newNodes);
   }
 
+  public void setPrefixPath(PartialPath prefixPath) {
+    this.nodes = Arrays.copyOf(nodes, Math.max(nodes.length, prefixPath.getNodeLength()));
+    System.arraycopy(prefixPath.getNodes(), 0, nodes, 0, prefixPath.getNodeLength());
+    fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
+  }
+
   public boolean matchFullPath(String rPath) throws IllegalPathException {
     return matchFullPath(new PartialPath(rPath));
   }

@@ -452,9 +452,9 @@ public class StorageEngine implements IService {
     try {
       for (PartialPath storageGroupPath : IoTDB.metaManager.getStorageGroupPaths(path)) {
         StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
-        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
-        System.out.println("delete path :" + newPath + " from " + startTime + " to " + endTime);
-        storageGroupProcessor.delete(newPath, startTime, endTime);
+        path.setPrefixPath(storageGroupPath);
+        System.out.println("delete path :" + path + " from " + startTime + " to " + endTime);
+        storageGroupProcessor.delete(path, startTime, endTime);
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());

@@ -209,6 +209,8 @@ public abstract class AbstractMemTable implements IMemTable {
     TVList chunkCopy = memChunk.getTVList().clone();
 
     chunkCopy.setDeletionList(deletionList);
+    System.out.println("query data:" + deviceId + "." + measurement);
+    System.out.println("memchunk data: " + chunkCopy.toString());
     return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props, getVersion());
   }
 
@@ -232,6 +234,7 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void delete(String deviceId, String measurementId, long startTimestamp, long endTimestamp) {
     Map<String, IWritableMemChunk> deviceMap = memTableMap.get(deviceId);
+    System.out.println("delete timeseries:" + deviceId + "." + measurementId + " from " + startTimestamp + " to " + endTimestamp);
     if (deviceMap != null) {
       IWritableMemChunk chunk = deviceMap.get(measurementId);
       if (chunk == null) {

@@ -1459,6 +1459,7 @@ public class StorageGroupProcessor {
 
       // write deletion into modification file
       tsFileResource.getModFile().write(deletion);
+      System.out.println("delete record written: " + deletion.toString());
       // remember to close mod file
       tsFileResource.getModFile().close();
 
