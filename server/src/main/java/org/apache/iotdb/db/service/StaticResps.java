@@ -107,6 +107,10 @@ class StaticResps {
       Collections.singletonList(COLUMN_COUNT),
       Collections.singletonList(TSDataType.INT32.toString()));
 
+  static final TSExecuteStatementResp COUNT_STORAGE_GROUP = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_COUNT),
+      Collections.singletonList(TSDataType.INT32.toString()));
+
   static final TSExecuteStatementResp COUNT_NODES = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_COUNT),
       Collections.singletonList(TSDataType.INT32.toString()));

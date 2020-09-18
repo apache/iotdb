@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.query.executor;
 
+
 import java.io.IOException;
 import java.util.ArrayList;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.PathException;
+
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
@@ -62,7 +62,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void test2() throws IOException, PathException, StorageEngineException {
+  public void test2() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 5;
@@ -90,7 +90,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void test3() throws IOException, PathException, StorageEngineException {
+  public void test3() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 3;
@@ -118,7 +118,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void test4() throws IOException, PathException, StorageEngineException {
+  public void test4() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 3;
@@ -146,7 +146,7 @@ public class GroupByEngineDataSetTest {
   }
 
   @Test
-  public void test5() throws IOException, PathException, StorageEngineException {
+  public void test5() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 3;

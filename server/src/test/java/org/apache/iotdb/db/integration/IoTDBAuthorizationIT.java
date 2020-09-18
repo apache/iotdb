@@ -793,15 +793,19 @@ public class IoTDBAuthorizationIT {
 
     try {
       adminStmt.execute("CREATE ROLE role1");
-      adminStmt.execute(
+      ResultSet resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
+      String ans = "";
+      try {
+        //not granted list role privilege, should return empty
+        validateResultSet(resultSet, ans);
+
+        adminStmt.execute(
           "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.a.b.c");
       adminStmt.execute(
           "GRANT ROLE role1 PRIVILEGES 'READ_TIMESERIES','INSERT_TIMESERIES','DELETE_TIMESERIES' ON root.d.b.c");
-
-      ResultSet resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
-      String ans = "root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n"
+        resultSet = adminStmt.executeQuery("LIST ROLE PRIVILEGES role1");
+        ans = "root.a.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n"
           + "root.d.b.c : INSERT_TIMESERIES READ_TIMESERIES DELETE_TIMESERIES,\n";
-      try {
         validateResultSet(resultSet, ans);
 
         resultSet = adminStmt.executeQuery("LIST PRIVILEGES ROLE role1 ON root.a.b.c");
@@ -950,6 +954,52 @@ public class IoTDBAuthorizationIT {
       assertEquals(ans, builder.toString());
     } finally {
       set.close();
+    }
+  }
+
+  @Test
+  public void testListUserPrivilege() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    Connection adminCon = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    Statement adminStmt = adminCon.createStatement();
+
+    for (int i = 0; i < 10; i++) {
+      adminStmt.execute("CREATE USER user" + i + " 'password " + i + "'");
+    }
+
+    adminStmt.execute("CREATE USER tempuser 'temppw'");
+
+    try (Connection userCon = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser", "temppw");
+        Statement userStmt = userCon.createStatement()) {
+      try {
+        //without list user privilege
+        ResultSet resultSet = userStmt.executeQuery("LIST USER");
+        String ans = "";
+        validateResultSet(resultSet, ans);
+
+        //with list user privilege
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES 'LIST_USER' ON root");
+        resultSet = userStmt.executeQuery("LIST USER");
+        ans = "root,\n"
+            + "tempuser,\n"
+            + "user0,\n"
+            + "user1,\n"
+            + "user2,\n"
+            + "user3,\n"
+            + "user4,\n"
+            + "user5,\n"
+            + "user6,\n"
+            + "user7,\n"
+            + "user8,\n"
+            + "user9,\n";
+        validateResultSet(resultSet, ans);
+      } finally {
+        userStmt.close();
+      }
+    } finally {
+      adminCon.close();
     }
   }
 }

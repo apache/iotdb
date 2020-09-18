@@ -19,27 +19,21 @@
 
 package org.apache.iotdb.db.exception.metadata;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import java.util.List;
 
 public class PathNotExistException extends MetadataException {
 
-  private List<String> paths;
-
   public PathNotExistException(String path) {
     super(String.format("Path [%s] does not exist", path),
-        TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
-    paths = new ArrayList<>();
-    paths.add(path);
+            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
   }
 
   public PathNotExistException(List<String> paths) {
     super(String.format("Path [%s] does not exist",
-        paths.size() == 1 ? paths.get(0) : paths.get(0) + " ... " + paths.get(paths.size() - 1)),
-        TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
-    this.paths = paths;
+            paths.size() == 1 ? paths.get(0) : paths.get(0) + " ... " + paths.get(paths.size() - 1)),
+            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
   }
-
 
 }

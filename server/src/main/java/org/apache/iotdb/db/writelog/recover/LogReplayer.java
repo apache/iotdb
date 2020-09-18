@@ -23,13 +23,16 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -188,8 +191,14 @@ public class LogReplayer {
 
   private void checkDataTypeAndMarkFailed(final MeasurementSchema[] schemas, InsertPlan tPlan) {
     for (int i = 0; i < schemas.length; i++) {
-      if (schemas[i] == null || schemas[i].getType() != tPlan.getDataTypes()[i]) {
-        tPlan.markFailedMeasurementInsertion(i, new Exception("Inconsistent data type"));
+      if (schemas[i] == null) {
+        tPlan.markFailedMeasurementInsertion(i,
+            new PathNotExistException(tPlan.getDeviceId().getFullPath() +
+                IoTDBConstant.PATH_SEPARATOR + tPlan.getMeasurements()[i]));
+      } else if (schemas[i].getType() != tPlan.getDataTypes()[i]) {
+        tPlan.markFailedMeasurementInsertion(i,
+            new DataTypeMismatchException(schemas[i].getMeasurementId(), tPlan.getDataTypes()[i],
+                schemas[i].getType()));
       }
     }
   }

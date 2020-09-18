@@ -31,23 +31,24 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
-  private SeriesReader seriesReader;
-  private BatchData batchData;
+  protected SeriesReader seriesReader;
+  protected BatchData batchData;
 
-  public SeriesReaderByTimestamp(PartialPath seriesPath, Set<String> allSensors,  TSDataType dataType, QueryContext context,
-                                 QueryDataSource dataSource, TsFileFilter fileFilter) {
+  public SeriesReaderByTimestamp() {
+  }
+
+  public SeriesReaderByTimestamp(PartialPath seriesPath, Set<String> allSensors,
+      TSDataType dataType, QueryContext context, QueryDataSource dataSource,
+      TsFileFilter fileFilter) {
     seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
-        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter);
+        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter, true);
   }
 
-  public SeriesReaderByTimestamp(SeriesReader seriesReader) {
-    this.seriesReader = seriesReader;
-  }
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
     seriesReader.setTimeFilter(timestamp);
-    if ((batchData == null || batchData.getTimeByIndex(batchData.length() - 1) < timestamp)
+    if ((batchData == null || (batchData.getTimeByIndex(batchData.length() - 1) < timestamp))
         && !hasNext(timestamp)) {
       return null;
     }
@@ -55,7 +56,12 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     return batchData.getValueInTimestamp(timestamp);
   }
 
-  private boolean hasNext(long timestamp) throws IOException {
+  @Override
+  public boolean readerIsEmpty() throws IOException {
+    return seriesReader.isEmpty() && isEmpty(batchData);
+  }
+
+  protected boolean hasNext(long timestamp) throws IOException {
 
     /*
      * consume pages firstly

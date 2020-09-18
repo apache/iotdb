@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class LeafNode implements Node {

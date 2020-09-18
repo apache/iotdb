@@ -20,38 +20,39 @@
 -->
 
 # Introduction
-IoTDB cluster version provides nodetool shell tool for users to monitor the working status of the specified cluster. 
+IoTDB cluster version provides nodetool, a shell tool for users to monitor the working status of the specified cluster. 
 Users can obtain the status of the cluster by running a variety of instructions.
 
 The following describes the usage and examples of each instruction, 
-where $IOTDB_CLUSTER_HOME indicates the path of the IoTDB distributed installation directory.
+where $IOTDB_CLUSTER_HOME indicates the path of the distributed IoTDB installation directory.
+
 # Instructions
 ## Get Started
 The nodetool shell tool startup script is located at $IOTDB_CLUSTER_HOME/bin folder, 
-you can specify the IP address and port of the cluster at startup.
+you can specify the IP address and port of the cluster during startup.
 
-IP is the IP of the node that the user expects to connect to,
+IP is the IP (or hostname) of the node that you expect to connect to,
 and port is the JMX service port specified when the IoTDB cluster is started.
 
 The default values are 127.0.0.1 and 31999, respectively.
 
 If you need to monitor the remote cluster or modify the JMX service port number,
-use the actual IP and port at the -H and -P entries.
+set the actual IP and port with the `-h` and `-p` options.
 
 ## Explains
-In a distributed system, a node is identified by node IP, metadata port, data port and cluster port \<METAPORT:DATAPORT:CLUSTERPORT>.
+In a distributed system, a node is identified by node IP, metadata port, data port and cluster port \<IP:METAPORT:DATAPORT:CLUSTERPORT>.
 ### Show The Ring Of Node
-IoTDB cluster version uses consistent hash to achieve data distribution.
+Distributed IoTDB uses consistent hash to support data distribution.
 
-Users can know the location of each node in the ring by printing hash ring information.
+You can know each node in the cluster by command `ring`, which prints node ring information.
 
 1.Input
 > ring
 
 2.Output
 
-> The output is a multi line string, and each line of string is a key value pair, 
-> where the key represents the token value and the value represents the node (IP:METAPORT:DATAPORT:CLUSTERPORT), the format is \<key -> value>.
+> The output is a multi-line string, and each line of string is a key value pair, 
+> where the key represents the node identifier, and the value represents the node (IP:METAPORT:DATAPORT:CLUSTERPORT), the format is \<key -> value>.
 
 3.Examples
 
@@ -68,7 +69,7 @@ Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 ring
 Windows：
 
 ```
-Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 ring
+Shell > .\sbin\nodetool.bat -h 127.0.0.1 -p 31999 ring
 ```
 
 Press enter to execute the command. 
@@ -82,38 +83,38 @@ Node Identifier                                 Node
 ```
  
 The above output shows that there are three nodes in the current cluster,
-and the output results are output clockwise according to their positions in the ring.
+and the output results are ordered by their identifier ascendant.
 
 ### Query data partition and metadata partition
-The time series metadata of iotdb cluster version is divided into multiple data partitions according to storage groups,
+The time series metadata of distributed iotdb is divided into multiple data groups according to their storage groups,
 in which the storage group and data partition are many to one relationship.
 
-That is, the same storage group only exists in the same data partition,
-and a data partition contains multiple storage groups.
+That is, all metadata of a storage group only exists in the same data group,
+and a data group may contain multiple storage groups.
 
-The data is divided into multiple data partitions according to the storage group and time interval,
-and the partition granularity is <storage group, time range>.
+The data is divided into multiple data groups according to its storage group and timestamp,
+and the time partition granularity is decided by a configuration (currently unavailable).
 
-The data partition is composed of replica nodes to ensure high availability of data,
+The data partition is composed of several replica nodes to ensure high availability of data,
 and one of the nodes plays the role of leader.
 
-Through this instruction, the user can know the metadata under a certain path
- or the nodes under which the data is stored.
+Through this instruction, the user can know the metadata of a certain path,
+ and the nodes under which the data is stored.
 
 1.Input
-> The instruction for querying data partition information is partition.
+> The instruction for querying data partition information is `partition`.
 > The parameters are described as follows:
 
 |Parameter|Description|Examples|
 | --- | --- | --- |
-|-m | --metadata	Query metadata partition, the default is query data partition|	-m |
+|-m | --metadata	Query metadata partition, by default only query data partition|	-m |
 |-path | --path 	Required parameter, the path to be queried. If the path has no corresponding storage group, the query fails|	-path root.guangzhou.d1|
 |-st | --StartTime	The system uses the current partition time by default|	-st 1576724778159 |
 |-et | --EndTime	It is used when querying data partition.<br>The end time is the current system time by default. <br> If the end time is less than the start time, the end time is the start time by default|-et 1576724778159 |
 
 2.Output
 
-> The output is a multi line string, and each line of string is a key value pair, where the key represents the partition,
+> The output is a multi-line string, and each line of string is a key-value pair, where the key represents the partition,
 > and the value represents the data group in the format of \< key -> value>.
 
 3.Examples
@@ -122,7 +123,7 @@ Through this instruction, the user can know the metadata under a certain path
 > 
 > The number of copies is 2 and there are 3 storage groups:{ root.beijing , root.shanghai , root.guangzhou}.
 
-+ Partition of query data (default time interval, time dimension is partitioned by day)
++ Partition of query data (default time range, time partition interval is one day)
 
 Linux and MacOS：
 ```
@@ -130,7 +131,7 @@ Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 partition -path root.guangzhou.
 ```
 Windows：
 ```
-Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1
+Shell > .\sbin\nodetool.bat -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1
 ```
 
 Press enter to execute the command. 
@@ -140,7 +141,7 @@ The output of the example instruction is as follows:
 DATA<root.guangzhou.d1, 1576723735188, 1576723735188>	->	[127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561]
 ```
 
-+ Partition of query data (specified time interval, time dimension is partitioned by day)
++ Partition of query data (specified time range, time partition interval is one day)
 
 
 Linux and MacOS：
@@ -149,7 +150,7 @@ Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 partition -path root.guangzhou.
 ```
 Windows：
 ```
-Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1 -st 1576624778159 -et 1576724778159
+Shell > .\sbin\nodetool.bat -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1 -st 1576624778159 -et 1576724778159
 ```
 
 Press enter to execute the command. 
@@ -169,7 +170,7 @@ Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 partition -path root.guangzhou.
 ```
 Windows：
 ```
-Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1 -m
+Shell > .\sbin\nodetool.bat -h 127.0.0.1 -p 31999 partition -path root.guangzhou.d1 -m
 ```
 
 Press enter to execute the command. 
@@ -178,28 +179,28 @@ The output of the example instruction is as follows:
 ```
 DATA<root.guangzhou.d1, 1576723735188, 1576723735188>	->	[127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561]
 ```
-The above output shows that the data partition to which root.t1.d1 belongs contains two nodes,
+The above output shows that the data group to which root.guangzhou.d1 belongs contains two nodes,
 of which 127.0.0.1:9003:40010:55560 is the header node.
 
 
 ### Query the number of slots managed by the node
-IoTDB cluster version divides the hash ring into a fixed number of (10000) slots,
-and the leader of the cluster management group divides the slots into data groups.
+Distributed IoTDB divides data into a fixed number of (10000 by default) slots,
+and the leader of the cluster management group divides the slots among data groups.
 
-Through this instruction, the user can know the number of slots managed by the data group.
+Through this instruction, you can know the number of slots managed by each data group.
 
 1. Input
-> The command to query the data partition information corresponding to the node is host.
+> The command to query the data partition information corresponding to the node is `host`.
 > 
 > The parameters are described as follows:
 
 |Parameter|Description|Examples|
 |---|---|---|
-|-a or --all |Query the number of slots managed by all data groups. The default is the data group of the query node|-a|
+|-a or --all |Query the number of slots managed by all data groups. By default only data groups of the query node are shown|-a|
 
 2.Output
 
-> The output is a multi line string, in which each line string is a key value pair, where the key represents the data group,
+> The output is a multi-line string, in which each line is a key-value pair, where the key represents the data group,
 > and the value represents the number of slots managed, and the format is \<key -> value>.
 
 3.Examples
@@ -216,7 +217,7 @@ Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 host
 ```
 Windows：
 ```
-Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 host
+Shell > .\sbin\nodetool.bat -h 127.0.0.1 -p 31999 host
 ```
 
 Press enter to execute the command. 
@@ -235,7 +236,7 @@ Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 host -a
 ```
 Windows：
 ```
-Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 host -a
+Shell > .\sbin\nodetool.bat -h 127.0.0.1 -p 31999 host -a
 ```
 
 Press enter to execute the command. 
@@ -249,17 +250,17 @@ Raft group                                                 Slot Number
 ```
 
 ### Query node status
-IoTDB cluster version contains multiple nodes.
-For any node, there is the possibility that it cannot provide services normally due to network and hardware problems.
+Distributed IoTDB contains multiple nodes.
+For any node, there is a possibility that it cannot provide services normally due to network or hardware problems.
 
-Through this instruction, the user can know the current status of all nodes in the cluster.
+Through this instruction, you can know the current status of all nodes in the cluster.
 
 1.Input
 > status
 
 2.Output
-> The output is a multi line string, where each line string is a key value pair, where the key represents the node (IP: METAPORT:DATAPORT),
-> the value indicates the state of the node, "on" is normal, "off" is abnormal, and the format is \< key -> value>.
+> The output is a multi-line string, where each line is a key-value pair, where the key represents the node (IP: METAPORT:DATAPORT),
+> the value indicates the status of the node, "on" is normal, "off" is abnormal, and the format is \< key -> value>.
 
 3.Examples
 > Suppose that the current cluster runs on three nodes: 127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561, and 127.0.0.1:9007:40014:55562,
@@ -271,7 +272,7 @@ Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 status
 ```
 Windows：
 ```
-Shell > \sbin\nodetool.bat -h 127.0.0.1 -p 31999 status
+Shell > .\sbin\nodetool.bat -h 127.0.0.1 -p 31999 status
 ```
 
 Press enter to execute the command. 

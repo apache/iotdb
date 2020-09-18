@@ -176,7 +176,7 @@ public class ClusterPlanRouter {
         // a new range.
         PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), startTime);
         List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
-        ranges.add(startLoc);//include
+        ranges.add(startLoc);//included
         ranges.add(i);//excluded
         //next init
         startLoc = i;
@@ -189,7 +189,7 @@ public class ClusterPlanRouter {
     //the final range
     PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), startTime);
     List<Integer> ranges = splitMap.computeIfAbsent(group, x -> new ArrayList<>());
-    ranges.add(startLoc);//includec
+    ranges.add(startLoc);//included
     ranges.add(times.length);//excluded
 
     List<Integer> locs;

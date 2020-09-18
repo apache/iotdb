@@ -22,7 +22,7 @@
 # 集群设置
 安装环境请参考[安装环境](../Get%20Started/QuickStart.md)
 ## 集群环境搭建
-用户可以搭建伪分布式模式或是分布式模式的集群，伪分布式模式和分布式模式的主要区别是配置文件中`seed_nodes`的不同，配置项含义请参考[配置项](#配置项)。
+您可以搭建伪分布式模式或是分布式模式的集群，伪分布式模式和分布式模式的主要区别是配置文件中`seed_nodes`的不同，配置项含义请参考[配置项](#配置项)。
 启动其中一个节点的服务，需要执行如下命令：
 
 ```bash
@@ -39,19 +39,19 @@ or
 
 `-c <conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件; `-internal_meta_port 9003`覆盖特定配置项`internal_meta_port`的配置，
 目前支持的启动覆盖原有配置的配置项有：
-`internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes`。当两者都存在的时候，指定配置项的配置会覆盖配置文件中的配置。
+`internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes`。当配置文件和配置项都被指定的时候，指定配置项的配置会覆盖配置文件中的配置。
 
 ## 配置项
 
-为方便IoTDB Server的配置与管理，IoTDB Server为用户提供三种配置项，使得用户可以在启动服务器或服务器运行时对其进行配置。
+为方便IoTDB Server的配置与管理，IoTDB Server为用户提供三种配置项，使得您可以在启动服务器或服务器运行时对其进行配置。
 
-三种配置项的配置文件均位于IoTDB安装目录：`$IOTDB_HOME/conf`文件夹下,其中涉及server配置的共有4个文件，分别为：`iotdb-cluster.properties`、`iotdb-engine.properties`、`logback.xml` 和 `cluster-env.sh`(Unix系统)/`cluster-env.bat`(Windows系统), 用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
+三种配置项的配置文件均位于IoTDB安装目录：`$IOTDB_HOME/conf`文件夹下,其中涉及server配置的共有4个文件，分别为：`iotdb-cluster.properties`、`iotdb-engine.properties`、`logback.xml` 和 `cluster-env.sh`(Unix系统)/`cluster-env.bat`(Windows系统), 您可以通过更改其中的配置项对系统运行的相关配置项进行配置。
 
 配置文件的说明如下：
 
-* `cluster-env.sh`/`cluster-env.bat`：环境配置项的默认配置文件。用户可以在文件中配置JAVA-JVM的相关系统配置项。
+* `cluster-env.sh`/`cluster-env.bat`：环境配置项的默认配置文件。您可以在文件中配置JAVA-JVM的相关系统配置项。
 
-* `iotdb-engine.properties`：IoTDB引擎层系统配置项的默认配置文件。用户可以在文件中配置IoTDB引擎运行时的相关参数。此外，用户可以在文件中配置IoTDB存储时TsFile文件的相关信息，如每次将内存中的数据写入到磁盘时的数据大小(`group_size_in_byte`)，内存中每个列打一次包的大小(`page_size_in_byte`)等。
+* `iotdb-engine.properties`：IoTDB引擎层系统配置项的默认配置文件。您可以在文件中配置IoTDB引擎运行时的相关参数。此外，用户可以在文件中配置IoTDB存储时TsFile文件的相关信息，如每次将内存中的数据写入到磁盘前的缓存大小(`group_size_in_byte`)，内存中每个列打一次包的大小(`page_size_in_byte`)等。
 
 * `logback.xml`: 日志配置文件，比如日志级别等。
 
@@ -63,25 +63,25 @@ or
 
 |名字|internal\_meta\_port|
 |:---:|:---|
-|描述|IoTDB meta服务端口，**IoTDB将为每个meta服务自动创建心跳端口。默认meta服务心跳端口为`internal_meta_port+1`，请确认这两个端口不是系统保留端口并且未被占用**|
+|描述|IoTDB meta服务端口，用于元数据组（又称集群管理组）通信，元数据组管理集群配置和存储组信息**IoTDB将为每个meta服务自动创建心跳端口。默认meta服务心跳端口为`internal_meta_port+1`，请确认这两个端口不是系统保留端口并且未被占用**|
 |类型|Int32|
 |默认值|9003|
-|改后生效方式|重启服务器生效|
+|改后生效方式|重启服务器生效，集群建立后不可再修改|
 
 * internal\_data\_port
 
 |名字|internal\_data\_port|
 |:---:|:---|
-|描述|IoTDB data服务端口，**IoTDB将为每个data服务自动创建心跳端口。默认的data服务心跳端口为`internal_data_port+1`。请确认这两个端口不是系统保留端口并且未被占用**|
+|描述|IoTDB data服务端口，用于数据组通信，数据组管理数据模式和数据的存储**IoTDB将为每个data服务自动创建心跳端口。默认的data服务心跳端口为`internal_data_port+1`。请确认这两个端口不是系统保留端口并且未被占用**|
 |类型|Int32|
 |默认值|40010|
-|改后生效方式|重启服务器生效|
+|改后生效方式|重启服务器生效，集群建立后不可再修改|
 
 * cluster\_rpc\_port
 
 |名字|cluster\_rpc\_port|
 |:---:|:---|
-|描述|与客户端通信的端口，请确认该端口不是系统保留端口并且未被占用|
+|描述|与客户端（JDBC，Session API， CLI等）通信的端口，请确认该端口不是系统保留端口并且未被占用|
 |类型|Int32|
 |默认值|55560|
 |改后生效方式|重启服务器生效|
@@ -102,7 +102,7 @@ or
 |描述|是否开启thrift压缩通信，**注意这个参数要各个节点保持一致，也要与客户端保持一致，同时也要与`iotdb-engine.properties`中`rpc_thrift_compression_enable`参数保持一致**|
 |类型| Boolean|
 |默认值|false|
-|改后生效方式|重启服务器生效|
+|改后生效方式|重启服务器生效，需要整个集群同时更改|
 
 * default\_replica\_num
 
@@ -111,13 +111,13 @@ or
 |描述|集群副本数|
 |类型|Int32|
 |默认值|2|
-|改后生效方式|重启服务器生效|
+|改后生效方式|重启服务器生效，集群建立后不可更改|
 
 * cluster\_name
 
 |名字|cluster\_name|
 |:---:|:---|
-|描述|集群名称，集群名称用以标识不同的集群，**一个集群中所有节点的cluster_name都相同**|
+|描述|集群名称，集群名称用以标识不同的集群，**一个集群中所有节点的cluster_name都应相同**|
 |类型|String|
 |默认值|default|
 |改后生效方式|重启服务器生效|
@@ -171,7 +171,7 @@ or
 
 |名字|log\_deletion\_check\_interval\_second|
 |:---:|:---|
-|描述|检查删除日志任务的时间间隔，单位秒|
+|描述|检查删除日志任务的时间间隔，每次删除日志任务将会把已提交日志超过min\_num\_of\_logs\_in\_mem条的最老部分删除，单位秒|
 |类型|Int32|
 |默认值|60|
 |改后生效方式|重启服务器生效|

@@ -61,6 +61,11 @@ public class InsertTabletPlan extends InsertPlan {
   private List<PartialPath> paths;
   private int start;
   private int end;
+  // when this plan is sub-plan split from another InsertTabletPlan, this indicates the original positions of values in
+  // this plan. For example, if the plan contains 5 timestamps, and range = [1,4,10,12], then it means that the first 3
+  // timestamps in this plan are from range[1,4) of the parent plan, and the last 2 timestamps are from range[10,12)
+  // of the parent plan.
+  // this is usually used to back-propagate exceptions to the parent plan without losing their proper positions.
   private List<Integer> range;
 
   private List<Object> failedColumns;

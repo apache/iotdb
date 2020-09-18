@@ -52,12 +52,7 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -850,6 +845,18 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getDevicesNum(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * To calculate the count of storage group for given prefix path.
+   */
+  public int getStorageGroupNum(PartialPath prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupNum(prefixPath);
     } finally {
       lock.readLock().unlock();
     }
@@ -1771,14 +1778,14 @@ public class MManager {
   }
 
   public void collectMeasurementSchema(MNode startingNode,
-      Collection<MeasurementSchema> timeseriesSchemas) {
+      Collection<MeasurementSchema> measurementSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();
     nodeDeque.addLast(startingNode);
     while (!nodeDeque.isEmpty()) {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof MeasurementMNode) {
         MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
-        timeseriesSchemas.add(new MeasurementSchema(node.getName(), nodeSchema.getType(),
+        measurementSchemas.add(new MeasurementSchema(node.getName(), nodeSchema.getType(),
             nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
       } else if (!node.getChildren().isEmpty()) {
         nodeDeque.addAll(node.getChildren().values());
@@ -1995,15 +2002,13 @@ public class MManager {
         if (measurementSchema.getType() != insertDataType) {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
               measurementList[i], insertDataType, measurementSchema.getType());
+          DataTypeMismatchException mismatchException = new DataTypeMismatchException(measurementList[i],
+                  insertDataType, measurementSchema.getType());
           if (!config.isEnablePartialInsert()) {
-            throw new MetadataException(String.format(
-                "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
-                measurementList[i], insertDataType, measurementSchema.getType()));
+            throw mismatchException;
           } else {
             // mark failed measurement
-            plan.markFailedMeasurementInsertion(i, new MetadataException(String.format(
-                "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
-                measurementList[i], insertDataType, measurementSchema.getType())));
+            plan.markFailedMeasurementInsertion(i, mismatchException);
             continue;
           }
         }

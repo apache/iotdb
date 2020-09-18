@@ -712,18 +712,23 @@ public class StorageEngine implements IService {
     return processorMap;
   }
 
-  public Map<String, List<Pair<Long, Boolean>>> getStorageGroupPartitions() {
+  /**
+   * Get a map indicating which storage groups have working TsFileProcessors and its associated partitionId and whether
+   * it is sequence or not.
+   * @return storage group -> a list of partitionId-isSequence pairs
+   */
+  public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitions() {
     Map<String, List<Pair<Long, Boolean>>> res = new ConcurrentHashMap<>();
     for (Entry<PartialPath, StorageGroupProcessor> entry : processorMap.entrySet()) {
       List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
       StorageGroupProcessor processor = entry.getValue();
       for (TsFileProcessor tsFileProcessor : processor.getWorkSequenceTsFileProcessors()) {
-        Pair<Long, Boolean> tmpPair = new Pair(tsFileProcessor.getTimeRangeId(), true);
+        Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), true);
         partitionIdList.add(tmpPair);
       }
 
       for (TsFileProcessor tsFileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
-        Pair<Long, Boolean> tmpPair = new Pair(tsFileProcessor.getTimeRangeId(), false);
+        Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
         partitionIdList.add(tmpPair);
       }
 
