@@ -105,19 +105,21 @@ public class PartialPath extends Path implements Comparable<Path> {
     return nodes;
   }
 
-  public boolean matchFullPath(String rPath) throws MetadataException {
-    return matchFullPath(new PartialPath(rPath));
+  public boolean matchPath(String path) throws MetadataException {
+    return matchPath(path);
   }
 
-  public boolean matchFullPath(PartialPath rPath) {
-    String[] rNodes = rPath.getNodes();
-    if ((rNodes.length < nodes.length) ||
-        (rNodes.length > nodes.length && !nodes[nodes.length - 1].equals(IoTDBConstant.PATH_WILDCARD))) {
-      return false;
-    }
-    for (int i = 0; i < nodes.length; i++) {
-      if (!nodes[i].equals(IoTDBConstant.PATH_WILDCARD) && !nodes[i].equals(rNodes[i])) {
+  public boolean matchPath(PartialPath rhs) {
+    if (!fullPath.equals(rhs.fullPath)) {
+      int len1 = nodes.length;
+      String[] rNodes = rhs.getNodes();
+      if (rNodes.length > len1 && !nodes[len1 - 1].equals(IoTDBConstant.PATH_WILDCARD)) {
         return false;
+      }
+      for (int i = 0; i < nodes.length; i++) {
+        if (!nodes[i].equals(IoTDBConstant.PATH_WILDCARD) && !nodes[i].equals(rNodes[i])) {
+          return false;
+        }
       }
     }
     return true;
