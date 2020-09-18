@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.common;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiPredicate;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -53,19 +54,19 @@ public class BatchData implements Serializable {
 
   private static final long serialVersionUID = -4620310601188394839L;
   private static final int capacityThreshold = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
-  private int capacity = 16;
+  protected int capacity = 16;
 
-  private TSDataType dataType;
+  protected TSDataType dataType;
 
   // outer list index for read
-  private int readCurListIndex;
+  protected int readCurListIndex;
   // inner array index for read
-  private int readCurArrayIndex;
+  protected int readCurArrayIndex;
 
   // outer list index for write
-  private int writeCurListIndex;
+  protected int writeCurListIndex;
   // inner array index for write
-  private int writeCurArrayIndex;
+  protected int writeCurArrayIndex;
 
   // the insert timestamp number of timeRet
   private int count;
@@ -560,12 +561,27 @@ public class BatchData implements Serializable {
     return null;
   }
 
+  public Object getValueInTimestamp(long time, BiPredicate<Long, Long> compare) {
+    while (hasCurrent()) {
+      if (compare.test(currentTime(), time)) {
+        next();
+      } else if (currentTime() == time) {
+        Object value = currentValue();
+        next();
+        return value;
+      } else {
+        return null;
+      }
+    }
+    return null;
+  }
+
   public long getMaxTimestamp() {
     return getTimeByIndex(length() - 1);
   }
 
-  public TimeColumn getTimeColumn() {
-    return new TimeColumn(timeRet, count, capacity);
+  public long getMinTimestamp() {
+    return getTimeByIndex(0);
   }
 
   public BatchDataIterator getBatchDataIterator() {
@@ -592,5 +608,13 @@ public class BatchData implements Serializable {
 
   public int getReadCurArrayIndex() {
     return readCurArrayIndex;
+  }
+
+  /**
+   * When put data, the writeIndex increases while the readIndex remains 0. For ascending read, we
+   * could read from 0 to writeIndex. So no need to flip.
+   */
+  public BatchData flip() {
+    return this;
   }
 }

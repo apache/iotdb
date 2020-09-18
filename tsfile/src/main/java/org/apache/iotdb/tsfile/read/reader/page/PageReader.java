@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -104,9 +105,9 @@ public class PageReader implements IPageReader {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public BatchData getAllSatisfiedPageData() throws IOException {
+  public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
 
-    BatchData pageData = new BatchData(dataType);
+    BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending);
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);
@@ -151,7 +152,7 @@ public class PageReader implements IPageReader {
           throw new UnSupportedDataTypeException(String.valueOf(dataType));
       }
     }
-    return pageData;
+    return pageData.flip();
   }
 
   @Override

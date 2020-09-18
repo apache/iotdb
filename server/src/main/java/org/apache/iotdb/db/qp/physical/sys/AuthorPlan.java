@@ -39,12 +39,12 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 public class AuthorPlan extends PhysicalPlan {
 
   private AuthorOperator.AuthorType authorType;
-  private String userName;
   private String roleName;
   private String password;
   private String newPassword;
   private Set<Integer> permissions;
   private PartialPath nodeName;
+  private String userName;
 
   /**
    * AuthorPlan Constructor.
@@ -187,10 +187,6 @@ public class AuthorPlan extends PhysicalPlan {
     return authorType;
   }
 
-  public String getUserName() {
-    return userName;
-  }
-
   public String getRoleName() {
     return roleName;
   }
@@ -213,6 +209,10 @@ public class AuthorPlan extends PhysicalPlan {
 
   public PartialPath getNodeName() {
     return nodeName;
+  }
+
+  public String getUserName() {
+    return userName;
   }
 
   private Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {

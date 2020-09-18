@@ -49,19 +49,20 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
   public SeriesRawDataBatchReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType,
       QueryContext context, QueryDataSource dataSource, Filter timeFilter, Filter valueFilter,
-      TsFileFilter fileFilter) {
+      TsFileFilter fileFilter, boolean ascending) {
     this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, dataSource,
-        timeFilter, valueFilter, fileFilter);
+        timeFilter, valueFilter, fileFilter, ascending);
   }
 
   @TestOnly
+  @SuppressWarnings("squid:S107")
   public SeriesRawDataBatchReader(PartialPath seriesPath, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
-      Filter timeFilter, Filter valueFilter) {
+      Filter timeFilter, Filter valueFilter, boolean ascending) {
     Set<String> allSensors = new HashSet<>();
     allSensors.add(seriesPath.getMeasurement());
     this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
-        seqFileResource, unseqFileResource, timeFilter, valueFilter);
+        seqFileResource, unseqFileResource, timeFilter, valueFilter, ascending);
   }
 
   /**
