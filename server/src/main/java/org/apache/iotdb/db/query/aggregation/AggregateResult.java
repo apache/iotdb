@@ -45,6 +45,8 @@ public abstract class AggregateResult {
   private Binary binaryValue;
 
   protected boolean hasResult;
+  protected boolean ascending = true;
+
 
   /**
    * construct.
@@ -296,6 +298,11 @@ public abstract class AggregateResult {
   protected boolean hasResult() {
     return hasResult;
   }
+
+  public boolean isAscending() {
+    return ascending;
+  }
+
 
   @Override
   public String toString() {

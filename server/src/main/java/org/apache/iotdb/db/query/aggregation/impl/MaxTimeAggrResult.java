@@ -34,6 +34,7 @@ public class MaxTimeAggrResult extends AggregateResult {
   public MaxTimeAggrResult() {
     super(TSDataType.INT64, AggregationType.MAX_TIME);
     reset();
+    this.ascending = false;
   }
 
   @Override
@@ -87,7 +88,7 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return false;
+    return hasResult();
   }
 
   @Override

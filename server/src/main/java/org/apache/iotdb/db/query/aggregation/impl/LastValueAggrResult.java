@@ -38,6 +38,7 @@ public class LastValueAggrResult extends AggregateResult {
   public LastValueAggrResult(TSDataType dataType) {
     super(dataType, AggregationType.LAST_VALUE);
     reset();
+    this.ascending = false;
   }
 
   @Override
@@ -103,7 +104,7 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return false;
+    return hasResult();
   }
 
   @Override
