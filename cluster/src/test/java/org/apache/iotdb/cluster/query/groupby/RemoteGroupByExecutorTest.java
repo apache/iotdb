@@ -63,7 +63,7 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
     List<GroupByExecutor> groupByExecutors = readerFactory
         .getGroupByExecutors(path, Collections.singleton(path.getMeasurement()), dataType,
             context, timeFilter,
-            aggregationTypes);
+            aggregationTypes, true);
 
     for (int i = 0; i < groupByExecutors.size(); i++) {
       GroupByExecutor groupByExecutor = groupByExecutors.get(i);
@@ -115,7 +115,7 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
     ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
     List<GroupByExecutor> groupByExecutors = readerFactory
         .getGroupByExecutors(path, Collections.singleton(path.getMeasurement()), dataType, context
-            , timeFilter, aggregationTypes);
+            , timeFilter, aggregationTypes, true);
 
     for (int i = 0; i < groupByExecutors.size(); i++) {
       GroupByExecutor groupByExecutor = groupByExecutors.get(i);

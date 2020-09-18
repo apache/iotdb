@@ -189,6 +189,11 @@ public class MemberTest {
           return null;
         }
       }
+
+      @Override
+      public AsyncClient getSendLogAsyncClient(Node node) {
+        return getAsyncClient(node);
+      }
     };
     newMember.setThisNode(node);
     newMember.setMetaGroupMember(testMetaMember);
@@ -244,6 +249,11 @@ public class MemberTest {
         } catch (IOException e) {
           return null;
         }
+      }
+
+      @Override
+      public AsyncClient getSendLogAsyncClient(Node node) {
+        return getAsyncClient(node);
       }
     };
     ret.setThisNode(node);

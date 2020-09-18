@@ -179,6 +179,10 @@ public class DataGroupMemberTest extends MemberTest {
       public void updateHardState(long currentTerm, Node leader) {
       }
 
+      @Override
+      public AsyncClient getSendLogAsyncClient(Node node) {
+        return getAsyncClient(node);
+      }
 
       @Override
       public AsyncClient getAsyncClient(Node node) {
@@ -715,6 +719,7 @@ public class DataGroupMemberTest extends MemberTest {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     filter.serialize(dataOutputStream);
     request.setTimeFilterBytes(byteArrayOutputStream.toByteArray());
+    request.setAscending(true);
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
@@ -770,6 +775,7 @@ public class DataGroupMemberTest extends MemberTest {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     filter.serialize(dataOutputStream);
     request.setTimeFilterBytes(byteArrayOutputStream.toByteArray());
+    request.setAscending(true);
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
@@ -939,6 +945,7 @@ public class DataGroupMemberTest extends MemberTest {
     request.setRequestor(TestUtils.getNode(0));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
     request.setDeviceMeasurements(Collections.singleton(TestUtils.getTestMeasurement(0)));
+    request.setAscending(true);
 
     DataGroupMember dataGroupMember;
     AtomicReference<Long> resultRef;

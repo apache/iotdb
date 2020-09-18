@@ -47,8 +47,7 @@ public class ClusterLinearFill extends LinearFill {
   }
 
   @Override
-  protected TimeValuePair calculatePrecedingPoint()
-      throws StorageEngineException {
+  protected TimeValuePair calculatePrecedingPoint() {
     // calculate the preceding point can be viewed as a previous fill
     ClusterPreviousFill clusterPreviousFill = new ClusterPreviousFill(dataType, queryTime,
         beforeRange, metaGroupMember);
@@ -62,7 +61,7 @@ public class ClusterLinearFill extends LinearFill {
 
     List<AggregateResult> aggregateResult = aggregator
         .getAggregateResult(seriesPath, deviceMeasurements, AGGREGATION_NAMES,
-            dataType, afterFilter, context);
+            dataType, afterFilter, context, true);
     AggregateResult minTimeResult = aggregateResult.get(0);
     AggregateResult firstValueResult = aggregateResult.get(1);
 

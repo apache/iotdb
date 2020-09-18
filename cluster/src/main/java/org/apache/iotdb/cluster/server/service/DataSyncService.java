@@ -306,4 +306,14 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public boolean onSnapshotApplied(Node header, List<Integer> slots) {
     return dataGroupMember.onSnapshotInstalled(slots);
   }
+
+  @Override
+  public ByteBuffer peekNextNotNullValue(Node header, long executorId, long startTime, long endTime)
+      throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().peekNextNotNullValue(executorId, startTime, endTime);
+    } catch (ReaderNotFoundException | IOException | QueryProcessException e) {
+      throw new TException(e);
+    }
+  }
 }

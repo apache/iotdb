@@ -60,7 +60,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
 
   @Override
   protected List<AggregateResult> aggregateOneSeries(Entry<PartialPath, List<Integer>> pathToAggrIndexes,
-      Set<String> deviceMeasurements, Filter timeFilter, QueryContext context) throws StorageEngineException {
+      Set<String> deviceMeasurements, Filter timeFilter, QueryContext context, boolean ascending) throws StorageEngineException {
     PartialPath seriesPath = pathToAggrIndexes.getKey();
     TSDataType tsDataType = dataTypes.get(pathToAggrIndexes.getValue().get(0));
     List<String> aggregationNames = new ArrayList<>();
@@ -70,7 +70,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
     }
     return aggregator.getAggregateResult(seriesPath, deviceMeasurements, aggregationNames,
         tsDataType, timeFilter,
-        context);
+        context, ascending);
   }
 
   @Override
@@ -86,6 +86,6 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
       throws StorageEngineException, QueryProcessException {
     return readerFactory.getReaderByTimestamp(path,
         dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()),
-        dataType, context);
+        dataType, context, dataQueryPlan.isAscending());
   }
 }

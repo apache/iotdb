@@ -333,4 +333,14 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       AsyncMethodCallback<Boolean> resultHandler) {
     resultHandler.onComplete(dataGroupMember.onSnapshotInstalled(slots));
   }
+
+  @Override
+  public void peekNextNotNullValue(Node header, long executorId, long startTime, long endTime,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    try {
+      resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().peekNextNotNullValue(executorId, startTime, endTime));
+    } catch (ReaderNotFoundException | IOException | QueryProcessException e) {
+      resultHandler.onError(e);
+    }
+  }
 }

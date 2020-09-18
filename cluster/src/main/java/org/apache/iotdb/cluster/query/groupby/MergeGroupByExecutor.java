@@ -33,6 +33,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,18 +49,20 @@ public class MergeGroupByExecutor implements GroupByExecutor {
   private QueryContext context;
   private Filter timeFilter;
   private ClusterReaderFactory readerFactory;
+  private boolean ascending;
 
   private List<GroupByExecutor> groupByExecutors;
 
   MergeGroupByExecutor(PartialPath path, Set<String> deviceMeasurements, TSDataType dataType,
       QueryContext context, Filter timeFilter,
-      MetaGroupMember metaGroupMember) {
+      MetaGroupMember metaGroupMember, boolean ascending) {
     this.path = path;
     this.deviceMeasurements = deviceMeasurements;
     this.dataType = dataType;
     this.context = context;
     this.timeFilter = timeFilter;
     this.readerFactory = new ClusterReaderFactory(metaGroupMember);
+    this.ascending = ascending;
   }
 
   @Override
@@ -93,10 +96,37 @@ public class MergeGroupByExecutor implements GroupByExecutor {
     return results;
   }
 
+  @Override
+  public Pair<Long, Object> peekNextNotNullValue(long nextStartTime, long nextEndTime)
+      throws IOException {
+    if (groupByExecutors == null) {
+      try {
+        initExecutors();
+      } catch (QueryProcessException e) {
+        throw new IOException(e);
+      }
+    }
+
+    Pair<Long, Object> result = null;
+    for (GroupByExecutor groupByExecutor : groupByExecutors) {
+      Pair<Long, Object> pair = groupByExecutor
+          .peekNextNotNullValue(nextStartTime, nextEndTime);
+      if (pair == null) {
+        continue;
+      }
+      if (result == null || result.left > pair.left) {
+        result = pair;
+      }
+    }
+    logger.debug("peekNextNotNullValue result of {}@[{}, {}] is {}", path, nextStartTime, nextEndTime,
+        results);
+    return result;
+  }
+
   private void initExecutors() throws QueryProcessException {
     try {
       groupByExecutors = readerFactory.getGroupByExecutors(path, deviceMeasurements, dataType,
-          context, timeFilter, aggregationTypes);
+          context, timeFilter, aggregationTypes, ascending);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }

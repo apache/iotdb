@@ -62,6 +62,8 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     this.metaGroupMember = metaGroupMember;
     this.readerFactory = new ClusterReaderFactory(metaGroupMember);
+    this.ascending = groupByPlan.isAscending();
+
     initGroupBy(context, groupByPlan);
   }
 
@@ -78,6 +80,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
       QueryContext context,
       TsFileFilter fileFilter) throws StorageEngineException, QueryProcessException {
     return readerFactory.getReaderByTimestamp(path,
-        dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context);
+        dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
+        dataQueryPlan.isAscending());
   }
 }

@@ -176,6 +176,7 @@ struct SingleSeriesQueryRequest {
   6: required Node header
   7: required int dataTypeOrdinal
   8: required set<string> deviceMeasurements
+  9: required bool ascending
 }
 
 struct PreviousFillRequest {
@@ -203,6 +204,7 @@ struct GetAggrResultRequest {
   6: required long queryId
   7: required Node requestor
   8: required set<string> deviceMeasurements
+  9: required bool ascending
 }
 
 struct GroupByRequest {
@@ -214,6 +216,7 @@ struct GroupByRequest {
   6: required Node header
   7: required Node requestor
   8: required set<string> deviceMeasurements
+  9: required bool ascending
 }
 
 struct LastQueryRequest {
@@ -399,6 +402,9 @@ service TSDataService extends RaftService {
   * method to inform the group that one replica of such slots has been pulled.
   **/
   bool onSnapshotApplied(1: Node header 2: list<int> slots)
+
+  binary peekNextNotNullValue(1: Node header, 2: long executorId, 3: long startTime, 4: long
+  endTime)
 }
 
 service TSMetaService extends RaftService {

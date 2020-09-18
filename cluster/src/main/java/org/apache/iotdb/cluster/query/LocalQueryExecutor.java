@@ -68,6 +68,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
@@ -176,7 +177,7 @@ public class LocalQueryExecutor {
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     IBatchReader batchReader = readerFactory.getSeriesBatchReader(path, deviceMeasurements,
-        dataType, timeFilter, valueFilter, queryContext, dataGroupMember);
+        dataType, timeFilter, valueFilter, queryContext, dataGroupMember, request.ascending);
 
     // if the reader contains no data, send a special id of -1 to prevent the requester from
     // meaninglessly fetching data
@@ -287,7 +288,7 @@ public class LocalQueryExecutor {
    * @param request
    */
   public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, StorageEngineException {
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
     logger
         .debug("{}: {} is querying {} by timestamp, queryId: {}", name, request.getRequester(),
             request.getPath(), request.getQueryId());
@@ -307,7 +308,7 @@ public class LocalQueryExecutor {
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     IReaderByTimestamp readerByTimestamp = readerFactory.getReaderByTimestamp(path,
-        deviceMeasurements, dataType, queryContext, dataGroupMember);
+        deviceMeasurements, dataType, queryContext, dataGroupMember, request.ascending);
     if (readerByTimestamp != null) {
       long readerId = queryManager.registerReaderByTime(readerByTimestamp);
       queryContext.registerLocalReader(readerId);
@@ -361,11 +362,12 @@ public class LocalQueryExecutor {
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), request.queryId);
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
+    boolean ascending = request.ascending;
 
     // do the aggregations locally
     List<AggregateResult> results;
     results = getAggrResult(aggregations, deviceMeasurements, dataType, path, timeFilter,
-        queryContext);
+        queryContext, ascending);
     logger.trace("{}: aggregation results {}, queryId: {}", name, results, request.getQueryId());
 
     // serialize and send the results
@@ -399,7 +401,7 @@ public class LocalQueryExecutor {
    */
   public List<AggregateResult> getAggrResult(List<String> aggregations,
       Set<String> allSensors, TSDataType dataType, String path,
-      Filter timeFilter, QueryContext context)
+      Filter timeFilter, QueryContext context, boolean ascending)
       throws IOException, StorageEngineException, QueryProcessException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck();
@@ -417,7 +419,7 @@ public class LocalQueryExecutor {
             dataGroupMember.getHeader());
     try {
       AggregationExecutor.aggregateOneSeries(new PartialPath(path), allSensors, context, timeFilter,
-          dataType, results, new SlotTsFileFilter(nodeSlots));
+          dataType, results, new SlotTsFileFilter(nodeSlots), ascending);
     } catch (IllegalPathException e) {
       //ignore
     }
@@ -463,7 +465,7 @@ public class LocalQueryExecutor {
   public LocalGroupByExecutor getGroupByExecutor(PartialPath path,
       Set<String> deviceMeasurements, TSDataType dataType,
       Filter timeFilter,
-      List<Integer> aggregationTypes, QueryContext context)
+      List<Integer> aggregationTypes, QueryContext context, boolean ascending)
       throws StorageEngineException, QueryProcessException {
     // pull the newest data
     try {
@@ -476,8 +478,7 @@ public class LocalQueryExecutor {
     List<Integer> nodeSlots = ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
         .getNodeSlots(dataGroupMember.getHeader());
     LocalGroupByExecutor executor = new LocalGroupByExecutor(path,
-        deviceMeasurements, dataType
-        , context, timeFilter, new SlotTsFileFilter(nodeSlots));
+        deviceMeasurements, dataType, context, timeFilter, new SlotTsFileFilter(nodeSlots), ascending);
     for (Integer aggregationType : aggregationTypes) {
       executor.addAggregateResult(AggregateResultFactory
           .getAggrResultByType(AggregationType.values()[aggregationType], dataType));
@@ -510,11 +511,12 @@ public class LocalQueryExecutor {
     logger.debug("{}: {} is querying {} using group by, queryId: {}", name,
         request.getRequestor(), path, queryId);
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
+    boolean ascending = request.ascending;
 
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), queryId);
     LocalGroupByExecutor executor = getGroupByExecutor(path, deviceMeasurements, dataType,
-        timeFilter, aggregationTypeOrdinals, queryContext);
+        timeFilter, aggregationTypeOrdinals, queryContext, ascending);
     if (!executor.isEmpty()) {
       long executorId = queryManager.registerGroupByExecutor(executor);
       logger.debug("{}: Build a GroupByExecutor of {} for {}, executorId: {}", name, path,
@@ -553,6 +555,25 @@ public class LocalQueryExecutor {
     logger.debug("{}: Send results of group by executor {}, size:{}", name, executor,
         resultBuffers.size());
     return resultBuffers;
+  }
+
+  public ByteBuffer peekNextNotNullValue(long executorId, long startTime, long endTime)
+      throws ReaderNotFoundException, IOException, QueryProcessException {
+    GroupByExecutor executor = queryManager.getGroupByExecutor(executorId);
+    if (executor == null) {
+      throw new ReaderNotFoundException(executorId);
+    }
+    Pair<Long, Object> pair = executor.peekNextNotNullValue(startTime, endTime);
+    ByteBuffer resultBuffer;
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      dataOutputStream.writeLong(pair.left);
+      SerializeUtils.serializeObject(pair.right, dataOutputStream);
+      resultBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+    }
+    logger.debug("{}: Send results of group by executor {}, size:{}", name, executor,
+        resultBuffer.limit());
+    return resultBuffer;
   }
 
   public ByteBuffer previousFill(PreviousFillRequest request)

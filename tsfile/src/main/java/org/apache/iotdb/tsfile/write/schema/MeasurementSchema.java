@@ -216,11 +216,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
 
-    byteLen += ReadWriteIOUtils.write(type, outputStream);
+    byteLen += ReadWriteIOUtils.write((short) type, outputStream);
 
-    byteLen += ReadWriteIOUtils.write(encoding, outputStream);
+    byteLen += ReadWriteIOUtils.write((short) encoding, outputStream);
 
-    byteLen += ReadWriteIOUtils.write(compressor, outputStream);
+    byteLen += ReadWriteIOUtils.write((short) compressor, outputStream);
 
     if (props == null) {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
@@ -243,11 +243,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     byteLen += ReadWriteIOUtils.write(measurementId, buffer);
 
-    byteLen += ReadWriteIOUtils.write(type, buffer);
+    byteLen += ReadWriteIOUtils.write((short) type, buffer);
 
-    byteLen += ReadWriteIOUtils.write(encoding, buffer);
+    byteLen += ReadWriteIOUtils.write((short) encoding, buffer);
 
-    byteLen += ReadWriteIOUtils.write(compressor, buffer);
+    byteLen += ReadWriteIOUtils.write((short) compressor, buffer);
 
     if (props == null) {
       byteLen += ReadWriteIOUtils.write(0, buffer);

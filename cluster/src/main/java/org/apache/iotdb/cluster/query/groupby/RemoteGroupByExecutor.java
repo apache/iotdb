@@ -33,6 +33,8 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
+import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,5 +105,40 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
     logger.debug("Fetched group by result from {} of [{}, {}]: {}", source, curStartTime,
         curEndTime, results);
     return results;
+  }
+
+  @Override
+  public Pair<Long, Object> peekNextNotNullValue(long nextStartTime, long nextEndTime)
+      throws IOException {
+    ByteBuffer aggrBuffer;
+    try {
+      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+        AsyncDataClient client = metaGroupMember
+            .getClientProvider().getAsyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
+        aggrBuffer = SyncClientAdaptor
+            .peekNextNotNullValue(client, header, executorId, nextStartTime, nextEndTime);
+      } else {
+        SyncDataClient syncDataClient = metaGroupMember
+            .getClientProvider().getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
+        aggrBuffer = syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
+        ClientUtils.putBackSyncClient(syncDataClient);
+      }
+
+    } catch (TException e) {
+      throw new IOException(e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IOException(e);
+    }
+
+    Pair<Long, Object> result = null;
+    if (aggrBuffer != null) {
+      long time = aggrBuffer.getLong();
+      Object o = SerializeUtils.deserializeObject(aggrBuffer);
+      result = new Pair<>(time, o);
+    }
+    logger.debug("Fetched peekNextNotNullValue from {} of [{}, {}]: {}", source, nextStartTime,
+        nextEndTime, result);
+    return result;
   }
 }

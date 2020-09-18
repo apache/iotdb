@@ -67,11 +67,12 @@ public class ClusterAggregator {
    * queried is determined by "timeFilter".
    *
    * @param timeFilter nullable, when null, all groups will be queried
+   * @param ascending
    */
   public List<AggregateResult> getAggregateResult(PartialPath path,
       Set<String> deviceMeasurements, List<String> aggregations,
       TSDataType dataType, Filter timeFilter,
-      QueryContext context) throws StorageEngineException {
+      QueryContext context, boolean ascending) throws StorageEngineException {
     // make sure the partition table is new
     try {
       metaGroupMember.syncLeaderWithConsistencyCheck();
@@ -86,7 +87,7 @@ public class ClusterAggregator {
     // get the aggregation result of each group and merge them
     for (PartitionGroup partitionGroup : partitionGroups) {
       List<AggregateResult> groupResult = getAggregateResult(path, deviceMeasurements,
-          aggregations, dataType, timeFilter, partitionGroup, context);
+          aggregations, dataType, timeFilter, partitionGroup, context, ascending);
       if (results == null) {
         // the first results
         results = groupResult;
@@ -108,10 +109,10 @@ public class ClusterAggregator {
   private List<AggregateResult> getAggregateResult(Path path,
       Set<String> deviceMeasurements, List<String> aggregations,
       TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
-      QueryContext context) throws StorageEngineException {
+      QueryContext context, boolean ascending) throws StorageEngineException {
     if (!partitionGroup.contains(metaGroupMember.getThisNode())) {
       return getRemoteAggregateResult(path, deviceMeasurements, aggregations, dataType, timeFilter
-          , partitionGroup, context);
+          , partitionGroup, context, ascending);
     } else {
       // perform the aggregations locally
       DataGroupMember dataMember = metaGroupMember.getLocalDataMember(partitionGroup.getHeader());
@@ -122,7 +123,7 @@ public class ClusterAggregator {
                 aggregations, path, partitionGroup.getHeader());
         List<AggregateResult> aggrResult = localQueryExecutor
             .getAggrResult(aggregations, deviceMeasurements, dataType, path.getFullPath(),
-                timeFilter, context);
+                timeFilter, context, ascending);
         logger
             .debug("{}: queried aggregation {} of {} in {} locally are {}", metaGroupMember.getName(),
                 aggregations,
@@ -143,7 +144,7 @@ public class ClusterAggregator {
   private List<AggregateResult> getRemoteAggregateResult(Path
       path, Set<String> deviceMeasurements, List<String> aggregations,
       TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
-      QueryContext context) throws StorageEngineException {
+      QueryContext context, boolean ascending) throws StorageEngineException {
 
     GetAggrResultRequest request = new GetAggrResultRequest();
     request.setPath(path.getFullPath());
@@ -153,6 +154,7 @@ public class ClusterAggregator {
     request.setRequestor(metaGroupMember.getThisNode());
     request.setHeader(partitionGroup.getHeader());
     request.setDeviceMeasurements(deviceMeasurements);
+    request.setAscending(ascending);
     if (timeFilter != null) {
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
     }

@@ -333,6 +333,11 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
+      public AsyncClient getSendLogAsyncClient(Node node) {
+        return getAsyncClient(node);
+      }
+
+      @Override
       public AsyncClient getAsyncClient(Node node) {
         return getClient(node);
       }
@@ -778,7 +783,7 @@ public class MetaGroupMemberTest extends MemberTest {
         IReaderByTimestamp readerByTimestamp = readerFactory
             .getReaderByTimestamp(new PartialPath(TestUtils.getTestSeries(i, 0)),
                 Collections.singleton(TestUtils.getTestMeasurement(0)), TSDataType.DOUBLE,
-                context);
+                context, true);
         for (int j = 0; j < 10; j++) {
           assertEquals(j * 1.0, (double) readerByTimestamp.getValueInTimestamp(j), 0.00001);
         }
@@ -826,7 +831,7 @@ public class MetaGroupMemberTest extends MemberTest {
             .getSeriesReader(new PartialPath(TestUtils.getTestSeries(i, 0)),
                 Collections.singleton(TestUtils.getTestMeasurement(0)), TSDataType.DOUBLE,
                 TimeFilter.gtEq(5),
-                ValueFilter.ltEq(8.0), context);
+                ValueFilter.ltEq(8.0), context, true);
         assertTrue(reader.hasNextBatch());
         BatchData batchData = reader.nextBatch();
         for (int j = 5; j < 9; j++) {
