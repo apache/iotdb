@@ -69,4 +69,16 @@ public interface ClusterMonitorMBean {
    * @return key: node, value: live or not
    */
   Map<Node, Boolean> getAllNodeStatus();
+
+  /**
+   *
+   * @return A multi-line string with each line representing the total time consumption,
+   * invocation number, and average time consumption.
+   */
+  String getInstrumentingInfo();
+
+  /**
+   * Reset all instrumenting statistics in Timer.
+   */
+  void resetInstrumenting();
 }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cluster.log;
 
+
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -29,9 +31,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.server.Peer;
+import org.apache.iotdb.cluster.server.Timer;
+import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.cluster.utils.ClientUtils;
+import org.apache.thrift.TException;
+import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,15 +74,12 @@ public class LogDispatcher {
   public void offer(SendLogRequest log) {
     for (int i = 0; i < nodeLogQueues.size(); i++) {
       BlockingQueue<SendLogRequest> nodeLogQueue = nodeLogQueues.get(i);
-      try {
-        nodeLogQueue.put(log);
-      } catch (InterruptedException e) {
-        logger.error("Interrupted when inserting {} into queue[{}]", log, i);
-        Thread.currentThread().interrupt();
+      if (!nodeLogQueue.add(log)) {
+        logger.debug("Log queue[{}] of {} is full, ignore the log to this node", i,
+            member.getName());
+      } else {
+        log.setEnqueueTime(System.nanoTime());
       }
-    }
-    if (logger.isDebugEnabled()) {
-      logger.debug("{} is enqueued in {} queues", log.log, nodeLogQueues.size());
     }
   }
 
@@ -92,11 +100,13 @@ public class LogDispatcher {
     private AtomicBoolean leaderShipStale;
     private AtomicLong newLeaderTerm;
     private AppendEntryRequest appendEntryRequest;
+    private long enqueueTime;
+    private long createTime;
 
     public SendLogRequest(Log log, AtomicInteger voteCounter,
         AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm,
         AppendEntryRequest appendEntryRequest) {
-      this.log = log;
+      this.setLog(log);
       this.setVoteCounter(voteCounter);
       this.setLeaderShipStale(leaderShipStale);
       this.setNewLeaderTerm(newLeaderTerm);
@@ -109,6 +119,30 @@ public class LogDispatcher {
 
     public void setVoteCounter(AtomicInteger voteCounter) {
       this.voteCounter = voteCounter;
+    }
+
+    public Log getLog() {
+      return log;
+    }
+
+    public void setLog(Log log) {
+      this.log = log;
+    }
+
+    public long getEnqueueTime() {
+      return enqueueTime;
+    }
+
+    public void setEnqueueTime(long enqueueTime) {
+      this.enqueueTime = enqueueTime;
+    }
+
+    public long getCreateTime() {
+      return createTime;
+    }
+
+    public void setCreateTime(long createTime) {
+      this.createTime = createTime;
     }
 
     public AtomicBoolean getLeaderShipStale() {
@@ -142,11 +176,14 @@ public class LogDispatcher {
     private Node receiver;
     private BlockingQueue<SendLogRequest> logBlockingDeque;
     private List<SendLogRequest> currBatch = new ArrayList<>();
+    private Peer peer;
 
     DispatcherThread(Node receiver,
         BlockingQueue<SendLogRequest> logBlockingDeque) {
       this.receiver = receiver;
       this.logBlockingDeque = logBlockingDeque;
+      this.peer = member.getPeerMap().computeIfAbsent(receiver,
+          r -> new Peer(member.getLogManager().getLastLogIndex()));
     }
 
     @Override
@@ -160,9 +197,12 @@ public class LogDispatcher {
           if (logger.isDebugEnabled()) {
             logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
           }
-          for (SendLogRequest request : currBatch) {
-            sendLog(request);
+          if (currBatch.size() > 1) {
+            sendLogs(currBatch);
+          } else {
+            sendLog(currBatch.get(0));
           }
+
           currBatch.clear();
         }
       } catch (InterruptedException e) {
@@ -173,10 +213,143 @@ public class LogDispatcher {
       logger.info("Dispatcher exits");
     }
 
+    private void appendEntriesAsync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch)
+        throws TException {
+      AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
+      AsyncClient client = member.getSendLogAsyncClient(receiver);
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: Catching up {} with {} logs", member.getName(), receiver, logList.size());
+      }
+      client.appendEntries(request, handler);
+    }
+
+    private void appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch) {
+
+      long start;
+      if (Timer.ENABLE_INSTRUMENTING) {
+        start = System.nanoTime();
+      }
+      if (!member.waitForPrevLog(peer, currBatch.get(0).getLog())) {
+        logger.warn("{}: node {} timed out when appending {}", member.getName(), receiver,
+            currBatch.get(0).getLog());
+        return;
+      }
+      Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.addNanoFromStart(start);
+
+
+      Client client = member.getSyncClient(receiver);
+      AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
+      try {
+        if (Timer.ENABLE_INSTRUMENTING) {
+          start = System.nanoTime();
+        }
+        long result = client.appendEntries(request);
+        Timer.Statistic.RAFT_SENDER_SEND_LOG.addNanoFromStart(start);
+        if (result != -1 && logger.isInfoEnabled()) {
+          logger.info("{}: Append {} logs to {}, resp: {}", member.getName(), logList.size(), receiver, result);
+        }
+        handler.onComplete(result);
+      } catch (TException e) {
+        handler.onError(e);
+        logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
+      } finally {
+        ClientUtils.putBackSyncClient(client);
+      }
+    }
+
+    private AppendEntriesRequest prepareRequest(List<ByteBuffer> logList, List<SendLogRequest> currBatch) {
+      AppendEntriesRequest request = new AppendEntriesRequest();
+
+      if (member.getHeader() != null) {
+        request.setHeader(member.getHeader());
+      }
+      request.setLeader(member.getThisNode());
+      request.setLeaderCommit(member.getLogManager().getCommitLogIndex());
+
+      synchronized (member.getTerm()) {
+        request.setTerm(member.getTerm().get());
+      }
+
+      request.setEntries(logList);
+      // set index for raft
+      request.setPrevLogIndex(currBatch.get(0).getLog().getCurrLogIndex() - 1);
+      try {
+        request.setPrevLogTerm(currBatch.get(0).getAppendEntryRequest().prevLogTerm);
+      } catch (Exception e) {
+        logger.error("getTerm failed for newly append entries", e);
+      }
+      return request;
+    }
+
+    private void sendLogs(List<SendLogRequest> currBatch) throws TException {
+      List<ByteBuffer> logList = new ArrayList<>();
+      for (SendLogRequest request : currBatch) {
+        Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.addNanoFromStart(request.getCreateTime());
+        logList.add(request.getAppendEntryRequest().entry);
+      }
+
+      AppendEntriesRequest appendEntriesReques = prepareRequest(logList, currBatch);
+      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+        appendEntriesAsync(logList, appendEntriesReques, new ArrayList<>(currBatch));
+      } else {
+        appendEntriesSync(logList, appendEntriesReques, currBatch);
+      }
+      for (SendLogRequest batch : currBatch) {
+        Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.addNanoFromStart(batch.getCreateTime());
+      }
+    }
+
     private void sendLog(SendLogRequest logRequest) {
-      member.sendLogToFollower(logRequest.log, logRequest.getVoteCounter(), receiver,
+      Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.addNanoFromStart(logRequest.getCreateTime());
+      member.sendLogToFollower(logRequest.getLog(), logRequest.getVoteCounter(), receiver,
           logRequest.getLeaderShipStale(), logRequest.getNewLeaderTerm(),
           logRequest.getAppendEntryRequest());
+      Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.addNanoFromStart(logRequest.getCreateTime());
     }
+
+    class AppendEntriesHandler implements AsyncMethodCallback<Long> {
+
+      private final List<AsyncMethodCallback<Long>> singleEntryHandlers;
+
+      private AppendEntriesHandler(List<SendLogRequest> batch) {
+        singleEntryHandlers = new ArrayList<>(batch.size());
+        for (SendLogRequest sendLogRequest : batch) {
+          AppendNodeEntryHandler handler = getAppendNodeEntryHandler(sendLogRequest.getLog(),
+              sendLogRequest.getVoteCounter()
+              , receiver,
+              sendLogRequest.getLeaderShipStale(), sendLogRequest.getNewLeaderTerm(), peer);
+          singleEntryHandlers.add(handler);
+        }
+      }
+
+      @Override
+      public void onComplete(Long aLong) {
+        for (AsyncMethodCallback<Long> singleEntryHandler : singleEntryHandlers) {
+          singleEntryHandler.onComplete(aLong);
+        }
+      }
+
+      @Override
+      public void onError(Exception e) {
+        for (AsyncMethodCallback<Long> singleEntryHandler : singleEntryHandlers) {
+          singleEntryHandler.onError(e);
+        }
+      }
+    }
+  }
+
+
+
+  public AppendNodeEntryHandler getAppendNodeEntryHandler(Log log, AtomicInteger voteCounter,
+      Node node, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, Peer peer) {
+    AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+    handler.setReceiver(node);
+    handler.setVoteCounter(voteCounter);
+    handler.setLeaderShipStale(leaderShipStale);
+    handler.setLog(log);
+    handler.setMember(member);
+    handler.setPeer(peer);
+    handler.setReceiverTerm(newLeaderTerm);
+    return handler;
   }
 }

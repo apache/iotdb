@@ -75,10 +75,11 @@ public class NodeReport {
     boolean isReadOnly;
     long lastHeartbeatReceivedTime;
     long prevLastLogIndex;
+    long maxAppliedLogIndex;
 
     RaftMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
         long lastLogIndex, long commitIndex, long commitTerm, boolean isReadOnly,
-        long lastHeartbeatReceivedTime, long prevLastLogIndex) {
+        long lastHeartbeatReceivedTime, long prevLastLogIndex, long maxAppliedLogIndex) {
       this.character = character;
       this.leader = leader;
       this.term = term;
@@ -89,6 +90,7 @@ public class NodeReport {
       this.isReadOnly = isReadOnly;
       this.lastHeartbeatReceivedTime = lastHeartbeatReceivedTime;
       this.prevLastLogIndex = prevLastLogIndex;
+      this.maxAppliedLogIndex = maxAppliedLogIndex;
     }
   }
 
@@ -99,9 +101,9 @@ public class NodeReport {
 
     public MetaMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
         long lastLogIndex, long commitIndex, long commitTerm, boolean isReadOnly,
-        long lastHeartbeatReceivedTime, long prevLastLogIndex) {
+        long lastHeartbeatReceivedTime, long prevLastLogIndex, long maxAppliedLogIndex) {
       super(character, leader, term, lastLogTerm, lastLogIndex, commitIndex, commitTerm, isReadOnly,
-          lastHeartbeatReceivedTime, prevLastLogIndex);
+          lastHeartbeatReceivedTime, prevLastLogIndex, maxAppliedLogIndex);
     }
 
     @Override
@@ -114,9 +116,11 @@ public class NodeReport {
           ", lastLogIndex=" + lastLogIndex +
           ", commitIndex=" + commitIndex +
           ", commitTerm=" + commitTerm +
+          ", appliedLogIndex=" + maxAppliedLogIndex +
           ", readOnly=" + isReadOnly +
           ", lastHeartbeat=" + (System.currentTimeMillis() - lastHeartbeatReceivedTime) + "ms ago" +
           ", logIncrement=" + (lastLogIndex - prevLastLogIndex) +
+          ", \n timer: "+ Timer.getReport() +
           '}';
     }
   }
@@ -132,9 +136,9 @@ public class NodeReport {
     public DataMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
         long lastLogIndex, long commitIndex, long commitTerm, Node header, boolean isReadOnly,
         long headerLatency,
-        long lastHeartbeatReceivedTime, long prevLastLogIndex) {
+        long lastHeartbeatReceivedTime, long prevLastLogIndex, long maxAppliedLogIndex) {
       super(character, leader, term, lastLogTerm, lastLogIndex, commitIndex, commitTerm, isReadOnly,
-          lastHeartbeatReceivedTime, prevLastLogIndex);
+          lastHeartbeatReceivedTime, prevLastLogIndex, maxAppliedLogIndex);
       this.header = header;
       this.headerLatency = headerLatency;
     }
@@ -150,6 +154,7 @@ public class NodeReport {
           ", lastLogIndex=" + lastLogIndex +
           ", commitIndex=" + commitIndex +
           ", commitTerm=" + commitTerm +
+          ", appliedLogIndex=" + maxAppliedLogIndex +
           ", readOnly=" + isReadOnly +
           ", headerLatency=" + headerLatency + "ns" +
           ", lastHeartbeat=" + (System.currentTimeMillis() - lastHeartbeatReceivedTime) + "ms ago" +
