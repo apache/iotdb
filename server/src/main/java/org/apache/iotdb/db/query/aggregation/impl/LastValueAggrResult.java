@@ -65,11 +65,10 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     long time = Long.MIN_VALUE;
     Object lastVal = null;
-    while (dataInThisPage.hasCurrent()
+    if (dataInThisPage.hasCurrent()
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
       time = dataInThisPage.currentTime();

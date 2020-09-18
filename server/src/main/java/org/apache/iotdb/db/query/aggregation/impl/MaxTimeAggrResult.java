@@ -44,28 +44,27 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
+    if (hasResult()) {
+      return;
+    }
     long maxTimestamp = statistics.getEndTime();
-    updateMaxTimeResult(maxTimestamp);
+    setLongValue(maxTimestamp);
   }
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) {
-    int maxIndex = dataInThisPage.length() - 1;
-    if (maxIndex < 0) {
-      return;
-    }
-    long time = dataInThisPage.getTimeByIndex(maxIndex);
-    updateMaxTimeResult(time);
+    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
-    while (dataInThisPage.hasCurrent()
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
+    if (hasResult()) {
+      return;
+    }
+    if (dataInThisPage.hasCurrent()
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
-      updateMaxTimeResult(dataInThisPage.currentTime());
-      dataInThisPage.next();
+      setLongValue(dataInThisPage.currentTime());
     }
   }
 
