@@ -72,7 +72,7 @@ public class BatchData implements Serializable {
   private int count;
 
   // true then the data in BatchData is in desc order
-  protected boolean isFromMergeReader = false;
+  protected boolean isFromDescMergeReader = false;
 
 
   private List<long[]> timeRet;
@@ -100,12 +100,12 @@ public class BatchData implements Serializable {
     return count == 0;
   }
 
-  public boolean isFromMergeReader() {
-    return isFromMergeReader;
+  public boolean isFromDescMergeReader() {
+    return isFromDescMergeReader;
   }
 
-  public void setFromMergeReader(boolean fromMergeReader) {
-    isFromMergeReader = fromMergeReader;
+  public void setFromDescMergeReader(boolean fromDescMergeReader) {
+    isFromDescMergeReader = fromDescMergeReader;
   }
 
   public boolean hasCurrent() {

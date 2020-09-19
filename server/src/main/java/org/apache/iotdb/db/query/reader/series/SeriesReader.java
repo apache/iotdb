@@ -541,8 +541,10 @@ public class SeriesReader {
 
       if (mergeReader.hasNextTimeValuePair()) {
 
-        cachedBatchData = BatchDataFactory.createBatchData(dataType, this.orderUtils.getAscending());
-        cachedBatchData.setFromMergeReader(true);
+        cachedBatchData = BatchDataFactory.createBatchData(dataType);
+        if (mergeReader instanceof DescPriorityMergeReader) {
+          cachedBatchData.setFromDescMergeReader(true);
+        }
         long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
 
         while (mergeReader.hasNextTimeValuePair()) {

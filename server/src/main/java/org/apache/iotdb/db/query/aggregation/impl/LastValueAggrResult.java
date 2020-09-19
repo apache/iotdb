@@ -74,7 +74,7 @@ public class LastValueAggrResult extends AggregateResult {
     if (hasResult()) {
       return;
     }
-    if (dataInThisPage instanceof DescBatchData && dataInThisPage.isFromMergeReader()) {
+    if (dataInThisPage.isFromDescMergeReader()) {
       updateLastValueResult(dataInThisPage.getTimeByIndex(0), dataInThisPage.getObjectByIndex(0));
     } else if (dataInThisPage instanceof DescBatchData) {
       if (dataInThisPage.hasCurrent()

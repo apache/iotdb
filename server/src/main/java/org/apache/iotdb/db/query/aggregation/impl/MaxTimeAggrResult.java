@@ -63,7 +63,7 @@ public class MaxTimeAggrResult extends AggregateResult {
     if (hasResult()) {
       return;
     }
-    if (dataInThisPage instanceof DescBatchData && dataInThisPage.isFromMergeReader()) {
+    if (dataInThisPage.isFromDescMergeReader()) {
       updateMaxTimeResult(dataInThisPage.getTimeByIndex(0));
     } else if (dataInThisPage instanceof DescBatchData) {
       if (dataInThisPage.hasCurrent()
