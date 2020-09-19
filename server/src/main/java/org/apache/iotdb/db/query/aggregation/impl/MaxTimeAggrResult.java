@@ -40,7 +40,7 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return hasResult() ? getLongValue() : null;
+    return hasResult() || isChanged ? getLongValue() : null;
   }
 
   @Override
@@ -49,7 +49,8 @@ public class MaxTimeAggrResult extends AggregateResult {
       return;
     }
     long maxTimestamp = statistics.getEndTime();
-    setLongValue(maxTimestamp);
+    updateMaxTimeResult(maxTimestamp);
+    hasResult = false;
   }
 
   @Override
@@ -63,12 +64,12 @@ public class MaxTimeAggrResult extends AggregateResult {
       return;
     }
     if (dataInThisPage instanceof DescBatchData && dataInThisPage.isFromMergeReader()) {
-      setLongValue(dataInThisPage.getTimeByIndex(0));
+      updateMaxTimeResult(dataInThisPage.getTimeByIndex(0));
     } else if (dataInThisPage instanceof DescBatchData) {
       if (dataInThisPage.hasCurrent()
           && dataInThisPage.currentTime() < maxBound
           && dataInThisPage.currentTime() >= minBound) {
-        setLongValue(dataInThisPage.currentTime());
+        updateMaxTimeResult(dataInThisPage.currentTime());
       }
     } else {
       while (dataInThisPage.hasCurrent()
@@ -77,6 +78,7 @@ public class MaxTimeAggrResult extends AggregateResult {
         updateMaxTimeResult(dataInThisPage.currentTime());
         dataInThisPage.next();
       }
+      hasResult = false;
     }
   }
 
@@ -121,8 +123,9 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   private void updateMaxTimeResult(long value) {
-    if (!hasResult() || value >= getLongValue()) {
+    if (!isChanged || value >= getLongValue()) {
       setLongValue(value);
+      isChanged = true;
     }
   }
 }

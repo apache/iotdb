@@ -45,6 +45,7 @@ public abstract class AggregateResult {
   private Binary binaryValue;
 
   protected boolean hasResult;
+  protected boolean isChanged;
   protected boolean ascending = true;
 
 
@@ -57,6 +58,7 @@ public abstract class AggregateResult {
     this.aggregationType = aggregationType;
     this.resultDataType = resultDataType;
     this.hasResult = false;
+    this.isChanged = false;
   }
 
   public abstract Object getResult();
@@ -179,6 +181,7 @@ public abstract class AggregateResult {
 
   public void reset() {
     hasResult = false;
+    isChanged = false;
     booleanValue = false;
     doubleValue = 0;
     floatValue = 0;
@@ -302,7 +305,6 @@ public abstract class AggregateResult {
   public boolean isAscending() {
     return ascending;
   }
-
 
   @Override
   public String toString() {

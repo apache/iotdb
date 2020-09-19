@@ -50,14 +50,18 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasResult() ? getValue() : null;
+    return hasResult() || isChanged ? getValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
+    if (hasResult()) {
+      return;
+    }
     Object lastVal = statistics.getLastValue();
-    setValue(lastVal);
     timestamp = statistics.getEndTime();
+    updateLastValueResult(timestamp, lastVal);
+    hasResult = false;
   }
 
   @Override
@@ -71,12 +75,12 @@ public class LastValueAggrResult extends AggregateResult {
       return;
     }
     if (dataInThisPage instanceof DescBatchData && dataInThisPage.isFromMergeReader()) {
-      setValue(dataInThisPage.getObjectByIndex(0));
+      updateLastValueResult(dataInThisPage.getTimeByIndex(0), dataInThisPage.getObjectByIndex(0));
     } else if (dataInThisPage instanceof DescBatchData) {
       if (dataInThisPage.hasCurrent()
           && dataInThisPage.currentTime() < maxBound
           && dataInThisPage.currentTime() >= minBound) {
-        setValue(dataInThisPage.currentValue());
+        updateLastValueResult(dataInThisPage.currentTime(), dataInThisPage.currentValue());
       }
     } else {
       while (dataInThisPage.hasCurrent()
@@ -85,6 +89,7 @@ public class LastValueAggrResult extends AggregateResult {
         updateLastValueResult(dataInThisPage.currentTime(), dataInThisPage.currentValue());
         dataInThisPage.next();
       }
+      hasResult = false;
     }
   }
 
@@ -132,9 +137,10 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   private void updateLastValueResult(long newTime, Object newValue) {
-    if (!hasResult() || newTime >= timestamp) {
+    if (!isChanged || newTime >= timestamp) {
       timestamp = newTime;
       setValue(newValue);
+      isChanged = true;
     }
   }
 }
