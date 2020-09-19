@@ -103,6 +103,8 @@ public class LevelTsFileManagement extends TsFileManagement {
       seqFile.setDeleted(true);
       if (seqFile.getTsFile().exists()) {
         Files.delete(seqFile.getTsFile().toPath());
+        Files.delete(FSFactoryProducer.getFSFactory()
+            .getFile(seqFile.getTsFile().toPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
       }
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
