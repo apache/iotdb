@@ -541,7 +541,8 @@ public class SeriesReader {
 
       if (mergeReader.hasNextTimeValuePair()) {
 
-        cachedBatchData = BatchDataFactory.createBatchData(dataType);
+        cachedBatchData = BatchDataFactory
+            .createBatchData(dataType, this.orderUtils.getAscending());
         long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
 
         while (mergeReader.hasNextTimeValuePair()) {
@@ -699,9 +700,13 @@ public class SeriesReader {
       // has seq and unseq
       if (orderUtils.getOverlapCheckTime(seqTimeSeriesMetadata.get(0).getStatistics())
           <= orderUtils.getOverlapCheckTime(unSeqTimeSeriesMetadata.peek().getStatistics())) {
-        endTime = orderUtils.getOverlapCheckTime(seqTimeSeriesMetadata.get(0).getStatistics());
+        endTime = orderUtils.getOverlapCheckTime(
+            orderUtils.getAscending() ? seqTimeSeriesMetadata.get(0).getStatistics()
+                : unSeqTimeSeriesMetadata.peek().getStatistics());
       } else {
-        endTime = orderUtils.getOverlapCheckTime(unSeqTimeSeriesMetadata.peek().getStatistics());
+        endTime = orderUtils.getOverlapCheckTime(
+            orderUtils.getAscending() ? unSeqTimeSeriesMetadata.peek().getStatistics()
+                : seqTimeSeriesMetadata.get(0).getStatistics());
       }
     }
 
@@ -725,9 +730,11 @@ public class SeriesReader {
       // has seq and unseq
       if (orderUtils.getOrderTime(seqTimeSeriesMetadata.get(0).getStatistics())
           <= orderUtils.getOrderTime(unSeqTimeSeriesMetadata.peek().getStatistics())) {
-        firstTimeSeriesMetadata = seqTimeSeriesMetadata.remove(0);
+        firstTimeSeriesMetadata = orderUtils.getAscending() ? seqTimeSeriesMetadata.remove(0)
+            : unSeqTimeSeriesMetadata.poll();
       } else {
-        firstTimeSeriesMetadata = unSeqTimeSeriesMetadata.poll();
+        firstTimeSeriesMetadata = orderUtils.getAscending() ? unSeqTimeSeriesMetadata.poll()
+            : seqTimeSeriesMetadata.remove(0);
       }
     }
   }
