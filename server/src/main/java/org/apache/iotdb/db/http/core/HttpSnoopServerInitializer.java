@@ -25,6 +25,9 @@ import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.codec.http.cors.CorsConfig;
+import io.netty.handler.codec.http.cors.CorsConfigBuilder;
+import io.netty.handler.codec.http.cors.CorsHandler;
 import io.netty.handler.ssl.SslContext;
 
 public class HttpSnoopServerInitializer extends ChannelInitializer<SocketChannel> {
@@ -37,6 +40,7 @@ public class HttpSnoopServerInitializer extends ChannelInitializer<SocketChannel
 
   @Override
   public void initChannel(SocketChannel ch) {
+    CorsConfig corsConfig = CorsConfigBuilder.forAnyOrigin().allowNullOrigin().allowCredentials().build();
     ChannelPipeline p = ch.pipeline();
     if (sslCtx != null) {
       p.addLast(sslCtx.newHandler(ch.alloc()));
@@ -46,6 +50,7 @@ public class HttpSnoopServerInitializer extends ChannelInitializer<SocketChannel
     p.addLast(new HttpObjectAggregator(1048576));
     p.addLast(new HttpResponseEncoder());
     p.addLast(new HttpContentCompressor());
+    p.addLast(new CorsHandler(corsConfig));
     p.addLast(new HttpSnoopServerHandler());
   }
 }
