@@ -816,7 +816,6 @@ public class TsFileResource {
   }
 
   public void delete() throws IOException {
-    this.setDeleted(true);
     if (file.exists()) {
       Files.delete(file.toPath());
       Files.delete(FSFactoryProducer.getFSFactory()
