@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.DescBatchData;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class LastValueAggrResult extends AggregateResult {
@@ -66,19 +67,24 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    long time = Long.MIN_VALUE;
-    Object lastVal = null;
-    if (dataInThisPage.hasCurrent()
-        && dataInThisPage.currentTime() < maxBound
-        && dataInThisPage.currentTime() >= minBound) {
-      time = dataInThisPage.currentTime();
-      lastVal = dataInThisPage.currentValue();
-      dataInThisPage.next();
+    if (hasResult()) {
+      return;
     }
-
-    if (time != Long.MIN_VALUE) {
-      setValue(lastVal);
-      timestamp = time;
+    if (dataInThisPage instanceof DescBatchData && dataInThisPage.isFromMergeReader()) {
+      setValue(dataInThisPage.getObjectByIndex(0));
+    } else if (dataInThisPage instanceof DescBatchData) {
+      if (dataInThisPage.hasCurrent()
+          && dataInThisPage.currentTime() < maxBound
+          && dataInThisPage.currentTime() >= minBound) {
+        setValue(dataInThisPage.currentValue());
+      }
+    } else {
+      while (dataInThisPage.hasCurrent()
+          && dataInThisPage.currentTime() < maxBound
+          && dataInThisPage.currentTime() >= minBound) {
+        updateLastValueResult(dataInThisPage.currentTime(), dataInThisPage.currentValue());
+        dataInThisPage.next();
+      }
     }
   }
 
@@ -123,5 +129,12 @@ public class LastValueAggrResult extends AggregateResult {
   @Override
   protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(timestamp, outputStream);
+  }
+
+  private void updateLastValueResult(long newTime, Object newValue) {
+    if (!hasResult() || newTime >= timestamp) {
+      timestamp = newTime;
+      setValue(newValue);
+    }
   }
 }

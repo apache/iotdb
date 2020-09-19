@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.DescBatchData;
 
 public class MaxTimeAggrResult extends AggregateResult {
 
@@ -61,10 +62,21 @@ public class MaxTimeAggrResult extends AggregateResult {
     if (hasResult()) {
       return;
     }
-    if (dataInThisPage.hasCurrent()
-        && dataInThisPage.currentTime() < maxBound
-        && dataInThisPage.currentTime() >= minBound) {
-      setLongValue(dataInThisPage.currentTime());
+    if (dataInThisPage instanceof DescBatchData && dataInThisPage.isFromMergeReader()) {
+      setLongValue(dataInThisPage.getTimeByIndex(0));
+    } else if (dataInThisPage instanceof DescBatchData) {
+      if (dataInThisPage.hasCurrent()
+          && dataInThisPage.currentTime() < maxBound
+          && dataInThisPage.currentTime() >= minBound) {
+        setLongValue(dataInThisPage.currentTime());
+      }
+    } else {
+      while (dataInThisPage.hasCurrent()
+          && dataInThisPage.currentTime() < maxBound
+          && dataInThisPage.currentTime() >= minBound) {
+        updateMaxTimeResult(dataInThisPage.currentTime());
+        dataInThisPage.next();
+      }
     }
   }
 

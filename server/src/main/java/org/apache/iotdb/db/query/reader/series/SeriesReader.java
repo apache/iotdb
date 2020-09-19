@@ -541,8 +541,8 @@ public class SeriesReader {
 
       if (mergeReader.hasNextTimeValuePair()) {
 
-        cachedBatchData = BatchDataFactory
-            .createBatchData(dataType, this.orderUtils.getAscending());
+        cachedBatchData = BatchDataFactory.createBatchData(dataType, this.orderUtils.getAscending());
+        cachedBatchData.setFromMergeReader(true);
         long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
 
         while (mergeReader.hasNextTimeValuePair()) {
@@ -857,7 +857,7 @@ public class SeriesReader {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time <= right.getStartTime(seriesPath.getDevice());
+      return time <= right.getEndTime(seriesPath.getDevice());
     }
 
     @Override

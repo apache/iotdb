@@ -71,6 +71,9 @@ public class BatchData implements Serializable {
   // the insert timestamp number of timeRet
   private int count;
 
+  // true then the data in BatchData is in desc order
+  protected boolean isFromMergeReader = false;
+
 
   private List<long[]> timeRet;
   private List<boolean[]> booleanRet;
@@ -95,6 +98,14 @@ public class BatchData implements Serializable {
 
   public boolean isEmpty() {
     return count == 0;
+  }
+
+  public boolean isFromMergeReader() {
+    return isFromMergeReader;
+  }
+
+  public void setFromMergeReader(boolean fromMergeReader) {
+    isFromMergeReader = fromMergeReader;
   }
 
   public boolean hasCurrent() {
@@ -533,6 +544,23 @@ public class BatchData implements Serializable {
 
   public boolean getBooleanByIndex(int idx) {
     return booleanRet.get(idx / capacity)[idx % capacity];
+  }
+
+  public Object getObjectByIndex(int idx) {
+    if (this.intRet != null) {
+      return getIntByIndex(idx);
+    } else if (this.longRet != null) {
+      return getLongByIndex(idx);
+    } else if (this.doubleRet != null) {
+      return getDoubleByIndex(idx);
+    } else if (this.floatRet != null) {
+      return getFloatByIndex(idx);
+    } else if (this.booleanRet != null) {
+      return getBooleanByIndex(idx);
+    } else if (this.binaryRet != null) {
+      return getBinaryByIndex(idx);
+    }
+    return null;
   }
 
   public TimeValuePair getLastPairBeforeOrEqualTimestamp(long queryTime) {
