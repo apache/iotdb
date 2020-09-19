@@ -814,4 +814,13 @@ public class TsFileResource {
     }
     return maxVersion;
   }
+
+  public void delete() throws IOException {
+    this.setDeleted(true);
+    if (file.exists()) {
+      Files.delete(file.toPath());
+      Files.delete(FSFactoryProducer.getFSFactory()
+          .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+    }
+  }
 }

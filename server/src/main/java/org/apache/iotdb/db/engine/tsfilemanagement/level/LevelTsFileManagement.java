@@ -100,12 +100,7 @@ public class LevelTsFileManagement extends TsFileManagement {
     try {
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      seqFile.setDeleted(true);
-      if (seqFile.getTsFile().exists()) {
-        Files.delete(seqFile.getTsFile().toPath());
-        Files.delete(FSFactoryProducer.getFSFactory()
-            .getFile(seqFile.getTsFile().toPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-      }
+      seqFile.delete();
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
     } finally {
