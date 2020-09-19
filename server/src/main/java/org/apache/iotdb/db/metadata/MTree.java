@@ -528,7 +528,7 @@ public class MTree implements Serializable {
    */
   private void findStorageGroupPaths(MNode node, String[] nodes, int idx, String parent,
       List<PartialPath> storageGroupPaths) {
-    System.out.println("current node:" + node.getName());
+    System.out.println("current node:" + node.getName() + ". is a SgNode:" + (node instanceof  StorageGroupMNode));
     if (node instanceof StorageGroupMNode) {
       storageGroupPaths.add(node.getPartialPath());
       return;
