@@ -112,7 +112,7 @@ public class Measurement implements MeasurementMBean, IService {
   private long displayIntervalInMs;
   private Map<String, Boolean> operationSwitch;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(Measurement.class);
+  private static final Logger LOG = LoggerFactory.getLogger(Measurement.class);
   private final String mbeanName = String
       .format("%s:%s=%s", "org.apache.iotdb.db.cost.statistic", IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
@@ -164,7 +164,7 @@ public class Measurement implements MeasurementMBean, IService {
             new Measurement.DisplayRunnable(), 20, displayIntervalInMs, TimeUnit.MILLISECONDS);
       }
     } catch (Exception e) {
-      LOGGER.error("Find error when start performance statistic thread, because {}", e);
+      LOG.error("Find error when start performance statistic thread, because {}", e);
     } finally {
       stateChangeLock.unlock();
     }
@@ -182,7 +182,7 @@ public class Measurement implements MeasurementMBean, IService {
             new Measurement.DisplayRunnable(), 20, displayIntervalInMs, TimeUnit.MILLISECONDS);
       }
     } catch (Exception e) {
-      LOGGER.error("Find error when start performance statistic thread, because {}", e);
+      LOG.error("Find error when start performance statistic thread, because {}", e);
     } finally {
       stateChangeLock.unlock();
     }
@@ -200,7 +200,7 @@ public class Measurement implements MeasurementMBean, IService {
     try {
       displayFuture = cancelFuture(displayFuture);
     } catch (Exception e) {
-      LOGGER.error("Find error when stop display thread, because {}", e);
+      LOG.error("Find error when stop display thread, because {}", e);
     } finally {
       stateChangeLock.unlock();
     }
@@ -214,7 +214,7 @@ public class Measurement implements MeasurementMBean, IService {
       displayFuture = cancelFuture(displayFuture);
       consumeFuture = cancelFuture(consumeFuture);
     } catch (Exception e) {
-      LOGGER.error("Find error when stop display and consuming threads, because {}", e);
+      LOG.error("Find error when stop display and consuming threads, because {}", e);
     } finally {
       stateChangeLock.unlock();
     }
@@ -282,7 +282,7 @@ public class Measurement implements MeasurementMBean, IService {
       displayFuture = cancelFuture(displayFuture);
       service.awaitTermination(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      LOGGER.error("Performance statistic service could not be shutdown, {}", e.getMessage());
+      LOG.error("Performance statistic service could not be shutdown, {}", e.getMessage());
       // Restore interrupted state...
       Thread.currentThread().interrupt();
     }
@@ -335,12 +335,12 @@ public class Measurement implements MeasurementMBean, IService {
 
   private void showMeasurements() {
     Date date = new Date();
-    LOGGER.info(
+    LOG.info(
         "====================================={} Measurement (ms)======================================",
         date);
     String head = String
         .format("%-45s%-25s%-25s%-25s", "OPERATION", "COUNT", "TOTAL_TIME", "AVG_TIME");
-    LOGGER.info(head);
+    LOG.info(head);
     for (Operation operation : Operation.values()) {
       if (!operationSwitch.get(operation.getName())) {
         continue;
@@ -350,16 +350,16 @@ public class Measurement implements MeasurementMBean, IService {
       String avg = String.format("%.4f", (totalInMs / (cnt + 1e-9)));
       String item = String
           .format("%-45s%-25s%-25s%-25s", operation.name, cnt + "", totalInMs + "", avg);
-      LOGGER.info(item);
+      LOG.info(item);
     }
-    LOGGER.info(
+    LOG.info(
         "==========================================OPERATION HISTOGRAM====================================================");
     StringBuilder histogramHead = new StringBuilder(String.format("%-45s", "OPERATION"));
     for (int i = 0; i < BUCKET_SIZE; i++) {
       histogramHead.append(String.format("%-8s", BUCKET_IN_MS[i] + "ms"));
     }
-    if (LOGGER.isInfoEnabled()) {
-      LOGGER.info(histogramHead.toString());
+    if (LOG.isInfoEnabled()) {
+      LOG.info(histogramHead.toString());
     }
     for (Operation operation : Operation.values()) {
       if (!operationSwitch.get(operation.getName())) {
@@ -372,12 +372,12 @@ public class Measurement implements MeasurementMBean, IService {
             .format("%.2f", (operationHistogram[operation.ordinal()][i] / (cnt + 1e-9) * 100));
         item.append(String.format("%-8s", avg + "%"));
       }
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info(item.toString());
+      if (LOG.isInfoEnabled()) {
+        LOG.info(item.toString());
       }
     }
 
-    LOGGER.info(
+    LOG.info(
         "=================================================================================================================");
   }
 
