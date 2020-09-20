@@ -60,9 +60,7 @@ public class UpgradeTask extends WrappedRunnable {
       String oldModificationFilePath = oldTsfilePath + ModificationFile.FILE_SUFFIX;
       try {
         // delete old TsFile and resource
-        Files.delete(FSFactoryProducer.getFSFactory().getFile(oldTsfilePath).toPath());
-        Files.delete(FSFactoryProducer.getFSFactory()
-            .getFile(oldTsfilePath + TsFileResource.RESOURCE_SUFFIX).toPath());
+        upgradeResource.delete();
         File modificationFile = FSFactoryProducer.getFSFactory().getFile(oldModificationFilePath);
         // move upgraded TsFiles and modificationFile to their own partition directories
         for (TsFileResource upgradedResource : upgradedResources) {
