@@ -57,7 +57,20 @@ Here we show the commonly used interfaces and their parameters in the Native API
 
   Session(String host, int rpcPort, String username, String password)
   ```
-
+  
+* Set the return data type for Boolean 
+  ```
+  // return 0/1
+  ​Map<String,String> map = new HashMap<>();
+  ​map.put("boolFormat", "number");
+  ​session = new Session("127.0.0.1", 6667, "root", "root", map);
+  
+  // return true/false
+  ​Map<String,String> map = new HashMap<>();
+  ​map.put("boolFormat", "bool");
+  ​session = new Session("127.0.0.1", 6667, "root", "root", map);
+  ```
+  
 * Open a Session
 
   ```

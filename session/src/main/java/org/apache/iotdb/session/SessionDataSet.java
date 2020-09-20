@@ -96,8 +96,8 @@ public class SessionDataSet {
             if (org.apache.iotdb.rpc.Config.boolFormat == org.apache.iotdb.rpc.Config.Constant.BOOLEAN) {
               field.setBoolV(booleanValue);
             } else {
-              field = new Field(ioTDBRpcDataSet.columnTypeDeduplicatedList.get(1));
-              field.setLongV(booleanValue ? 1 : 0);
+              field = new Field(TSDataType.deserialize((short) 1));
+              field.setIntV(booleanValue ? 1 : 0);
             }
             break;
           case INT32:

@@ -42,7 +42,9 @@ public class SessionExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
+    Map<String, String> map = new HashMap<>();
+    map.put("boolFormat", "number");
+    session = new Session("127.0.0.1", 6667, "root", "root", map);
     session.open(false);
 
     try {

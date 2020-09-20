@@ -40,6 +40,8 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -65,6 +67,44 @@ public class IoTDBSessionSimpleIT {
     session.close();
     EnvironmentUtils.cleanEnv();
   }
+
+  @Test
+  public void testBoolFormat() throws IoTDBConnectionException, StatementExecutionException {
+    Map<String, String> map = new HashMap<>();
+    map.put("boolFormat", "number");
+    session = new Session("127.0.0.1", 6667, "root", "root", map);
+    session.open();
+
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    measurements.add("s4");
+
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.BOOLEAN);
+    dataTypes.add(TSDataType.TEXT);
+    dataTypes.add(TSDataType.TEXT);
+
+    List<Object> values = new ArrayList<>();
+    values.add(311L);
+    values.add(true);
+    values.add("String1");
+    values.add("String2");
+    session.insertRecord(deviceId, 1L, measurements, dataTypes, values);
+
+    String expected = "1";
+    SessionDataSet dataSet = session.executeQueryStatement("select s2 from root.sg1.d1");
+    while (dataSet.hasNext()) {
+      List<Field> fields = dataSet.next().getFields();
+      assertEquals(expected, fields.get(0).toString());
+    }
+    dataSet.closeOperationHandle();
+    session.close();
+  }
+
 
   @Test
   public void testInsertByBlankStrAndInferType() throws IoTDBConnectionException, StatementExecutionException {

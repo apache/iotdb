@@ -55,6 +55,14 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
+## How do I set the Boolean return data type
+```
+// return 0/1
+String url = "jdbc:iotdb://127.0.0.1:6667/?boolFormat=number";
+
+// return true/false
+String url = "jdbc:iotdb://127.0.0.1:6667/?boolFormat=bool";
+```
 
 ## Examples
 

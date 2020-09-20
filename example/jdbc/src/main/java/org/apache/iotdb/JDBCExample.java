@@ -30,19 +30,19 @@ import java.sql.Statement;
 public class JDBCExample {
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-    try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/?boolFormat=bool", "root", "root");
       Statement statement = connection.createStatement()) {
       try {
-        statement.execute("SET STORAGE GROUP TO root.sg1");
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        statement.execute("SET STORAGE GROUP TO root.sg2");
+        statement.execute("CREATE TIMESERIES root.sg2.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        statement.execute("CREATE TIMESERIES root.sg2.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        statement.execute("CREATE TIMESERIES root.sg2.d1.s3 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
       } catch (IoTDBSQLException e) {
         System.out.println(e.getMessage());
       }
 
-      for (int i = 0; i <= 100; i++) {
-        statement.addBatch("insert into root.sg1.d1(timestamp, s1, s2, s3) values("+ i + "," + 1 + "," + 1 + "," + 1 + ")");
+      for (int i = 0; i <= 1; i++) {
+        statement.addBatch("insert into root.sg2.d1(timestamp, s1, s2, s3) values("+ i + "," + 1 + "," + 1 + "," + true + ")");
       }
       statement.executeBatch();
       statement.clearBatch();

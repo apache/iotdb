@@ -65,6 +65,12 @@ public class UtilsTest {
     assertEquals(params.getPassword(), userPwd);
   }
 
+  @Test()
+  public void testBoolFormatUrl1() throws IoTDBURLException {
+    Properties properties = new Properties();
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667/?boolFormat=number", properties);
+  }
+
   @Test(expected = IoTDBURLException.class)
   public void testParseWrongUrl1() throws IoTDBURLException {
     Properties properties = new Properties();
@@ -99,6 +105,7 @@ public class UtilsTest {
         .parseUrl(String.format(Config.IOTDB_URL_PREFIX + "%s:%s/", host, port),
             properties);
   }
+
 
   @Test
   public void testVerifySuccess() {

@@ -54,6 +54,14 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
+## 如何设置Boolean的返回数据类型
+```
+//返回 0/1
+String url = "jdbc:iotdb://127.0.0.1:6667/?boolFormat=number";
+
+//返回 true/false
+String url = "jdbc:iotdb://127.0.0.1:6667/?boolFormat=bool";
+```
 
 ## 示例
 

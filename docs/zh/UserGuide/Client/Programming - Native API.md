@@ -55,6 +55,19 @@
   ​Session(String host, int rpcPort, String username, String password)
   ```
   
+* 设置Boolean的返回数据类型 
+  ```
+   //返回 0/1
+  ​Map<String,String> map = new HashMap<>();
+  ​map.put("boolFormat", "number");
+  ​session = new Session("127.0.0.1", 6667, "root", "root", map);
+  
+   //返回 true/false
+  ​Map<String,String> map = new HashMap<>();
+  ​map.put("boolFormat", "bool");
+  ​session = new Session("127.0.0.1", 6667, "root", "root", map);
+  ```
+
 * 开启Session
 
   ```
