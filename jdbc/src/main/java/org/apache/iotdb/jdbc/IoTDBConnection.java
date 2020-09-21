@@ -38,7 +38,6 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.*;
@@ -490,12 +489,11 @@ public class IoTDBConnection implements Connection {
     return flag;
   }
 
-  public String getTimeZone() {
+  public String getTimeZone() throws TException, IoTDBSQLException {
     if (zoneId != null) {
       return zoneId.toString();
     }
-    zoneId = ZoneId.systemDefault();
-    return zoneId.toString();
+    return ZoneId.systemDefault().getId();
   }
 
   public void setTimeZone(String zoneId) throws TException, IoTDBSQLException {
