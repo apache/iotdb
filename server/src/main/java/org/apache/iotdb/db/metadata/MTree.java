@@ -534,20 +534,23 @@ public class MTree implements Serializable {
 
   /**
    * Traverse the MTree to match all storage group with prefix path.
+   * When trying to find storage groups via a path, we divide into two cases:
+   * 1. This path is only regarded as a prefix, in other words, this path is part of the result
+   *    storage groups.
+   * 2. This path is a full path and we use this method to find its belonged storage group.
+   * When prefixOnly is set to true, storage group paths in 1 is only added into result,
+   * otherwise, both 1 and 2 are returned.
    *
    * @param node              the current traversing node
    * @param nodes             split the prefix path with '.'
    * @param idx               the current index of array nodes
    * @param parent            current parent path
    * @param storageGroupPaths store all matched storage group names
+   * @param prefixOnly        only return storage groups that start with this prefix path
    */
   private void findStorageGroupPaths(MNode node, String[] nodes, int idx, String parent,
       List<PartialPath> storageGroupPaths, boolean prefixOnly) {
-    if (prefixOnly && node instanceof StorageGroupMNode && idx >= nodes.length) {
-      storageGroupPaths.add(node.getPartialPath());
-      return;
-    }
-    if (!prefixOnly && node instanceof StorageGroupMNode) {
+    if (node instanceof StorageGroupMNode && (!prefixOnly || idx >= nodes.length)) {
       storageGroupPaths.add(node.getPartialPath());
       return;
     }

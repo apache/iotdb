@@ -467,7 +467,7 @@ public class StorageEngine implements IService {
   public void deleteTimeseries(PartialPath path)
       throws StorageEngineException {
     try {
-      for (PartialPath storageGroupPath : IoTDB.metaManager.getStorageGroupPaths(path)) {
+      for (PartialPath storageGroupPath : IoTDB.metaManager.getRelatedStorageGroups(path)) {
         StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
         PartialPath newPath = path.alterPrefixPath(storageGroupPath);
         storageGroupProcessor.delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE);
