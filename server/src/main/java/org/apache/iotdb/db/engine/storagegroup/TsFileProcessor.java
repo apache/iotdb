@@ -236,10 +236,10 @@ public class TsFileProcessor {
           .debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
-      for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath())) {
-        if (workMemTable != null) {
-          workMemTable
-                  .delete(p.getDevice(), p.getMeasurement(), deletion.getStartTime(), deletion.getEndTime());
+      if (workMemTable != null) {
+        for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath())) {
+          workMemTable.delete(p.getDevice(), p.getMeasurement(), deletion.getStartTime(),
+              deletion.getEndTime());
         }
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query

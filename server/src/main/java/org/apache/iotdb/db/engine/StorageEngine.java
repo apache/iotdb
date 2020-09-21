@@ -450,11 +450,11 @@ public class StorageEngine implements IService {
   public void delete(PartialPath path, long startTime, long endTime)
           throws StorageEngineException {
     try {
-      List<PartialPath> sgPaths = IoTDB.metaManager.getRelatedStorageGroups(path);
+      List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
         StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
-        path.setPrefixPath(storageGroupPath);
-        storageGroupProcessor.delete(path, startTime, endTime);
+        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
+        storageGroupProcessor.delete(newPath, startTime, endTime);
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
@@ -467,7 +467,7 @@ public class StorageEngine implements IService {
   public void deleteTimeseries(PartialPath path)
       throws StorageEngineException {
     try {
-      for (PartialPath storageGroupPath : IoTDB.metaManager.getRelatedStorageGroups(path)) {
+      for (PartialPath storageGroupPath : IoTDB.metaManager.searchAllRelatedStorageGroups(path)) {
         StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
         PartialPath newPath = path.alterPrefixPath(storageGroupPath);
         storageGroupProcessor.delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE);

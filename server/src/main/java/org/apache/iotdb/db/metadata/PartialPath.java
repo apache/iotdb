@@ -60,7 +60,8 @@ public class PartialPath extends Path implements Comparable<Path> {
    * @param partialNodes nodes of a time series path
    */
   public PartialPath(String[] partialNodes) {
-    nodes = partialNodes;
+    this.nodes = partialNodes;
+    this.fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
   }
 
   /**
@@ -93,6 +94,7 @@ public class PartialPath extends Path implements Comparable<Path> {
     int len = nodes.length;
     this.nodes = Arrays.copyOf(nodes, nodes.length + otherNodes.length);
     System.arraycopy(otherNodes, 0, nodes, len, otherNodes.length);
+    fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
   }
 
   public PartialPath concatNode(String node) {
@@ -109,22 +111,25 @@ public class PartialPath extends Path implements Comparable<Path> {
     return nodes.length;
   }
 
+  /**
+   * Construct a new PartialPath by resetting the prefix nodes to prefixPath
+   * @param prefixPath the prefix path used to replace current nodes
+   * @return A new PartialPath with altered prefix
+   */
   public PartialPath alterPrefixPath(PartialPath prefixPath) {
     String[] newNodes = Arrays.copyOf(nodes, Math.max(nodes.length, prefixPath.getNodeLength()));
     System.arraycopy(prefixPath.getNodes(), 0, newNodes, 0, prefixPath.getNodeLength());
     return new PartialPath(newNodes);
   }
 
-  public void setPrefixPath(PartialPath prefixPath) {
-    this.nodes = Arrays.copyOf(nodes, Math.max(nodes.length, prefixPath.getNodeLength()));
-    System.arraycopy(prefixPath.getNodes(), 0, nodes, 0, prefixPath.getNodeLength());
-    fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
-  }
-
-  public boolean matchFullPath(String rPath) throws IllegalPathException {
-    return matchFullPath(new PartialPath(rPath));
-  }
-
+  /**
+   * Test if this PartialPath matches a full path. rPath is supposed to be a full timeseries path
+   * without wildcards.
+   * e.g. "root.sg.device.*" matches path "root.sg.device.s1"
+   * whereas it does not match "root.sg.device" and "root.sg.vehicle.s1"
+   * @param rPath a plain full path of a timeseries
+   * @return true if a successful match, otherwise return false
+   */
   public boolean matchFullPath(PartialPath rPath) {
     String[] rNodes = rPath.getNodes();
     if ((rNodes.length < nodes.length) ||

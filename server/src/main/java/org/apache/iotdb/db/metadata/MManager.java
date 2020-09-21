@@ -771,10 +771,10 @@ public class MManager {
     }
   }
 
-  public List<PartialPath> getRelatedStorageGroups(PartialPath path) throws MetadataException {
+  public List<PartialPath> searchAllRelatedStorageGroups(PartialPath path) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getRelatedStorageGroups(path);
+      return mtree.searchAllRelatedStorageGroups(path);
     } finally {
       lock.readLock().unlock();
     }

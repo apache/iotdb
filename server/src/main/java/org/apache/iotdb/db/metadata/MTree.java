@@ -504,10 +504,15 @@ public class MTree implements Serializable {
 
   /**
    * Get the storage group that given path belonged to or under given path
+   * All related storage groups refer two cases:
+   * 1. Storage groups with a prefix that is identical to path, e.g. given path "root.sg1",
+   *    storage group "root.sg1.sg2" and "root.sg1.sg3" will be added into result list.
+   * 2. Storage group that this path belongs to, e.g. given path "root.sg1.d1", and it is in
+   *    storage group "root.sg1". Then we adds "root.sg1" into result list.
    *
-   * @return a list contains all storage group names under give path
+   * @return a list contains all storage groups related to given path
    */
-  List<PartialPath> getRelatedStorageGroups(PartialPath path) throws MetadataException {
+  List<PartialPath> searchAllRelatedStorageGroups(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
