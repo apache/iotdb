@@ -294,13 +294,13 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
-    if (plan.getPaths() == null) {
+    if (plan.getPaths().isEmpty()) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     } else {
       flushSpecifiedStorageGroups(plan);
     }
 
-    if (plan.getPaths() != null) {
+    if (!plan.getPaths().isEmpty()) {
       List<PartialPath> noExistSg = checkStorageGroupExist(plan.getPaths());
       if (!noExistSg.isEmpty()) {
         StringBuilder sb = new StringBuilder();
