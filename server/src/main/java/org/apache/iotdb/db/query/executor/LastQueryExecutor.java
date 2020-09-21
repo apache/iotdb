@@ -20,11 +20,19 @@
 package org.apache.iotdb.db.query.executor;
 
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -38,22 +46,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
-
 public class LastQueryExecutor {
-  private List<Path> selectedSeries;
+
+  private List<PartialPath> selectedSeries;
   private List<TSDataType> dataTypes;
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
@@ -61,7 +61,7 @@ public class LastQueryExecutor {
     this.dataTypes = lastQueryPlan.getDeduplicatedDataTypes();
   }
 
-  public LastQueryExecutor(List<Path> selectedSeries, List<TSDataType> dataTypes) {
+  public LastQueryExecutor(List<PartialPath> selectedSeries, List<TSDataType> dataTypes) {
     this.selectedSeries = selectedSeries;
     this.dataTypes = dataTypes;
   }
@@ -75,20 +75,25 @@ public class LastQueryExecutor {
       throws StorageEngineException, IOException, QueryProcessException {
 
     ListDataSet dataSet = new ListDataSet(
-        Arrays.asList(new Path(COLUMN_TIMESERIES), new Path(COLUMN_VALUE)),
+        Arrays.asList(new PartialPath(COLUMN_TIMESERIES, false), new PartialPath(COLUMN_VALUE, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     for (int i = 0; i < selectedSeries.size(); i++) {
-      TimeValuePair lastTimeValuePair = calculateLastPairForOneSeries(
+      TimeValuePair lastTimeValuePair = null;
+      lastTimeValuePair = calculateLastPairForOneSeries(
               selectedSeries.get(i), dataTypes.get(i), context,
               lastQueryPlan.getAllMeasurementsInDevice(selectedSeries.get(i).getDevice()));
       if (lastTimeValuePair.getValue() != null) {
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
-        if (selectedSeries.get(i).getAlias() != null) {
-          pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
+        if (selectedSeries.get(i).getTsAlias() != null) {
+          pathField.setBinaryV(new Binary(selectedSeries.get(i).getTsAlias()));
         } else {
-          pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+          if (selectedSeries.get(i).getMeasurementAlias() != null) {
+            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
+          } else {
+            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+          }
         }
         resultRecord.addField(pathField);
 
@@ -100,11 +105,14 @@ public class LastQueryExecutor {
       }
     }
 
+    if (!lastQueryPlan.isAscending()) {
+      dataSet.sortByTime();
+    }
     return dataSet;
   }
 
   protected TimeValuePair calculateLastPairForOneSeries(
-      Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
+      PartialPath seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
       throws IOException, QueryProcessException, StorageEngineException {
     return calculateLastPairForOneSeriesLocally(seriesPath, tsDataType, context,
         deviceMeasurements);
@@ -116,16 +124,17 @@ public class LastQueryExecutor {
    * @param context query context
    * @return TimeValuePair
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TimeValuePair calculateLastPairForOneSeriesLocally(
-      Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
+      PartialPath seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
       throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode
     MeasurementMNode node = null;
     try {
-      node = (MeasurementMNode) IoTDB.metaManager.getNodeByPath(seriesPath.toString());
+      node = (MeasurementMNode) IoTDB.metaManager.getNodeByPath(seriesPath);
     } catch (MetadataException e) {
-      TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(seriesPath.getFullPath());
+      TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(seriesPath);
       if (timeValuePair != null) {
         return timeValuePair;
       }
@@ -146,14 +155,14 @@ public class LastQueryExecutor {
     if (!seqFileResources.isEmpty()) {
       for (int i = seqFileResources.size() - 1; i >= 0; i--) {
         TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
-                seqFileResources.get(i), seriesPath, context, null, deviceMeasurements);
+            seqFileResources.get(i), seriesPath, context, null, deviceMeasurements);
         if (timeseriesMetadata != null) {
           if (!timeseriesMetadata.isModified()) {
             Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
             resultPair = constructLastPair(
-                    timeseriesMetadataStats.getEndTime(),
-                    timeseriesMetadataStats.getLastValue(),
-                    tsDataType);
+                timeseriesMetadataStats.getEndTime(),
+                timeseriesMetadataStats.getLastValue(),
+                tsDataType);
             break;
           } else {
             List<ChunkMetadata> chunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
@@ -176,7 +185,8 @@ public class LastQueryExecutor {
         continue;
       }
       TimeseriesMetadata timeseriesMetadata =
-          FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, deviceMeasurements);
+          FileLoaderUtils
+              .loadTimeSeriesMetadata(resource, seriesPath, context, null, deviceMeasurements);
       if (timeseriesMetadata != null) {
         for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
           if (chunkMetaData.getEndTime() > resultPair.getTimestamp()
@@ -193,12 +203,13 @@ public class LastQueryExecutor {
     }
 
     // Update cached last value with low priority
-    IoTDB.metaManager.updateLastCache(seriesPath.getFullPath(),
+    IoTDB.metaManager.updateLastCache(seriesPath,
       resultPair, false, Long.MIN_VALUE, node);
     return resultPair;
   }
 
-  private static TimeValuePair constructLastPair(long timestamp, Object value, TSDataType dataType) {
+  private static TimeValuePair constructLastPair(long timestamp, Object value,
+      TSDataType dataType) {
     return new TimeValuePair(timestamp, TsPrimitiveType.getByType(dataType, value));
   }
 }

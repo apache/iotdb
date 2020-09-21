@@ -115,6 +115,7 @@ public class SimpleFileVersionController implements VersionController {
     prevVersion = currVersion;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void restore() throws IOException {
     File directory = SystemFileFactory.INSTANCE.getFile(directoryPath);
     if(!directory.exists()){

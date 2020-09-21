@@ -156,6 +156,14 @@ select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01
 该SQL语句的执行结果如下：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
 
+#### 根据时间降序返回
+IoTDB 在 0.11 版本开始支持 'order by time' 语句, 用于对结果按照时间进行降序展示。例如，SQL语句为：
+```sql
+select * from root.ln where time > 1 order by time desc limit 10;
+```
+
+更多语法请参照 [SQL REFERENCE](../Operation%20Manual/SQL%20Reference.md).
+
 #### 其他结果返回形式
 
 IoTDB支持另外两种结果返回形式: 按设备时间对齐 'align by device' 和 时序不对齐 'disable align'.
@@ -753,6 +761,22 @@ select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
 
+### 使用别名
+
+由于 IoTDB 独特的数据模型，在每个传感器前都附带有设备等诸多额外信息。有时，我们只针对某个具体设备查询，而这些前缀信息频繁显示造成了冗余，影响了结果集的显示与分析。这时我们可以使用 IoTDB 提供的 AS 函数，将查询中出现的时间序列给定一个别名。
+
+例如：
+
+```
+select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
+```
+
+则结果集将显示为：
+
+| Time | temperature | speed |
+| ---- | ----------- | ----- |
+| ...  | ...         | ...   |
+
 #### 其他结果集格式
 
 此外，IoTDB支持两种其他结果集格式：“按设备对齐”和“禁用对齐”。
@@ -762,7 +786,7 @@ select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
 SQL语句是：
 
 ```
-select s1,s2 from root.sg1.* GROUP BY DEVICE
+select s1,s2 from root.sg1.* ALIGN BY DEVICE
 
 ```
 

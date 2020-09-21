@@ -318,6 +318,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
    *
    * @throws IOException, WriteProcessException
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void upgradeFile(List<TsFileResource> upgradedResources)
       throws IOException, WriteProcessException {
     File oldTsFile = FSFactoryProducer.getFSFactory().getFile(this.file);

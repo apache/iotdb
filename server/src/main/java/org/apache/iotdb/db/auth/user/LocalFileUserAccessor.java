@@ -121,6 +121,8 @@ public class LocalFileUserAccessor implements IUserAccessor {
       return user;
     } catch (Exception e) {
       throw new IOException(e);
+    } finally {
+      strBufferLocal.remove();
     }
   }
 
@@ -162,6 +164,8 @@ public class LocalFileUserAccessor implements IUserAccessor {
       } catch (Exception e) {
         throw new IOException(e);
       }
+    } finally {
+      encodingBufferLocal.remove();
     }
 
     File oldFile = SystemFileFactory.INSTANCE.getFile(

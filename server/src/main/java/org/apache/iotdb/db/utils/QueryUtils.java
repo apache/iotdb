@@ -35,6 +35,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -43,7 +44,6 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -63,6 +63,7 @@ public class QueryUtils {
    * @param chunkMetaData the original chunkMetaData.
    * @param modifications all possible modifications.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(List<ChunkMetadata> chunkMetaData,
       List<Modification> modifications) {
     int modIndex = 0;
@@ -111,19 +112,19 @@ public class QueryUtils {
     unseqResources.removeIf(fileFilter::fileNotSatisfy);
   }
 
-  public static void constructPathAndDataTypes(List<Path> paths, List<TSDataType> dataTypes,
+  public static void constructPathAndDataTypes(List<PartialPath> paths, List<TSDataType> dataTypes,
       List<ShowTimeSeriesResult> timeseriesList) {
-    paths.add(new Path(COLUMN_TIMESERIES));
+    paths.add(new PartialPath(COLUMN_TIMESERIES, false));
     dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_ALIAS));
+    paths.add(new PartialPath(COLUMN_TIMESERIES_ALIAS, false));
     dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_STORAGE_GROUP));
+    paths.add(new PartialPath(COLUMN_STORAGE_GROUP, false));
     dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_DATATYPE));
+    paths.add(new PartialPath(COLUMN_TIMESERIES_DATATYPE, false));
     dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_ENCODING));
+    paths.add(new PartialPath(COLUMN_TIMESERIES_ENCODING, false));
     dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_COMPRESSION));
+    paths.add(new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false));
     dataTypes.add(TSDataType.TEXT);
 
     Set<String> tagAndAttributeName = new TreeSet<>();
@@ -131,14 +132,14 @@ public class QueryUtils {
       tagAndAttributeName.addAll(result.getTagAndAttribute().keySet());
     }
     for (String key : tagAndAttributeName) {
-      paths.add(new Path(key));
+      paths.add(new PartialPath(key, false));
       dataTypes.add(TSDataType.TEXT);
     }
   }
 
   public static QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList,
       ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context) {
-    List<Path> paths = new ArrayList<>();
+    List<PartialPath> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     constructPathAndDataTypes(paths, dataTypes, timeseriesList);
     ShowTimeseriesDataSet showTimeseriesDataSet = new ShowTimeseriesDataSet(paths, dataTypes,
@@ -163,7 +164,7 @@ public class QueryUtils {
   public static List<RowRecord> transferShowTimeSeriesResultToRecordList(
       List<ShowTimeSeriesResult> timeseriesList) {
     List<RowRecord> records = new ArrayList<>();
-    List<Path> paths = new ArrayList<>();
+    List<PartialPath> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     constructPathAndDataTypes(paths, dataTypes, timeseriesList);
     for (ShowTimeSeriesResult result : timeseriesList) {
@@ -181,7 +182,7 @@ public class QueryUtils {
   }
 
   private static void updateRecord(
-      RowRecord record, Map<String, String> tagAndAttribute, List<Path> paths) {
+      RowRecord record, Map<String, String> tagAndAttribute, List<PartialPath> paths) {
     for (int i = 6; i < paths.size(); i++) {
       updateRecord(record, tagAndAttribute.get(paths.get(i).getFullPath()));
     }

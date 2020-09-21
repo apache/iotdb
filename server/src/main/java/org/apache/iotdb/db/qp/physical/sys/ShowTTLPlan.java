@@ -19,23 +19,23 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import java.util.List;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.metadata.PartialPath;
 
 public class ShowTTLPlan extends ShowPlan {
 
-  private List<String> storageGroups;
+  private List<PartialPath> storageGroups;
 
-  public ShowTTLPlan(List<String> storageGroups) {
+  public ShowTTLPlan(List<PartialPath> storageGroups) {
     super(ShowContentType.TTL);
     this.storageGroups = storageGroups;
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return null;
   }
 
-  public List<String> getStorageGroups() {
+  public List<PartialPath> getStorageGroups() {
     return storageGroups;
   }
 }

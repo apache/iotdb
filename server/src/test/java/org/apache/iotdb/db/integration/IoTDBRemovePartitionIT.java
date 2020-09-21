@@ -29,8 +29,12 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -52,14 +56,14 @@ public class IoTDBRemovePartitionIT {
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
     StorageEngine.setEnablePartition(false);
     StorageEngine.setTimePartitionInterval(-1);
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void testRemoveNoPartition() throws StorageEngineException {
-    StorageEngine.getInstance().removePartitions("root.test1",
+  public void testRemoveNoPartition() throws StorageEngineException, IllegalPathException {
+    StorageEngine.getInstance().removePartitions(new PartialPath("root.test1"),
         (storageGroupName, timePartitionId) -> false);
 
     try (Connection connection = DriverManager
@@ -70,7 +74,7 @@ public class IoTDBRemovePartitionIT {
         while (resultSet.next()) {
           assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(1));
           assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(2));
-          count ++;
+          count++;
         }
         assertEquals(20, count);
       }
@@ -80,10 +84,10 @@ public class IoTDBRemovePartitionIT {
   }
 
   @Test
-  public void testRemovePartialPartition() throws StorageEngineException {
-    StorageEngine.getInstance().removePartitions("root.test1",
+  public void testRemovePartialPartition() throws StorageEngineException, IllegalPathException {
+    StorageEngine.getInstance().removePartitions(new PartialPath("root.test1"),
         (storageGroupName, timePartitionId) -> timePartitionId >= 5);
-    StorageEngine.getInstance().removePartitions("root.test2",
+    StorageEngine.getInstance().removePartitions(new PartialPath("root.test2"),
         (storageGroupName, timePartitionId) -> timePartitionId < 5);
 
     try (Connection connection = DriverManager
@@ -94,7 +98,7 @@ public class IoTDBRemovePartitionIT {
         while (resultSet.next()) {
           assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(1));
           assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(2));
-          count ++;
+          count++;
         }
         assertEquals(10, count);
       }
@@ -104,7 +108,7 @@ public class IoTDBRemovePartitionIT {
         while (resultSet.next()) {
           assertEquals(count / 2 * 100 + count % 2 * 50 + 500, resultSet.getLong(1));
           assertEquals(count / 2 * 100 + count % 2 * 50 + 500, resultSet.getLong(2));
-          count ++;
+          count++;
         }
         assertEquals(10, count);
       }
@@ -114,8 +118,8 @@ public class IoTDBRemovePartitionIT {
   }
 
   @Test
-  public void testRemoveAllPartition() throws StorageEngineException {
-    StorageEngine.getInstance().removePartitions("root.test1",
+  public void testRemoveAllPartition() throws StorageEngineException, IllegalPathException {
+    StorageEngine.getInstance().removePartitions(new PartialPath("root.test1"),
         (storageGroupName, timePartitionId) -> true);
 
     try (Connection connection = DriverManager
@@ -140,7 +144,7 @@ public class IoTDBRemovePartitionIT {
         while (resultSet.next()) {
           assertEquals(count / 2 * 100 + count % 2 * 50 + 500, resultSet.getLong(1));
           assertEquals(count / 2 * 100 + count % 2 * 50 + 500, resultSet.getLong(2));
-          count ++;
+          count++;
         }
         assertEquals(10, count);
       }
@@ -172,12 +176,12 @@ public class IoTDBRemovePartitionIT {
         sqls.add(String.format("INSERT INTO root.test%d(timestamp, s0) VALUES (%d, %d)", j,
             i * partitionInterval, i * partitionInterval));
       }
+      sqls.add("MERGE");
       // last file is unclosed
       if (i < 9) {
         sqls.add("FLUSH");
       }
     }
-    sqls.add("MERGE");
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");

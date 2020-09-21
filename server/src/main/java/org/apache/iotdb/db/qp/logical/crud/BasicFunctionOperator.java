@@ -23,10 +23,10 @@ import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -51,7 +51,7 @@ public class BasicFunctionOperator extends FunctionOperator {
    * @param value value
    * @throws LogicalOperatorException Logical Operator Exception
    */
-  public BasicFunctionOperator(int tokenIntType, Path path, String value)
+  public BasicFunctionOperator(int tokenIntType, PartialPath path, String value)
       throws SQLParserException {
     super(tokenIntType);
     operatorType = Operator.OperatorType.BASIC_FUNC;
@@ -75,7 +75,7 @@ public class BasicFunctionOperator extends FunctionOperator {
 
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
-      Map<Path, TSDataType> pathTSDataTypeHashMap)
+      Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
       throws LogicalOperatorException, MetadataException {
     TSDataType type = pathTSDataTypeHashMap.get(singlePath);
     if (type == null) {
@@ -119,7 +119,7 @@ public class BasicFunctionOperator extends FunctionOperator {
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(singlePath.toString(), this.tokenSymbol, value, ", single\n");
+    sc.addTail(singlePath.getFullPath(), this.tokenSymbol, value, ", single\n");
     return sc.toString();
   }
 
@@ -127,7 +127,7 @@ public class BasicFunctionOperator extends FunctionOperator {
   public BasicFunctionOperator copy() {
     BasicFunctionOperator ret;
     try {
-      ret = new BasicFunctionOperator(this.tokenIntType, singlePath.clone(), value);
+      ret = new BasicFunctionOperator(this.tokenIntType, new PartialPath(singlePath.getNodes().clone()), value);
     } catch (SQLParserException e) {
       logger.error("error copy:", e);
       return null;

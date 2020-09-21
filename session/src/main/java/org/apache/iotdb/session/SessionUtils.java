@@ -37,6 +37,7 @@ public class SessionUtils {
     return timeBuffer;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static ByteBuffer getValueBuffer(Tablet tablet) {
     ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getValueBytesSize());
     for (int i = 0; i < tablet.getSchemas().size(); i++) {

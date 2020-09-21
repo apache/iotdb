@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -37,7 +39,6 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -53,6 +54,9 @@ public abstract class PhysicalPlan {
 
   //for cluster mode, whether the plan may be splitted into several sub plans
   protected boolean canBeSplit = true;
+
+  //login username, corresponding to cli/session login user info
+  private String loginUserName;
 
   /**
    * whether the plan can be split into more than one Plans. Only used in the cluster mode.
@@ -74,7 +78,7 @@ public abstract class PhysicalPlan {
     return "abstract plan";
   }
 
-  public abstract List<Path> getPaths();
+  public abstract List<PartialPath> getPaths();
 
   public boolean isQuery() {
     return isQuery;
@@ -122,7 +126,7 @@ public abstract class PhysicalPlan {
    *
    * @param buffer
    */
-  public void deserialize(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
@@ -150,13 +154,21 @@ public abstract class PhysicalPlan {
     return ReadWriteIOUtils.readStringWithLength(buffer, valueLen);
   }
 
+  public String getLoginUserName() {
+    return loginUserName;
+  }
+
+  public void setLoginUserName(String loginUserName) {
+    this.loginUserName = loginUserName;
+  }
+
   public static class Factory {
 
     private Factory() {
       // hidden initializer
     }
 
-    public static PhysicalPlan create(ByteBuffer buffer) throws IOException {
+    public static PhysicalPlan create(ByteBuffer buffer) throws IOException, IllegalPathException {
       int typeNum = buffer.get();
       if (typeNum >= PhysicalPlanType.values().length) {
         throw new IOException("unrecognized log type " + typeNum);

@@ -26,7 +26,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.LineNumberReader;
-import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -48,8 +47,8 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.thrift.TException;
 
 /**
@@ -218,7 +217,7 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       int[] result = statement.executeBatch();
       for (int i = 0; i < result.length; i++) {
-        if (result[i] != Statement.SUCCESS_NO_INFO && i < tmp.size()) {
+        if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode() && i < tmp.size()) {
           bw.write(tmp.get(i));
           bw.newLine();
           errorFlag = false;
@@ -302,30 +301,44 @@ public class ImportCsv extends AbstractCsvTool {
       Map<String, ArrayList<Integer>> deviceToColumn,
       List<String> colInfo)
       throws SQLException, IOException {
-    Statement statement = connection.createStatement();
+    try (Statement statement = connection.createStatement()) {
 
-    for (int i = 1; i < strHeadInfo.length; i++) {
-      statement.execute("show timeseries "+ strHeadInfo[i]);
-      ResultSet resultSet= statement.getResultSet();
-      if (resultSet.next()) {
-        timeseriesDataType.put(strHeadInfo[i], resultSet.getString(2));
-      } else {
-        String errorInfo = String.format("Database cannot find %s in %s, stop import!",
-            strHeadInfo[i], file.getAbsolutePath());
-        System.out.println("Database cannot find "+strHeadInfo[i]+" in "+file.getAbsolutePath()+", "
-            + "stop import!");
-        bw.write(errorInfo);
-        return false;
-      }
-      headInfo.add(strHeadInfo[i]);
-      String deviceInfo = strHeadInfo[i].substring(0, strHeadInfo[i].lastIndexOf('.'));
+      for (int i = 1; i < strHeadInfo.length; i++) {
+        statement.execute("show timeseries " + strHeadInfo[i]);
+        ResultSet resultSet = statement.getResultSet();
+        try {
+          if (resultSet.next()) {
+            /*
+             * now the resultSet is like following, so the index of dataType is 4
+             * +--------------+-----+-------------+--------+--------+-----------+
+               |    timeseries|alias|storage group|dataType|encoding|compression|
+               +--------------+-----+-------------+--------+--------+-----------+
+               |root.fit.d1.s1| null|  root.fit.d1|   INT32|     RLE|     SNAPPY|
+               |root.fit.d1.s2| null|  root.fit.d1|    TEXT|   PLAIN|     SNAPPY|
+               +--------------+-----+-------------+--------+--------+-----------+
+             */
+            timeseriesDataType.put(strHeadInfo[i], resultSet.getString(4));
+          } else {
+            String errorInfo = String.format("Database cannot find %s in %s, stop import!",
+                    strHeadInfo[i], file.getAbsolutePath());
+            System.out.println("Database cannot find " + strHeadInfo[i] + " in " + file.getAbsolutePath() + ", "
+                    + "stop import!");
+            bw.write(errorInfo);
+            return false;
+          }
+        } finally {
+          resultSet.close();
+        }
+        headInfo.add(strHeadInfo[i]);
+        String deviceInfo = strHeadInfo[i].substring(0, strHeadInfo[i].lastIndexOf('.'));
 
-      if (!deviceToColumn.containsKey(deviceInfo)) {
-        deviceToColumn.put(deviceInfo, new ArrayList<>());
+        if (!deviceToColumn.containsKey(deviceInfo)) {
+          deviceToColumn.put(deviceInfo, new ArrayList<>());
+        }
+        // storage every device's sensor index info
+        deviceToColumn.get(deviceInfo).add(i - 1);
+        colInfo.add(strHeadInfo[i].substring(strHeadInfo[i].lastIndexOf('.') + 1));
       }
-      // storage every device's sensor index info
-      deviceToColumn.get(deviceInfo).add(i - 1);
-      colInfo.add(strHeadInfo[i].substring(strHeadInfo[i].lastIndexOf('.') + 1));
     }
     return true;
   }
@@ -375,7 +388,18 @@ public class ImportCsv extends AbstractCsvTool {
         continue;
       }
       if (timeseriesToType.get(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
-        sbd.append(", \'").append(data[colIndex.get(j) + 1]).append("\'");
+        /**
+         * like csv line 1,100,'hello',200,300,400, we will read the third field as 'hello',
+         * so, if we add '', the field will be ''hello'', and IoTDB will be failed
+         * to insert the field.
+         * Now, if we meet the string which is enclosed in quotation marks, we should not add ''
+         */
+        if ((data[colIndex.get(j) + 1].startsWith("'") && data[colIndex.get(j) + 1].endsWith("'")) ||
+                (data[colIndex.get(j) + 1].startsWith("\"") && data[colIndex.get(j) + 1].endsWith("\""))) {
+          sbd.append(",").append(data[colIndex.get(j) + 1]);
+        } else {
+          sbd.append(", \'").append(data[colIndex.get(j) + 1]).append("\'");
+        }
       } else {
         sbd.append(",").append(data[colIndex.get(j) + 1]);
       }

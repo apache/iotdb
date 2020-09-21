@@ -19,8 +19,16 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -32,32 +40,27 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   private static final Logger logger = LoggerFactory
-          .getLogger(GroupByWithoutValueFilterDataSet.class);
+      .getLogger(GroupByWithoutValueFilterDataSet.class);
 
-  private Map<Path, GroupByExecutor> pathExecutors = new HashMap<>();
+  private Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
 
   /**
    * path -> result index for each aggregation
-   *
+   * <p>
    * e.g.,
-   *
-   * deduplicated paths : s1, s2, s1
-   * deduplicated aggregations : count, count, sum
-   *
-   * s1 -> 0, 2
-   * s2 -> 1
+   * <p>
+   * deduplicated paths : s1, s2, s1 deduplicated aggregations : count, count, sum
+   * <p>
+   * s1 -> 0, 2 s2 -> 1
    */
-  private Map<Path, List<Integer>> resultIndexes = new HashMap<>();
+  private Map<PartialPath, List<Integer>> resultIndexes = new HashMap<>();
 
   public GroupByWithoutValueFilterDataSet() {
   }
@@ -66,14 +69,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    * constructor.
    */
   public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
-          throws StorageEngineException, QueryProcessException {
+      throws StorageEngineException, QueryProcessException {
     super(context, groupByTimePlan);
 
     initGroupBy(context, groupByTimePlan);
   }
 
   protected void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
-          throws StorageEngineException, QueryProcessException {
+      throws StorageEngineException, QueryProcessException {
     IExpression expression = groupByTimePlan.getExpression();
 
     Filter timeFilter = null;
@@ -83,16 +86,18 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
     // init resultIndexes, group result indexes by path
     for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
+      PartialPath path = (PartialPath) paths.get(i);
       if (!pathExecutors.containsKey(path)) {
         //init GroupByExecutor
         pathExecutors.put(path,
-                getGroupByExecutor(path, groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()), dataTypes.get(i), context, timeFilter, null));
+            getGroupByExecutor(path, groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
+                dataTypes.get(i), context, timeFilter, null, groupByTimePlan.isAscending()));
         resultIndexes.put(path, new ArrayList<>());
       }
       resultIndexes.get(path).add(i);
       AggregateResult aggrResult = AggregateResultFactory
-              .getAggrResultByName(groupByTimePlan.getDeduplicatedAggregations().get(i), dataTypes.get(i));
+          .getAggrResultByName(groupByTimePlan.getDeduplicatedAggregations().get(i),
+              dataTypes.get(i));
       pathExecutors.get(path).addAggregateResult(aggrResult);
     }
   }
@@ -101,20 +106,20 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   protected RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next() "
-              + "in GroupByWithoutValueFilterDataSet.");
+          + "in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
     RowRecord record;
     if (leftCRightO) {
       record = new RowRecord(curStartTime);
     } else {
-      record = new RowRecord(curEndTime-1);
+      record = new RowRecord(curEndTime - 1);
     }
 
     AggregateResult[] fields = new AggregateResult[paths.size()];
 
     try {
-      for (Entry<Path, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
+      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
         GroupByExecutor executor = pathToExecutorEntry.getValue();
         List<AggregateResult> aggregations = executor.calcResult(curStartTime, curEndTime);
         for (int i = 0; i < aggregations.size(); i++) {
@@ -137,9 +142,28 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     return record;
   }
 
-  protected GroupByExecutor getGroupByExecutor(Path path, Set<String> allSensors, TSDataType dataType,
-                                               QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
-          throws StorageEngineException, QueryProcessException {
-    return new LocalGroupByExecutor(path, allSensors, dataType, context, timeFilter, fileFilter);
+  @Override
+  public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
+    Pair<Long, Object> result = null;
+    long nextStartTime = curStartTime;
+    long nextEndTime;
+    do {
+      nextStartTime -= slidingStep;
+      if (nextStartTime >= startTime) {
+        nextEndTime = Math.min(nextStartTime + interval, endTime);
+      } else {
+        return null;
+      }
+      result = pathExecutors.get(path).peekNextNotNullValue(nextStartTime, nextEndTime);
+    } while (result == null);
+    return result;
+  }
+
+  protected GroupByExecutor getGroupByExecutor(PartialPath path, Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context, Filter timeFilter, TsFileFilter fileFilter, boolean ascending)
+      throws StorageEngineException, QueryProcessException {
+    return new LocalGroupByExecutor(path, allSensors, dataType, context, timeFilter, fileFilter,
+        ascending);
   }
 }

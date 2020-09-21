@@ -158,6 +158,7 @@ public class IoTDBRecoverIT {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
+      Thread.currentThread().interrupt();
     }
     EnvironmentUtils.activeDaemon();
 
@@ -212,6 +213,7 @@ public class IoTDBRecoverIT {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
+      Thread.currentThread().interrupt();
     }
 
     EnvironmentUtils.activeDaemon();
@@ -286,6 +288,7 @@ public class IoTDBRecoverIT {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
+      Thread.currentThread().interrupt();
     }
     EnvironmentUtils.activeDaemon();
 

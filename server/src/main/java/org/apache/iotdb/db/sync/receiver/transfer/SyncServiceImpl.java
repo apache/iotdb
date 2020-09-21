@@ -210,8 +210,9 @@ public class SyncServiceImpl implements SyncService.Iface {
   @Override
   public SyncStatus syncData(ByteBuffer buff) {
     try {
+      int pos = buff.position();
       currentFileWriter.get().write(buff);
-      buff.flip();
+      buff.position(pos);
       messageDigest.get().update(buff);
     } catch (IOException e) {
       logger.error("Can not sync data for file {}", currentFile.get().getAbsoluteFile(), e);
@@ -233,8 +234,8 @@ public class SyncServiceImpl implements SyncService.Iface {
         currentFile.get().delete();
         currentFileWriter.set(new FileOutputStream(currentFile.get()).getChannel());
         return getErrorResult(String
-            .format("MD5 of the sender is differ from MD5 of the receiver of the file %s.",
-                currentFile.get().getAbsolutePath()));
+                .format("MD5 of the sender is differ from MD5 of the receiver of the file %s.",
+                        currentFile.get().getAbsolutePath()));
       } else {
         if (currentFile.get().getName().endsWith(MetadataConstant.METADATA_LOG)) {
           loadMetadata();
@@ -300,6 +301,14 @@ public class SyncServiceImpl implements SyncService.Iface {
     } catch (IOException e) {
       logger.error("Can not end sync", e);
       return getErrorResult(String.format("Can not end sync because %s", e.getMessage()));
+    } finally {
+      syncFolderPath.remove();
+      currentSG.remove();
+      syncLog.remove();
+      senderName.remove();
+      currentFile.remove();
+      currentFileWriter.remove();
+      messageDigest.remove();
     }
     return getSuccessResult();
   }

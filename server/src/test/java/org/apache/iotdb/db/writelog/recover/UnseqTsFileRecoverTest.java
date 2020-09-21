@@ -25,7 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -34,6 +34,7 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.reader.chunk.ChunkDataIterator;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -89,18 +90,17 @@ public class UnseqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);
     tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
     schema = new Schema();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
-        Path path = new Path(("root.sg.device" + i), ("sensor" + j));
+        PartialPath path = new PartialPath("root.sg.device" + i + IoTDBConstant.PATH_SEPARATOR + "sensor" + j);
         MeasurementSchema measurementSchema = new MeasurementSchema("sensor" + j, TSDataType.INT64,
             TSEncoding.PLAIN);
-        schema.registerTimeseries(path, measurementSchema);
-        IoTDB.metaManager.createTimeseries(path.getFullPath(), measurementSchema.getType(),
+        schema.registerTimeseries(path.toTSFilePath(), measurementSchema);
+        IoTDB.metaManager.createTimeseries(path, measurementSchema.getType(),
             measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
             measurementSchema.getProps());
       }
@@ -108,17 +108,17 @@ public class UnseqTsFileRecoverTest {
     schema.registerTimeseries(new Path(("root.sg.device99"), ("sensor4")),
         new MeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager
-        .createTimeseries("root.sg.device99.sensor4", TSDataType.INT64, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.sg.device99.sensor4"), TSDataType.INT64, TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     schema.registerTimeseries(new Path(("root.sg.device99"), ("sensor2")),
         new MeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager
-        .createTimeseries("root.sg.device99.sensor2", TSDataType.INT64, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.sg.device99.sensor2"), TSDataType.INT64, TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     schema.registerTimeseries(new Path(("root.sg.device99"), ("sensor1")),
         new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager
-        .createTimeseries("root.sg.device99.sensor1", TSDataType.INT64, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.sg.device99.sensor1"), TSDataType.INT64, TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     writer = new TsFileWriter(tsF, schema);
 
@@ -154,15 +154,15 @@ public class UnseqTsFileRecoverTest {
           types[k] = TSDataType.INT64;
           values[k] = String.valueOf(k + 10);
         }
-        InsertRowPlan insertRowPlan = new InsertRowPlan("root.sg.device" + j, i, measurements, types,
+        InsertRowPlan insertRowPlan = new InsertRowPlan(new PartialPath("root.sg.device" + j), i, measurements, types,
             values);
         node.write(insertRowPlan);
       }
       node.notifyStartFlush();
     }
-    InsertRowPlan insertRowPlan = new InsertRowPlan("root.sg.device99", 1, "sensor4", TSDataType.INT64, "4");
+    InsertRowPlan insertRowPlan = new InsertRowPlan(new PartialPath("root.sg.device99"), 1, "sensor4", TSDataType.INT64, "4");
     node.write(insertRowPlan);
-    insertRowPlan = new InsertRowPlan("root.sg.device99", 300, "sensor2", TSDataType.INT64, "2");
+    insertRowPlan = new InsertRowPlan(new PartialPath("root.sg.device99"), 300, "sensor2", TSDataType.INT64, "2");
     node.write(insertRowPlan);
     node.close();
 
@@ -174,23 +174,22 @@ public class UnseqTsFileRecoverTest {
     FileUtils.deleteDirectory(tsF.getParentFile());
     resource.close();
     node.delete();
-    IoTDBDescriptor.getInstance().getConfig().setEnableVm(true);
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void test() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
-        versionController, resource, false, false, Collections.emptyList());
+        versionController, resource, false, false);
     ActiveTimeSeriesCounter.getInstance()
         .init(resource.getTsFile().getParentFile().getParentFile().getName());
-    performer.recover().left.close();
+    performer.recover().close();
 
-    assertEquals(1, (long) resource.getStartTime("root.sg.device99"));
-    assertEquals(300, (long) resource.getEndTime("root.sg.device99"));
+    assertEquals(1, resource.getStartTime("root.sg.device99"));
+    assertEquals(300, resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
-      assertEquals(0, (long) resource.getStartTime("root.sg.device" + i));
-      assertEquals(9, (long) resource.getEndTime("root.sg.device" + i));
+      assertEquals(0, resource.getStartTime("root.sg.device" + i));
+      assertEquals(9, resource.getEndTime("root.sg.device" + i));
     }
 
     TsFileSequenceReader fileReader = new TsFileSequenceReader(tsF.getPath(), true);

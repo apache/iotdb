@@ -451,6 +451,6 @@ class Session(object):
             status = self.__client.setTimeZone(request)
             print("setting time zone_id as {}, message: {}".format(zone_id, status.message))
         except TTransport.TException as e:
-            print("Could not get time zone because: ", e)
+            print("Could not set time zone because: ", e)
             raise Exception
         self.__zone_id = zone_id

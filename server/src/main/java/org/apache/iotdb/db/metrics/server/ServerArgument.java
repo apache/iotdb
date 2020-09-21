@@ -64,13 +64,13 @@ public class ServerArgument {
   }
 
   private String inferHostname() {
-    InetAddress ia = null;
     try {
-      ia = InetAddress.getLocalHost();
+      InetAddress ia = InetAddress.getLocalHost();
+      return ia.getHostName();
     } catch (UnknownHostException e) {
       logger.error("The host is unknow", e);
     }
-    return ia.getHostName();
+    return "";
   }
 
   private String osName() {
@@ -224,6 +224,7 @@ public class ServerArgument {
   /**
    * read cpu info(windows)
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private long[] readWinCpu(final Process proc) throws Exception {
     long[] retn = new long[2];
     proc.getOutputStream().close();
@@ -292,27 +293,27 @@ public class ServerArgument {
    */
   private long[] readLinuxCpu() throws Exception {
     long[] retn = new long[2];
-    BufferedReader buffer = null;
     long idleCpuTime = 0;
     long totalCpuTime = 0;
-    buffer = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/stat")));
+
     String line = null;
-    while ((line = buffer.readLine()) != null) {
-      if (line.startsWith("cpu")) {
-        StringTokenizer tokenizer = new StringTokenizer(line);
-        List<String> temp = new ArrayList<String>();
-        while (tokenizer.hasMoreElements()) {
-          temp.add(tokenizer.nextToken());
+    try (BufferedReader buffer = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/stat")))) {
+      while ((line = buffer.readLine()) != null) {
+        if (line.startsWith("cpu")) {
+          StringTokenizer tokenizer = new StringTokenizer(line);
+          List<String> temp = new ArrayList<String>();
+          while (tokenizer.hasMoreElements()) {
+            temp.add(tokenizer.nextToken());
+          }
+          idleCpuTime = Long.parseLong(temp.get(4));
+          totalCpuTime = Long.parseLong(temp.get(1)) + Long.parseLong(temp.get(2))
+                  + Long.parseLong(temp.get(3)) + Long.parseLong(temp.get(4));
+          break;
         }
-        idleCpuTime = Long.parseLong(temp.get(4));
-        totalCpuTime = Long.parseLong(temp.get(1)) + Long.parseLong(temp.get(2))
-            + Long.parseLong(temp.get(3)) + Long.parseLong(temp.get(4));
-        break;
       }
+      retn[0] = idleCpuTime;
+      retn[1] = totalCpuTime;
     }
-    retn[0] = idleCpuTime;
-    retn[1] = totalCpuTime;
-    buffer.close();
     return retn;
   }
 
