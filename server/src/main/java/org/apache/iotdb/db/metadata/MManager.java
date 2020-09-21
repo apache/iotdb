@@ -98,6 +98,8 @@ public class MManager {
    * A thread will check whether the MTree is modified lately each such interval. Unit: second
    */
   private static final long MTREE_SNAPSHOT_THREAD_CHECK_TIME = 600L;
+  private static final String TAG_FORMAT = "tag key is %s, tag value is %s, tlog offset is %d";
+  private static final String BEFORE_DELETE_TAG_FORMAT = "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
   // the lock for read/insert
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -517,7 +519,7 @@ public class MManager {
           if (logger.isDebugEnabled()) {
             logger.debug(String.format(
                 "Delete: TimeSeries %s is removed from tag inverted index, "
-                    + "tag key is %s, tag value is %s, tlog offset is %d",
+                    + TAG_FORMAT,
                 node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset()));
           }
           tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
@@ -1369,7 +1371,7 @@ public class MManager {
               if (logger.isDebugEnabled()) {
                 logger.debug(String.format(
                     "Upsert: TimeSeries %s is removed from tag inverted index, "
-                        + "tag key is %s, tag value is %s, tlog offset is %d",
+                        + TAG_FORMAT,
                     leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset()));
               }
 
@@ -1381,7 +1383,7 @@ public class MManager {
               if (logger.isDebugEnabled()) {
                 logger.debug(String.format(
                     "Upsert: TimeSeries %s's tag info has been removed from tag inverted index "
-                        + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+                        + BEFORE_DELETE_TAG_FORMAT,
                     leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset(),
                     tagIndex.containsKey(key)));
               }
@@ -1548,7 +1550,7 @@ public class MManager {
           if (logger.isDebugEnabled()) {
             logger.debug(String.format(
                 "Drop: TimeSeries %s is removed from tag inverted index, "
-                    + "tag key is %s, tag value is %s, tlog offset is %d",
+                    + TAG_FORMAT,
                 leafMNode.getFullPath(), entry.getKey(), entry.getValue(), leafMNode.getOffset()));
           }
 
@@ -1563,7 +1565,7 @@ public class MManager {
           if (logger.isDebugEnabled()) {
             logger.debug(String.format(
                 "Drop: TimeSeries %s's tag info has been removed from tag inverted index "
-                    + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+                    + BEFORE_DELETE_TAG_FORMAT,
                 leafMNode.getFullPath(), key, value, leafMNode.getOffset(),
                 tagIndex.containsKey(key)));
           }
@@ -1632,7 +1634,7 @@ public class MManager {
           if (logger.isDebugEnabled()) {
             logger.debug(String.format(
                 "Set: TimeSeries %s is removed from tag inverted index, "
-                    + "tag key is %s, tag value is %s, tlog offset is %d",
+                    + TAG_FORMAT,
                 leafMNode.getFullPath(), entry.getKey(), beforeValue, leafMNode.getOffset()));
           }
 
@@ -1641,7 +1643,7 @@ public class MManager {
           if (logger.isDebugEnabled()) {
             logger.debug(String.format(
                 "Set: TimeSeries %s's tag info has been removed from tag inverted index "
-                    + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+                    + BEFORE_DELETE_TAG_FORMAT,
                 leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset(),
                 tagIndex.containsKey(key)));
           }
@@ -1698,7 +1700,7 @@ public class MManager {
           if (logger.isDebugEnabled()) {
             logger.debug(String.format(
                 "Rename: TimeSeries %s is removed from tag inverted index, "
-                    + "tag key is %s, tag value is %s, tlog offset is %d",
+                    + TAG_FORMAT,
                 leafMNode.getFullPath(), oldKey, value, leafMNode.getOffset()));
           }
 
@@ -1708,7 +1710,7 @@ public class MManager {
           if (logger.isDebugEnabled()) {
             logger.debug(String.format(
                 "Rename: TimeSeries %s's tag info has been removed from tag inverted index "
-                    + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+                    + BEFORE_DELETE_TAG_FORMAT,
                 leafMNode.getFullPath(), oldKey, value, leafMNode.getOffset(),
                 tagIndex.containsKey(oldKey)));
           }

@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xerial.snappy.Snappy;
 
+
 /**
  * uncompress data according to type in metadata.
  */
@@ -41,6 +42,7 @@ public interface IUnCompressor {
    * @param name CompressionType
    * @return the UnCompressor of specified CompressionType
    */
+
   static IUnCompressor getUnCompressor(CompressionType name) {
     if (name == null) {
       throw new CompressionTypeNotSupportedException("NULL");
@@ -191,6 +193,8 @@ public interface IUnCompressor {
   class LZ4UnCompressor implements IUnCompressor {
 
     private static final Logger logger = LoggerFactory.getLogger(LZ4Compressor.class);
+    private static final String UNCOMPRESS_INPUT_ERROR = "tsfile-compression LZ4UnCompressor: errors occurs when uncompress input byte";
+
     private static final int MAX_COMPRESS_RATIO = 255;
     private LZ4SafeDecompressor decompressor;
 
@@ -225,7 +229,7 @@ public interface IUnCompressor {
         return decompressor.decompress(bytes, MAX_COMPRESS_RATIO * bytes.length);
       } catch (RuntimeException e) {
         logger.error(
-            "tsfile-compression LZ4UnCompressor: errors occurs when uncompress input byte", e);
+            UNCOMPRESS_INPUT_ERROR, e);
         throw new IOException(e);
       }
     }
@@ -238,7 +242,7 @@ public interface IUnCompressor {
       }
       catch (RuntimeException e){
         logger.error(
-            "tsfile-compression LZ4UnCompressor: errors occurs when uncompress input byte", e);
+            UNCOMPRESS_INPUT_ERROR, e);
         throw new IOException(e);
       }
     }
@@ -254,7 +258,7 @@ public interface IUnCompressor {
         return compressed.limit();
       } catch (RuntimeException e) {
         logger.error(
-            "tsfile-compression LZ4UnCompressor: errors occurs when uncompress input byte", e);
+            UNCOMPRESS_INPUT_ERROR, e);
         throw new IOException(e);
       }
     }

@@ -34,7 +34,8 @@ import java.util.Objects;
 
 public class TsFileDeserializer {
   private static final Logger LOG = LoggerFactory.getLogger(TsFileDeserializer.class);
-
+  private static final String UNEXPECTED_DATA_TYPE = "Unexpected data type: ";
+  private static final String FOR_DATE_TYPEINFO = " for Date TypeInfo: ";
   private List<Object> row;
 
   /**
@@ -90,7 +91,7 @@ public class TsFileDeserializer {
             row.add(((BooleanWritable)data).get());
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(UNEXPECTED_DATA_TYPE + data.getClass().getName() + FOR_DATE_TYPEINFO + type);
           }
           break;
         case INT:
@@ -98,7 +99,7 @@ public class TsFileDeserializer {
             row.add(((IntWritable)data).get());
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(UNEXPECTED_DATA_TYPE + data.getClass().getName() + FOR_DATE_TYPEINFO + type);
           }
           break;
         case LONG:
@@ -106,7 +107,7 @@ public class TsFileDeserializer {
             row.add(((LongWritable)data).get());
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(UNEXPECTED_DATA_TYPE + data.getClass().getName() + FOR_DATE_TYPEINFO + type);
           }
           break;
         case FLOAT:
@@ -114,7 +115,7 @@ public class TsFileDeserializer {
             row.add(((FloatWritable)data).get());
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(UNEXPECTED_DATA_TYPE + data.getClass().getName() + FOR_DATE_TYPEINFO + type);
           }
           break;
         case DOUBLE:
@@ -122,7 +123,7 @@ public class TsFileDeserializer {
             row.add(((DoubleWritable)data).get());
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(UNEXPECTED_DATA_TYPE + data.getClass().getName() + FOR_DATE_TYPEINFO + type);
           }
           break;
         case STRING:
@@ -130,7 +131,7 @@ public class TsFileDeserializer {
             row.add(data.toString());
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(UNEXPECTED_DATA_TYPE + data.getClass().getName() + FOR_DATE_TYPEINFO + type);
           }
           break;
         case TIMESTAMP:
@@ -138,7 +139,7 @@ public class TsFileDeserializer {
             row.add(new Timestamp(((LongWritable)data).get()));
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(UNEXPECTED_DATA_TYPE + data.getClass().getName() + FOR_DATE_TYPEINFO + type);
           }
           break;
         default:

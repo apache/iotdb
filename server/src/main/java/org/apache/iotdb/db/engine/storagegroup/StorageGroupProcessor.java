@@ -125,6 +125,7 @@ import org.slf4j.LoggerFactory;
 public class StorageGroupProcessor {
 
   private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
+  private static final String FAIL_TO_UPGRADE_FOLDER = "Failed to move {} to upgrade folder";
 
   /**
    * All newly generated chunks after merge have version number 0, so we set merged Modification
@@ -478,19 +479,19 @@ public class StorageGroupProcessor {
         // move .tsfile to upgrade folder
         for (File file : oldTsfileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error("Failed to move {} to upgrade folder", file);
+            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
           }
         }
         // move .resource to upgrade folder
         for (File file : oldResourceFileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error("Failed to move {} to upgrade folder", file);
+            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
           }
         }
         // move .mods to upgrade folder
         for (File file : oldModificationFileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error("Failed to move {} to upgrade folder", file);
+            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
           }
         }
 

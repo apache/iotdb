@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 public class IoTDBDataSource implements DataSource {
 
     private final Logger logger = LoggerFactory.getLogger(IoTDBDataSource.class);
-
+    private static final String PASSWORD = "password";
     private String url;
     private String user;
     private String password;
@@ -44,7 +44,7 @@ public class IoTDBDataSource implements DataSource {
         this.url = url;
         this.properties = new Properties();
         properties.setProperty("user",user);
-        properties.setProperty("password",password);
+        properties.setProperty(PASSWORD,password);
         if(port!=0) {
             this.port = port;
         }
@@ -65,7 +65,7 @@ public class IoTDBDataSource implements DataSource {
 
     public void setPassword(String password) {
         this.password = password;
-        properties.setProperty("password",password);
+        properties.setProperty(PASSWORD,password);
     }
 
     public Integer getPort() {
@@ -99,7 +99,7 @@ public class IoTDBDataSource implements DataSource {
        try {
            Properties newProp = new Properties();
            newProp.setProperty("user",username);
-           newProp.setProperty("password",password);
+           newProp.setProperty(PASSWORD,password);
            return new IoTDBConnection(url, newProp);
        }
        catch (Exception e){

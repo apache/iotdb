@@ -36,6 +36,9 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   private Binary firstValue = new Binary("");
   private Binary lastValue = new Binary("");
+  private static final String BINARY_STATISTICS_NOT_SUPPORT_MIN = "Binary statistics does not support: min";
+  private static final String BINARY_STATISTICS_NOT_SUPPORT_MAX = "Binary statistics does not support: max";
+  private static final String BINARY_STATISTICS_NOT_SUPPORT_SUM = "Binary statistics does not support: sum";
 
   @Override
   public TSDataType getType() {
@@ -80,12 +83,12 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public Binary getMinValue() {
-    throw new StatisticsClassException("Binary statistics does not support: min");
+    throw new StatisticsClassException(BINARY_STATISTICS_NOT_SUPPORT_MIN);
   }
 
   @Override
   public Binary getMaxValue() {
-    throw new StatisticsClassException("Binary statistics does not support: max");
+    throw new StatisticsClassException(BINARY_STATISTICS_NOT_SUPPORT_MAX);
   }
 
   @Override
@@ -100,7 +103,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public double getSumValue() {
-    throw new StatisticsClassException("Binary statistics does not support: sum");
+    throw new StatisticsClassException(BINARY_STATISTICS_NOT_SUPPORT_SUM);
   }
 
   @Override
@@ -138,12 +141,12 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public byte[] getMinValueBytes() {
-    throw new StatisticsClassException("Binary statistics does not support: min");
+    throw new StatisticsClassException(BINARY_STATISTICS_NOT_SUPPORT_MIN);
   }
 
   @Override
   public byte[] getMaxValueBytes() {
-    throw new StatisticsClassException("Binary statistics does not support: max");
+    throw new StatisticsClassException(BINARY_STATISTICS_NOT_SUPPORT_MAX);
   }
 
   @Override
@@ -158,17 +161,17 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public byte[] getSumValueBytes() {
-    throw new StatisticsClassException("Binary statistics does not support: sum");
+    throw new StatisticsClassException(BINARY_STATISTICS_NOT_SUPPORT_SUM);
   }
 
   @Override
   public ByteBuffer getMinValueBuffer() {
-    throw new StatisticsClassException("Binary statistics does not support: min");
+    throw new StatisticsClassException(BINARY_STATISTICS_NOT_SUPPORT_MIN);
   }
 
   @Override
   public ByteBuffer getMaxValueBuffer() {
-    throw new StatisticsClassException("Binary statistics does not support: max");
+    throw new StatisticsClassException(BINARY_STATISTICS_NOT_SUPPORT_MAX);
   }
 
   @Override
@@ -183,7 +186,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public ByteBuffer getSumValueBuffer() {
-    throw new StatisticsClassException("Binary statistics does not support: sum");
+    throw new StatisticsClassException(BINARY_STATISTICS_NOT_SUPPORT_SUM);
   }
 
   @Override

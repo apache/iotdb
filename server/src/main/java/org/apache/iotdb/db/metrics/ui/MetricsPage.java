@@ -39,6 +39,7 @@ public class MetricsPage {
   private static final Logger logger = LoggerFactory.getLogger(MetricsPage.class);
   private MetricRegistry mr;
   private final List<SqlArgument> sqlArguments = TSServiceImpl.getSqlArgumentList();
+  private static final String HTML_TD_TAG = "</td>";
 
   public MetricsPage(MetricRegistry metricRegistry) {
     this.mr = metricRegistry;
@@ -114,12 +115,12 @@ public class MetricsPage {
 
         table.append(
             "<tr>"
-                + "<td>" + resp.getOperationType() + "</td>"
-                + "<td>" + sdf.format(new Date(sqlArgument.getStartTime())) + "</td>"
-                + "<td>" + sdf.format(new Date(sqlArgument.getEndTime())) + "</td>"
+                + "<td>" + resp.getOperationType() + HTML_TD_TAG
+                + "<td>" + sdf.format(new Date(sqlArgument.getStartTime())) + HTML_TD_TAG
+                + "<td>" + sdf.format(new Date(sqlArgument.getEndTime())) + HTML_TD_TAG
                 + "<td>" + (int) (sqlArgument.getEndTime() - sqlArgument.getStartTime()) + " ms</td>"
-                + "<td class=\"sql\">" + sqlArgument.getStatement() + "</td>"
-                + "<td>" + status + "</td>"
+                + "<td class=\"sql\">" + sqlArgument.getStatement() + HTML_TD_TAG
+                + "<td>" + status + HTML_TD_TAG
                 + "<td>" + (errMsg.equals("") ? "== Parsed Physical Plan ==" : errMsg)
                 +   "<span class=\"expand-details\" onclick=\"this.parentNode.querySelector('.stacktrace-details').classList.toggle('collapsed')\">+ details</span>"
                 +   "<div class=\"stacktrace-details collapsed\">"
@@ -131,7 +132,7 @@ public class MetricsPage {
                 +       "Path: " + sqlArgument.getPlan().getPaths().toString()
                 +     "</pre>"
                 +   "</div>"
-                + "</td>"
+                + HTML_TD_TAG
                 +"</tr>");
       }
     }

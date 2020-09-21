@@ -31,6 +31,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class Decoder {
 
+  private static final String DECODER_NOT_FOUND = "Decoder not found:";
+  private static final String DATA_TYPE = " , DataType is :";
+
   private TSEncoding type;
 
   public Decoder(TSEncoding type) {
@@ -68,7 +71,7 @@ public abstract class Decoder {
           return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);
         default:
           throw new TsFileDecodingException(
-              "Decoder not found:" + type + " , DataType is :" + dataType);
+              DECODER_NOT_FOUND + type + DATA_TYPE + dataType);
       }
     } else if (type == TSEncoding.TS_2DIFF) {
       switch (dataType) {
@@ -81,7 +84,7 @@ public abstract class Decoder {
           return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);
         default:
           throw new TsFileDecodingException(
-              "Decoder not found:" + type + " , DataType is :" + dataType);
+              DECODER_NOT_FOUND + type + DATA_TYPE + dataType);
       }
     } else if (type == TSEncoding.GORILLA) {
       switch (dataType) {
@@ -91,7 +94,7 @@ public abstract class Decoder {
           return new DoublePrecisionDecoder();
         default:
           throw new TsFileDecodingException(
-              "Decoder not found:" + type + " , DataType is :" + dataType);
+              DECODER_NOT_FOUND + type + DATA_TYPE + dataType);
       }
     } else if (type == TSEncoding.REGULAR) {
       switch (dataType) {
@@ -101,11 +104,11 @@ public abstract class Decoder {
           return new RegularDataDecoder.LongRegularDecoder();
         default:
           throw new TsFileDecodingException(
-              "Decoder not found:" + type + " , DataType is :" + dataType);
+              DECODER_NOT_FOUND + type + DATA_TYPE + dataType);
       }
     } else {
       throw new TsFileDecodingException(
-          "Decoder not found:" + type + " , DataType is :" + dataType);
+          DECODER_NOT_FOUND + type + DATA_TYPE + dataType);
     }
   }
 
