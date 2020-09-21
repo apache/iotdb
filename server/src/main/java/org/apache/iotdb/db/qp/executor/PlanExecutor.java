@@ -567,8 +567,7 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan showTimeSeriesPlan,
       QueryContext context) throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList = showTimeseries(showTimeSeriesPlan, context);
-    ShowTimeseriesDataSet showTimeSeriesDataSet = new ShowTimeseriesDataSet(showTimeSeriesPlan, context);
-    return showTimeSeriesDataSet.getQueryDataSet(timeseriesList);
+    return new ShowTimeseriesDataSet(showTimeSeriesPlan, context, timeseriesList);
   }
 
   protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)

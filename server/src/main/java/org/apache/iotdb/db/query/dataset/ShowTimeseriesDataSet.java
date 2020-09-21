@@ -55,6 +55,8 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   private List<RowRecord> result = new ArrayList<>();
   private int index = 0;
   private QueryContext context;
+  private List<ShowTimeSeriesResult> timeseriesList;
+  private boolean hasSetRecord;
 
   public boolean hasLimit = true;
 
@@ -66,13 +68,16 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   private static TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
       TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT};
 
-  public ShowTimeseriesDataSet(ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context) {
+  public ShowTimeseriesDataSet(ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context,
+      List<ShowTimeSeriesResult> timeseriesList) {
     super(Arrays.asList(resourcePaths), Arrays.asList(resourceTypes));
     this.plan = showTimeSeriesPlan;
     this.context = context;
+    this.timeseriesList = timeseriesList;
+    this.hasSetRecord = false;
   }
 
-  public QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList) {
+  public QueryDataSet getQueryDataSet() {
     hasLimit = plan.hasLimit();
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
@@ -127,6 +132,10 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
 
   @Override
   protected boolean hasNextWithoutConstraint() throws IOException {
+    if (!hasSetRecord) {
+      getQueryDataSet();
+      hasSetRecord = true;
+    }
     if (index == result.size() && !hasLimit) {
       plan.setOffset(plan.getOffset() + plan.getLimit());
       try {
