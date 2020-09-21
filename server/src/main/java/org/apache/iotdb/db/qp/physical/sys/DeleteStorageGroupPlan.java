@@ -48,11 +48,7 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
 
   @Override
   public List<String> getPathsStrings() {
-    List<String> ret = new ArrayList<>();
-    for (PartialPath path : deletePathList) {
-      ret.add(path.getFullPath());
-    }
-    return ret;
+    return PartialPath.toStringList(deletePathList);
   }
 
   @Override

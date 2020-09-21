@@ -100,7 +100,7 @@ public abstract class InsertPlan extends PhysicalPlan {
     this.deviceMNode = deviceMNode;
   }
 
-  abstract public long getMinTime();
+  public abstract long getMinTime();
 
 
   /**

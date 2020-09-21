@@ -64,6 +64,18 @@ public class InsertRowPlan extends InsertPlan {
     super(OperatorType.INSERT);
   }
 
+  public InsertRowPlan(InsertRowPlan another) {
+    super(OperatorType.INSERT);
+    this.deviceId = another.deviceId;
+    this.time = another.time;
+    this.measurements = new String[another.measurements.length];
+    System.arraycopy(another.measurements, 0, this.measurements, 0, another.measurements.length);
+    this.values = new Object[another.values.length];
+    System.arraycopy(another.values, 0, this.values, 0, another.values.length);
+    this.dataTypes = new TSDataType[another.dataTypes.length];
+    System.arraycopy(another.dataTypes, 0, this.dataTypes, 0, another.dataTypes.length);
+  }
+
   @TestOnly
   public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurements,
       TSDataType[] dataTypes, String[] insertValues) {
@@ -455,19 +467,6 @@ public class InsertRowPlan extends InsertPlan {
     Object value = values[measurementIndex];
     return new TimeValuePair(time,
         TsPrimitiveType.getByType(schemas[measurementIndex].getType(), value));
-  }
-
-  @Override
-  public Object clone() {
-    long timeClone = this.time;
-    String[] measurementsClone = new String[this.measurements.length];
-    System.arraycopy(this.measurements, 0, measurementsClone, 0, measurementsClone.length);
-    Object[] valuesClone = new Object[this.values.length];
-    System.arraycopy(this.values, 0, valuesClone, 0, valuesClone.length);
-    TSDataType[] typesClone = new TSDataType[this.dataTypes.length];
-    System.arraycopy(this.dataTypes, 0, typesClone, 0, typesClone.length);
-    return new InsertRowPlan(deviceId, timeClone, measurementsClone, typesClone,
-        valuesClone);
   }
 
   @Override

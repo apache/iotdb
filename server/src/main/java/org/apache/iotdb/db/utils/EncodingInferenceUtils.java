@@ -26,6 +26,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class EncodingInferenceUtils {
 
+  private EncodingInferenceUtils() {
+    // util class
+  }
+
   /**
    * Get default encoding by dataType
    */

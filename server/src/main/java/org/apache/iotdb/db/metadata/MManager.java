@@ -2087,7 +2087,7 @@ public class MManager {
     try {
       MNode mNode = getDeviceNode(deviceId);
       mNode.readUnlock();
-    } catch (IllegalMonitorStateException | MetadataException e) {
+    } catch (MetadataException e) {
       // ignore the exception
     }
   }

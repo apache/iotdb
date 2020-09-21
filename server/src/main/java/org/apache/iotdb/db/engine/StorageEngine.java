@@ -391,38 +391,39 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void closeProcessor(PartialPath storageGroupPath, boolean isSeq, boolean isSync)
-      throws StorageGroupNotSetException {
+  public void closeProcessor(PartialPath storageGroupPath, boolean isSeq, boolean isSync) {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
-    if (processor != null) {
-      logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupPath,
-          isSeq);
-      processor.writeLock();
-      try {
-        if (isSeq) {
-          // to avoid concurrent modification problem, we need a new array list
-          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
-              processor.getWorkSequenceTsFileProcessors())) {
-            if (isSync) {
-              processor.syncCloseOneTsFileProcessor(true, tsfileProcessor);
-            } else {
-              processor.asyncCloseOneTsFileProcessor(true, tsfileProcessor);
-            }
-          }
-        } else {
-          // to avoid concurrent modification problem, we need a new array list
-          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
-              processor.getWorkUnsequenceTsFileProcessor())) {
-            if (isSync) {
-              processor.syncCloseOneTsFileProcessor(false, tsfileProcessor);
-            } else {
-              processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
-            }
+    if (processor == null) {
+      return;
+    }
+
+    logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupPath,
+        isSeq);
+    processor.writeLock();
+    try {
+      if (isSeq) {
+        // to avoid concurrent modification problem, we need a new array list
+        for (TsFileProcessor tsfileProcessor : new ArrayList<>(
+            processor.getWorkSequenceTsFileProcessors())) {
+          if (isSync) {
+            processor.syncCloseOneTsFileProcessor(true, tsfileProcessor);
+          } else {
+            processor.asyncCloseOneTsFileProcessor(true, tsfileProcessor);
           }
         }
-      } finally {
-        processor.writeUnlock();
+      } else {
+        // to avoid concurrent modification problem, we need a new array list
+        for (TsFileProcessor tsfileProcessor : new ArrayList<>(
+            processor.getWorkUnsequenceTsFileProcessor())) {
+          if (isSync) {
+            processor.syncCloseOneTsFileProcessor(false, tsfileProcessor);
+          } else {
+            processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
+          }
+        }
       }
+    } finally {
+      processor.writeUnlock();
     }
   }
 
@@ -708,7 +709,7 @@ public class StorageEngine implements IService {
     getProcessor(storageGroupPath).removePartitions(filter);
   }
 
-  public ConcurrentHashMap<PartialPath, StorageGroupProcessor> getProcessorMap() {
+  public Map<PartialPath, StorageGroupProcessor> getProcessorMap() {
     return processorMap;
   }
 

@@ -159,7 +159,13 @@ public class InsertTabletPlan extends InsertPlan {
     stream.writeByte((byte) type);
 
     putString(stream, deviceId.getFullPath());
+    writeMeasurements(stream);
+    writeDataTypes(stream);
+    writeTimes(stream);
+    writeValues(stream);
+  }
 
+  private void writeMeasurements(DataOutputStream stream) throws IOException {
     stream.writeInt(
         measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
     for (String m : measurements) {
@@ -168,14 +174,18 @@ public class InsertTabletPlan extends InsertPlan {
       }
       putString(stream, m);
     }
+  }
 
+  private void writeDataTypes(DataOutputStream stream) throws IOException {
     for (TSDataType dataType : dataTypes) {
       if (dataType == null) {
         continue;
       }
       stream.writeShort(dataType.serialize());
     }
+  }
 
+  private void writeTimes(DataOutputStream stream) throws IOException {
     if (isExecuting) {
       stream.writeInt(end - start);
     } else {
@@ -196,7 +206,9 @@ public class InsertTabletPlan extends InsertPlan {
       stream.write(timeBuffer.array());
       timeBuffer = null;
     }
+  }
 
+  private void writeValues(DataOutputStream stream) throws IOException {
     if (valueBuffer == null) {
       serializeValues(stream);
     } else {
@@ -211,7 +223,13 @@ public class InsertTabletPlan extends InsertPlan {
     buffer.put((byte) type);
 
     putString(buffer, deviceId.getFullPath());
+    writeMeasurements(buffer);
+    writeDataTypes(buffer);
+    writeTimes(buffer);
+    writeValues(buffer);
+  }
 
+  private void writeMeasurements(ByteBuffer buffer) {
     buffer
         .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
     for (String m : measurements) {
@@ -219,13 +237,17 @@ public class InsertTabletPlan extends InsertPlan {
         putString(buffer, m);
       }
     }
+  }
 
+  private void writeDataTypes(ByteBuffer buffer) {
     for (TSDataType dataType : dataTypes) {
       if (dataType != null) {
         dataType.serializeTo(buffer);
       }
     }
+  }
 
+  private void writeTimes(ByteBuffer buffer) {
     if (isExecuting) {
       buffer.putInt(end - start);
     } else {
@@ -246,7 +268,9 @@ public class InsertTabletPlan extends InsertPlan {
       buffer.put(timeBuffer.array());
       timeBuffer = null;
     }
+  }
 
+  private void writeValues(ByteBuffer buffer) {
     if (valueBuffer == null) {
       serializeValues(buffer);
     } else {
@@ -508,6 +532,7 @@ public class InsertTabletPlan extends InsertPlan {
         '}';
   }
 
+  @Override
   public void markFailedMeasurementInsertion(int index, Exception e) {
     if (measurements[index] == null) {
       return;

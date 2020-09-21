@@ -48,11 +48,7 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public List<String> getPathsStrings() {
-    List<String> ret = new ArrayList<>();
-    for (PartialPath path : deletePathList) {
-      ret.add(path.getFullPath());
-    }
-    return ret;
+    return PartialPath.toStringList(deletePathList);
   }
 
   @Override
@@ -84,6 +80,7 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
     }
   }
 
+  @Override
   public void setPaths(List<PartialPath> fullPaths) {
     this.deletePathList = fullPaths;
   }
