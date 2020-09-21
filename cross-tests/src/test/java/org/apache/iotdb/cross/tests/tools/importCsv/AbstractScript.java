@@ -18,12 +18,16 @@
  */
 package org.apache.iotdb.cross.tests.tools.importCsv;
 
-import java.io.*;
+import static org.junit.Assert.assertTrue;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-
-import static org.junit.Assert.assertTrue;
 
 public abstract class AbstractScript {
 
@@ -56,14 +60,21 @@ public abstract class AbstractScript {
     if(!userDir.exists()) {
       throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
     }
-    File target = new File(userDir.getParent() + "/cli", "target/maven-archiver/pom.properties");
+    File target = new File(userDir.getParent() + File.separator + "cli",
+        "target" + File.separator + "maven"
+            + "-archiver"
+            + File.separator + "pom"
+            + ".properties");
     Properties properties = new Properties();
     try {
       properties.load(new FileReader(target));
     } catch (IOException e) {
-      return "target/iotdb-cli-";
+      return "target" + File.separator + "iotdb-cli-";
     }
-    return new File(userDir.getParent() + "/cli", String.format("target/%s-%s", properties.getProperty("artifactId"), properties.getProperty("version"))).getAbsolutePath();
+    return new File(userDir.getParent() + File.separator + "cli",
+        String.format("target" + File.separator +
+                "%s-%s",
+            properties.getProperty("artifactId"), properties.getProperty("version"))).getAbsolutePath();
   }
 
   protected abstract void testOnWindows() throws IOException;
