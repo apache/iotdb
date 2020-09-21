@@ -24,9 +24,9 @@ sig=0
 
 for evry_pid in ${PIDS}
 do
-  cwd_path=$(ls -l /proc/$evry_pid | grep "cwd ->" | grep -v grep | awk '{print $NF}')
+  cwd_path=$(lsof -p $evry_pid | awk '$4=="cwd" {print $9}')
   pwd_path=$(/bin/pwd)
-  if [[ $pwd_path =~ $cwd_path ]]; then
+  if [[ $pwd_path == $cwd_path ]]; then
     kill -s TERM $evry_pid
     echo "close IoTDB"
     sig=1
