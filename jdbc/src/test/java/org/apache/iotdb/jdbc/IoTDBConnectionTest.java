@@ -21,13 +21,6 @@ package org.apache.iotdb.jdbc;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-import java.awt.SystemTray;
->>>>>>> 93c25111b... Update IoTDBConnectionTest.java
-=======
->>>>>>> 86860fd29... fixed tests, add comments
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
