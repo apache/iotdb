@@ -141,6 +141,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.thrift.TException;
@@ -1283,9 +1284,7 @@ public class MetaGroupMember extends RaftMember {
       try {
         result = processPartitionedPlan(plan);
       } catch (UnsupportedPlanException e) {
-        TSStatus status = StatusUtils.UNSUPPORTED_OPERATION.deepCopy();
-        status.setMessage(e.getMessage());
-        result = status;
+        return StatusUtils.getStatus(StatusUtils.UNSUPPORTED_OPERATION, e.getMessage());
       }
     }
     Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.addNanoFromStart(start);
@@ -1326,7 +1325,11 @@ public class MetaGroupMember extends RaftMember {
         return status;
       }
     } else if (leader != null) {
-      return forwardPlan(plan, leader, null);
+      TSStatus result = forwardPlan(plan, leader, null);
+      if (!StatusUtils.NO_LEADER.equals(result)) {
+        result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
+        return result;
+      }
     }
 
     waitLeader();
@@ -1337,7 +1340,11 @@ public class MetaGroupMember extends RaftMember {
         return status;
       }
     }
-    return forwardPlan(plan, leader, null);
+    TSStatus result = forwardPlan(plan, leader, null);
+    if (!StatusUtils.NO_LEADER.equals(result)) {
+      result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
+    }
+    return result;
   }
 
   /**
@@ -1355,9 +1362,7 @@ public class MetaGroupMember extends RaftMember {
         // has already been deleted
         ((CMManager) IoTDB.metaManager).convertToFullPaths(plan);
       } catch (PathNotExistException e) {
-        TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-        tsStatus.setMessage(e.getMessage());
-        return tsStatus;
+        return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
     }
     try {
@@ -1389,9 +1394,8 @@ public class MetaGroupMember extends RaftMember {
     try {
       planGroupMap = splitPlan(plan);
     } catch (CheckConsistencyException checkConsistencyException) {
-      TSStatus status = StatusUtils.CONSISTENCY_FAILURE.deepCopy();
-      status.setMessage(checkConsistencyException.getMessage());
-      return status;
+      return StatusUtils
+          .getStatus(StatusUtils.CONSISTENCY_FAILURE, checkConsistencyException.getMessage());
     }
 
     // the storage group is not found locally
@@ -1470,9 +1474,7 @@ public class MetaGroupMember extends RaftMember {
       try {
         hasCreate = ((CMManager) IoTDB.metaManager).createTimeseries((InsertPlan) plan);
       } catch (IllegalPathException e) {
-        TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-        tsStatus.setMessage(e.getMessage());
-        return tsStatus;
+        return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
       if (hasCreate) {
         status = forwardPlan(planGroupMap, plan);
@@ -1496,13 +1498,19 @@ public class MetaGroupMember extends RaftMember {
     TSStatus[] subStatus = null;
     boolean noFailure = true;
     boolean isBatchFailure = false;
+    EndPoint endPoint = null;
+    InsertTabletPlan subPlan;
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
+      subPlan = (InsertTabletPlan) entry.getKey();
       logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
       noFailure =
           (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
       isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
           || isBatchFailure;
+      if (tmpStatus.isSetRedirectNode() && subPlan.getMaxTime() == plan.getMaxTime()) {
+        endPoint = tmpStatus.getRedirectNode();
+      }
       if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         if (subStatus == null) {
           subStatus = new TSStatus[plan.getRowCount()];
@@ -1522,12 +1530,15 @@ public class MetaGroupMember extends RaftMember {
     TSStatus status;
     if (noFailure) {
       status = StatusUtils.OK;
+      if (endPoint != null) {
+        status = StatusUtils.getStatus(status, endPoint);
+      }
     } else if (isBatchFailure) {
       //noinspection ConstantConditions, subStatus is never null in this case
       status = RpcUtils.getStatus(Arrays.asList(subStatus));
     } else {
-      status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-      status.setMessage(MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+      status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
+          MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
     }
     return status;
   }
@@ -1568,8 +1579,15 @@ public class MetaGroupMember extends RaftMember {
   private TSStatus forwardToMultipleGroup(Map<PhysicalPlan, PartitionGroup> planGroupMap) {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
+    boolean allRedirect = true;
+    EndPoint endPoint = null;
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
+      if (tmpStatus.isSetRedirectNode()) {
+        endPoint = tmpStatus.getRedirectNode();
+      } else {
+        allRedirect = false;
+      }
       if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
@@ -1580,9 +1598,12 @@ public class MetaGroupMember extends RaftMember {
     TSStatus status;
     if (errorCodePartitionGroups.isEmpty()) {
       status = StatusUtils.OK;
+      if (allRedirect) {
+        status = StatusUtils.getStatus(status, endPoint);
+      }
     } else {
-      status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-      status.setMessage(MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+      status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
+          MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
     }
     return status;
   }
@@ -1619,8 +1640,8 @@ public class MetaGroupMember extends RaftMember {
     if (errorCodePartitionGroups.isEmpty()) {
       status = StatusUtils.OK;
     } else {
-      status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-      status.setMessage(MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+      status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
+          MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
     }
     logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;
@@ -1642,10 +1663,12 @@ public class MetaGroupMember extends RaftMember {
           status = forwardDataPlanSync(plan, node, group.getHeader());
         }
       } catch (IOException e) {
-        status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-        status.setMessage(e.getMessage());
+        status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
       if (!StatusUtils.TIME_OUT.equals(status)) {
+        if (!status.isSetRedirectNode()) {
+          status.setRedirectNode(new EndPoint(node.getIp(), node.getClientPort()));
+        }
         return status;
       } else {
         logger.warn("Forward {} to {} timed out", plan, node);

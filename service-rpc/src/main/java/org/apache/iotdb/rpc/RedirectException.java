@@ -17,30 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.log;
+package org.apache.iotdb.rpc;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
-import java.nio.ByteBuffer;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.junit.Test;
+public class RedirectException extends Exception {
 
-public class HardStateTest {
+  private EndPoint endPoint;
 
-  @Test
-  public void testHardState() {
-    // Not NULL
-    HardState state = new HardState();
-    state.setCurrentTerm(2);
-    state.setVoteFor(new Node("127.0.0.1", 30000, 0, 40000, 55560));
-    ByteBuffer buffer = state.serialize();
-    HardState newState = HardState.deserialize(buffer);
-    assertEquals(state, newState);
-
-    // NULL
-    state.setVoteFor(null);
-    buffer = state.serialize();
-    newState = HardState.deserialize(buffer);
-    assertEquals(state, newState);
+  public RedirectException(EndPoint endpoint) {
+    super("later request in same group will be redirected to " + endpoint.toString());
+    this.endPoint = endpoint;
   }
+
+  public EndPoint getEndPoint() {
+    return this.endPoint;
+  }
+
 }

@@ -187,9 +187,7 @@ public class MetaGroupMemberTest extends MemberTest {
           planExecutor.processNonQuery(plan);
           return StatusUtils.OK;
         } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
-          TSStatus status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-          status.setMessage(e.getMessage());
-          return status;
+          return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,e.getMessage());
         }
       }
 
@@ -922,7 +920,7 @@ public class MetaGroupMemberTest extends MemberTest {
     request.setLeaderCommit(0);
     request.setPrevLogIndex(-1);
     request.setPrevLogTerm(-1);
-    request.setLeader(new Node("127.0.0.1", 30000, 0, 40000));
+    request.setLeader(new Node("127.0.0.1", 30000, 0, 40000, 55560));
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
     new MetaAsyncService(testMetaMember).appendEntry(request, handler);

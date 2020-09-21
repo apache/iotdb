@@ -71,7 +71,7 @@ public class MetaLogApplierTest extends IoTDBTest {
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     nodes.clear();
 
-    Node node = new Node("localhost", 1111, 0, 2222);
+    Node node = new Node("localhost", 1111, 0, 2222, 55560);
     AddNodeLog log = new AddNodeLog();
     log.setNewNode(node);
     applier.apply(log);

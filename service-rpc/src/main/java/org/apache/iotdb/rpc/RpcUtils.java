@@ -31,7 +31,8 @@ public class RpcUtils {
     // util class
   }
 
-  public static final TSStatus SUCCESS_STATUS = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public static final TSStatus SUCCESS_STATUS = new TSStatus(
+      TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
   public static TSIService.Iface newSynchronizedClient(TSIService.Iface client) {
     return (TSIService.Iface) Proxy.newProxyInstance(RpcUtils.class.getClassLoader(),
@@ -43,13 +44,22 @@ public class RpcUtils {
    *
    * @param status -status
    */
-  public static void verifySuccess(TSStatus status) throws StatementExecutionException {
+  public static void verifySuccess(TSStatus status)
+      throws StatementExecutionException {
     if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       verifySuccess(status.getSubStatus());
       return;
     }
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new StatementExecutionException(status);
+    }
+  }
+
+  public static void verifySuccessWithRedirection(TSStatus status)
+      throws StatementExecutionException, RedirectException {
+    verifySuccess(status);
+    if (status.isSetRedirectNode()) {
+      throw new RedirectException(status.getRedirectNode());
     }
   }
 
@@ -77,8 +87,8 @@ public class RpcUtils {
   /**
    * convert from TSStatusCode to TSStatus, which has message appending with existed status message
    *
-   * @param tsStatusCode    status type
-   * @param message appending message
+   * @param tsStatusCode status type
+   * @param message      appending message
    */
   public static TSStatus getStatus(TSStatusCode tsStatusCode, String message) {
     TSStatus status = new TSStatus(tsStatusCode.getStatusCode());
@@ -97,7 +107,8 @@ public class RpcUtils {
     return getTSExecuteStatementResp(status);
   }
 
-  public static TSExecuteStatementResp getTSExecuteStatementResp(TSStatusCode tsStatusCode, String message) {
+  public static TSExecuteStatementResp getTSExecuteStatementResp(TSStatusCode tsStatusCode,
+      String message) {
     TSStatus status = getStatus(tsStatusCode, message);
     return getTSExecuteStatementResp(status);
   }
@@ -114,7 +125,8 @@ public class RpcUtils {
     return getTSFetchResultsResp(status);
   }
 
-  public static TSFetchResultsResp getTSFetchResultsResp(TSStatusCode tsStatusCode, String appendMessage) {
+  public static TSFetchResultsResp getTSFetchResultsResp(TSStatusCode tsStatusCode,
+      String appendMessage) {
     TSStatus status = getStatus(tsStatusCode, appendMessage);
     return getTSFetchResultsResp(status);
   }

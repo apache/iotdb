@@ -138,16 +138,16 @@ public class LogCatchUpTaskTest {
       fail(e.getMessage());
     } catch (LeaderUnknownException e) {
       assertEquals("The leader is unknown in this group [Node(ip:192.168.0.0, metaPort:9003, "
-          + "nodeIdentifier:0, dataPort:40010), Node(ip:192.168.0.1, metaPort:9003, "
-          + "nodeIdentifier:1, dataPort:40010), Node(ip:192.168.0.2, metaPort:9003, "
-          + "nodeIdentifier:2, dataPort:40010), Node(ip:192.168.0.3, metaPort:9003, "
-          + "nodeIdentifier:3, dataPort:40010), Node(ip:192.168.0.4, metaPort:9003, "
-          + "nodeIdentifier:4, dataPort:40010), Node(ip:192.168.0.5, metaPort:9003, "
-          + "nodeIdentifier:5, dataPort:40010), Node(ip:192.168.0.6, metaPort:9003, "
-          + "nodeIdentifier:6, dataPort:40010), Node(ip:192.168.0.7, metaPort:9003, "
-          + "nodeIdentifier:7, dataPort:40010), Node(ip:192.168.0.8, metaPort:9003, "
-          + "nodeIdentifier:8, dataPort:40010), Node(ip:192.168.0.9, metaPort:9003, "
-          + "nodeIdentifier:9, dataPort:40010)]", e.getMessage());
+          + "nodeIdentifier:0, dataPort:40010, clientPort:0), Node(ip:192.168.0.1, metaPort:9003, "
+          + "nodeIdentifier:1, dataPort:40010, clientPort:0), Node(ip:192.168.0.2, metaPort:9003, "
+          + "nodeIdentifier:2, dataPort:40010, clientPort:0), Node(ip:192.168.0.3, metaPort:9003, "
+          + "nodeIdentifier:3, dataPort:40010, clientPort:0), Node(ip:192.168.0.4, metaPort:9003, "
+          + "nodeIdentifier:4, dataPort:40010, clientPort:0), Node(ip:192.168.0.5, metaPort:9003, "
+          + "nodeIdentifier:5, dataPort:40010, clientPort:0), Node(ip:192.168.0.6, metaPort:9003, "
+          + "nodeIdentifier:6, dataPort:40010, clientPort:0), Node(ip:192.168.0.7, metaPort:9003, "
+          + "nodeIdentifier:7, dataPort:40010, clientPort:0), Node(ip:192.168.0.8, metaPort:9003, "
+          + "nodeIdentifier:8, dataPort:40010, clientPort:0), Node(ip:192.168.0.9, metaPort:9003, "
+          + "nodeIdentifier:9, dataPort:40010, clientPort:0)]", e.getMessage());
     }
 
     assertEquals(logList.subList(0, 5), receivedLogs);

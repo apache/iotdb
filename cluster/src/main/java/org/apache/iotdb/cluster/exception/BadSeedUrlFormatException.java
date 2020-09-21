@@ -23,6 +23,6 @@ public class BadSeedUrlFormatException extends Exception {
 
   public BadSeedUrlFormatException(String seedUrl) {
     super(String.format("Seed url %s has bad format, which should be "
-        + "{IP/DomainName}:{metaPort}:{dataPort}", seedUrl));
+        + "{IP/DomainName}:{metaPort}:{dataPort}:{clientPort}", seedUrl));
   }
 }

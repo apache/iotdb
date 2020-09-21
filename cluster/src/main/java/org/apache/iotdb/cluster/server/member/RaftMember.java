@@ -1146,11 +1146,9 @@ public abstract class RaftMember {
       }
       return tsStatus;
     } catch (IOException | TException e) {
-      TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
-      status.setMessage(e.getMessage());
       logger
           .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
-      return status;
+      return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("{}: forward {} to {} interrupted", name, plan, receiver);
@@ -1178,21 +1176,18 @@ public abstract class RaftMember {
       }
       return tsStatus;
     } catch (IOException e) {
-      TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
-      status.setMessage(e.getMessage());
       logger
           .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
-      return status;
+      return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
     } catch (TException e) {
       TSStatus status;
       if (e.getCause() instanceof SocketTimeoutException) {
         status = StatusUtils.TIME_OUT;
         logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       } else {
-        status = StatusUtils.INTERNAL_ERROR.deepCopy();
-        status.setMessage(e.getMessage());
         logger
             .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
+        status = StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
       }
       // the connection may be broken, close it to avoid it being reused
       client.getInputProtocol().getTransport().close();
@@ -1327,7 +1322,7 @@ public abstract class RaftMember {
       return RpcUtils
           .getStatus(Arrays.asList(((BatchInsertionException) cause).getFailingStatus()));
     }
-    TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+    TSStatus tsStatus = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,cause.getClass().getName() + ":" + cause.getMessage());
     if (cause instanceof IoTDBException) {
       tsStatus.setCode(((IoTDBException) cause).getErrorCode());
     }
@@ -1337,7 +1332,6 @@ public abstract class RaftMember {
         !(cause instanceof StorageGroupAlreadySetException)) {
       logger.debug("{} cannot be executed because ", log, cause);
     }
-    tsStatus.setMessage(cause.getClass().getName() + ":" + cause.getMessage());
     return tsStatus;
   }
 

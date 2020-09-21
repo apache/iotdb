@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.cluster.log.logtypes;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
@@ -42,30 +45,17 @@ public class AddNodeLog extends Log {
 
   @Override
   public ByteBuffer serialize() {
-    byte[] ipBytes = newNode.getIp().getBytes();
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      dataOutputStream.writeByte(Types.ADD_NODE.ordinal());
+      dataOutputStream.writeLong(getCurrLogIndex());
+      dataOutputStream.writeLong(getCurrLogTerm());
 
-    // marker(byte), curr index(long), curr term(long)
-    // ipLength(int), ipBytes(byte[]), port(int), identifier(int), dataPort(int)
-    int totalSize =
-        Byte.BYTES + Long.BYTES + Long.BYTES +
-            Integer.BYTES + ipBytes.length + Integer.BYTES + Integer.BYTES + Integer.BYTES;
-    byte[] buffer = new byte[totalSize];
-
-    ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
-
-    byteBuffer.put((byte) Types.ADD_NODE.ordinal());
-
-    byteBuffer.putLong(getCurrLogIndex());
-    byteBuffer.putLong(getCurrLogTerm());
-
-    byteBuffer.putInt(ipBytes.length);
-    byteBuffer.put(ipBytes);
-    byteBuffer.putInt(newNode.getMetaPort());
-    byteBuffer.putInt(newNode.getNodeIdentifier());
-    byteBuffer.putInt(newNode.getDataPort());
-
-    byteBuffer.flip();
-    return byteBuffer;
+      SerializeUtils.serialize(newNode, dataOutputStream);
+    } catch (IOException e) {
+      // ignored
+    }
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
   @Override

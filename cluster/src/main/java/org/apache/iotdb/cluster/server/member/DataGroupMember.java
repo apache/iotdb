@@ -85,6 +85,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.Timer.Statistic;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
+import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
@@ -95,6 +96,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -677,7 +679,10 @@ public class DataGroupMember extends RaftMember {
       }
       TSStatus result =  forwardPlan(plan, leader, getHeader());
       Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.addNanoFromStart(start);
-      return result;
+      if (!StatusUtils.NO_LEADER.equals(result)) {
+        result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
+        return result;
+      }
     }
 
     long start;
@@ -697,12 +702,14 @@ public class DataGroupMember extends RaftMember {
         return status;
       }
     }
-
     if (Timer.ENABLE_INSTRUMENTING) {
       start = System.nanoTime();
     }
     TSStatus tsStatus = forwardPlan(plan, leader, getHeader());
     Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.addNanoFromStart(start);
+    if (!StatusUtils.NO_LEADER.equals(tsStatus)) {
+      tsStatus.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
+    }
     return tsStatus;
   }
 

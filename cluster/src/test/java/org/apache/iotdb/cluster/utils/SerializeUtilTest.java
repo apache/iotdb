@@ -36,7 +36,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.Test;
@@ -48,7 +47,7 @@ public class SerializeUtilTest {
     for (int i = 0; i < 10; i++) {
       Node node = TestUtils.getNode(i);
       String nodeStr = node.toString();
-      Node fromStr = SerializeUtils.stringToNode(nodeStr);
+      Node fromStr = ClusterUtils.stringToNode(nodeStr);
       assertEquals(node, fromStr);
     }
   }

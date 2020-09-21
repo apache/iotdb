@@ -123,7 +123,7 @@ public class MemberTest {
     List<String> testUrls = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       Node node = TestUtils.getNode(i);
-      testUrls.add(node.getIp() + ":" + node.getMetaPort() + ":" + node.getDataPort());
+      testUrls.add(node.getIp() + ":" + node.getMetaPort() + ":" + node.getDataPort() + ":" + node.getClientPort());
     }
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(testUrls);
 

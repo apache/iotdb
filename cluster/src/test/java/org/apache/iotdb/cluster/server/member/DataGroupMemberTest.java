@@ -299,8 +299,8 @@ public class DataGroupMemberTest extends MemberTest {
     testMetaMember.getTerm().set(10);
     List<Log> metaLogs = TestUtils.prepareTestLogs(6);
     metaLogManager.append(metaLogs);
-    Node voteFor = new Node("127.0.0.1", 30000, 0, 40000);
-    Node elector = new Node("127.0.0.1", 30001, 1, 40001);
+    Node voteFor = new Node("127.0.0.1", 30000, 0, 40000, 55560);
+    Node elector = new Node("127.0.0.1", 30001, 1, 40001, 55561);
 
     // a request with smaller term
     ElectionRequest electionRequest = new ElectionRequest();
