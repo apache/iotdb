@@ -771,6 +771,15 @@ public class MManager {
     }
   }
 
+  public List<PartialPath> getRelatedStorageGroups(PartialPath path) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getRelatedStorageGroups(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   /**
    * Get all storage group under given prefixPath.
    *

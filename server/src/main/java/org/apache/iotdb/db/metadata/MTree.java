@@ -503,7 +503,22 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all storage group under give path
+   * Get the storage group that given path belonged to or under given path
+   *
+   * @return a list contains all storage group names under give path
+   */
+  List<PartialPath> getRelatedStorageGroups(PartialPath path) throws MetadataException {
+    String[] nodes = path.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+    List<PartialPath> storageGroupPaths = new ArrayList<>();
+    findStorageGroupPaths(root, nodes, 1, "", storageGroupPaths, false);
+    return storageGroupPaths;
+  }
+
+  /**
+   * Get all storage group under given path
    *
    * @return a list contains all storage group names under give path
    */
@@ -513,7 +528,7 @@ public class MTree implements Serializable {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
     List<PartialPath> storageGroupPaths = new ArrayList<>();
-    findStorageGroupPaths(root, nodes, 1, "", storageGroupPaths);
+    findStorageGroupPaths(root, nodes, 1, "", storageGroupPaths, true);
     return storageGroupPaths;
   }
 
@@ -527,24 +542,26 @@ public class MTree implements Serializable {
    * @param storageGroupPaths store all matched storage group names
    */
   private void findStorageGroupPaths(MNode node, String[] nodes, int idx, String parent,
-      List<PartialPath> storageGroupPaths) {
-    System.out.println("current node:" + node.getName() + ". is a SgNode:" + (node instanceof  StorageGroupMNode));
-    if (node instanceof StorageGroupMNode) {
+      List<PartialPath> storageGroupPaths, boolean prefixOnly) {
+    if (prefixOnly && node instanceof StorageGroupMNode && idx >= nodes.length) {
+      storageGroupPaths.add(node.getPartialPath());
+      return;
+    }
+    if (!prefixOnly && node instanceof StorageGroupMNode) {
       storageGroupPaths.add(node.getPartialPath());
       return;
     }
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    System.out.println("nodeReg is: " + nodeReg);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChild(nodeReg)) {
-        System.out.println(node.getName() + " has child: " + nodeReg);
         findStorageGroupPaths(node.getChild(nodeReg), nodes, idx + 1,
-            parent + node.getName() + PATH_SEPARATOR, storageGroupPaths);
+            parent + node.getName() + PATH_SEPARATOR, storageGroupPaths, prefixOnly);
       }
     } else {
       for (MNode child : node.getChildren().values()) {
         findStorageGroupPaths(
-            child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, storageGroupPaths);
+            child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, storageGroupPaths,
+            prefixOnly);
       }
     }
   }

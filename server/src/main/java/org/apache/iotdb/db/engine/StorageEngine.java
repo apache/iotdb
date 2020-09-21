@@ -450,13 +450,10 @@ public class StorageEngine implements IService {
   public void delete(PartialPath path, long startTime, long endTime)
           throws StorageEngineException {
     try {
-      List<PartialPath> sgPaths = IoTDB.metaManager.getStorageGroupPaths(path);
-      System.out.println("Number of sg is " + sgPaths.size() + "in path: " + path);
-      System.out.println("StorageGroup paths are: " + sgPaths.toString());
+      List<PartialPath> sgPaths = IoTDB.metaManager.getRelatedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
         StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
         path.setPrefixPath(storageGroupPath);
-        System.out.println("delete path :" + path + " from " + startTime + " to " + endTime);
         storageGroupProcessor.delete(path, startTime, endTime);
       }
     } catch (IOException | MetadataException e) {
