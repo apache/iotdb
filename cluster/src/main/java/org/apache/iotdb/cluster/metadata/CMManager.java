@@ -284,9 +284,12 @@ public class CMManager extends MManager {
   public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(PartialPath deviceId,
       String[] measurementList, InsertPlan plan) throws MetadataException {
     MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurementList.length];
+    getDeviceNode(deviceId).readLock();
     int nonExistSchemaIndex = getSchemasLocally(deviceId, measurementList, measurementSchemas);
     if (nonExistSchemaIndex == -1) {
       return measurementSchemas;
+    } else {
+      unlockDeviceReadLock(deviceId);
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
