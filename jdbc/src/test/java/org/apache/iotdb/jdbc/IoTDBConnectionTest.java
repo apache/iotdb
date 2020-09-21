@@ -21,13 +21,17 @@ package org.apache.iotdb.jdbc;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
-
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
 import java.awt.SystemTray;
+>>>>>>> 93c25111b... Update IoTDBConnectionTest.java
+=======
+>>>>>>> 86860fd29... fixed tests, add comments
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -66,7 +70,7 @@ public class IoTDBConnectionTest {
 
   @Test
   public void testGetTimeZone() throws IoTDBSQLException, TException {
-    String timeZone = "Asia/Shanghai";
+    String timeZone = ZoneId.systemDefault().toString();
     sessionId = connection.getSessionId();
     when(client.getTimeZone(sessionId)).thenReturn(new TSGetTimeZoneResp(successStatus, timeZone));
     connection.setClient(client);
