@@ -199,12 +199,7 @@ public class SystemInfo {
       logger.debug("Current buffed array size {}, OOB size {}",
           PrimitiveArrayManager.getBufferedArraysSize(),
           PrimitiveArrayManager.getOOBSize());
-      if (processor.shouldClose()) {
-        processor.startClose();
-      }
-      else {
-        processor.asyncFlush();
-      }
+      processor.setFlush();
     }
   }
 

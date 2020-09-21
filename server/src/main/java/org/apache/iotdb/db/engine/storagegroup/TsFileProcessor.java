@@ -107,6 +107,7 @@ public class TsFileProcessor {
   private WriteLogNode logNode;
   private final boolean sequence;
   private long totalMemTableSize;
+  private boolean shouldFlush = false;
 
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE = "{}: {} get flushQueryLock write lock released";
@@ -333,14 +334,16 @@ public class TsFileProcessor {
       return false;
     }
 
+    if (shouldFlush) {
+      return true;
+    }
     if (workMemTable.reachTotalPointNumThreshold()) {
       logger.info("The avg series points num {} of tsfile {} reaches the threshold",
           workMemTable.getTotalPointsNum() / workMemTable.getSeriesNumber(),
           tsFileResource.getTsFile().getAbsolutePath());
-      return true;
+      shouldFlush = true;
     }
-
-    return false;
+    return shouldFlush;
   }
 
   public boolean shouldClose() {
@@ -706,6 +709,7 @@ public class TsFileProcessor {
         flushingMemTables.notifyAll();
       }
     }
+    shouldFlush = false;
   }
 
   private void endFile() throws IOException, TsFileProcessorException {
@@ -870,10 +874,8 @@ public class TsFileProcessor {
     return sequence;
   }
 
-  public void startClose() {
-    storageGroupInfo.getStorageGroupProcessor().asyncCloseOneTsFileProcessor(sequence, this);
-    logger.info("Async close tsfile: {}",
-        getTsFileResource().getTsFile().getAbsolutePath());
+  public void setFlush() {
+    shouldFlush = true;
   }
 
 }
