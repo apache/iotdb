@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;

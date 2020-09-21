@@ -297,37 +297,41 @@ public class PlanExecutor implements IPlanExecutor {
     if (plan.getPaths() == null) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     } else {
-      Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupMap = plan.getStorageGroupPartitionIds();
-      for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupMap.entrySet()) {
-        PartialPath storageGroupName = entry.getKey();
-        // normal flush
-        if (entry.getValue() == null) {
-          if (plan.isSeq() == null) {
-            StorageEngine.getInstance().closeProcessor(storageGroupName, true, plan.isSync());
-            StorageEngine.getInstance().closeProcessor(storageGroupName, false, plan.isSync());
-          } else {
-            StorageEngine.getInstance()
-                .closeProcessor(storageGroupName, plan.isSeq(), plan.isSync());
-          }
-        }
-        // partition specified flush, for snapshot flush plan
-        else {
-          List<Pair<Long, Boolean>> partitionIdSequencePairs = entry.getValue();
-          for (Pair<Long, Boolean> pair : partitionIdSequencePairs) {
-            StorageEngine.getInstance()
-                .closeProcessor(storageGroupName, pair.left, pair.right, true);
-          }
-        }
-      }
+      flushSpecifiedStorageGroups(plan);
     }
 
     if (plan.getPaths() != null) {
       List<PartialPath> noExistSg = checkStorageGroupExist(plan.getPaths());
       if (!noExistSg.isEmpty()) {
         StringBuilder sb = new StringBuilder();
-        noExistSg.forEach((storageGroup) -> sb.append(storageGroup.getFullPath()).append(","));
+        noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
         throw new StorageGroupNotSetException(
             sb.subSequence(0, sb.length() - 1).toString());
+      }
+    }
+  }
+
+  private void flushSpecifiedStorageGroups(FlushPlan plan) throws StorageGroupNotSetException {
+    Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupMap = plan.getStorageGroupPartitionIds();
+    for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupMap.entrySet()) {
+      PartialPath storageGroupName = entry.getKey();
+      // normal flush
+      if (entry.getValue() == null) {
+        if (plan.isSeq() == null) {
+          StorageEngine.getInstance().closeProcessor(storageGroupName, true, plan.isSync());
+          StorageEngine.getInstance().closeProcessor(storageGroupName, false, plan.isSync());
+        } else {
+          StorageEngine.getInstance()
+              .closeProcessor(storageGroupName, plan.isSeq(), plan.isSync());
+        }
+      }
+      // partition specified flush, for snapshot flush plan
+      else {
+        List<Pair<Long, Boolean>> partitionIdSequencePairs = entry.getValue();
+        for (Pair<Long, Boolean> pair : partitionIdSequencePairs) {
+          StorageEngine.getInstance()
+              .closeProcessor(storageGroupName, pair.left, pair.right, true);
+        }
       }
     }
   }

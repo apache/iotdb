@@ -22,6 +22,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,7 +93,7 @@ public class FlushPlan extends PhysicalPlan {
   @Override
   public List<PartialPath> getPaths() {
     if (storageGroupPartitionIds == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<PartialPath> ret = new ArrayList<>();
     for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds
@@ -122,10 +123,14 @@ public class FlushPlan extends PhysicalPlan {
     if (isSeq == null) {
       stream.writeByte(2);
     } else {
-      stream.writeByte(isSeq ? 1 : 0);
+      stream.writeByte(Boolean.TRUE.equals(isSeq) ? 1 : 0);
     }
 
     stream.writeByte(isSync ? 1 : 0);
+    writeStorageGroupPartitionIds(stream);
+  }
+
+  public void writeStorageGroupPartitionIds(DataOutputStream stream) throws IOException {
     if (storageGroupPartitionIds == null) {
       // null value
       stream.write((byte) 0);
@@ -157,9 +162,13 @@ public class FlushPlan extends PhysicalPlan {
     if (isSeq == null) {
       buffer.put((byte) 2);
     } else {
-      buffer.put((byte) (isSeq ? 1 : 0));
+      buffer.put((byte) (Boolean.TRUE.equals(isSeq) ? 1 : 0));
     }
     buffer.put((byte) (isSync ? 1 : 0));
+    writeStorageGroupPartitionIds(buffer);
+  }
+
+  public void writeStorageGroupPartitionIds(ByteBuffer buffer) {
     if (storageGroupPartitionIds == null) {
       // null value
       buffer.put((byte) 0);
@@ -194,6 +203,10 @@ public class FlushPlan extends PhysicalPlan {
       this.isSeq = isSeqFlag == 1;
     }
     this.isSync = buffer.get() == 1;
+    readStorageGroupPartitionIds(buffer);
+  }
+
+  private void readStorageGroupPartitionIds(ByteBuffer buffer) {
     byte flag = buffer.get();
     if (flag == 0) {
       this.storageGroupPartitionIds = null;
@@ -215,8 +228,8 @@ public class FlushPlan extends PhysicalPlan {
           List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>(partitionIdSize);
           for (int j = 0; j < partitionIdSize; j++) {
             long partitionId = ReadWriteIOUtils.readLong(buffer);
-            Boolean isSeq = ReadWriteIOUtils.readBool(buffer);
-            Pair<Long, Boolean> tmpPair = new Pair<>(partitionId, isSeq);
+            Boolean partitionIsSeq = ReadWriteIOUtils.readBool(buffer);
+            Pair<Long, Boolean> tmpPair = new Pair<>(partitionId, partitionIsSeq);
             partitionIdList.add(tmpPair);
           }
           storageGroupPartitionIds.put(tmpPath, partitionIdList);

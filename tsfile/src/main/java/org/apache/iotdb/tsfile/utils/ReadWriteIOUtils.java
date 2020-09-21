@@ -132,7 +132,6 @@ public class ReadWriteIOUtils {
 
   public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
     int length = 0;
-    byte[] bytes;
     stream.writeInt(map.size());
     length += 4;
     for (Entry<String, String> entry : map.entrySet()) {
