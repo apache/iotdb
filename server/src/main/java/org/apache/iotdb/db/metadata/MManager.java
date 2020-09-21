@@ -935,13 +935,13 @@ public class MManager {
             }
           }
           try {
-            Pair<Map<String, String>, Map<String, String>> pair =
+            Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
                 tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
             MeasurementSchema measurementSchema = leaf.getSchema();
             res.add(new ShowTimeSeriesResult(leaf.getFullPath(), leaf.getAlias(),
                 getStorageGroupPath(leaf.getPartialPath()).getFullPath(), measurementSchema.getType(),
                 measurementSchema.getEncodingType(),
-                measurementSchema.getCompressor(), pair.left, pair.right));
+                measurementSchema.getCompressor(), tagAndAttributePair.left, tagAndAttributePair.right));
             if (limit != 0) {
               count++;
             }
@@ -1002,13 +1002,14 @@ public class MManager {
       for (Pair<PartialPath, String[]> ansString : ans) {
         long tagFileOffset = Long.parseLong(ansString.right[5]);
         try {
-          Pair<Map<String, String>, Map<String, String>> pair = new Pair<>(Collections.emptyMap(),Collections.emptyMap());
+          Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
+              new Pair<>(Collections.emptyMap(),Collections.emptyMap());
           if (tagFileOffset >= 0) {
-            pair = tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
+            tagAndAttributePair = tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
           }
           res.add(new ShowTimeSeriesResult(ansString.left.getFullPath(), ansString.right[0], ansString.right[1],
               TSDataType.valueOf(ansString.right[2]), TSEncoding.valueOf(ansString.right[3]),
-              CompressionType.valueOf(ansString.right[4]), pair.left, pair.right));
+              CompressionType.valueOf(ansString.right[4]), tagAndAttributePair.left, tagAndAttributePair.right));
         } catch (IOException e) {
           throw new MetadataException(
               "Something went wrong while deserialize tag info of " + ansString.left.getFullPath(), e);

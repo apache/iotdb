@@ -129,7 +129,6 @@ import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -566,9 +565,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan showTimeSeriesPlan,
       QueryContext context) throws MetadataException {
-    List<ShowTimeSeriesResult> timeseriesList = showTimeseries(showTimeSeriesPlan, context);
-    ShowTimeseriesDataSet showTimeSeriesDataSet = new ShowTimeseriesDataSet(showTimeSeriesPlan, context);
-    return showTimeSeriesDataSet.getQueryDataSet(timeseriesList);
+    return new ShowTimeseriesDataSet(showTimeSeriesPlan, context, showTimeseries(showTimeSeriesPlan, context));
   }
 
   protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)

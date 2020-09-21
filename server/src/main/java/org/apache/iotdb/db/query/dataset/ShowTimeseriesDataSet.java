@@ -38,6 +38,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -66,31 +67,16 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   private static TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
       TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT};
 
-  public ShowTimeseriesDataSet(ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context) {
+  public ShowTimeseriesDataSet(ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context,
+      List<ShowTimeSeriesResult> timeseriesList) {
     super(Arrays.asList(resourcePaths), Arrays.asList(resourceTypes));
     this.plan = showTimeSeriesPlan;
     this.context = context;
-  }
-
-  public QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList) {
     hasLimit = plan.hasLimit();
-    for (ShowTimeSeriesResult result : timeseriesList) {
-      RowRecord record = new RowRecord(0);
-      updateRecord(record, result.getName());
-      updateRecord(record, result.getAlias());
-      updateRecord(record, result.getSgName());
-      updateRecord(record, result.getDataType().toString());
-      updateRecord(record, result.getEncoding().toString());
-      updateRecord(record, result.getCompressor().toString());
-      updateRecord(record, result.getTag());
-      updateRecord(record, result.getAttribute());
-      putRecord(record);
-    }
-    return this;
+    getQueryDataSet(timeseriesList);
   }
 
-  public List<RowRecord> transferShowTimeSeriesResultToRecordList(
-      List<ShowTimeSeriesResult> timeseriesList) {
+  public List<RowRecord> getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList) {
     List<RowRecord> records = new ArrayList<>();
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
@@ -103,6 +89,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
       updateRecord(record, result.getTag());
       updateRecord(record, result.getAttribute());
       records.add(record);
+      putRecord(record);
     }
     return records;
   }
@@ -127,12 +114,12 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
 
   @Override
   protected boolean hasNextWithoutConstraint() throws IOException {
-    if (index == result.size() && !hasLimit) {
+    if (index == result.size() && !hasLimit && result.size() == plan.getLimit()) {
       plan.setOffset(plan.getOffset() + plan.getLimit());
       try {
-        List<ShowTimeSeriesResult> showTimeSeriesResults = MManager.getInstance()
+        List<ShowTimeSeriesResult> showTimeSeriesResults = IoTDB.metaManager
             .showTimeseries(plan, context);
-        result = transferShowTimeSeriesResultToRecordList(showTimeSeriesResults);
+        result = getQueryDataSet(showTimeSeriesResults);
         index = 0;
       } catch (MetadataException e) {
         logger.error("Something wrong happened while showing {}", paths.stream().map(
@@ -148,7 +135,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
     return result.get(index++);
   }
 
-  public void putRecord(RowRecord newRecord) {
+  private void putRecord(RowRecord newRecord) {
     result.add(newRecord);
   }
 }
