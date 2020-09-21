@@ -728,8 +728,10 @@ public class StorageGroupProcessor {
 
       // do not forget last part
       if (before < loc) {
-        noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
-            results, beforeTimePartition) && noFailure;
+        if (isSequence || !IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+          noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
+              results, beforeTimePartition) && noFailure;
+        }
       }
       long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
           insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);

@@ -271,8 +271,9 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertRowPlan()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException, IOException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    boolean defaultValue = config.isEnableDiscardOutOfOrderData();
     config.setEnableDiscardOutOfOrderData(true);
 
     for (int j = 21; j <= 30; j++) {
@@ -292,6 +293,10 @@ public class StorageGroupProcessorTest {
 
     processor.syncCloseAllWorkingTsFileProcessors();
 
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+      tsfileProcessor.syncFlush();
+    }
+
     QueryDataSource queryDataSource = processor.query(new PartialPath(deviceId), measurementId, context,
         null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
@@ -302,6 +307,8 @@ public class StorageGroupProcessorTest {
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
+
+    config.setEnableDiscardOutOfOrderData(defaultValue);
   }
 
   @Test
