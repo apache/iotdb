@@ -122,6 +122,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
@@ -566,7 +567,8 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan showTimeSeriesPlan,
       QueryContext context) throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList = showTimeseries(showTimeSeriesPlan, context);
-    return QueryUtils.getQueryDataSet(timeseriesList, showTimeSeriesPlan, context);
+    ShowTimeseriesDataSet showTimeSeriesDataSet = new ShowTimeseriesDataSet(showTimeSeriesPlan, context);
+    return showTimeSeriesDataSet.getQueryDataSet(timeseriesList);
   }
 
   protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)

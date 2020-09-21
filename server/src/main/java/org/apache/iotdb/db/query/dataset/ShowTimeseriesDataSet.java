@@ -19,20 +19,31 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import static org.apache.iotdb.db.utils.QueryUtils.transferShowTimeSeriesResultToRecordList;
-
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ATTRIBUTE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TAG;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,11 +58,71 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
 
   public boolean hasLimit = true;
 
-  public ShowTimeseriesDataSet(List<PartialPath> paths, List<TSDataType> dataTypes,
-      ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context) {
-    super(new ArrayList<>(paths), dataTypes);
+  private static Path[] resourcePaths = {new PartialPath(COLUMN_TIMESERIES, false),
+      new PartialPath(COLUMN_TIMESERIES_ALIAS, false), new PartialPath(COLUMN_STORAGE_GROUP, false),
+      new PartialPath(COLUMN_TIMESERIES_DATATYPE, false), new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
+      new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false), new PartialPath(COLUMN_TAG, false),
+      new PartialPath(COLUMN_ATTRIBUTE, false)};
+  private static TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
+      TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT};
+
+  public ShowTimeseriesDataSet(ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context) {
+    super(Arrays.asList(resourcePaths), Arrays.asList(resourceTypes));
     this.plan = showTimeSeriesPlan;
     this.context = context;
+  }
+
+  public QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList) {
+    hasLimit = plan.hasLimit();
+    for (ShowTimeSeriesResult result : timeseriesList) {
+      RowRecord record = new RowRecord(0);
+      updateRecord(record, result.getName());
+      updateRecord(record, result.getAlias());
+      updateRecord(record, result.getSgName());
+      updateRecord(record, result.getDataType().toString());
+      updateRecord(record, result.getEncoding().toString());
+      updateRecord(record, result.getCompressor().toString());
+      updateRecord(record, result.getTag());
+      updateRecord(record, result.getAttribute());
+      putRecord(record);
+    }
+    return this;
+  }
+
+  public List<RowRecord> transferShowTimeSeriesResultToRecordList(
+      List<ShowTimeSeriesResult> timeseriesList) {
+    List<RowRecord> records = new ArrayList<>();
+    for (ShowTimeSeriesResult result : timeseriesList) {
+      RowRecord record = new RowRecord(0);
+      updateRecord(record, result.getName());
+      updateRecord(record, result.getAlias());
+      updateRecord(record, result.getSgName());
+      updateRecord(record, result.getDataType().toString());
+      updateRecord(record, result.getEncoding().toString());
+      updateRecord(record, result.getCompressor().toString());
+      updateRecord(record, result.getTag());
+      updateRecord(record, result.getAttribute());
+      records.add(record);
+    }
+    return records;
+  }
+
+  private void updateRecord(RowRecord record, Map<String, String> map) {
+    String text = map.entrySet().stream()
+        .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
+        .collect(Collectors.joining(","));
+
+    updateRecord(record, text.length() == 0 ? null : "{" + text + "}");
+  }
+
+  private void updateRecord(RowRecord record, String s) {
+    if (s == null) {
+      record.addField(null);
+      return;
+    }
+    Field field = new Field(TSDataType.TEXT);
+    field.setBinaryV(new Binary(s));
+    record.addField(field);
   }
 
   @Override
