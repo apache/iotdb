@@ -842,4 +842,12 @@ public class TsFileResource {
     }
     return ramIncrement;
   }
+
+  public void delete() throws IOException {
+    if (file.exists()) {
+      Files.delete(file.toPath());
+      Files.delete(FSFactoryProducer.getFSFactory()
+          .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+    }
+  }
 }

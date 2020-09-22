@@ -51,6 +51,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -889,6 +890,18 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getDevicesNum(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * To calculate the count of storage group for given prefix path.
+   */
+  public int getStorageGroupNum(PartialPath prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupNum(prefixPath);
     } finally {
       lock.readLock().unlock();
     }
@@ -1990,15 +2003,9 @@ public class MManager {
                 measurementList[i]));
           }
 
-          // create it
-
           TSDataType dataType = getTypeInLoc(plan, i);
-          createTimeseries(
-              deviceId.concatNode(measurementList[i]),
-              dataType,
-              getDefaultEncoding(dataType),
-              TSFileDescriptor.getInstance().getConfig().getCompressor(),
-              Collections.emptyMap());
+          // create it, may concurrent created by multiple thread
+          internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
         }
 
         MeasurementMNode measurementNode = (MeasurementMNode) getChild(deviceNode,
@@ -2050,6 +2057,26 @@ public class MManager {
     plan.setDeviceMNode(deviceNode);
 
     return schemas;
+  }
+
+
+  /**
+   * create timeseries with ignore PathAlreadyExistException
+   */
+  private void internalCreateTimeseries(PartialPath path, TSDataType dataType) throws MetadataException {
+    try {
+      createTimeseries(
+          path,
+          dataType,
+          getDefaultEncoding(dataType),
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap());
+    } catch (PathAlreadyExistException e) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("Ignore PathAlreadyExistException when Concurrent inserting"
+            + " a non-exist time series {}", path);
+      }
+    }
   }
 
   /**

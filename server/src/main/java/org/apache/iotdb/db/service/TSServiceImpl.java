@@ -730,6 +730,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.COUNT_TIMESERIES;
       case COUNT_DEVICES:
         return StaticResps.COUNT_DEVICES;
+      case COUNT_STORAGE_GROUP:
+        return StaticResps.COUNT_STORAGE_GROUP;
       case MERGE_STATUS:
         return StaticResps.MERGE_STATUS_RESP;
       default:
