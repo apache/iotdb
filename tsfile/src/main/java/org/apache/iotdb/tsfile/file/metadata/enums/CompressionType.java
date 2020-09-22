@@ -52,6 +52,35 @@ public enum CompressionType {
     }
   }
 
+  /**
+   * give an byte to return a compression type.
+   *
+   * @param i byte number
+   * @return CompressionType
+   */
+  public static CompressionType byteToEnum(byte i) {
+    switch (i) {
+      case 0:
+        return UNCOMPRESSED;
+      case 1:
+        return SNAPPY;
+      case 2:
+        return GZIP;
+      case 3:
+        return LZO;
+      case 4:
+        return SDT;
+      case 5:
+        return PAA;
+      case 6:
+        return PLA;
+      case 7:
+        return LZ4;
+      default:
+        return UNCOMPRESSED;
+    }
+  }
+
   public static int getSerializedSize() {
     return Short.BYTES;
   }
@@ -94,6 +123,32 @@ public enum CompressionType {
    * @return short number
    */
   public short serialize() {
+    switch (this) {
+      case UNCOMPRESSED:
+        return 0;
+      case SNAPPY:
+        return 1;
+      case GZIP:
+        return 2;
+      case LZO:
+        return 3;
+      case SDT:
+        return 4;
+      case PAA:
+        return 5;
+      case PLA:
+        return 6;
+      case LZ4:
+        return 7;
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * @return byte number
+   */
+  public byte enumToByte() {
     switch (this) {
       case UNCOMPRESSED:
         return 0;
