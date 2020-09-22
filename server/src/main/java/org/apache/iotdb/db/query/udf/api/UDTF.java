@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.query.udf.api;
 
-import org.apache.iotdb.db.query.udf.api.access.Point;
-import org.apache.iotdb.db.query.udf.api.access.PointWindow;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
@@ -33,12 +31,6 @@ public abstract class UDTF implements UDF {
 
   public abstract void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception;
-
-  public void transform(Point point) throws Exception {
-  }
-
-  public void transform(PointWindow pointWindow) throws Exception {
-  }
 
   public void transform(Row row) throws Exception {
   }

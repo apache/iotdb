@@ -20,25 +20,25 @@
 package org.apache.iotdb.db.query.udf.core.transformer;
 
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointWindowReader;
+import org.apache.iotdb.db.query.udf.core.reader.LayerRowWindowReader;
 
 public class UDFQueryRowWindowTransformer extends UDFQueryTransformer {
 
-  protected final LayerPointWindowReader layerPointWindowReader;
+  protected final LayerRowWindowReader layerRowWindowReader;
 
-  public UDFQueryRowWindowTransformer(LayerPointWindowReader layerPointWindowReader,
+  public UDFQueryRowWindowTransformer(LayerRowWindowReader layerRowWindowReader,
       UDTFExecutor executor) {
     super(executor);
-    this.layerPointWindowReader = layerPointWindowReader;
+    this.layerRowWindowReader = layerRowWindowReader;
   }
 
   @Override
   protected boolean executeUDFOnce() throws Exception {
-    if (layerPointWindowReader.next()) {
+    if (layerRowWindowReader.next()) {
       return false;
     }
-    executor.execute(layerPointWindowReader.currentWindow());
-    layerPointWindowReader.readyForNext();
+    executor.execute(layerRowWindowReader.currentWindow());
+    layerRowWindowReader.readyForNext();
     return true;
   }
 }

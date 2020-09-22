@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.query.udf.core.executor;
 
 import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Point;
-import org.apache.iotdb.db.query.udf.api.access.PointWindow;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
@@ -45,14 +43,6 @@ public class UDTFExecutor {
     collector = new ElasticSerializableTVList(configurations.getOutputDataType(), queryId,
         context.getColumnName(), ElasticSerializableTVList.DEFAULT_MEMORY_USAGE_LIMIT,
         ElasticSerializableTVList.DEFAULT_CACHE_SIZE);
-  }
-
-  public void execute(Point point) throws Exception {
-    udtf.transform(point);
-  }
-
-  public void execute(PointWindow pointWindow) throws Exception {
-    udtf.transform(pointWindow);
   }
 
   public void execute(Row row) throws Exception {
