@@ -64,7 +64,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() {
+  public boolean hasNextWithoutConstraint() {
     // has cached
     if (hasCachedTimeInterval) {
       return true;
@@ -82,7 +82,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   }
 
   @Override
-  protected abstract RowRecord nextWithoutConstraint() throws IOException;
+  public abstract RowRecord nextWithoutConstraint() throws IOException;
 
   public long getStartTime() {
     return startTime;

@@ -395,7 +395,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
    * for spark/hadoop/hive integration and test
    */
   @Override
-  protected boolean hasNextWithoutConstraint() {
+  public boolean hasNextWithoutConstraint() {
     return !timeHeap.isEmpty();
   }
 
@@ -403,7 +403,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
    * for spark/hadoop/hive integration and test
    */
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord nextWithoutConstraint() throws IOException {
     int seriesNum = seriesReaderList.size();
 
     long minTime = timeHeap.pollFirst();

@@ -52,7 +52,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() throws IOException {
     if (index == result.size() && !hasLimit) {
       plan.setOffset(plan.getOffset() + plan.getLimit());
       try {
@@ -70,7 +70,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() {
+  public RowRecord nextWithoutConstraint() {
     return result.get(index++);
   }
 

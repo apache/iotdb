@@ -324,12 +324,12 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() {
+  public boolean hasNextWithoutConstraint() {
     return false;
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() {
+  public RowRecord nextWithoutConstraint() {
     return null;
   }
 }

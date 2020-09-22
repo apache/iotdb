@@ -100,12 +100,12 @@ public class GroupByFillDataSet extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() {
+  public boolean hasNextWithoutConstraint() {
     return groupByEngineDataSet.hasNextWithoutConstraint();
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord nextWithoutConstraint() throws IOException {
     RowRecord rowRecord = groupByEngineDataSet.nextWithoutConstraint();
 
     for (int i = 0; i < paths.size(); i++) {
