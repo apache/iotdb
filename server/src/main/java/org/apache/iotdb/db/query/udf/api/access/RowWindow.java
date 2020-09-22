@@ -21,9 +21,11 @@ package org.apache.iotdb.db.query.udf.api.access;
 
 import java.io.IOException;
 
-public interface RowIterator {
+public interface RowWindow {
 
-  boolean hasNextRow();
+  int windowSize();
 
-  Row next() throws IOException;
+  Row getRow(int index) throws IOException;
+
+  RowIterator getRowIterator();
 }

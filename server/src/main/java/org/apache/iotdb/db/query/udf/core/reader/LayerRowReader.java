@@ -17,13 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.access;
+package org.apache.iotdb.db.query.udf.core.reader;
 
 import java.io.IOException;
+import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public interface RowIterator {
+public interface LayerRowReader {
 
-  boolean hasNextRow();
+  boolean next() throws IOException;
 
-  Row next() throws IOException;
+  void readyForNext();
+
+  TSDataType[] getDataTypes();
+
+  long currentTime();
+
+  Row currentRow();
 }

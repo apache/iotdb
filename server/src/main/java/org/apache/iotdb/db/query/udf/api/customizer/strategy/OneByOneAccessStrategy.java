@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-
 public class OneByOneAccessStrategy implements AccessStrategy {
 
   @Override
-  public void check() throws QueryProcessException {
+  public void check() {
+    // nothing needs to check
+  }
+
+  @Override
+  public AccessStrategyType getAccessStrategyType() {
+    return AccessStrategyType.ONE_BY_ONE;
   }
 }

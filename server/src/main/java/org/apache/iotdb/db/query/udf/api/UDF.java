@@ -21,5 +21,6 @@ package org.apache.iotdb.db.query.udf.api;
 
 public interface UDF {
 
-  void finalizeUDF();
+  default void beforeDestroy() {
+  }
 }

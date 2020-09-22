@@ -17,13 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.access;
+package org.apache.iotdb.db.query.udf.core.input;
 
 import java.io.IOException;
+import java.util.List;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-public interface RowIterator {
+public class InputLayerWithoutValueFilter extends InputLayer {
 
-  boolean hasNextRow();
-
-  Row next() throws IOException;
+  public InputLayerWithoutValueFilter(long queryId, List<Path> paths, List<TSDataType> dataTypes,
+      List<ManagedSeriesReader> readers)
+      throws QueryProcessException, IOException, InterruptedException {
+    super(queryId, new RawQueryDataSetWithoutValueFilter(paths, dataTypes, readers));
+  }
 }

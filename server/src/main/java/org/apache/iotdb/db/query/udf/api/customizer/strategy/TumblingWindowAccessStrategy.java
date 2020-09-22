@@ -20,24 +20,13 @@
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.constant.DatetimeUtils;
-import org.apache.iotdb.db.qp.constant.DatetimeUtils.DurationUnit;
 
 public class TumblingWindowAccessStrategy implements AccessStrategy {
 
   private final int windowSize;
 
-  private Long displayWindowBegin;
-
   public TumblingWindowAccessStrategy(int windowSize) {
     this.windowSize = windowSize;
-  }
-
-  public TumblingWindowAccessStrategy(int windowSize,
-      long displayWindowBegin, DurationUnit displayWindowBeginTimeUnit) {
-    this.windowSize = windowSize;
-    this.displayWindowBegin = DatetimeUtils
-        .convertDurationStrToLong(displayWindowBegin, displayWindowBeginTimeUnit.toString(), "ns");
   }
 
   @Override
@@ -52,11 +41,8 @@ public class TumblingWindowAccessStrategy implements AccessStrategy {
     return windowSize;
   }
 
-  public boolean hasDisplayWindowBegin() {
-    return displayWindowBegin != null;
-  }
-
-  public Long getDisplayWindowBegin() {
-    return displayWindowBegin;
+  @Override
+  public AccessStrategyType getAccessStrategyType() {
+    return AccessStrategyType.TUMBLING_WINDOW;
   }
 }

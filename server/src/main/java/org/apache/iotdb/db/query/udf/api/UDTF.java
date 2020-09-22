@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.query.udf.api;
 
 import org.apache.iotdb.db.query.udf.api.access.Point;
-import org.apache.iotdb.db.query.udf.api.access.PointIterator;
+import org.apache.iotdb.db.query.udf.api.access.PointWindow;
 import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.access.RowIterator;
+import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
@@ -31,18 +31,19 @@ public abstract class UDTF implements UDF {
 
   protected PointCollector collector;
 
-  public abstract void initializeUDF(UDFParameters parameters, UDTFConfigurations configurations);
+  public abstract void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
+      throws Exception;
 
-  public void transformPoint(Point point) throws Exception {
+  public void transform(Point point) throws Exception {
   }
 
-  public void transformPoints(PointIterator points) throws Exception {
+  public void transform(PointWindow pointWindow) throws Exception {
   }
 
-  public void transformRow(Row row) throws Exception {
+  public void transform(Row row) throws Exception {
   }
 
-  public void transformRows(RowIterator rows) throws Exception {
+  public void transform(RowWindow rowWindow) throws Exception {
   }
 
   public final void setCollector(PointCollector collector) {

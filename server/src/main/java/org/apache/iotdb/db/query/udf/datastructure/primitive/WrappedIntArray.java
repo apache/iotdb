@@ -17,13 +17,35 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.access;
+package org.apache.iotdb.db.query.udf.datastructure.primitive;
 
-import java.io.IOException;
+public class WrappedIntArray implements IntList {
 
-public interface RowIterator {
+  private final int[] list;
+  private int size;
 
-  boolean hasNextRow();
+  public WrappedIntArray(int capacity) {
+    list = new int[capacity];
+    size = 0;
+  }
 
-  Row next() throws IOException;
+  @Override
+  public int size() {
+    return size;
+  }
+
+  @Override
+  public int get(int index) {
+    return list[index];
+  }
+
+  @Override
+  public void put(int value) {
+    list[size++] = value;
+  }
+
+  @Override
+  public void clear() {
+    size = 0;
+  }
 }

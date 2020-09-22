@@ -17,13 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.access;
+package org.apache.iotdb.db.query.udf.core.transformer;
 
-import java.io.IOException;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointWindowReader;
 
-public interface RowIterator {
+public class UDFQueryPointWindowTransformer extends UDFQueryTransformer {
 
-  boolean hasNextRow();
+  protected final LayerPointWindowReader layerPointWindowReader;
 
-  Row next() throws IOException;
+  public UDFQueryPointWindowTransformer(LayerPointWindowReader layerPointWindowReader,
+      UDTFExecutor executor) {
+    super(executor);
+    this.layerPointWindowReader = layerPointWindowReader;
+  }
+
+  @Override
+  protected boolean executeUDFOnce() throws Exception {
+    if (!layerPointWindowReader.next()) {
+      return false;
+    }
+    executor.execute(layerPointWindowReader.currentWindow());
+    layerPointWindowReader.readyForNext();
+    return true;
+  }
 }

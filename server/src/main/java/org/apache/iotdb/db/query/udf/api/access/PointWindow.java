@@ -20,10 +20,27 @@
 package org.apache.iotdb.db.query.udf.api.access;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.utils.Binary;
 
-public interface RowIterator {
+public interface PointWindow {
 
-  boolean hasNextRow();
+  int windowSize();
+  
+  long getTime(int index) throws IOException;
 
-  Row next() throws IOException;
+  int getInt(int index) throws IOException;
+
+  long getLong(int index) throws IOException;
+
+  float getFloat(int index) throws IOException;
+
+  double getDouble(int index) throws IOException;
+
+  boolean getBoolean(int index) throws IOException;
+
+  Binary getBinary(int index) throws IOException;
+
+  String getString(int index) throws IOException;
+
+  PointIterator getPointIterator();
 }

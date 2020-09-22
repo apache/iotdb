@@ -17,20 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.customizer.strategy;
+package org.apache.iotdb.db.query.udf.core.input;
 
+import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
-public interface AccessStrategy {
+public class InputLayerWithValueFilter extends InputLayer {
 
-  public enum AccessStrategyType {
-
-    ONE_BY_ONE,
-    SLIDING_TIME_WINDOW,
-    TUMBLING_WINDOW
+  public InputLayerWithValueFilter(long queryId, List<Path> paths, List<TSDataType> dataTypes,
+      TimeGenerator timeGenerator, List<IReaderByTimestamp> readers, List<Boolean> cached)
+      throws QueryProcessException {
+    super(queryId,
+        new RawQueryDataSetWithValueFilter(paths, dataTypes, timeGenerator, readers, cached));
   }
-
-  void check() throws QueryProcessException;
-
-  AccessStrategyType getAccessStrategyType();
 }

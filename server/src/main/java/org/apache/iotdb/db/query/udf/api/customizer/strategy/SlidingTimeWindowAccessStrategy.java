@@ -27,9 +27,8 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
 
   private final long timeInterval;
   private final long slidingStep;
-
-  private Long displayWindowBegin;
-  private Long displayWindowEnd;
+  private final long displayWindowBegin;
+  private final long displayWindowEnd;
 
   public SlidingTimeWindowAccessStrategy(
       long displayWindowBegin, DurationUnit displayWindowBeginTimeUnit,
@@ -46,15 +45,6 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
         .convertDurationStrToLong(slidingStep, slidingStepTimeUnit.toString(), "ns");
   }
 
-  public SlidingTimeWindowAccessStrategy(int seriesIndex,
-      long timeInterval, DurationUnit timeIntervalTimeUnit,
-      long slidingStep, DurationUnit slidingStepTimeUnit) {
-    this.timeInterval = DatetimeUtils
-        .convertDurationStrToLong(timeInterval, timeIntervalTimeUnit.toString(), "ns");
-    this.slidingStep = DatetimeUtils
-        .convertDurationStrToLong(slidingStep, slidingStepTimeUnit.toString(), "ns");
-  }
-
   @Override
   public void check() throws QueryProcessException {
     if (timeInterval <= 0) {
@@ -65,7 +55,7 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
       throw new QueryProcessException(
           String.format("Parameter slidingStep(%d) should be positive.", slidingStep));
     }
-    if (hasDisplayWindowRange() && displayWindowEnd < displayWindowBegin) {
+    if (displayWindowEnd < displayWindowBegin) {
       throw new QueryProcessException(String.format("displayWindowEnd(%d) < displayWindowBegin(%d)",
           displayWindowEnd, displayWindowBegin));
     }
@@ -79,15 +69,16 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
     return slidingStep;
   }
 
-  public boolean hasDisplayWindowRange() {
-    return displayWindowBegin != null && displayWindowEnd != null;
-  }
-
-  public Long getDisplayWindowBegin() {
+  public long getDisplayWindowBegin() {
     return displayWindowBegin;
   }
 
-  public Long getDisplayWindowEnd() {
+  public long getDisplayWindowEnd() {
     return displayWindowEnd;
+  }
+
+  @Override
+  public AccessStrategyType getAccessStrategyType() {
+    return AccessStrategyType.SLIDING_TIME_WINDOW;
   }
 }

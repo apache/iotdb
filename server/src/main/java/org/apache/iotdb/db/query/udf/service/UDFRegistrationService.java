@@ -35,7 +35,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDF;
-import org.apache.iotdb.db.query.udf.core.UDFContext;
+import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -47,10 +47,10 @@ public class UDFRegistrationService implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(UDFRegistrationService.class);
 
-  private static final String logFileDir = IoTDBDescriptor.getInstance().getConfig().getQueryDir()
+  private static final String LOG_FILE_DIR = IoTDBDescriptor.getInstance().getConfig().getQueryDir()
       + File.separator + "udf" + File.separator;
-  private static final String logFileName = logFileDir + "ulog.txt";
-  private static final String temporaryLogFileName = logFileName + ".tmp";
+  private static final String LOG_FILE_NAME = LOG_FILE_DIR + "ulog.txt";
+  private static final String TEMPORARY_LOG_FILE_NAME = LOG_FILE_NAME + ".tmp";
 
   private final ConcurrentHashMap<String, UDFRegistrationInformation> registrationInformation;
 
@@ -188,8 +188,8 @@ public class UDFRegistrationService implements IService {
   public void start() throws StartupException {
     try {
       makeDirIfNecessary();
-      File logFile = SystemFileFactory.INSTANCE.getFile(logFileName);
-      File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(temporaryLogFileName);
+      File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
+      File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(TEMPORARY_LOG_FILE_NAME);
 
       if (temporaryLogFile.exists()) {
         if (logFile.exists()) {
@@ -203,14 +203,14 @@ public class UDFRegistrationService implements IService {
         }
       }
 
-      temporaryLogWriter = new UDFLogWriter(temporaryLogFileName);
+      temporaryLogWriter = new UDFLogWriter(TEMPORARY_LOG_FILE_NAME);
     } catch (Exception e) {
       throw new StartupException(e);
     }
   }
 
   private void makeDirIfNecessary() throws IOException {
-    File file = SystemFileFactory.INSTANCE.getFile(logFileDir);
+    File file = SystemFileFactory.INSTANCE.getFile(LOG_FILE_DIR);
     if (file.exists() && file.isDirectory()) {
       return;
     }
@@ -245,11 +245,12 @@ public class UDFRegistrationService implements IService {
       temporaryLogWriter.close();
       temporaryLogWriter.deleteLogFile();
     } catch (IOException ignored) {
+      // ignored
     }
   }
 
   private void writeLogFile() throws IOException {
-    UDFLogWriter logWriter = new UDFLogWriter(logFileName);
+    UDFLogWriter logWriter = new UDFLogWriter(LOG_FILE_NAME);
     for (UDFRegistrationInformation information : registrationInformation.values()) {
       if (information.isTemporary()) {
         continue;

@@ -38,4 +38,6 @@ public interface Row {
   Binary getBinary(int index);
 
   String getString(int index);
+
+  boolean isNull(int index);
 }

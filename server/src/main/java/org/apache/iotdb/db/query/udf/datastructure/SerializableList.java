@@ -23,13 +23,19 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import org.apache.iotdb.db.query.udf.datastructure.primitive.SerializableIntList;
+import org.apache.iotdb.db.query.udf.datastructure.row.SerializableRowRecordList;
+import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableTVList;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 public interface SerializableList {
 
-  int BINARY_AVERAGE_LENGTH_FOR_MEMORY_CONTROL = 48; // todo: parameterization
+  int MIN_OBJECT_HEADER_SIZE = 8;
+  int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
+
+  int INITIAL_BINARY_LENGTH_FOR_MEMORY_CONTROL = 48; // todo: parameterization
 
   void serialize(PublicBAOS outputStream) throws IOException;
 
@@ -52,7 +58,7 @@ public interface SerializableList {
     protected RandomAccessFile file;
     protected FileChannel fileChannel;
 
-    SerializationRecorder(long queryId, String dataId, int index) {
+    public SerializationRecorder(long queryId, String dataId, int index) {
       this.queryId = queryId;
       this.dataId = dataId;
       this.index = index;
@@ -152,6 +158,8 @@ public interface SerializableList {
         ((BatchData) this).init(((BatchData) this).getDataType());
       } else if (this instanceof SerializableRowRecordList) {
         ((SerializableRowRecordList) this).clear();
+      } else if (this instanceof SerializableIntList) {
+        ((SerializableIntList) this).clear();
       }
       recorder.markAsSerialized();
     }

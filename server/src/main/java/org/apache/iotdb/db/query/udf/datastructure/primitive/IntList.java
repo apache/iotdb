@@ -17,13 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.api.access;
+package org.apache.iotdb.db.query.udf.datastructure.primitive;
 
 import java.io.IOException;
 
-public interface RowIterator {
+public interface IntList {
 
-  boolean hasNextRow();
+  int size();
 
-  Row next() throws IOException;
+  int get(int index) throws IOException;
+
+  void put(int value) throws IOException;
+
+  void clear();
 }
