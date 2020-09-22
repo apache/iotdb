@@ -62,7 +62,7 @@ public abstract class QueryDataSet {
     return hasNextWithoutConstraint();
   }
 
-  protected abstract boolean hasNextWithoutConstraint() throws IOException;
+  public abstract boolean hasNextWithoutConstraint() throws IOException;
 
   /**
    * This method is used for batch query, return RowRecord.
@@ -74,7 +74,7 @@ public abstract class QueryDataSet {
     return nextWithoutConstraint();
   }
 
-  protected abstract RowRecord nextWithoutConstraint() throws IOException;
+  public abstract RowRecord nextWithoutConstraint() throws IOException;
 
   public List<Path> getPaths() {
     return paths;
