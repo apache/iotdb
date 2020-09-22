@@ -40,9 +40,6 @@ public interface TsFileFlushPolicy {
     @Override
     public void apply(StorageGroupProcessor storageGroupProcessor, TsFileProcessor tsFileProcessor,
         boolean isSeq) {
-      if (FlushManager.getInstance().getNumberOfWorkingTasks() > 0) {
-        return;
-      }
       if (tsFileProcessor.shouldClose()) {
         storageGroupProcessor.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
         logger.info("Async close tsfile: {}",

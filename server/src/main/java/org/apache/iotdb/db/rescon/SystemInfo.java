@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.rescon;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.TreeSet;
+import java.util.PriorityQueue;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -192,24 +194,48 @@ public class SystemInfo {
       return;
     }
 
-    // get the tsFile processor which has the max work MemTable size
-    TsFileProcessor processor = getLargestTsFileProcessor();
-
-    if (processor != null && processor.getWorkMemTableSize() != 0) {
-      logger.debug("Current buffed array size {}, OOB size {}",
-          PrimitiveArrayManager.getBufferedArraysSize(),
-          PrimitiveArrayManager.getOOBSize());
-      processor.setFlush();
+    // If invoke flush by replaying logs, do not flush now!
+    if (reportedSgMemCostMap.size() == 0) {
+      return;
     }
+    // get the tsFile processors which has the max work MemTable size
+    List<TsFileProcessor> processors = null;
+    try {
+      processors = getTsFileProcessorsToFlush();
+    } catch (Exception e) {
+      logger.error("Flushing all memtables still cannot turn back to normal status.", e);
+    }
+    for (TsFileProcessor processor : processors)
+      if (processor != null && processor.getWorkMemTableSize() != 0) {
+        logger.debug("Start flushing. Current buffed array size {}, OOB size {}",
+            PrimitiveArrayManager.getBufferedArraysSize(),
+            PrimitiveArrayManager.getOOBSize());
+        processor.setFlush();
+      }
   }
 
-  private TsFileProcessor getLargestTsFileProcessor() {
-    TreeSet<TsFileProcessor> tsps = new TreeSet<>(
+  private List<TsFileProcessor> getTsFileProcessorsToFlush() throws Exception {
+    PriorityQueue<TsFileProcessor> tsps = new PriorityQueue<>(
         (o1, o2) -> Long.compare(o2.getWorkMemTableSize(), o1.getWorkMemTableSize()));
     for (StorageGroupInfo sgInfo : reportedSgMemCostMap.keySet()) {
       tsps.addAll(sgInfo.getAllReportedTsp());
     }
-    return tsps.first();
+    List<TsFileProcessor> processors = new ArrayList<>();
+    processors.add(tsps.peek());
+    long memCost = tsps.peek().getWorkMemTableSize();
+    while (getTotalMemCost() - memCost > config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
+      tsps.poll();
+      if (tsps.isEmpty()) {
+        if (getTotalMemCost() - memCost > config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
+          throw new Exception("");
+        }
+        logger.warn("The allocated memory for write is too small, please enlarge it.");
+        return processors;
+      }
+      processors.add(tsps.peek());
+      memCost += tsps.peek().getWorkMemTableSize();
+    }
+    return processors;
   }
 
   public boolean isRejected() {

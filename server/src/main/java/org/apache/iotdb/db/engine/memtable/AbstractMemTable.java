@@ -124,7 +124,7 @@ public abstract class AbstractMemTable implements IMemTable {
       totalPointsNum += (insertTabletPlan.getMeasurements().length - insertTabletPlan.getFailedMeasurementNumber())
         * (end - start);
     } catch (RuntimeException e) {
-      throw new WriteProcessException(e.getMessage());
+      throw new WriteProcessException(e);
     }
   }
 

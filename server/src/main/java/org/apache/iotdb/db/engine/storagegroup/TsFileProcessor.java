@@ -379,7 +379,6 @@ public class TsFileProcessor {
                 FlushManager.getInstance()
             );
           }
-
         }
       } catch (InterruptedException e) {
         logger.error("{}: {} wait close interrupted", storageGroupName,
@@ -549,6 +548,7 @@ public class TsFileProcessor {
       totalMemTableSize += tobeFlushed.memSize();
     }
     workMemTable = null;
+    shouldFlush = false;
     FlushManager.getInstance().registerTsFileProcessor(this);
   }
 
@@ -709,7 +709,6 @@ public class TsFileProcessor {
         flushingMemTables.notifyAll();
       }
     }
-    shouldFlush = false;
   }
 
   private void endFile() throws IOException, TsFileProcessorException {
