@@ -56,8 +56,8 @@ public enum TSDataType {
   /**
    * give an byte to return a data type.
    *
-   * @param i -param to judge enum type
-   * @return -data type
+   * @param i byte number
+   * @return data type
    */
   public static TSDataType byteToEnum(byte i) {
     if (i >= 6) {

@@ -55,7 +55,7 @@ public enum TSEncoding {
    * give an byte to return a compression type.
    *
    * @param i byte number
-   * @return -encoding type
+   * @return encoding type
    */
   public static TSEncoding byteToEnum(byte i) {
     switch (i) {
