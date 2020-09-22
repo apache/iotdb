@@ -52,7 +52,7 @@ public enum TSEncoding {
   }
 
   /**
-   * give an byte to return a compression type.
+   * give an byte to return a encoding type.
    *
    * @param i byte number
    * @return encoding type
