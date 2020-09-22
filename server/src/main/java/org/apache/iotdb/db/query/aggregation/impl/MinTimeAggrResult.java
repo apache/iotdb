@@ -101,7 +101,6 @@ public class MinTimeAggrResult extends AggregateResult {
     if (value != null) {
       updateMinTimeResult(time);
     }
-    hasResult = false;
   }
 
   @Override

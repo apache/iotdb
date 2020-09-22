@@ -112,7 +112,6 @@ public class FirstValueAggrResult extends AggregateResult {
     if (value != null) {
       updateFirstValueResult(time, value);
     }
-    hasResult = false;
   }
 
   @Override
