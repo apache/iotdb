@@ -50,6 +50,11 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
  */
 public class MergeResource {
 
+  private String taskName;
+  private String storageGroupName;
+  private Modification mergingModification;
+  private String storageGroupSysDir;
+
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles;
 
@@ -258,4 +263,36 @@ public class MergeResource {
     this.chunkWriterCache.clear();
   }
 
+  public String getTaskName() {
+    return taskName;
+  }
+
+  public void setTaskName(String taskName) {
+    this.taskName = taskName;
+  }
+
+  public String getStorageGroupName() {
+    return storageGroupName;
+  }
+
+  public void setStorageGroupName(String storageGroupName) {
+    this.storageGroupName = storageGroupName;
+  }
+
+  public Modification getMergingModification() {
+    return mergingModification;
+  }
+
+  public void setMergingModification(
+      Modification mergingModification) {
+    this.mergingModification = mergingModification;
+  }
+
+  public String getStorageGroupSysDir() {
+    return storageGroupSysDir;
+  }
+
+  public void setStorageGroupSysDir(String storageGroupSysDir) {
+    this.storageGroupSysDir = storageGroupSysDir;
+  }
 }

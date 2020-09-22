@@ -26,9 +26,8 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.merge.BaseFileSelector;
+import org.apache.iotdb.db.engine.merge.BaseOverLappedFileSelector;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.utils.SelectorContext;
 import org.apache.iotdb.db.engine.merge.utils.MergeFileSelectorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
@@ -37,19 +36,19 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class InplaceMaxFileSelector extends BaseFileSelector {
+public class InplaceMaxOverLappedFileSelector extends BaseOverLappedFileSelector {
 
   private static final Logger logger = LoggerFactory
-      .getLogger(InplaceMaxFileSelector.class);
+      .getLogger(InplaceMaxOverLappedFileSelector.class);
 
-  public InplaceMaxFileSelector(Collection<TsFileResource> seqFiles,
+  public InplaceMaxOverLappedFileSelector(Collection<TsFileResource> seqFiles,
       Collection<TsFileResource> unseqFiles, long budget) {
     this(seqFiles, unseqFiles, budget, Long.MIN_VALUE);
   }
 
-  public InplaceMaxFileSelector(Collection<TsFileResource> seqFiles,
-      Collection<TsFileResource> unseqFiles, long budget, long timeLowerBound) {
-    super(seqFiles, unseqFiles, budget, timeLowerBound);
+  public InplaceMaxOverLappedFileSelector(Collection<TsFileResource> seqFiles,
+      Collection<TsFileResource> unseqFiles, long budget, String storageGroupName) {
+    super(seqFiles, unseqFiles, budget, storageGroupName);
     this.timeLimit = IoTDBDescriptor.getInstance().getConfig().getMergeFileSelectionTimeBudget();
     if (this.timeLimit < 0) {
       this.timeLimit = Long.MAX_VALUE;
@@ -57,7 +56,7 @@ public class InplaceMaxFileSelector extends BaseFileSelector {
   }
 
   @Override
-  public Pair<MergeResource, SelectorContext> selectMergedFiles() throws MergeException {
+  public MergeResource selectMergedFiles() throws MergeException {
     return select();
   }
 

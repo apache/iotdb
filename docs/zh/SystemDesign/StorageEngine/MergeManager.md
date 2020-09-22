@@ -47,7 +47,7 @@
 
 ## 相关代码
 
-* org.apache.iotdb.db.engine.merge.BaseFileSelector
+* org.apache.iotdb.db.engine.merge.BaseOverLappedFileSelector
 
     文件选择过程的基类，规定了选择文件的基本框架，及在不同情况下计算文件内存消耗的方法，所有自定义的文件选择策略均需继承此类
     

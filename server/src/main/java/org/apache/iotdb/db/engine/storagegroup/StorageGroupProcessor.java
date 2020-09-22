@@ -52,8 +52,9 @@ import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.IRecoverMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.seqMerge.SeqMergeFileStrategy;
-import org.apache.iotdb.db.engine.merge.sizeMerge.SizeMergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.seqMerge.MergeOverlappedFileStrategyFactory;
+import org.apache.iotdb.db.engine.merge.seqMerge.MergeOverlappedFilesStrategy;
+import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSmallFilesStrategy;
 import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeTask;
 import org.apache.iotdb.db.engine.merge.utils.SelectorContext;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -349,7 +350,7 @@ public class StorageGroupProcessor {
 
   private void recoverSeqMerge(List<TsFileResource> seqTsFiles, List<TsFileResource> unseqTsFiles,
       String taskName) throws IOException, MetadataException {
-    SeqMergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig()
+    MergeOverlappedFilesStrategy strategy = IoTDBDescriptor.getInstance().getConfig()
         .getSeqMergeFileStrategy();
     IRecoverMergeTask recoverMergeTask = strategy.getRecoverMergeTask(seqTsFiles,
         unseqTsFiles,
@@ -361,8 +362,8 @@ public class StorageGroupProcessor {
 
   private void recoverSizeMerge(List<TsFileResource> seqTsFiles, List<TsFileResource> unseqTsFiles,
       String taskName) throws IOException, MetadataException {
-    SizeMergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig()
-        .getSizeMergeFileStrategy();
+    MergeSmallFilesStrategy strategy = IoTDBDescriptor.getInstance().getConfig()
+        .getMergeOverlappedFilesStrategy();
     IRecoverMergeTask recoverMergeTask = strategy.getRecoverMergeTask(seqTsFiles,
         unseqTsFiles,
         storageGroupSysDir.getPath(), this::mergeEndAction, taskName, storageGroupName);
@@ -1602,47 +1603,28 @@ public class StorageGroupProcessor {
         return;
       }
 
-      long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
-      long timeLowerBound = System.currentTimeMillis() - dataTTL;
-      SeqMergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig()
-          .getSeqMergeFileStrategy();
+      MergeOverlappedFileStrategyFactory strategy = IoTDBDescriptor.getInstance().getConfig()
+          .getMergeOverlappedFileStrategyFactory();
       IMergeFileSelector fileSelector = strategy.getFileSelector(sequenceFileTreeSet,
-          unSequenceFileList, budget, timeLowerBound);
+          unSequenceFileList, dataTTL,storageGroupName,storageGroupSysDir);
       try {
-        Pair<MergeResource, SelectorContext> selectRes = fileSelector.selectMergedFiles();
-        MergeResource mergeResource = selectRes.left;
-        if (mergeResource.getSeqFiles().size() == 0 || mergeResource.getUnseqFiles().size() == 0) {
-          logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
-              budget);
+        MergeResource mergeResource = fileSelector.selectMergedFiles();
+        if (mergeResource == null) {
           return;
         }
-        // avoid pending tasks holds the metadata and streams
-        mergeResource.clear();
-        String taskName = storageGroupName + "-" + System.currentTimeMillis();
-        // do not cache metadata until true candidates are chosen, or too much metadata will be
-        // cached during selection
-        mergeResource.setCacheDeviceMeta(true);
-
-        for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
-          tsFileResource.setMerging(true);
-        }
-        for (TsFileResource tsFileResource : mergeResource.getUnseqFiles()) {
-          tsFileResource.setMerging(true);
-        }
         Callable<Void> mergeTask = strategy.getMergeTask(mergeResource,
-            storageGroupSysDir.getPath(), this::mergeEndAction, taskName, storageGroupName,
-            fullMerge);
+            storageGroupSysDir.getPath(), this::mergeEndAction, mergeResource.getTaskName(), storageGroupName);
         mergingModification = new ModificationFile(
             storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
         MergeManager.getINSTANCE().submitMainTask(mergeTask);
         if (logger.isInfoEnabled()) {
           logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
-              storageGroupName, taskName, mergeResource.getSeqFiles().size(),
+              storageGroupName, mergeResource.getTaskName(), mergeResource.getSeqFiles().size(),
               mergeResource.getUnseqFiles().size());
         }
         isMerging = true;
         mergeStartTime = System.currentTimeMillis();
-      } catch (MergeException | IOException e) {
+      } catch (MergeException e) {
         logger.error("{} cannot select file for merge", storageGroupName, e);
       }
     } finally {
@@ -1669,8 +1651,8 @@ public class StorageGroupProcessor {
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
       long timeLowerBound = System.currentTimeMillis() - dataTTL;
-      SizeMergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig()
-          .getSizeMergeFileStrategy();
+      MergeSmallFilesStrategy strategy = IoTDBDescriptor.getInstance().getConfig()
+          .getMergeOverlappedFilesStrategy();
       IMergeFileSelector fileSelector = strategy
           .getFileSelector(sequenceFileTreeSet, budget, timeLowerBound);
       try {

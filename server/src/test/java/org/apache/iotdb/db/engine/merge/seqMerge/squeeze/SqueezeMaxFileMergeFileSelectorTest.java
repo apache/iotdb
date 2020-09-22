@@ -27,7 +27,7 @@ import java.util.List;
 import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.MergeTest;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.seqMerge.squeeze.selector.SqueezeMaxFileSelector;
+import org.apache.iotdb.db.engine.merge.seqMerge.squeeze.selector.SqueezeMaxOverLappedFileSelector;
 import org.apache.iotdb.db.engine.merge.utils.SelectorContext;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
@@ -38,7 +38,7 @@ public class SqueezeMaxFileMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testFullSelection() throws MergeException, IOException {
-    IMergeFileSelector mergeFileSelector = new SqueezeMaxFileSelector(seqResources,
+    IMergeFileSelector mergeFileSelector = new SqueezeMaxOverLappedFileSelector(seqResources,
         unseqResources.subList(0, 1),
         Long.MAX_VALUE);
     Pair<MergeResource, SelectorContext> selectRes = mergeFileSelector.selectMergedFiles();
@@ -52,7 +52,7 @@ public class SqueezeMaxFileMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testNonSelection() throws MergeException, IOException {
-    IMergeFileSelector mergeFileSelector = new SqueezeMaxFileSelector(seqResources, unseqResources,
+    IMergeFileSelector mergeFileSelector = new SqueezeMaxOverLappedFileSelector(seqResources, unseqResources,
         1);
     Pair<MergeResource, SelectorContext> selectRes = mergeFileSelector.selectMergedFiles();
     MergeResource mergeResource = selectRes.left;
@@ -63,7 +63,7 @@ public class SqueezeMaxFileMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testRestrictedSelection() throws MergeException, IOException {
-    IMergeFileSelector mergeFileSelector = new SqueezeMaxFileSelector(seqResources, unseqResources,
+    IMergeFileSelector mergeFileSelector = new SqueezeMaxOverLappedFileSelector(seqResources, unseqResources,
         400000);
     Pair<MergeResource, SelectorContext> selectRes = mergeFileSelector.selectMergedFiles();
     MergeResource mergeResource = selectRes.left;

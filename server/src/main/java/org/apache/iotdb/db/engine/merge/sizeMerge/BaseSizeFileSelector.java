@@ -76,7 +76,7 @@ public abstract class BaseSizeFileSelector implements IMergeFileSelector {
   }
 
   @Override
-  public Pair<MergeResource, SelectorContext> selectMergedFiles() throws MergeException {
+  public MergeResource selectMergedFiles() throws MergeException {
     this.selectorContext.setStartTime(System.currentTimeMillis());
     this.selectorContext.clearTimeConsumption();
     try {

@@ -20,14 +20,13 @@
 package org.apache.iotdb.db.engine.merge.seqMerge.squeeze.task;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.BaseMergeSeriesTask;
 import org.apache.iotdb.db.engine.merge.MergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.sizeMerge.SizeMergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSmallFilesStrategy;
 import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeSeriesTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -41,9 +40,9 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
 
   List<TsFileResource> mergeSeries() throws IOException {
     List<TsFileResource> newResources;
-    SizeMergeFileStrategy sizeMergeFileStrategy = IoTDBDescriptor.getInstance().getConfig()
-        .getSizeMergeFileStrategy();
-    switch (sizeMergeFileStrategy) {
+    MergeSmallFilesStrategy mergeSmallFilesStrategy = IoTDBDescriptor.getInstance().getConfig()
+        .getMergeOverlappedFilesStrategy();
+    switch (mergeSmallFilesStrategy) {
       case REGULARIZATION:
       default:
         RegularizationMergeSeriesTask regularizationMergeSeriesTask = new RegularizationMergeSeriesTask(

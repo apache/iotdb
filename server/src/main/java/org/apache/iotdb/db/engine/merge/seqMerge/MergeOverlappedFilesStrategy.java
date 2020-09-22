@@ -16,13 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.merge;
 
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.exception.MergeException;
+package org.apache.iotdb.db.engine.merge.seqMerge;
 
-public interface IMergeFileSelector {
-
-  MergeResource selectMergedFiles() throws MergeException;
-
+public enum MergeOverlappedFilesStrategy {
+  INPLACE,
+  SQUEEZE;
+  // TODO new strategies?
 }

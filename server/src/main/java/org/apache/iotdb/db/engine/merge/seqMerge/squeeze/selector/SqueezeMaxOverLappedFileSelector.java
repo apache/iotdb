@@ -25,9 +25,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.merge.BaseFileSelector;
+import org.apache.iotdb.db.engine.merge.BaseOverLappedFileSelector;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.utils.SelectorContext;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -40,10 +39,10 @@ import org.slf4j.LoggerFactory;
  * merged without exceeding given memory budget. It always assume the number of timeseries being
  * queried at the same time is 1 to maximize the number of file merged.
  */
-public class SqueezeMaxFileSelector extends BaseFileSelector {
+public class SqueezeMaxOverLappedFileSelector extends BaseOverLappedFileSelector {
 
   private static final Logger logger = LoggerFactory.getLogger(
-      SqueezeMaxFileSelector.class);
+      SqueezeMaxOverLappedFileSelector.class);
 
   // the file selection of squeeze strategy is different from that of inplace strategy, consider:
   // seqFile1 has: (device1, [1,100]) (device2, [1,100])
@@ -62,18 +61,18 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
   private long tempMaxSeqFileCost;
   private long maxSeqFileCost;
 
-  public SqueezeMaxFileSelector(Collection<TsFileResource> seqFiles,
+  public SqueezeMaxOverLappedFileSelector(Collection<TsFileResource> seqFiles,
       Collection<TsFileResource> unseqFiles, long budget) {
     this(seqFiles, unseqFiles, budget, Long.MIN_VALUE);
   }
 
-  public SqueezeMaxFileSelector(Collection<TsFileResource> seqFiles,
+  public SqueezeMaxOverLappedFileSelector(Collection<TsFileResource> seqFiles,
       Collection<TsFileResource> unseqFiles, long budget, long timeLowerBound) {
-    super(seqFiles, unseqFiles, budget, timeLowerBound);
+    super(seqFiles, unseqFiles, budget, );
   }
 
   @Override
-  public Pair<MergeResource, SelectorContext> selectMergedFiles() throws MergeException {
+  public MergeResource selectMergedFiles() throws MergeException {
     this.selectorContext.setStartTime(System.currentTimeMillis());
     this.selectorContext.clearTimeConsumption();
     timeLimit = IoTDBDescriptor.getInstance().getConfig().getMergeFileSelectionTimeBudget();

@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.MergeTest;
-import org.apache.iotdb.db.engine.merge.seqMerge.inplace.selector.InplaceMaxFileSelector;
+import org.apache.iotdb.db.engine.merge.seqMerge.inplace.selector.InplaceMaxOverLappedFileSelector;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.utils.SelectorContext;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -37,7 +37,7 @@ public class InplaceMaxFileMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testFullSelection() throws MergeException, IOException {
-    IMergeFileSelector mergeFileSelector = new InplaceMaxFileSelector(seqResources,
+    IMergeFileSelector mergeFileSelector = new InplaceMaxOverLappedFileSelector(seqResources,
         unseqResources, Long.MAX_VALUE);
     Pair<MergeResource, SelectorContext> selectRes = mergeFileSelector.selectMergedFiles();
     MergeResource mergeResource = selectRes.left;
@@ -47,7 +47,7 @@ public class InplaceMaxFileMergeFileSelectorTest extends MergeTest {
     assertEquals(unseqResources, unseqSelected);
     mergeResource.clear();
 
-    mergeFileSelector = new InplaceMaxFileSelector(seqResources.subList(0, 1),
+    mergeFileSelector = new InplaceMaxOverLappedFileSelector(seqResources.subList(0, 1),
         unseqResources, Long.MAX_VALUE);
     selectRes = mergeFileSelector.selectMergedFiles();
     mergeResource = selectRes.left;
@@ -57,7 +57,7 @@ public class InplaceMaxFileMergeFileSelectorTest extends MergeTest {
     assertEquals(unseqResources, unseqSelected);
     mergeResource.clear();
 
-    mergeFileSelector = new InplaceMaxFileSelector(seqResources,
+    mergeFileSelector = new InplaceMaxOverLappedFileSelector(seqResources,
         unseqResources.subList(0, 1), Long.MAX_VALUE);
     selectRes = mergeFileSelector.selectMergedFiles();
     mergeResource = selectRes.left;
@@ -70,7 +70,7 @@ public class InplaceMaxFileMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testNonSelection() throws MergeException, IOException {
-    IMergeFileSelector mergeFileSelector = new InplaceMaxFileSelector(seqResources,
+    IMergeFileSelector mergeFileSelector = new InplaceMaxOverLappedFileSelector(seqResources,
         unseqResources, 1);
     Pair<MergeResource, SelectorContext> selectRes = mergeFileSelector.selectMergedFiles();
     MergeResource mergeResource = selectRes.left;
@@ -81,7 +81,7 @@ public class InplaceMaxFileMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testRestrictedSelection() throws MergeException, IOException {
-    IMergeFileSelector mergeFileSelector = new InplaceMaxFileSelector(seqResources,
+    IMergeFileSelector mergeFileSelector = new InplaceMaxOverLappedFileSelector(seqResources,
         unseqResources, 400000);
     Pair<MergeResource, SelectorContext> selectRes = mergeFileSelector.selectMergedFiles();
     MergeResource mergeResource = selectRes.left;

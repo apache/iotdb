@@ -22,9 +22,11 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.merge.seqMerge.SeqMergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.seqMerge.MergeOverlappedFileStrategyFactory;
+import org.apache.iotdb.db.engine.merge.seqMerge.MergeOverlappedFilesStrategy;
 import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSizeSelectorStrategy;
-import org.apache.iotdb.db.engine.merge.sizeMerge.SizeMergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSmallFileStrategyFactory;
+import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSmallFilesStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -472,24 +474,16 @@ public class IoTDBConfig {
   private long mergeIntervalSec = 2 * 3600L;
 
   /**
-   * When set to true, all merges becomes full merge (the whole SeqFiles are re-written despite how
-   * much they are overflowed). This may increase merge overhead depending on how much the SeqFiles
-   * are overflowed.
-   */
-  private boolean forceFullMerge = false;
-
-  /**
    * During a merge, if a chunk with less number of chunks than this parameter, the chunk will be
    * merged with its succeeding chunks even if it is not overflowed, until the merged chunks reach
    * this threshold and the new chunk will be flushed.
    */
   private int chunkMergePointThreshold = 20480;
 
-  private SeqMergeFileStrategy seqMergeFileStrategy = SeqMergeFileStrategy.SQUEEZE;
+  private MergeOverlappedFileStrategyFactory mergeOverlappedFileStrategyFactory = new MergeOverlappedFileStrategyFactory(MergeOverlappedFilesStrategy.SQUEEZE,false);
 
-  private SizeMergeFileStrategy sizeMergeFileStrategy = SizeMergeFileStrategy.REGULARIZATION;
-
-  private MergeSizeSelectorStrategy mergeSizeSelectorStrategy = MergeSizeSelectorStrategy.POINT_RANGE;
+  private MergeSmallFileStrategyFactory mergeSmallFileStrategyFactory = new MergeSmallFileStrategyFactory(MergeSmallFilesStrategy.REGULARIZATION,
+      MergeSizeSelectorStrategy.POINT_RANGE);
 
   /**
    * Default system file storage is in local file system (unsupported)
@@ -1145,14 +1139,6 @@ public class IoTDBConfig {
     this.enablePartialInsert = enablePartialInsert;
   }
 
-  public boolean isForceFullMerge() {
-    return forceFullMerge;
-  }
-
-  void setForceFullMerge(boolean forceFullMerge) {
-    this.forceFullMerge = forceFullMerge;
-  }
-
   public int getChunkMergePointThreshold() {
     return chunkMergePointThreshold;
   }
@@ -1169,17 +1155,22 @@ public class IoTDBConfig {
     this.memtableSizeThreshold = memtableSizeThreshold;
   }
 
-  public SeqMergeFileStrategy getSeqMergeFileStrategy() {
-    return seqMergeFileStrategy;
+  public MergeOverlappedFileStrategyFactory getMergeOverlappedFileStrategyFactory() {
+    return mergeOverlappedFileStrategyFactory;
   }
 
-  public SizeMergeFileStrategy getSizeMergeFileStrategy() {
-    return sizeMergeFileStrategy;
+  public void setMergeOverlappedFileStrategyFactory(
+      MergeOverlappedFileStrategyFactory mergeOverlappedFileStrategyFactory) {
+    this.mergeOverlappedFileStrategyFactory = mergeOverlappedFileStrategyFactory;
   }
 
-  public void setSeqMergeFileStrategy(
-      SeqMergeFileStrategy seqMergeFileStrategy) {
-    this.seqMergeFileStrategy = seqMergeFileStrategy;
+  public MergeSmallFileStrategyFactory getMergeSmallFileStrategyFactory() {
+    return mergeSmallFileStrategyFactory;
+  }
+
+  public void setMergeSmallFileStrategyFactory(
+      MergeSmallFileStrategyFactory mergeSmallFileStrategyFactory) {
+    this.mergeSmallFileStrategyFactory = mergeSmallFileStrategyFactory;
   }
 
   public int getAvgSeriesPointNumberThreshold() {
@@ -1188,20 +1179,6 @@ public class IoTDBConfig {
 
   public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
-  }
-
-  public void setSizeMergeFileStrategy(
-      SizeMergeFileStrategy sizeMergeFileStrategy) {
-    this.sizeMergeFileStrategy = sizeMergeFileStrategy;
-  }
-
-  public MergeSizeSelectorStrategy getMergeSizeSelectorStrategy() {
-    return mergeSizeSelectorStrategy;
-  }
-
-  public void setMergeSizeSelectorStrategy(
-      MergeSizeSelectorStrategy mergeSizeSelectorStrategy) {
-    this.mergeSizeSelectorStrategy = mergeSizeSelectorStrategy;
   }
 
   public int getMergeChunkSubThreadNum() {
