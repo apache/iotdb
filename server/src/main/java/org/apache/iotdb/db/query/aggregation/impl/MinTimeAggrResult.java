@@ -24,10 +24,12 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.reader.series.DescSeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.DescBatchData;
 
 public class MinTimeAggrResult extends AggregateResult {
 
@@ -38,7 +40,7 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return hasResult() ? getLongValue() : null;
+    return hasResult() || isChanged ? getLongValue() : null;
   }
 
   @Override
@@ -46,8 +48,9 @@ public class MinTimeAggrResult extends AggregateResult {
     if (hasResult()) {
       return;
     }
-    long time = statistics.getStartTime();
-    setValue(time);
+    long minTimestamp = statistics.getStartTime();
+    updateMinTimeResult(minTimestamp);
+    hasResult = false;
   }
 
   @Override
@@ -60,26 +63,45 @@ public class MinTimeAggrResult extends AggregateResult {
     if (hasResult()) {
       return;
     }
-    if (dataInThisPage.hasCurrent()
-        && dataInThisPage.currentTime() < maxBound
-        && dataInThisPage.currentTime() >= minBound) {
-      setLongValue(dataInThisPage.currentTime());
+    if (dataInThisPage instanceof DescBatchData || dataInThisPage.isFromDescMergeReader()) {
+      while (dataInThisPage.hasCurrent()
+          && dataInThisPage.currentTime() < maxBound
+          && dataInThisPage.currentTime() >= minBound) {
+        updateMinTimeResult(dataInThisPage.currentTime());
+        dataInThisPage.next();
+      }
+      hasResult = false;
+    } else {
+      if (dataInThisPage.hasCurrent()
+          && dataInThisPage.currentTime() < maxBound
+          && dataInThisPage.currentTime() >= minBound) {
+        updateMinTimeResult(dataInThisPage.currentTime());
+      }
     }
   }
 
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (hasResult()) {
+    if (length == 0) {
       return;
     }
-    for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
-        setLongValue(timestamps[i]);
-        return;
+    long time = -1;
+    Object value = null;
+    int cnt = 0;
+    while (value == null && cnt < length) {
+      if (dataReader instanceof DescSeriesReaderByTimestamp) {
+        time = timestamps[length - cnt - 1];
+      } else {
+        time = timestamps[cnt];
       }
+      value = dataReader.getValueInTimestamp(time);
+      cnt++;
     }
+    if (value != null) {
+      updateMinTimeResult(time);
+    }
+    hasResult = false;
   }
 
   @Override
@@ -107,4 +129,10 @@ public class MinTimeAggrResult extends AggregateResult {
   protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
   }
 
+  private void updateMinTimeResult(long value) {
+    if (!isChanged || value <= getLongValue()) {
+      setLongValue(value);
+      isChanged = true;
+    }
+  }
 }

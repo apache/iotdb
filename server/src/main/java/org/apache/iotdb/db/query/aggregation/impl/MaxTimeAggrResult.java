@@ -63,9 +63,7 @@ public class MaxTimeAggrResult extends AggregateResult {
     if (hasResult()) {
       return;
     }
-    if (dataInThisPage.isFromDescMergeReader()) {
-      updateMaxTimeResult(dataInThisPage.getTimeByIndex(0));
-    } else if (dataInThisPage instanceof DescBatchData) {
+    if (dataInThisPage instanceof DescBatchData || dataInThisPage.isFromDescMergeReader()) {
       if (dataInThisPage.hasCurrent()
           && dataInThisPage.currentTime() < maxBound
           && dataInThisPage.currentTime() >= minBound) {
@@ -85,18 +83,14 @@ public class MaxTimeAggrResult extends AggregateResult {
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    long time = -1;
+    long time;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
         time = timestamps[i];
+        updateMaxTimeResult(time);
       }
     }
-
-    if (time == -1) {
-      return;
-    }
-    updateMaxTimeResult(time);
   }
 
   @Override

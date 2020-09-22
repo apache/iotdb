@@ -65,7 +65,7 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage) {
     updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
@@ -74,9 +74,7 @@ public class LastValueAggrResult extends AggregateResult {
     if (hasResult()) {
       return;
     }
-    if (dataInThisPage.isFromDescMergeReader()) {
-      updateLastValueResult(dataInThisPage.getTimeByIndex(0), dataInThisPage.getObjectByIndex(0));
-    } else if (dataInThisPage instanceof DescBatchData) {
+    if (dataInThisPage instanceof DescBatchData || dataInThisPage.isFromDescMergeReader()) {
       if (dataInThisPage.hasCurrent()
           && dataInThisPage.currentTime() < maxBound
           && dataInThisPage.currentTime() >= minBound) {
@@ -96,20 +94,17 @@ public class LastValueAggrResult extends AggregateResult {
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-
-    long time = Long.MIN_VALUE;
-    Object lastVal = null;
+    long time;
+    Object lastVal;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
         time = timestamps[i];
         lastVal = value;
+        updateLastValueResult(time, lastVal);
       }
     }
-    if (time != Long.MIN_VALUE) {
-      setValue(lastVal);
-      timestamp = time;
-    }
+    hasResult = false;
   }
 
   @Override
