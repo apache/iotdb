@@ -23,7 +23,7 @@
 
 我们使用 Thrift Rpc 框架， thrift 定义文件目录：
 
-service-rpc/src/main/thrift/rpc.thrift
+thrift/src/main/thrift/rpc.thrift
 
 可按需增加 struct 结构，并在 service TSIService 中增加对应方法
 
@@ -33,9 +33,17 @@ service-rpc/src/main/thrift/rpc.thrift
 mvn clean compile -pl service-rpc -am -DskipTests
 ```
 
+或者
+
+
+```
+mvn clean compile -pl thrift
+
+```
+
 生成代码位置：
 
-service-rpc/target/generated-sources/thrift/org/apache/iotdb/service/rpc/thrift
+thrift/target/generated-sources/thrift/org/apache/iotdb/service/rpc/thrift
 
 ## 实现新接口
 

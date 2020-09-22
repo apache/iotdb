@@ -23,6 +23,7 @@ import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Collector;
 import org.apache.iotdb.tsfile.common.constant.QueryConstant;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -70,8 +71,8 @@ public class RowTSRecordConverter implements TSRecordConverter<Row> {
 				dataPointIndexMapping[i] = -1;
 				continue;
 			}
-			String deviceId = fieldName.substring(0, fieldName.lastIndexOf("."));
-			String measurementId = fieldName.substring(fieldName.lastIndexOf(".") + 1);
+			String deviceId = fieldName.substring(0, fieldName.lastIndexOf(TsFileConstant.PATH_SEPARATOR));
+			String measurementId = fieldName.substring(fieldName.lastIndexOf(TsFileConstant.PATH_SEPARATOR) + 1);
 			int tsRecordIndex = outputTemplateList.stream()
 				.map(t -> t.deviceId).collect(Collectors.toList()).indexOf(deviceId);
 			if (tsRecordIndex < 0) {

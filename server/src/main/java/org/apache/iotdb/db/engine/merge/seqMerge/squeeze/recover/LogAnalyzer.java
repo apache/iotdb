@@ -100,7 +100,7 @@ public class LogAnalyzer {
       Iterator<TsFileResource> iterator = resource.getSeqFiles().iterator();
       while (iterator.hasNext()) {
         TsFileResource seqFile = iterator.next();
-        if (seqFile.getFile().getAbsolutePath().equals(currLine)) {
+        if (seqFile.getTsFile().getAbsolutePath().equals(currLine)) {
           mergeSeqFiles.add(seqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -128,7 +128,7 @@ public class LogAnalyzer {
       Iterator<TsFileResource> iterator = resource.getUnseqFiles().iterator();
       while (iterator.hasNext()) {
         TsFileResource unseqFile = iterator.next();
-        if (unseqFile.getFile().getAbsolutePath().equals(currLine)) {
+        if (unseqFile.getTsFile().getAbsolutePath().equals(currLine)) {
           mergeUnseqFiles.add(unseqFile);
           // remove to speed-up next iteration
           iterator.remove();

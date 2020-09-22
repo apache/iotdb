@@ -50,7 +50,7 @@ public class UpgradeTask extends WrappedRunnable {
     try {
       List<TsFileResource> upgradedResources = generateUpgradedFiles();
       upgradeResource.writeLock();
-      String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
+      String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
       String oldModificationFilePath = oldTsfilePath + ModificationFile.FILE_SUFFIX;
       try {
         // delete old TsFile and resource
@@ -60,7 +60,7 @@ public class UpgradeTask extends WrappedRunnable {
         File modificationFile = FSFactoryProducer.getFSFactory().getFile(oldModificationFilePath);
         // move upgraded TsFiles and modificationFile to their own partition directories
         for (TsFileResource upgradedResource : upgradedResources) {
-          File upgradedFile = upgradedResource.getFile();
+          File upgradedFile = upgradedResource.getTsFile();
           long partition = upgradedResource.getTimePartition();
           String storageGroupPath = upgradedFile.getParentFile().getParentFile().getParent();
           File partitionDir = FSFactoryProducer.getFSFactory().getFile(storageGroupPath, partition + "");
@@ -89,9 +89,9 @@ public class UpgradeTask extends WrappedRunnable {
           Files.delete(modificationFile.toPath());
         }
         // delete upgrade folder when it is empty
-        if (upgradeResource.getFile().getParentFile().isDirectory()
-            && upgradeResource.getFile().getParentFile().listFiles().length == 0) {
-          Files.delete(upgradeResource.getFile().getParentFile().toPath());
+        if (upgradeResource.getTsFile().getParentFile().isDirectory()
+            && upgradeResource.getTsFile().getParentFile().listFiles().length == 0) {
+          Files.delete(upgradeResource.getTsFile().getParentFile().toPath());
         }
         upgradeResource.setUpgradedResources(upgradedResources);
         UpgradeLog.writeUpgradeLogFile(
@@ -104,14 +104,14 @@ public class UpgradeTask extends WrappedRunnable {
       logger.info("Upgrade completes, file path:{} , the remaining upgraded file num: {}",
           oldTsfilePath, UpgradeSevice.getCntUpgradeFileNum());
     } catch (Exception e) {
-      logger.error("meet error when upgrade file:{}", upgradeResource.getFile().getAbsolutePath(),
+      logger.error("meet error when upgrade file:{}", upgradeResource.getTsFile().getAbsolutePath(),
           e);
     }
   }
 
   private List<TsFileResource> generateUpgradedFiles() throws WriteProcessException {
     upgradeResource.readLock();
-    String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
+    String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
     List<TsFileResource> upgradedResources = new ArrayList<>();
     UpgradeLog.writeUpgradeLogFile(
         oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);

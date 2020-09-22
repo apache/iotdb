@@ -33,23 +33,23 @@ IoTDB 采用客户端-服务器架构，如下图所示。
 
 其中服务器端主要包括查询引擎，用来处理用户的所有请求，并分发到对应的管理组件，包括数据写入层、数据查询、元数据管理、权限管理等模块。
 
-* [数据文件](../TsFile/TsFile.html)
-* [查询引擎](../QueryEngine/QueryEngine.html)
-* [元数据管理](../SchemaManager/SchemaManager.html)
-* [存储引擎](../StorageEngine/StorageEngine.html)
-* [数据查询](../DataQuery/DataQuery.html)
+* [数据文件](../TsFile/TsFile.md)
+* [查询引擎](../QueryEngine/QueryEngine.md)
+* [元数据管理](../SchemaManager/SchemaManager.md)
+* [存储引擎](../StorageEngine/StorageEngine.md)
+* [数据查询](../DataQuery/DataQuery.md)
 
 ## 系统工具
 
-* [数据同步工具](../Tools/Sync.html)
+* [数据同步工具](../Tools/Sync.md)
 
 ## 连接器
 
 IoTDB 与大数据系统进行了对接。
 
-* [Hadoop-TsFile](/#/SystemDesign/progress/chap7/sec1)
-* [Hive-TsFile](../Connector/Hive-TsFile.html)
-* [Spark-TsFile](../Connector/Spark-TsFile.html)
-* [Spark-IoTDB](../Connector/Spark-IOTDB.html)
-* [Grafana](/#/SystemDesign/progress/chap7/sec5)
+* [Hadoop-TsFile](../../UserGuide/Ecosystem%20Integration/MapReduce%20TsFile.md)
+* [Hive-TsFile](../Connector/Hive-TsFile.md)
+* [Spark-TsFile](../Connector/Spark-TsFile.md)
+* [Spark-IoTDB](../Connector/Spark-IOTDB.md)
+* [Grafana](../../UserGuide/Ecosystem%20Integration/Grafana.md)
 

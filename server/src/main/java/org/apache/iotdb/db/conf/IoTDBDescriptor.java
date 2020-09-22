@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.conf;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.ZoneId;
 import java.util.Properties;
@@ -94,17 +94,19 @@ public class IoTDBDescriptor {
     return true;
   }
 
-  public String getPropsUrl() {
-    String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
-    if (url == null) {
-      url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
-      if (url != null) {
-        url = url + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
+  public URL getPropsUrl() {
+    // Check if a config-directory was specified first.
+    String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
+    // If it wasn't, check if a home directory was provided (This usually contains a config)
+    if (urlString == null) {
+      urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
+      if (urlString != null) {
+        urlString = urlString + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
       } else {
+        // If this too wasn't provided, try to find a default config in the root of the classpath.
         URL uri = IoTDBConfig.class.getResource("/" + IoTDBConfig.CONFIG_NAME);
         if (uri != null) {
-          url = uri.getPath();
-          return url;
+          return uri;
         }
         logger.warn(
             "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
@@ -114,22 +116,36 @@ public class IoTDBDescriptor {
         conf.updatePath();
         return null;
       }
-    } else {
-      url += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
-    return url;
+    // If a config location was provided, but it doesn't end with a properties file,
+    // append the default location.
+    else if(!urlString.endsWith(".properties")) {
+      urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
+    }
+    // If the url doesn't contain a ":" it's provided as a normal path.
+    // So we need to add the prefix "file:" to make it a real URL.
+    if(!urlString.contains(":")) {
+      urlString = "file:" + urlString;
+    }
+    try {
+      return new URL(urlString);
+    } catch (MalformedURLException e) {
+      return null;
+    }
   }
 
   /**
    * load an property file and set TsfileDBConfig variables.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    String url = getPropsUrl();
-    if (url == null) {
+    URL url = getPropsUrl();
+    if(url == null) {
+      logger.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
 
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
+    try (InputStream inputStream = url.openStream()) {
 
       logger.info("Start to read config file {}", url);
       Properties properties = new Properties();
@@ -196,10 +212,17 @@ public class IoTDBDescriptor {
 
       loadWALProps(properties);
 
-      conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
-
-      conf.setSystemDir(
-          FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.SYSTEM_FOLDER_NAME);
+      String systemDir = properties.getProperty("system_dir");
+      if(systemDir == null) {
+        systemDir = properties.getProperty("base_dir");
+        if(systemDir != null){
+          systemDir = FilePathUtils.regularizePath(systemDir) + IoTDBConstant.SYSTEM_FOLDER_NAME;
+        }
+        else {
+          systemDir = conf.getSystemDir();
+        }
+      }
+      conf.setSystemDir(systemDir);
 
       conf.setSchemaDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SCHEMA_FOLDER_NAME);
@@ -207,13 +230,16 @@ public class IoTDBDescriptor {
       conf.setSyncDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
 
+      conf.setTracingDir(FilePathUtils
+          .regularizePath(conf.getSystemDir() + IoTDBConstant.TRACING_FOLDER_NAME));
+
       conf.setQueryDir(
-          FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
+          FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
 
-      conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
+      conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
 
       int walBufferSize = Integer.parseInt(properties.getProperty("wal_buffer_size",
           Integer.toString(conf.getWalBufferSize())));
@@ -244,6 +270,22 @@ public class IoTDBDescriptor {
       conf.setAvgSeriesPointNumberThreshold(Integer.parseInt(properties
           .getProperty("avg_series_point_number_threshold",
               Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
+
+      conf.setMergeChunkPointNumberThreshold(Integer.parseInt(properties
+          .getProperty("merge_chunk_point_number",
+              Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
+
+      conf.setMaxMergeChunkNumInTsFile(Integer.parseInt(properties
+          .getProperty("max_merge_chunk_num_in_tsfile",
+              Integer.toString(conf.getMaxMergeChunkNumInTsFile()))));
+
+      conf.setEnableVm(Boolean.parseBoolean(properties
+          .getProperty("enable_vm",
+              Boolean.toString(conf.isEnableVm()))));
+
+      conf.setMaxVmNum(Integer.parseInt(properties
+          .getProperty("max_vm_num",
+              Integer.toString(conf.getMaxVmNum()))));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
@@ -324,9 +366,19 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
               String.valueOf(conf.isEnablePartialInsert()))));
 
+      conf.setMtreeSnapshotInterval(Integer.parseInt(properties.getProperty(
+          "mtree_snapshot_interval", Integer.toString(conf.getMtreeSnapshotInterval()))));
+      conf.setMtreeSnapshotThresholdTime(Integer.parseInt(properties.getProperty(
+          "mtree_snapshot_threshold_time",
+          Integer.toString(conf.getMtreeSnapshotThresholdTime()))));
+
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
               Boolean.toString(conf.isEnablePerformanceStat())).trim()));
+
+      conf.setEnablePerformanceTracing(Boolean
+          .parseBoolean(properties.getProperty("enable_performance_tracing",
+              Boolean.toString(conf.isEnablePerformanceTracing())).trim()));
 
       conf.setPerformanceStatDisplayInterval(Long
           .parseLong(properties.getProperty("performance_stat_display_interval",
@@ -437,7 +489,6 @@ public class IoTDBDescriptor {
       //if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
       conf.setOpenIdProviderUrl(properties.getProperty("openID_url", ""));
 
-
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(FSType.valueOf(
@@ -502,12 +553,15 @@ public class IoTDBDescriptor {
     conf.setAutoCreateSchemaEnabled(
         Boolean.parseBoolean(properties.getProperty("enable_auto_create_schema",
             Boolean.toString(conf.isAutoCreateSchemaEnabled()).trim())));
-    conf.setBooleanStringInferType(TSDataType.valueOf(properties.getProperty("boolean_string_infer_type",
-        conf.getBooleanStringInferType().toString())));
-    conf.setIntegerStringInferType(TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
-        conf.getIntegerStringInferType().toString())));
-    conf.setFloatingStringInferType(TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
-        conf.getFloatingStringInferType().toString())));
+    conf.setBooleanStringInferType(
+        TSDataType.valueOf(properties.getProperty("boolean_string_infer_type",
+            conf.getBooleanStringInferType().toString())));
+    conf.setIntegerStringInferType(
+        TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
+            conf.getIntegerStringInferType().toString())));
+    conf.setFloatingStringInferType(
+        TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
+            conf.getFloatingStringInferType().toString())));
     conf.setNanStringInferType(TSDataType.valueOf(properties.getProperty("nan_string_infer_type",
         conf.getNanStringInferType().toString())));
     conf.setDefaultStorageGroupLevel(
@@ -631,11 +685,13 @@ public class IoTDBDescriptor {
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {
-    String url = getPropsUrl();
-    if (url == null) {
+    URL url = getPropsUrl();
+    if(url == null) {
+      logger.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
+
+    try (InputStream inputStream = url.openStream()) {
       logger.info("Start to reload config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
@@ -656,10 +712,12 @@ public class IoTDBDescriptor {
         proportionSum += Integer.parseInt(proportion.trim());
       }
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
-      conf.setAllocateMemoryForWrite(
-          maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-      conf.setAllocateMemoryForRead(
-          maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      if (proportionSum != 0) {
+        conf.setAllocateMemoryForWrite(
+                maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+        conf.setAllocateMemoryForRead(
+                maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+      }
     }
 
     logger.info("allocateMemoryForRead = " + conf.getAllocateMemoryForRead());
@@ -678,18 +736,20 @@ public class IoTDBDescriptor {
         proportionSum += Integer.parseInt(proportion.trim());
       }
       long maxMemoryAvailable = conf.getAllocateMemoryForRead();
-      try {
-        conf.setAllocateMemoryForChunkMetaDataCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-        conf.setAllocateMemoryForChunkCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-        conf.setAllocateMemoryForTimeSeriesMetaDataCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
-      } catch (Exception e) {
-        throw new RuntimeException(
-            "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
-                + " should be an integer, which is "
-                + queryMemoryAllocateProportion);
+      if (proportionSum != 0) {
+        try {
+          conf.setAllocateMemoryForChunkMetaDataCache(
+                  maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+          conf.setAllocateMemoryForChunkCache(
+                  maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+          conf.setAllocateMemoryForTimeSeriesMetaDataCache(
+                  maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+        } catch (Exception e) {
+          throw new RuntimeException(
+                  "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
+                          + " should be an integer, which is "
+                          + queryMemoryAllocateProportion);
+        }
       }
 
     }

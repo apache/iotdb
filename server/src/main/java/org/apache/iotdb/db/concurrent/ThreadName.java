@@ -34,6 +34,7 @@ public enum ThreadName {
   STAT_MONITOR("StatMonitor-ServerServiceImpl"),
   FLUSH_SERVICE("Flush-ServerServiceImpl"),
   FLUSH_SUB_TASK_SERVICE("Flush-SubTask-ServerServiceImpl"),
+  FLUSH_VM_SERVICE("Flush-Vm-ServerServiceImpl"),
   WAL_DAEMON("IoTDB-MultiFileLogNodeManager-Sync-Thread"),
   WAL_FORCE_DAEMON("IoTDB-MultiFileLogNodeManager-Force-Thread"),
   INDEX_SERVICE("Index-ServerServiceImpl"),

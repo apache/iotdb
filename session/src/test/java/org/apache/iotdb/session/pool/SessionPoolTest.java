@@ -99,15 +99,7 @@ public class SessionPoolTest {
   public void incorrectExecuteQueryStatement() {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
     ExecutorService service = Executors.newFixedThreadPool(10);
-    for (int i = 0; i < 10; i++) {
-      try {
-        pool.insertRecord("root.sg1.d1", i, Collections.singletonList("s" + i),
-            Collections.singletonList(TSDataType.INT64),
-            Collections.singletonList((long) i));
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        fail();
-      }
-    }
+    write10Data(pool, true);
     //now let's query
     for (int i = 0; i < 10; i++) {
       final int no = i;
@@ -143,15 +135,7 @@ public class SessionPoolTest {
 
   private void correctQuery(SessionPool pool) {
     ExecutorService service = Executors.newFixedThreadPool(10);
-    for (int i = 0; i < 10; i++) {
-      try {
-        pool.insertRecord("root.sg1.d1", i, Collections.singletonList("s" + i),
-            Collections.singletonList(TSDataType.INT64),
-            Collections.singletonList((long) i));
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        fail();
-      }
-    }
+    write10Data(pool, true);
     //now let's query
     for (int i = 0; i < 10; i++) {
       final int no = i;
@@ -180,15 +164,7 @@ public class SessionPoolTest {
   @Test
   public void tryIfTheServerIsRestart() {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, false);
-    for (int i = 0; i < 10; i++) {
-      try {
-        pool.insertRecord("root.sg1.d1", i, Collections.singletonList("s" + i),
-            Collections.singletonList(TSDataType.INT64),
-            Collections.singletonList((long) i));
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        fail();
-      }
-    }
+    write10Data(pool, true);
     SessionDataSetWrapper wrapper = null;
     try {
       wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
@@ -212,15 +188,7 @@ public class SessionPoolTest {
   @Test
   public void tryIfTheServerIsRestartButDataIsGotten() {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false);
-    for (int i = 0; i < 10; i++) {
-      try {
-        pool.insertRecord("root.sg1.d1", i, Collections.singletonList("s" + i),
-            Collections.singletonList(TSDataType.INT64),
-            Collections.singletonList((long) i));
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        fail();
-      }
-    }
+    write10Data(pool, true);
     assertEquals(1, pool.currentAvailableSize());
     SessionDataSetWrapper wrapper = null;
     try {
@@ -238,6 +206,35 @@ public class SessionPoolTest {
       fail();
     }
     pool.close();
+  }
+
+  @Test
+  public void restart() throws Exception {
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 1, 1, 1000, false);
+    write10Data(pool, true);
+    //stop the server.
+    EnvironmentUtils.stopDaemon();
+    //all this ten data will fail.
+    write10Data(pool, false);
+    //restart the server
+    EnvironmentUtils.reactiveDaemon();
+    write10Data(pool, true);
+
+  }
+
+  private void write10Data(SessionPool pool, boolean failWhenThrowException) {
+    for (int i = 0; i < 10; i++) {
+      try {
+        pool.insertRecord("root.sg1.d1", i, Collections.singletonList("s" + i),
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList((long) i));
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
+        //will fail this 10 times.
+        if (failWhenThrowException) {
+          fail();
+        }
+      }
+    }
   }
 
 }

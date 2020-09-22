@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+    This file contains information about the project itself.
+    It should be updated as soon as a new language is supported
+    or the new version is released.
+    It also contains the information needed to populate the project
+    categories and languages referenced on the Apache project listing
+    page. It is referenced from here:
+    https://svn.apache.org/repos/asf/comdev/projects.apache.org/trunk/data/projects.xml
+-->
+<rdf:RDF xml:lang="en"
+         xmlns="http://usefulinc.com/ns/doap#"
+         xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:asfext="http://projects.apache.org/ns/asfext#"
+         xmlns:foaf="http://xmlns.com/foaf/0.1/">
+
+  <Project rdf:about="http://iotdb.apache.org">
+    <created>2020-07-11</created>
+    <license rdf:resource="http://spdx.org/licenses/Apache-2.0" />
+    <name>Apache  IoTDB (incubating)</name>
+    <homepage rdf:resource="http://iotdb.apache.org" />
+    <asfext:pmc rdf:resource="http://incubator.apache.org" />
+    <shortdesc>Apache IoTDB (incubating) is a database for managing time series data in Internet of Things</shortdesc>
+    <description>Apache IoTDB (incubating) (Database for Internet of Things) is an integrated data management engine designed for time series data. It provides users with services for data collection, storage and analysis. Due to its light-weight architecture, high performance and rich feature set together with its deep integration with Apache Hadoop, Spark and Flink. Apache IoTDB (incubating) can meet the requirements of massive data storage, high-speed data ingestion and complex data analysis in the IoT industrial fields.</description>
+    <bug-database rdf:resource="https://issues.apache.org/jira/projects/IOTDB" />
+    <mailing-list rdf:resource="https://iotdb.apache.org/Development/ContributeGuide.html" />
+    <download-page rdf:resource="http://iotdb.apache.org/Download/" />
+
+    <programming-language>Java</programming-language>
+    <programming-language>Python</programming-language>
+
+    <category rdf:resource="http://projects.apache.org/category/database" />
+    <category rdf:resource="http://projects.apache.org/category/iot"/>
+    <category rdf:resource="http://projects.apache.org/category/java"/>
+    <category rdf:resource="http://projects.apache.org/category/python"/>
+
+    <release>
+      <Version>
+        <name>apache-iotdb-0.10.0-incubating</name>
+        <created>2020-06-28</created>
+        <revision>0.10.0</revision>
+      </Version>
+    </release>
+
+    <repository>
+      <GitRepository>
+        <location rdf:resource="https://github.com/apache/incubator-iotdb.git"/>
+        <browse rdf:resource="https://github.com/apache/incubator-iotdb.git"/>
+      </GitRepository>
+    </repository>
+    <maintainer>
+      <foaf:Person>
+        <foaf:name>IoTDB PPMC</foaf:name>
+          <foaf:mbox rdf:resource="mailto:dev@iotdb.apache.org"/>
+      </foaf:Person>
+    </maintainer>
+  </Project>
+</rdf:RDF>
+

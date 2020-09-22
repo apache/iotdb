@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -32,7 +33,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 public class RawDataQueryPlan extends QueryPlan {
 
-  private List<Path> deduplicatedPaths = new ArrayList<>();
+  private List<PartialPath> deduplicatedPaths = new ArrayList<>();
   private List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
   private IExpression expression = null;
   private Map<String, Set<String>> deviceToMeasurements = new HashMap<>();
@@ -53,11 +54,11 @@ public class RawDataQueryPlan extends QueryPlan {
     this.expression = expression;
   }
 
-  public List<Path> getDeduplicatedPaths() {
+  public List<PartialPath> getDeduplicatedPaths() {
     return deduplicatedPaths;
   }
 
-  public void addDeduplicatedPaths(Path path) {
+  public void addDeduplicatedPaths(PartialPath path) {
     deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>())
         .add(path.getMeasurement());
     this.deduplicatedPaths.add(path);
@@ -67,7 +68,7 @@ public class RawDataQueryPlan extends QueryPlan {
    * used for AlignByDevice Query, the query is executed by each device, So we only maintain
    * measurements of current device.
    */
-  public void setDeduplicatedPaths(List<Path> deduplicatedPaths) {
+  public void setDeduplicatedPaths(List<PartialPath> deduplicatedPaths) {
     deviceToMeasurements.clear();
     deduplicatedPaths.forEach(
         path -> deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>())

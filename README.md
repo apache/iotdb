@@ -55,33 +55,37 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
 
 ## Outline
 
-- Quick Start
- - Prerequisites
- - Installation
-    - Build from source
-       - Configurations
- - Start
-    - Start IoTDB
-    - Use IoTDB
-       - Use Cli
-       - Basic commands for IoTDB
-    - Stop IoTDB
- - Only build server
- - Only build cli
- - Usage of import-csv.sh
-    - Create metadata
-    - An Example of import csv file
-    - Run import shell
-    - Error data file
- - Usage of export-csv.sh
-    - Run export shell
-    - Input query
+- [IoTDB](#iotdb)
+- [Overview](#overview)
+- [Main Features](#main-features)
+  - [Outline](#outline)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+    - [Build from source](#build-from-source)
+    - [Configurations](#configurations)
+  - [Start](#start)
+    - [Start IoTDB](#start-iotdb)
+    - [Use IoTDB](#use-iotdb)
+      - [Use Cli](#use-cli)
+      - [Basic commands for IoTDB](#basic-commands-for-iotdb)
+    - [Stop IoTDB](#stop-iotdb)
+  - [Only build server](#only-build-server)
+  - [Only build cli](#only-build-cli)
+  - [Usage of import-csv.sh](#usage-of-import-csvsh)
+    - [Create metadata](#create-metadata)
+    - [An example of import csv file](#an-example-of-import-csv-file)
+    - [Run import shell](#run-import-shell)
+    - [Error data file](#error-data-file)
+  - [Usage of export-csv.sh](#usage-of-export-csvsh)
+    - [Run export shell](#run-export-shell)
+    - [Input query](#input-query)
 
 <!-- /TOC -->
 
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.9.x/chap1/sec1).
+This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html).
 
 ## Prerequisites
 
@@ -125,7 +129,7 @@ Under the root path of incubator-iotdb:
 
 Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
 
-> NOTE: Directories "service-rpc/target/generated-sources/thrift" and "server/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in the IDE.
+> NOTE: Directories "thrift/target/generated-sources/thrift" and "antlr/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in the IDE.
 
 ### Configurations
 
@@ -135,7 +139,7 @@ configuration files are under "conf" folder
   * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`).
 
-For more information, please see [Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1) and [Chapter4: Client](https://iotdb.apache.org/#/Documents/progress/chap4/sec1) in detail.
+For more information, please see [Chapter3: Server](http://iotdb.apache.org/UserGuide/Master/Server/Config%20Manual.html).
 
 ## Start
 

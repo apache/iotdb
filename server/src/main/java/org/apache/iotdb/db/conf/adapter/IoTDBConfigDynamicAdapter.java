@@ -21,8 +21,8 @@ package org.apache.iotdb.db.conf.adapter;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
+import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -171,7 +171,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
             "After adjusting, max memTable num is {}, tsFile threshold is {}, memtableSize is {}, memTableSizeFloorThreshold is {}, storage group = {}, total timeseries = {}, the max number of timeseries among storage groups = {}",
             maxMemTableNum, tsFileSizeThreshold, memtableSizeInByte, memTableSizeFloorThreshold,
             totalStorageGroup, totalTimeseries,
-            MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups());
+            IoTDB.metaManager.getMaximalSeriesNumberAmongStorageGroups());
       }
       currentMemTableSize = memtableSizeInByte;
     }
@@ -196,7 +196,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     b /= magnification;
     double c =
         (double) CONFIG.getTsFileSizeThreshold() * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE
-            * MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups() * ratio
+            * IoTDB.metaManager.getMaximalSeriesNumberAmongStorageGroups() * ratio
             / magnification / magnification;
     double tempValue = b * b - 4 * a * c;
     double memTableSize = ((b + Math.sqrt(tempValue)) / (2 * a));
@@ -213,7 +213,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   private long calcTsFileSizeThreshold(long memTableSize, double ratio) {
     return (long) ((allocateMemoryForWrite * (1 - WAL_MEMORY_RATIO) - maxMemTableNum * memTableSize
         - staticMemory) * memTableSize / (ratio * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE
-        * MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()));
+        * IoTDB.metaManager.getMaximalSeriesNumberAmongStorageGroups()));
   }
 
   /**
@@ -222,7 +222,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    * takes 8 bytes.
    */
   private long getMemTableSizeFloorThreshold() {
-    return MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()
+    return IoTDB.metaManager.getMaximalSeriesNumberAmongStorageGroups()
         * PrimitiveArrayPool.ARRAY_SIZE * Long.BYTES * 2;
   }
 

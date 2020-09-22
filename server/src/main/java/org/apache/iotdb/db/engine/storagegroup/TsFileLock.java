@@ -73,11 +73,11 @@ public class TsFileLock {
         }
       }
 
-      writeCnt ++;
+      writeCnt++;
     }
   }
 
-  public void writUnlock() {
+  public void writeUnlock() {
     synchronized (this) {
       if (writeCnt > 0) {
         writeCnt --;

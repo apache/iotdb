@@ -19,9 +19,14 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -31,27 +36,25 @@ import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-
 public class LocalGroupByExecutor implements GroupByExecutor {
 
-  private IAggregateReader reader;
+  private final IAggregateReader reader;
   private BatchData preCachedData;
 
   // Aggregate result buffer of this path
-  private List<AggregateResult> results = new ArrayList<>();
-  private TimeRange timeRange;
+  private final List<AggregateResult> results = new ArrayList<>();
+  private final TimeRange timeRange;
+
+  // used for resetting the batch data to the last index
+  private int lastReadCurArrayIndex;
+  private int lastReadCurListIndex;
 
   private QueryDataSource queryDataSource;
 
-  public LocalGroupByExecutor(Path path, Set<String> allSensors, TSDataType dataType,
+  public LocalGroupByExecutor(PartialPath path, Set<String> allSensors, TSDataType dataType,
       QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
     queryDataSource = QueryResourceManager.getInstance()
@@ -62,6 +65,8 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         timeFilter, null, fileFilter);
     this.preCachedData = null;
     timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
+    lastReadCurArrayIndex = 0;
+    lastReadCurListIndex = 0;
   }
 
   public boolean isEmpty() {
@@ -103,7 +108,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         continue;
       }
       // lazy reset batch data for calculation
-      batchData.resetBatchData();
+      batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
       // skip points that cannot be calculated
       while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
         batchData.next();
@@ -112,6 +117,8 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         result.updateResultFromPageData(batchData, curEndTime);
       }
     }
+    lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
+    lastReadCurListIndex = batchData.getReadCurListIndex();
     // can calc for next interval
     if (batchData.getMaxTimestamp() >= curEndTime) {
       preCachedData = batchData;
@@ -196,6 +203,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     return false;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean readAndCalcFromPage(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
     while (reader.hasNextPage()) {
@@ -228,6 +236,9 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         return true;
       }
 
+      // reset the last position to zero
+      lastReadCurArrayIndex = 0;
+      lastReadCurListIndex = 0;
       calcFromBatch(batchData, curStartTime, curEndTime);
 
       // judge whether the calculation finished

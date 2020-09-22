@@ -21,16 +21,19 @@ package org.apache.iotdb.db.query.timegenerator;
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
@@ -64,19 +67,43 @@ public class ServerTimeGenerator extends TimeGenerator {
   @Override
   protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
       throws IOException {
-    Filter filter = expression.getFilter();
-    Path path = expression.getSeriesPath();
+    Filter valueFilter = expression.getFilter();
+    PartialPath path = (PartialPath) expression.getSeriesPath();
     TSDataType dataType;
     QueryDataSource queryDataSource;
     try {
-      dataType = MManager.getInstance().getSeriesType(path.getFullPath());
-      queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, filter);
-      // update filter by TTL
-      filter = queryDataSource.updateFilterUsingTTL(filter);
+      dataType = IoTDB.metaManager.getSeriesType(path);
+      queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, valueFilter);
+      // update valueFilter by TTL
+      valueFilter = queryDataSource.updateFilterUsingTTL(valueFilter);
     } catch (Exception e) {
       throw new IOException(e);
     }
+    
+    // get the TimeFilter part in SingleSeriesExpression
+    Filter timeFilter = getTimeFilter(valueFilter);
 
-    return new SeriesRawDataBatchReader(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource, null, filter, null);
+    return new SeriesRawDataBatchReader(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource, timeFilter, valueFilter, null);
+  }
+
+  /**
+   * extract time filter from a value filter
+   */
+  private Filter getTimeFilter(Filter filter) {
+    if (filter instanceof UnaryFilter && ((UnaryFilter) filter).getFilterType() == FilterType.TIME_FILTER) {
+      return filter;
+    }
+    if (filter instanceof AndFilter) {
+      Filter leftTimeFilter = getTimeFilter(((AndFilter) filter).getLeft());
+      Filter rightTimeFilter = getTimeFilter(((AndFilter) filter).getRight());
+      if (leftTimeFilter != null && rightTimeFilter != null) {
+        return filter;
+      } else if (leftTimeFilter != null) {
+        return leftTimeFilter;
+      } else {
+        return rightTimeFilter;
+      }
+    }
+    return null;
   }
 }

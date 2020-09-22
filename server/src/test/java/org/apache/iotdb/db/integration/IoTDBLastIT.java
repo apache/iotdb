@@ -19,9 +19,10 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -30,8 +31,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.sql.*;
-
-import static org.junit.Assert.fail;
 
 public class IoTDBLastIT {
 
@@ -131,7 +130,8 @@ public class IoTDBLastIT {
       }
 
       MeasurementMNode node =
-          (MeasurementMNode) MManager.getInstance().getNodeByPath("root.ln.wf01.wt01.temperature");
+          (MeasurementMNode) IoTDB.metaManager.getNodeByPath(new PartialPath(
+              "root.ln.wf01.wt01.temperature"));
       node.resetCache();
 
       statement.execute(
@@ -191,7 +191,7 @@ public class IoTDBLastIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      MNode node = MManager.getInstance().getNodeByPath("root.ln.wf01.wt02.temperature");
+      MNode node = IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt02.temperature"));
       ((MeasurementMNode) node).resetCache();
       boolean hasResultSet =
           statement.execute(
@@ -242,7 +242,7 @@ public class IoTDBLastIT {
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      MNode node = MManager.getInstance().getNodeByPath("root.ln.wf01.wt03.temperature");
+      MNode node = IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt03.temperature"));
       ((MeasurementMNode) node).resetCache();
 
       statement.execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(500, false, 9)");
@@ -290,7 +290,7 @@ public class IoTDBLastIT {
       statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(150,31.2)");
       statement.execute("flush");
 
-      MNode node = MManager.getInstance().getNodeByPath("root.ln.wf01.wt03.temperature");
+      MNode node = IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt03.temperature"));
       ((MeasurementMNode) node).resetCache();
 
       boolean hasResultSet = statement.execute(
@@ -308,6 +308,58 @@ public class IoTDBLastIT {
           cnt++;
         }
         Assert.assertEquals(cnt, 1);
+      }
+    }
+  }
+
+  @Test
+  public void lastWithDeletionTest() throws SQLException, MetadataException {
+    String[] retArray =
+        new String[] {
+            "350,root.ln.wf01.wt04.temperature,31.2",
+            "200,root.ln.wf01.wt04.temperature,78.2"
+        };
+
+
+    try (Connection connection =
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt04");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt04.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt04.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(100,22.1)");
+      statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature, status) values(200, 78.2, true)");
+      statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(350,31.2)");
+      statement.execute("flush");
+
+      boolean hasResultSet = statement.execute(
+          "select last temperature from root.ln.wf01.wt04");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + ","
+                  + resultSet.getString(TIMESEIRES_STR) + ","
+                  + resultSet.getString(VALUE_STR);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(cnt, 1);
+      }
+
+      statement.execute("delete from root.ln.wf01.wt04.temperature where time > 200 and time < 400");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + ","
+                  + resultSet.getString(TIMESEIRES_STR) + ","
+                  + resultSet.getString(VALUE_STR);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
       }
     }
   }

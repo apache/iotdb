@@ -41,7 +41,7 @@ set JAVA_OPTS=-ea^
 set CLASSPATH="%IOTDB_HOME%\lib"
 
 @REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
-for %%i in ("%IOTDB_HOME%\lib\*.jar") do call :append "%%i"
+for %%i in ("%IOTDB_HOME%\lib\iotdb-*.jar") do call :append "%%i"
 goto okClasspath
 
 :append

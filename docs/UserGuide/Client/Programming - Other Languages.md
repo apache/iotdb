@@ -63,7 +63,7 @@ no longer valid.
 #### Option 3: basic usage of thrift
 
 Optionally, if you know the basic usage of thrift, you can only download the thrift source file in
-`service-rpc\src\main\thrift\rpc.thrift`, and simply use `thrift -gen py -out ./target/iotdb rpc.thrift` 
+`thrift\src\main\thrift\rpc.thrift`, and simply use `thrift -gen py -out ./target/iotdb rpc.thrift` 
 to generate the python library.
 
 ### 4. Use Example

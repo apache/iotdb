@@ -205,18 +205,13 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void setTimeOffset(long offset) {
-    list.setTimeOffset(offset);
-  }
-
-  @Override
   public long getMinTime() {
     return list.getMinTime();
   }
 
   @Override
-  public int delete(long upperBound) {
-    return list.delete(upperBound);
+  public int delete(long lowerBound, long upperBound) {
+    return list.delete(lowerBound, upperBound);
   }
 
   @Override

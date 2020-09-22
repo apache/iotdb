@@ -21,21 +21,6 @@
 
 # SQL 参考文档
 
-## 关键字
-
-不要使用这些关键字作为标识符。
-
-```
-CREATE, INSERT, UPDATE, DELETE, SELECT, SHOW, GRANT, INTO, SET, WHERE, FROM, TO, BY, DEVICE,
-CONFIGURATION, DESCRIBE, SLIMIT, LIMIT, UNLINK, OFFSET, SOFFSET, FILL, LINEAR, PREVIOUS, PREVIOUSUNTILLAST,
-METADATA, TIMESERIES, TIMESTAMP, PROPERTY, WITH, ROOT, DATATYPE, COMPRESSOR, STORAGE, GROUP, LABEL,INT32,
-INT64, FLOAT, DOUBLE, BOOLEAN, TEXT, ENCODING, PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, GORILLA, REGULAR,
-BITMAP, ADD, UPSERT, VALUES, NOW, LINK, INDEX, USING, ON, DROP, MERGE, LIST, USER, PRIVILEGES, ROLE, ALL, OF,
-ALTER, PASSWORD, REVOKE, LOAD, WATERMARK_EMBEDDING, UNSET, TTL, FLUSH, TASK, INFO, DYNAMIC, PARAMETER, VERSION,
-REMOVE, MOVE, CHILD, PATHS, DEVICES, COUNT, NODES, LEVEL, MIN_TIME, MAX_TIME, MIN_VALUE, MAX_VALUE, AVG, FIRST_VALU,
-SUM, LAST_VALUE, LAST, DISABLE, ALIGN, COMPRESSION, TIME, ATTRIBUTES, TAGS,RENAME, FULL, CLEAR, CACHE
-```
-
 ## 显示版本号
 
 ```sql
@@ -46,7 +31,7 @@ show version
 +---------------+
 |        version|
 +---------------+
-|0.10.0-SNAPSHOT|
+|0.11.0-SNAPSHOT|
 +---------------+
 Total line number = 1
 It costs 0.417s
@@ -197,6 +182,14 @@ Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* 显示Merge状态语句
+
+```
+SHOW MERGE
+Eg: IoTDB > SHOW MERGE
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
 * 显示指定路径下时间序列数语句
 
 ```
@@ -267,6 +260,12 @@ Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
 Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
+
+* 为 schema 创建快照
+```
+CREATE SNAPSHOT FOR SCHEMA
+```
+
 ## 数据管理语句
 
 * 插入记录语句
@@ -299,10 +298,13 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 * 删除记录语句
 
 ```
-DELETE FROM <PrefixPath> [COMMA <PrefixPath>]* WHERE TIME LESSTHAN <TimeValue>
-Eg: DELETE FROM root.ln.wf01.wt01.temperature WHERE time < 2017-11-1T00:05:00+08:00
+DELETE FROM <PrefixPath> [COMMA <PrefixPath>]* [WHERE <WhereClause>]?
+WhereClause : <Condition> [(AND) <Condition>]*
+Condition  : <TimeExpr> [(AND) <TimeExpr>]*
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
+Eg: DELETE FROM root.ln.wf01.wt01.temperature WHERE time > 2016-01-05T00:15:00+08:00 and time < 2017-11-1T00:05:00+08:00
 Eg: DELETE FROM root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature WHERE time < NOW()
-Eg: DELETE FROM root.ln.wf01.wt01.* WHERE time < 1509466140000
+Eg: DELETE FROM root.ln.wf01.wt01.* WHERE time >= 1509466140000
 ```
 
 * 选择记录语句
@@ -601,6 +603,53 @@ Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2
 
 ```
 
+* As 语句
+
+As 语句为 SELECT 语句中出现的时间序列规定一个别名
+
+```
+在每个查询中都可以使用 As 语句来规定时间序列的别名。
+
+1. 原始数据查询：
+select s1 as speed, s2 as temperature from root.sg.d1
+
+结果集将显示为：
+| Time | speed | temperature |
+|  ... |  ...  |     ....    |
+
+2. 聚合查询
+select count(s1) as s1_num, max_value(s2) as s2_max from root.sg.d1
+
+3. 降频聚合查询
+select count(s1) as s1_num from root.sg.d1 group by ([100,500), 80ms)
+
+4. 按设备对齐查询
+select s1 as speed, s2 as temperature from root.sg.d1 align by device
+
+select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg.d2 align by device
+
+5. Last 查询
+select last s1 as speed, s2 from root.sg.d1
+
+规则：
+1. 除按设备对齐查询外，每一个 AS 语句必须唯一对应一个时间序列。
+
+E.g. select s1 as temperature from root.sg.*
+
+此时如果存储组 root.sg.* 中含有多个设备，则会抛出异常。
+
+2. 按设备对齐查询中，每个 AS 语句对应的前缀路径可以含多个设备，而后缀路径不能含多个传感器。
+
+E.g. select s1 as temperature from root.sg.*
+
+这种情况即使有多个设备，也可以正常显示。
+
+E.g. select * as temperature from root.sg.d1
+
+这种情况如果 * 匹配多个传感器，则无法正常显示。
+
+```
+
 ## 数据库管理语句
 
 * 创建用户
@@ -691,7 +740,7 @@ Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
 REVOKE <roleName> FROM <userName>;
 roleName:=identifier
 userName:=identifier
-Eg: IoTDB > REVOKE temproleFROM tempuser;
+Eg: IoTDB > REVOKE temprole FROM tempuser;
 ```
 
 * 列出用户
@@ -714,7 +763,7 @@ Eg: IoTDB > LIST ROLE
 LIST PRIVILEGES USER  <username> ON <path>;    
 username:=identifier    
 path=‘root’ (DOT identifier)*
-Eg: IoTDB > LIST PRIVIEGES USER sgcc_wirte_user ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;
 ```
 
 * 列出角色权限
@@ -723,7 +772,7 @@ Eg: IoTDB > LIST PRIVIEGES USER sgcc_wirte_user ON root.sgcc;
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
 roleName:=identifier  
 path=‘root’ (DOT identifier)*
-Eg: IoTDB > LIST PRIVIEGES ROLE wirte_role ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES ROLE wirte_role ON root.sgcc;
 ```
 
 * 列出用户权限
@@ -731,7 +780,7 @@ Eg: IoTDB > LIST PRIVIEGES ROLE wirte_role ON root.sgcc;
 ```
 LIST USER PRIVILEGES <username> ;   
 username:=identifier  
-Eg: IoTDB > LIST USER PRIVIEGES tempuser;
+Eg: IoTDB > LIST USER PRIVILEGES tempuser;
 ```
 
 * 列出角色权限
@@ -739,7 +788,7 @@ Eg: IoTDB > LIST USER PRIVIEGES tempuser;
 ```
 LIST ROLE PRIVILEGES <roleName>
 roleName:=identifier
-Eg: IoTDB > LIST ROLE PRIVIEGES actor;
+Eg: IoTDB > LIST ROLE PRIVILEGES actor;
 ```
 
 * 列出用户角色 
@@ -764,7 +813,7 @@ Eg: IoTDB > LIST ALL USER OF ROLE roleuser;
 ALTER USER <username> SET PASSWORD <password>;
 roleName:=identifier
 password:=string
-Eg: IoTDB > ALTER USER tempuser SET PASSWORD newpwd;
+Eg: IoTDB > ALTER USER tempuser SET PASSWORD 'newpwd';
 ```
 
 ## 功能
@@ -890,13 +939,30 @@ Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
 一部分之前不可见的数据可能重新可见，而那些已经被物理删除的数据则将永久丢失。也就是说，TTL操作不会原子性地删除
 对应的数据。因此我们不推荐您频繁修改TTL，除非您能接受该操作带来的一定程度的不可预知性。
 
+* 删除时间分区 (实验性功能)
+```
+DELETE PARTITION StorageGroupName INT(COMMA INT)*
+Eg DELETE PARTITION root.sg1 0,1,2
+该例子将删除存储组root.sg1的前三个时间分区
+```
+partitionId 可以通过查看数据文件夹获取，或者是计算 `timestamp / partitionInterval`得到。 
+
+## 性能追踪
+
+IoTDB 支持使用 `TRACING` 语句来追踪查询语句的执行，通过日志文件输出该查询访问的 Tsfile 文件数，chunk 数等信息，默认输出位置位于 `./data/tracing`. 性能追踪功能默认处于关闭状态，用户可以使用 TRACING ON/OFF 命令来打开/关闭该功能。
+
+```
+TRACING ON    //打开性能追踪
+TRACING OFF   //关闭性能追踪
+```
+
 # 参考
 
 ## 关键字
 
 ```
 Keywords for IoTDB (case insensitive):
-ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SELECT, SET, SHOW, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, UPDATE, USER, USING, VALUE, VALUES, WHERE, WITH
+ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FOR, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SCHEMA, SELECT, SET, SHOW, SNAPSHOT, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, UPDATE, USER, USING, VALUE, VALUES, WHERE, WITH
 
 Keywords with special meanings (case insensitive):
 * Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT 

@@ -60,19 +60,23 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       ResultSet resultSet = statement.getResultSet();
       int count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-                + "," + resultSet.getString("alias")
-                + "," + resultSet.getString("storage group")
-                + "," + resultSet.getString("dataType")
-                + "," + resultSet.getString("encoding")
-                + "," + resultSet.getString("compression")
-                + "," + resultSet.getString("attr1")
-                + "," + resultSet.getString("attr2")
-                + "," + resultSet.getString("tag1")
-                + "," + resultSet.getString("tag2");
-        assertEquals(ret[count], ans);
-        count++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr1")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("tag1")
+                  + "," + resultSet.getString("tag2");
+          assertEquals(ret[count], ans);
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(ret.length, count);
 
@@ -95,19 +99,23 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
       count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-                + "," + resultSet.getString("alias")
-                + "," + resultSet.getString("storage group")
-                + "," + resultSet.getString("dataType")
-                + "," + resultSet.getString("encoding")
-                + "," + resultSet.getString("compression")
-                + "," + resultSet.getString("attr1")
-                + "," + resultSet.getString("attr2")
-                + "," + resultSet.getString("tagNew1")
-                + "," + resultSet.getString("tag2");
-        assertEquals(ret[count], ans);
-        count++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr1")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("tagNew1")
+                  + "," + resultSet.getString("tag2");
+          assertEquals(ret[count], ans);
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(ret.length, count);
     } catch (Exception e) {
@@ -132,19 +140,23 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       ResultSet resultSet = statement.getResultSet();
       int count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-                + "," + resultSet.getString("alias")
-                + "," + resultSet.getString("storage group")
-                + "," + resultSet.getString("dataType")
-                + "," + resultSet.getString("encoding")
-                + "," + resultSet.getString("compression")
-                + "," + resultSet.getString("attr1")
-                + "," + resultSet.getString("attr2")
-                + "," + resultSet.getString("tag1")
-                + "," + resultSet.getString("tag2");
-        assertEquals(ret[count], ans);
-        count++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr1")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("tag1")
+                  + "," + resultSet.getString("tag2");
+          assertEquals(ret[count], ans);
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(ret.length, count);
 
@@ -160,19 +172,23 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
       count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-                + "," + resultSet.getString("alias")
-                + "," + resultSet.getString("storage group")
-                + "," + resultSet.getString("dataType")
-                + "," + resultSet.getString("encoding")
-                + "," + resultSet.getString("compression")
-                + "," + resultSet.getString("attr1")
-                + "," + resultSet.getString("attr2")
-                + "," + resultSet.getString("tag1")
-                + "," + resultSet.getString("tag2");
-        assertEquals(ret2[count], ans);
-        count++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr1")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("tag1")
+                  + "," + resultSet.getString("tag2");
+          assertEquals(ret2[count], ans);
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(ret2.length, count);
     } catch (Exception e) {
@@ -197,19 +213,23 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       ResultSet resultSet = statement.getResultSet();
       int count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-                + "," + resultSet.getString("alias")
-                + "," + resultSet.getString("storage group")
-                + "," + resultSet.getString("dataType")
-                + "," + resultSet.getString("encoding")
-                + "," + resultSet.getString("compression")
-                + "," + resultSet.getString("attr1")
-                + "," + resultSet.getString("attr2")
-                + "," + resultSet.getString("tag1")
-                + "," + resultSet.getString("tag2");
-        assertEquals(ret[count], ans);
-        count++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr1")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("tag1")
+                  + "," + resultSet.getString("tag2");
+          assertEquals(ret[count], ans);
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(ret.length, count);
 
@@ -218,17 +238,21 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
       count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-                + "," + resultSet.getString("alias")
-                + "," + resultSet.getString("storage group")
-                + "," + resultSet.getString("dataType")
-                + "," + resultSet.getString("encoding")
-                + "," + resultSet.getString("compression")
-                + "," + resultSet.getString("attr2")
-                + "," + resultSet.getString("tag2");
-        assertEquals(ret2[count], ans);
-        count++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("tag2");
+          assertEquals(ret2[count], ans);
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(ret2.length, count);
 
@@ -260,19 +284,23 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       ResultSet resultSet = statement.getResultSet();
       int count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-                + "," + resultSet.getString("alias")
-                + "," + resultSet.getString("storage group")
-                + "," + resultSet.getString("dataType")
-                + "," + resultSet.getString("encoding")
-                + "," + resultSet.getString("compression")
-                + "," + resultSet.getString("attr1")
-                + "," + resultSet.getString("attr2")
-                + "," + resultSet.getString("tag1")
-                + "," + resultSet.getString("tag2");
-        assertEquals(ret[count], ans);
-        count++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr1")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("tag1")
+                  + "," + resultSet.getString("tag2");
+          assertEquals(ret[count], ans);
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(ret.length, count);
 
@@ -281,21 +309,25 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
       count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-                + "," + resultSet.getString("alias")
-                + "," + resultSet.getString("storage group")
-                + "," + resultSet.getString("dataType")
-                + "," + resultSet.getString("encoding")
-                + "," + resultSet.getString("compression")
-                + "," + resultSet.getString("attr1")
-                + "," + resultSet.getString("attr2")
-                + "," + resultSet.getString("tag1")
-                + "," + resultSet.getString("tag2")
-                + "," + resultSet.getString("tag3")
-                + "," + resultSet.getString("tag4");
-        assertEquals(ret2[count], ans);
-        count++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr1")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("tag1")
+                  + "," + resultSet.getString("tag2")
+                  + "," + resultSet.getString("tag3")
+                  + "," + resultSet.getString("tag4");
+          assertEquals(ret2[count], ans);
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(ret2.length, count);
     } catch (Exception e) {
@@ -320,19 +352,23 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       ResultSet resultSet = statement.getResultSet();
       int count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-                + "," + resultSet.getString("alias")
-                + "," + resultSet.getString("storage group")
-                + "," + resultSet.getString("dataType")
-                + "," + resultSet.getString("encoding")
-                + "," + resultSet.getString("compression")
-                + "," + resultSet.getString("attr1")
-                + "," + resultSet.getString("attr2")
-                + "," + resultSet.getString("tag1")
-                + "," + resultSet.getString("tag2");
-        assertEquals(ret[count], ans);
-        count++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr1")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("tag1")
+                  + "," + resultSet.getString("tag2");
+          assertEquals(ret[count], ans);
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(ret.length, count);
 
@@ -341,21 +377,25 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
       count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-                + "," + resultSet.getString("alias")
-                + "," + resultSet.getString("storage group")
-                + "," + resultSet.getString("dataType")
-                + "," + resultSet.getString("encoding")
-                + "," + resultSet.getString("compression")
-                + "," + resultSet.getString("attr1")
-                + "," + resultSet.getString("attr2")
-                + "," + resultSet.getString("attr3")
-                + "," + resultSet.getString("attr4")
-                + "," + resultSet.getString("tag1")
-                + "," + resultSet.getString("tag2");
-        assertEquals(ret2[count], ans);
-        count++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr1")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("attr3")
+                  + "," + resultSet.getString("attr4")
+                  + "," + resultSet.getString("tag1")
+                  + "," + resultSet.getString("tag2");
+          assertEquals(ret2[count], ans);
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(ret2.length, count);
     } catch (Exception e) {
@@ -382,19 +422,23 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       ResultSet resultSet = statement.getResultSet();
       int count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-            + "," + resultSet.getString("alias")
-            + "," + resultSet.getString("storage group")
-            + "," + resultSet.getString("dataType")
-            + "," + resultSet.getString("encoding")
-            + "," + resultSet.getString("compression")
-            + "," + resultSet.getString("attr1")
-            + "," + resultSet.getString("attr2")
-            + "," + resultSet.getString("tag1")
-            + "," + resultSet.getString("tag2");
-        assertEquals(ret[count], ans);
-        count++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr1")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("tag1")
+                  + "," + resultSet.getString("tag2");
+          assertEquals(ret[count], ans);
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(ret.length, count);
 
@@ -403,20 +447,24 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
       count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-            + "," + resultSet.getString("alias")
-            + "," + resultSet.getString("storage group")
-            + "," + resultSet.getString("dataType")
-            + "," + resultSet.getString("encoding")
-            + "," + resultSet.getString("compression")
-            + "," + resultSet.getString("attr1")
-            + "," + resultSet.getString("attr2")
-            + "," + resultSet.getString("tag1")
-            + "," + resultSet.getString("tag2")
-            + "," + resultSet.getString("tag3");
-        assertEquals(ret2[count], ans);
-        count++;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr1")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("tag1")
+                  + "," + resultSet.getString("tag2")
+                  + "," + resultSet.getString("tag3");
+          assertEquals(ret2[count], ans);
+          count++;
+        }
+      } finally {
+        resultSet.close();
       }
       assertEquals(ret2.length, count);
 
@@ -425,27 +473,31 @@ public class IoTDBTagAlterIT {
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
       count = 0;
-      while (resultSet.next()) {
-        String ans = resultSet.getString("timeseries")
-            + "," + resultSet.getString("alias")
-            + "," + resultSet.getString("storage group")
-            + "," + resultSet.getString("dataType")
-            + "," + resultSet.getString("encoding")
-            + "," + resultSet.getString("compression")
-            + "," + resultSet.getString("attr1")
-            + "," + resultSet.getString("attr2")
-            + "," + resultSet.getString("attr3")
-            + "," + resultSet.getString("tag1")
-            + "," + resultSet.getString("tag2")
-            + "," + resultSet.getString("tag3");
-        assertEquals(ret3[count], ans);
-        count++;
-      }
-      assertEquals(ret3.length, count);
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+                  + "," + resultSet.getString("alias")
+                  + "," + resultSet.getString("storage group")
+                  + "," + resultSet.getString("dataType")
+                  + "," + resultSet.getString("encoding")
+                  + "," + resultSet.getString("compression")
+                  + "," + resultSet.getString("attr1")
+                  + "," + resultSet.getString("attr2")
+                  + "," + resultSet.getString("attr3")
+                  + "," + resultSet.getString("tag1")
+                  + "," + resultSet.getString("tag2")
+                  + "," + resultSet.getString("tag3");
+          assertEquals(ret3[count], ans);
+          count++;
+        }
+        assertEquals(ret3.length, count);
 
-      statement.execute("show timeseries where tag3=v3");
-      resultSet = statement.getResultSet();
-      assertFalse(resultSet.next());
+        statement.execute("show timeseries where tag3=v3");
+        resultSet = statement.getResultSet();
+        assertFalse(resultSet.next());
+      } finally {
+        resultSet.close();
+      }
 
     } catch (Exception e) {
       e.printStackTrace();

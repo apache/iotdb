@@ -19,12 +19,12 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class FlushPlan extends PhysicalPlan {
-  private List<Path> storeGroups;
+  private List<PartialPath> storeGroups;
 
   public Boolean isSeq() {
     return isSeq;
@@ -32,14 +32,14 @@ public class FlushPlan extends PhysicalPlan {
 
   private Boolean isSeq;
 
-  public FlushPlan(Boolean isSeq, List<Path> storeGroups) {
+  public FlushPlan(Boolean isSeq, List<PartialPath> storeGroups) {
     super(false, OperatorType.FLUSH);
     this.storeGroups = storeGroups;
     this.isSeq = isSeq;
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return storeGroups;
   }
 }

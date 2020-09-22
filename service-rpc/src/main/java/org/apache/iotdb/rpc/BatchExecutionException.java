@@ -21,7 +21,7 @@ package org.apache.iotdb.rpc;
 import java.util.List;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-public class BatchExecutionException extends Exception{
+public class BatchExecutionException extends StatementExecutionException {
 
   private List<TSStatus> statusList;
 
@@ -30,6 +30,7 @@ public class BatchExecutionException extends Exception{
   }
 
   public BatchExecutionException(List<TSStatus> statusList) {
+    super("");
     this.statusList = statusList;
   }
 

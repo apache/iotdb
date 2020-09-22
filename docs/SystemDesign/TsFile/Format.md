@@ -248,7 +248,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.10.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+D:\incubator-iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
 ​````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​````````````````````````

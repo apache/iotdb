@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.utils;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
 
 public class TypeInferenceUtilsTest {
 
@@ -31,7 +32,7 @@ public class TypeInferenceUtilsTest {
   public void isNumberTest() {
     String[] values = {"123", "123.123", "-123.123", "+123.123", ".123", String.valueOf(Integer.MAX_VALUE),
         String.valueOf(Integer.MIN_VALUE), String.valueOf(Double.MAX_VALUE), String.valueOf(Double.MIN_VALUE),
-        "abc", "123.", "123a", ".", "123.1.23"};
+        "abc", "123.", "123a", TsFileConstant.PATH_SEPARATOR, "123.1.23"};
     boolean[] results = {true, true, true, true, true, true,
         true, true, true,
         false, true, false, false, false};

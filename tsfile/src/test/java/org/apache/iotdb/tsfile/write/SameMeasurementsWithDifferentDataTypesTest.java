@@ -69,8 +69,8 @@ public class SameMeasurementsWithDifferentDataTypesTest {
   @Test
   public void testSameMeasurementsWithDiffrentDataTypes() throws IOException {
     List<Path> pathList = new ArrayList<>();
-    pathList.add(new Path("d1.s1"));
-    pathList.add(new Path("d2.s1"));
+    pathList.add(new Path("d1", "s1"));
+    pathList.add(new Path("d2", "s1"));
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
     TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath);
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);

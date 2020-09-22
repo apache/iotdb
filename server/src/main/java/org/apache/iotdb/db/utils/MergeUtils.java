@@ -34,9 +34,9 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -92,10 +92,10 @@ public class MergeUtils {
       List<TsFileResource> unseqFiles) {
     long totalSize = 0;
     for (TsFileResource tsFileResource : seqFiles) {
-      totalSize += tsFileResource.getFileSize();
+      totalSize += tsFileResource.getTsFileSize();
     }
     for (TsFileResource tsFileResource : unseqFiles) {
-      totalSize += tsFileResource.getFileSize();
+      totalSize += tsFileResource.getTsFileSize();
     }
     return totalSize;
   }
@@ -158,7 +158,7 @@ public class MergeUtils {
   }
 
   public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) {
-    return seqFile.getFileSize() - sequenceReader.getFileMetadataPos();
+    return seqFile.getTsFileSize() - sequenceReader.getFileMetadataPos();
   }
 
   /**
@@ -168,7 +168,7 @@ public class MergeUtils {
    *
    * @param paths names of the timeseries
    */
-  public static List<Chunk>[] collectUnseqChunks(List<Path> paths,
+  public static List<Chunk>[] collectUnseqChunks(List<PartialPath> paths,
       List<TsFileResource> unseqResources, MergeResource mergeResource) throws IOException {
     List<Chunk>[] ret = new List[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
@@ -188,12 +188,12 @@ public class MergeUtils {
     return ret;
   }
 
-  private static void buildMetaHeap(List<Path> paths, TsFileSequenceReader tsFileReader,
+  private static void buildMetaHeap(List<PartialPath> paths, TsFileSequenceReader tsFileReader,
       MergeResource resource, TsFileResource tsFileResource,
       PriorityQueue<MetaListEntry> chunkMetaHeap)
       throws IOException {
     for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
+      PartialPath path = paths.get(i);
       List<ChunkMetadata> metaDataList = tsFileReader.getChunkMetadataList(path);
       if (metaDataList.isEmpty()) {
         continue;
@@ -237,16 +237,16 @@ public class MergeUtils {
         && !isLastChunk);
   }
 
-  public static List<List<Path>> splitPathsByDevice(List<Path> paths) {
+  public static List<List<PartialPath>> splitPathsByDevice(List<PartialPath> paths) {
     if (paths.isEmpty()) {
       return Collections.emptyList();
     }
-    paths.sort(Comparator.comparing(Path::getDevice));
+    paths.sort(Comparator.comparing(PartialPath::getDevice));
 
     String currDevice = null;
-    List<Path> currList = null;
-    List<List<Path>> ret = new ArrayList<>();
-    for (Path path : paths) {
+    List<PartialPath> currList = null;
+    List<List<PartialPath>> ret = new ArrayList<>();
+    for (PartialPath path : paths) {
       if (currDevice == null) {
         currDevice = path.getDevice();
         currList = new ArrayList<>();
@@ -264,16 +264,16 @@ public class MergeUtils {
     return ret;
   }
 
-  public static Map<Path, IChunkWriter> constructChunkWriterCache(String storageGroupName)
+  public static Map<PartialPath, IChunkWriter> constructChunkWriterCache(String storageGroupName)
       throws MetadataException {
-    Set<String> devices = MManager.getInstance().getDevices(storageGroupName);
-    Map<Path, IChunkWriter> chunkWriterCacheMap = new HashMap<>();
-    for (String device : devices) {
-      InternalMNode deviceNode = (InternalMNode) MManager.getInstance().getNodeByPath(device);
+    Set<PartialPath> devices = MManager.getInstance().getDevices(new PartialPath(storageGroupName));
+    Map<PartialPath, IChunkWriter> chunkWriterCacheMap = new HashMap<>();
+    for (PartialPath device : devices) {
+      MNode deviceNode = MManager.getInstance().getNodeByPath(device);
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
         MeasurementSchema measurementSchema = ((MeasurementMNode) entry.getValue()).getSchema();
         chunkWriterCacheMap
-            .put(new Path(device, entry.getKey()), new ChunkWriterImpl(measurementSchema));
+            .put(device.concatNode(entry.getKey()), new ChunkWriterImpl(measurementSchema));
       }
     }
     return chunkWriterCacheMap;

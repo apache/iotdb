@@ -21,7 +21,9 @@ package org.apache.iotdb.db.engine.memtable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
@@ -38,7 +40,8 @@ public class MemTableFlushTaskTest {
 
   private RestorableTsFileIOWriter writer;
   private String storageGroup = "storage_group1";
-  private String filePath = TestConstant.OUTPUT_DATA_DIR.concat("testUnsealedTsFileProcessor.tsfile");
+  private String filePath = TestConstant.OUTPUT_DATA_DIR
+      .concat("testUnsealedTsFileProcessor.tsfile");
   private IMemTable memTable;
   private long startTime = 1;
   private long endTime = 100;
@@ -50,6 +53,7 @@ public class MemTableFlushTaskTest {
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(filePath));
     memTable = new PrimitiveMemTable();
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);
   }
 
   @After
@@ -57,14 +61,15 @@ public class MemTableFlushTaskTest {
     writer.close();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(true);
   }
 
   @Test
-  public void testFlushMemTable() throws ExecutionException, InterruptedException {
+  public void testFlushMemTable() throws ExecutionException, InterruptedException, IOException {
     MemTableTestUtils.produceData(memTable, startTime, endTime, MemTableTestUtils.deviceId0,
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
-    MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
+    MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup, writer);
     assertTrue(writer
         .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).isEmpty());

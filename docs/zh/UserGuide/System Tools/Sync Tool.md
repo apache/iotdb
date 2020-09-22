@@ -71,7 +71,7 @@
    </tr>
    <tr>
       <td>默认值</td>
-      <td>true</td>
+      <td>false</td>
    </tr>
    <tr>
       <td>改后生效方式</td>

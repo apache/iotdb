@@ -77,7 +77,7 @@ public class MergeMemCalculator {
       long timeLimit)
       throws IOException {
     long cost = 0;
-    Long fileCost = tmpSelectedUnseqFile.getFileSize();
+    Long fileCost = tmpSelectedUnseqFile.getTsFileSize();
     cost += fileCost;
 
     long tempMaxSeqFileCost = 0;
@@ -104,7 +104,7 @@ public class MergeMemCalculator {
       long timeLimit)
       throws IOException {
     long cost = 0;
-    Long fileCost = tmpSelectedUnseqFile.getFileSize();
+    Long fileCost = tmpSelectedUnseqFile.getTsFileSize();
     cost += fileCost;
 
     long tempMaxSeqFileCost = 0;
@@ -218,8 +218,8 @@ public class MergeMemCalculator {
   // its proportion among all series to get a maximum estimation
   private long calculateTightUnseqMemoryCost(TsFileResource unseqFile)
       throws IOException {
-    long multiSeriesCost = calculateTightFileMemoryCost(unseqFile, TsFileResource::getFileSize);
-    long maxCost = unseqFile.getFileSize();
+    long multiSeriesCost = calculateTightFileMemoryCost(unseqFile, TsFileResource::getTsFileSize);
+    long maxCost = unseqFile.getTsFileSize();
     return multiSeriesCost > maxCost ? maxCost : multiSeriesCost;
   }
 

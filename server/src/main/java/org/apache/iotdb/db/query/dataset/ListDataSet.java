@@ -21,8 +21,8 @@ package org.apache.iotdb.db.query.dataset;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -31,9 +31,9 @@ public class ListDataSet extends QueryDataSet {
   private List<RowRecord> records = new ArrayList<>();
   private int index = 0;
 
-  public ListDataSet(List<Path> paths,
+  public ListDataSet(List<PartialPath> paths,
       List<TSDataType> dataTypes) {
-    super(paths, dataTypes);
+    super(new ArrayList<>(paths), dataTypes);
   }
 
   @Override

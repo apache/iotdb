@@ -107,7 +107,7 @@
   void deleteData(List<String> paths, long time)
   ```
 
-* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
+* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。服务器需要做类型推断，可能会有额外耗时
 
   ```
   void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
@@ -125,12 +125,28 @@
   void insertTablets(Map<String, Tablet> tablet)
   ```
   
-* 插入多个 Record
+* 插入多个 Record。服务器需要做类型推断，可能会有额外耗时
 
   ```
   void insertRecords(List<String> deviceIds, List<Long> times, 
                        List<List<String>> measurementsList, List<List<String>> valuesList)
   ```
+  
+* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。提供数据类型后，服务器不需要做类型推断，可以提高性能
+
+  ```
+  void insertRecord(String deviceId, long time, List<String> measurements,
+       List<TSDataType> types, List<Object> values)
+  ```
+
+* 插入多个 Record。提供数据类型后，服务器不需要做类型推断，可以提高性能
+
+  ```
+  void insertRecords(List<String> deviceIds, List<Long> times,
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
+  ```
+
 
 ## 测试客户端逻辑+网络传输代价的接口
 
@@ -139,12 +155,26 @@
    ```
    void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
    ```
+  或
+  or
+    ```
+    void testInsertRecords(List<String> deviceIds, List<Long> times,
+          List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+          List<List<Object>> valuesList)
+    ```
+
 
 * 测试 insertRecord，不实际写入数据，只将数据传输到 server 即返回。
 
   ```
   void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
   ```
+  或
+  ```
+    void testInsertRecord(String deviceId, long time, List<String> measurements,
+          List<TSDataType> types, List<Object> values)
+  ```
+
 
 * 测试 insertTablet，不实际写入数据，只将数据传输到 server 即返回。
 

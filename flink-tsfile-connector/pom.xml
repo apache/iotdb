@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.10.0-SNAPSHOT</version>
+        <version>0.11.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>flink-tsfile-connector</artifactId>
@@ -39,16 +39,39 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>hadoop-tsfile</artifactId>
             <version>${project.version}</version>
+            <exclusions>
+                <!-- flink-java uses commons-math3:3.3.5 while hadoop uses 3.1.1-->
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-math3</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-java</artifactId>
             <version>${flink.version}</version>
+            <exclusions>
+                <!-- org.apache.iotdb:hadoop-tsfile uses hadoop-common:2.7.3, which uses commons-compress:1.4.1-->
+                <!-- flink-java uses commons-compress:1.18-->
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-compress</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-streaming-java_2.11</artifactId>
             <version>${flink.version}</version>
+            <exclusions>
+                <!-- org.apache.iotdb:hadoop-tsfile uses hadoop-common:2.7.3, which uses commons-compress:1.4.1-->
+                <!-- flink-java uses commons-compress:1.18-->
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-compress</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 </project>

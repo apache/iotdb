@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>iotdb-parent</artifactId>
+        <groupId>org.apache.iotdb</groupId>
+        <version>0.11.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <groupId>org.apache.iotdb</groupId>
+    <artifactId>client-cpp</artifactId>
+    <version>0.11.0-SNAPSHOT</version>
+    <name>Client for cpp</name>
+    <description>C++ client</description>
+    <packaging>pom</packaging>
+    <properties>
+        <boost.version>1.72.0</boost.version>
+        <boost.version.underline-short>1_72</boost.version.underline-short>
+        <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
+        <cmake-version>3.17.3</cmake-version>
+        <!-- Default value of cmake root -->
+        <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
+        <cmake.build.type>Release</cmake.build.type>
+        <catch2.url>https://raw.githubusercontent.com/catchorg/Catch2/master/single_include/catch2/catch.hpp</catch2.url>
+    </properties>
+    <modules>
+        <module>client-cpp-example</module>
+    </modules>
+    <profiles>
+        <profile>
+            <id>os-unix</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                </os>
+            </activation>
+            <properties>
+                <os.suffix>linux</os.suffix>
+                <os.classifier>linux-x86_64</os.classifier>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
+                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
+                <iotdb.server.script>start-server.sh</iotdb.server.script>
+                <dev.null.path>/dev/null</dev.null.path>
+            </properties>
+        </profile>
+        <profile>
+            <id>os-mac</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+            </activation>
+            <properties>
+                <os.suffix>mac</os.suffix>
+                <os.classifier>mac-x86_64</os.classifier>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
+                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
+                <iotdb.server.script>start-server.sh</iotdb.server.script>
+                <dev.null.path>/dev/null</dev.null.path>
+            </properties>
+        </profile>
+        <profile>
+            <id>os-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <os.suffix>win</os.suffix>
+                <os.classifier>windows-x86_64</os.classifier>
+                <cmake.generator>Visual Studio 16 2019</cmake.generator>
+                <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
+                <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
+                <iotdb.server.script>start-server.bat</iotdb.server.script>
+                <dev.null.path>NUL</dev.null.path>
+            </properties>
+        </profile>
+        <profile>
+            <id>thrift-generation</id>
+            <activation>
+                <file>
+                    <exists>../thrift/src/main/thrift</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.coderplus.maven.plugins</groupId>
+                        <artifactId>copy-rename-maven-plugin</artifactId>
+                        <version>1.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-thrift-source</id>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <fileSets>
+                                        <fileSet>
+                                            <sourceFile>../thrift/src/main/thrift/rpc.thrift</sourceFile>
+                                            <destinationFile>${project.build.directory}/thrift/rpc.thrift</destinationFile>
+                                        </fileSet>
+                                    </fileSets>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>copy-cmakelist-file</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <fileSets>
+                                        <fileSet>
+                                            <sourceFile>${project.basedir}/src/main/CMakeLists.txt</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/main/CMakeLists.txt</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${project.basedir}/src/main/IOTDBSession.h</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/IOTDBSession.h</destinationFile>
+                                        </fileSet>
+                                        <fileSet>
+                                            <sourceFile>${project.basedir}/src/main/IOTDBSession.cpp</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/IOTDBSession.cpp</destinationFile>
+                                        </fileSet>
+                                    </fileSets>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.thrift.tools</groupId>
+                        <artifactId>maven-thrift-plugin</artifactId>
+                        <version>0.1.11</version>
+                        <executions>
+                            <execution>
+                                <id>generate-thrift-sources-cpp</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <generator>cpp:no_skeleton</generator>
+                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
+                                    <thriftSourceRoot>${project.build.directory}/thrift</thriftSourceRoot>
+                                    <outputDirectory>${project.build.directory}/build/main/generated-sources-cpp</outputDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <artifactId>cmake-maven-plugin</artifactId>
+                        <version>3.7.2-b1</version>
+                        <executions>
+                            <!-- Uses a CMake generator to generate the build using the build tool of choice -->
+                            <execution>
+                                <id>cmake-generate</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>${os.classifier}</classifier>
+                                    <!--
+                                      We need to use a newer version of cmake, so disable downloading. If we do not
+                                      set this to false, a cmake of version 3.7.2 will be downloaded.
+                                    -->
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <sourcePath>${project.build.directory}/build/main</sourcePath>
+                                    <!--
+                                      Path to where the build configuration is generated
+                                      (This directory is then used in the compile step to actually perform the build)
+                                    -->
+                                    <targetPath>${project.build.directory}/build/main</targetPath>
+                                    <generator>${cmake.generator}</generator>
+                                </configuration>
+                            </execution>
+                            <!-- Actually executes the build -->
+                            <execution>
+                                <id>cmake-compile</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>${os.classifier}</classifier>
+                                    <config>${cmake.build.type}</config>
+                                    <!--
+                                      We need to use a newer version of cmake, so disable downloading
+                                      and tell the plugin where to find that version.
+                                    -->
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <!-- The directory where the "generate" step generated the build configuration -->
+                                    <projectDirectory>${project.build.directory}/build/main</projectDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>cmake-generate-test</id>
+                                <phase>test-compile</phase>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>${os.classifier}</classifier>
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <sourcePath>${project.build.directory}/build/test</sourcePath>
+                                    <targetPath>${project.build.directory}/build/test</targetPath>
+                                    <generator>${cmake.generator}</generator>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>cmake-compile-test</id>
+                                <phase>test-compile</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>${os.classifier}</classifier>
+                                    <config>${cmake.build.type}</config>
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <projectDirectory>${project.build.directory}/build/test</projectDirectory>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>cmake-run-test</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                                <configuration>
+                                    <buildDirectory>${project.build.directory}/build/test</buildDirectory>
+                                    <downloadBinaries>false</downloadBinaries>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!--Package all C++ header files and client library-->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>package-client-cpp</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <descriptors>
+                                        <descriptor>src/assembly/client-cpp.xml</descriptor>
+                                    </descriptors>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- Build and do session integration test -->
+                    <plugin>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>2.6</version>
+                        <executions>
+                            <execution>
+                                <id>copy-test-resources</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.directory}/build/test</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/src/test</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.googlecode.maven-download-plugin</groupId>
+                        <artifactId>download-maven-plugin</artifactId>
+                        <executions>
+                            <!-- Download the Catch2 header file. -->
+                            <execution>
+                                <id>get-catch2</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>wget</goal>
+                                </goals>
+                                <configuration>
+                                    <url>${catch2.url}</url>
+                                    <unpack>false</unpack>
+                                    <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
+                                    <overwrite>true</overwrite>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>com.bazaarvoice.maven.plugins</groupId>
+                        <artifactId>process-exec-maven-plugin</artifactId>
+                        <version>0.7</version>
+                        <executions>
+                            <execution>
+                                <id>iotdb-process</id>
+                                <phase>generate-test-resources</phase>
+                                <goals>
+                                    <goal>start</goal>
+                                </goals>
+                                <configuration>
+                                    <name>start-iotdb</name>
+                                    <waitForInterrupt>false</waitForInterrupt>
+                                    <!-- Maximum time in seconds to wait after launching IoTDB -->
+                                    <waitAfterLaunch>5</waitAfterLaunch>
+                                    <!-- Redirect IoTDB server log to /dev/null -->
+                                    <processLogFile>${dev.null.path}</processLogFile>
+                                    <arguments>
+                                        <argument>../../server/target/iotdb-server-${project.version}/sbin/${iotdb.server.script}</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>stop-all</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop-all</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

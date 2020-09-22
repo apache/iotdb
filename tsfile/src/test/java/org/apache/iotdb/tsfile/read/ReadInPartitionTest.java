@@ -72,7 +72,7 @@ public class ReadInPartitionTest {
     // different test environments,
     // we get metadata from the real-time generated TsFile instead of using a fixed
     // parameter setting.
-    List<ChunkMetadata> d1s6List = reader.getChunkMetadataList(new Path("d1.s6"));
+    List<ChunkMetadata> d1s6List = reader.getChunkMetadataList(new Path("d1", "s6"));
     for (ChunkMetadata chunkMetaData : d1s6List) {
       // get a series of [startTime, endTime] of d1.s6 from the chunkGroupMetaData of
       // d1
@@ -85,7 +85,7 @@ public class ReadInPartitionTest {
       d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
     
-    List<ChunkMetadata> d2s1List = reader.getChunkMetadataList(new Path("d2.s1"));
+    List<ChunkMetadata> d2s1List = reader.getChunkMetadataList(new Path("d2", "s1"));
     for (ChunkMetadata chunkMetaData : d2s1List) {
       d2s1timeRangeList.add(new TimeRange(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()));
     }
@@ -100,8 +100,8 @@ public class ReadInPartitionTest {
   @Test
   public void test0() throws IOException {
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("d1.s6"));
-    paths.add(new Path("d2.s1"));
+    paths.add(new Path("d1", "s6"));
+    paths.add(new Path("d2", "s1"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
 
     QueryDataSet queryDataSet = roTsFile.query(queryExpression, 0L, 0L);
@@ -116,8 +116,8 @@ public class ReadInPartitionTest {
   @Test
   public void test1() throws IOException, QueryFilterOptimizationException {
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("d1.s6"));
-    paths.add(new Path("d2.s1"));
+    paths.add(new Path("d1", "s6"));
+    paths.add(new Path("d2", "s1"));
     QueryExpression queryExpression = QueryExpression.create(paths, null);
 
     QueryDataSet queryDataSet = roTsFile.query(queryExpression, d1chunkGroupMetaDataOffsetList.get(0)[0],
@@ -146,8 +146,8 @@ public class ReadInPartitionTest {
   @Test
   public void test2() throws IOException, QueryFilterOptimizationException {
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("d1.s6"));
-    paths.add(new Path("d2.s1"));
+    paths.add(new Path("d1", "s6"));
+    paths.add(new Path("d2", "s1"));
     IExpression expression = new GlobalTimeExpression(TimeFilter.gt(50L));
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
 
@@ -177,10 +177,10 @@ public class ReadInPartitionTest {
   @Test
   public void test3() throws IOException, QueryFilterOptimizationException {
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("d1.s6"));
-    paths.add(new Path("d2.s1"));
+    paths.add(new Path("d1", "s6"));
+    paths.add(new Path("d2", "s1"));
     Filter filter = ValueFilter.gt(10L);
-    IExpression expression = new SingleSeriesExpression(new Path("d1.s3"), filter);
+    IExpression expression = new SingleSeriesExpression(new Path("d1", "s3"), filter);
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
 
     QueryDataSet queryDataSet = roTsFile.query(queryExpression, d1chunkGroupMetaDataOffsetList.get(0)[0],

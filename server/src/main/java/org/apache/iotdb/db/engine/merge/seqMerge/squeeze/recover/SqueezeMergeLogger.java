@@ -68,7 +68,7 @@ public class SqueezeMergeLogger implements MergeLogger {
     logStream.write(STR_SEQ_FILES);
     logStream.newLine();
     for (TsFileResource tsFileResource : seqFiles) {
-      logStream.write(tsFileResource.getFile().getAbsolutePath());
+      logStream.write(tsFileResource.getTsFile().getAbsolutePath());
       logStream.newLine();
     }
     logStream.flush();
@@ -78,7 +78,7 @@ public class SqueezeMergeLogger implements MergeLogger {
     logStream.write(STR_UNSEQ_FILES);
     logStream.newLine();
     for (TsFileResource tsFileResource : unseqFiles) {
-      logStream.write(tsFileResource.getFile().getAbsolutePath());
+      logStream.write(tsFileResource.getTsFile().getAbsolutePath());
       logStream.newLine();
     }
     logStream.flush();
@@ -92,7 +92,7 @@ public class SqueezeMergeLogger implements MergeLogger {
 
   @Override
   public void logNewFile(TsFileResource resource) throws IOException {
-    logStream.write(resource.getFile().getAbsolutePath());
+    logStream.write(resource.getTsFile().getAbsolutePath());
     logStream.newLine();
     logStream.flush();
   }

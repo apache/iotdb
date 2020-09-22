@@ -29,13 +29,13 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSmallFilesStrategy;
 import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeSeriesTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.metadata.PartialPath;
 
 class MergeSeriesTask extends BaseMergeSeriesTask {
 
   MergeSeriesTask(MergeContext context, String taskName, MergeLogger mergeLogger,
-      MergeResource mergeResource, List<Path> unmergedSeries) {
-    super(context, taskName, mergeLogger, mergeResource, unmergedSeries);
+      MergeResource mergeResource, List<PartialPath> unmergedSeries, String storageGroupName) {
+    super(context, taskName, mergeLogger, mergeResource, unmergedSeries, storageGroupName);
   }
 
   List<TsFileResource> mergeSeries() throws IOException {
@@ -47,7 +47,7 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
       default:
         RegularizationMergeSeriesTask regularizationMergeSeriesTask = new RegularizationMergeSeriesTask(
             mergeContext, taskName, mergeLogger,
-            resource, unmergedSeries);
+            resource, unmergedSeries,storageGroupName);
         newResources = regularizationMergeSeriesTask.mergeSeries();
         break;
     }

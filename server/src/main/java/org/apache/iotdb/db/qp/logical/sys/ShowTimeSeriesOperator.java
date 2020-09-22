@@ -19,23 +19,26 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.metadata.PartialPath;
 
 public class ShowTimeSeriesOperator extends ShowOperator {
 
-  private Path path;
+  private PartialPath path;
   private boolean isContains;
   private String key;
   private String value;
   private int limit = 0;
   private int offset = 0;
+  // if is true, the result will be sorted according to the inserting frequency of the timeseries
+  private final boolean orderByHeat;
 
-  public ShowTimeSeriesOperator(int tokeIntType, Path path) {
+  public ShowTimeSeriesOperator(int tokeIntType, PartialPath path, boolean orderByHeat) {
     super(tokeIntType);
     this.path = path;
+    this.orderByHeat = orderByHeat;
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
 
@@ -77,5 +80,9 @@ public class ShowTimeSeriesOperator extends ShowOperator {
 
   public void setOffset(int offset) {
     this.offset = offset;
+  }
+
+  public boolean isOrderByHeat() {
+    return orderByHeat;
   }
 }

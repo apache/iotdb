@@ -27,7 +27,7 @@ import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-public class SessionDataSetWrapper {
+public class SessionDataSetWrapper implements AutoCloseable{
 
   SessionDataSet sessionDataSet;
   Session session;
@@ -90,5 +90,12 @@ public class SessionDataSetWrapper {
 
   public List<TSDataType> getColumnTypes() {
     return sessionDataSet.getColumnTypes();
+  }
+
+  /**
+   * close this dataset to release the session
+   */
+  public void close() {
+    pool.closeResultSet(this);
   }
 }

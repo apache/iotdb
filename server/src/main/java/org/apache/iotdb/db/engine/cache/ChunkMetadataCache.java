@@ -125,28 +125,23 @@ public class ChunkMetadataCache {
     }
 
     AccountableString key = new AccountableString(filePath + IoTDBConstant.PATH_SEPARATOR
-        + seriesPath.getDevice() + seriesPath.getMeasurement());
+        + seriesPath.getDevice() + IoTDBConstant.PATH_SEPARATOR + seriesPath.getMeasurement());
 
     cacheRequestNum.incrementAndGet();
 
     lock.readLock().lock();
+    List<ChunkMetadata> chunkMetadataList;
     try {
-      if (lruCache.containsKey(key)) {
-        cacheHitNum.incrementAndGet();
-        printCacheLog(true);
-        return new ArrayList<>(lruCache.get(key));
-      }
+      chunkMetadataList = lruCache.get(key);
     } finally {
       lock.readLock().unlock();
     }
 
-    lock.writeLock().lock();
-    try {
-      if (lruCache.containsKey(key)) {
-        printCacheLog(true);
-        cacheHitNum.incrementAndGet();
-        return new ArrayList<>(lruCache.get(key));
-      }
+
+    if (chunkMetadataList != null) {
+      printCacheLog(true);
+      cacheHitNum.incrementAndGet();
+    } else {
       printCacheLog(false);
       // bloom filter part
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
@@ -154,13 +149,15 @@ public class ChunkMetadataCache {
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         return new ArrayList<>();
       }
-      List<ChunkMetadata> chunkMetaDataList = FileLoaderUtils
-          .getChunkMetadataList(seriesPath, filePath);
-      lruCache.put(key, chunkMetaDataList);
-      return new ArrayList<>(chunkMetaDataList);
-    } finally {
-      lock.writeLock().unlock();
+      chunkMetadataList = FileLoaderUtils.getChunkMetadataList(seriesPath, filePath);
+      lock.writeLock().lock();
+      try {
+        lruCache.put(key, chunkMetadataList);
+      } finally {
+        lock.writeLock().unlock();
+      }
     }
+    return new ArrayList<>(chunkMetadataList);
   }
 
   private void printCacheLog(boolean isHit) {
@@ -211,7 +208,7 @@ public class ChunkMetadataCache {
   public void remove(TsFileResource resource) {
     lock.writeLock().lock();
     if (resource != null) {
-      lruCache.entrySet().removeIf(e -> e.getKey().getString().startsWith(resource.getPath()));
+      lruCache.entrySet().removeIf(e -> e.getKey().getString().startsWith(resource.getTsFilePath()));
     }
     lock.writeLock().unlock();
   }

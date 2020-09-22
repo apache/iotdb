@@ -141,11 +141,11 @@ public class IoTDBFlushQueryMergeIT {
       statement.execute("FLUSH root.group1 TRUE");
       statement.execute("FLUSH root.group2,root.group3 FALSE");
 
-      ResultSet resultSet = statement.executeQuery("SELECT * FROM root.group1,root.group2,root"
-          + ".group3");
       int i = 0;
-      while (resultSet.next()) {
-        i++;
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.group1,root.group2,root" + ".group3")) {
+        while (resultSet.next()) {
+          i++;
+        }
       }
       assertEquals(30, i);
 

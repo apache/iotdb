@@ -66,6 +66,7 @@ Here is a list of Status Code and related message:
 |314|TSFILE_PROCESSOR_ERROR|TsFile processor related error|
 |315|PATH_ILLEGAL|Illegal path|
 |316|LOAD_FILE_ERROR|Meet error while loading file|
+|317|STORAGE_GROUP_NOT_READY| The storage group is in recovery mode, not ready fore accepting read/write operation|
 |400|EXECUTE_STATEMENT_ERROR|Execute statement error|
 |401|SQL_PARSE_ERROR|Meet error while parsing SQL|
 |402|GENERATE_TIME_ZONE_ERROR|Meet error while generating time zone|
@@ -84,6 +85,8 @@ Here is a list of Status Code and related message:
 |502|READ_ONLY_SYSTEM_ERROR|Operating system is read only|
 |503|DISK_SPACE_INSUFFICIENT_ERROR|Disk space is insufficient|
 |504|START_UP_ERROR|Meet error while starting up|
+|505|SHUT_DOWN_ERROR|Meet error while shutdown|
+|506|MULTIPLE_ERROR|Meet error when executing multiple statements|
 |600|WRONG_LOGIN_PASSWORD_ERROR|Username or password is wrong|
 |601|NOT_LOGIN_ERROR|Has not logged in|
 |602|NO_PERMISSION_ERROR|No permissions for this operation|

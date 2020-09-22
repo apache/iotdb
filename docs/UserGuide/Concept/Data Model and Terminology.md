@@ -21,9 +21,9 @@
 
 # Data Model and Terminology
 
-To make this manual more practical, we will use a specific scenario example to illustrate how to operate IoTDB databases at all stages of use. See [this page](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt) for a look. For convenience, we also provide you with a sample data file in real scenario to import into the IoTDB system for trial and operation.
+In this section, a power scenario is taken as an example to illustrate how to creat a correct data model in IoTDB. For convenience, a sample data file is attached for you to practise IoTDB.
 
-Download file: [IoTDB-SampleData.txt](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt).
+Download the attachment: [IoTDB-SampleData.txt](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt).
 
 According to the data attribute layers described in [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), we can express it as an attribute hierarchy structure based on the coverage of attributes and the subordinate relationship between them, as shown in Figure 2.1 below. Its hierarchical relationship is: power group layer - power plant layer - device layer - sensor layer. ROOT is the root node, and each node of sensor layer is called a leaf node. In the process of using IoTDB, you can directly connect the attributes on the path from ROOT node to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 2.1 can generate a timeseries named `ROOT.ln.wf01.wt01.status`.
 
@@ -75,6 +75,10 @@ Among them, STAR is "*" and DOT is ".".
 We call the middle part of a path between two "." as a layer, and thus `root.A.B.C` is a path with four layers. 
 
 It is worth noting that in the path, root is a reserved character, which is only allowed to appear at the beginning of the time series mentioned below. If root appears in other layers, it cannot be parsed and an error is reported.
+
+Single quotes are not allowed in the path. If you want to use special characters such as "." in LayerName, use double quotes. For example, `root.sg."d.1"."s.1"`. 
+
+> Note: the LayerName of storage group can only be characters, numbers and underscores.
 
 * Timeseries Path
 

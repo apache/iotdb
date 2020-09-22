@@ -7,6 +7,7 @@ import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.IRecoverMergeTask;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
 import org.apache.iotdb.db.engine.merge.MergeFileStrategyFactory;
+import org.apache.iotdb.db.engine.merge.MergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.selector.InplaceMaxOverLappedFileSelector;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask;
@@ -42,7 +43,7 @@ public class MergeOverlappedFileStrategyFactory extends MergeFileStrategyFactory
   }
 
   @Override
-  public Callable<Void> getMergeTask(MergeResource mergeResource, String storageGroupSysDir,
+  public MergeTask getMergeTask(MergeResource mergeResource, String storageGroupSysDir,
       MergeCallback callback, String taskName, String storageGroupName) {
     switch (mergeOverlappedFilesStrategy) {
       case INPLACE:

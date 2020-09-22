@@ -24,6 +24,8 @@ import java.util.Collection;
 import java.util.List;
 import org.apache.iotdb.db.engine.merge.sizeMerge.BaseSizeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Path;
 
@@ -45,7 +47,13 @@ public class RegularizationMaxFileSelector extends BaseSizeFileSelector {
   protected boolean isSmallFile(TsFileResource seqFile) throws IOException {
     List<Path> paths = resource.getFileReader(seqFile).getAllPaths();
     for (Path currentPath : paths) {
-      List<ChunkMetadata> chunkMetadataList = resource.queryChunkMetadata(currentPath, seqFile);
+      List<ChunkMetadata> chunkMetadataList;
+      try {
+        chunkMetadataList = resource
+            .queryChunkMetadata(new PartialPath(currentPath.getFullPath()), seqFile);
+      } catch (IllegalPathException e) {
+        throw new IOException(e);
+      }
       int cnt = 0;
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         if (cnt != chunkMetadataList.size() - 1 && !this.mergeSizeSelectorStrategy
