@@ -28,14 +28,14 @@ public enum TSDataType {
   /**
    * give an integer to return a data type.
    *
-   * @param i -param to judge enum type
+   * @param type -param to judge enum type
    * @return -enum type
    */
-  public static TSDataType deserialize(short i) {
-    if (i >= 6) {
-      throw new IllegalArgumentException("Invalid input: " + i);
+  public static TSDataType deserialize(short type) {
+    if (type >= 6) {
+      throw new IllegalArgumentException("Invalid input: " + type);
     }
-    switch (i) {
+    switch (type) {
       case 0:
         return BOOLEAN;
       case 1:
@@ -56,14 +56,14 @@ public enum TSDataType {
   /**
    * give an byte to return a data type.
    *
-   * @param i byte number
+   * @param type byte number
    * @return data type
    */
-  public static TSDataType byteToEnum(byte i) {
-    if (i >= 6) {
-      throw new IllegalArgumentException("Invalid input: " + i);
+  public static TSDataType byteToEnum(byte type) {
+    if (type >= 6) {
+      throw new IllegalArgumentException("Invalid input: " + type);
     }
-    switch (i) {
+    switch (type) {
       case 0:
         return BOOLEAN;
       case 1:

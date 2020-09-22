@@ -25,11 +25,14 @@ public enum TSEncoding {
   /**
    * judge the encoding deserialize type.
    *
-   * @param i -use to determine encoding type
+   * @param encoding -use to determine encoding type
    * @return -encoding type
    */
-  public static TSEncoding deserialize(short i) {
-    switch (i) {
+  public static TSEncoding deserialize(short encoding) {
+    if (encoding >= 8) {
+      throw new IllegalArgumentException("Invalid input: " + encoding);
+    }
+    switch (encoding) {
       case 0:
         return PLAIN;
       case 1:
@@ -54,11 +57,14 @@ public enum TSEncoding {
   /**
    * give an byte to return a encoding type.
    *
-   * @param i byte number
+   * @param encoding byte number
    * @return encoding type
    */
-  public static TSEncoding byteToEnum(byte i) {
-    switch (i) {
+  public static TSEncoding byteToEnum(byte encoding) {
+    if (encoding >= 8) {
+      throw new IllegalArgumentException("Invalid input: " + encoding);
+    }
+    switch (encoding) {
       case 0:
         return PLAIN;
       case 1:

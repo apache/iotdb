@@ -26,11 +26,14 @@ public enum CompressionType {
   /**
    * deserialize short number.
    *
-   * @param i short number
+   * @param compressor short number
    * @return CompressionType
    */
-  public static CompressionType deserialize(short i) {
-    switch (i) {
+  public static CompressionType deserialize(short compressor) {
+    if (compressor >= 8) {
+      throw new IllegalArgumentException("Invalid input: " + compressor);
+    }
+    switch (compressor) {
       case 0:
         return UNCOMPRESSED;
       case 1:
@@ -55,11 +58,14 @@ public enum CompressionType {
   /**
    * give an byte to return a compression type.
    *
-   * @param i byte number
+   * @param compressor byte number
    * @return CompressionType
    */
-  public static CompressionType byteToEnum(byte i) {
-    switch (i) {
+  public static CompressionType byteToEnum(byte compressor) {
+    if (compressor >= 8) {
+      throw new IllegalArgumentException("Invalid input: " + compressor);
+    }
+    switch (compressor) {
       case 0:
         return UNCOMPRESSED;
       case 1:
