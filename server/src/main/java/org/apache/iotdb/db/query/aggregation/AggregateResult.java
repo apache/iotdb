@@ -149,8 +149,9 @@ public abstract class AggregateResult {
   public void serializeTo(OutputStream outputStream) throws IOException {
     aggregationType.serializeTo(outputStream);
     ReadWriteIOUtils.write(resultDataType, outputStream);
-    ReadWriteIOUtils.write(hasResult(), outputStream);
-    if (hasResult()) {
+    boolean hasResult = hasResult() || isChanged;
+    ReadWriteIOUtils.write(hasResult, outputStream);
+    if (hasResult) {
       switch (resultDataType) {
         case BOOLEAN:
           ReadWriteIOUtils.write(booleanValue, outputStream);
