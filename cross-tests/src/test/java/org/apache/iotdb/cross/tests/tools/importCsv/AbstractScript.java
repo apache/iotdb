@@ -48,6 +48,11 @@ public abstract class AbstractScript {
     r.close();
     p.destroy();
 
+    System.out.println("Process output:");
+    for (String s : actualOutput) {
+      System.out.println(s);
+    }
+
     for (int i = 0; i < output.length; i++) {
       assertTrue(actualOutput.get(i).startsWith(output[i]));
     }
