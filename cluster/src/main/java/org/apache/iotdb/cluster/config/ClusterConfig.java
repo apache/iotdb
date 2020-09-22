@@ -300,7 +300,7 @@ public class ClusterConfig {
     return useAsyncApplier;
   }
 
-  void setUseAsyncApplier(boolean useAsyncApplier) {
+  public void setUseAsyncApplier(boolean useAsyncApplier) {
     this.useAsyncApplier = useAsyncApplier;
   }
 

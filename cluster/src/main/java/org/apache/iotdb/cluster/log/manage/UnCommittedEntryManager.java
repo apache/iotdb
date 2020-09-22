@@ -73,6 +73,7 @@ public class UnCommittedEntryManager {
    * for given index
    * @throws EntryUnavailableException
    */
+  @SuppressWarnings("java:S1135") // ignore todos
   long maybeTerm(long index) {
     int entryPos = (int) (index - offset);
     if (entryPos < 0) {

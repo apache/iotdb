@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 /**
  * NodeStatus contains the last-known spec and load of a node in the cluster.
  */
+@SuppressWarnings("java:S1135")
 public class NodeStatus implements Comparable<NodeStatus> {
 
   private TNodeStatus status;

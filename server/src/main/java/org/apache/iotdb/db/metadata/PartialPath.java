@@ -20,18 +20,23 @@ package org.apache.iotdb.db.metadata;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A prefix path, suffix path or fullPath generated from SQL.
  * Usually used in the IoTDB server module
  */
 public class PartialPath extends Path implements Comparable<Path> {
+
+  private static final Logger logger = LoggerFactory.getLogger(PartialPath.class);
 
   private String[] nodes;
   // alias of measurement
@@ -217,6 +222,27 @@ public class PartialPath extends Path implements Comparable<Path> {
     List<String> ret = new ArrayList<>();
     for (PartialPath path : pathList) {
       ret.add(path.getFullPath());
+    }
+    return ret;
+  }
+
+  /**
+   * Convert a list of Strings to a list of PartialPaths, ignoring all illegal paths
+   * @param pathList
+   * @return
+   */
+  public static List<PartialPath> fromStringList(List<String> pathList) {
+    if (pathList == null || pathList.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<PartialPath> ret = new ArrayList<>();
+    for (String s : pathList) {
+      try {
+        ret.add(new PartialPath(s));
+      } catch (IllegalPathException e) {
+        logger.warn("Encountered an illegal path {}", s);
+      }
     }
     return ret;
   }

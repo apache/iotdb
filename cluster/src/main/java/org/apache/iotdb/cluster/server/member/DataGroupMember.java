@@ -662,6 +662,22 @@ public class DataGroupMember extends RaftMember {
    * @return
    */
   TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+    TSStatus status = executeNonQueryPlanWithKnownLeader(plan);
+    if (!StatusUtils.NO_LEADER.equals(status)) {
+      return status;
+    }
+
+    long start;
+    if (Timer.ENABLE_INSTRUMENTING) {
+      start = System.nanoTime();
+    }
+    waitLeader();
+    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.addNanoFromStart(start);
+
+    return executeNonQueryPlanWithKnownLeader(plan);
+  }
+
+  private TSStatus executeNonQueryPlanWithKnownLeader(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
       long start;
       if (Timer.ENABLE_INSTRUMENTING) {
@@ -684,33 +700,7 @@ public class DataGroupMember extends RaftMember {
         return result;
       }
     }
-
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
-    waitLeader();
-    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.addNanoFromStart(start);
-    // the leader can be itself after waiting
-    if (character == NodeCharacter.LEADER) {
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
-      TSStatus status = processPlanLocally(plan);
-      Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.addNanoFromStart(start);
-      if (status != null) {
-        return status;
-      }
-    }
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
-    TSStatus tsStatus = forwardPlan(plan, leader, getHeader());
-    Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.addNanoFromStart(start);
-    if (!StatusUtils.NO_LEADER.equals(tsStatus)) {
-      tsStatus.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
-    }
-    return tsStatus;
+    return StatusUtils.NO_LEADER;
   }
 
   /**

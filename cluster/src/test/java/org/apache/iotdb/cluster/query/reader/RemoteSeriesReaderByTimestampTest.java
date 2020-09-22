@@ -192,7 +192,7 @@ public class RemoteSeriesReaderByTimestampTest {
       reader.getValueInTimestamp(90);
       fail();
     } catch (IOException e) {
-      assertEquals(e.getMessage(), "no available client.");
+      assertEquals("no available client.", e.getMessage());
     }
     endTime = System.currentTimeMillis();
     System.out.println(

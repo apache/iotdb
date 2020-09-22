@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.utils.nodetool;
 
 import java.io.PrintStream;
 
+@SuppressWarnings("java:S106") // for console outputs
 public class Printer {
 
   private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);

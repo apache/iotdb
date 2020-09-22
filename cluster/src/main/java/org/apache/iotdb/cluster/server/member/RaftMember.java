@@ -476,7 +476,6 @@ public abstract class RaftMember {
    * finally see if we can find a position to append the log.
    */
   public long appendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
-    long start = System.nanoTime();
     logger.debug("{} received an AppendEntryRequest: {}", name, request);
     // the term checked here is that of the leader, not that of the log
     long checkResult = checkRequestTerm(request.term, request.leader);
@@ -484,12 +483,12 @@ public abstract class RaftMember {
       return checkResult;
     }
 
-    long start1;
+    long start;
     if (Timer.ENABLE_INSTRUMENTING) {
-      start1 = System.nanoTime();
+      start = System.nanoTime();
     }
     Log log = LogParser.getINSTANCE().parse(request.entry);
-    Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.addNanoFromStart(start1);
+    Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.addNanoFromStart(start);
 
     long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
         log);
@@ -1291,27 +1290,25 @@ public abstract class RaftMember {
   }
 
   @SuppressWarnings("java:S2445")
-  private void commitLog(Log log) throws LogExecutionException {
+  void commitLog(Log log) throws LogExecutionException {
     synchronized (logManager) {
       logManager.commitTo(log.getCurrLogIndex(), false);
     }
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()) {
-      // when using async applier, the log here may not be applied. To return the execution
-      // result, we must wait until the log is applied.
-      synchronized (log) {
-        while (!log.isApplied()) {
-          // wait until the log is applied
-          try {
-            log.wait();
-          } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new LogExecutionException(e);
-          }
+    // when using async applier, the log here may not be applied. To return the execution
+    // result, we must wait until the log is applied.
+    synchronized (log) {
+      while (!log.isApplied()) {
+        // wait until the log is applied
+        try {
+          log.wait();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new LogExecutionException(e);
         }
       }
-      if (log.getException() != null) {
-        throw new LogExecutionException(log.getException());
-      }
+    }
+    if (log.getException() != null) {
+      throw new LogExecutionException(log.getException());
     }
   }
 

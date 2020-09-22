@@ -69,6 +69,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   }
 
   @Override
+  @SuppressWarnings("java:S1135") // ignore todos
   public void takeSnapshot() throws IOException {
     try {
       logger.info("{}: Taking snapshots, flushing IoTDB", getName());

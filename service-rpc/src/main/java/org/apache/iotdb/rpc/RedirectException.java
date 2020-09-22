@@ -23,7 +23,7 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 
 public class RedirectException extends Exception {
 
-  private EndPoint endPoint;
+  private final EndPoint endPoint;
 
   public RedirectException(EndPoint endpoint) {
     super("later request in same group will be redirected to " + endpoint.toString());

@@ -36,7 +36,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-
+@SuppressWarnings("common-java:DuplicatedBlocks")
 public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet {
 
   private MetaGroupMember metaGroupMember;

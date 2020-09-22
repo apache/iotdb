@@ -29,6 +29,7 @@ import java.nio.file.Files;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("java:S1135")
 public class IOUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(IOUtils.class);

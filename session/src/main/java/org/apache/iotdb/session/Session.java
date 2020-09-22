@@ -55,10 +55,12 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
 public class Session {
 
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
-  protected final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
+  protected static final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
+  public static final String MSG_UNSUPPORTED_DATA_TYPE = "Unsupported data type:";
   protected String username;
   protected String password;
   protected int fetchSize;
@@ -114,9 +116,8 @@ public class Session {
     isClosed = false;
     if (Config.DEFAULT_CACHE_LEADER_MODE) {
       deviceIdToEndpoint = new HashMap<>();
-      endPointToSessionConnection = new HashMap<EndPoint, SessionConnection>() {{
-        put(defaultEndPoint, defaultSessionConnection);
-      }};
+      endPointToSessionConnection = new HashMap<>();
+      endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
     }
   }
 
@@ -330,21 +331,44 @@ public class Session {
       Object... values) throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types,
         Arrays.asList(values));
-    EndPoint endPoint;
+    insertRecord(deviceId, request);
+  }
+
+  private void insertRecord(String deviceId, TSInsertRecordReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
     try {
-      if (Config.DEFAULT_CACHE_LEADER_MODE
-          && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
-        endPointToSessionConnection.get(endPoint).insertRecord(request);
-      } else {
-        defaultSessionConnection.insertRecord(request);
-      }
+      getSessionConnection(deviceId).insertRecord(request);
     } catch (RedirectException e) {
-      if (Config.DEFAULT_CACHE_LEADER_MODE) {
-        logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
-        deviceIdToEndpoint.put(deviceId, e.getEndPoint());
-        endPointToSessionConnection
-            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
-      }
+      handleRedirection(deviceId, e);
+    }
+  }
+
+  private void insertRecord(String deviceId, TSInsertStringRecordReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try {
+      getSessionConnection(deviceId).insertRecord(request);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e);
+    }
+  }
+
+  private SessionConnection getSessionConnection(String deviceId) {
+    EndPoint endPoint;
+    if (Config.DEFAULT_CACHE_LEADER_MODE
+        && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
+      return endPointToSessionConnection.get(endPoint);
+    } else {
+      return defaultSessionConnection;
+    }
+  }
+
+  private void handleRedirection(String deviceId, RedirectException e)
+      throws IoTDBConnectionException {
+    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+      logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
+      deviceIdToEndpoint.put(deviceId, e.getEndPoint());
+      endPointToSessionConnection
+          .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
     }
   }
 
@@ -359,22 +383,7 @@ public class Session {
       List<TSDataType> types,
       List<Object> values) throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
-    EndPoint endPoint;
-    try {
-      if (Config.DEFAULT_CACHE_LEADER_MODE
-          && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
-        endPointToSessionConnection.get(endPoint).insertRecord(request);
-      } else {
-        defaultSessionConnection.insertRecord(request);
-      }
-    } catch (RedirectException e) {
-      if (Config.DEFAULT_CACHE_LEADER_MODE) {
-        logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
-        deviceIdToEndpoint.put(deviceId, e.getEndPoint());
-        endPointToSessionConnection
-            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
-      }
-    }
+    insertRecord(deviceId, request);
   }
 
   private TSInsertRecordReq genTSInsertRecordReq(String deviceId, long time,
@@ -402,22 +411,7 @@ public class Session {
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
     TSInsertStringRecordReq request = genTSInsertStringRecordReq(deviceId, time, measurements,
         values);
-    EndPoint endPoint;
-    try {
-      if (Config.DEFAULT_CACHE_LEADER_MODE
-          && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
-        endPointToSessionConnection.get(endPoint).insertRecord(request);
-      } else {
-        defaultSessionConnection.insertRecord(request);
-      }
-    } catch (RedirectException e) {
-      if (Config.DEFAULT_CACHE_LEADER_MODE) {
-        logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
-        deviceIdToEndpoint.put(deviceId, e.getEndPoint());
-        endPointToSessionConnection
-            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
-      }
-    }
+    insertRecord(deviceId, request);
   }
 
   private TSInsertStringRecordReq genTSInsertStringRecordReq(String deviceId, long time,
@@ -455,20 +449,12 @@ public class Session {
         updateTSInsertStringRecordsReq(request, deviceIds.get(i), times.get(i),
             measurementsList.get(i), valuesList.get(i));
       }
-      EndPoint endPoint;
       //TODO parallel
       for (Entry<String, TSInsertStringRecordsReq> entry : deviceGroup.entrySet()) {
         try {
-          if ((endPoint = deviceIdToEndpoint.get(entry.getKey())) != null) {
-            endPointToSessionConnection.get(endPoint).insertRecords(entry.getValue());
-          } else {
-            defaultSessionConnection.insertRecords(entry.getValue());
-          }
+          getSessionConnection(entry.getKey()).insertRecords(entry.getValue());
         } catch (RedirectException e) {
-          logger.debug("DeviceId[{}]:{}", entry.getKey(), e.getMessage());
-          deviceIdToEndpoint.put(entry.getKey(), e.getEndPoint());
-          endPointToSessionConnection
-              .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+          handleRedirection(entry.getKey(), e);
         }
       }
     } else {
@@ -477,6 +463,7 @@ public class Session {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
+        // ignore
       }
     }
   }
@@ -527,20 +514,12 @@ public class Session {
         updateTSInsertRecordsReq(request, deviceIds.get(i), times.get(i),
             measurementsList.get(i), typesList.get(i), valuesList.get(i));
       }
-      EndPoint endPoint;
       //TODO parallel
       for (Entry<String, TSInsertRecordsReq> entry : deviceGroup.entrySet()) {
         try {
-          if ((endPoint = deviceIdToEndpoint.get(entry.getKey())) != null) {
-            endPointToSessionConnection.get(endPoint).insertRecords(entry.getValue());
-          } else {
-            defaultSessionConnection.insertRecords(entry.getValue());
-          }
+          getSessionConnection(entry.getKey()).insertRecords(entry.getValue());
         } catch (RedirectException e) {
-          logger.debug("DeviceId[{}]:{}", entry.getKey(), e.getMessage());
-          deviceIdToEndpoint.put(entry.getKey(), e.getEndPoint());
-          endPointToSessionConnection
-              .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+          handleRedirection(entry.getKey(), e);
         }
       }
     } else {
@@ -550,6 +529,7 @@ public class Session {
         defaultSessionConnection
             .insertRecords(request);
       } catch (RedirectException ignored) {
+        // ignore
       }
     }
   }
@@ -604,10 +584,7 @@ public class Session {
       }
     } catch (RedirectException e) {
       if (Config.DEFAULT_CACHE_LEADER_MODE) {
-        logger.debug("DeviceId[{}]:{}", tablet.deviceId, e.getMessage());
-        deviceIdToEndpoint.put(tablet.deviceId, e.getEndPoint());
-        endPointToSessionConnection
-            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+        handleRedirection(tablet.deviceId, e);
       }
     }
   }
@@ -630,19 +607,14 @@ public class Session {
         defaultSessionConnection.insertTablet(request);
       }
     } catch (RedirectException e) {
-      logger.debug("DeviceId[{}]:{}", tablet.deviceId, e.getMessage());
-      deviceIdToEndpoint.put(tablet.deviceId, e.getEndPoint());
-      endPointToSessionConnection
-          .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+      handleRedirection(tablet.deviceId, e);
     }
   }
 
   private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted)
       throws BatchExecutionException {
     if (sorted) {
-      if (!checkSorted(tablet)) {
-        throw new BatchExecutionException("Times in Tablet are not in ascending order");
-      }
+      checkSortedThrowable(tablet);
     } else {
       sortTablet(tablet);
     }
@@ -699,10 +671,7 @@ public class Session {
             defaultSessionConnection.insertTablets(entry.getValue());
           }
         } catch (RedirectException e) {
-          logger.debug("DeviceId[{}]:{}", entry.getKey(), e.getMessage());
-          deviceIdToEndpoint.put(entry.getKey(), e.getEndPoint());
-          endPointToSessionConnection
-              .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+          handleRedirection(entry.getKey(), e);
         }
       }
     } else {
@@ -710,6 +679,7 @@ public class Session {
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException ignored) {
+        // ignored
       }
     }
   }
@@ -719,26 +689,7 @@ public class Session {
     TSInsertTabletsReq request = new TSInsertTabletsReq();
 
     for (Tablet tablet : tablets) {
-      if (sorted) {
-        if (!checkSorted(tablet)) {
-          throw new BatchExecutionException("Times in Tablet are not in ascending order");
-        }
-      } else {
-        sortTablet(tablet);
-      }
-
-      request.addToDeviceIds(tablet.deviceId);
-      List<String> measurements = new ArrayList<>();
-      List<Integer> dataTypes = new ArrayList<>();
-      for (MeasurementSchema measurementSchema : tablet.getSchemas()) {
-        measurements.add(measurementSchema.getMeasurementId());
-        dataTypes.add(measurementSchema.getType().ordinal());
-      }
-      request.addToMeasurementsList(measurements);
-      request.addToTypesList(dataTypes);
-      request.addToTimestampsList(SessionUtils.getTimeBuffer(tablet));
-      request.addToValuesList(SessionUtils.getValueBuffer(tablet));
-      request.addToSizeList(tablet.rowSize);
+      updateTSInsertTabletsReq(request, tablet, sorted);
     }
     return request;
   }
@@ -746,9 +697,7 @@ public class Session {
   private void updateTSInsertTabletsReq(TSInsertTabletsReq request, Tablet tablet, boolean sorted)
       throws BatchExecutionException {
     if (sorted) {
-      if (!checkSorted(tablet)) {
-        throw new BatchExecutionException("Times in Tablet are not in ascending order");
-      }
+      checkSortedThrowable(tablet);
     } else {
       sortTablet(tablet);
     }
@@ -880,9 +829,7 @@ public class Session {
    */
   public void deleteData(String path, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
-    deleteData(new ArrayList<String>() {{
-      add(path);
-    }}, Long.MIN_VALUE, endTime);
+    deleteData(Collections.singletonList(path), Long.MIN_VALUE, endTime);
   }
 
   /**
@@ -944,7 +891,7 @@ public class Session {
           res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
           break;
         default:
-          throw new IoTDBConnectionException("Unsupported data type:" + types.get(i));
+          throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
       }
     }
     return res;
@@ -984,7 +931,7 @@ public class Session {
           buffer.put(bytes);
           break;
         default:
-          throw new IoTDBConnectionException("Unsupported data type:" + types.get(i));
+          throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
       }
     }
     buffer.flip();
@@ -1002,6 +949,12 @@ public class Session {
       }
     }
     return true;
+  }
+
+  private void checkSortedThrowable(Tablet tablet) throws BatchExecutionException {
+    if (!checkSorted(tablet)) {
+      throw new BatchExecutionException("Times in Tablet are not in ascending order");
+    }
   }
 
   protected void sortTablet(Tablet tablet) {
@@ -1075,7 +1028,7 @@ public class Session {
         }
         return sortedBinaryValues;
       default:
-        throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+        throw new UnSupportedDataTypeException(MSG_UNSUPPORTED_DATA_TYPE + dataType);
     }
   }
 }

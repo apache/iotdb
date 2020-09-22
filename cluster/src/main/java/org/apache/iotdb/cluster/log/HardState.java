@@ -53,6 +53,7 @@ public class HardState {
     return res;
   }
 
+  @SuppressWarnings("java:S125") // not commented code
   public ByteBuffer serialize() {
     int totalSize = Long.BYTES + Byte.BYTES;
     // currentTerm(long), marker(byte)

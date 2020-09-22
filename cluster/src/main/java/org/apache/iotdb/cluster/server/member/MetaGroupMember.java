@@ -150,6 +150,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("java:S1135")
 public class MetaGroupMember extends RaftMember {
 
   /**
@@ -824,7 +825,7 @@ public class MetaGroupMember extends RaftMember {
         switch (result) {
           case OK:
             logger.info("Join request of {} is accepted", node);
-            logManager.commitTo(addNodeLog.getCurrLogIndex(), false);
+            commitLog(addNodeLog);
 
             synchronized (partitionTable) {
               response.setPartitionTableBytes(partitionTable.serialize());
@@ -1500,6 +1501,7 @@ public class MetaGroupMember extends RaftMember {
     boolean isBatchFailure = false;
     EndPoint endPoint = null;
     InsertTabletPlan subPlan;
+    // send sub-plans to each belonging data group and collect results
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
       subPlan = (InsertTabletPlan) entry.getKey();
@@ -1527,6 +1529,12 @@ public class MetaGroupMember extends RaftMember {
             tmpStatus.getMessage(), tmpStatus.subStatus));
       }
     }
+
+    return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus, errorCodePartitionGroups);
+  }
+
+  private TSStatus concludeFinalStatus(boolean noFailure, EndPoint endPoint,
+      boolean isBatchFailure, TSStatus[] subStatus, List<String> errorCodePartitionGroups) {
     TSStatus status;
     if (noFailure) {
       status = StatusUtils.OK;
@@ -1534,7 +1542,6 @@ public class MetaGroupMember extends RaftMember {
         status = StatusUtils.getStatus(status, endPoint);
       }
     } else if (isBatchFailure) {
-      //noinspection ConstantConditions, subStatus is never null in this case
       status = RpcUtils.getStatus(Arrays.asList(subStatus));
     } else {
       status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
@@ -1880,7 +1887,7 @@ public class MetaGroupMember extends RaftMember {
         switch (result) {
           case OK:
             logger.info("Removal request of {} is accepted", target);
-            logManager.commitTo(removeNodeLog.getCurrLogIndex(), false);
+            commitLog(removeNodeLog);
             return Response.RESPONSE_AGREE;
           case TIME_OUT:
             logger.info("Removal request of {} timed out", target);

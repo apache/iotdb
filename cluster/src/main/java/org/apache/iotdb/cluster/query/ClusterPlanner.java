@@ -41,12 +41,12 @@ public class ClusterPlanner extends Planner {
       throws QueryProcessException {
     Operator operator = parseDriver.parse(sqlStr, zoneId);
     operator = logicalOptimize(operator);
-    PhysicalGenerator physicalGenerator = new ClusterPhysicalGenerator(metaGroupMember);
+    PhysicalGenerator physicalGenerator = new ClusterPhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(operator);
   }
 
   @Override
   protected ConcatPathOptimizer getConcatPathOptimizer() {
-    return new ClusterConcatPathOptimizer(metaGroupMember);
+    return new ClusterConcatPathOptimizer();
   }
 }

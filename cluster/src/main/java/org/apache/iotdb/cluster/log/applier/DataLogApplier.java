@@ -59,29 +59,32 @@ public class DataLogApplier extends BaseApplier {
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     logger.debug("DataMember [{}] start applying Log {}", dataGroupMember.getName(), log);
 
-    if (log instanceof PhysicalPlanLog) {
-      PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
-      PhysicalPlan plan = physicalPlanLog.getPlan();
-      if (plan instanceof InsertPlan) {
-        applyInsert((InsertPlan) plan);
+    try {
+      if (log instanceof PhysicalPlanLog) {
+        PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
+        PhysicalPlan plan = physicalPlanLog.getPlan();
+        if (plan instanceof InsertPlan) {
+          applyInsert((InsertPlan) plan);
+        } else {
+          applyPhysicalPlan(plan, dataGroupMember);
+        }
+      } else if (log instanceof CloseFileLog) {
+        CloseFileLog closeFileLog = ((CloseFileLog) log);
+        try {
+          StorageEngine.getInstance().closeProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
+              closeFileLog.getPartitionId(),
+              closeFileLog.isSeq(), false);
+        } catch (StorageGroupNotSetException | IllegalPathException e) {
+          logger.error("Cannot close {} file in {}, partitionId {}",
+              closeFileLog.isSeq() ? "seq" : "unseq",
+              closeFileLog.getStorageGroupName(), closeFileLog.getPartitionId());
+        }
       } else {
-        applyPhysicalPlan(plan, dataGroupMember);
+        logger.error("Unsupported log: {}", log);
       }
-    } else if (log instanceof CloseFileLog) {
-      CloseFileLog closeFileLog = ((CloseFileLog) log);
-      try {
-        StorageEngine.getInstance().closeProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
-            closeFileLog.getPartitionId(),
-            closeFileLog.isSeq(), false);
-      } catch (StorageGroupNotSetException | IllegalPathException e) {
-        logger.error("Cannot close {} file in {}, partitionId {}",
-            closeFileLog.isSeq() ? "seq" : "unseq",
-            closeFileLog.getStorageGroupName(), closeFileLog.getPartitionId());
-      }
-    } else {
-      logger.error("Unsupported log: {}", log);
+    } finally {
+      log.setApplied(true);
     }
-    log.setApplied(true);
   }
 
   private void applyInsert(InsertPlan plan)

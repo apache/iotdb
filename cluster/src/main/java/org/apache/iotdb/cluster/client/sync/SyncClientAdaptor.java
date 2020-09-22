@@ -384,12 +384,12 @@ public class SyncClientAdaptor {
     return fetchResult.get();
   }
 
-  public static Map<Integer, Snapshot> pullSnapshot(AsyncDataClient client,
-      PullSnapshotRequest request, List<Integer> slots, SnapshotFactory<Snapshot> factory)
+  public static <T extends Snapshot> Map<Integer, T> pullSnapshot(AsyncDataClient client,
+      PullSnapshotRequest request, List<Integer> slots, SnapshotFactory<T> factory)
       throws TException, InterruptedException {
-    AtomicReference<Map<Integer, Snapshot>> snapshotRef = new AtomicReference<>();
+    AtomicReference<Map<Integer, T>> snapshotRef = new AtomicReference<>();
     synchronized (snapshotRef) {
-      client.pullSnapshot(request, new PullSnapshotHandler<>(snapshotRef,
+      client.pullSnapshot(request, new PullSnapshotHandler<T>(snapshotRef,
           client.getNode(), slots, factory));
       snapshotRef.wait(RaftServer.getReadOperationTimeoutMS());
     }

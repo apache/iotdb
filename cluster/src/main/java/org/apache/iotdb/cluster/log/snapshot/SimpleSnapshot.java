@@ -25,11 +25,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,4 +109,22 @@ public class SimpleSnapshot extends Snapshot {
   public int hashCode() {
     return Objects.hash(snapshot);
   }
+
+  @Override
+  public SnapshotInstaller<? extends Snapshot> getDefaultInstaller(RaftMember member) {
+    return DEFAULT_INSTALLER;
+  }
+
+  public static final SnapshotInstaller<SimpleSnapshot> DEFAULT_INSTALLER =
+      new SnapshotInstaller<SimpleSnapshot>() {
+        @Override
+        public void install(SimpleSnapshot snapshot, int slot) {
+          // default installer does nothing
+        }
+
+        @Override
+        public void install(Map<Integer, SimpleSnapshot> snapshotMap) {
+          // default installer does nothing
+        }
+      };
 }

@@ -55,6 +55,7 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
   }
 
   @Override
+  @SuppressWarnings("java:S1135") // ignore todos
   public void takeSnapshot() throws IOException {
     // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
     synchronized (this) {

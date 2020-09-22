@@ -86,10 +86,12 @@ public class MemberTest {
   private long prevLeaderWait;
   private boolean prevUseAsyncServer;
   private int preLogBufferSize;
-
+  private boolean prevUseAsyncApplier;
 
   @Before
   public void setUp() throws Exception {
+    prevUseAsyncApplier = ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncApplier(false);
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     preLogBufferSize = ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
@@ -162,6 +164,7 @@ public class MemberTest {
     testThreadPool.shutdownNow();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
     ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(preLogBufferSize);
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncApplier(prevUseAsyncApplier);
   }
 
   DataGroupMember getDataGroupMember(Node node) {

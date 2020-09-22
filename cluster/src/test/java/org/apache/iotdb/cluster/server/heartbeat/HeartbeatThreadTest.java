@@ -49,6 +49,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+@SuppressWarnings("java:S2699")
 public class HeartbeatThreadTest {
 
   RaftMember member;

@@ -20,8 +20,11 @@
 package org.apache.iotdb.cluster.common;
 
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.snapshot.SnapshotInstaller;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 
 public class TestSnapshot extends Snapshot {
 
@@ -45,6 +48,21 @@ public class TestSnapshot extends Snapshot {
   @Override
   public void deserialize(ByteBuffer buffer) {
     id = buffer.getInt();
+  }
+
+  @Override
+  public SnapshotInstaller<? extends Snapshot> getDefaultInstaller(RaftMember member) {
+    return new SnapshotInstaller<Snapshot>() {
+      @Override
+      public void install(Snapshot snapshot, int slot) {
+        // do nothing
+      }
+
+      @Override
+      public void install(Map<Integer, Snapshot> snapshotMap) {
+        // do nothing
+      }
+    };
   }
 
   @Override

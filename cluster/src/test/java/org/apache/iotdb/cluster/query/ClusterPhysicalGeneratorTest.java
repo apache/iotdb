@@ -40,7 +40,7 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest{
   @Before
   public void setUp() throws Exception {
     super.setUp();
-    physicalGenerator = new ClusterPhysicalGenerator(testMetaMember);
+    physicalGenerator = new ClusterPhysicalGenerator();
   }
 
   @Test

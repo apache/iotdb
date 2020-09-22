@@ -131,7 +131,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         , QueryContext context)
         throws QueryProcessException, StorageEngineException, IOException {
       if (group.contains(metaGroupMember.getThisNode())) {
-        ClusterQueryUtils.checkPathExistence(seriesPath, metaGroupMember);
+        ClusterQueryUtils.checkPathExistence(seriesPath);
         return calculateSeriesLastLocally(group, seriesPath, context);
       } else {
         return calculateSeriesLastRemotely(group, seriesPath, context);

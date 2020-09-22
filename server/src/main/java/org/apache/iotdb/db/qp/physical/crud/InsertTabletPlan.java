@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 
+@SuppressWarnings("java:S1135") // ignore todos
 public class InsertTabletPlan extends InsertPlan {
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";

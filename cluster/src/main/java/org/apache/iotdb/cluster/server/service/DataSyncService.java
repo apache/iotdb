@@ -312,7 +312,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().peekNextNotNullValue(executorId, startTime, endTime);
-    } catch (ReaderNotFoundException | IOException | QueryProcessException e) {
+    } catch (ReaderNotFoundException | IOException e) {
       throw new TException(e);
     }
   }

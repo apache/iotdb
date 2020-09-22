@@ -41,6 +41,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+@SuppressWarnings({"java:S2925"})
 public class QueryCoordinatorTest {
 
   private Map<Node, NodeStatus> nodeStatusMap;

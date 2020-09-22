@@ -53,6 +53,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("java:S107")
 public class ClusterAggregator {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterAggregator.class);

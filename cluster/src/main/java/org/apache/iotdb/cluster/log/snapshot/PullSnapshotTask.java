@@ -53,7 +53,7 @@ import org.slf4j.LoggerFactory;
  * to the group. All members of the group should pull snapshots from the previous holders to
  * proceed the data transition.
  */
-public class PullSnapshotTask implements Callable<Void> {
+public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
 
   public static final String TASK_SUFFIX = ".task";
   private static final Logger logger = LoggerFactory.getLogger(PullSnapshotTask.class);
@@ -62,7 +62,7 @@ public class PullSnapshotTask implements Callable<Void> {
   private DataGroupMember newMember;
 
   private PullSnapshotRequest request;
-  private SnapshotFactory<Snapshot> snapshotFactory;
+  private SnapshotFactory<T> snapshotFactory;
 
   private File snapshotSave;
   private Random random = new Random();
@@ -76,13 +76,14 @@ public class PullSnapshotTask implements Callable<Void> {
    *                     otherwise it should bu null
    */
   public PullSnapshotTask(PullSnapshotTaskDescriptor descriptor,
-      DataGroupMember newMember, SnapshotFactory<Snapshot> snapshotFactory, File snapshotSave) {
+      DataGroupMember newMember, SnapshotFactory<T> snapshotFactory, File snapshotSave) {
     this.descriptor = descriptor;
     this.newMember = newMember;
     this.snapshotFactory = snapshotFactory;
     this.snapshotSave = snapshotSave;
   }
 
+  @SuppressWarnings("java:S3740") // type cannot be known ahead
   private boolean pullSnapshot(int nodeIndex)
       throws InterruptedException, TException {
     Node node = descriptor.getPreviousHolders().get(nodeIndex);
@@ -91,7 +92,7 @@ public class PullSnapshotTask implements Callable<Void> {
           descriptor.getPreviousHolders().getHeader());
     }
 
-    Map<Integer, Snapshot> result = pullSnapshot(node);
+    Map<Integer, T> result = pullSnapshot(node);
 
     if (result != null) {
       // unlock slots that have no snapshots
@@ -124,8 +125,8 @@ public class PullSnapshotTask implements Callable<Void> {
     return false;
   }
 
-  private Map<Integer, Snapshot> pullSnapshot(Node node) throws TException, InterruptedException {
-    Map<Integer, Snapshot> result;
+  private Map<Integer, T> pullSnapshot(Node node) throws TException, InterruptedException {
+    Map<Integer, T> result;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           (AsyncDataClient) newMember.getAsyncClient(node);
@@ -143,7 +144,7 @@ public class PullSnapshotTask implements Callable<Void> {
       result = new HashMap<>();
       for (Entry<Integer, ByteBuffer> integerByteBufferEntry : pullSnapshotResp.snapshotBytes
           .entrySet()) {
-        Snapshot snapshot = snapshotFactory.create();
+        T snapshot = snapshotFactory.create();
         snapshot.deserialize(integerByteBufferEntry.getValue());
         result.put(integerByteBufferEntry.getKey(), snapshot);
       }

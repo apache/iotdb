@@ -42,6 +42,8 @@ import org.slf4j.LoggerFactory;
  */
 public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
 
+  private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshot.class);
+
   private Map<Integer, T> slotSnapshots;
   private SnapshotFactory<T> factory;
 
@@ -91,7 +93,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
     setLastLogTerm(buffer.getLong());
   }
 
-  public Snapshot getSnapshot(int slot) {
+  public T getSnapshot(int slot) {
     return slotSnapshots.get(slot);
   }
 
@@ -127,9 +129,8 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
   }
 
   @SuppressWarnings("java:S3740")
-  public static class Installer implements SnapshotInstaller<PartitionedSnapshot> {
+  public class Installer implements SnapshotInstaller<PartitionedSnapshot> {
 
-    private static final Logger logger = LoggerFactory.getLogger(Installer.class);
     private DataGroupMember dataGroupMember;
     private String name;
 
@@ -157,14 +158,14 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
      *
      * @param snapshot
      */
-    private void installPartitionedSnapshot(PartitionedSnapshot<FileSnapshot> snapshot)
+    private void installPartitionedSnapshot(PartitionedSnapshot<T> snapshot)
         throws SnapshotInstallationException {
       synchronized (dataGroupMember.getSnapshotApplyLock()) {
         List<Integer> slots =
             ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
                 .getNodeSlots(dataGroupMember.getHeader());
         for (Integer slot : slots) {
-          Snapshot subSnapshot = snapshot.getSnapshot(slot);
+          T subSnapshot = snapshot.getSnapshot(slot);
           if (subSnapshot != null) {
             installSnapshot(subSnapshot, slot);
           }
@@ -182,7 +183,8 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
      *
      * @param snapshot
      */
-    void installSnapshot(Snapshot snapshot, int slot) throws SnapshotInstallationException {
+    @SuppressWarnings("java:S1905") // cast is necessary
+    void installSnapshot(T snapshot, int slot) throws SnapshotInstallationException {
       if (logger.isDebugEnabled()) {
         logger.debug("{}: applying snapshot {}", name, snapshot);
       }
@@ -192,7 +194,9 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
       } catch (CheckConsistencyException e) {
         throw new SnapshotInstallationException(e);
       }
-      snapshot.getDefaultInstaller(dataGroupMember).install(snapshot, slot);
+      SnapshotInstaller<T> defaultInstaller = (SnapshotInstaller<T>) snapshot
+          .getDefaultInstaller(dataGroupMember);
+      defaultInstaller.install(snapshot, slot);
     }
   }
 }

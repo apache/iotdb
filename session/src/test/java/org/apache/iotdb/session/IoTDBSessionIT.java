@@ -60,6 +60,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("java:S2699") // some tests does not need assertion
 public class IoTDBSessionIT {
 
   private static Logger logger = LoggerFactory.getLogger(IoTDBSessionIT.class);

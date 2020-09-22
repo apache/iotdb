@@ -75,6 +75,7 @@ import org.slf4j.LoggerFactory;
  * 3. replace the remote snapshot with a FileSnapshot indicating that the slot of this node is
  * synchronized with the remote one.
  */
+@SuppressWarnings("java:S1135") // ignore todos
 public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
   private Collection<TimeseriesSchema> timeseriesSchemas;
@@ -158,7 +159,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
   }
 
   @Override
-  public SnapshotInstaller getDefaultInstaller(RaftMember member) {
+  public SnapshotInstaller<FileSnapshot> getDefaultInstaller(RaftMember member) {
     return new Installer((DataGroupMember) member);
   }
 

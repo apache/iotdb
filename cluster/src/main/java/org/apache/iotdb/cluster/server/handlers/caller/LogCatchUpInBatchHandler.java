@@ -56,21 +56,22 @@ public class LogCatchUpInBatchHandler implements AsyncMethodCallback<Long> {
 
     } else if (resp == RESPONSE_LOG_MISMATCH) {
       // this is not probably possible
-      logger.error("{}: Log mismatch occurred when sending log, which size is {}", memberName,
+      logger.error("{}: Log mismatch occurred when sending logs, whose size is {}", memberName,
           logs.size());
       synchronized (appendSucceed) {
         appendSucceed.notifyAll();
       }
     } else {
       // the follower's term has updated, which means a new leader is elected
-      logger.debug("{}: Received a rejection because term is updated to: {}", memberName, resp);
-
+      logger.debug("{}: Received a rejection because term is updated to {} when sending {} logs",
+          memberName, resp, logs.size());
       raftMember.stepDown(resp, false);
 
       synchronized (appendSucceed) {
         appendSucceed.notifyAll();
       }
-      logger.warn("{}: Catch-up aborted because leadership is lost", memberName);
+      logger.warn("{}: Catch-up with {} logs aborted because leadership is lost",
+          logs.size(), memberName);
     }
   }
 

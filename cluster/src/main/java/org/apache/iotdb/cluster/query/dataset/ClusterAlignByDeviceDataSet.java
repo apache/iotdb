@@ -36,15 +36,12 @@ import org.apache.iotdb.db.service.IoTDB;
 
 public class ClusterAlignByDeviceDataSet extends AlignByDeviceDataSet {
 
-  private MetaGroupMember metaGroupMember;
 
   public ClusterAlignByDeviceDataSet(
       AlignByDevicePlan alignByDevicePlan,
       QueryContext context,
-      IQueryRouter queryRouter,
-      MetaGroupMember metaGroupMember) {
+      IQueryRouter queryRouter) {
     super(alignByDevicePlan, context, queryRouter);
-    this.metaGroupMember = metaGroupMember;
   }
 
   @Override

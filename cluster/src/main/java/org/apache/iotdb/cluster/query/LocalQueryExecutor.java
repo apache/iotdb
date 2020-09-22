@@ -288,7 +288,7 @@ public class LocalQueryExecutor {
    * @param request
    */
   public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException {
     logger
         .debug("{}: {} is querying {} by timestamp, queryId: {}", name, request.getRequester(),
             request.getPath(), request.getQueryId());
@@ -409,7 +409,7 @@ public class LocalQueryExecutor {
       throw new QueryProcessException(e.getMessage());
     }
 
-    ClusterQueryUtils.checkPathExistence(path, dataGroupMember.getMetaGroupMember());
+    ClusterQueryUtils.checkPathExistence(path);
     List<AggregateResult> results = new ArrayList<>();
     for (String aggregation : aggregations) {
       results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType));
@@ -474,7 +474,7 @@ public class LocalQueryExecutor {
       throw new StorageEngineException(e);
     }
 
-    ClusterQueryUtils.checkPathExistence(path, dataGroupMember.getMetaGroupMember());
+    ClusterQueryUtils.checkPathExistence(path);
     List<Integer> nodeSlots = ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
         .getNodeSlots(dataGroupMember.getHeader());
     LocalGroupByExecutor executor = new LocalGroupByExecutor(path,
@@ -558,7 +558,7 @@ public class LocalQueryExecutor {
   }
 
   public ByteBuffer peekNextNotNullValue(long executorId, long startTime, long endTime)
-      throws ReaderNotFoundException, IOException, QueryProcessException {
+      throws ReaderNotFoundException, IOException {
     GroupByExecutor executor = queryManager.getGroupByExecutor(executorId);
     if (executor == null) {
       throw new ReaderNotFoundException(executorId);
@@ -645,7 +645,7 @@ public class LocalQueryExecutor {
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), request.getQueryId());
     PartialPath path = new PartialPath(request.getPath());
-    ClusterQueryUtils.checkPathExistence(path, dataGroupMember.getMetaGroupMember());
+    ClusterQueryUtils.checkPathExistence(path);
     TimeValuePair timeValuePair = LastQueryExecutor
         .calculateLastPairForOneSeriesLocally(path,
             TSDataType.values()[request.getDataTypeOrdinal()], queryContext,

@@ -25,6 +25,7 @@ import static org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus.SEN
 import static org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus.SENT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.junit.Before;
 import org.junit.Test;
 
+@SuppressWarnings({"java:S2699", "java:S2925"})
 public class SlotManagerTest {
 
   private SlotManager slotManager;

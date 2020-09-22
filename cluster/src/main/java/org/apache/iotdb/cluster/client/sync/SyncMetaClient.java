@@ -32,6 +32,8 @@ import org.apache.thrift.transport.TTransportException;
  * Notice: Because a client will be returned to a pool immediately after a successful request,
  * you should not cache it anywhere else or there may be conflicts.
  */
+// the two classes does not share a common parent and Java does not allow multiple extension
+@SuppressWarnings("common-java:DuplicatedBlocks")
 public class SyncMetaClient extends Client {
 
   Node node;

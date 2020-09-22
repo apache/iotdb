@@ -88,6 +88,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Ignore // need maintenance
+@SuppressWarnings({"java:S2699"})
 public class SlotPartitionTableTest {
 
   Logger logger = LoggerFactory.getLogger(SlotPartitionTableTest.class);

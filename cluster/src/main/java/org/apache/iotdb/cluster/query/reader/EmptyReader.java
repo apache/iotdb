@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
+import org.apache.iotdb.db.query.reader.series.BaseManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -35,33 +36,11 @@ import org.apache.iotdb.tsfile.utils.Pair;
 /**
  * A placeholder when the remote node does not contain satisfying data of a series.
  */
-public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPointReader,
+public class EmptyReader extends BaseManagedSeriesReader implements ManagedSeriesReader, IAggregateReader,
+    IPointReader,
     GroupByExecutor, IReaderByTimestamp {
 
-  private volatile boolean managedByPool;
-  private volatile boolean hasRemaining;
-
   private List<AggregateResult> aggregationResults = new ArrayList<>();
-
-  @Override
-  public boolean isManagedByQueryManager() {
-    return managedByPool;
-  }
-
-  @Override
-  public void setManagedByQueryManager(boolean managedByQueryManager) {
-    this.managedByPool = managedByQueryManager;
-  }
-
-  @Override
-  public boolean hasRemaining() {
-    return hasRemaining;
-  }
-
-  @Override
-  public void setHasRemaining(boolean hasRemaining) {
-    this.hasRemaining = hasRemaining;
-  }
 
   @Override
   public boolean hasNextBatch() {

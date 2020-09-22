@@ -37,6 +37,8 @@ public class Status extends NodeToolCmd {
     }
     msgPrintln(String.format("%-30s  %10s", "Node", "Status"));
     statusMap.forEach(
-        (node, status) -> msgPrintln(String.format("%-30s->%10s", nodeToString(node), (status ? "on" : "off"))));
+        (node, status) -> msgPrintln(String.format("%-30s->%10s", nodeToString(node),
+            (Boolean.TRUE.equals(status) ?
+            "on" : "off"))));
   }
 }

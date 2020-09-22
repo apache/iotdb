@@ -58,7 +58,6 @@ import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -385,15 +384,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
         Thread.currentThread().interrupt();
       }
     }
-    List<PartialPath> partialPaths = new ArrayList<>();
-    for (String path : paths) {
-      try {
-        partialPaths.add(new PartialPath(path));
-      } catch (IllegalPathException e) {
-        // ignore
-      }
-    }
-    return partialPaths;
+
+    return PartialPath.fromStringList(paths);
   }
 
   @Override
@@ -420,7 +412,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
       }));
     }
 
-    for (Future<Void> future : futureList) {
+    waitForThreadPool(futureList, pool);
+    return resultSet;
+  }
+
+  public static void waitForThreadPool(List<Future<Void>> futures, ExecutorService pool)
+      throws MetadataException {
+    for (Future<Void> future : futures) {
       try {
         future.get();
       } catch (InterruptedException e) {
@@ -438,7 +436,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for getNextChildren()", e);
     }
-    return resultSet;
   }
 
   private Set<String> getNextChildren(PartitionGroup group, PartialPath path)
@@ -527,24 +524,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       }));
     }
 
-    for (Future<Void> future : futureList) {
-      try {
-        future.get();
-      } catch (InterruptedException e) {
-        logger.error("Unexpected interruption when waiting for showTimeseries()", e);
-        Thread.currentThread().interrupt();
-      } catch (RuntimeException | ExecutionException e) {
-        throw new MetadataException(e);
-      }
-    }
-
-    pool.shutdown();
-    try {
-      pool.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.warn("Unexpected interruption when waiting for getTimeseriesSchemas to finish", e);
-    }
+    waitForThreadPool(futureList, pool);
     List<ShowTimeSeriesResult> showTimeSeriesResults = applyShowTimeseriesLimitOffset(resultSet,
         limit, offset);
     logger.debug("Show {} has {} results", plan.getPath(), showTimeSeriesResults.size());
@@ -708,7 +688,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
       QueryContext context, IQueryRouter router) {
-    return new ClusterAlignByDeviceDataSet(plan, context, router, metaGroupMember);
+    return new ClusterAlignByDeviceDataSet(plan, context, router);
   }
 
   @Override

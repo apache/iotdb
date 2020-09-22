@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 public class ClusterTimeGenerator extends ServerTimeGenerator {
 
-  private MetaGroupMember metaGroupMember;
   private ClusterReaderFactory readerFactory;
 
   /**
@@ -47,7 +46,6 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
       QueryContext context, MetaGroupMember metaGroupMember,
       RawDataQueryPlan rawDataQueryPlan) throws StorageEngineException {
     super(context);
-    this.metaGroupMember = metaGroupMember;
     this.queryPlan = rawDataQueryPlan;
     this.readerFactory = new ClusterReaderFactory(metaGroupMember);
     try {

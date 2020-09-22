@@ -16,21 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.query.reader.series;
 
-package org.apache.iotdb.cluster.query;
+public abstract class BaseManagedSeriesReader implements ManagedSeriesReader {
 
-import java.util.List;
-import org.apache.iotdb.cluster.metadata.CMManager;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.service.IoTDB;
-
-public class ClusterConcatPathOptimizer extends ConcatPathOptimizer {
+  protected volatile boolean managedByPool;
+  protected volatile boolean hasRemaining;
 
   @Override
-  protected List<PartialPath> removeWildcard(PartialPath path) throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getMatchedPaths(path);
+  public boolean isManagedByQueryManager() {
+    return managedByPool;
   }
 
+  @Override
+  public void setManagedByQueryManager(boolean managedByQueryManager) {
+    this.managedByPool = managedByQueryManager;
+  }
+
+  @Override
+  public boolean hasRemaining() {
+    return hasRemaining;
+  }
+
+  @Override
+  public void setHasRemaining(boolean hasRemaining) {
+    this.hasRemaining = hasRemaining;
+  }
 }

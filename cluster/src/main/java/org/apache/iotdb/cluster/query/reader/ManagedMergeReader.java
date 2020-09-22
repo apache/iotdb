@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
+@SuppressWarnings("common-java:DuplicatedBlocks")
 public class ManagedMergeReader extends PriorityMergeReader implements ManagedSeriesReader {
 
   private static final int BATCH_SIZE = 4096;

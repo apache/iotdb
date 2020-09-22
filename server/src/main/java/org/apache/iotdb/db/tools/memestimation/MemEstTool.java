@@ -35,6 +35,7 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 public class MemEstTool {
 
@@ -43,45 +44,8 @@ public class MemEstTool {
         Help.class,
         MemEstToolCmd.class
     );
-    Cli.CliBuilder<Runnable> builder = Cli.builder("memory-tool");
-
-    builder.withDescription("Estimate memory for writing")
-        .withDefaultCommand(Help.class)
-        .withCommands(commands);
-
-    Cli<Runnable> parser = builder.build();
-
-    int status = 0;
-    try {
-      Runnable parse = parser.parse(args);
-      parse.run();
-    } catch (IllegalArgumentException |
-        IllegalStateException |
-        ParseArgumentsMissingException |
-        ParseArgumentsUnexpectedException |
-        ParseOptionConversionException |
-        ParseOptionMissingException |
-        ParseOptionMissingValueException |
-        ParseCommandMissingException |
-        ParseCommandUnrecognizedException e) {
-      badUse(e);
-      status = 1;
-    } catch (Exception e) {
-      err(Throwables.getRootCause(e));
-      status = 2;
-    }
+    int status = CommonUtils.runCli(commands, args, "memory-tool", "Estimate memory for writing");
     FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(IoTDBDescriptor.getInstance().getConfig().getBaseDir()));
     System.exit(status);
-  }
-
-  private static void badUse(Exception e) {
-    System.out.println("memory-tool: " + e.getMessage());
-    System.out.println("See 'memory-tool help' or 'memory-tool help <command>'.");
-  }
-
-  private static void err(Throwable e) {
-    System.err.println("error: " + e.getMessage());
-    System.err.println("-- StackTrace --");
-    System.err.println(Throwables.getStackTraceAsString(e));
   }
 }

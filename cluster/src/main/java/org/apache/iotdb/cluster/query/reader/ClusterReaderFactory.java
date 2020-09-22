@@ -72,6 +72,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("java:S107")
 public class ClusterReaderFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterReaderFactory.class);
@@ -277,7 +278,7 @@ public class ClusterReaderFactory {
       Filter timeFilter,
       Filter valueFilter, QueryContext context, Node header, boolean ascending)
       throws StorageEngineException, QueryProcessException {
-    ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
+    ClusterQueryUtils.checkPathExistence(path);
     List<Integer> nodeSlots =
         ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header);
     QueryDataSource queryDataSource =

@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.utils.nodetool.function.LogView;
 import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.cluster.utils.nodetool.function.Ring;
 import org.apache.iotdb.cluster.utils.nodetool.function.Status;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 public class NodeTool {
 
@@ -51,45 +52,7 @@ public class NodeTool {
         LogView.class
     );
 
-    Cli.CliBuilder<Runnable> builder = Cli.builder("nodetool");
-
-    builder.withDescription("Manage your IoTDB cluster")
-        .withDefaultCommand(Help.class)
-        .withCommands(commands);
-
-    Cli<Runnable> parser = builder.build();
-
-    int status = 0;
-    try {
-      Runnable parse = parser.parse(args);
-      parse.run();
-    } catch (IllegalArgumentException |
-        IllegalStateException |
-        ParseArgumentsMissingException |
-        ParseArgumentsUnexpectedException |
-        ParseOptionConversionException |
-        ParseOptionMissingException |
-        ParseOptionMissingValueException |
-        ParseCommandMissingException |
-        ParseCommandUnrecognizedException e) {
-      badUse(e);
-      status = 1;
-    } catch (Exception e) {
-      err(Throwables.getRootCause(e));
-      status = 2;
-    }
-
+    int status = CommonUtils.runCli(commands, args, "nodetool", "Manage your IoTDB cluster");
     System.exit(status);
-  }
-
-  private static void badUse(Exception e) {
-    msgPrintln("nodetool: " + e.getMessage());
-    msgPrintln("See 'nodetool help' or 'nodetool help <command>'.");
-  }
-
-  private static void err(Throwable e) {
-    errPrintln("error: " + e.getMessage());
-    errPrintln("-- StackTrace --");
-    errPrintln(Throwables.getStackTraceAsString(e));
   }
 }

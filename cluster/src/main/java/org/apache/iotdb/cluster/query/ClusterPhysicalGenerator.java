@@ -29,7 +29,6 @@ import java.util.Properties;
 import java.util.Set;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.metadata.CMManager;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -48,12 +47,6 @@ import org.slf4j.LoggerFactory;
 public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterPhysicalGenerator.class);
-
-  private MetaGroupMember metaGroupMember;
-
-  ClusterPhysicalGenerator(MetaGroupMember metaGroupMember) {
-    this.metaGroupMember = metaGroupMember;
-  }
 
   private CMManager getCMManager() {
     return ((CMManager) IoTDB.metaManager);
