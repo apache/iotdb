@@ -52,9 +52,9 @@ public enum TSEncoding {
   }
 
   /**
-   * judge the encoding deserialize type.
+   * give an byte to return a compression type.
    *
-   * @param i -use to determine encoding type
+   * @param i byte number
    * @return -encoding type
    */
   public static TSEncoding byteToEnum(byte i) {
@@ -112,6 +112,9 @@ public enum TSEncoding {
     }
   }
 
+  /**
+   * @return byte number
+   */
   public byte enumToByte() {
     switch (this) {
       case PLAIN:

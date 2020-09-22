@@ -122,7 +122,7 @@ public enum TSDataType {
   }
 
   /**
-   * @return -enum type
+   * @return byte number
    */
   public byte enumToByte() {
     switch (this) {
