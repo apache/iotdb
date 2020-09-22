@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.DescBatchData;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class LastValueAggrResult extends AggregateResult {
@@ -38,6 +39,7 @@ public class LastValueAggrResult extends AggregateResult {
   public LastValueAggrResult(TSDataType dataType) {
     super(dataType, AggregationType.LAST_VALUE);
     reset();
+    this.ascending = false;
   }
 
   @Override
@@ -48,62 +50,66 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasResult() ? getValue() : null;
+    return hasResult() || isChanged ? getValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
+    if (hasResult()) {
+      return;
+    }
     Object lastVal = statistics.getLastValue();
-    setValue(lastVal);
     timestamp = statistics.getEndTime();
+    updateLastValueResult(timestamp, lastVal);
+    hasResult = false;
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage) {
     updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
-    long time = Long.MIN_VALUE;
-    Object lastVal = null;
-    while (dataInThisPage.hasCurrent()
-        && dataInThisPage.currentTime() < maxBound
-        && dataInThisPage.currentTime() >= minBound) {
-      time = dataInThisPage.currentTime();
-      lastVal = dataInThisPage.currentValue();
-      dataInThisPage.next();
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
+    if (hasResult()) {
+      return;
     }
-
-    if (time != Long.MIN_VALUE) {
-      setValue(lastVal);
-      timestamp = time;
+    if (dataInThisPage instanceof DescBatchData || dataInThisPage.isFromDescMergeReader()) {
+      if (dataInThisPage.hasCurrent()
+          && dataInThisPage.currentTime() < maxBound
+          && dataInThisPage.currentTime() >= minBound) {
+        updateLastValueResult(dataInThisPage.currentTime(), dataInThisPage.currentValue());
+      }
+    } else {
+      while (dataInThisPage.hasCurrent()
+          && dataInThisPage.currentTime() < maxBound
+          && dataInThisPage.currentTime() >= minBound) {
+        updateLastValueResult(dataInThisPage.currentTime(), dataInThisPage.currentValue());
+        dataInThisPage.next();
+      }
+      hasResult = false;
     }
   }
 
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-
-    long time = Long.MIN_VALUE;
-    Object lastVal = null;
+    long time;
+    Object lastVal;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
         time = timestamps[i];
         lastVal = value;
+        updateLastValueResult(time, lastVal);
       }
     }
-    if (time != Long.MIN_VALUE) {
-      setValue(lastVal);
-      timestamp = time;
-    }
+    hasResult = false;
   }
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return false;
+    return hasResult();
   }
 
   @Override
@@ -123,5 +129,13 @@ public class LastValueAggrResult extends AggregateResult {
   @Override
   protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(timestamp, outputStream);
+  }
+
+  private void updateLastValueResult(long newTime, Object newValue) {
+    if (!isChanged || newTime >= timestamp) {
+      timestamp = newTime;
+      setValue(newValue);
+      isChanged = true;
+    }
   }
 }
