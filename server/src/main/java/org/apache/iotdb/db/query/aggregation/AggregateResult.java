@@ -117,6 +117,7 @@ public abstract class AggregateResult {
         .getAggrResultByType(aggregationType, dataType);
     boolean hasResult = ReadWriteIOUtils.readBool(buffer);
     if (hasResult) {
+      aggregateResult.hasCandidateResult = true;
       switch (dataType) {
         case BOOLEAN:
           aggregateResult.setBooleanValue(ReadWriteIOUtils.readBool(buffer));
