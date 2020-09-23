@@ -58,9 +58,7 @@ public class FirstValueAggrResult extends AggregateResult {
     if (hasResult()) {
       return;
     }
-    Object firstVal = statistics.getFirstValue();
-    timestamp = statistics.getStartTime();
-    updateFirstValueResult(timestamp, firstVal);
+    updateFirstValueResult(statistics.getStartTime(), statistics.getFirstValue());
     hasResult = false;
   }
 

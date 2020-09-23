@@ -58,9 +58,7 @@ public class LastValueAggrResult extends AggregateResult {
     if (hasResult()) {
       return;
     }
-    Object lastVal = statistics.getLastValue();
-    timestamp = statistics.getEndTime();
-    updateLastValueResult(timestamp, lastVal);
+    updateLastValueResult(statistics.getEndTime(), statistics.getLastValue());
     hasResult = false;
   }
 
