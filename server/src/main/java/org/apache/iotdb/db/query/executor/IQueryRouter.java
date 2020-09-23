@@ -71,5 +71,5 @@ public interface IQueryRouter {
    * Execute UDTF query
    */
   QueryDataSet udtfQuery(UDTFPlan udtfPlan, QueryContext context)
-      throws StorageEngineException, QueryProcessException, IOException;
+      throws StorageEngineException, QueryProcessException, IOException, InterruptedException;
 }

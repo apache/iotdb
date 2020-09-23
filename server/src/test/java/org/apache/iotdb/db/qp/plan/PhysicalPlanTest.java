@@ -488,9 +488,8 @@ public class PhysicalPlanTest {
       assertEquals(8, udtfPlan.getPaths().size());
       assertEquals(8, udtfPlan.getDataTypes().size());
 
-      assertEquals(6, udtfPlan.getDeduplicatedPaths().size());
-      assertEquals(6, udtfPlan.getDeduplicatedDataTypes().size());
-      assertEquals(6, udtfPlan.getRawQueryReaderIndex2DataSetOutputColumnIndexList().size());
+      assertEquals(2, udtfPlan.getDeduplicatedPaths().size());
+      assertEquals(2, udtfPlan.getDeduplicatedDataTypes().size());
 
       assertEquals(4, udtfPlan.getPathToIndex().size());
       assertTrue(udtfPlan.getPathToIndex()
@@ -499,8 +498,6 @@ public class PhysicalPlanTest {
           .containsKey("udf(root.vehicle.d1.s1, root.vehicle.d2.s1)"));
       assertTrue(udtfPlan.getPathToIndex().containsKey("root.vehicle.d1.s1"));
       assertTrue(udtfPlan.getPathToIndex().containsKey("root.vehicle.d2.s1"));
-
-      assertEquals(2, udtfPlan.getDeduplicatedExecutors().size());
     } catch (Exception e) {
       fail(e.toString());
     }
@@ -530,9 +527,8 @@ public class PhysicalPlanTest {
       assertEquals(5, udtfPlan.getPaths().size());
       assertEquals(5, udtfPlan.getDataTypes().size());
 
-      assertEquals(8, udtfPlan.getDeduplicatedPaths().size());
-      assertEquals(8, udtfPlan.getDeduplicatedDataTypes().size());
-      assertEquals(8, udtfPlan.getRawQueryReaderIndex2DataSetOutputColumnIndexList().size());
+      assertEquals(2, udtfPlan.getDeduplicatedPaths().size());
+      assertEquals(2, udtfPlan.getDeduplicatedDataTypes().size());
 
       assertEquals(5, udtfPlan.getPathToIndex().size());
       assertTrue(udtfPlan.getPathToIndex()
@@ -543,8 +539,6 @@ public class PhysicalPlanTest {
           .containsKey("udf(root.vehicle.d1.s1, root.vehicle.d2.s1)"));
       assertTrue(udtfPlan.getPathToIndex().containsKey("root.vehicle.d1.s1"));
       assertTrue(udtfPlan.getPathToIndex().containsKey("root.vehicle.d2.s1"));
-
-      assertEquals(3, udtfPlan.getDeduplicatedExecutors().size());
     } catch (Exception e) {
       fail(e.toString());
     }
@@ -574,13 +568,10 @@ public class PhysicalPlanTest {
       assertEquals(44, udtfPlan.getPaths().size());
       assertEquals(44, udtfPlan.getDataTypes().size());
 
-      assertEquals(32, udtfPlan.getDeduplicatedPaths().size());
-      assertEquals(32, udtfPlan.getDeduplicatedDataTypes().size());
-      assertEquals(32, udtfPlan.getRawQueryReaderIndex2DataSetOutputColumnIndexList().size());
+      assertEquals(4, udtfPlan.getDeduplicatedPaths().size());
+      assertEquals(4, udtfPlan.getDeduplicatedDataTypes().size());
 
       assertEquals(20, udtfPlan.getPathToIndex().size());
-
-      assertEquals(16, udtfPlan.getDeduplicatedExecutors().size());
     } catch (Exception e) {
       fail(e.toString());
     }

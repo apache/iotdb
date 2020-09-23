@@ -204,7 +204,7 @@ public class ElasticSerializableTVList implements PointCollector {
 
       @Override
       public boolean next() {
-        if (size <= currentPointIndex) {
+        if (size - 1 <= currentPointIndex) {
           return false;
         }
         ++currentPointIndex;

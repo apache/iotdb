@@ -119,7 +119,7 @@ public class InputLayer {
 
       for (int i = currentRowIndex + 1; i < rowRecordList.size(); ++i) {
         RowRecord rowRecordCandidate = rowRecordList.getRowRecord(i);
-        if (!rowRecordCandidate.getFields().get(columnIndex).isNull()) {
+        if (rowRecordCandidate.getFields().get(columnIndex) != null) {
           hasCachedRowRecord = true;
           cachedRowRecord = rowRecordCandidate;
           currentRowIndex = i;
@@ -131,7 +131,7 @@ public class InputLayer {
         while (queryDataSet.hasNextWithoutConstraint()) {
           RowRecord rowRecordCandidate = queryDataSet.nextWithoutConstraint();
           rowRecordList.put(rowRecordCandidate);
-          if (!rowRecordCandidate.getFields().get(columnIndex).isNull()) {
+          if (rowRecordCandidate.getFields().get(columnIndex) != null) {
             hasCachedRowRecord = true;
             cachedRowRecord = rowRecordCandidate;
             currentRowIndex = rowRecordList.size() - 1;
@@ -479,7 +479,7 @@ public class InputLayer {
       int[] columnIndexes) {
     List<Field> fields = rowRecordCandidate.getFields();
     for (int columnIndex : columnIndexes) {
-      if (!fields.get(columnIndex).isNull()) {
+      if (fields.get(columnIndex) != null) {
         return true;
       }
     }

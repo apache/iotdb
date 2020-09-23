@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.udf.core.access;
 
 import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -75,7 +76,8 @@ public class RowImpl implements Row {
 
   @Override
   public boolean isNull(int index) {
-    return rowRecord.getFields().get(columnIndexes[index]).isNull();
+    Field field = rowRecord.getFields().get(columnIndexes[index]);
+    return field == null || field.isNull();
   }
 
   public Row setRowRecord(RowRecord rowRecord) {

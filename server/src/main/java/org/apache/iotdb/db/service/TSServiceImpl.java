@@ -920,7 +920,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSQueryDataSet fillRpcReturnData(
       int fetchSize, QueryDataSet queryDataSet, String userName)
-      throws TException, AuthException, IOException, InterruptedException {
+      throws TException, AuthException, IOException, InterruptedException, QueryProcessException {
     WatermarkEncoder encoder = getWatermarkEncoder(userName);
     return queryDataSet instanceof DirectAlignByTimeDataSet
         ? ((DirectAlignByTimeDataSet) queryDataSet).fillBuffer(fetchSize, encoder)
@@ -929,7 +929,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSQueryNonAlignDataSet fillRpcNonAlignReturnData(
       int fetchSize, QueryDataSet queryDataSet, String userName)
-      throws TException, AuthException, InterruptedException, IOException {
+      throws TException, AuthException, InterruptedException, IOException, QueryProcessException {
     WatermarkEncoder encoder = getWatermarkEncoder(userName);
     return ((DirectNonAlignDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
   }

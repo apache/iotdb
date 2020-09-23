@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.query.udf.api;
 
+import java.util.List;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class UDTF implements UDF {
 
+  protected List<TSDataType> dataTypes;
   protected PointCollector collector;
 
   public abstract void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
@@ -38,11 +41,11 @@ public abstract class UDTF implements UDF {
   public void transform(RowWindow rowWindow) throws Exception {
   }
 
-  public final void setCollector(PointCollector collector) {
-    this.collector = collector;
+  public void setDataTypes(List<TSDataType> dataTypes) {
+    this.dataTypes = dataTypes;
   }
 
-  public final PointCollector getCollector() {
-    return collector;
+  public final void setCollector(PointCollector collector) {
+    this.collector = collector;
   }
 }

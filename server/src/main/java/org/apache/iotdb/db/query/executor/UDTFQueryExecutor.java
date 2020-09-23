@@ -46,7 +46,7 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
 
   public QueryDataSet executeWithoutValueFilterAlignByTime(QueryContext context,
       RawDataQueryPlan queryPlan)
-      throws StorageEngineException, QueryProcessException, IOException {
+      throws StorageEngineException, QueryProcessException, IOException, InterruptedException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context, queryPlan);
     return new UDTFAlignByTimeDataSet(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
         readersOfSelectedSeries);
@@ -65,7 +65,8 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
   }
 
   public QueryDataSet executeWithoutValueFilterNonAlign(QueryContext context,
-      RawDataQueryPlan queryPlan) throws QueryProcessException, StorageEngineException {
+      RawDataQueryPlan queryPlan)
+      throws QueryProcessException, StorageEngineException, IOException, InterruptedException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context, queryPlan);
     return new UDTFNonAlignDataSet(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes,
         readersOfSelectedSeries);

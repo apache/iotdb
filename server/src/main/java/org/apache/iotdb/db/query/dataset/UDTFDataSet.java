@@ -31,6 +31,7 @@ import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.input.InputLayer;
 import org.apache.iotdb.db.query.udf.core.input.InputLayerWithValueFilter;
 import org.apache.iotdb.db.query.udf.core.input.InputLayerWithoutValueFilter;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.RawQueryPointTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
@@ -46,7 +47,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
   protected final UDTFPlan udtfPlan;
   protected final InputLayer inputLayer;
 
-  protected Transformer[] transformers;
+  protected LayerPointReader[] transformers;
 
   // execute with value filters
   public UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,

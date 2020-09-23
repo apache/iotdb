@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 
 public interface AccessStrategy {
 
-  public enum AccessStrategyType {
+  enum AccessStrategyType {
 
     ONE_BY_ONE,
     SLIDING_TIME_WINDOW,

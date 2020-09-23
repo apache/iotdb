@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 
 public interface DirectNonAlignDataSet {
 
   TSQueryNonAlignDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
-      throws InterruptedException, IOException;
+      throws InterruptedException, IOException, QueryProcessException;
 }

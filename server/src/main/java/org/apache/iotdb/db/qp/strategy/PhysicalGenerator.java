@@ -734,33 +734,35 @@ public class PhysicalGenerator {
             queryPlan.getAggregations().get(originalIndex) + "(" + columnForReader + ")";
       }
 
+      boolean isUdf = queryPlan instanceof UDTFPlan && paths.get(originalIndex) == null;
+
       if (!columnForReaderSet.contains(columnForReader)) {
-        TSDataType seriesType = dataTypes.get(originalIndex);
         rawDataQueryPlan.addDeduplicatedPaths(originalPath);
-        rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
+        rawDataQueryPlan.addDeduplicatedDataTypes(isUdf
+            ? IoTDB.metaManager.getSeriesType(originalPath.getFullPath())
+            : dataTypes.get(originalIndex));
         pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
         if (queryPlan instanceof AggregationPlan) {
           ((AggregationPlan) queryPlan)
               .addDeduplicatedAggregations(queryPlan.getAggregations().get(originalIndex));
         }
         columnForReaderSet.add(columnForReader);
+      }
 
-        boolean isUdf = queryPlan instanceof UDTFPlan && paths.get(originalIndex) == null;
-        String columnForDisplay = isUdf
-            ? ((UDTFPlan) queryPlan).getExecutorByOriginalOutputColumnIndex(originalIndex)
-            .getContext().getColumnName()
-            : columnForReader;
-        if (!columnForDisplaySet.contains(columnForDisplay)) {
-          queryPlan.addPathToIndex(columnForDisplay, queryPlan.getPathToIndex().size());
-          if (queryPlan instanceof UDTFPlan) {
-            if (isUdf) {
-              ((UDTFPlan) queryPlan).addUdfOutputColumn(columnForDisplay);
-            } else {
-              ((UDTFPlan) queryPlan).addRawQueryOutputColumn(columnForDisplay);
-            }
+      String columnForDisplay = isUdf
+          ? ((UDTFPlan) queryPlan).getExecutorByOriginalOutputColumnIndex(originalIndex)
+          .getContext().getColumnName()
+          : columnForReader;
+      if (!columnForDisplaySet.contains(columnForDisplay)) {
+        queryPlan.addPathToIndex(columnForDisplay, queryPlan.getPathToIndex().size());
+        if (queryPlan instanceof UDTFPlan) {
+          if (isUdf) {
+            ((UDTFPlan) queryPlan).addUdfOutputColumn(columnForDisplay);
+          } else {
+            ((UDTFPlan) queryPlan).addRawQueryOutputColumn(columnForDisplay);
           }
-          columnForDisplaySet.add(columnForDisplay);
         }
+        columnForDisplaySet.add(columnForDisplay);
       }
     }
 

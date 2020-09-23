@@ -75,7 +75,7 @@ public class SerializableRowRecordList implements SerializableList {
     return size;
   }
 
-  static SerializableRowRecordList newSerializableRowRecordList(TSDataType[] dataTypes,
+  public static SerializableRowRecordList newSerializableRowRecordList(TSDataType[] dataTypes,
       long queryId, String dataId, int index) {
     SerializationRecorder recorder = new SerializationRecorder(queryId, dataId, index);
     return new SerializableRowRecordList(dataTypes, recorder);
