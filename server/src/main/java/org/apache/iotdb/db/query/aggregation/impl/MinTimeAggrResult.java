@@ -29,7 +29,6 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.DescBatchData;
 
 public class MinTimeAggrResult extends AggregateResult {
 
@@ -40,81 +39,65 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return hasCandidateResult ? getLongValue() : null;
+    return hasResult() ? getLongValue() : null;
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
-    if (hasFinalResult()) {
+  public void updateResultFromStatistics(Statistics statistics) {
+    if (hasResult()) {
       return;
     }
-    long minTimestamp = statistics.getStartTime();
-    updateMinTimeResult(minTimestamp);
-    if (!ascending) {
-      hasFinalResult = false;
-    }
+    long time = statistics.getStartTime();
+    setValue(time);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) {
+  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
     updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    if (hasFinalResult()) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
+      throws IOException {
+    if (hasResult()) {
       return;
     }
-    if (dataInThisPage instanceof DescBatchData || dataInThisPage.isFromDescMergeReader()) {
-      while (dataInThisPage.hasCurrent()
-          && dataInThisPage.currentTime() < maxBound
-          && dataInThisPage.currentTime() >= minBound) {
-        updateMinTimeResult(dataInThisPage.currentTime());
-        dataInThisPage.next();
-      }
-      hasFinalResult = false;
-    } else {
-      if (dataInThisPage.hasCurrent()
-          && dataInThisPage.currentTime() < maxBound
-          && dataInThisPage.currentTime() >= minBound) {
-        updateMinTimeResult(dataInThisPage.currentTime());
-      }
+    if (dataInThisPage.hasCurrent()
+        && dataInThisPage.currentTime() < maxBound
+        && dataInThisPage.currentTime() >= minBound) {
+      setLongValue(dataInThisPage.currentTime());
     }
   }
 
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (length == 0) {
+    if (hasResult()) {
       return;
     }
-    long time = -1;
-    Object value = null;
-    int cnt = 0;
-    while (value == null && cnt < length) {
-      if (dataReader instanceof DescSeriesReaderByTimestamp) {
-        time = timestamps[length - cnt - 1];
-      } else {
-        time = timestamps[cnt];
+    for (int i = 0; i < length; i++) {
+      Object value = dataReader.getValueInTimestamp(timestamps[i]);
+      if (value != null) {
+        setLongValue(timestamps[i]);
+        return;
       }
-      value = dataReader.getValueInTimestamp(time);
-      cnt++;
-    }
-    if (value != null) {
-      updateMinTimeResult(time);
     }
   }
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return hasFinalResult();
+    return hasResult();
   }
 
   @Override
   public void merge(AggregateResult another) {
     MinTimeAggrResult anotherMinTime = (MinTimeAggrResult) another;
-    if (anotherMinTime.getResult() != null) {
-      updateMinTimeResult(anotherMinTime.getResult());
+    if (!hasResult() && anotherMinTime.hasResult()) {
+      setLongValue(anotherMinTime.getResult());
+      return;
+    }
+    if (hasResult() && anotherMinTime.hasResult() && getResult() > anotherMinTime.getResult()) {
+      setLongValue(anotherMinTime.getResult());
     }
   }
 
@@ -126,10 +109,4 @@ public class MinTimeAggrResult extends AggregateResult {
   protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
   }
 
-  private void updateMinTimeResult(long value) {
-    if (!hasCandidateResult || value <= getLongValue()) {
-      setLongValue(value);
-      hasCandidateResult = true;
-    }
-  }
 }

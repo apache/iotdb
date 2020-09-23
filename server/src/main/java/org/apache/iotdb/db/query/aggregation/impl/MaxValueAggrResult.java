@@ -38,11 +38,11 @@ public class MaxValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasFinalResult() ? getValue() : null;
+    return hasResult() ? getValue() : null;
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
+  public void updateResultFromStatistics(Statistics statistics) {
     Comparable<Object> maxVal = (Comparable<Object>) statistics.getMaxValue();
     updateResult(maxVal);
   }
@@ -108,7 +108,7 @@ public class MaxValueAggrResult extends AggregateResult {
     if (maxVal == null) {
       return;
     }
-    if (!hasFinalResult() || maxVal.compareTo(getValue()) > 0) {
+    if (!hasResult() || maxVal.compareTo(getValue()) > 0) {
       setValue(maxVal);
     }
   }

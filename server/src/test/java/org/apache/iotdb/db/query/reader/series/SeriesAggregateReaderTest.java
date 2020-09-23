@@ -78,12 +78,12 @@ public class SeriesAggregateReaderTest {
           TSDataType.INT32,
           new QueryContext(), queryDataSource, null, null, null, true);
       AggregateResult aggregateResult = AggregateResultFactory
-          .getAggrResultByName("count", TSDataType.INT32);
+          .getAggrResultByName("count", TSDataType.INT32, true);
       int loopTime = 0;
       while (seriesReader.hasNextFile()) {
         if (seriesReader.canUseCurrentFileStatistics()) {
           Statistics fileStatistics = seriesReader.currentFileStatistics();
-          aggregateResult.updateResultFromStatistics(fileStatistics, true);
+          aggregateResult.updateResultFromStatistics(fileStatistics);
           seriesReader.skipCurrentFile();
           continue;
         }
@@ -91,14 +91,14 @@ public class SeriesAggregateReaderTest {
         while (seriesReader.hasNextChunk()) {
           if (seriesReader.canUseCurrentChunkStatistics()) {
             Statistics chunkStatistics = seriesReader.currentChunkStatistics();
-            aggregateResult.updateResultFromStatistics(chunkStatistics, true);
+            aggregateResult.updateResultFromStatistics(chunkStatistics);
             seriesReader.skipCurrentChunk();
             continue;
           }
           while (seriesReader.hasNextPage()) {
             if (seriesReader.canUseCurrentPageStatistics()) {
               Statistics pageStatistic = seriesReader.currentPageStatistics();
-              aggregateResult.updateResultFromStatistics(pageStatistic, true);
+              aggregateResult.updateResultFromStatistics(pageStatistic);
               seriesReader.skipCurrentPage();
               continue;
             }

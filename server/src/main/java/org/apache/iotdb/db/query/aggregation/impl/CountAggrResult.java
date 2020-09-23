@@ -43,7 +43,7 @@ public class CountAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
+  public void updateResultFromStatistics(Statistics statistics) {
     long preValue = getLongValue();
     preValue += statistics.getCount();
     setLongValue(preValue);

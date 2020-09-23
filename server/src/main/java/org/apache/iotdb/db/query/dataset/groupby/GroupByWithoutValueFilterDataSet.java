@@ -97,7 +97,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       resultIndexes.get(path).add(i);
       AggregateResult aggrResult = AggregateResultFactory
           .getAggrResultByName(groupByTimePlan.getDeduplicatedAggregations().get(i),
-              dataTypes.get(i));
+              dataTypes.get(i), ascending);
       pathExecutors.get(path).addAggregateResult(aggrResult);
     }
   }

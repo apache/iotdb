@@ -44,10 +44,7 @@ public abstract class AggregateResult {
   private double doubleValue;
   private Binary binaryValue;
 
-  protected boolean hasFinalResult;
-  protected boolean hasCandidateResult;
-  protected boolean needAscReader = true;
-
+  protected boolean hasResult;
 
   /**
    * construct.
@@ -57,8 +54,7 @@ public abstract class AggregateResult {
   public AggregateResult(TSDataType resultDataType, AggregationType aggregationType) {
     this.aggregationType = aggregationType;
     this.resultDataType = resultDataType;
-    this.hasFinalResult = false;
-    this.hasCandidateResult = false;
+    this.hasResult = false;
   }
 
   public abstract Object getResult();
@@ -68,7 +64,7 @@ public abstract class AggregateResult {
    *
    * @param statistics chunkStatistics or pageStatistics
    */
-  public abstract void updateResultFromStatistics(Statistics statistics, boolean ascending)
+  public abstract void updateResultFromStatistics(Statistics statistics)
       throws QueryProcessException;
 
   /**
@@ -113,11 +109,11 @@ public abstract class AggregateResult {
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {
     AggregationType aggregationType = AggregationType.deserialize(buffer);
     TSDataType dataType = TSDataType.deserialize(buffer.getShort());
+    boolean ascending = ReadWriteIOUtils.readBool(buffer);
     AggregateResult aggregateResult = AggregateResultFactory
-        .getAggrResultByType(aggregationType, dataType);
+        .getAggrResultByType(aggregationType, dataType, ascending);
     boolean hasResult = ReadWriteIOUtils.readBool(buffer);
     if (hasResult) {
-      aggregateResult.hasCandidateResult = true;
       switch (dataType) {
         case BOOLEAN:
           aggregateResult.setBooleanValue(ReadWriteIOUtils.readBool(buffer));
@@ -150,9 +146,9 @@ public abstract class AggregateResult {
   public void serializeTo(OutputStream outputStream) throws IOException {
     aggregationType.serializeTo(outputStream);
     ReadWriteIOUtils.write(resultDataType, outputStream);
-    boolean hasResult = hasFinalResult() || hasCandidateResult;
-    ReadWriteIOUtils.write(hasResult, outputStream);
-    if (hasResult) {
+    ReadWriteIOUtils.write(needAscReader(), outputStream);
+    ReadWriteIOUtils.write(hasResult(), outputStream);
+    if (hasResult()) {
       switch (resultDataType) {
         case BOOLEAN:
           ReadWriteIOUtils.write(booleanValue, outputStream);
@@ -182,8 +178,7 @@ public abstract class AggregateResult {
   protected abstract void serializeSpecificFields(OutputStream outputStream) throws IOException;
 
   public void reset() {
-    hasFinalResult = false;
-    hasCandidateResult = false;
+    hasResult = false;
     booleanValue = false;
     doubleValue = 0;
     floatValue = 0;
@@ -217,7 +212,7 @@ public abstract class AggregateResult {
    * @param v object value
    */
   protected void setValue(Object v) {
-    hasFinalResult = true;
+    hasResult = true;
     switch (resultDataType) {
       case BOOLEAN:
         booleanValue = (Boolean) v;
@@ -251,7 +246,7 @@ public abstract class AggregateResult {
   }
 
   protected void setBooleanValue(boolean booleanValue) {
-    this.hasFinalResult = true;
+    this.hasResult = true;
     this.booleanValue = booleanValue;
   }
 
@@ -260,7 +255,7 @@ public abstract class AggregateResult {
   }
 
   protected void setIntValue(int intValue) {
-    this.hasFinalResult = true;
+    this.hasResult = true;
     this.intValue = intValue;
   }
 
@@ -269,7 +264,7 @@ public abstract class AggregateResult {
   }
 
   protected void setLongValue(long longValue) {
-    this.hasFinalResult = true;
+    this.hasResult = true;
     this.longValue = longValue;
   }
 
@@ -278,7 +273,7 @@ public abstract class AggregateResult {
   }
 
   protected void setFloatValue(float floatValue) {
-    this.hasFinalResult = true;
+    this.hasResult = true;
     this.floatValue = floatValue;
   }
 
@@ -287,7 +282,7 @@ public abstract class AggregateResult {
   }
 
   protected void setDoubleValue(double doubleValue) {
-    this.hasFinalResult = true;
+    this.hasResult = true;
     this.doubleValue = doubleValue;
   }
 
@@ -296,16 +291,12 @@ public abstract class AggregateResult {
   }
 
   protected void setBinaryValue(Binary binaryValue) {
-    this.hasFinalResult = true;
+    this.hasResult = true;
     this.binaryValue = binaryValue;
   }
 
-  protected boolean hasFinalResult() {
-    return hasFinalResult;
-  }
-
-  public boolean isNeedAscReader() {
-    return needAscReader;
+  protected boolean hasResult() {
+    return hasResult;
   }
 
   @Override
@@ -315,5 +306,9 @@ public abstract class AggregateResult {
 
   public AggregationType getAggregationType() {
     return aggregationType;
+  }
+
+  public boolean needAscReader() {
+    return true;
   }
 }

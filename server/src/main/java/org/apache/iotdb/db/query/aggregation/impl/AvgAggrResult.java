@@ -46,7 +46,7 @@ public class AvgAggrResult extends AggregateResult {
   }
 
   @Override
-  protected boolean hasFinalResult() {
+  protected boolean hasResult() {
     return cnt > 0;
   }
 
@@ -55,11 +55,11 @@ public class AvgAggrResult extends AggregateResult {
     if (cnt > 0) {
       setDoubleValue(avg);
     }
-    return hasFinalResult() ? getDoubleValue() : null;
+    return hasResult() ? getDoubleValue() : null;
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
+  public void updateResultFromStatistics(Statistics statistics) {
     long preCnt = cnt;
     if (statistics.getType().equals(TSDataType.BOOLEAN)) {
       throw new StatisticsClassException("Boolean statistics does not support: avg");

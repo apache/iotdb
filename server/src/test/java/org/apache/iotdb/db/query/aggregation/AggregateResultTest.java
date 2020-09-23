@@ -36,9 +36,9 @@ public class AggregateResultTest {
   @Test
   public void avgAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult avgAggrResult1 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.AVG, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.AVG, TSDataType.DOUBLE,true);
     AggregateResult avgAggrResult2 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.AVG, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.AVG, TSDataType.DOUBLE,true);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
@@ -46,8 +46,8 @@ public class AggregateResultTest {
     statistics1.update(2L,1d);
     statistics2.update(1L,2d);
 
-    avgAggrResult1.updateResultFromStatistics(statistics1, true);
-    avgAggrResult2.updateResultFromStatistics(statistics2, true);
+    avgAggrResult1.updateResultFromStatistics(statistics1);
+    avgAggrResult2.updateResultFromStatistics(statistics2);
     avgAggrResult1.merge(avgAggrResult2);
     Assert.assertEquals(1.333d, (double)avgAggrResult1.getResult(), 0.01);
     Assert.assertEquals(3, ((AvgAggrResult) avgAggrResult1).getCnt());
@@ -62,17 +62,17 @@ public class AggregateResultTest {
   @Test
   public void maxValueAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult maxValueAggrResult1 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.MAX_VALUE, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.MAX_VALUE, TSDataType.DOUBLE,true);
     AggregateResult maxValueAggrResult2 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.MAX_VALUE, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.MAX_VALUE, TSDataType.DOUBLE,true);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
     statistics1.update(1L, 1d);
     statistics2.update(1L,2d);
 
-    maxValueAggrResult1.updateResultFromStatistics(statistics1, true);
-    maxValueAggrResult2.updateResultFromStatistics(statistics2, true);
+    maxValueAggrResult1.updateResultFromStatistics(statistics1);
+    maxValueAggrResult2.updateResultFromStatistics(statistics2);
     maxValueAggrResult1.merge(maxValueAggrResult2);
 
     Assert.assertEquals(2d, (double)maxValueAggrResult1.getResult(), 0.01);
@@ -87,17 +87,17 @@ public class AggregateResultTest {
   @Test
   public void maxTimeAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult maxTimeAggrResult1 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.MAX_TIME, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.MAX_TIME, TSDataType.DOUBLE,true);
     AggregateResult maxTimeAggrResult2 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.MAX_TIME, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.MAX_TIME, TSDataType.DOUBLE,true);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
     statistics1.update(1L, 1d);
     statistics2.update(2L,1d);
 
-    maxTimeAggrResult1.updateResultFromStatistics(statistics1, true);
-    maxTimeAggrResult2.updateResultFromStatistics(statistics2, true);
+    maxTimeAggrResult1.updateResultFromStatistics(statistics1);
+    maxTimeAggrResult2.updateResultFromStatistics(statistics2);
     maxTimeAggrResult1.merge(maxTimeAggrResult2);
 
     Assert.assertEquals(2L, (long)maxTimeAggrResult1.getResult());
@@ -112,17 +112,17 @@ public class AggregateResultTest {
   @Test
   public void minValueAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult minValueAggrResult1 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.MIN_VALUE, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.MIN_VALUE, TSDataType.DOUBLE,true);
     AggregateResult minValueAggrResult2 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.MIN_VALUE, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.MIN_VALUE, TSDataType.DOUBLE,true);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
     statistics1.update(1L, 1d);
     statistics2.update(1L,2d);
 
-    minValueAggrResult1.updateResultFromStatistics(statistics1, true);
-    minValueAggrResult2.updateResultFromStatistics(statistics2, true);
+    minValueAggrResult1.updateResultFromStatistics(statistics1);
+    minValueAggrResult2.updateResultFromStatistics(statistics2);
     minValueAggrResult1.merge(minValueAggrResult2);
 
     Assert.assertEquals(1d, (double)minValueAggrResult1.getResult(), 0.01);
@@ -137,19 +137,19 @@ public class AggregateResultTest {
   @Test
   public void minTimeAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult finalResult = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.MIN_TIME, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.MIN_TIME, TSDataType.DOUBLE,true);
     AggregateResult minTimeAggrResult1 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.MIN_TIME, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.MIN_TIME, TSDataType.DOUBLE,true);
     AggregateResult minTimeAggrResult2 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.MIN_TIME, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.MIN_TIME, TSDataType.DOUBLE,true);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
     statistics1.update(10L, 1d);
     statistics2.update(2L,1d);
 
-    minTimeAggrResult1.updateResultFromStatistics(statistics1, true);
-    minTimeAggrResult2.updateResultFromStatistics(statistics2, true);
+    minTimeAggrResult1.updateResultFromStatistics(statistics1);
+    minTimeAggrResult2.updateResultFromStatistics(statistics2);
     finalResult.merge(minTimeAggrResult1);
     finalResult.merge(minTimeAggrResult2);
 
@@ -165,17 +165,17 @@ public class AggregateResultTest {
   @Test
   public void countAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult countAggrResult1 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.COUNT, TSDataType.INT64);
+        .getAggrResultByName(SQLConstant.COUNT, TSDataType.INT64,true);
     AggregateResult countAggrResult2 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.COUNT, TSDataType.INT64);
+        .getAggrResultByName(SQLConstant.COUNT, TSDataType.INT64,true);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.INT64);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.INT64);
     statistics1.update(1L, 1L);
     statistics2.update(1L, 1L);
 
-    countAggrResult1.updateResultFromStatistics(statistics1, true);
-    countAggrResult2.updateResultFromStatistics(statistics2, true);
+    countAggrResult1.updateResultFromStatistics(statistics1);
+    countAggrResult2.updateResultFromStatistics(statistics2);
     countAggrResult1.merge(countAggrResult2);
 
     Assert.assertEquals(2L, (long)countAggrResult1.getResult());
@@ -190,17 +190,17 @@ public class AggregateResultTest {
   @Test
   public void sumAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult sumAggrResult1 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.SUM, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.SUM, TSDataType.DOUBLE,true);
     AggregateResult sumAggrResult2 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.SUM, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.SUM, TSDataType.DOUBLE,true);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
     statistics1.update(1L, 1d);
     statistics2.update(1L,2d);
 
-    sumAggrResult1.updateResultFromStatistics(statistics1, true);
-    sumAggrResult2.updateResultFromStatistics(statistics2, true);
+    sumAggrResult1.updateResultFromStatistics(statistics1);
+    sumAggrResult2.updateResultFromStatistics(statistics2);
     sumAggrResult1.merge(sumAggrResult2);
 
     Assert.assertEquals(3d, (double)sumAggrResult1.getResult(), 0.01);
@@ -215,17 +215,17 @@ public class AggregateResultTest {
   @Test
   public void firstValueAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult firstValueAggrResult1 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.FIRST_VALUE, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.FIRST_VALUE, TSDataType.DOUBLE,true);
     AggregateResult firstValueAggrResult2 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.FIRST_VALUE, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.FIRST_VALUE, TSDataType.DOUBLE,true);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
     statistics1.update(1L, 1d);
     statistics2.update(2L,2d);
 
-    firstValueAggrResult1.updateResultFromStatistics(statistics1, true);
-    firstValueAggrResult2.updateResultFromStatistics(statistics2, true);
+    firstValueAggrResult1.updateResultFromStatistics(statistics1);
+    firstValueAggrResult2.updateResultFromStatistics(statistics2);
     firstValueAggrResult1.merge(firstValueAggrResult2);
 
     Assert.assertEquals(1d, (double)firstValueAggrResult1.getResult(), 0.01);
@@ -240,17 +240,17 @@ public class AggregateResultTest {
   @Test
   public void lastValueAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult lastValueAggrResult1 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.LAST_VALUE, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.LAST_VALUE, TSDataType.DOUBLE,true);
     AggregateResult lastValueAggrResult2 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.LAST_VALUE, TSDataType.DOUBLE);
+        .getAggrResultByName(SQLConstant.LAST_VALUE, TSDataType.DOUBLE,true);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
     statistics1.update(1L, 1d);
     statistics2.update(2L,2d);
 
-    lastValueAggrResult1.updateResultFromStatistics(statistics1, true);
-    lastValueAggrResult2.updateResultFromStatistics(statistics2, true);
+    lastValueAggrResult1.updateResultFromStatistics(statistics1);
+    lastValueAggrResult2.updateResultFromStatistics(statistics2);
     lastValueAggrResult1.merge(lastValueAggrResult2);
 
     Assert.assertEquals(2d, (double)lastValueAggrResult1.getResult(), 0.01);

@@ -38,11 +38,11 @@ public class MinValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasFinalResult() ? getValue() : null;
+    return hasResult() ? getValue() : null;
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
+  public void updateResultFromStatistics(Statistics statistics) {
     Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
     updateResult(minVal);
   }
@@ -104,7 +104,7 @@ public class MinValueAggrResult extends AggregateResult {
     if (minVal == null) {
       return;
     }
-    if (!hasFinalResult() || minVal.compareTo(getValue()) < 0) {
+    if (!hasResult() || minVal.compareTo(getValue()) < 0) {
       setValue(minVal);
     }
   }

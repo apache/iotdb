@@ -28,75 +28,61 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.DescBatchData;
 
 public class MaxTimeAggrResult extends AggregateResult {
 
   public MaxTimeAggrResult() {
     super(TSDataType.INT64, AggregationType.MAX_TIME);
     reset();
-    this.needAscReader = false;
   }
 
   @Override
   public Long getResult() {
-    return hasCandidateResult ? getLongValue() : null;
+    return hasResult() ? getLongValue() : null;
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
-    if (hasFinalResult()) {
-      return;
-    }
-    updateMaxTimeResult(statistics.getEndTime());
-    if (ascending) {
-      hasFinalResult = false;
-    }
+  public void updateResultFromStatistics(Statistics statistics) {
+    long maxTimestamp = statistics.getEndTime();
+    updateMaxTimeResult(maxTimestamp);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) {
+  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
     updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    if (hasFinalResult()) {
-      return;
-    }
-    if (dataInThisPage instanceof DescBatchData || dataInThisPage.isFromDescMergeReader()) {
-      if (dataInThisPage.hasCurrent()
-          && dataInThisPage.currentTime() < maxBound
-          && dataInThisPage.currentTime() >= minBound) {
-        updateMaxTimeResult(dataInThisPage.currentTime());
-      }
-    } else {
-      while (dataInThisPage.hasCurrent()
-          && dataInThisPage.currentTime() < maxBound
-          && dataInThisPage.currentTime() >= minBound) {
-        updateMaxTimeResult(dataInThisPage.currentTime());
-        dataInThisPage.next();
-      }
-      hasFinalResult = false;
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
+      throws IOException {
+    while (dataInThisPage.hasCurrent()
+        && dataInThisPage.currentTime() < maxBound
+        && dataInThisPage.currentTime() >= minBound) {
+      updateMaxTimeResult(dataInThisPage.currentTime());
+      dataInThisPage.next();
     }
   }
 
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    long time;
+    long time = -1;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
         time = timestamps[i];
-        updateMaxTimeResult(time);
       }
     }
+
+    if (time == -1) {
+      return;
+    }
+    updateMaxTimeResult(time);
   }
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return hasFinalResult();
+    return false;
   }
 
   @Override
@@ -117,10 +103,9 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   }
 
-  private void updateMaxTimeResult(long value) {
-    if (!hasCandidateResult || value >= getLongValue()) {
+  protected void updateMaxTimeResult(long value) {
+    if (!hasResult() || value >= getLongValue()) {
       setLongValue(value);
-      hasCandidateResult = true;
     }
   }
 }
