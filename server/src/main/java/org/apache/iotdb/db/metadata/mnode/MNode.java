@@ -62,7 +62,7 @@ public class MNode implements Serializable {
   transient Map<String, MNode> children = null;
   private transient Map<String, MNode> aliasChildren = null;
 
-  protected transient ReadWriteLock lock = new ReentrantReadWriteLock();
+  protected transient ReadWriteLock lock = null;
 
   /**
    * Constructor of MNode.
@@ -86,6 +86,9 @@ public class MNode implements Serializable {
   public void addChild(String name, MNode child) {
     if (children == null) {
       children = new LinkedHashMap<>();
+      if (lock == null) {
+        lock = new ReentrantReadWriteLock();
+      }
     }
     children.put(name, child);
   }
@@ -96,7 +99,15 @@ public class MNode implements Serializable {
   public void deleteChild(String name) throws DeleteFailedException {
     if (children != null && children.containsKey(name)) {
       // acquire the write lock of its child node.
-      Lock writeLock = (children.get(name)).lock.writeLock();
+      Lock writeLock;
+      MNode node = children.get(name);
+      // if its child node is leaf node, we need to acquire the write lock of the current device node
+      if (node.children == null) {
+        writeLock = lock.writeLock();
+      } else {
+        // otherwise, we only need to acquire the write lock of its child node.
+        writeLock = node.lock.writeLock();
+      }
       if (writeLock.tryLock()) {
         children.remove(name);
         writeLock.unlock();
@@ -226,6 +237,9 @@ public class MNode implements Serializable {
 
   public void setChildren(Map<String, MNode> children) {
     this.children = children;
+    if (children != null && lock == null) {
+      lock = new ReentrantReadWriteLock();
+    }
   }
 
   public void serializeTo(BufferedWriter bw) throws IOException {
@@ -249,6 +263,9 @@ public class MNode implements Serializable {
   public void readLock() {
     MNode node = this;
     while (node != null) {
+      if (node.lock == null) {
+        node.lock = new ReentrantReadWriteLock();
+      }
       node.lock.readLock().lock();
       node = node.parent;
     }

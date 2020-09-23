@@ -52,6 +52,7 @@ import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -1960,15 +1961,9 @@ public class MManager {
                 measurementList[i]));
           }
 
-          // create it
-
           TSDataType dataType = getTypeInLoc(plan, i);
-          createTimeseries(
-              deviceId.concatNode(measurementList[i]),
-              dataType,
-              getDefaultEncoding(dataType),
-              TSFileDescriptor.getInstance().getConfig().getCompressor(),
-              Collections.emptyMap());
+          // create it, may concurrent created by multiple thread
+          internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
         }
 
         MeasurementMNode measurementNode = (MeasurementMNode) getChild(deviceNode,
@@ -2020,6 +2015,26 @@ public class MManager {
     plan.setDeviceMNode(deviceNode);
 
     return schemas;
+  }
+
+
+  /**
+   * create timeseries with ignore PathAlreadyExistException
+   */
+  private void internalCreateTimeseries(PartialPath path, TSDataType dataType) throws MetadataException {
+    try {
+      createTimeseries(
+          path,
+          dataType,
+          getDefaultEncoding(dataType),
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap());
+    } catch (PathAlreadyExistException e) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("Ignore PathAlreadyExistException when Concurrent inserting"
+            + " a non-exist time series {}", path);
+      }
+    }
   }
 
   /**
