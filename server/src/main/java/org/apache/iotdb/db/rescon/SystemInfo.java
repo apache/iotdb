@@ -227,7 +227,7 @@ public class SystemInfo {
       tsps.poll();
       if (tsps.isEmpty()) {
         if (getTotalMemCost() - memCost > config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
-          throw new Exception("");
+          throw new Exception("Cannot release memory by flushing");
         }
         logger.warn("The allocated memory for write is too small, please enlarge it.");
         return processors;
