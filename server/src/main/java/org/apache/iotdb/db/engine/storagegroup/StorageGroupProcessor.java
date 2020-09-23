@@ -791,18 +791,18 @@ public class StorageGroupProcessor {
   }
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime) {
-    MeasurementMNode[] mNodes = plan.getMNodes();
+    MeasurementMNode[] mNodes = plan.getMeasurementMNodes();
     for (int i = 0; i < mNodes.length; i++) {
       if (plan.getColumns()[i] == null) {
         continue;
       }
       // Update cached last value with high priority
       if (mNodes[i] != null) {
-        // in stand alone version, the seriesPath is not needed, just use mNodes[i] to update last cache
+        // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to update last cache
         IoTDB.metaManager.updateLastCache(null,
             plan.composeLastTimeValuePair(i), true, latestFlushedTime, mNodes[i]);
       } else {
-        // mNodes[i] is null, use the path to update remote cache
+        // measurementMNodes[i] is null, use the path to update remote cache
         IoTDB.metaManager
             .updateLastCache(plan.getDeviceId().concatNode(plan.getMeasurements()[i]),
                 plan.composeLastTimeValuePair(i), true, latestFlushedTime, null);
@@ -843,14 +843,14 @@ public class StorageGroupProcessor {
   }
 
   private void tryToUpdateInsertLastCache(InsertRowPlan plan, Long latestFlushedTime) {
-    MeasurementMNode[] mNodes = plan.getMNodes();
+    MeasurementMNode[] mNodes = plan.getMeasurementMNodes();
     for (int i = 0; i < mNodes.length; i++) {
       if (plan.getValues()[i] == null) {
         continue;
       }
       // Update cached last value with high priority
       if (mNodes[i] != null) {
-        // in stand alone version, the seriesPath is not needed, just use mNodes[i] to update last cache
+        // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to update last cache
         IoTDB.metaManager.updateLastCache(null,
             plan.composeTimeValuePair(i), true, latestFlushedTime, mNodes[i]);
       } else {

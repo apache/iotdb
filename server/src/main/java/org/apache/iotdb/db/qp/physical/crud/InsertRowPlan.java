@@ -102,12 +102,12 @@ public class InsertRowPlan extends InsertPlan {
     this.deviceId = new PartialPath(tsRecord.deviceId);
     this.time = tsRecord.time;
     this.measurements = new String[tsRecord.dataPointList.size()];
-    this.mNodes = new MeasurementMNode[tsRecord.dataPointList.size()];
+    this.measurementMNodes = new MeasurementMNode[tsRecord.dataPointList.size()];
     this.dataTypes = new TSDataType[tsRecord.dataPointList.size()];
     this.values = new Object[tsRecord.dataPointList.size()];
     for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
       measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
-      mNodes[i] = new MeasurementMNode(null, measurements[i],
+      measurementMNodes[i] = new MeasurementMNode(null, measurements[i],
           new MeasurementSchema(measurements[i], tsRecord.dataPointList.get(i).getType(),
               TSEncoding.PLAIN), null);
       dataTypes[i] = tsRecord.dataPointList.get(i).getType();
@@ -161,7 +161,7 @@ public class InsertRowPlan extends InsertPlan {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setMNodesAndTransferType(MeasurementMNode[] mNodes) throws QueryProcessException {
-    this.mNodes = mNodes;
+    this.measurementMNodes = mNodes;
     if (isNeedInferType) {
       for (int i = 0; i < mNodes.length; i++) {
         if (mNodes[i] == null) {
@@ -432,6 +432,6 @@ public class InsertRowPlan extends InsertPlan {
     }
     Object value = values[measurementIndex];
     return new TimeValuePair(time,
-        TsPrimitiveType.getByType(mNodes[measurementIndex].getSchema().getType(), value));
+        TsPrimitiveType.getByType(measurementMNodes[measurementIndex].getSchema().getType(), value));
   }
 }
