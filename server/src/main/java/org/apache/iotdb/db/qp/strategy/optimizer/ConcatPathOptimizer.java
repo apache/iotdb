@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.*;
-import org.apache.iotdb.db.query.udf.core.UDFContext;
+import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;

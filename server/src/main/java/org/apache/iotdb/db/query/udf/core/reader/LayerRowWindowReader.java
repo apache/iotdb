@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public interface LayerRowWindowReader {
 
-  boolean next() throws Exception;
+  boolean next() throws IOException;
 
   void readyForNext() throws IOException;
 

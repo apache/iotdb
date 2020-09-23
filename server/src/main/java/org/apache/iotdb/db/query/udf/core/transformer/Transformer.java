@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.core.transformer;
 
+import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -40,14 +42,14 @@ public abstract class Transformer implements LayerPointReader {
   }
 
   @Override
-  public final boolean next() throws Exception {
+  public final boolean next() throws QueryProcessException, IOException {
     if (!hasCachedValue) {
       hasCachedValue = cacheValue();
     }
     return hasCachedValue;
   }
 
-  protected abstract boolean cacheValue() throws Exception;
+  protected abstract boolean cacheValue() throws QueryProcessException, IOException;
 
   @Override
   public final void readyForNext() {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.core.executor;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
@@ -30,31 +31,52 @@ import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 
 public class UDTFExecutor {
 
-  protected final UDTFConfigurations configurations;
-  protected final UDTF udtf;
-  protected final ElasticSerializableTVList collector;
+  protected final UDFContext context;
+  protected UDTFConfigurations configurations;
+  protected UDTF udtf;
+  protected ElasticSerializableTVList collector;
 
-  public UDTFExecutor(long queryId, UDFContext context) throws Exception {
+  public UDTFExecutor(UDFContext context) throws QueryProcessException {
+    this.context = context;
     configurations = new UDTFConfigurations();
     udtf = (UDTF) UDFRegistrationService.getInstance().reflect(context);
-    udtf.beforeStart(new UDFParameters(context.getPaths(), context.getDataTypes(),
-        context.getAttributes()), configurations);
+    try {
+      udtf.beforeStart(new UDFParameters(context.getPaths(), context.getDataTypes(),
+          context.getAttributes()), configurations);
+    } catch (Exception e) {
+      throw new QueryProcessException(e.getMessage());
+    }
     configurations.check();
+  }
+
+  public void initCollector(long queryId) throws QueryProcessException {
     collector = new ElasticSerializableTVList(configurations.getOutputDataType(), queryId,
         context.getColumnName(), ElasticSerializableTVList.DEFAULT_MEMORY_USAGE_LIMIT,
         ElasticSerializableTVList.DEFAULT_CACHE_SIZE);
   }
 
-  public void execute(Row row) throws Exception {
-    udtf.transform(row);
+  public void execute(Row row) throws QueryProcessException {
+    try {
+      udtf.transform(row);
+    } catch (Exception e) {
+      throw new QueryProcessException(e.getMessage());
+    }
   }
 
-  public void execute(RowWindow rowWindow) throws Exception {
-    udtf.transform(rowWindow);
+  public void execute(RowWindow rowWindow) throws QueryProcessException {
+    try {
+      udtf.transform(rowWindow);
+    } catch (Exception e) {
+      throw new QueryProcessException(e.getMessage());
+    }
   }
 
   public void beforeDestroy() {
     udtf.beforeDestroy();
+  }
+
+  public UDFContext getContext() {
+    return context;
   }
 
   public UDTFConfigurations getConfigurations() {

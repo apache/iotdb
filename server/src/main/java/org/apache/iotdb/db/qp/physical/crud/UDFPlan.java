@@ -21,11 +21,13 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.core.UDFContext;
+import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 
 public interface UDFPlan {
 
-  void initializeUdfExecutors(List<UDFContext> udfContexts) throws QueryProcessException;
+  void constructUdfExecutors(List<UDFContext> udfContexts) throws QueryProcessException;
+
+  void initializeUdfExecutor(long queryId) throws QueryProcessException;
 
   void finalizeUDFExecutors();
 }

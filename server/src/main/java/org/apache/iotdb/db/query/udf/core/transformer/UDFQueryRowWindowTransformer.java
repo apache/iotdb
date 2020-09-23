@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.core.transformer;
 
+import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.reader.LayerRowWindowReader;
 
@@ -33,7 +35,7 @@ public class UDFQueryRowWindowTransformer extends UDFQueryTransformer {
   }
 
   @Override
-  protected boolean executeUDFOnce() throws Exception {
+  protected boolean executeUDFOnce() throws QueryProcessException, IOException {
     if (layerRowWindowReader.next()) {
       return false;
     }

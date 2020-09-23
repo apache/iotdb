@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.core.transformer;
 
+import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,7 +33,7 @@ public class RawQueryPointTransformer extends Transformer {
     this.layerPointReader = layerPointReader;
   }
 
-  protected boolean cacheValue() throws Exception {
+  protected boolean cacheValue() throws QueryProcessException, IOException {
     if (!layerPointReader.next()) {
       return false;
     }

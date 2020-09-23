@@ -802,10 +802,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(paths.get(i) != null
               ? paths.get(i).getFullPath()
-              : udtfPlan.getExecutor(i).getContext().getColumn());
+              : udtfPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName());
           seriesTypes.add(paths.get(i) != null
               ? udtfPlan.getDataTypes().get(i)
-              : udtfPlan.getExecutor(i).getConfigurations().getOutputDataType());
+              : udtfPlan.getExecutorByOriginalOutputColumnIndex(i).getConfigurations()
+                  .getOutputDataType());
         }
         break;
       default:

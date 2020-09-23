@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.core.transformer;
 
+import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -38,7 +40,7 @@ public abstract class UDFQueryTransformer extends Transformer {
   }
 
   @Override
-  protected boolean cacheValue() throws Exception {
+  protected boolean cacheValue() throws QueryProcessException, IOException {
     while (!cacheValueFromUDFOutput()) {
       if (!executeUDFOnce()) {
         return false;
@@ -47,11 +49,11 @@ public abstract class UDFQueryTransformer extends Transformer {
     return true;
   }
 
-  protected abstract boolean executeUDFOnce() throws Exception;
+  protected abstract boolean executeUDFOnce() throws QueryProcessException, IOException;
 
-  protected final boolean cacheValueFromUDFOutput() throws Exception {
-    boolean cached = false;
-    if (cached = udfOutput.next()) {
+  protected final boolean cacheValueFromUDFOutput() throws QueryProcessException, IOException {
+    boolean hasNext = udfOutput.next();
+    if (hasNext) {
       cachedTime = udfOutput.currentTime();
       switch (udfOutputDataType) {
         case INT32:
@@ -77,7 +79,7 @@ public abstract class UDFQueryTransformer extends Transformer {
       }
       udfOutput.readyForNext();
     }
-    return cached;
+    return hasNext;
   }
 
   @Override

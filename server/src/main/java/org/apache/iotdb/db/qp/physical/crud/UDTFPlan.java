@@ -25,111 +25,86 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.udf.core.UDFContext;
-import org.apache.iotdb.db.query.udf.core.UDTFExecutor;
+import org.apache.iotdb.db.query.udf.core.context.UDFContext;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 
 public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
-  /**
-   * each udf query column has an executor instance
-   * <p>
-   * this.pathToIndex + the column name recorded in UDTFExecutor -> the index of the udf query
-   * output column in UDTFDataSet
-   */
-  protected List<UDTFExecutor> deduplicatedExecutors;
+  protected Map<String, UDTFExecutor> columnName2Executor = new HashMap<>();
+  protected Map<Integer, UDTFExecutor> originalOutputColumnIndex2Executor = new HashMap<>();
 
-  /**
-   * the original output column index (not the output column index in the DataSet) -> the executor
-   * in deduplicatedExecutors
-   * <p>
-   * outputColumnIndex2DeduplicatedExecutorIndexList[original output index] is null when the output
-   * column is for a raw query
-   */
-  protected List<Integer> outputColumnIndex2DeduplicatedExecutorIndexList;
+  protected List<String> datasetOutputColumnIndex2UdfColumnName = new ArrayList<>();
+  protected List<String> datasetOutputColumnIndex2RawQueryColumnName = new ArrayList<>();
 
-  /**
-   * rawQueryReaderIndex2DataSetOutputColumnIndexList is for raw query columns
-   * <p>
-   * the index of a series reader (for a raw query) in UDTFDataSet -> the index of the raw query
-   * output column in UDTFDataSet
-   * <p>
-   * we can not use the full series path name of the reader to get (use this.pathToIndex) the index
-   * of the raw query output column in UDTFDataSet, because a series may have two or more readers
-   * (for example, one is for a raw query, and the other is for a udf query)
-   */
-  protected List<Integer> rawQueryReaderIndex2DataSetOutputColumnIndexList;
-
-  /**
-   * used to generate temporary query file paths
-   */
-  protected List<String> seriesReaderIdList;
+  protected Map<String, Integer> pathNameToReaderIndex;
 
   public UDTFPlan() {
     super();
     setOperatorType(Operator.OperatorType.UDTF);
-    deduplicatedExecutors = new ArrayList<>();
-    outputColumnIndex2DeduplicatedExecutorIndexList = new ArrayList<>();
-    rawQueryReaderIndex2DataSetOutputColumnIndexList = new ArrayList<>();
-    seriesReaderIdList = new ArrayList<>();
   }
 
   @Override
-  public void initializeUdfExecutors(List<UDFContext> udfContexts) throws QueryProcessException {
-    // the column name of a udf query -> the executor in deduplicatedExecutors
-    Map<String, Integer> outputColumn2DeduplicatedExecutorIndexMap = new HashMap<>();
-
-    for (UDFContext context : udfContexts) {
+  public void constructUdfExecutors(List<UDFContext> udfContexts) throws QueryProcessException {
+    for (int i = 0; i < udfContexts.size(); ++i) {
+      UDFContext context = udfContexts.get(i);
       if (context == null) {
-        outputColumnIndex2DeduplicatedExecutorIndexList.add(null);
         continue;
       }
 
-      String column = context.getColumn();
-      Integer index = outputColumn2DeduplicatedExecutorIndexMap.get(column);
-      if (index != null) {
-        outputColumnIndex2DeduplicatedExecutorIndexList.add(index);
-        continue;
+      String columnName = context.getColumnName();
+      if (!columnName2Executor.containsKey(columnName)) {
+        UDTFExecutor executor = new UDTFExecutor(context);
+        columnName2Executor.put(columnName, executor);
       }
+      originalOutputColumnIndex2Executor.put(i, columnName2Executor.get(columnName));
+    }
+  }
 
-      index = deduplicatedExecutors.size();
-      outputColumnIndex2DeduplicatedExecutorIndexList.add(index);
-      UDTFExecutor executor = new UDTFExecutor(context);
-      executor.initializeUDF();
-      deduplicatedExecutors.add(executor);
-      outputColumn2DeduplicatedExecutorIndexMap.put(column, index);
+  @Override
+  public void initializeUdfExecutor(long queryId) throws QueryProcessException {
+    for (UDTFExecutor executor : columnName2Executor.values()) {
+      executor.initCollector(queryId);
     }
   }
 
   @Override
   public void finalizeUDFExecutors() {
-    for (UDTFExecutor executor : deduplicatedExecutors) {
-      executor.finalizeUDF();
+    for (UDTFExecutor executor : columnName2Executor.values()) {
+      executor.beforeDestroy();
     }
   }
 
-  public List<UDTFExecutor> getDeduplicatedExecutors() {
-    return deduplicatedExecutors;
+  public UDTFExecutor getExecutorByOriginalOutputColumnIndex(int originalOutputColumn) {
+    return originalOutputColumnIndex2Executor.get(originalOutputColumn);
   }
 
-  public UDTFExecutor getExecutor(int originalColumnIndex) {
-    Integer executorIndex = outputColumnIndex2DeduplicatedExecutorIndexList
-        .get(originalColumnIndex);
-    return executorIndex == null ? null : deduplicatedExecutors.get(executorIndex);
+  public UDTFExecutor getExecutorByDataSetOutputColumnIndex(int datasetOutputIndex) {
+    return columnName2Executor.get(datasetOutputColumnIndex2UdfColumnName.get(datasetOutputIndex));
   }
 
-  public void addRawQueryReaderIndex2DataSetOutputColumnIndex(Integer outputIndex) {
-    rawQueryReaderIndex2DataSetOutputColumnIndexList.add(outputIndex);
+  public String getRawQueryColumnNameByDatasetOutputColumnIndex(int datasetOutputIndex) {
+    return datasetOutputColumnIndex2RawQueryColumnName.get(datasetOutputIndex);
   }
 
-  public List<Integer> getRawQueryReaderIndex2DataSetOutputColumnIndexList() {
-    return rawQueryReaderIndex2DataSetOutputColumnIndexList;
+  public boolean isUdfColumn(int datasetOutputIndex) {
+    return datasetOutputColumnIndex2UdfColumnName.get(datasetOutputIndex) != null;
   }
 
-  public void addSeriesReaderId(String id) {
-    seriesReaderIdList.add(id);
+  public int getReaderIndex(String pathName) {
+    return pathNameToReaderIndex.get(pathName);
   }
 
-  public List<String> getSeriesReaderIdList() {
-    return seriesReaderIdList;
+  public void addUdfOutputColumn(String udfDatasetOutputColumn) {
+    datasetOutputColumnIndex2UdfColumnName.add(udfDatasetOutputColumn);
+    datasetOutputColumnIndex2RawQueryColumnName.add(null);
+  }
+
+  public void addRawQueryOutputColumn(String rawQueryOutputColumn) {
+    datasetOutputColumnIndex2UdfColumnName.add(null);
+    datasetOutputColumnIndex2RawQueryColumnName.add(rawQueryOutputColumn);
+  }
+
+  public void setPathNameToReaderIndex(Map<String, Integer> pathNameToReaderIndex) {
+    this.pathNameToReaderIndex = pathNameToReaderIndex;
   }
 }

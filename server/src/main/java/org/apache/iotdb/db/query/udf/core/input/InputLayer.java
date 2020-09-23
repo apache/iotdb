@@ -313,7 +313,11 @@ public class InputLayer {
     }
 
     @Override
-    public boolean next() throws Exception {
+    public boolean next() throws IOException {
+      if (0 < rowRecordList.size()) {
+        return true;
+      }
+
       int count = 0;
 
       for (int i = maxIndexInLastWindow + 1; i < rowRecordList.size(); ++i) {
@@ -412,11 +416,11 @@ public class InputLayer {
     }
 
     @Override
-    public boolean next() throws Exception {
+    public boolean next() throws IOException {
       if (displayWindowEnd <= nextWindowTimeBegin) {
         return false;
       }
-      if (!hasAtLeastOneRow) {
+      if (!hasAtLeastOneRow || 0 < rowRecordList.size()) {
         return true;
       }
 

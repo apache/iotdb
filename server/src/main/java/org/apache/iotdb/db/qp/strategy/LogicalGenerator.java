@@ -47,7 +47,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowFunctionsContext;
-import org.apache.iotdb.db.query.udf.core.UDFContext;
+import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
