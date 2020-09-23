@@ -157,13 +157,13 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     return true;
   }
 
-  private void calcFromStatistics(Statistics pageStatistics) throws QueryProcessException {
+  private void calcFromStatistics(Statistics pageStatistics, boolean ascending) throws QueryProcessException {
     for (AggregateResult result : results) {
       // cacl is compile
       if (result.isCalculatedAggregationResult()) {
         continue;
       }
-      result.updateResultFromStatistics(pageStatistics);
+      result.updateResultFromStatistics(pageStatistics, ascending);
     }
   }
 
@@ -200,7 +200,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       // calc from fileMetaData
       if (reader.canUseCurrentFileStatistics()
           && timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
-        calcFromStatistics(fileStatistics);
+        calcFromStatistics(fileStatistics, ascending);
         reader.skipCurrentFile();
         continue;
       }
@@ -258,7 +258,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       // calc from chunkMetaData
       if (reader.canUseCurrentChunkStatistics()
           && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-        calcFromStatistics(chunkStatistics);
+        calcFromStatistics(chunkStatistics, ascending);
         reader.skipCurrentChunk();
         continue;
       }
@@ -288,7 +288,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         // can use pageHeader
         if (reader.canUseCurrentPageStatistics()
             && timeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
-          calcFromStatistics(pageStatistics);
+          calcFromStatistics(pageStatistics, ascending);
           reader.skipCurrentPage();
           if (isEndCalc()) {
             return true;

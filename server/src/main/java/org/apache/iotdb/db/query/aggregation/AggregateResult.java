@@ -46,7 +46,7 @@ public abstract class AggregateResult {
 
   protected boolean hasResult;
   protected boolean isChanged;
-  protected boolean ascending = true;
+  protected boolean needAscReader = true;
 
 
   /**
@@ -68,7 +68,7 @@ public abstract class AggregateResult {
    *
    * @param statistics chunkStatistics or pageStatistics
    */
-  public abstract void updateResultFromStatistics(Statistics statistics)
+  public abstract void updateResultFromStatistics(Statistics statistics, boolean ascending)
       throws QueryProcessException;
 
   /**
@@ -303,8 +303,8 @@ public abstract class AggregateResult {
     return hasResult;
   }
 
-  public boolean isAscending() {
-    return ascending;
+  public boolean isNeedAscReader() {
+    return needAscReader;
   }
 
   @Override

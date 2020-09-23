@@ -129,7 +129,7 @@ public class AggregationExecutor {
       // construct AggregateResult
       AggregateResult aggregateResult = AggregateResultFactory
           .getAggrResultByName(aggregations.get(i), tsDataType);
-      if (aggregateResult.isAscending()) {
+      if (aggregateResult.isNeedAscReader()) {
         ascAggregateResultList.add(aggregateResult);
         isAsc[i] = true;
       } else {
@@ -187,7 +187,7 @@ public class AggregationExecutor {
       if (seriesReader.canUseCurrentFileStatistics()) {
         Statistics fileStatistics = seriesReader.currentFileStatistics();
         remainingToCalculate = aggregateStatistics(aggregateResultList, isCalculatedArray,
-            remainingToCalculate, fileStatistics);
+            remainingToCalculate, fileStatistics, seriesReader.isAscending());
         if (remainingToCalculate == 0) {
           return;
         }
@@ -200,7 +200,7 @@ public class AggregationExecutor {
         if (seriesReader.canUseCurrentChunkStatistics()) {
           Statistics chunkStatistics = seriesReader.currentChunkStatistics();
           remainingToCalculate = aggregateStatistics(aggregateResultList, isCalculatedArray,
-              remainingToCalculate, chunkStatistics);
+              remainingToCalculate, chunkStatistics, seriesReader.isAscending());
           if (remainingToCalculate == 0) {
             return;
           }
@@ -220,22 +220,16 @@ public class AggregationExecutor {
 
   /**
    * Aggregate each result in the list with the statistics
-   *
-   * @param aggregateResultList
-   * @param isCalculatedArray
-   * @param remainingToCalculate
-   * @param statistics
-   * @return new remainingToCalculate
-   * @throws QueryProcessException
    */
   private static int aggregateStatistics(List<AggregateResult> aggregateResultList,
-      boolean[] isCalculatedArray, int remainingToCalculate, Statistics statistics)
+      boolean[] isCalculatedArray, int remainingToCalculate, Statistics statistics,
+      boolean ascending)
       throws QueryProcessException {
     int newRemainingToCalculate = remainingToCalculate;
     for (int i = 0; i < aggregateResultList.size(); i++) {
       if (!isCalculatedArray[i]) {
         AggregateResult aggregateResult = aggregateResultList.get(i);
-        aggregateResult.updateResultFromStatistics(statistics);
+        aggregateResult.updateResultFromStatistics(statistics, ascending);
         if (aggregateResult.isCalculatedAggregationResult()) {
           isCalculatedArray[i] = true;
           newRemainingToCalculate--;
@@ -258,7 +252,7 @@ public class AggregationExecutor {
       if (seriesReader.canUseCurrentPageStatistics()) {
         Statistics pageStatistic = seriesReader.currentPageStatistics();
         remainingToCalculate = aggregateStatistics(aggregateResultList, isCalculatedArray,
-            remainingToCalculate, pageStatistic);
+            remainingToCalculate, pageStatistic, seriesReader.isAscending());
         if (remainingToCalculate == 0) {
           return 0;
         }

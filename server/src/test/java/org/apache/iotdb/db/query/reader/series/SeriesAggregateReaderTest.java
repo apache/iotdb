@@ -83,7 +83,7 @@ public class SeriesAggregateReaderTest {
       while (seriesReader.hasNextFile()) {
         if (seriesReader.canUseCurrentFileStatistics()) {
           Statistics fileStatistics = seriesReader.currentFileStatistics();
-          aggregateResult.updateResultFromStatistics(fileStatistics);
+          aggregateResult.updateResultFromStatistics(fileStatistics, true);
           seriesReader.skipCurrentFile();
           continue;
         }
@@ -91,14 +91,14 @@ public class SeriesAggregateReaderTest {
         while (seriesReader.hasNextChunk()) {
           if (seriesReader.canUseCurrentChunkStatistics()) {
             Statistics chunkStatistics = seriesReader.currentChunkStatistics();
-            aggregateResult.updateResultFromStatistics(chunkStatistics);
+            aggregateResult.updateResultFromStatistics(chunkStatistics, true);
             seriesReader.skipCurrentChunk();
             continue;
           }
           while (seriesReader.hasNextPage()) {
             if (seriesReader.canUseCurrentPageStatistics()) {
               Statistics pageStatistic = seriesReader.currentPageStatistics();
-              aggregateResult.updateResultFromStatistics(pageStatistic);
+              aggregateResult.updateResultFromStatistics(pageStatistic, true);
               seriesReader.skipCurrentPage();
               continue;
             }

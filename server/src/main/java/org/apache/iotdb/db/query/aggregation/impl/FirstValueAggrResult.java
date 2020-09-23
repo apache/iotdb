@@ -54,12 +54,14 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics) {
+  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
     if (hasResult()) {
       return;
     }
     updateFirstValueResult(statistics.getStartTime(), statistics.getFirstValue());
-    hasResult = false;
+    if (!ascending) {
+      hasResult = false;
+    }
   }
 
   @Override

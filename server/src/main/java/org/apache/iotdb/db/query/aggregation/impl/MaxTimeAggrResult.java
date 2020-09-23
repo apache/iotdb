@@ -35,7 +35,7 @@ public class MaxTimeAggrResult extends AggregateResult {
   public MaxTimeAggrResult() {
     super(TSDataType.INT64, AggregationType.MAX_TIME);
     reset();
-    this.ascending = false;
+    this.needAscReader = false;
   }
 
   @Override
@@ -44,13 +44,15 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics) {
+  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
     if (hasResult()) {
       return;
     }
     long maxTimestamp = statistics.getEndTime();
     updateMaxTimeResult(maxTimestamp);
-    hasResult = false;
+    if (ascending) {
+      hasResult = false;
+    }
   }
 
   @Override

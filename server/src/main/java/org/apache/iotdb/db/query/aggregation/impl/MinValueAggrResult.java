@@ -42,7 +42,7 @@ public class MinValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics) {
+  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
     Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
     updateResult(minVal);
   }

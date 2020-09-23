@@ -59,7 +59,7 @@ public class AvgAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics) {
+  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
     long preCnt = cnt;
     if (statistics.getType().equals(TSDataType.BOOLEAN)) {
       throw new StatisticsClassException("Boolean statistics does not support: avg");

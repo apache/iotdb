@@ -44,13 +44,15 @@ public class MinTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics) {
+  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
     if (hasResult()) {
       return;
     }
     long minTimestamp = statistics.getStartTime();
     updateMinTimeResult(minTimestamp);
-    hasResult = false;
+    if (!ascending) {
+      hasResult = false;
+    }
   }
 
   @Override

@@ -46,8 +46,8 @@ public class AggregateResultTest {
     statistics1.update(2L,1d);
     statistics2.update(1L,2d);
 
-    avgAggrResult1.updateResultFromStatistics(statistics1);
-    avgAggrResult2.updateResultFromStatistics(statistics2);
+    avgAggrResult1.updateResultFromStatistics(statistics1, true);
+    avgAggrResult2.updateResultFromStatistics(statistics2, true);
     avgAggrResult1.merge(avgAggrResult2);
     Assert.assertEquals(1.333d, (double)avgAggrResult1.getResult(), 0.01);
     Assert.assertEquals(3, ((AvgAggrResult) avgAggrResult1).getCnt());
@@ -71,8 +71,8 @@ public class AggregateResultTest {
     statistics1.update(1L, 1d);
     statistics2.update(1L,2d);
 
-    maxValueAggrResult1.updateResultFromStatistics(statistics1);
-    maxValueAggrResult2.updateResultFromStatistics(statistics2);
+    maxValueAggrResult1.updateResultFromStatistics(statistics1, true);
+    maxValueAggrResult2.updateResultFromStatistics(statistics2, true);
     maxValueAggrResult1.merge(maxValueAggrResult2);
 
     Assert.assertEquals(2d, (double)maxValueAggrResult1.getResult(), 0.01);
@@ -96,8 +96,8 @@ public class AggregateResultTest {
     statistics1.update(1L, 1d);
     statistics2.update(2L,1d);
 
-    maxTimeAggrResult1.updateResultFromStatistics(statistics1);
-    maxTimeAggrResult2.updateResultFromStatistics(statistics2);
+    maxTimeAggrResult1.updateResultFromStatistics(statistics1, true);
+    maxTimeAggrResult2.updateResultFromStatistics(statistics2, true);
     maxTimeAggrResult1.merge(maxTimeAggrResult2);
 
     Assert.assertEquals(2L, (long)maxTimeAggrResult1.getResult());
@@ -121,8 +121,8 @@ public class AggregateResultTest {
     statistics1.update(1L, 1d);
     statistics2.update(1L,2d);
 
-    minValueAggrResult1.updateResultFromStatistics(statistics1);
-    minValueAggrResult2.updateResultFromStatistics(statistics2);
+    minValueAggrResult1.updateResultFromStatistics(statistics1, true);
+    minValueAggrResult2.updateResultFromStatistics(statistics2, true);
     minValueAggrResult1.merge(minValueAggrResult2);
 
     Assert.assertEquals(1d, (double)minValueAggrResult1.getResult(), 0.01);
@@ -148,8 +148,8 @@ public class AggregateResultTest {
     statistics1.update(10L, 1d);
     statistics2.update(2L,1d);
 
-    minTimeAggrResult1.updateResultFromStatistics(statistics1);
-    minTimeAggrResult2.updateResultFromStatistics(statistics2);
+    minTimeAggrResult1.updateResultFromStatistics(statistics1, true);
+    minTimeAggrResult2.updateResultFromStatistics(statistics2, true);
     finalResult.merge(minTimeAggrResult1);
     finalResult.merge(minTimeAggrResult2);
 
@@ -174,8 +174,8 @@ public class AggregateResultTest {
     statistics1.update(1L, 1L);
     statistics2.update(1L, 1L);
 
-    countAggrResult1.updateResultFromStatistics(statistics1);
-    countAggrResult2.updateResultFromStatistics(statistics2);
+    countAggrResult1.updateResultFromStatistics(statistics1, true);
+    countAggrResult2.updateResultFromStatistics(statistics2, true);
     countAggrResult1.merge(countAggrResult2);
 
     Assert.assertEquals(2L, (long)countAggrResult1.getResult());
@@ -199,8 +199,8 @@ public class AggregateResultTest {
     statistics1.update(1L, 1d);
     statistics2.update(1L,2d);
 
-    sumAggrResult1.updateResultFromStatistics(statistics1);
-    sumAggrResult2.updateResultFromStatistics(statistics2);
+    sumAggrResult1.updateResultFromStatistics(statistics1, true);
+    sumAggrResult2.updateResultFromStatistics(statistics2, true);
     sumAggrResult1.merge(sumAggrResult2);
 
     Assert.assertEquals(3d, (double)sumAggrResult1.getResult(), 0.01);
@@ -224,8 +224,8 @@ public class AggregateResultTest {
     statistics1.update(1L, 1d);
     statistics2.update(2L,2d);
 
-    firstValueAggrResult1.updateResultFromStatistics(statistics1);
-    firstValueAggrResult2.updateResultFromStatistics(statistics2);
+    firstValueAggrResult1.updateResultFromStatistics(statistics1, true);
+    firstValueAggrResult2.updateResultFromStatistics(statistics2, true);
     firstValueAggrResult1.merge(firstValueAggrResult2);
 
     Assert.assertEquals(1d, (double)firstValueAggrResult1.getResult(), 0.01);
@@ -249,8 +249,8 @@ public class AggregateResultTest {
     statistics1.update(1L, 1d);
     statistics2.update(2L,2d);
 
-    lastValueAggrResult1.updateResultFromStatistics(statistics1);
-    lastValueAggrResult2.updateResultFromStatistics(statistics2);
+    lastValueAggrResult1.updateResultFromStatistics(statistics1, true);
+    lastValueAggrResult2.updateResultFromStatistics(statistics2, true);
     lastValueAggrResult1.merge(lastValueAggrResult2);
 
     Assert.assertEquals(2d, (double)lastValueAggrResult1.getResult(), 0.01);

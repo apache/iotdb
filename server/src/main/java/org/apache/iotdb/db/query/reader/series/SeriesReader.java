@@ -950,4 +950,7 @@ public class SeriesReader {
     }
   }
 
+  public TimeOrderUtils getOrderUtils() {
+    return orderUtils;
+  }
 }

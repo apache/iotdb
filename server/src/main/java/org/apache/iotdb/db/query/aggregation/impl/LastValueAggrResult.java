@@ -39,7 +39,7 @@ public class LastValueAggrResult extends AggregateResult {
   public LastValueAggrResult(TSDataType dataType) {
     super(dataType, AggregationType.LAST_VALUE);
     reset();
-    this.ascending = false;
+    this.needAscReader = false;
   }
 
   @Override
@@ -54,12 +54,14 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics) {
+  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
     if (hasResult()) {
       return;
     }
     updateLastValueResult(statistics.getEndTime(), statistics.getLastValue());
-    hasResult = false;
+    if (ascending) {
+      hasResult = false;
+    }
   }
 
   @Override

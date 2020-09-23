@@ -47,7 +47,7 @@ public class SumAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromStatistics(Statistics statistics) {
+  public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
     double preValue = getDoubleValue();
     preValue += statistics.getSumValue();
     setDoubleValue(preValue);
