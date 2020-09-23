@@ -36,7 +36,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class HttpServerTest extends HttpPrepData {
-  private Client client = ClientBuilder.newClient();
+  private final Client client = ClientBuilder.newClient();
 
   private static final String QUERY_URI
       = "http://localhost:8282/query";
