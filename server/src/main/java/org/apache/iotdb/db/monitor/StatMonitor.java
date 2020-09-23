@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -74,6 +73,8 @@ public class StatMonitor implements StatMonitorMBean, IService {
 
   public StatMonitor() {
     if (config.isEnableStatMonitor()) {
+      // try to recover the existing monitoring series first
+      recovery();
       registerStatGlobalInfo();
       List<PartialPath> storageGroupNames = mManager.getAllStorageGroupPaths();
       registerStatStorageGroupInfo(storageGroupNames);
@@ -98,13 +99,12 @@ public class StatMonitor implements StatMonitorMBean, IService {
         mManager.setStorageGroup(storageGroupPrefix);
       }
 
+      List<PartialPath> seriesList = monitorSeriesMap
+          .computeIfAbsent(MonitorConstants.STAT_STORAGE_GROUP_NAME, k -> new ArrayList<>(3));
       for (StatMeasurementConstants statConstant : StatMeasurementConstants.values()) {
         PartialPath fullPath = new PartialPath(MonitorConstants.STAT_GLOBAL_ARRAY)
             .concatNode(statConstant.getMeasurement());
         registSeriesToMManager(fullPath);
-
-        List<PartialPath> seriesList = monitorSeriesMap
-            .computeIfAbsent(MonitorConstants.STAT_STORAGE_GROUP_NAME, k -> new ArrayList<>());
         seriesList.add(fullPath);
         cachedValueMap.putIfAbsent(fullPath, (long) 0);
       }
@@ -130,7 +130,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
           registSeriesToMManager(fullPath);
 
           List<PartialPath> seriesList = monitorSeriesMap
-              .computeIfAbsent(storageGroupName.toString(), k -> new ArrayList<>());
+              .computeIfAbsent(storageGroupName.toString(), k -> new ArrayList<>(1));
           seriesList.add(fullPath);
           cachedValueMap.putIfAbsent(fullPath, (long) 0);
         }
@@ -142,11 +142,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
 
   private void registSeriesToMManager(PartialPath fullPath) throws MetadataException {
     if (!mManager.isPathExist(fullPath)) {
-      mManager.createTimeseries(fullPath,
-          TSDataType.valueOf(MonitorConstants.INT64),
-          TSEncoding.valueOf("RLE"),
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap());
+      mManager.createTimeseries(fullPath, TSDataType.valueOf(MonitorConstants.INT64),
+          TSEncoding.valueOf("TS_2DIFF"), TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          null);
     }
   }
 
@@ -160,22 +158,15 @@ public class StatMonitor implements StatMonitorMBean, IService {
   public void updateStatGlobalValue(int successPointsNum) {
     List<PartialPath> monitorSeries = monitorSeriesMap
         .get(MonitorConstants.STAT_STORAGE_GROUP_NAME);
-    for (int i = 0; i < monitorSeries.size() - 1; i++) {
-      // 0 -> TOTAL_POINTS, 1 -> REQ_SUCCESS, 2 -> REQ_FAIL
-      switch (i) {
-        case 0:
-          cachedValueMap.computeIfPresent(monitorSeries.get(i),
-              (key, oldValue) -> oldValue + successPointsNum);
-          break;
-        case 1:
-          cachedValueMap.computeIfPresent(monitorSeries.get(i),
-              (key, oldValue) -> oldValue + 1);
-          break;
-      }
-    }
+    // 0 -> TOTAL_POINTS, 1 -> REQ_SUCCESS
+    cachedValueMap.computeIfPresent(monitorSeries.get(0),
+        (key, oldValue) -> oldValue + successPointsNum);
+    cachedValueMap.computeIfPresent(monitorSeries.get(1),
+        (key, oldValue) -> oldValue + 1);
   }
 
   public void updateFailedStatValue() {
+    // 2 -> REQ_FAIL
     PartialPath failedSeries = monitorSeriesMap
         .get(MonitorConstants.STAT_STORAGE_GROUP_NAME).get(2);
     cachedValueMap.computeIfPresent(failedSeries, (key, oldValue) -> oldValue + 1);
@@ -184,13 +175,16 @@ public class StatMonitor implements StatMonitorMBean, IService {
   /**
    * Generate tsRecords for stat parameters and insert them into StorageEngine.
    */
-  public void cacheStatValue() {
+  public void saveStatValue(String storageGroupName) {
     StorageEngine storageEngine = StorageEngine.getInstance();
     long insertTime = System.currentTimeMillis();
-    for (Entry<PartialPath, Long> cachedValue : cachedValueMap.entrySet()) {
-      TSRecord tsRecord = new TSRecord(insertTime, cachedValue.getKey().getDevice());
+    List<PartialPath> monitorSeries = new ArrayList<>();
+    monitorSeries.addAll(monitorSeriesMap.get(MonitorConstants.STAT_STORAGE_GROUP_NAME));
+    monitorSeries.addAll(monitorSeriesMap.get(storageGroupName));
+    for (PartialPath oneSeries : monitorSeries) {
+      TSRecord tsRecord = new TSRecord(insertTime, oneSeries.getDevice());
       tsRecord.addTuple(
-          new LongDataPoint(cachedValue.getKey().getMeasurement(), cachedValue.getValue()));
+          new LongDataPoint(oneSeries.getMeasurement(), cachedValueMap.get(oneSeries)));
       try {
         storageEngine.insert(new InsertRowPlan(tsRecord));
       } catch (StorageEngineException | IllegalPathException e) {
@@ -199,6 +193,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
     }
   }
 
+  /**
+   * Recover the cache values of monitor series using last query.
+   */
   public void recovery() {
     try {
       List<PartialPath> monitorSeries = mManager
@@ -221,6 +218,8 @@ public class StatMonitor implements StatMonitorMBean, IService {
 
   public void close() {
     config.setEnableStatMonitor(false);
+    this.cachedValueMap = null;
+    this.monitorSeriesMap = null;
   }
 
   // implements methods of StatMonitorMean from here
@@ -282,7 +281,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
   }
 
   @Override
-  public boolean getEnableStatMonitor() { return config.isEnableStatMonitor(); }
+  public boolean getEnableStatMonitor() {
+    return config.isEnableStatMonitor();
+  }
 
   @Override
   public void start() throws StartupException {
