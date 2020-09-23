@@ -69,13 +69,11 @@ matrix:
       name: win-openjdk11
       before_install:
         # - choco install openjdk11 --version=11.0.2.01 -y
-        - choco install openjdk11
-        - choco install maven
         # can get the download links from https://jdk.java.net/archive/
-        #- wget --no-check-certificate https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_windows-x64_bin.zip
-        #- wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
-        #- /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.3-bin.zip -o/c/mvn363
-        #- /C/Progra~1/7-Zip/7z.exe x openjdk-11.0.2_windows-x64_bin.zip -o/c/java
+        - wget --no-check-certificate https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_windows-x64_bin.zip
+        - wget --no-check-certificate https://archive.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
+        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.3-bin.zip -o/c/mvn363
+        - /C/Progra~1/7-Zip/7z.exe x openjdk-11.0.2_windows-x64_bin.zip -o/c/java
         - mkdir C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.exe -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.dll -o C:\windows\system32
@@ -99,12 +97,12 @@ matrix:
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -o C:\hadoop\bin
       before_script:
-        #- export "JAVA_HOME=/c/java/jdk-11.0.2"
-        #- export "PATH=$JAVA_HOME/bin:$PATH"
-        #- export "PATH=$JAVA_HOME/jre/bin:$PATH"
-        #- export "MAVEN_HOME=/c/mvn363/apache-maven-3.6.3"
-        #- export "M2_HOME=/c/mvn363/apache-maven-3.6.3"
-        #- export "PATH=/c/mvn363/apache-maven-3.6.3/bin:$PATH"
+        - export "JAVA_HOME=/c/java/jdk-11.0.2"
+        - export "PATH=$JAVA_HOME/bin:$PATH"
+        - export "PATH=$JAVA_HOME/jre/bin:$PATH"
+        - export "MAVEN_HOME=/c/mvn363/apache-maven-3.6.3"
+        - export "M2_HOME=/c/mvn363/apache-maven-3.6.3"
+        - export "PATH=/c/mvn363/apache-maven-3.6.3/bin:$PATH"
         - export "HADOOP_HOME=/c/hadoop"
         - export "PATH=/c/hadoop/bin:$PATH"
     - os: linux
