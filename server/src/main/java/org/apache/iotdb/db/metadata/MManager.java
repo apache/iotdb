@@ -681,25 +681,24 @@ public class MManager {
     }
   }
 
-  public MeasurementSchema[] getSchemas(PartialPath deviceId, String[] measurements)
+  public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
     lock.readLock().lock();
     try {
       MNode deviceNode = getNodeByPath(deviceId);
-      MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurements.length];
-      for (int i = 0; i < measurementSchemas.length; i++) {
+      MeasurementMNode[] mNodes = new MeasurementMNode[measurements.length];
+      for (int i = 0; i < mNodes.length; i++) {
         if (!deviceNode.hasChild(measurements[i])) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            measurementSchemas[i] = null;
+            mNodes[i] = null;
           } else {
             throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
           }
         } else {
-          measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]))
-              .getSchema();
+          mNodes[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]));
         }
       }
-      return measurementSchemas;
+      return mNodes;
     } finally {
       lock.readLock().unlock();
     }
@@ -1941,19 +1940,18 @@ public class MManager {
    * @throws MetadataException
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(PartialPath deviceId,
+  public MeasurementMNode[] getSeriesSchemasAndReadLockDevice(PartialPath deviceId,
       String[] measurementList, InsertPlan plan) throws MetadataException {
-    MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
+    MeasurementMNode[] mNodes = new MeasurementMNode[measurementList.length];
 
-    MNode deviceNode;
     // 1. get device node
-    deviceNode = getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+    MNode deviceMNode = getDeviceNodeWithAutoCreateAndReadLock(deviceId);
 
     // 2. get schema of each measurement
     for (int i = 0; i < measurementList.length; i++) {
       try {
         // if do not has measurement
-        if (!deviceNode.hasChild(measurementList[i])) {
+        if (!deviceMNode.hasChild(measurementList[i])) {
           // could not create it
           if (!config.isAutoCreateSchemaEnabled()) {
             throw new MetadataException(String.format(
@@ -1966,7 +1964,7 @@ public class MManager {
           internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
         }
 
-        MeasurementMNode measurementNode = (MeasurementMNode) getChild(deviceNode,
+        MeasurementMNode measurementMNode = (MeasurementMNode) getChild(deviceMNode,
             measurementList[i]);
 
         // check type is match
@@ -1976,19 +1974,19 @@ public class MManager {
             // only when InsertRowPlan's values is object[], we should check type
             insertDataType = getTypeInLoc(plan, i);
           } else {
-            insertDataType = measurementNode.getSchema().getType();
+            insertDataType = measurementMNode.getSchema().getType();
           }
         } else if (plan instanceof InsertTabletPlan) {
           insertDataType = getTypeInLoc(plan, i);
         }
 
-        if (measurementNode.getSchema().getType() != insertDataType) {
+        if (measurementMNode.getSchema().getType() != insertDataType) {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-              measurementList[i], insertDataType, measurementNode.getSchema().getType());
+              measurementList[i], insertDataType, measurementMNode.getSchema().getType());
           if (!config.isEnablePartialInsert()) {
             throw new MetadataException(String.format(
                 "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
-                measurementList[i], insertDataType, measurementNode.getSchema().getType()));
+                measurementList[i], insertDataType, measurementMNode.getSchema().getType()));
           } else {
             // mark failed measurement
             plan.markFailedMeasurementInsertion(i);
@@ -1996,10 +1994,11 @@ public class MManager {
           }
         }
 
-        schemas[i] = measurementNode.getSchema();
-        if (schemas[i] != null) {
-          measurementList[i] = schemas[i].getMeasurementId();
-        }
+        mNodes[i] = measurementMNode;
+
+        // set measurementName instead of alias
+        measurementList[i] = mNodes[i].getName();
+
       } catch (MetadataException e) {
         logger.warn("meet error when check {}.{}, message: {}", deviceId, measurementList[i],
             e.getMessage());
@@ -2012,9 +2011,7 @@ public class MManager {
       }
     }
 
-    plan.setDeviceMNode(deviceNode);
-
-    return schemas;
+    return mNodes;
   }
 
 

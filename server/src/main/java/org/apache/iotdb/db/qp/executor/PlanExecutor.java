@@ -912,7 +912,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
+  protected MeasurementMNode[] getSeriesSchemas(InsertPlan insertPlan)
       throws MetadataException {
     return mManager
         .getSeriesSchemasAndReadLockDevice(insertPlan.getDeviceId(), insertPlan.getMeasurements(),
@@ -922,8 +922,8 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
-      MeasurementSchema[] schemas = getSeriesSchemas(insertRowPlan);
-      insertRowPlan.setSchemasAndTransferType(schemas);
+      MeasurementMNode[] mNodes = getSeriesSchemas(insertRowPlan);
+      insertRowPlan.setMNodesAndTransferType(mNodes);
       StorageEngine.getInstance().insert(insertRowPlan);
       if (insertRowPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
@@ -939,8 +939,8 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
     try {
-      MeasurementSchema[] schemas = getSeriesSchemas(insertTabletPlan);
-      insertTabletPlan.setSchemas(schemas);
+      MeasurementMNode[] mNodes = getSeriesSchemas(insertTabletPlan);
+      insertTabletPlan.setMeasurementMNodes(mNodes);
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
