@@ -565,12 +565,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan showTimeSeriesPlan,
       QueryContext context) throws MetadataException {
-    return new ShowTimeseriesDataSet(showTimeSeriesPlan, context, showTimeseries(showTimeSeriesPlan, context));
-  }
-
-  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
-      throws MetadataException {
-    return IoTDB.metaManager.showTimeseries(plan, context);
+    return new ShowTimeseriesDataSet(showTimeSeriesPlan, context);
   }
 
   protected List<StorageGroupMNode> getAllStorageGroupNodes() {

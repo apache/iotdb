@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ATTRIBUTE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TAG;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TAGS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -57,26 +56,27 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   private int index = 0;
   private QueryContext context;
 
-  public boolean hasLimit = true;
+  public boolean hasLimit;
 
   private static Path[] resourcePaths = {new PartialPath(COLUMN_TIMESERIES, false),
       new PartialPath(COLUMN_TIMESERIES_ALIAS, false), new PartialPath(COLUMN_STORAGE_GROUP, false),
       new PartialPath(COLUMN_TIMESERIES_DATATYPE, false), new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
-      new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false), new PartialPath(COLUMN_TAG, false),
-      new PartialPath(COLUMN_ATTRIBUTE, false)};
+      new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false), new PartialPath(COLUMN_TAGS, false),
+      new PartialPath(COLUMN_ATTRIBUTES, false)};
   private static TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
       TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT};
 
-  public ShowTimeseriesDataSet(ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context,
-      List<ShowTimeSeriesResult> timeseriesList) {
+  public ShowTimeseriesDataSet(ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context)
+      throws MetadataException {
     super(Arrays.asList(resourcePaths), Arrays.asList(resourceTypes));
     this.plan = showTimeSeriesPlan;
     this.context = context;
     hasLimit = plan.hasLimit();
-    getQueryDataSet(timeseriesList);
+    getQueryDataSet();
   }
 
-  public List<RowRecord> getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList) {
+  public List<RowRecord> getQueryDataSet() throws MetadataException {
+    List<ShowTimeSeriesResult> timeseriesList = IoTDB.metaManager.showTimeseries(plan, context);
     List<RowRecord> records = new ArrayList<>();
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
@@ -117,9 +117,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
     if (index == result.size() && !hasLimit && result.size() == plan.getLimit()) {
       plan.setOffset(plan.getOffset() + plan.getLimit());
       try {
-        List<ShowTimeSeriesResult> showTimeSeriesResults = IoTDB.metaManager
-            .showTimeseries(plan, context);
-        result = getQueryDataSet(showTimeSeriesResults);
+        result = getQueryDataSet();
         index = 0;
       } catch (MetadataException e) {
         logger.error("Something wrong happened while showing {}", paths.stream().map(
