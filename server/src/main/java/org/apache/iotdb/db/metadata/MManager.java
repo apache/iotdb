@@ -1007,7 +1007,7 @@ public class MManager {
           if (tagFileOffset < 0) {
             // no tags/attributes
             res.add(new ShowTimeSeriesResult(ansString.left.getFullPath(), ansString.right[0], ansString.right[1], ansString.right[2],
-                ansString.right[3], ansString.right[4], Collections.emptyMap()));
+                ansString.right[3], ansString.right[4], null));
           } else {
             // has tags/attributes
             Pair<Map<String, String>, Map<String, String>> pair =
@@ -1425,7 +1425,7 @@ public class MManager {
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
-        long offset = tagLogFile.write(Collections.emptyMap(), attributesMap);
+        long offset = tagLogFile.write(null, attributesMap);
         logWriter.changeOffset(fullPath.getFullPath(), offset);
         leafMNode.setOffset(offset);
         return;
@@ -1468,7 +1468,7 @@ public class MManager {
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
-        long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
+        long offset = tagLogFile.write(tagsMap, null);
         logWriter.changeOffset(fullPath.getFullPath(), offset);
         leafMNode.setOffset(offset);
         // update inverted Index map
@@ -2023,12 +2023,8 @@ public class MManager {
    */
   private void internalCreateTimeseries(PartialPath path, TSDataType dataType) throws MetadataException {
     try {
-      createTimeseries(
-          path,
-          dataType,
-          getDefaultEncoding(dataType),
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap());
+      createTimeseries(path, dataType, getDefaultEncoding(dataType),
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), null);
     } catch (PathAlreadyExistException e) {
       if (logger.isDebugEnabled()) {
         logger.debug("Ignore PathAlreadyExistException when Concurrent inserting"

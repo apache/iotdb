@@ -170,7 +170,7 @@ public class StatMonitor implements IService {
           mManager.createTimeseries(new PartialPath(entry.getKey()), TSDataType.valueOf(entry.getValue()),
               TSEncoding.valueOf("RLE"),
               TSFileDescriptor.getInstance().getConfig().getCompressor(),
-              Collections.emptyMap());
+              null);
         }
       }
     } catch (MetadataException e) {

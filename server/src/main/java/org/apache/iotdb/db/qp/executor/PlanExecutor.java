@@ -830,12 +830,8 @@ public class PlanExecutor implements IPlanExecutor {
                       chunkMetadata.getMeasurementUid()));
             }
             if (!node.hasChild(chunkMetadata.getMeasurementUid())) {
-              mManager.createTimeseries(
-                  series,
-                  schema.getType(),
-                  schema.getEncodingType(),
-                  schema.getCompressor(),
-                  Collections.emptyMap());
+              mManager.createTimeseries(series, schema.getType(), schema.getEncodingType(),
+                  schema.getCompressor(), null);
             } else if (!(node
                 .getChild(chunkMetadata.getMeasurementUid()) instanceof MeasurementMNode)) {
               throw new QueryProcessException(

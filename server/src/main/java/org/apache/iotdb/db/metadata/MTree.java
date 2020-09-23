@@ -109,13 +109,8 @@ public class MTree implements Serializable {
    * @param props      props
    * @param alias      alias of measurement
    */
-  MeasurementMNode createTimeseries(
-      PartialPath path,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressor,
-      Map<String, String> props,
-      String alias)
+  MeasurementMNode createTimeseries(PartialPath path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props, String alias)
       throws MetadataException {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
