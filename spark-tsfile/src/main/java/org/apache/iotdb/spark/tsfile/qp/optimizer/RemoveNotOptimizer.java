@@ -68,7 +68,6 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
           return reverseFilter(filter.getChildren().get(0));
         } catch (BasicOperatorException e) {
           LOG.error("reverse Filter failed.");
-          break;
         }
       default:
         throw new RemoveNotException("Unknown token in removeNot: " + tokenInt + ","

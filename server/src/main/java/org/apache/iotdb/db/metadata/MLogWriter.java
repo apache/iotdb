@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 public class MLogWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogWriter.class);
-  private static final string STRING_TYPE = "%s,%s,%s"; 
+  private static final String STRING_TYPE = "%s,%s,%s"; 
   private File logFile;
   private BufferedWriter writer;
   private int lineNumber;
