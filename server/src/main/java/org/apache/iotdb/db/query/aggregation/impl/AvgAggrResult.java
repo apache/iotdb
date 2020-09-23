@@ -46,7 +46,7 @@ public class AvgAggrResult extends AggregateResult {
   }
 
   @Override
-  protected boolean hasResult() {
+  protected boolean hasFinalResult() {
     return cnt > 0;
   }
 
@@ -55,7 +55,7 @@ public class AvgAggrResult extends AggregateResult {
     if (cnt > 0) {
       setDoubleValue(avg);
     }
-    return hasResult() ? getDoubleValue() : null;
+    return hasFinalResult() ? getDoubleValue() : null;
   }
 
   @Override

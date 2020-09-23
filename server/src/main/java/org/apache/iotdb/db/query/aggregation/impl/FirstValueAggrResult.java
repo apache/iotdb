@@ -50,17 +50,17 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasResult() || isChanged ? getValue() : null;
+    return hasCandidateResult ? getValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     updateFirstValueResult(statistics.getStartTime(), statistics.getFirstValue());
     if (!ascending) {
-      hasResult = false;
+      hasFinalResult = false;
     }
   }
 
@@ -71,7 +71,7 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     if (dataInThisPage instanceof DescBatchData || dataInThisPage.isFromDescMergeReader()) {
@@ -81,7 +81,7 @@ public class FirstValueAggrResult extends AggregateResult {
         updateFirstValueResult(dataInThisPage.currentTime(), dataInThisPage.currentValue());
         dataInThisPage.next();
       }
-      hasResult = false;
+      hasFinalResult = false;
     } else {
       if (dataInThisPage.hasCurrent()
           && dataInThisPage.currentTime() < maxBound
@@ -116,15 +116,14 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return hasResult();
+    return hasFinalResult;
   }
 
   @Override
   public void merge(AggregateResult another) {
     FirstValueAggrResult anotherFirst = (FirstValueAggrResult) another;
-    if (this.getValue() == null || this.timestamp > anotherFirst.timestamp) {
-      setValue(anotherFirst.getValue());
-      timestamp = anotherFirst.timestamp;
+    if (anotherFirst.getResult() != null) {
+      updateFirstValueResult(anotherFirst.timestamp, anotherFirst.getValue());
     }
   }
 
@@ -139,10 +138,10 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   private void updateFirstValueResult(long newTime, Object newValue) {
-    if (!isChanged || newTime <= timestamp) {
+    if (!hasCandidateResult || newTime <= timestamp) {
       timestamp = newTime;
       setValue(newValue);
-      isChanged = true;
+      hasCandidateResult = true;
     }
   }
 }

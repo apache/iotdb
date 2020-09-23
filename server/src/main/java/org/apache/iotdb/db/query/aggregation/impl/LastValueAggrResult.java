@@ -50,17 +50,17 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasResult() || isChanged ? getValue() : null;
+    return hasCandidateResult ? getValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     updateLastValueResult(statistics.getEndTime(), statistics.getLastValue());
     if (ascending) {
-      hasResult = false;
+      hasFinalResult = false;
     }
   }
 
@@ -71,7 +71,7 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     if (dataInThisPage instanceof DescBatchData || dataInThisPage.isFromDescMergeReader()) {
@@ -87,7 +87,7 @@ public class LastValueAggrResult extends AggregateResult {
         updateLastValueResult(dataInThisPage.currentTime(), dataInThisPage.currentValue());
         dataInThisPage.next();
       }
-      hasResult = false;
+      hasFinalResult = false;
     }
   }
 
@@ -104,20 +104,19 @@ public class LastValueAggrResult extends AggregateResult {
         updateLastValueResult(time, lastVal);
       }
     }
-    hasResult = false;
+    hasFinalResult = false;
   }
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return hasResult();
+    return hasFinalResult();
   }
 
   @Override
   public void merge(AggregateResult another) {
     LastValueAggrResult anotherLast = (LastValueAggrResult) another;
-    if (this.getValue() == null || this.timestamp < anotherLast.timestamp) {
-      this.setValue(anotherLast.getValue());
-      this.timestamp = anotherLast.timestamp;
+    if (anotherLast.getResult() != null) {
+      this.updateLastValueResult(anotherLast.timestamp, anotherLast.getValue());
     }
   }
 
@@ -132,10 +131,10 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   private void updateLastValueResult(long newTime, Object newValue) {
-    if (!isChanged || newTime >= timestamp) {
+    if (!hasCandidateResult || newTime >= timestamp) {
       timestamp = newTime;
       setValue(newValue);
-      isChanged = true;
+      hasCandidateResult = true;
     }
   }
 }

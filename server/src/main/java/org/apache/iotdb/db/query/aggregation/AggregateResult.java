@@ -44,8 +44,8 @@ public abstract class AggregateResult {
   private double doubleValue;
   private Binary binaryValue;
 
-  protected boolean hasResult;
-  protected boolean isChanged;
+  protected boolean hasFinalResult;
+  protected boolean hasCandidateResult;
   protected boolean needAscReader = true;
 
 
@@ -57,8 +57,8 @@ public abstract class AggregateResult {
   public AggregateResult(TSDataType resultDataType, AggregationType aggregationType) {
     this.aggregationType = aggregationType;
     this.resultDataType = resultDataType;
-    this.hasResult = false;
-    this.isChanged = false;
+    this.hasFinalResult = false;
+    this.hasCandidateResult = false;
   }
 
   public abstract Object getResult();
@@ -149,7 +149,7 @@ public abstract class AggregateResult {
   public void serializeTo(OutputStream outputStream) throws IOException {
     aggregationType.serializeTo(outputStream);
     ReadWriteIOUtils.write(resultDataType, outputStream);
-    boolean hasResult = hasResult() || isChanged;
+    boolean hasResult = hasFinalResult() || hasCandidateResult;
     ReadWriteIOUtils.write(hasResult, outputStream);
     if (hasResult) {
       switch (resultDataType) {
@@ -181,8 +181,8 @@ public abstract class AggregateResult {
   protected abstract void serializeSpecificFields(OutputStream outputStream) throws IOException;
 
   public void reset() {
-    hasResult = false;
-    isChanged = false;
+    hasFinalResult = false;
+    hasCandidateResult = false;
     booleanValue = false;
     doubleValue = 0;
     floatValue = 0;
@@ -216,7 +216,7 @@ public abstract class AggregateResult {
    * @param v object value
    */
   protected void setValue(Object v) {
-    hasResult = true;
+    hasFinalResult = true;
     switch (resultDataType) {
       case BOOLEAN:
         booleanValue = (Boolean) v;
@@ -250,7 +250,7 @@ public abstract class AggregateResult {
   }
 
   protected void setBooleanValue(boolean booleanValue) {
-    this.hasResult = true;
+    this.hasFinalResult = true;
     this.booleanValue = booleanValue;
   }
 
@@ -259,7 +259,7 @@ public abstract class AggregateResult {
   }
 
   protected void setIntValue(int intValue) {
-    this.hasResult = true;
+    this.hasFinalResult = true;
     this.intValue = intValue;
   }
 
@@ -268,7 +268,7 @@ public abstract class AggregateResult {
   }
 
   protected void setLongValue(long longValue) {
-    this.hasResult = true;
+    this.hasFinalResult = true;
     this.longValue = longValue;
   }
 
@@ -277,7 +277,7 @@ public abstract class AggregateResult {
   }
 
   protected void setFloatValue(float floatValue) {
-    this.hasResult = true;
+    this.hasFinalResult = true;
     this.floatValue = floatValue;
   }
 
@@ -286,7 +286,7 @@ public abstract class AggregateResult {
   }
 
   protected void setDoubleValue(double doubleValue) {
-    this.hasResult = true;
+    this.hasFinalResult = true;
     this.doubleValue = doubleValue;
   }
 
@@ -295,12 +295,12 @@ public abstract class AggregateResult {
   }
 
   protected void setBinaryValue(Binary binaryValue) {
-    this.hasResult = true;
+    this.hasFinalResult = true;
     this.binaryValue = binaryValue;
   }
 
-  protected boolean hasResult() {
-    return hasResult;
+  protected boolean hasFinalResult() {
+    return hasFinalResult;
   }
 
   public boolean isNeedAscReader() {

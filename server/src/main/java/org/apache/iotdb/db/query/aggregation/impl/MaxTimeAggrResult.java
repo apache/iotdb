@@ -40,18 +40,17 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return hasResult() || isChanged ? getLongValue() : null;
+    return hasCandidateResult ? getLongValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
-    long maxTimestamp = statistics.getEndTime();
-    updateMaxTimeResult(maxTimestamp);
+    updateMaxTimeResult(statistics.getEndTime());
     if (ascending) {
-      hasResult = false;
+      hasFinalResult = false;
     }
   }
 
@@ -62,7 +61,7 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     if (dataInThisPage instanceof DescBatchData || dataInThisPage.isFromDescMergeReader()) {
@@ -78,7 +77,7 @@ public class MaxTimeAggrResult extends AggregateResult {
         updateMaxTimeResult(dataInThisPage.currentTime());
         dataInThisPage.next();
       }
-      hasResult = false;
+      hasFinalResult = false;
     }
   }
 
@@ -97,7 +96,7 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return hasResult();
+    return hasFinalResult();
   }
 
   @Override
@@ -119,9 +118,9 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   private void updateMaxTimeResult(long value) {
-    if (!isChanged || value >= getLongValue()) {
+    if (!hasCandidateResult || value >= getLongValue()) {
       setLongValue(value);
-      isChanged = true;
+      hasCandidateResult = true;
     }
   }
 }

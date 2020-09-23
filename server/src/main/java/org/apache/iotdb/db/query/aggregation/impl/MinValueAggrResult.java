@@ -38,7 +38,7 @@ public class MinValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasResult() ? getValue() : null;
+    return hasFinalResult() ? getValue() : null;
   }
 
   @Override
@@ -104,7 +104,7 @@ public class MinValueAggrResult extends AggregateResult {
     if (minVal == null) {
       return;
     }
-    if (!hasResult() || minVal.compareTo(getValue()) < 0) {
+    if (!hasFinalResult() || minVal.compareTo(getValue()) < 0) {
       setValue(minVal);
     }
   }

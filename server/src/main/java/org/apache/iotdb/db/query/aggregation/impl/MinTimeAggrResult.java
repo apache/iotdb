@@ -40,18 +40,18 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return hasResult() || isChanged ? getLongValue() : null;
+    return hasCandidateResult ? getLongValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics, boolean ascending) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     long minTimestamp = statistics.getStartTime();
     updateMinTimeResult(minTimestamp);
     if (!ascending) {
-      hasResult = false;
+      hasFinalResult = false;
     }
   }
 
@@ -62,7 +62,7 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     if (dataInThisPage instanceof DescBatchData || dataInThisPage.isFromDescMergeReader()) {
@@ -72,7 +72,7 @@ public class MinTimeAggrResult extends AggregateResult {
         updateMinTimeResult(dataInThisPage.currentTime());
         dataInThisPage.next();
       }
-      hasResult = false;
+      hasFinalResult = false;
     } else {
       if (dataInThisPage.hasCurrent()
           && dataInThisPage.currentTime() < maxBound
@@ -107,7 +107,7 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return hasResult();
+    return hasFinalResult();
   }
 
   @Override
@@ -127,9 +127,9 @@ public class MinTimeAggrResult extends AggregateResult {
   }
 
   private void updateMinTimeResult(long value) {
-    if (!isChanged || value <= getLongValue()) {
+    if (!hasCandidateResult || value <= getLongValue()) {
       setLongValue(value);
-      isChanged = true;
+      hasCandidateResult = true;
     }
   }
 }
