@@ -49,8 +49,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
     seriesReader.setTimeFilter(timestamp);
-    if ((batchData == null || (batchData.getTimeByIndex(batchData.length() - 1) < timestamp))
-        && !hasNext(timestamp)) {
+    if ((batchData == null || !batchData.hasMoreData(timestamp)) && !hasNext(timestamp)) {
       return null;
     }
 
@@ -120,8 +119,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
       if (isEmpty(batchData)) {
         continue;
       }
-      if ((batchData instanceof BatchData && batchData.getMaxTimestamp() >= timestamp)
-          || (batchData instanceof DescBatchData && batchData.getMinTimestamp() <= timestamp)) {
+      if (batchData.hasMoreData(timestamp)) {
         return true;
       }
     }

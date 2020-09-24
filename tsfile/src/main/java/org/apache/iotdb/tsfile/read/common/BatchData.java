@@ -534,23 +534,6 @@ public class BatchData implements Serializable {
     return booleanRet.get(idx / capacity)[idx % capacity];
   }
 
-  public Object getObjectByIndex(int idx) {
-    if (this.intRet != null) {
-      return getIntByIndex(idx);
-    } else if (this.longRet != null) {
-      return getLongByIndex(idx);
-    } else if (this.doubleRet != null) {
-      return getDoubleByIndex(idx);
-    } else if (this.floatRet != null) {
-      return getFloatByIndex(idx);
-    } else if (this.booleanRet != null) {
-      return getBooleanByIndex(idx);
-    } else if (this.binaryRet != null) {
-      return getBinaryByIndex(idx);
-    }
-    return null;
-  }
-
   public TimeValuePair getLastPairBeforeOrEqualTimestamp(long queryTime) {
     TimeValuePair resultPair = new TimeValuePair(Long.MIN_VALUE, null);
     resetBatchData();
@@ -577,19 +560,8 @@ public class BatchData implements Serializable {
     return null;
   }
 
-  public Object getValueInTimestamp(long time, BiPredicate<Long, Long> compare) {
-    while (hasCurrent()) {
-      if (compare.test(currentTime(), time)) {
-        next();
-      } else if (currentTime() == time) {
-        Object value = currentValue();
-        next();
-        return value;
-      } else {
-        return null;
-      }
-    }
-    return null;
+  public boolean hasMoreData(long time) {
+    return getMaxTimestamp() >= time;
   }
 
   public long getMaxTimestamp() {

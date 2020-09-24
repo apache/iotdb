@@ -39,15 +39,4 @@ public class DescSeriesReaderByTimestamp extends SeriesReaderByTimestamp {
         dataSource, TimeFilter.ltEq(Long.MAX_VALUE),
         null, fileFilter, false);
   }
-
-  @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
-    seriesReader.setTimeFilter(timestamp);
-    if ((batchData == null || (batchData.getTimeByIndex(0) > timestamp))
-        && !hasNext(timestamp)) {
-      return null;
-    }
-
-    return batchData.getValueInTimestamp(timestamp, (c, p) -> c > p);
-  }
 }
