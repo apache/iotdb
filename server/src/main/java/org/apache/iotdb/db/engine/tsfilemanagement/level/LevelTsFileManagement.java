@@ -497,47 +497,47 @@ public class LevelTsFileManagement extends TsFileManagement {
 //              deviceSet.size());
       HotCompactionLogger hotCompactionLogger = new HotCompactionLogger(storageGroupDir,
           storageGroupName);
-      if (deviceSet.size() > 0 && pointNum / deviceSet.size() > IoTDBDescriptor.getInstance()
-          .getConfig().getMergeChunkPointNumberThreshold()) {
-        // merge all tsfile to last level
-        logger.info("{} merge {} level tsfiles to next level", storageGroupName,
-            mergeResources.size());
-        flushAllFilesToLastLevel(timePartition, mergeResources, hotCompactionLogger, sequence);
-      } else {
-        for (int i = 0; i < maxLevelNum - 1; i++) {
-          if (maxFileNumInEachLevel <= mergeResources.get(i).size()) {
-            for (TsFileResource mergeResource : mergeResources.get(i)) {
-              hotCompactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
-            }
-            File newLevelFile = createNewTsFileName(mergeResources.get(i).get(0).getTsFile(),
-                i + 1);
-            hotCompactionLogger.logSequence(sequence);
-            hotCompactionLogger.logFile(TARGET_NAME, newLevelFile);
-            logger.info("{} [Hot Compaction] merge level-{}'s {} tsfiles to next level vm",
-                storageGroupName, i, mergeResources.get(i).size());
+//      if (deviceSet.size() > 0 && pointNum / deviceSet.size() > IoTDBDescriptor.getInstance()
+//          .getConfig().getMergeChunkPointNumberThreshold()) {
+//        // merge all tsfile to last level
+//        logger.info("{} merge {} level tsfiles to next level", storageGroupName,
+//            mergeResources.size());
+//        flushAllFilesToLastLevel(timePartition, mergeResources, hotCompactionLogger, sequence);
+//      } else {
+      for (int i = 0; i < maxLevelNum - 1; i++) {
+        if (maxFileNumInEachLevel <= mergeResources.get(i).size()) {
+          for (TsFileResource mergeResource : mergeResources.get(i)) {
+            hotCompactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
+          }
+          File newLevelFile = createNewTsFileName(mergeResources.get(i).get(0).getTsFile(),
+              i + 1);
+          hotCompactionLogger.logSequence(sequence);
+          hotCompactionLogger.logFile(TARGET_NAME, newLevelFile);
+          logger.info("{} [Hot Compaction] merge level-{}'s {} tsfiles to next level vm",
+              storageGroupName, i, mergeResources.get(i).size());
 
-            TsFileResource newResource = new TsFileResource(newLevelFile);
-            HotCompactionUtils
-                .merge(newResource, mergeResources.get(i), storageGroupName, hotCompactionLogger,
-                    new HashSet<>(), sequence);
-            writeLock();
-            try {
-              deleteLevelFiles(timePartition, mergeResources.get(i));
-              hotCompactionLogger.logMergeFinish();
-              if (sequence) {
-                sequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
-              } else {
-                unSequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
-              }
-              if (mergeResources.size() > i + 1) {
-                mergeResources.get(i + 1).add(newResource);
-              }
-            } finally {
-              writeUnlock();
+          TsFileResource newResource = new TsFileResource(newLevelFile);
+          HotCompactionUtils
+              .merge(newResource, mergeResources.get(i), storageGroupName, hotCompactionLogger,
+                  new HashSet<>(), sequence);
+          writeLock();
+          try {
+            deleteLevelFiles(timePartition, mergeResources.get(i));
+            hotCompactionLogger.logMergeFinish();
+            if (sequence) {
+              sequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
+            } else {
+              unSequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
             }
+            if (mergeResources.size() > i + 1) {
+              mergeResources.get(i + 1).add(newResource);
+            }
+          } finally {
+            writeUnlock();
           }
         }
       }
+//      }
       hotCompactionLogger.close();
       File logFile = FSFactoryProducer.getFSFactory()
           .getFile(storageGroupDir, storageGroupName + HOT_COMPACTION_LOG_NAME);
