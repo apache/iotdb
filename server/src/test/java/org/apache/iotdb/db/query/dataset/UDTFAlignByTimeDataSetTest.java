@@ -130,7 +130,8 @@ public class UDTFAlignByTimeDataSetTest {
       for (int i = 0; i < 8; ++i) {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
-            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName() : path.getFullPath();
+            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext()
+                .getColumnName() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -141,7 +142,7 @@ public class UDTFAlignByTimeDataSetTest {
         for (int i = 0; i < 8; ++i) {
           if (s1s2.contains(i)) {
             if (count % 3 != 0) {
-              assertEquals(count * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+              assertEquals(count * 2, fields.get(originalIndex2FieldIndex.get(i)).getLongV());
             } else {
               assertTrue(fields.get(originalIndex2FieldIndex.get(i)).isNull());
             }
@@ -183,7 +184,8 @@ public class UDTFAlignByTimeDataSetTest {
       for (int i = 0; i < 4; ++i) {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
-            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName() : path.getFullPath();
+            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext()
+                .getColumnName() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -194,7 +196,7 @@ public class UDTFAlignByTimeDataSetTest {
         for (int i = 0; i < 4; ++i) {
           Field field = fields.get(originalIndex2FieldIndex.get(i));
           if (!field.isNull()) {
-            assertEquals(count * 2, field.getFloatV(), 0);
+            assertEquals(count * 2, field.getLongV());
           }
         }
         ++count;
@@ -221,7 +223,8 @@ public class UDTFAlignByTimeDataSetTest {
       for (int i = 0; i < 14; ++i) {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
-            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName() : path.getFullPath();
+            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext()
+                .getColumnName() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -236,7 +239,7 @@ public class UDTFAlignByTimeDataSetTest {
           if (s1AndS2.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
             if (!field.isNull()) {
-              assertEquals(count * 2, field.getFloatV(), 0);
+              assertEquals(count * 2, field.getLongV());
             }
           }
           if (s1OrS2.contains(i)) {
@@ -271,7 +274,8 @@ public class UDTFAlignByTimeDataSetTest {
       for (int i = 0; i < 10; ++i) {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
-            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName() : path.getFullPath();
+            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext()
+                .getColumnName() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -287,13 +291,13 @@ public class UDTFAlignByTimeDataSetTest {
           if (s1AndS2WithAddend.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
             if (!field.isNull()) {
-              assertEquals(count * 2 + ADDEND, field.getFloatV(), 0);
+              assertEquals(count * 2 + ADDEND, field.getLongV());
             }
           }
           if (s1AndS2.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
             if (!field.isNull()) {
-              assertEquals(count * 2, field.getFloatV(), 0);
+              assertEquals(count * 2, field.getLongV());
             }
           }
           if (s1OrS2.contains(i)) {
@@ -334,7 +338,8 @@ public class UDTFAlignByTimeDataSetTest {
       for (int i = 0; i < 8; ++i) {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
-            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName() : path.getFullPath();
+            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext()
+                .getColumnName() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -344,7 +349,7 @@ public class UDTFAlignByTimeDataSetTest {
         List<Field> fields = rowRecord.getFields();
         for (int i = 0; i < 8; ++i) {
           if (s1s2.contains(i)) {
-            assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+            assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getLongV());
           } else if (s1.contains(i)) {
             assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
           } else if (s2.contains(i)) {
@@ -378,7 +383,8 @@ public class UDTFAlignByTimeDataSetTest {
       for (int i = 0; i < 10; ++i) {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
-            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName() : path.getFullPath();
+            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext()
+                .getColumnName() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -393,10 +399,10 @@ public class UDTFAlignByTimeDataSetTest {
         for (int i = 0; i < 10; ++i) {
           if (s1AndS2WithAddend.contains(i)) {
             assertEquals(index * 2 + ADDEND,
-                fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+                fields.get(originalIndex2FieldIndex.get(i)).getLongV());
           }
           if (s1AndS2.contains(i)) {
-            assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+            assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getLongV());
           }
           if (s1OrS2.contains(i)) {
             assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
@@ -433,7 +439,8 @@ public class UDTFAlignByTimeDataSetTest {
       for (int i = 0; i < 8; ++i) {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
-            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName() : path.getFullPath();
+            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext()
+                .getColumnName() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -444,7 +451,7 @@ public class UDTFAlignByTimeDataSetTest {
         for (int i = 0; i < 8; ++i) {
           if (s1s2.contains(i)) {
             if (index % 3 != 0) {
-              assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+              assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getLongV());
             } else {
               assertTrue(fields.get(originalIndex2FieldIndex.get(i)).isNull());
             }
@@ -494,7 +501,8 @@ public class UDTFAlignByTimeDataSetTest {
       for (int i = 0; i < 24; ++i) {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
-            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName() : path.getFullPath();
+            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext()
+                .getColumnName() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -504,7 +512,7 @@ public class UDTFAlignByTimeDataSetTest {
         List<Field> fields = rowRecord.getFields();
         for (int i = 0; i < 24; ++i) {
           if (s1s2.contains(i)) {
-            assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+            assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getLongV());
           }
           if (s1.contains(i) || s2.contains(i)) {
             assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
@@ -537,7 +545,8 @@ public class UDTFAlignByTimeDataSetTest {
       for (int i = 0; i < 6 + 3 * 2 * 3 * 2 * 2; ++i) {
         Path path = queryPlan.getPaths().get(i);
         String columnName =
-            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName() : path.getFullPath();
+            path == null ? queryPlan.getExecutorByOriginalOutputColumnIndex(i).getContext()
+                .getColumnName() : path.getFullPath();
         originalIndex2FieldIndex.add(path2Index.get(columnName));
       }
 
@@ -547,7 +556,8 @@ public class UDTFAlignByTimeDataSetTest {
         List<Field> fields = rowRecord.getFields();
         for (int i = 0; i < 6 + 3 * 2 * 3 * 2 * 2; ++i) {
           assertEquals(i < 6 ? index : index * 2,
-              fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
+              i < 6 ? fields.get(originalIndex2FieldIndex.get(i)).getFloatV()
+                  : fields.get(originalIndex2FieldIndex.get(i)).getLongV(), 0);
         }
         ++index;
       }
