@@ -672,7 +672,7 @@ public class TsFileProcessor {
 
   private void endFile() throws IOException, TsFileProcessorException {
     long closeStartTime = System.currentTimeMillis();
-    updateDeviceChunkPointSizeCache();
+//    updateDeviceChunkPointSizeCache();
     tsFileResource.serialize();
     writer.endFile();
     tsFileResource.cleanCloseFlag();
