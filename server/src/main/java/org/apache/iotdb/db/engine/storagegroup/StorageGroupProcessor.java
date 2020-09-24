@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.merge.strategy.overlapped.inplace.task.InplaceFullMergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -54,14 +54,11 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.IRecoverMergeTask;
+import org.apache.iotdb.db.engine.merge.MergeStage;
 import org.apache.iotdb.db.engine.merge.MergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.seqMerge.MergeOverlappedFileStrategyFactory;
-import org.apache.iotdb.db.engine.merge.seqMerge.MergeOverlappedFilesStrategy;
-import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSmallFilesStrategy;
-import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeTask;
-import org.apache.iotdb.db.engine.merge.utils.SelectorContext;
+import org.apache.iotdb.db.engine.merge.strategy.small.regularization.task.RegularizationMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -128,7 +125,7 @@ import org.slf4j.LoggerFactory;
  */
 public class StorageGroupProcessor {
 
-  private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
+  public static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
 
   /**
    * All newly generated chunks after merge have version number 0, so we set merged Modification
@@ -228,12 +225,9 @@ public class StorageGroupProcessor {
    * result in losing some deletion in the merged new file, so a lock is necessary.
    */
   private ReentrantReadWriteLock mergeLock = new ReentrantReadWriteLock();
-  /**
-   * This is the modification file of the result of the current merge. Because the merged file may
-   * be invisible at this moment, without this, deletion/update during merge could be lost.
-   */
-  private ModificationFile mergingModification;
+
   private volatile boolean isMerging = false;
+  private MergeResource mergeResource = null;
   private long mergeStartTime;
   /**
    * when the data in a storage group is older than dataTTL, it is considered invalid and will be
@@ -365,10 +359,15 @@ public class StorageGroupProcessor {
     File mergingMods = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir,
         MERGING_MODIFICATION_FILE_NAME);
     if (mergingMods.exists()) {
-      mergingModification = new ModificationFile(mergingMods.getPath());
+      mergeResource = new MergeResource(seqTsFiles, unseqTsFiles);
+      mergeResource.setMergingModification(new ModificationFile(mergingMods.getPath()));
+      mergeResource.setStorageGroupName(storageGroupName);
+      mergeResource.setStorageGroupSysDir(storageGroupSysDir);
     }
-    recoverSeqMerge(seqTsFiles, unseqTsFiles, taskName);
-    recoverSizeMerge(seqTsFiles, unseqTsFiles, taskName);
+    recoverFiles(IoTDBDescriptor.getInstance().getConfig()
+        .getMergeOverlappedFileStrategyFactory(), seqTsFiles, unseqTsFiles, taskName);
+    recoverFiles(IoTDBDescriptor.getInstance().getConfig()
+        .getMergeSmallFileStrategyFactory(), seqTsFiles, unseqTsFiles, taskName);
     if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
       mergingMods.delete();
     }
@@ -381,26 +380,16 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverSeqMerge(List<TsFileResource> seqTsFiles, List<TsFileResource> unseqTsFiles,
+  private void recoverFiles(MergeStage mergeFileStrategyFactory, List<TsFileResource> seqTsFiles,
+      List<TsFileResource> unseqTsFiles,
       String taskName) throws IOException, MetadataException {
-    MergeOverlappedFilesStrategy strategy = IoTDBDescriptor.getInstance().getConfig()
-        .getSeqMergeFileStrategy();
-    IRecoverMergeTask recoverMergeTask = strategy.getRecoverMergeTask(seqTsFiles,
+    IRecoverMergeTask recoverMergeTask = mergeFileStrategyFactory.getRecoverMergeTask(seqTsFiles,
         unseqTsFiles,
-        storageGroupSysDir.getPath(), this::mergeEndAction, taskName, storageGroupName);
+        storageGroupSysDir.getPath(),
+        (seqFiles, unseqFiles, mergeLog, newFile) -> mergeEndAction((List<TsFileResource>) seqFiles,
+            (List<TsFileResource>) unseqFiles, mergeLog,
+            newFile), taskName, storageGroupName);
     logger.info("{} a RecoverSeqMergeTask {} starts...", storageGroupName, taskName);
-    recoverMergeTask
-        .recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
-  }
-
-  private void recoverSizeMerge(List<TsFileResource> seqTsFiles, List<TsFileResource> unseqTsFiles,
-      String taskName) throws IOException, MetadataException {
-    MergeSmallFilesStrategy strategy = IoTDBDescriptor.getInstance().getConfig()
-        .getMergeOverlappedFilesStrategy();
-    IRecoverMergeTask recoverMergeTask = strategy.getRecoverMergeTask(seqTsFiles,
-        unseqTsFiles,
-        storageGroupSysDir.getPath(), this::mergeEndAction, taskName, storageGroupName);
-    logger.info("{} a RecoverSizeMergeTask {} starts...", storageGroupName, taskName);
     recoverMergeTask
         .recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
   }
@@ -667,7 +656,7 @@ public class StorageGroupProcessor {
         continue;
       }
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableVm() && writer.canWrite()) {
+        if (writer.canWrite()) {
           // vm is enable and the writer is not the last one but it can still be written
           // we still need to recover it
           TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
@@ -969,7 +958,8 @@ public class StorageGroupProcessor {
 
     // try to update the latest time of the device of this tsRecord
     if (latestTimeForEachDevice.get(timePartitionId)
-        .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE) < insertRowPlan.getTime()) {
+        .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE) < insertRowPlan
+        .getTime()) {
       latestTimeForEachDevice.get(timePartitionId)
           .put(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
@@ -1208,11 +1198,12 @@ public class StorageGroupProcessor {
     syncCloseAllWorkingTsFileProcessors();
     //normally, mergingModification is just need to be closed by after a merge task is finished.
     //we close it here just for IT test.
-    if (this.mergingModification != null) {
+    if (this.mergeResource != null && this.mergeResource.getMergingModification() != null) {
       try {
-        mergingModification.close();
+        mergeResource.getMergingModification().close();
       } catch (IOException e) {
-        logger.error("Cannot close the mergingMod file {}", mergingModification.getFilePath(), e);
+        logger.error("Cannot close the mergingMod file {}",
+            mergeResource.getMergingModification().getFilePath(), e);
       }
 
     }
@@ -1416,7 +1407,8 @@ public class StorageGroupProcessor {
    */
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources, List<TsFileResource> upgradeTsFileResources,
-      PartialPath deviceId, String measurementId, QueryContext context, Filter timeFilter, boolean isSeq)
+      PartialPath deviceId, String measurementId, QueryContext context, Filter timeFilter,
+      boolean isSeq)
       throws MetadataException {
 
     MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(deviceId, measurementId);
@@ -1437,7 +1429,8 @@ public class StorageGroupProcessor {
         } else {
 
           tsFileResource.getUnsealedFileProcessor()
-              .query(deviceId.getFullPath(), measurementId, schema.getType(), schema.getEncodingType(),
+              .query(deviceId.getFullPath(), measurementId, schema.getType(),
+                  schema.getEncodingType(),
                   schema.getProps(), context, tsfileResourcesForQuery);
         }
       } catch (IOException e) {
@@ -1525,10 +1518,11 @@ public class StorageGroupProcessor {
       logDeletion(startTime, endTime, deviceId, measurementId);
       // delete Last cache record if necessary
       tryToDeleteLastCache(deviceId, measurementId, startTime, endTime);
-      Deletion deletion = new Deletion(deviceId.concatNode(measurementId),MERGE_MOD_START_VERSION_NUM, startTime, endTime);
-      if (mergingModification != null) {
-        mergingModification.write(deletion);
-        updatedModFiles.add(mergingModification);
+      Deletion deletion = new Deletion(deviceId.concatNode(measurementId),
+          MERGE_MOD_START_VERSION_NUM, startTime, endTime);
+      if (mergeResource != null && mergeResource.getMergingModification() != null) {
+        mergeResource.getMergingModification().write(deletion);
+        updatedModFiles.add(mergeResource.getMergingModification());
       }
 
       deleteDataInFiles(sequenceFileTreeSet, deletion, updatedModFiles);
@@ -1766,14 +1760,16 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void merge(boolean fullMerge) {
+  public void merge() {
     // merge seq data with unseq data files
-    seqMerge(fullMerge);
+    mergeFiles(IoTDBDescriptor.getInstance().getConfig()
+        .getMergeOverlappedFileStrategyFactory());
     // merge only seq data files
-    sizeMerge();
+    mergeFiles(IoTDBDescriptor.getInstance().getConfig()
+        .getMergeSmallFileStrategyFactory());
   }
 
-  private void seqMerge(boolean fullMerge) {
+  private void mergeFiles(MergeStage mergeFileStrategyFactory) {
     writeLock();
     try {
       if (isMerging) {
@@ -1783,25 +1779,21 @@ public class StorageGroupProcessor {
         }
         return;
       }
-      logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
-          fullMerge);
 
-      if (unSequenceFileList.isEmpty() || sequenceFileTreeSet.isEmpty()) {
-        logger.info("{} no files to be merged", storageGroupName);
-        return;
-      }
-
-      MergeOverlappedFileStrategyFactory strategy = IoTDBDescriptor.getInstance().getConfig()
-          .getMergeOverlappedFileStrategyFactory();
-      IMergeFileSelector fileSelector = strategy.getFileSelector(sequenceFileTreeSet,
-          unSequenceFileList, dataTTL,storageGroupName,storageGroupSysDir);
+      IMergeFileSelector fileSelector = mergeFileStrategyFactory
+          .getFileSelector(sequenceFileTreeSet,
+              unSequenceFileList, dataTTL, storageGroupName, storageGroupSysDir);
       try {
-        MergeResource mergeResource = fileSelector.selectMergedFiles();
+        mergeResource = fileSelector.selectMergedFiles();
         if (mergeResource == null) {
           return;
         }
-        MergeTask mergeTask = strategy.getMergeTask(mergeResource,
-            storageGroupSysDir.getPath(), this::mergeEndAction, mergeResource.getTaskName(), storageGroupName);
+        MergeTask mergeTask = mergeFileStrategyFactory.getMergeTask(mergeResource,
+            storageGroupSysDir.getPath(),
+            (seqFiles, unseqFiles, mergeLog, newFile) -> mergeEndAction(
+                (List<TsFileResource>) seqFiles, (List<TsFileResource>) unseqFiles,
+                mergeLog, newFile), mergeResource.getTaskName(),
+            storageGroupName);
         MergeManager.getINSTANCE().submitMainTask(mergeTask);
         if (logger.isInfoEnabled()) {
           logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
@@ -1811,67 +1803,6 @@ public class StorageGroupProcessor {
         isMerging = true;
         mergeStartTime = System.currentTimeMillis();
       } catch (MergeException e) {
-        logger.error("{} cannot select file for merge", storageGroupName, e);
-      }
-    } finally {
-      writeUnlock();
-    }
-  }
-
-  private void sizeMerge() {
-    writeLock();
-    try {
-      if (isMerging) {
-        if (logger.isInfoEnabled()) {
-          logger.info("{} Last merge is ongoing, currently consumed time: {}ms", storageGroupName,
-              (System.currentTimeMillis() - mergeStartTime));
-        }
-        return;
-      }
-      logger.info("{} will close all files for starting a merge", storageGroupName);
-
-      if (sequenceFileTreeSet.isEmpty()) {
-        logger.info("{} no files to be merged", storageGroupName);
-        return;
-      }
-
-      long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
-      long timeLowerBound = System.currentTimeMillis() - dataTTL;
-      MergeSmallFilesStrategy strategy = IoTDBDescriptor.getInstance().getConfig()
-          .getMergeOverlappedFilesStrategy();
-      IMergeFileSelector fileSelector = strategy
-          .getFileSelector(sequenceFileTreeSet, budget, timeLowerBound);
-      try {
-        Pair<MergeResource, SelectorContext> selectRes = fileSelector.selectMergedFiles();
-        MergeResource mergeResource = selectRes.left;
-        if (mergeResource.getSeqFiles().size() == 0) {
-          logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
-              budget);
-          return;
-        }
-        // avoid pending tasks holds the metadata and streams
-        mergeResource.clear();
-        String taskName = storageGroupName + "-" + System.currentTimeMillis();
-        // do not cache metadata until true candidates are chosen, or too much metadata will be
-        // cached during selection
-        mergeResource.setCacheDeviceMeta(true);
-
-        for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
-          tsFileResource.setMerging(true);
-        }
-        MergeTask mergeTask = strategy.getMergeTask(mergeResource,
-            storageGroupSysDir.getPath(), this::mergeEndAction, taskName, storageGroupName);
-        mergingModification = new ModificationFile(
-            storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
-        MergeManager.getINSTANCE().submitMainTask(mergeTask);
-        if (logger.isInfoEnabled()) {
-          logger.info("{} submits a merge task {}, merging {} seqFiles",
-              storageGroupName, taskName, mergeResource.getSeqFiles().size());
-        }
-        isMerging = true;
-        mergeStartTime = System.currentTimeMillis();
-
-      } catch (MergeException | IOException e) {
         logger.error("{} cannot select file for merge", storageGroupName, e);
       }
     } finally {
@@ -1906,8 +1837,9 @@ public class StorageGroupProcessor {
     try {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
-      if (mergingModification != null) {
-        for (Modification modification : mergingModification.getModifications()) {
+      if (mergeResource != null && mergeResource.getMergingModification() != null) {
+        for (Modification modification : mergeResource.getMergingModification()
+            .getModifications()) {
           seqFile.getModFile().write(modification);
         }
         try {
@@ -1925,9 +1857,8 @@ public class StorageGroupProcessor {
 
   private void removeMergingModification() {
     try {
-      if (mergingModification != null) {
-        mergingModification.remove();
-        mergingModification = null;
+      if (mergeResource != null && mergeResource.getMergingModification() != null) {
+        mergeResource.getMergingModification().remove();
       }
     } catch (IOException e) {
       logger.error("{} cannot remove merging modification ", storageGroupName, e);
@@ -1988,13 +1919,13 @@ public class StorageGroupProcessor {
 
       // move modifications generated during merge into the new file
       for (TsFileResource tsFileResource : newFile) {
-        if (mergingModification != null) {
+        if (mergeResource != null && mergeResource.getMergingModification() != null) {
           logger.info("{} is updating the merged file's modification file", storageGroupName);
-          for (Modification modification : mergingModification.getModifications()) {
+          for (Modification modification : mergeResource.getMergingModification()
+              .getModifications()) {
             tsFileResource.getModFile().write(modification);
           }
-          mergingModification.remove();
-          mergingModification = null;
+          mergeResource.getMergingModification().remove();
         }
         restoreMergeFile(tsFileResource);
         tsFileResource.close();

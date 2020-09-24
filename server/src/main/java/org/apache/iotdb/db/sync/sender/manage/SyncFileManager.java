@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.sync.sender.manage;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask;
+import org.apache.iotdb.db.engine.merge.strategy.overlapped.inplace.task.InplaceFullMergeTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.IoTDB;
@@ -137,7 +137,7 @@ public class SyncFileManager implements ISyncFileManager {
     return new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
         && !new File(
         file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists() && !new File(
-        file.getAbsolutePath() + InplaceMergeTask.MERGE_SUFFIX).exists();
+        file.getAbsolutePath() + InplaceFullMergeTask.MERGE_SUFFIX).exists();
   }
 
   @Override

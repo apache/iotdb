@@ -19,11 +19,20 @@
 
 package org.apache.iotdb.db.engine.merge;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.utils.MergeUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class MergeTask implements Callable<Void> {
+
+  private static final Logger logger = LoggerFactory.getLogger(
+      MergeTask.class);
   protected MergeResource resource;
   protected String storageGroupSysDir;
   protected String storageGroupName;
@@ -34,6 +43,9 @@ public abstract class MergeTask implements Callable<Void> {
   protected String taskName;
   protected boolean fullMerge;
   protected States states = States.START;
+
+  protected long startTime;
+  protected List<PartialPath> unmergedSeries;
 
   public MergeTask(MergeResource mergeResource, String storageGroupSysDir,
       MergeCallback callback, String taskName, boolean fullMerge, String storageGroupName) {
@@ -76,4 +88,24 @@ public abstract class MergeTask implements Callable<Void> {
   public String getTaskName() {
     return taskName;
   }
+
+  protected void cleanUpAndLog() throws IOException {
+    cleanUp(true);
+    if (logger.isInfoEnabled()) {
+      long totalFileSize = MergeUtils.collectFileSizes(resource.getSeqFiles(),
+          resource.getUnseqFiles());
+      double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
+      double byteRate = totalFileSize / elapsedTime / 1024 / 1024;
+      double seriesRate = unmergedSeries.size() / elapsedTime;
+      double chunkRate = mergeContext.getTotalChunkWritten() / elapsedTime;
+      double fileRate =
+          (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime;
+      double ptRate = mergeContext.getTotalPointWritten() / elapsedTime;
+      logger.info("{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
+              + "fileRate: {}/s, ptRate: {}/s",
+          taskName, elapsedTime, byteRate, seriesRate, chunkRate, fileRate, ptRate);
+    }
+  }
+
+  protected abstract void cleanUp(boolean executeCallback) throws IOException;
 }

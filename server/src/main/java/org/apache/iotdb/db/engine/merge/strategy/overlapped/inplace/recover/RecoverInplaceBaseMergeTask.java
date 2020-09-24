@@ -1,0 +1,197 @@
+package org.apache.iotdb.db.engine.merge.strategy.overlapped.inplace.recover;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map.Entry;
+import org.apache.iotdb.db.engine.merge.IRecoverMergeTask;
+import org.apache.iotdb.db.engine.merge.MergeCallback;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.strategy.overlapped.inplace.recover.LogAnalyzer.Status;
+import org.apache.iotdb.db.engine.merge.strategy.overlapped.inplace.task.InplaceFullMergeTask;
+import org.apache.iotdb.db.engine.merge.strategy.overlapped.inplace.task.MergeFileTask;
+import org.apache.iotdb.db.engine.merge.strategy.overlapped.inplace.task.MergeMultiChunkTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public abstract class RecoverInplaceBaseMergeTask extends InplaceFullMergeTask implements
+    IRecoverMergeTask {
+  private static final Logger logger = LoggerFactory.getLogger(RecoverInplaceAppendMergeTask.class);
+
+  private LogAnalyzer analyzer;
+
+  public RecoverInplaceBaseMergeTask(Collection<TsFileResource> seqFiles,
+      Collection<TsFileResource> unseqFiles, String storageGroupSysDir,
+      MergeCallback callback, String taskName, String storageGroupName) {
+    super(new MergeResource(seqFiles, unseqFiles), storageGroupSysDir, callback, taskName,
+        storageGroupName);
+  }
+
+  public void recoverMerge(boolean continueMerge) throws IOException, MetadataException {
+    File logFile = new File(storageGroupSysDir, InplaceMergeLogger.MERGE_LOG_NAME);
+    if (!logFile.exists()) {
+      logger.info("{} no merge.log, merge recovery ends", taskName);
+      return;
+    }
+    long startTime = System.currentTimeMillis();
+
+    analyzer = new LogAnalyzer(resource, taskName, logFile, storageGroupName);
+    Status status = analyzer.analyze();
+    if (logger.isInfoEnabled()) {
+      logger.info("{} merge recovery status determined: {} after {}ms", taskName, status,
+          (System.currentTimeMillis() - startTime));
+    }
+    switch (status) {
+      case NONE:
+        logFile.delete();
+        break;
+      case MERGE_START:
+        resumeAfterFilesLogged(continueMerge);
+        break;
+      case ALL_TS_MERGED:
+        resumeAfterAllTsMerged(continueMerge);
+        break;
+      case MERGE_END:
+        cleanUp(continueMerge);
+        break;
+      default:
+        throw new UnsupportedOperationException(taskName + " found unrecognized status " + status);
+    }
+    if (logger.isInfoEnabled()) {
+      logger.info("{} merge recovery ends after {}ms", taskName,
+          (System.currentTimeMillis() - startTime));
+    }
+  }
+
+  private void resumeAfterFilesLogged(boolean continueMerge) throws IOException {
+    if (continueMerge) {
+      resumeMergeProgress();
+      MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName,
+          (InplaceMergeLogger) mergeLogger, resource,
+          fullMerge, analyzer.getUnmergedPaths(), storageGroupName);
+      analyzer.setUnmergedPaths(null);
+      mergeChunkTask.mergeSeries();
+
+      MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext,
+          (InplaceMergeLogger) mergeLogger, resource,
+          (List<TsFileResource>) resource.getSeqFiles());
+      mergeFileTask.mergeFiles();
+    }
+    cleanUp(continueMerge);
+  }
+
+  private void resumeAfterAllTsMerged(boolean continueMerge) throws IOException {
+    if (continueMerge) {
+      resumeMergeProgress();
+      MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext,
+          (InplaceMergeLogger) mergeLogger, resource,
+          analyzer.getUnmergedFiles());
+      analyzer.setUnmergedFiles(null);
+      mergeFileTask.mergeFiles();
+    } else {
+      // NOTICE: although some of the seqFiles may have been truncated in last merge, we do not
+      // recover them here because later TsFile recovery will recover them
+      truncateFiles();
+    }
+    cleanUp(continueMerge);
+  }
+
+  private void resumeMergeProgress() throws IOException {
+    mergeLogger = new InplaceMergeLogger(storageGroupSysDir);
+    truncateFiles();
+    recoverChunkCounts();
+  }
+
+  // scan the metadata to compute how many chunks are merged/unmerged so at last we can decide to
+  // move the merged chunks or the unmerged chunks
+  private void recoverChunkCounts() throws IOException {
+    logger.info("{} recovering chunk counts", taskName);
+    int fileCnt = 1;
+    for (TsFileResource tsFileResource : resource.getSeqFiles()) {
+      logger.info("{} recovering {}  {}/{}", taskName, tsFileResource.getTsFile().getName(),
+          fileCnt, resource.getSeqFiles().size());
+      RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(tsFileResource);
+      mergeFileWriter.makeMetadataVisible();
+      mergeContext.getUnmergedChunkStartTimes().put(tsFileResource, new HashMap<>());
+      List<PartialPath> pathsToRecover = analyzer.getMergedPaths();
+      int cnt = 0;
+      double progress = 0.0;
+      for (PartialPath path : pathsToRecover) {
+        recoverChunkCounts(path, tsFileResource, mergeFileWriter);
+        if (logger.isInfoEnabled()) {
+          cnt += 1.0;
+          double newProgress = 100.0 * cnt / pathsToRecover.size();
+          if (newProgress - progress >= 1.0) {
+            progress = newProgress;
+            logger.info("{} {}% series count of {} are recovered", taskName, progress,
+                tsFileResource.getTsFile().getName());
+          }
+        }
+      }
+      fileCnt++;
+    }
+    analyzer.setMergedPaths(null);
+  }
+
+  private void recoverChunkCounts(PartialPath path, TsFileResource tsFileResource,
+      RestorableTsFileIOWriter mergeFileWriter) throws IOException {
+    mergeContext.getUnmergedChunkStartTimes().get(tsFileResource).put(path, new ArrayList<>());
+
+    List<ChunkMetadata> seqFileChunks = resource.queryChunkMetadata(path, tsFileResource);
+    List<ChunkMetadata> mergeFileChunks =
+        mergeFileWriter.getVisibleMetadataList(path.getDevice(), path.getMeasurement(), null);
+    mergeContext.getMergedChunkCnt().compute(tsFileResource, (k, v) -> v == null ?
+        mergeFileChunks.size() : v + mergeFileChunks.size());
+    int seqChunkIndex = 0;
+    int mergeChunkIndex = 0;
+    int unmergedCnt = 0;
+    while (seqChunkIndex < seqFileChunks.size() && mergeChunkIndex < mergeFileChunks.size()) {
+      ChunkMetadata seqChunk = seqFileChunks.get(seqChunkIndex);
+      ChunkMetadata mergedChunk = mergeFileChunks.get(mergeChunkIndex);
+      if (seqChunk.getStartTime() < mergedChunk.getStartTime()) {
+        // this seqChunk is unmerged
+        unmergedCnt++;
+        seqChunkIndex++;
+        mergeContext.getUnmergedChunkStartTimes().get(tsFileResource).get(path)
+            .add(seqChunk.getStartTime());
+      } else if (mergedChunk.getStartTime() <= seqChunk.getStartTime() &&
+          seqChunk.getStartTime() <= mergedChunk.getEndTime()) {
+        // this seqChunk is merged
+        seqChunkIndex++;
+      } else {
+        // seqChunk.startTime > mergeChunk.endTime, find next mergedChunk that may cover the
+        // seqChunk
+        mergeChunkIndex++;
+      }
+    }
+    int finalUnmergedCnt = unmergedCnt;
+    mergeContext.getUnmergedChunkCnt().compute(tsFileResource, (k, v) -> v == null ?
+        finalUnmergedCnt : v + finalUnmergedCnt);
+  }
+
+  private void truncateFiles() throws IOException {
+    logger.info("{} truncating {} files", taskName, analyzer.getFileLastPositions().size());
+    for (Entry<File, Long> entry : analyzer.getFileLastPositions().entrySet()) {
+      File file = entry.getKey();
+      Long lastPosition = entry.getValue();
+      if (file.exists() && file.length() != lastPosition) {
+        try (FileInputStream fileInputStream = new FileInputStream(file)) {
+          FileChannel channel = fileInputStream.getChannel();
+          channel.truncate(lastPosition);
+          channel.close();
+        }
+      }
+    }
+    analyzer.setFileLastPositions(null);
+  }
+}

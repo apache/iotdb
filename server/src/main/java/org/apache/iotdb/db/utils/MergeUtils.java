@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -34,9 +35,9 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -88,8 +89,8 @@ public class MergeUtils {
     return sequenceReader.getAllPaths();
   }
 
-  public static long collectFileSizes(List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles) {
+  public static long collectFileSizes(Collection<TsFileResource> seqFiles,
+      Collection<TsFileResource> unseqFiles) {
     long totalSize = 0;
     for (TsFileResource tsFileResource : seqFiles) {
       totalSize += tsFileResource.getTsFileSize();
@@ -167,9 +168,10 @@ public class MergeUtils {
    * reduce disk seeks.
    *
    * @param paths names of the timeseries
+   * @param unseqResources
    */
   public static List<Chunk>[] collectUnseqChunks(List<PartialPath> paths,
-      List<TsFileResource> unseqResources, MergeResource mergeResource) throws IOException {
+      Collection<TsFileResource> unseqResources, MergeResource mergeResource) throws IOException {
     List<Chunk>[] ret = new List[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
       ret[i] = new ArrayList<>();

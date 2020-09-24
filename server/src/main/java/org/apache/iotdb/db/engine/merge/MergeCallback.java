@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.merge;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
@@ -32,6 +33,6 @@ public interface MergeCallback {
    * remove the unseqFiles since they have been merged into new files. 3. remove the merge log file
    * 4. exit merging status
    */
-  void call(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, File logFile,
+  void call(Collection<TsFileResource> seqFiles, Collection<TsFileResource> unseqFiles, File logFile,
       List<TsFileResource> newFile);
 }

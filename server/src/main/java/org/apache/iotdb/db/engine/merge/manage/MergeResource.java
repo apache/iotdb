@@ -19,21 +19,29 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
-import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.merge.strategy.overlapped.inplace.task.InplaceFullMergeTask.MERGE_SUFFIX;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -43,6 +51,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 /**
@@ -53,11 +62,15 @@ public class MergeResource {
 
   private String taskName;
   private String storageGroupName;
-  private Modification mergingModification;
-  private String storageGroupSysDir;
+  /**
+   * This is the modification file of the result of the current merge. Because the merged file may
+   * be invisible at this moment, without this, deletion/update during merge could be lost.
+   */
+  private ModificationFile mergingModification;
+  private File storageGroupSysDir;
 
-  private List<TsFileResource> seqFiles;
-  private List<TsFileResource> unseqFiles;
+  private Collection<TsFileResource> seqFiles;
+  private Collection<TsFileResource> unseqFiles;
 
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
@@ -76,7 +89,7 @@ public class MergeResource {
     this(seqFiles, new ArrayList<>());
   }
 
-  public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  public MergeResource(Collection<TsFileResource> seqFiles, Collection<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles;
     this.unseqFiles = unseqFiles;
   }
@@ -222,20 +235,20 @@ public class MergeResource {
     }
   }
 
-  public List<TsFileResource> getSeqFiles() {
+  public Collection<TsFileResource> getSeqFiles() {
     return seqFiles;
   }
 
-  public void setSeqFiles(List<TsFileResource> seqFiles) {
+  public void setSeqFiles(Collection<TsFileResource> seqFiles) {
     this.seqFiles = seqFiles;
   }
 
-  public List<TsFileResource> getUnseqFiles() {
+  public Collection<TsFileResource> getUnseqFiles() {
     return unseqFiles;
   }
 
   public void setUnseqFiles(
-      List<TsFileResource> unseqFiles) {
+      Collection<TsFileResource> unseqFiles) {
     this.unseqFiles = unseqFiles;
   }
 
@@ -281,20 +294,35 @@ public class MergeResource {
     this.storageGroupName = storageGroupName;
   }
 
-  public Modification getMergingModification() {
+  public ModificationFile getMergingModification() {
     return mergingModification;
   }
 
   public void setMergingModification(
-      Modification mergingModification) {
+      ModificationFile mergingModification) {
     this.mergingModification = mergingModification;
   }
 
-  public String getStorageGroupSysDir() {
+  public File getStorageGroupSysDir() {
     return storageGroupSysDir;
   }
 
-  public void setStorageGroupSysDir(String storageGroupSysDir) {
+  public void setStorageGroupSysDir(File storageGroupSysDir) {
     this.storageGroupSysDir = storageGroupSysDir;
+  }
+
+  public List<PartialPath> getUnmergedSeries() throws MetadataException {
+    Set<PartialPath> devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
+    Map<PartialPath, MeasurementSchema> measurementSchemaMap = new HashMap<>();
+    List<PartialPath> unmergedSeries = new ArrayList<>();
+    for (PartialPath device : devices) {
+      MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
+      for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
+        PartialPath path = device.concatNode(entry.getKey());
+        measurementSchemaMap.put(path, ((MeasurementMNode) entry.getValue()).getSchema());
+        unmergedSeries.add(path);
+      }
+    }
+    return unmergedSeries;
   }
 }

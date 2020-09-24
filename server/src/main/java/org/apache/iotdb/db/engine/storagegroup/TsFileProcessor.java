@@ -348,15 +348,7 @@ public class TsFileProcessor {
   }
 
   public boolean shouldClose() {
-    if (config.isEnableVm() && flushVmTimes >= config.getMaxMergeChunkNumInTsFile() - 1) {
-      return true;
-    }
     long fileSize = tsFileResource.getTsFileSize();
-    for (List<TsFileResource> subVmTsFileList : vmTsFileResources) {
-      for (TsFileResource vmFile : subVmTsFileList) {
-        fileSize += vmFile.getTsFileSize();
-      }
-    }
     long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig()
         .getTsFileSizeThreshold();
     if (fileSize >= fileSizeThreshold) {

@@ -26,11 +26,11 @@ import java.time.ZoneId;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.merge.seqMerge.MergeOverlappedFileStrategyFactory;
-import org.apache.iotdb.db.engine.merge.seqMerge.MergeOverlappedFilesStrategy;
-import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSizeSelectorStrategy;
-import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSmallFileStrategyFactory;
-import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSmallFilesStrategy;
+import org.apache.iotdb.db.engine.merge.strategy.overlapped.OverlappedFileMergeStage;
+import org.apache.iotdb.db.engine.merge.strategy.overlapped.MergeOverlappedFilesStrategy;
+import org.apache.iotdb.db.engine.merge.strategy.small.SizeBasedFileSelectorStrategy;
+import org.apache.iotdb.db.engine.merge.strategy.small.SmallFileMergeStage;
+import org.apache.iotdb.db.engine.merge.strategy.small.MergeSmallFilesStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -515,10 +515,10 @@ public class IoTDBConfig {
    */
   private int chunkMergePointThreshold = 20480;
 
-  private MergeOverlappedFileStrategyFactory mergeOverlappedFileStrategyFactory = new MergeOverlappedFileStrategyFactory(MergeOverlappedFilesStrategy.SQUEEZE,false);
+  private OverlappedFileMergeStage mergeOverlappedFileStrategyFactory = new OverlappedFileMergeStage(MergeOverlappedFilesStrategy.SQUEEZE,false);
 
-  private MergeSmallFileStrategyFactory mergeSmallFileStrategyFactory = new MergeSmallFileStrategyFactory(MergeSmallFilesStrategy.REGULARIZATION,
-      MergeSizeSelectorStrategy.POINT_RANGE);
+  private SmallFileMergeStage mergeSmallFileStrategyFactory = new SmallFileMergeStage(MergeSmallFilesStrategy.REGULARIZATION,
+      SizeBasedFileSelectorStrategy.POINT_RANGE);
 
   /**
    * Default system file storage is in local file system (unsupported)
@@ -1224,21 +1224,21 @@ public class IoTDBConfig {
     this.memtableSizeThreshold = memtableSizeThreshold;
   }
 
-  public MergeOverlappedFileStrategyFactory getMergeOverlappedFileStrategyFactory() {
+  public OverlappedFileMergeStage getMergeOverlappedFileStrategyFactory() {
     return mergeOverlappedFileStrategyFactory;
   }
 
   public void setMergeOverlappedFileStrategyFactory(
-      MergeOverlappedFileStrategyFactory mergeOverlappedFileStrategyFactory) {
+      OverlappedFileMergeStage mergeOverlappedFileStrategyFactory) {
     this.mergeOverlappedFileStrategyFactory = mergeOverlappedFileStrategyFactory;
   }
 
-  public MergeSmallFileStrategyFactory getMergeSmallFileStrategyFactory() {
+  public SmallFileMergeStage getMergeSmallFileStrategyFactory() {
     return mergeSmallFileStrategyFactory;
   }
 
   public void setMergeSmallFileStrategyFactory(
-      MergeSmallFileStrategyFactory mergeSmallFileStrategyFactory) {
+      SmallFileMergeStage mergeSmallFileStrategyFactory) {
     this.mergeSmallFileStrategyFactory = mergeSmallFileStrategyFactory;
   }
 

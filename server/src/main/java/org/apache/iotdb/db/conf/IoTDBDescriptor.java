@@ -33,11 +33,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.merge.seqMerge.MergeOverlappedFileStrategyFactory;
-import org.apache.iotdb.db.engine.merge.seqMerge.MergeOverlappedFilesStrategy;
-import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSizeSelectorStrategy;
-import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSmallFileStrategyFactory;
-import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSmallFilesStrategy;
+import org.apache.iotdb.db.engine.merge.strategy.overlapped.OverlappedFileMergeStage;
+import org.apache.iotdb.db.engine.merge.strategy.small.SmallFileMergeStage;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -279,14 +276,6 @@ public class IoTDBDescriptor {
           .getProperty("max_merge_chunk_num_in_tsfile",
               Integer.toString(conf.getMaxMergeChunkNumInTsFile()))));
 
-      conf.setEnableVm(Boolean.parseBoolean(properties
-          .getProperty("enable_vm",
-              Boolean.toString(conf.isEnableVm()))));
-
-      conf.setMaxVmNum(Integer.parseInt(properties
-          .getProperty("max_vm_num",
-              Integer.toString(conf.getMaxVmNum()))));
-
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
               Boolean.toString(conf.isSyncEnable()))));
@@ -357,9 +346,9 @@ public class IoTDBDescriptor {
           "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
       conf.setMergeFileTimeBlock(Long.parseLong(properties.getProperty
           ("merge_file_time_block", Long.toString(conf.getMergeFileSelectionTimeBudget()))));
-      conf.setMergeOverlappedFileStrategyFactory(MergeOverlappedFileStrategyFactory.valueOf(properties.getProperty(
+      conf.setMergeOverlappedFileStrategyFactory(OverlappedFileMergeStage.valueOf(properties.getProperty(
           "overlapped_file_merge_strategy", conf.getMergeOverlappedFileStrategyFactory().toString())));
-      conf.setMergeSmallFileStrategyFactory(MergeSmallFileStrategyFactory.valueOf(properties.getProperty(
+      conf.setMergeSmallFileStrategyFactory(SmallFileMergeStage.valueOf(properties.getProperty(
           "small_file_merge_strategy", conf.getMergeSmallFileStrategyFactory().toString())));
 
       conf.setEnablePartialInsert(

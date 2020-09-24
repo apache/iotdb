@@ -45,7 +45,7 @@ There are two options when recovering, one is to continue the previous progress,
 
 ## Related code
 
-* org.apache.iotdb.db.engine.merge.BaseOverLappedFileSelector
+* org.apache.iotdb.db.engine.merge.strategy.overlapped.BaseOverLappedFileSelector
 
     The base class for the file selection process, which specifies the basic framework for selecting files and methods for calculating file memory consumption in different situations. All custom file selection strategies need to inherit this class
     

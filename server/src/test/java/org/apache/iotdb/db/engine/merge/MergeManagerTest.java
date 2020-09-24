@@ -24,9 +24,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.PriorityQueue;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
-import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.MergeMultiChunkTask;
+import org.apache.iotdb.db.engine.merge.strategy.overlapped.inplace.task.MergeMultiChunkTask;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.junit.Before;
