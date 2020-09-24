@@ -416,6 +416,43 @@ public class LevelTsFileManagement extends TsFileManagement {
     forkedUnSeqListDeviceSet = unSeqResult.right;
   }
 
+//  private Pair<Long, Set<String>> forkTsFileList(
+//      List<List<TsFileResource>> forkedTsFileResources,
+//      List rawTsFileResources) {
+//    forkedTsFileResources.clear();
+//    // just fork part of the TsFile list, controlled by max_merge_chunk_point
+//    long pointNum = 0;
+//    // all flush to target file
+//    Set<String> deviceSet = new HashSet<>();
+//    for (int i = 0; i < maxLevelNum - 1; i++) {
+//      List<TsFileResource> forkedLevelTsFileResources = new ArrayList<>();
+//      Collection<TsFileResource> levelRawTsFileResources = (Collection<TsFileResource>) rawTsFileResources
+//          .get(i);
+//      synchronized (levelRawTsFileResources) {
+//        for (TsFileResource tsFileResource : levelRawTsFileResources) {
+//          if (tsFileResource.isClosed()) {
+//            Map<String, Long> chunkPointMap = FileChunkPointSizeCache.getInstance()
+//                .get(tsFileResource.getTsFile());
+//            for (Entry<String, Long> deviceChunkPoint : chunkPointMap.entrySet()) {
+//              deviceSet.add(deviceChunkPoint.getKey());
+//              pointNum += deviceChunkPoint.getValue();
+//            }
+//          }
+//          if (deviceSet.size() > 0
+//              && pointNum / deviceSet.size() >= maxChunkPointNum) {
+//            break;
+//          }
+//        }
+//      }
+//      if (deviceSet.size() > 0
+//          && pointNum / deviceSet.size() >= maxChunkPointNum) {
+//        break;
+//      }
+//      forkedTsFileResources.add(forkedLevelTsFileResources);
+//    }
+//    return new Pair<>(pointNum, deviceSet);
+//  }
+
   private Pair<Long, Set<String>> forkTsFileList(
       List<List<TsFileResource>> forkedTsFileResources,
       List rawTsFileResources) {
@@ -431,22 +468,9 @@ public class LevelTsFileManagement extends TsFileManagement {
       synchronized (levelRawTsFileResources) {
         for (TsFileResource tsFileResource : levelRawTsFileResources) {
           if (tsFileResource.isClosed()) {
-            Map<String, Long> chunkPointMap = FileChunkPointSizeCache.getInstance()
-                .get(tsFileResource.getTsFile());
-            for (Entry<String, Long> deviceChunkPoint : chunkPointMap.entrySet()) {
-              deviceSet.add(deviceChunkPoint.getKey());
-              pointNum += deviceChunkPoint.getValue();
-            }
-          }
-          if (deviceSet.size() > 0
-              && pointNum / deviceSet.size() >= maxChunkPointNum) {
-            break;
+            forkedLevelTsFileResources.add(tsFileResource);
           }
         }
-      }
-      if (deviceSet.size() > 0
-          && pointNum / deviceSet.size() >= maxChunkPointNum) {
-        break;
       }
       forkedTsFileResources.add(forkedLevelTsFileResources);
     }
@@ -468,9 +492,9 @@ public class LevelTsFileManagement extends TsFileManagement {
       long pointNum = sequence ? forkedSeqListPointNum : forkedUnSeqListPointNum;
       Set<String> deviceSet =
           sequence ? forkedSeqListDeviceSet : forkedUnSeqListDeviceSet;
-      logger
-          .info("{} current sg subLevel point num: {}, device num: {}", storageGroupName, pointNum,
-              deviceSet.size());
+//      logger
+//          .info("{} current sg subLevel point num: {}, device num: {}", storageGroupName, pointNum,
+//              deviceSet.size());
       HotCompactionLogger hotCompactionLogger = new HotCompactionLogger(storageGroupDir,
           storageGroupName);
       if (deviceSet.size() > 0 && pointNum / deviceSet.size() > IoTDBDescriptor.getInstance()
