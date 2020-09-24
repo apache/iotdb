@@ -27,7 +27,7 @@ import static org.junit.Assert.fail;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
-import org.apache.iotdb.cluster.common.TestClient;
+import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestSnapshot;
@@ -60,7 +60,7 @@ public class SnapshotCatchUpTaskTest {
   private RaftMember sender = new TestMetaGroupMember() {
     @Override
     public AsyncClient getAsyncClient(Node node) {
-      return new TestClient() {
+      return new TestAsyncClient() {
         @Override
         public void appendEntry(AppendEntryRequest request,
             AsyncMethodCallback<Long> resultHandler) {

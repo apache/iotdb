@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
+import java.net.SocketException;
 import org.apache.iotdb.cluster.client.rpcutils.TimeoutChangeableTFastFramedTransport;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Client;
 import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
@@ -57,6 +59,11 @@ public class SyncDataClient extends Client {
     // the same transport is used in both input and output
     ((TimeoutChangeableTFastFramedTransport) (getInputProtocol().getTransport()))
         .setTimeout(timeout);
+  }
+
+  @TestOnly
+  public int getTimeout() throws SocketException {
+    return ((TimeoutChangeableTFastFramedTransport) getInputProtocol().getTransport()).getTimeOut();
   }
 
   public void putBack() {

@@ -50,7 +50,7 @@ import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
-import org.apache.iotdb.cluster.common.TestClient;
+import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -209,7 +209,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       AsyncClient getClient(Node node) {
-        return new TestClient(node.nodeIdentifier) {
+        return new TestAsyncClient(node.nodeIdentifier) {
           public void startElection(ElectionRequest request,
               AsyncMethodCallback<Long> resultHandler) {
             new Thread(() -> {

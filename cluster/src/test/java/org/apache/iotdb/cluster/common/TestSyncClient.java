@@ -19,27 +19,24 @@
 
 package org.apache.iotdb.cluster.common;
 
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.thrift.async.TAsyncClientManager;
-import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingTransport;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.thrift.protocol.TProtocol;
 
-public class TestClient extends AsyncClient {
+public class TestSyncClient extends Client {
 
   private int serialNum;
 
-  public TestClient() {
-    super(null, null, null);
+  public TestSyncClient() {
+    super(null, null);
   }
 
-  public TestClient(int serialNum) {
+  public TestSyncClient(int serialNum) {
     this();
     this.serialNum = serialNum;
   }
 
-  TestClient(TProtocolFactory protocolFactory, TAsyncClientManager clientManager,
-      TNonblockingTransport transport, int serialNum) {
-    super(protocolFactory, clientManager, transport);
+  TestSyncClient(TProtocol in, TProtocol out, int serialNum) {
+    super(in, out);
     this.serialNum = serialNum;
   }
 

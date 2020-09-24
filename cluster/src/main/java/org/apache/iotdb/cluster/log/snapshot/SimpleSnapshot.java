@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
 public class SimpleSnapshot extends Snapshot {
 
   private static final Logger logger = LoggerFactory.getLogger(SimpleSnapshot.class);
-  private List<Log> snapshot;
+  private List<Log> snapshot = new ArrayList<>();
 
   SimpleSnapshot() {
   }
@@ -56,10 +56,15 @@ public class SimpleSnapshot extends Snapshot {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
     try {
-      dataOutputStream.writeInt(snapshot.size());
-      for (Log log : snapshot) {
-        outputStream.write(log.serialize().array());
+      if (snapshot != null) {
+        dataOutputStream.writeInt(snapshot.size());
+        for (Log log : snapshot) {
+          outputStream.write(log.serialize().array());
+        }
+      } else {
+        dataOutputStream.writeInt(0);
       }
+
     } catch (IOException e) {
       // unreachable
     }

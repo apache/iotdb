@@ -105,7 +105,7 @@ public class SyncClientPool {
     //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
     Deque<Client> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
     synchronized (this) {
-      if (client.getInputProtocol().getTransport().isOpen()) {
+      if (client.getInputProtocol() != null && client.getInputProtocol().getTransport().isOpen()) {
         clientStack.push(client);
       } else {
         try {

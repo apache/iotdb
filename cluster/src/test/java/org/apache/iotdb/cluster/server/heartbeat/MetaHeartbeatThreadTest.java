@@ -27,7 +27,7 @@ import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.cluster.common.TestClient;
+import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
@@ -140,7 +140,7 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
 
   @Override
   AsyncClient getClient(Node node) {
-    return new TestClient(node.nodeIdentifier) {
+    return new TestAsyncClient(node.nodeIdentifier) {
       @Override
       public void sendHeartbeat(HeartBeatRequest request,
           AsyncMethodCallback<HeartBeatResponse> resultHandler) {

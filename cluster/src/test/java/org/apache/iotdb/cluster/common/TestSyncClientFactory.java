@@ -19,32 +19,53 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.cluster.client.async.AsyncClientFactory;
-import org.apache.iotdb.cluster.client.async.AsyncClientPool;
+import org.apache.iotdb.cluster.client.sync.SyncClientFactory;
+import org.apache.iotdb.cluster.client.sync.SyncClientPool;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingSocket;
+import org.apache.thrift.transport.TTransport;
 
-public class TestAsyncClientFactory extends AsyncClientFactory {
-
-  private TProtocolFactory protocolFactory;
-  private TAsyncClientManager clientManager;
-
+public class TestSyncClientFactory implements SyncClientFactory {
   private AtomicInteger clientSerialNum = new AtomicInteger();
+  private TProtocolFactory protocolFactory = new Factory();
 
-  public TestAsyncClientFactory() throws IOException {
-    protocolFactory = new Factory();
-    clientManager = new TAsyncClientManager();
+  public TestSyncClientFactory() {
+
   }
 
   @Override
-  public AsyncClient getAsyncClient(Node node, AsyncClientPool pool) throws IOException {
-    return new TestAsyncClient(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(),
-        node.getMetaPort()), clientSerialNum.getAndIncrement());
+  public Client getSyncClient(Node node, SyncClientPool pool) {
+    TTransport dummyTransport = new TTransport() {
+      boolean closed = false;
+      @Override
+      public boolean isOpen() {
+        return !closed;
+      }
+
+      @Override
+      public void open() {
+        closed = false;
+      }
+
+      @Override
+      public void close() {
+        closed = true;
+      }
+
+      @Override
+      public int read(byte[] bytes, int i, int i1) {
+        return 0;
+      }
+
+      @Override
+      public void write(byte[] bytes, int i, int i1) {
+        // do nothing
+      }
+    };
+    return new TestSyncClient(protocolFactory.getProtocol(dummyTransport),
+        protocolFactory.getProtocol(dummyTransport), clientSerialNum.getAndIncrement());
   }
 }

@@ -26,7 +26,7 @@ import java.io.File;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
-import org.apache.iotdb.cluster.common.TestClient;
+import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -86,7 +86,7 @@ public class HeartbeatThreadTest {
   }
 
   AsyncClient getClient(Node node) {
-    return new TestClient(node.nodeIdentifier) {
+    return new TestAsyncClient(node.nodeIdentifier) {
       @Override
       public void sendHeartbeat(HeartBeatRequest request,
           AsyncMethodCallback<HeartBeatResponse> resultHandler) {

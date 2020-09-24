@@ -87,9 +87,11 @@ public class SyncClientAdaptor {
       throws TException, InterruptedException {
     AtomicReference<Long> responseRef = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(asyncMetaClient.getNode(), responseRef);
+    asyncMetaClient.removeNode(nodeToRemove, handler);
     synchronized (responseRef) {
-      asyncMetaClient.removeNode(nodeToRemove, handler);
-      responseRef.wait(RaftServer.getConnectionTimeoutInMS());
+      if (responseRef.get() == null) {
+        responseRef.wait(RaftServer.getConnectionTimeoutInMS());
+      }
     }
     return responseRef.get();
   }
@@ -99,9 +101,11 @@ public class SyncClientAdaptor {
     AtomicReference<Boolean> resultRef = new AtomicReference<>(false);
     GenericHandler<Boolean> matchTermHandler = new GenericHandler<>(target, resultRef);
 
+    client.matchTerm(prevLogIndex, prevLogTerm, header, matchTermHandler);
     synchronized (resultRef) {
-      client.matchTerm(prevLogIndex, prevLogTerm, header, matchTermHandler);
-      resultRef.wait(RaftServer.getConnectionTimeoutInMS());
+      if (resultRef.get() == null) {
+        resultRef.wait(RaftServer.getConnectionTimeoutInMS());
+      }
     }
     return resultRef.get();
   }
@@ -111,9 +115,12 @@ public class SyncClientAdaptor {
       throws TException, InterruptedException {
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
+
+    client.querySingleSeriesByTimestamp(request, handler);
     synchronized (result) {
-      client.querySingleSeriesByTimestamp(request, handler);
-      result.wait(RaftServer.getReadOperationTimeoutMS());
+      if (result.get() == null) {
+        result.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return result.get();
   }
@@ -132,9 +139,11 @@ public class SyncClientAdaptor {
     }
     request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
 
+    client.querySingleSeries(request, handler);
     synchronized (result) {
-      client.querySingleSeries(request, handler);
-      result.wait(RaftServer.getReadOperationTimeoutMS());
+      if (result.get() == null) {
+        result.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return result.get();
   }
@@ -145,9 +154,12 @@ public class SyncClientAdaptor {
     AtomicReference<List<String>> response = new AtomicReference<>(null);
     handler.setResponse(response);
     handler.setContact(client.getNode());
+
+    client.getNodeList(header, schemaPattern, level, handler);
     synchronized (response) {
-      client.getNodeList(header, schemaPattern, level, handler);
-      response.wait(RaftServer.getReadOperationTimeoutMS());
+      if (response.get() == null) {
+        response.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return response.get();
   }
@@ -158,9 +170,12 @@ public class SyncClientAdaptor {
     AtomicReference<Set<String>> response = new AtomicReference<>(null);
     handler.setResponse(response);
     handler.setContact(client.getNode());
+
+    client.getChildNodePathInNextLevel(header, path, handler);
     synchronized (response) {
-      client.getChildNodePathInNextLevel(header, path, handler);
-      response.wait(RaftServer.getReadOperationTimeoutMS());
+      if (response.get() == null) {
+        response.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return response.get();
   }
@@ -171,15 +186,17 @@ public class SyncClientAdaptor {
     GetTimeseriesSchemaHandler handler = new GetTimeseriesSchemaHandler();
     AtomicReference<ByteBuffer> response = new AtomicReference<>(null);
     handler.setResponse(response);
-
     handler.setContact(client.getNode());
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    plan.serialize(dataOutputStream);
+
+    client.getAllMeasurementSchema(header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
+        handler);
     synchronized (response) {
-      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-      plan.serialize(dataOutputStream);
-      client.getAllMeasurementSchema(header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
-          handler);
-      response.wait(RaftServer.getReadOperationTimeoutMS());
+      if (response.get() == null) {
+        response.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return response.get();
   }
@@ -188,9 +205,12 @@ public class SyncClientAdaptor {
       throws TException, InterruptedException {
     AtomicReference<TNodeStatus> resultRef = new AtomicReference<>();
     GenericHandler<TNodeStatus> handler = new GenericHandler<>(client.getNode(), resultRef);
+
+    client.queryNodeStatus(handler);
     synchronized (resultRef) {
-      client.queryNodeStatus(handler);
-      resultRef.wait(RaftServer.getReadOperationTimeoutMS());
+      if (resultRef.get() == null) {
+        resultRef.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return resultRef.get();
   }
@@ -199,9 +219,12 @@ public class SyncClientAdaptor {
       throws TException, InterruptedException {
     AtomicReference<CheckStatusResponse> resultRef = new AtomicReference<>();
     GenericHandler<CheckStatusResponse> handler = new GenericHandler<>(client.getNode(), resultRef);
+
+    client.checkStatus(startUpStatus, handler);
     synchronized (resultRef) {
-      client.checkStatus(startUpStatus, handler);
-      resultRef.wait(RaftServer.getReadOperationTimeoutMS());
+      if (resultRef.get() == null) {
+        resultRef.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return resultRef.get();
   }
@@ -212,35 +235,43 @@ public class SyncClientAdaptor {
     JoinClusterHandler handler = new JoinClusterHandler();
     AtomicReference<AddNodeResponse> response = new AtomicReference<>(null);
     handler.setResponse(response);
-    response.set(null);
     handler.setContact(client.getNode());
+
+    client.addNode(thisNode, startUpStatus, handler);
     synchronized (response) {
-      client.addNode(thisNode, startUpStatus, handler);
-      response.wait(60 * 1000L);
+      if (response.get() == null) {
+        response.wait(60 * 1000L);
+      }
     }
     return response.get();
   }
 
   public static List<MeasurementSchema> pullMeasurementSchema(AsyncDataClient client,
       PullSchemaRequest pullSchemaRequest) throws TException, InterruptedException {
-    AtomicReference<List<MeasurementSchema>> timeseriesSchemas = new AtomicReference<>();
-    synchronized (timeseriesSchemas) {
-      client.pullMeasurementSchema(pullSchemaRequest,
-          new PullMeasurementSchemaHandler(client.getNode(), pullSchemaRequest.getPrefixPaths(),
-              timeseriesSchemas));
-      timeseriesSchemas.wait(RaftServer.getReadOperationTimeoutMS());
+    AtomicReference<List<MeasurementSchema>> measurementSchemas = new AtomicReference<>();
+
+    client.pullMeasurementSchema(pullSchemaRequest,
+        new PullMeasurementSchemaHandler(client.getNode(), pullSchemaRequest.getPrefixPaths(),
+            measurementSchemas));
+    synchronized (measurementSchemas) {
+      if (measurementSchemas.get() == null) {
+        measurementSchemas.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
-    return timeseriesSchemas.get();
+    return measurementSchemas.get();
   }
 
   public static List<TimeseriesSchema> pullTimeseriesSchema(AsyncDataClient client,
       PullSchemaRequest pullSchemaRequest) throws TException, InterruptedException {
     AtomicReference<List<TimeseriesSchema>> timeseriesSchemas = new AtomicReference<>();
+    client.pullTimeSeriesSchema(pullSchemaRequest,
+        new PullTimeseriesSchemaHandler(client.getNode(), pullSchemaRequest.getPrefixPaths(),
+            timeseriesSchemas));
+
     synchronized (timeseriesSchemas) {
-      client.pullTimeSeriesSchema(pullSchemaRequest,
-          new PullTimeseriesSchemaHandler(client.getNode(), pullSchemaRequest.getPrefixPaths(),
-              timeseriesSchemas));
-      timeseriesSchemas.wait(RaftServer.getReadOperationTimeoutMS());
+      if (timeseriesSchemas.get() == null) {
+        timeseriesSchemas.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return timeseriesSchemas.get();
   }
@@ -250,10 +281,12 @@ public class SyncClientAdaptor {
     AtomicReference<List<ByteBuffer>> resultReference = new AtomicReference<>();
     GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(client.getNode(),
         resultReference);
+
+    client.getAggrResult(request, handler);
     synchronized (resultReference) {
-      resultReference.set(null);
-      client.getAggrResult(request, handler);
-      resultReference.wait(RaftServer.getReadOperationTimeoutMS());
+      if (resultReference.get() == null) {
+        resultReference.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return resultReference.get();
   }
@@ -262,9 +295,12 @@ public class SyncClientAdaptor {
       List<String> seriesPaths) throws TException, InterruptedException {
     AtomicReference<List<String>> remoteResult = new AtomicReference<>();
     GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
+
+    client.getUnregisteredTimeseries(header, seriesPaths, handler);
     synchronized (remoteResult) {
-      client.getUnregisteredTimeseries(header, seriesPaths, handler);
-      remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
+      if (remoteResult.get() == null) {
+        remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return remoteResult.get();
   }
@@ -274,9 +310,12 @@ public class SyncClientAdaptor {
       throws InterruptedException, TException {
     AtomicReference<List<String>> remoteResult = new AtomicReference<>();
     GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
+
+    client.getAllPaths(header, pathsToQuery, handler);
     synchronized (remoteResult) {
-      client.getAllPaths(header, pathsToQuery, handler);
-      remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
+      if (remoteResult.get() == null) {
+        remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return remoteResult.get();
   }
@@ -286,9 +325,12 @@ public class SyncClientAdaptor {
       throws InterruptedException, TException {
     AtomicReference<Integer> remoteResult = new AtomicReference<>(null);
     GenericHandler<Integer> handler = new GenericHandler<>(client.getNode(), remoteResult);
+
+    client.getPathCount(header, pathsToQuery, level, handler);
     synchronized (remoteResult) {
-      client.getPathCount(header, pathsToQuery, level, handler);
-      remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
+      if (remoteResult.get() == null) {
+        remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return remoteResult.get();
   }
@@ -298,9 +340,12 @@ public class SyncClientAdaptor {
       throws InterruptedException, TException {
     AtomicReference<Set<String>> remoteResult = new AtomicReference<>();
     GenericHandler<Set<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
+
+    client.getAllDevices(header, pathsToQuery, handler);
     synchronized (remoteResult) {
-      client.getAllDevices(header, pathsToQuery, handler);
-      remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
+      if (remoteResult.get() == null) {
+        remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return remoteResult.get();
   }
@@ -309,10 +354,12 @@ public class SyncClientAdaptor {
       throws TException, InterruptedException {
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
+
+    client.getGroupByExecutor(request, handler);
     synchronized (result) {
-      result.set(null);
-      client.getGroupByExecutor(request, handler);
-      result.wait(RaftServer.getReadOperationTimeoutMS());
+      if (result.get() == null) {
+        result.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return result.get();
   }
@@ -321,16 +368,18 @@ public class SyncClientAdaptor {
       throws TException, InterruptedException {
     AtomicReference<ByteBuffer> resultRef = new AtomicReference<>();
     GenericHandler<ByteBuffer> nodeHandler = new GenericHandler<>(client.getNode(), resultRef);
+
+    client.previousFill(request, nodeHandler);
     synchronized (resultRef) {
-      client.previousFill(request, nodeHandler);
-      resultRef.wait(RaftServer.getReadOperationTimeoutMS());
+      if (resultRef.get() == null) {
+        resultRef.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return resultRef.get();
   }
 
   public static TSStatus executeNonQuery(AsyncClient client, PhysicalPlan plan, Node header,
       Node receiver) throws IOException, TException, InterruptedException {
-
     AtomicReference<TSStatus> status = new AtomicReference<>();
     ExecutNonQueryReq req = new ExecutNonQueryReq();
     req.planBytes = ByteBuffer.wrap(PlanSerializer.getInstance().serialize(plan));
@@ -338,11 +387,12 @@ public class SyncClientAdaptor {
       req.setHeader(header);
     }
 
+    client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, receiver));
     synchronized (status) {
-      client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, receiver));
-      status.wait(RaftServer.getWriteOperationTimeoutMS());
+      if (status.get() == null) {
+        status.wait(RaftServer.getWriteOperationTimeoutMS());
+      }
     }
-
     return status.get();
   }
 
@@ -351,9 +401,12 @@ public class SyncClientAdaptor {
       throws InterruptedException, TException {
     AtomicReference<ByteBuffer> result = new AtomicReference<>();
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), result);
+
+    client.readFile(remotePath, offset, fetchSize, handler);
     synchronized (result) {
-      client.readFile(remotePath, offset, fetchSize, handler);
-      result.wait(RaftServer.getWriteOperationTimeoutMS());
+      if (result.get() == null) {
+        result.wait(RaftServer.getWriteOperationTimeoutMS());
+      }
     }
     return result.get();
   }
@@ -363,10 +416,12 @@ public class SyncClientAdaptor {
       , long curStartTime, long curEndTime) throws InterruptedException, TException {
     AtomicReference<List<ByteBuffer>> fetchResult = new AtomicReference<>();
     GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(client.getNode(), fetchResult);
+
+    client.getGroupByResult(header, executorId, curStartTime, curEndTime, handler);
     synchronized (fetchResult) {
-      fetchResult.set(null);
-      client.getGroupByResult(header, executorId, curStartTime, curEndTime, handler);
-      fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
+      if (fetchResult.get() == null) {
+        fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return fetchResult.get();
   }
@@ -376,10 +431,12 @@ public class SyncClientAdaptor {
       , long curStartTime, long curEndTime) throws InterruptedException, TException {
     AtomicReference<ByteBuffer> fetchResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), fetchResult);
+
+    client.peekNextNotNullValue(header, executorId, curStartTime, curEndTime, handler);
     synchronized (fetchResult) {
-      fetchResult.set(null);
-      client.peekNextNotNullValue(header, executorId, curStartTime, curEndTime, handler);
-      fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
+      if (fetchResult.get() == null) {
+        fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return fetchResult.get();
   }
@@ -388,10 +445,13 @@ public class SyncClientAdaptor {
       PullSnapshotRequest request, List<Integer> slots, SnapshotFactory<T> factory)
       throws TException, InterruptedException {
     AtomicReference<Map<Integer, T>> snapshotRef = new AtomicReference<>();
+
+    client.pullSnapshot(request, new PullSnapshotHandler<>(snapshotRef,
+        client.getNode(), slots, factory));
     synchronized (snapshotRef) {
-      client.pullSnapshot(request, new PullSnapshotHandler<T>(snapshotRef,
-          client.getNode(), slots, factory));
-      snapshotRef.wait(RaftServer.getReadOperationTimeoutMS());
+      if (snapshotRef.get() == null) {
+        snapshotRef.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return snapshotRef.get();
   }
@@ -403,9 +463,12 @@ public class SyncClientAdaptor {
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), result);
     LastQueryRequest request = new LastQueryRequest(seriesPath.getFullPath(), dataType.ordinal(),
         context.getQueryId(), deviceMeasurements, header, client.getNode());
+
+    client.last(request, handler);
     synchronized (result) {
-      client.last(request, handler);
-      result.wait(RaftServer.getReadOperationTimeoutMS());
+      if (result.get() == null) {
+        result.wait(RaftServer.getReadOperationTimeoutMS());
+      }
     }
     return result.get();
   }
@@ -414,9 +477,12 @@ public class SyncClientAdaptor {
       throws TException, InterruptedException {
     AtomicReference<Boolean> result = new AtomicReference<>(false);
     GenericHandler<Boolean> handler = new GenericHandler<>(client.getNode(), result);
+
+    client.onSnapshotApplied(header, slots, handler);
     synchronized (result) {
-      client.onSnapshotApplied(header, slots, handler);
-      result.wait(RaftServer.getWriteOperationTimeoutMS());
+      if (result.get() == null) {
+        result.wait(RaftServer.getWriteOperationTimeoutMS());
+      }
     }
     return result.get();
   }

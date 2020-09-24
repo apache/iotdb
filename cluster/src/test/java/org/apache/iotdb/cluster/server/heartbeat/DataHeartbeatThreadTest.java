@@ -23,7 +23,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.util.List;
-import org.apache.iotdb.cluster.common.TestClient;
+import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -79,7 +79,7 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
 
   @Override
   AsyncClient getClient(Node node) {
-    return new TestClient(node.nodeIdentifier) {
+    return new TestAsyncClient(node.nodeIdentifier) {
       @Override
       public void sendHeartbeat(HeartBeatRequest request,
           AsyncMethodCallback<HeartBeatResponse> resultHandler) {

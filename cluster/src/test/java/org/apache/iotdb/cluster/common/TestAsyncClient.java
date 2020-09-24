@@ -17,28 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.client.rpcutils;
+package org.apache.iotdb.cluster.common;
 
-import java.net.SocketException;
-import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.thrift.transport.TFastFramedTransport;
-import org.apache.thrift.transport.TSocket;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.transport.TNonblockingTransport;
 
-public class TimeoutChangeableTFastFramedTransport extends TFastFramedTransport {
+public class TestAsyncClient extends AsyncClient {
 
-  private TSocket underlying;
+  private int serialNum;
 
-  public TimeoutChangeableTFastFramedTransport(TSocket underlying) {
-    super(underlying);
-    this.underlying = underlying;
+  public TestAsyncClient() {
+    super(null, null, null);
   }
 
-  public void setTimeout(int timeout){
-    underlying.setTimeout(timeout);
+  public TestAsyncClient(int serialNum) {
+    this();
+    this.serialNum = serialNum;
   }
 
-  @TestOnly
-  public int getTimeOut() throws SocketException {
-    return underlying.getSocket().getSoTimeout();
+  TestAsyncClient(TProtocolFactory protocolFactory, TAsyncClientManager clientManager,
+      TNonblockingTransport transport, int serialNum) {
+    super(protocolFactory, clientManager, transport);
+    this.serialNum = serialNum;
   }
+
+  public int getSerialNum() {
+    return serialNum;
+  }
+
 }
