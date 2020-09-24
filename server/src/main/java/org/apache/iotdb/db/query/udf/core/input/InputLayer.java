@@ -68,6 +68,10 @@ public class InputLayer {
     safetyLine = new SafetyLine();
   }
 
+  public void updateRowRecordListEvictionUpperBound() {
+    rowRecordList.setEvictionUpperBound(safetyLine.getSafetyLine());
+  }
+
   public LayerPointReader constructPointReader(int columnIndex) {
     return new InputLayerPointReader(columnIndex);
   }

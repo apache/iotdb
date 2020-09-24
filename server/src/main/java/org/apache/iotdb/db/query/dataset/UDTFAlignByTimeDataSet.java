@@ -167,6 +167,8 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
       } else {
         --rowOffset;
       }
+
+      inputLayer.updateRowRecordListEvictionUpperBound();
     }
 
     /*
@@ -264,6 +266,9 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     } catch (QueryProcessException e) {
       throw new IOException(e.getMessage());
     }
+
+    inputLayer.updateRowRecordListEvictionUpperBound();
+
     return rowRecord;
   }
 }
