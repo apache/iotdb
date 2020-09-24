@@ -44,6 +44,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDataSet {
 
+  protected boolean isInitialized;
+
   protected int[] alreadyReturnedRowNumArray;
   protected int[] offsetArray;
 
@@ -54,7 +56,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
       throws IOException, QueryProcessException {
     super(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes, timestampGenerator,
         readersOfSelectedSeries, cached);
-    init();
+    isInitialized = false;
   }
 
   // execute without value filter
@@ -62,20 +64,27 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
       List<TSDataType> deduplicatedDataTypes, List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException, IOException, InterruptedException {
     super(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes, readersOfSelectedSeries);
-    init();
+    isInitialized = false;
   }
 
+  /**
+   * offsetArray can not be initialized in the constructor, because rowOffset is set after the
+   * DataSet's construction. note that this method only can be called once in a query.
+   */
   protected void init() {
-    int columnsNum = transformers.length;
-    alreadyReturnedRowNumArray = new int[columnsNum];
-    offsetArray = new int[columnsNum];
+    alreadyReturnedRowNumArray = new int[transformers.length]; // all elements are 0
+    offsetArray = new int[transformers.length];
+    Arrays.fill(offsetArray, rowOffset);
+    isInitialized = true;
   }
 
   @Override
   public TSQueryNonAlignDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
       throws IOException, QueryProcessException {
-    // offsetArray can not be filled in init(), because rowOffset is set after the DataSet's construction
-    Arrays.fill(offsetArray, rowOffset);
+    if (!isInitialized) {
+      init();
+    }
+
     TSQueryNonAlignDataSet tsQueryNonAlignDataSet = new TSQueryNonAlignDataSet();
 
     int columnsNum = transformers.length;
