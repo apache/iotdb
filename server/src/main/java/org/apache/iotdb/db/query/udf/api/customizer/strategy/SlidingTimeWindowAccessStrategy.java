@@ -25,10 +25,12 @@ import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 
 public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
 
-  private final String timeIntervalString;
-  private final String slidingStepString;
-  private final String displayWindowBeginString;
-  private final String displayWindowEndString;
+  private final boolean inputInString;
+
+  private String timeIntervalString;
+  private String slidingStepString;
+  private String displayWindowBeginString;
+  private String displayWindowEndString;
 
   private long timeInterval;
   private long slidingStep;
@@ -39,18 +41,31 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
 
   public SlidingTimeWindowAccessStrategy(String timeIntervalString, String slidingStepString,
       String displayWindowBeginString, String displayWindowEndString) {
+    inputInString = true;
     this.timeIntervalString = timeIntervalString;
     this.slidingStepString = slidingStepString;
     this.displayWindowBeginString = displayWindowBeginString;
     this.displayWindowEndString = displayWindowEndString;
   }
 
+  public SlidingTimeWindowAccessStrategy(long timeInterval, long slidingStep,
+      long displayWindowBegin, long displayWindowEnd) {
+    inputInString = false;
+    this.timeInterval = timeInterval;
+    this.slidingStep = slidingStep;
+    this.displayWindowBegin = displayWindowBegin;
+    this.displayWindowEnd = displayWindowEnd;
+  }
+
   @Override
   public void check() throws QueryProcessException {
-    timeInterval = DatetimeUtils.convertDurationStrToLong(timeIntervalString);
-    slidingStep = DatetimeUtils.convertDurationStrToLong(slidingStepString);
-    displayWindowBegin = DatetimeUtils.convertDatetimeStrToLong(displayWindowBeginString, zoneId);
-    displayWindowEnd = DatetimeUtils.convertDatetimeStrToLong(displayWindowEndString, zoneId);
+    if (inputInString) {
+      timeInterval = DatetimeUtils.convertDurationStrToLong(timeIntervalString);
+      slidingStep = DatetimeUtils.convertDurationStrToLong(slidingStepString);
+      displayWindowBegin = DatetimeUtils.convertDatetimeStrToLong(displayWindowBeginString, zoneId);
+      displayWindowEnd = DatetimeUtils.convertDatetimeStrToLong(displayWindowEndString, zoneId);
+    }
+
     if (timeInterval <= 0) {
       throw new QueryProcessException(
           String.format("Parameter timeInterval(%d) should be positive.", timeInterval));
