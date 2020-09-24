@@ -46,7 +46,7 @@ public class IoTDBUDTFNonAlignQueryIT {
 
   protected final static int ITERATION_TIMES = 1_000_000;
 
-  protected final static int ADDEND = 500_000;
+  protected final static int ADDEND = 500_000_000;
 
   protected final static int LIMIT = (int) (0.1 * ITERATION_TIMES);
   protected final static int OFFSET = (int) (0.1 * ITERATION_TIMES);
@@ -128,14 +128,14 @@ public class IoTDBUDTFNonAlignQueryIT {
           String actualString = resultSet.getString(i);
           int originalIndex = (i - 1) / 2;
           if (i % 2 == 1) {
-            assertEquals(count, (int) (Float.parseFloat(actualString)));
+            assertEquals(count, (int) (Double.parseDouble(actualString)));
           } else {
             if (s1AndS2WithAddend.contains(originalIndex)) {
-              assertEquals(count * 2 + ADDEND, (int) (Float.parseFloat(actualString)));
+              assertEquals(count * 2 + ADDEND, (int) (Double.parseDouble(actualString)));
             } else if (s1AndS2.contains(originalIndex)) {
-              assertEquals(count * 2, (int) (Float.parseFloat(actualString)));
+              assertEquals(count * 2, (int) (Double.parseDouble(actualString)));
             } else if (s1OrS2.contains(originalIndex)) {
-              assertEquals(count, (int) (Float.parseFloat(actualString)));
+              assertEquals(count, (int) (Double.parseDouble(actualString)));
             }
           }
         }
@@ -163,13 +163,13 @@ public class IoTDBUDTFNonAlignQueryIT {
           int originalIndex = (i - 1) / 2;
           if (i % 2 == 1) {
             if (count < ITERATION_TIMES / 2 || originalIndex == 0) {
-              assertEquals(count, (int) (Float.parseFloat(actualString)));
+              assertEquals(count, (int) (Double.parseDouble(actualString)));
             } else {
               assertNull(actualString);
             }
           } else {
             if (count < ITERATION_TIMES / 2 || originalIndex == 0) {
-              assertEquals(2 * count, (int) (Float.parseFloat(actualString)));
+              assertEquals(2 * count, (int) (Double.parseDouble(actualString)));
             } else {
               assertNull(actualString);
             }
@@ -205,14 +205,14 @@ public class IoTDBUDTFNonAlignQueryIT {
           String actualString = resultSet.getString(i);
           int originalIndex = (i - 1) / 2;
           if (i % 2 == 1) {
-            assertEquals(index, (int) (Float.parseFloat(actualString)));
+            assertEquals(index, (int) (Double.parseDouble(actualString)));
           } else {
             if (s1s2.contains(originalIndex)) {
-              assertEquals(index * 2, (int) (Float.parseFloat(actualString)));
+              assertEquals(index * 2, (int) (Double.parseDouble(actualString)));
             } else if (s1.contains(originalIndex)) {
-              assertEquals(index, (int) (Float.parseFloat(actualString)));
+              assertEquals(index, (int) (Double.parseDouble(actualString)));
             } else if (s2.contains(originalIndex)) {
-              assertEquals(index, (int) (Float.parseFloat(actualString)));
+              assertEquals(index, (int) (Double.parseDouble(actualString)));
             }
           }
         }
@@ -240,9 +240,9 @@ public class IoTDBUDTFNonAlignQueryIT {
         for (int i = 1; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
           if (i % 2 == 1) {
-            assertEquals(index, (int) (Float.parseFloat(actualString)));
+            assertEquals(index, (int) (Double.parseDouble(actualString)));
           } else {
-            assertEquals(2 * index, Float.parseFloat(actualString), 0);
+            assertEquals(2 * index, Double.parseDouble(actualString), 0);
           }
         }
         ++index;
@@ -275,14 +275,14 @@ public class IoTDBUDTFNonAlignQueryIT {
           String actualString = resultSet.getString(i);
           int originalIndex = (i - 1) / 2 + SOFFSET;
           if (i % 2 == 1) {
-            assertEquals(index, (int) (Float.parseFloat(actualString)));
+            assertEquals(index, (int) (Double.parseDouble(actualString)));
           } else {
             if (s1s2.contains(originalIndex)) {
-              assertEquals(index * 2, (int) (Float.parseFloat(actualString)));
+              assertEquals(index * 2, (int) (Double.parseDouble(actualString)));
             } else if (s1.contains(originalIndex)) {
-              assertEquals(index, (int) (Float.parseFloat(actualString)));
+              assertEquals(index, (int) (Double.parseDouble(actualString)));
             } else if (s2.contains(originalIndex)) {
-              assertEquals(index, (int) (Float.parseFloat(actualString)));
+              assertEquals(index, (int) (Double.parseDouble(actualString)));
             }
           }
         }
@@ -311,9 +311,9 @@ public class IoTDBUDTFNonAlignQueryIT {
         for (int i = 1; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
           if (i % 2 == 1) {
-            assertEquals(index, (int) (Float.parseFloat(actualString)));
+            assertEquals(index, (int) (Double.parseDouble(actualString)));
           } else {
-            assertEquals(2 * index, Float.parseFloat(actualString), 0);
+            assertEquals(2 * index, Double.parseDouble(actualString), 0);
           }
         }
         ++index;

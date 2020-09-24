@@ -45,9 +45,9 @@ import org.junit.Test;
 
 public class IoTDBUDTFAlignByTimeQueryIT {
 
-  protected final static int ITERATION_TIMES = 1_000_000;
+  protected final static int ITERATION_TIMES = 10_000;
 
-  protected final static int ADDEND = 500_000;
+  protected final static int ADDEND = 500_000_000;
 
   protected final static int LIMIT = (int) (0.1 * ITERATION_TIMES);
   protected final static int OFFSET = (int) (0.1 * ITERATION_TIMES);
@@ -139,7 +139,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
           actual.append(actualString == null
-              ? "null" : Float.parseFloat(actualString)).append(", ");
+              ? "null" : Double.parseDouble(actualString)).append(", ");
 
           if (s1s2.contains(i - 2)) {
             expected.append(count % 3 != 0 ? (float) (count * 2) : "null").append(", ");
@@ -172,7 +172,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
-          assertTrue(actualString == null || (int) (Float.parseFloat(actualString)) == count * 2);
+          assertTrue(actualString == null || (int) (Double.parseDouble(actualString)) == count * 2);
         }
         ++count;
       }
@@ -199,9 +199,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
           if (s1AndS2.contains(i - 2)) {
-            assertTrue(actualString == null || (int) (Float.parseFloat(actualString)) == count * 2);
+            assertTrue(actualString == null || (int) (Double.parseDouble(actualString)) == count * 2);
           } else if (s1OrS2.contains(i - 2)) {
-            assertTrue(actualString == null || (int) (Float.parseFloat(actualString)) == count);
+            assertTrue(actualString == null || (int) (Double.parseDouble(actualString)) == count);
           }
         }
         ++count;
@@ -232,11 +232,11 @@ public class IoTDBUDTFAlignByTimeQueryIT {
           String actualString = resultSet.getString(i);
           if (s1AndS2WithAddend.contains(i - 2)) {
             assertTrue(actualString == null
-                || (int) (Float.parseFloat(actualString)) == count * 2 + ADDEND);
+                || (int) (Double.parseDouble(actualString)) == count * 2 + ADDEND);
           } else if (s1AndS2.contains(i - 2)) {
-            assertTrue(actualString == null || (int) (Float.parseFloat(actualString)) == count * 2);
+            assertTrue(actualString == null || (int) (Double.parseDouble(actualString)) == count * 2);
           } else if (s1OrS2.contains(i - 2)) {
-            assertTrue(actualString == null || (int) (Float.parseFloat(actualString)) == count);
+            assertTrue(actualString == null || (int) (Double.parseDouble(actualString)) == count);
           }
         }
         ++count;
@@ -268,11 +268,11 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
           if (s1s2.contains(i - 2)) {
-            assertEquals(index * 2, (int) (Float.parseFloat(actualString)));
+            assertEquals(index * 2, (int) (Double.parseDouble(actualString)));
           } else if (s1.contains(i - 2)) {
-            assertEquals(index, (int) (Float.parseFloat(actualString)));
+            assertEquals(index, (int) (Double.parseDouble(actualString)));
           } else if (s2.contains(i - 2)) {
-            assertEquals(index, (int) (Float.parseFloat(actualString)));
+            assertEquals(index, (int) (Double.parseDouble(actualString)));
           }
         }
         ++index;
@@ -304,11 +304,11 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
           if (s1AndS2WithAddend.contains(i - 2)) {
-            assertEquals(index * 2 + ADDEND, (int) (Float.parseFloat(actualString)));
+            assertEquals(index * 2 + ADDEND, (int) (Double.parseDouble(actualString)));
           } else if (s1AndS2.contains(i - 2)) {
-            assertEquals(index * 2, (int) (Float.parseFloat(actualString)));
+            assertEquals(index * 2, (int) (Double.parseDouble(actualString)));
           } else if (s1OrS2.contains(i - 2)) {
-            assertEquals(index, (int) (Float.parseFloat(actualString)));
+            assertEquals(index, (int) (Double.parseDouble(actualString)));
           }
         }
         ++index;
@@ -341,19 +341,19 @@ public class IoTDBUDTFAlignByTimeQueryIT {
           String actualString = resultSet.getString(i);
           if (s1s2.contains(i - 2)) {
             if (index % 3 != 0) {
-              assertEquals(index * 2, Float.parseFloat(actualString), 0);
+              assertEquals(index * 2, Double.parseDouble(actualString), 0);
             } else {
               assertNull(actualString);
             }
           } else if (s1.contains(i - 2)) {
             if (index % 3 != 0 || index % 2 == 0) {
-              assertEquals(index, Float.parseFloat(actualString), 0);
+              assertEquals(index, Double.parseDouble(actualString), 0);
             } else {
               assertNull(actualString);
             }
           } else if (s2.contains(i - 2)) {
             if (index % 3 != 0 || index % 2 != 0) {
-              assertEquals(index, Float.parseFloat(actualString), 0);
+              assertEquals(index, Double.parseDouble(actualString), 0);
             } else {
               assertNull(actualString);
             }
@@ -389,9 +389,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
           if (s1s2.contains(i - 2)) {
-            assertEquals(index * 2, Float.parseFloat(actualString), 0);
+            assertEquals(index * 2, Double.parseDouble(actualString), 0);
           } else if (s1.contains(i - 2) || s2.contains(i - 2)) {
-            assertEquals(index, Float.parseFloat(actualString), 0);
+            assertEquals(index, Double.parseDouble(actualString), 0);
           }
         }
         ++index;
@@ -418,7 +418,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
-          assertEquals(i - 2 < 6 ? index : 2 * index, Float.parseFloat(actualString), 0);
+          assertEquals(i - 2 < 6 ? index : 2 * index, Double.parseDouble(actualString), 0);
         }
         ++index;
       }
@@ -445,7 +445,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
-          assertEquals(i - 2 < 6 ? index : 2 * index, Float.parseFloat(actualString), 0);
+          assertEquals(i - 2 < 6 ? index : 2 * index, Double.parseDouble(actualString), 0);
         }
         ++index;
       }
@@ -472,7 +472,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
-          assertEquals(i - 2 + SOFFSET < 6 ? index : 2 * index, Float.parseFloat(actualString), 0);
+          assertEquals(i - 2 + SOFFSET < 6 ? index : 2 * index, Double.parseDouble(actualString), 0);
         }
         ++index;
       }

@@ -30,14 +30,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class Adder extends UDTF {
 
-  private float addend;
+  private double addend;
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     System.out.println("Adder#beforeStart");
     addend = parameters.getFloatOrDefault("addend", 0);
     configurations
-        .setOutputDataType(TSDataType.FLOAT)
+        .setOutputDataType(TSDataType.INT64)
         .setAccessStrategy(new OneByOneAccessStrategy());
   }
 
@@ -46,24 +46,24 @@ public class Adder extends UDTF {
     if (row.isNull(0) || row.isNull(1)) {
       return;
     }
-    collector.putFloat(row.getTime(),
-        extractFloatValue(row, 0) + extractFloatValue(row, 1) + addend);
+    collector.putLong(row.getTime(),
+        (long) (extractDoubleValue(row, 0) + extractDoubleValue(row, 1) + addend));
   }
 
-  private float extractFloatValue(Row row, int index) {
-    float value;
+  private double extractDoubleValue(Row row, int index) {
+    double value;
     switch (row.getDataType(index)) {
       case INT32:
-        value = (float) row.getInt(index);
+        value = row.getInt(index);
         break;
       case INT64:
-        value = (float) row.getLong(index);
+        value = (double) row.getLong(index);
         break;
       case FLOAT:
         value = row.getFloat(index);
         break;
       case DOUBLE:
-        value = (float) row.getDouble(index);
+        value = row.getDouble(index);
         break;
       default:
         throw new UnSupportedDataTypeException(row.getDataType(index).toString());
