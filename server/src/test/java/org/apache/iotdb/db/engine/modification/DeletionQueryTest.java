@@ -59,8 +59,6 @@ public class DeletionQueryTest {
   private TSEncoding encoding = TSEncoding.PLAIN;
   private QueryRouter router = new QueryRouter();
 
-  private MNode deviceMNode;
-
   static {
     for (int i = 0; i < 10; i++) {
       measurements[i] = "m" + i;
@@ -70,10 +68,8 @@ public class DeletionQueryTest {
   @Before
   public void setup() throws MetadataException {
     EnvironmentUtils.envSetUp();
-    deviceMNode = new MNode(null, processorName);
     IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
-      deviceMNode.addChild(measurements[i], new MeasurementMNode(null, null, null, null));
       IoTDB.metaManager.createTimeseries(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]), dataType,
           encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     }
@@ -87,7 +83,6 @@ public class DeletionQueryTest {
   private void insertToStorageEngine(TSRecord record)
       throws StorageEngineException, IllegalPathException {
     InsertRowPlan insertRowPlan = new InsertRowPlan(record);
-    insertRowPlan.setDeviceMNode(deviceMNode);
     StorageEngine.getInstance().insert(insertRowPlan);
   }
 
