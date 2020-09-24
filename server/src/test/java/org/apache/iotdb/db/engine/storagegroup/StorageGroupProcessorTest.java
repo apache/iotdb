@@ -67,7 +67,6 @@ public class StorageGroupProcessorTest {
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
   private AtomicLong mergeLock;
-  private MNode deviceMNode = null;
 
   @Before
   public void setUp() throws Exception {
@@ -78,8 +77,6 @@ public class StorageGroupProcessorTest {
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     processor = new DummySGP(systemDir, storageGroup);
     MergeManager.getINSTANCE().start();
-    deviceMNode = new MNode(null, deviceId);
-    deviceMNode.addChild(measurementId, new MeasurementMNode(null, null, null, null));
   }
 
   @After
@@ -96,7 +93,6 @@ public class StorageGroupProcessorTest {
   private void insertToStorageGroupProcessor(TSRecord record)
       throws WriteProcessException, IllegalPathException {
     InsertRowPlan insertRowPlan = new InsertRowPlan(record);
-    insertRowPlan.setDeviceMNode(deviceMNode);
     processor.insert(insertRowPlan);
   }
 
@@ -181,17 +177,17 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementSchema[] schemas = new MeasurementSchema[2];
-    schemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
-    schemas[1] = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
 
-    MNode deviceMNode = new MNode(null, deviceId);
-    deviceMNode.addChild("s0", new MeasurementMNode(null, null, null, null));
-    deviceMNode.addChild("s1", new MeasurementMNode(null, null, null, null));
+    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    measurementMNodes[0] = new MeasurementMNode(null, "s0",
+        new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+    measurementMNodes[1] = new MeasurementMNode(null, "s1",
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+
 
     InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements,
         dataTypes);
-    insertTabletPlan1.setSchemas(schemas);
+    insertTabletPlan1.setMeasurementMNodes(measurementMNodes);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];
@@ -206,14 +202,13 @@ public class StorageGroupProcessorTest {
     insertTabletPlan1.setTimes(times);
     insertTabletPlan1.setColumns(columns);
     insertTabletPlan1.setRowCount(times.length);
-    insertTabletPlan1.setDeviceMNode(deviceMNode);
 
     processor.insertTablet(insertTabletPlan1);
     processor.asyncCloseAllWorkingTsFileProcessors();
 
     InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements,
         dataTypes);
-    insertTabletPlan2.setSchemas(schemas);
+    insertTabletPlan2.setMeasurementMNodes(measurementMNodes);
 
     for (int r = 50; r < 149; r++) {
       times[r - 50] = r;
@@ -223,7 +218,6 @@ public class StorageGroupProcessorTest {
     insertTabletPlan2.setTimes(times);
     insertTabletPlan2.setColumns(columns);
     insertTabletPlan2.setRowCount(times.length);
-    insertTabletPlan2.setDeviceMNode(deviceMNode);
 
     processor.insertTablet(insertTabletPlan2);
     processor.asyncCloseAllWorkingTsFileProcessors();

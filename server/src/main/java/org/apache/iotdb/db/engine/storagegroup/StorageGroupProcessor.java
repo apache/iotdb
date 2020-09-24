@@ -791,28 +791,21 @@ public class StorageGroupProcessor {
   }
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime) {
-    MNode node = plan.getDeviceMNode();
-    String[] measurementList = plan.getMeasurements();
-    for (int i = 0; i < measurementList.length; i++) {
+    MeasurementMNode[] mNodes = plan.getMeasurementMNodes();
+    for (int i = 0; i < mNodes.length; i++) {
       if (plan.getColumns()[i] == null) {
         continue;
       }
       // Update cached last value with high priority
-      MeasurementMNode tmpMeasurementNode = null;
-      if (node != null) {
-        tmpMeasurementNode = (MeasurementMNode) node.getChild(measurementList[i]);
-      }
-      if (tmpMeasurementNode != null) {
-        // just for performance, because in single node version, we do not need the full path of measurement
-        // so, we want to avoid concat the device and measurement string in single node version
-        IoTDB.metaManager.updateLastCache(node.getPartialPath(),
-            plan.composeLastTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
+      if (mNodes[i] != null) {
+        // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to update last cache
+        IoTDB.metaManager.updateLastCache(null,
+            plan.composeLastTimeValuePair(i), true, latestFlushedTime, mNodes[i]);
       } else {
-        if (node != null) {
-          IoTDB.metaManager
-              .updateLastCache(node.getPartialPath().concatNode(measurementList[i]),
-                  plan.composeLastTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
-        }
+        // measurementMNodes[i] is null, use the path to update remote cache
+        IoTDB.metaManager
+            .updateLastCache(plan.getDeviceId().concatNode(plan.getMeasurements()[i]),
+                plan.composeLastTimeValuePair(i), true, latestFlushedTime, null);
       }
     }
   }
@@ -850,28 +843,20 @@ public class StorageGroupProcessor {
   }
 
   private void tryToUpdateInsertLastCache(InsertRowPlan plan, Long latestFlushedTime) {
-    MNode node = plan.getDeviceMNode();
-    String[] measurementList = plan.getMeasurements();
-    for (int i = 0; i < measurementList.length; i++) {
+    MeasurementMNode[] mNodes = plan.getMeasurementMNodes();
+    for (int i = 0; i < mNodes.length; i++) {
       if (plan.getValues()[i] == null) {
         continue;
       }
       // Update cached last value with high priority
-      MeasurementMNode tmpMeasurementNode = null;
-      if (node != null) {
-        tmpMeasurementNode = (MeasurementMNode) node.getChild(measurementList[i]);
-      }
-      if (tmpMeasurementNode != null) {
-        // just for performance, because in single node version, we do not need the full path of measurement
-        // so, we want to avoid concat the device and measurement string in single node version
-        IoTDB.metaManager.updateLastCache(node.getPartialPath(),
-            plan.composeTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
+      if (mNodes[i] != null) {
+        // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to update last cache
+        IoTDB.metaManager.updateLastCache(null,
+            plan.composeTimeValuePair(i), true, latestFlushedTime, mNodes[i]);
       } else {
-        if (node != null) {
-          IoTDB.metaManager
-              .updateLastCache(node.getPartialPath().concatNode(measurementList[i]),
-                  plan.composeTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
-        }
+        IoTDB.metaManager
+            .updateLastCache(plan.getDeviceId().concatNode(plan.getMeasurements()[i]),
+                plan.composeTimeValuePair(i), true, latestFlushedTime, null);
       }
     }
   }

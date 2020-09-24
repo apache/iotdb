@@ -82,7 +82,6 @@ public class TTLTest {
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
   private long prevPartitionInterval;
 
-  private MNode deviceMNode = null;
 
   @Before
   public void setUp()
@@ -91,8 +90,6 @@ public class TTLTest {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
     createSchemas();
-    deviceMNode = new MNode(null, sg1);
-    deviceMNode.addChild(s1, new MeasurementMNode(null, null, null, null));
   }
 
   @After
@@ -104,7 +101,6 @@ public class TTLTest {
 
   private void insertToStorageGroupProcessor(InsertRowPlan insertPlan)
       throws WriteProcessException {
-    insertPlan.setDeviceMNode(deviceMNode);
     storageGroupProcessor.insert(insertPlan);
   }
 
@@ -149,8 +145,8 @@ public class TTLTest {
     plan.setMeasurements(new String[]{"s1"});
     plan.setDataTypes(new TSDataType[]{TSDataType.INT64});
     plan.setValues(new Object[]{1L});
-    plan.setSchemasAndTransferType(
-        new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
+    plan.setMNodesAndTransferType(new MeasurementMNode[]{new MeasurementMNode(null, null,
+            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)});
 
     // ok without ttl
     insertToStorageGroupProcessor(plan);
@@ -177,8 +173,8 @@ public class TTLTest {
     plan.setMeasurements(new String[]{"s1"});
     plan.setDataTypes(new TSDataType[]{TSDataType.INT64});
     plan.setValues(new Object[]{1L});
-    plan.setSchemasAndTransferType(
-        new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
+    plan.setMNodesAndTransferType(new MeasurementMNode[]{new MeasurementMNode(null, null,
+            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)});
 
     long initTime = System.currentTimeMillis();
     // sequence data

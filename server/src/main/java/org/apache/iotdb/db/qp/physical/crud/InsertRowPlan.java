@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -101,13 +102,14 @@ public class InsertRowPlan extends InsertPlan {
     this.deviceId = new PartialPath(tsRecord.deviceId);
     this.time = tsRecord.time;
     this.measurements = new String[tsRecord.dataPointList.size()];
-    this.schemas = new MeasurementSchema[tsRecord.dataPointList.size()];
+    this.measurementMNodes = new MeasurementMNode[tsRecord.dataPointList.size()];
     this.dataTypes = new TSDataType[tsRecord.dataPointList.size()];
     this.values = new Object[tsRecord.dataPointList.size()];
     for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
       measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
-      schemas[i] = new MeasurementSchema(measurements[i], tsRecord.dataPointList.get(i).getType(),
-          TSEncoding.PLAIN);
+      measurementMNodes[i] = new MeasurementMNode(null, measurements[i],
+          new MeasurementSchema(measurements[i], tsRecord.dataPointList.get(i).getType(),
+              TSEncoding.PLAIN), null);
       dataTypes[i] = tsRecord.dataPointList.get(i).getType();
       values[i] = tsRecord.dataPointList.get(i).getValue();
     }
@@ -158,11 +160,11 @@ public class InsertRowPlan extends InsertPlan {
    * Double, Binary)
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void setSchemasAndTransferType(MeasurementSchema[] schemas) throws QueryProcessException {
-    this.schemas = schemas;
+  public void setMNodesAndTransferType(MeasurementMNode[] mNodes) throws QueryProcessException {
+    this.measurementMNodes = mNodes;
     if (isNeedInferType) {
-      for (int i = 0; i < schemas.length; i++) {
-        if (schemas[i] == null) {
+      for (int i = 0; i < mNodes.length; i++) {
+        if (mNodes[i] == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
             markFailedMeasurementInsertion(i);
           } else {
@@ -171,7 +173,7 @@ public class InsertRowPlan extends InsertPlan {
           }
           continue;
         }
-        dataTypes[i] = schemas[i].getType();
+        dataTypes[i] = mNodes[i].getSchema().getType();
         try {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
         } catch (Exception e) {
@@ -179,7 +181,7 @@ public class InsertRowPlan extends InsertPlan {
               measurements[i], values[i], dataTypes[i]);
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
             markFailedMeasurementInsertion(i);
-            schemas[i] = null;
+            mNodes[i] = null;
           } else {
             throw e;
           }
@@ -430,6 +432,6 @@ public class InsertRowPlan extends InsertPlan {
     }
     Object value = values[measurementIndex];
     return new TimeValuePair(time,
-        TsPrimitiveType.getByType(schemas[measurementIndex].getType(), value));
+        TsPrimitiveType.getByType(measurementMNodes[measurementIndex].getSchema().getType(), value));
   }
 }

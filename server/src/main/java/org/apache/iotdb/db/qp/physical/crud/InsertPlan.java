@@ -22,21 +22,17 @@ package org.apache.iotdb.db.qp.physical.crud;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 abstract public class InsertPlan extends PhysicalPlan {
 
   protected PartialPath deviceId;
   protected String[] measurements;
   protected TSDataType[] dataTypes;
-  protected MeasurementSchema[] schemas;
-
-  // for updating last cache
-  private MNode deviceMNode;
+  protected MeasurementMNode[] measurementMNodes;
 
   // record the failed measurements
   protected List<String> failedMeasurements;
@@ -70,12 +66,12 @@ abstract public class InsertPlan extends PhysicalPlan {
     this.dataTypes = dataTypes;
   }
 
-  public MeasurementSchema[] getSchemas() {
-    return schemas;
+  public MeasurementMNode[] getMeasurementMNodes() {
+    return measurementMNodes;
   }
 
-  public void setSchemas(MeasurementSchema[] schemas) {
-    this.schemas = schemas;
+  public void setMeasurementMNodes(MeasurementMNode[] mNodes) {
+    this.measurementMNodes = mNodes;
   }
 
   public List<String> getFailedMeasurements() {
@@ -84,14 +80,6 @@ abstract public class InsertPlan extends PhysicalPlan {
 
   public int getFailedMeasurementNumber() {
     return failedMeasurements == null ? 0 : failedMeasurements.size();
-  }
-
-  public MNode getDeviceMNode() {
-    return deviceMNode;
-  }
-
-  public void setDeviceMNode(MNode deviceMNode) {
-    this.deviceMNode = deviceMNode;
   }
 
   /**
