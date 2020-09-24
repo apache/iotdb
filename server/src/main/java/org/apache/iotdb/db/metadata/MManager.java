@@ -52,7 +52,14 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.exception.metadata.*;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -168,8 +175,6 @@ public class MManager {
         }
       }
     };
-
-    int remoteCacheSize = config.getmRemoteSchemaCacheSize();
 
     timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
         "timedCreateMTreeSnapshotThread"));
@@ -678,25 +683,24 @@ public class MManager {
     }
   }
 
-  public MeasurementSchema[] getSchemas(PartialPath deviceId, String[] measurements)
+  public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
     lock.readLock().lock();
     try {
       MNode deviceNode = getNodeByPath(deviceId);
-      MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurements.length];
-      for (int i = 0; i < measurementSchemas.length; i++) {
+      MeasurementMNode[] mNodes = new MeasurementMNode[measurements.length];
+      for (int i = 0; i < mNodes.length; i++) {
         if (!deviceNode.hasChild(measurements[i])) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            measurementSchemas[i] = null;
+            mNodes[i] = null;
           } else {
             throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
           }
         } else {
-          measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]))
-              .getSchema();
+          mNodes[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]));
         }
       }
-      return measurementSchemas;
+      return mNodes;
     } finally {
       lock.readLock().unlock();
     }
@@ -1022,6 +1026,10 @@ public class MManager {
     } finally {
       lock.readLock().unlock();
     }
+  }
+
+  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
+    return (MeasurementMNode) getChild(deviceMNode, measurement);
   }
 
   public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
@@ -1943,49 +1951,39 @@ public class MManager {
    * @throws MetadataException
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(PartialPath deviceId,
+  public MeasurementMNode[] getSeriesSchemasAndReadLockDevice(PartialPath deviceId,
       String[] measurementList, InsertPlan plan) throws MetadataException {
-    MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
+    MeasurementMNode[] mNodes = new MeasurementMNode[measurementList.length];
 
-    MNode deviceNode;
     // 1. get device node
-    deviceNode = getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+    MNode deviceMNode = getDeviceNodeWithAutoCreateAndReadLock(deviceId);
 
     // 2. get schema of each measurement
     for (int i = 0; i < measurementList.length; i++) {
       try {
         // if do not has measurement
-        MeasurementSchema measurementSchema;
-        if (!deviceNode.hasChild(measurementList[i])) {
+        MeasurementMNode measurementMNode;
+        if (!deviceMNode.hasChild(measurementList[i])) {
           // could not create it
           if (!config.isAutoCreateSchemaEnabled()) {
             // but measurement not in MTree and cannot auto-create, try the cache
-            measurementSchema = getSeriesSchema(deviceId
-                , measurementList[i]);
-            if (measurementSchema == null) {
+            measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
+            if (measurementMNode == null) {
               throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
             }
           } else {
             // create it
 
             TSDataType dataType = getTypeInLoc(plan, i);
-            createTimeseries(
-                deviceId.concatNode(measurementList[i]),
-                dataType,
-                getDefaultEncoding(dataType),
-                TSFileDescriptor.getInstance().getConfig().getCompressor(),
-                Collections.emptyMap());
+            // create it, may concurrent created by multiple thread
+            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
 
-            MeasurementMNode measurementNode = (MeasurementMNode) getChild(deviceNode,
+            measurementMNode = (MeasurementMNode) getChild(deviceMNode,
                 measurementList[i]);
-            measurementSchema = measurementNode.getSchema();
           }
         } else {
-          MeasurementMNode measurementNode = (MeasurementMNode) getChild(deviceNode,
-              measurementList[i]);
-          measurementSchema = measurementNode.getSchema();
+          measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
         }
-
         // check type is match
         TSDataType insertDataType = null;
         if (plan instanceof InsertRowPlan) {
@@ -1993,17 +1991,17 @@ public class MManager {
             // only when InsertRowPlan's values is object[], we should check type
             insertDataType = getTypeInLoc(plan, i);
           } else {
-            insertDataType = measurementSchema.getType();
+            insertDataType = measurementMNode.getSchema().getType();
           }
         } else if (plan instanceof InsertTabletPlan) {
           insertDataType = getTypeInLoc(plan, i);
         }
 
-        if (measurementSchema.getType() != insertDataType) {
+        if (measurementMNode.getSchema().getType() != insertDataType) {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-              measurementList[i], insertDataType, measurementSchema.getType());
+              measurementList[i], insertDataType, measurementMNode.getSchema().getType());
           DataTypeMismatchException mismatchException = new DataTypeMismatchException(measurementList[i],
-                  insertDataType, measurementSchema.getType());
+                  insertDataType, measurementMNode.getSchema().getType());
           if (!config.isEnablePartialInsert()) {
             throw mismatchException;
           } else {
@@ -2013,11 +2011,11 @@ public class MManager {
           }
         }
 
-        schemas[i] = measurementSchema;
+        mNodes[i] = measurementMNode;
 
-        if (schemas[i] != null) {
-          measurementList[i] = schemas[i].getMeasurementId();
-        }
+        // set measurementName instead of alias
+        measurementList[i] = mNodes[i].getName();
+
       } catch (MetadataException e) {
         logger.warn("meet error when check {}.{}, message: {}", deviceId, measurementList[i],
             e.getMessage());
@@ -2029,8 +2027,28 @@ public class MManager {
         }
       }
     }
-    plan.setDeviceMNode(deviceNode);
-    return schemas;
+
+    return mNodes;
+  }
+
+
+  /**
+   * create timeseries with ignore PathAlreadyExistException
+   */
+  private void internalCreateTimeseries(PartialPath path, TSDataType dataType) throws MetadataException {
+    try {
+      createTimeseries(
+          path,
+          dataType,
+          getDefaultEncoding(dataType),
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap());
+    } catch (PathAlreadyExistException e) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("Ignore PathAlreadyExistException when Concurrent inserting"
+            + " a non-exist time series {}", path);
+      }
+    }
   }
 
   /**

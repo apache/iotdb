@@ -89,7 +89,8 @@ public class ChunkMetadataCacheTest {
     record.addTuple(DataPoint.getDataPoint(TSDataType.FLOAT, measurementId2, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.DOUBLE, measurementId3, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.BOOLEAN, measurementId4, "True"));
-    storageGroupProcessor.insert(new InsertRowPlan(record));
+    InsertRowPlan insertRowPlan = new InsertRowPlan(record);
+    storageGroupProcessor.insert(insertRowPlan);
   }
 
   protected void insertData() throws IOException, WriteProcessException, IllegalPathException {
