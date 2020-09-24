@@ -59,13 +59,12 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage) {
     updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     long time = Long.MIN_VALUE;
     Object lastVal = null;
     while (dataInThisPage.hasCurrent()
@@ -85,7 +84,6 @@ public class LastValueAggrResult extends AggregateResult {
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-
     long time = Long.MIN_VALUE;
     Object lastVal = null;
     for (int i = 0; i < length; i++) {

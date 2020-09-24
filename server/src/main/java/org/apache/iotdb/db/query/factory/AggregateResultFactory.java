@@ -90,7 +90,7 @@ public class AggregateResultFactory {
 
     switch (aggrFuncName.toLowerCase()) {
       case SQLConstant.MIN_TIME:
-        return new MinTimeDescAggrResult();
+        return new MinTimeAggrResult();
       case SQLConstant.MAX_TIME:
         return new MaxTimeDescAggrResult();
       case SQLConstant.MIN_VALUE:

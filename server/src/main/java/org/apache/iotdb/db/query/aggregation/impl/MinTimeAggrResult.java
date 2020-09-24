@@ -52,13 +52,12 @@ public class MinTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage) {
     updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     if (hasResult()) {
       return;
     }
@@ -106,7 +105,7 @@ public class MinTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
+  protected void serializeSpecificFields(OutputStream outputStream) {
   }
 
 }

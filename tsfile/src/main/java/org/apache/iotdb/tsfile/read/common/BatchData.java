@@ -71,10 +71,6 @@ public class BatchData implements Serializable {
   // the insert timestamp number of timeRet
   private int count;
 
-  // true then the data in BatchData is in desc order
-  protected boolean isFromDescMergeReader = false;
-
-
   private List<long[]> timeRet;
   private List<boolean[]> booleanRet;
   private List<int[]> intRet;
@@ -98,14 +94,6 @@ public class BatchData implements Serializable {
 
   public boolean isEmpty() {
     return count == 0;
-  }
-
-  public boolean isFromDescMergeReader() {
-    return isFromDescMergeReader;
-  }
-
-  public void setFromDescMergeReader(boolean fromDescMergeReader) {
-    isFromDescMergeReader = fromDescMergeReader;
   }
 
   public boolean hasCurrent() {

@@ -48,13 +48,12 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage) {
     updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     while (dataInThisPage.hasCurrent()
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
@@ -74,10 +73,9 @@ public class MaxTimeAggrResult extends AggregateResult {
       }
     }
 
-    if (time == -1) {
-      return;
+    if (time != -1) {
+      updateMaxTimeResult(time);
     }
-    updateMaxTimeResult(time);
   }
 
   @Override
@@ -99,7 +97,7 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
+  protected void serializeSpecificFields(OutputStream outputStream) {
 
   }
 
