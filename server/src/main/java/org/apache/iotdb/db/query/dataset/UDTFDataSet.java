@@ -57,9 +57,9 @@ public abstract class UDTFDataSet extends QueryDataSet {
     super(deduplicatedPaths, deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    udtfPlan.initializeUdfExecutor(queryId);
     inputLayer = new InputLayerWithValueFilter(queryId, deduplicatedPaths, deduplicatedDataTypes,
         timestampGenerator, readersOfSelectedSeries, cached);
+    udtfPlan.initializeUdfExecutor(queryId);
     initTransformers();
   }
 
@@ -70,9 +70,9 @@ public abstract class UDTFDataSet extends QueryDataSet {
     super(deduplicatedPaths, deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    udtfPlan.initializeUdfExecutor(queryId);
     inputLayer = new InputLayerWithoutValueFilter(queryId, deduplicatedPaths, deduplicatedDataTypes,
         readersOfSelectedSeries);
+    udtfPlan.initializeUdfExecutor(queryId);
     initTransformers();
   }
 

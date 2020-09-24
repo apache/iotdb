@@ -24,6 +24,7 @@ import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.db.query.udf.datastructure.primitive.IntList;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class RowIteratorImpl implements RowIterator {
 
@@ -34,9 +35,10 @@ public class RowIteratorImpl implements RowIterator {
   private IntList windowRowIndexes;
   private int rowIndex;
 
-  public RowIteratorImpl(ElasticSerializableRowRecordList rowRecordList, int[] columnIndexes) {
+  public RowIteratorImpl(ElasticSerializableRowRecordList rowRecordList, int[] columnIndexes,
+      TSDataType[] dataTypes) {
     this.rowRecordList = rowRecordList;
-    row = new RowImpl(columnIndexes);
+    row = new RowImpl(columnIndexes, dataTypes);
   }
 
   @Override

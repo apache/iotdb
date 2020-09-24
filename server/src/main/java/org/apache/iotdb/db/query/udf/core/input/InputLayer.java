@@ -216,7 +216,7 @@ public class InputLayer {
       hasCachedRowRecord = false;
       cachedRowRecord = null;
 
-      row = new RowImpl(columnIndexes);
+      row = new RowImpl(columnIndexes, dataTypes);
     }
 
     @Override
@@ -307,7 +307,7 @@ public class InputLayer {
               DATA_ID_PREFIX + elasticSerializableIntListCount++,
               ElasticSerializableIntList.DEFAULT_MEMORY_USAGE_LIMIT,
               ElasticSerializableIntList.DEFAULT_CACHE_SIZE);
-      rowWindow = new RowWindowImpl(rowRecordList, columnIndexes);
+      rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes);
 
       maxIndexInLastWindow = -1;
     }
@@ -404,7 +404,7 @@ public class InputLayer {
           DATA_ID_PREFIX + elasticSerializableIntListCount++,
           ElasticSerializableIntList.DEFAULT_MEMORY_USAGE_LIMIT,
           ElasticSerializableIntList.DEFAULT_CACHE_SIZE);
-      rowWindow = new RowWindowImpl(rowRecordList, columnIndexes);
+      rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes);
 
       nextWindowTimeBegin = accessStrategy.getDisplayWindowBegin();
       nextIndexBegin = 0;

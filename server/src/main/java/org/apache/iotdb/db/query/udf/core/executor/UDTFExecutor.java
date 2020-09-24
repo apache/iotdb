@@ -41,7 +41,6 @@ public class UDTFExecutor {
     configurations = new UDTFConfigurations();
     udtf = (UDTF) UDFRegistrationService.getInstance().reflect(context);
     try {
-      udtf.setDataTypes(context.getDataTypes());
       udtf.beforeStart(new UDFParameters(context.getPaths(), context.getAttributes()),
           configurations);
     } catch (Exception e) {
@@ -54,12 +53,11 @@ public class UDTFExecutor {
     collector = new ElasticSerializableTVList(configurations.getOutputDataType(), queryId,
         context.getColumnName(), ElasticSerializableTVList.DEFAULT_MEMORY_USAGE_LIMIT,
         ElasticSerializableTVList.DEFAULT_CACHE_SIZE);
-    udtf.setCollector(collector);
   }
 
   public void execute(Row row) throws QueryProcessException {
     try {
-      udtf.transform(row);
+      udtf.transform(row, collector);
     } catch (Exception e) {
       throw new QueryProcessException(e.getMessage());
     }
@@ -67,7 +65,7 @@ public class UDTFExecutor {
 
   public void execute(RowWindow rowWindow) throws QueryProcessException {
     try {
-      udtf.transform(rowWindow);
+      udtf.transform(rowWindow, collector);
     } catch (Exception e) {
       throw new QueryProcessException(e.getMessage());
     }

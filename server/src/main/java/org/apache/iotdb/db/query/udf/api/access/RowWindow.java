@@ -20,12 +20,15 @@
 package org.apache.iotdb.db.query.udf.api.access;
 
 import java.io.IOException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public interface RowWindow {
 
   int windowSize();
 
-  Row getRow(int index) throws IOException;
+  Row getRow(int rowIndex) throws IOException;
+
+  TSDataType getDataType(int columnIndex);
 
   RowIterator getRowIterator();
 }

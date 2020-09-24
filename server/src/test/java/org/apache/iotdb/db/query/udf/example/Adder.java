@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.udf.example;
 
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.OneByOneAccessStrategy;
@@ -41,7 +42,7 @@ public class Adder extends UDTF {
   }
 
   @Override
-  public void transform(Row row) throws Exception {
+  public void transform(Row row, PointCollector collector) throws Exception {
     if (row.isNull(0) || row.isNull(1)) {
       return;
     }
@@ -51,7 +52,7 @@ public class Adder extends UDTF {
 
   private float extractFloatValue(Row row, int index) {
     float value;
-    switch (dataTypes.get(index)) {
+    switch (row.getDataType(index)) {
       case INT32:
         value = (float) row.getInt(index);
         break;
@@ -65,7 +66,7 @@ public class Adder extends UDTF {
         value = (float) row.getDouble(index);
         break;
       default:
-        throw new UnSupportedDataTypeException(dataTypes.get(index).toString());
+        throw new UnSupportedDataTypeException(row.getDataType(index).toString());
     }
     return value;
   }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.udf.core.access;
 
 import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -27,11 +28,13 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public class RowImpl implements Row {
 
   private final int[] columnIndexes;
+  private final TSDataType[] dataTypes;
 
   private RowRecord rowRecord;
 
-  public RowImpl(int[] columnIndexes) {
+  public RowImpl(int[] columnIndexes, TSDataType[] dataTypes) {
     this.columnIndexes = columnIndexes;
+    this.dataTypes = dataTypes;
   }
 
   @Override
@@ -40,43 +43,48 @@ public class RowImpl implements Row {
   }
 
   @Override
-  public int getInt(int index) {
-    return rowRecord.getFields().get(columnIndexes[index]).getIntV();
+  public int getInt(int columnIndex) {
+    return rowRecord.getFields().get(columnIndexes[columnIndex]).getIntV();
   }
 
   @Override
-  public long getLong(int index) {
-    return rowRecord.getFields().get(columnIndexes[index]).getLongV();
+  public long getLong(int columnIndex) {
+    return rowRecord.getFields().get(columnIndexes[columnIndex]).getLongV();
   }
 
   @Override
-  public float getFloat(int index) {
-    return rowRecord.getFields().get(columnIndexes[index]).getFloatV();
+  public float getFloat(int columnIndex) {
+    return rowRecord.getFields().get(columnIndexes[columnIndex]).getFloatV();
   }
 
   @Override
-  public double getDouble(int index) {
-    return rowRecord.getFields().get(columnIndexes[index]).getDoubleV();
+  public double getDouble(int columnIndex) {
+    return rowRecord.getFields().get(columnIndexes[columnIndex]).getDoubleV();
   }
 
   @Override
-  public boolean getBoolean(int index) {
-    return rowRecord.getFields().get(columnIndexes[index]).getBoolV();
+  public boolean getBoolean(int columnIndex) {
+    return rowRecord.getFields().get(columnIndexes[columnIndex]).getBoolV();
   }
 
   @Override
-  public Binary getBinary(int index) {
-    return rowRecord.getFields().get(columnIndexes[index]).getBinaryV();
+  public Binary getBinary(int columnIndex) {
+    return rowRecord.getFields().get(columnIndexes[columnIndex]).getBinaryV();
   }
 
   @Override
-  public String getString(int index) {
-    return rowRecord.getFields().get(columnIndexes[index]).getBinaryV().getStringValue();
+  public String getString(int columnIndex) {
+    return rowRecord.getFields().get(columnIndexes[columnIndex]).getBinaryV().getStringValue();
   }
 
   @Override
-  public boolean isNull(int index) {
-    Field field = rowRecord.getFields().get(columnIndexes[index]);
+  public TSDataType getDataType(int columnIndex) {
+    return dataTypes[columnIndexes[columnIndex]];
+  }
+
+  @Override
+  public boolean isNull(int columnIndex) {
+    Field field = rowRecord.getFields().get(columnIndexes[columnIndex]);
     return field == null || field.isNull();
   }
 

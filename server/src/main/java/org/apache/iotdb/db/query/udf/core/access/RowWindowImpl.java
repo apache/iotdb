@@ -25,20 +25,27 @@ import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.db.query.udf.datastructure.primitive.IntList;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class RowWindowImpl implements RowWindow {
 
   private final ElasticSerializableRowRecordList rowRecordList;
+
+  private final int[] columnIndexes;
+  private final TSDataType[] dataTypes;
 
   private final RowImpl row;
   private final RowIteratorImpl rowIterator;
 
   private IntList windowRowIndexes;
 
-  public RowWindowImpl(ElasticSerializableRowRecordList rowRecordList, int[] columnIndexes) {
+  public RowWindowImpl(ElasticSerializableRowRecordList rowRecordList, int[] columnIndexes,
+      TSDataType[] dataTypes) {
     this.rowRecordList = rowRecordList;
-    row = new RowImpl(columnIndexes);
-    rowIterator = new RowIteratorImpl(rowRecordList, columnIndexes);
+    this.columnIndexes = columnIndexes;
+    this.dataTypes = dataTypes;
+    row = new RowImpl(columnIndexes, dataTypes);
+    rowIterator = new RowIteratorImpl(rowRecordList, columnIndexes, dataTypes);
   }
 
   @Override
@@ -47,8 +54,13 @@ public class RowWindowImpl implements RowWindow {
   }
 
   @Override
-  public Row getRow(int index) throws IOException {
-    return row.setRowRecord(rowRecordList.getRowRecord(windowRowIndexes.get(index)));
+  public Row getRow(int rowIndex) throws IOException {
+    return row.setRowRecord(rowRecordList.getRowRecord(windowRowIndexes.get(rowIndex)));
+  }
+
+  @Override
+  public TSDataType getDataType(int columnIndex) {
+    return dataTypes[columnIndexes[columnIndex]];
   }
 
   @Override

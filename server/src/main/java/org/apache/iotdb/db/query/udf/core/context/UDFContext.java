@@ -33,6 +33,7 @@ public class UDFContext {
   private final String name;
   private final Map<String, String> attributes;
   private final List<String> attributeKeysInOriginalOrder;
+
   private List<Path> paths;
   private List<TSDataType> dataTypes;
 

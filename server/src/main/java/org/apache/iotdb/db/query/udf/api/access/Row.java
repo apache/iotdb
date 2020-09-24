@@ -19,25 +19,28 @@
 
 package org.apache.iotdb.db.query.udf.api.access;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public interface Row {
 
   long getTime();
 
-  int getInt(int index);
+  int getInt(int columnIndex);
 
-  long getLong(int index);
+  long getLong(int columnIndex);
 
-  float getFloat(int index);
+  float getFloat(int columnIndex);
 
-  double getDouble(int index);
+  double getDouble(int columnIndex);
 
-  boolean getBoolean(int index);
+  boolean getBoolean(int columnIndex);
 
-  Binary getBinary(int index);
+  Binary getBinary(int columnIndex);
 
-  String getString(int index);
+  String getString(int columnIndex);
 
-  boolean isNull(int index);
+  TSDataType getDataType(int columnIndex);
+
+  boolean isNull(int columnIndex);
 }
