@@ -74,6 +74,11 @@ public class UDFParameters {
     return value == null ? null : Double.parseDouble(value);
   }
 
+  public String getStringOrDefault(String key, String defaultValue) {
+    String value = attributes.get(key);
+    return value == null ? defaultValue : value;
+  }
+
   public boolean getBooleanOrDefault(String key, boolean defaultValue) {
     String value = attributes.get(key);
     return value == null ? defaultValue : Boolean.parseBoolean(value);

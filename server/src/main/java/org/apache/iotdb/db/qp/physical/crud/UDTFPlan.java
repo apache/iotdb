@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +31,8 @@ import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 
 public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
+  protected final ZoneId zoneId;
+
   protected Map<String, UDTFExecutor> columnName2Executor = new HashMap<>();
   protected Map<Integer, UDTFExecutor> originalOutputColumnIndex2Executor = new HashMap<>();
 
@@ -38,8 +41,9 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
   protected Map<String, Integer> pathNameToReaderIndex;
 
-  public UDTFPlan() {
+  public UDTFPlan(ZoneId zoneId) {
     super();
+    this.zoneId = zoneId;
     setOperatorType(Operator.OperatorType.UDTF);
   }
 
@@ -53,7 +57,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
       String columnName = context.getColumnName();
       if (!columnName2Executor.containsKey(columnName)) {
-        UDTFExecutor executor = new UDTFExecutor(context);
+        UDTFExecutor executor = new UDTFExecutor(context, zoneId);
         columnName2Executor.put(columnName, executor);
       }
       originalOutputColumnIndex2Executor.put(i, columnName2Executor.get(columnName));

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -28,6 +29,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
  * this class maintains information from select clause.
  */
 public final class SelectOperator extends Operator {
+
+  private final ZoneId zoneId;
 
   private List<Path> suffixList;
   private List<String> aggregations;
@@ -40,8 +43,9 @@ public final class SelectOperator extends Operator {
   /**
    * init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>.
    */
-  public SelectOperator(int tokenIntType) {
+  public SelectOperator(int tokenIntType, ZoneId zoneId) {
     super(tokenIntType);
+    this.zoneId = zoneId;
     operatorType = OperatorType.SELECT;
     suffixList = new ArrayList<>();
     aggregations = new ArrayList<>();
@@ -49,6 +53,10 @@ public final class SelectOperator extends Operator {
     lastQuery = false;
     udfQuery = false;
     hasBuiltinAggregation = false;
+  }
+
+  public ZoneId getZoneId() {
+    return zoneId;
   }
 
   public void addSelectPath(Path suffixPath) {

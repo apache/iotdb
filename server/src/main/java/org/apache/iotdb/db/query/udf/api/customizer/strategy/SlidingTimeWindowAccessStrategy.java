@@ -19,34 +19,38 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
+import java.time.ZoneId;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
-import org.apache.iotdb.db.qp.constant.DatetimeUtils.DurationUnit;
 
 public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
 
-  private final long timeInterval;
-  private final long slidingStep;
-  private final long displayWindowBegin;
-  private final long displayWindowEnd;
+  private final String timeIntervalString;
+  private final String slidingStepString;
+  private final String displayWindowBeginString;
+  private final String displayWindowEndString;
 
-  public SlidingTimeWindowAccessStrategy(
-      long displayWindowBegin, DurationUnit displayWindowBeginTimeUnit,
-      long displayWindowEnd, DurationUnit displayWindowEndTimeUnit,
-      long timeInterval, DurationUnit timeIntervalTimeUnit,
-      long slidingStep, DurationUnit slidingStepTimeUnit) {
-    this.displayWindowBegin = DatetimeUtils
-        .convertDurationStrToLong(displayWindowBegin, displayWindowBeginTimeUnit.toString(), "ns");
-    this.displayWindowEnd = DatetimeUtils
-        .convertDurationStrToLong(displayWindowEnd, displayWindowEndTimeUnit.toString(), "ns");
-    this.timeInterval = DatetimeUtils
-        .convertDurationStrToLong(timeInterval, timeIntervalTimeUnit.toString(), "ns");
-    this.slidingStep = DatetimeUtils
-        .convertDurationStrToLong(slidingStep, slidingStepTimeUnit.toString(), "ns");
+  private long timeInterval;
+  private long slidingStep;
+  private long displayWindowBegin;
+  private long displayWindowEnd;
+
+  private ZoneId zoneId;
+
+  public SlidingTimeWindowAccessStrategy(String timeIntervalString, String slidingStepString,
+      String displayWindowBeginString, String displayWindowEndString) {
+    this.timeIntervalString = timeIntervalString;
+    this.slidingStepString = slidingStepString;
+    this.displayWindowBeginString = displayWindowBeginString;
+    this.displayWindowEndString = displayWindowEndString;
   }
 
   @Override
   public void check() throws QueryProcessException {
+    timeInterval = DatetimeUtils.convertDurationStrToLong(timeIntervalString);
+    slidingStep = DatetimeUtils.convertDurationStrToLong(slidingStepString);
+    displayWindowBegin = DatetimeUtils.convertDatetimeStrToLong(displayWindowBeginString, zoneId);
+    displayWindowEnd = DatetimeUtils.convertDatetimeStrToLong(displayWindowEndString, zoneId);
     if (timeInterval <= 0) {
       throw new QueryProcessException(
           String.format("Parameter timeInterval(%d) should be positive.", timeInterval));
@@ -75,6 +79,14 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
 
   public long getDisplayWindowEnd() {
     return displayWindowEnd;
+  }
+
+  public ZoneId getZoneId() {
+    return zoneId;
+  }
+
+  public void setZoneId(ZoneId zoneId) {
+    this.zoneId = zoneId;
   }
 
   @Override

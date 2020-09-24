@@ -19,11 +19,19 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.config;
 
+import java.time.ZoneId;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class UDTFConfigurations extends UDFConfigurations {
+
+  protected final ZoneId zoneId;
+
+  public UDTFConfigurations(ZoneId zoneId) {
+    this.zoneId = zoneId;
+  }
 
   public UDTFConfigurations setOutputDataType(TSDataType outputDataType) {
     this.outputDataType = outputDataType;
@@ -36,8 +44,13 @@ public class UDTFConfigurations extends UDFConfigurations {
     return accessStrategy;
   }
 
-  public void setAccessStrategy(AccessStrategy accessStrategy) {
+  public UDTFConfigurations setAccessStrategy(AccessStrategy accessStrategy) {
     this.accessStrategy = accessStrategy;
+    if (accessStrategy instanceof SlidingTimeWindowAccessStrategy
+        && ((SlidingTimeWindowAccessStrategy) accessStrategy).getZoneId() == null) {
+      ((SlidingTimeWindowAccessStrategy) accessStrategy).setZoneId(zoneId);
+    }
+    return this;
   }
 
   @Override

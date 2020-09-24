@@ -405,7 +405,9 @@ public class PhysicalGenerator {
     } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
     } else {
-      queryPlan = queryOperator.hasUdf() ? new UDTFPlan() : new RawDataQueryPlan();
+      queryPlan = queryOperator.hasUdf()
+          ? new UDTFPlan(queryOperator.getSelectOperator().getZoneId())
+          : new RawDataQueryPlan();
       if (queryPlan instanceof UDTFPlan) {
         ((UDTFPlan) queryPlan)
             .constructUdfExecutors(queryOperator.getSelectOperator().getUdfList());

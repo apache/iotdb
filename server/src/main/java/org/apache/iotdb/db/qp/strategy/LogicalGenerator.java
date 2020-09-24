@@ -812,7 +812,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterDeleteStatement(ctx);
     operatorType = SQLConstant.TOK_DELETE;
     deleteDataOp = new DeleteDataOperator(SQLConstant.TOK_DELETE);
-    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
     List<PrefixPathContext> prefixPaths = ctx.prefixPath();
     for (PrefixPathContext prefixPath : prefixPaths) {
       Path path = parsePrefixPath(prefixPath);
@@ -1211,7 +1211,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterInsertStatement(InsertStatementContext ctx) {
     super.enterInsertStatement(ctx);
     insertOp = new InsertOperator(SQLConstant.TOK_INSERT);
-    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
     operatorType = SQLConstant.TOK_INSERT;
     selectOp.addSelectPath(parseFullPath(ctx.fullPath()));
     insertOp.setSelectOperator(selectOp);
@@ -1223,7 +1223,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     updateOp = new UpdateOperator(SQLConstant.TOK_UPDATE);
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
     fromOp.addPrefixTablePath(parsePrefixPath(ctx.prefixPath()));
-    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
     operatorType = SQLConstant.TOK_UPDATE;
     initializedOperator = updateOp;
   }
@@ -1258,7 +1258,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   @Override
   public void enterAggregationElement(AggregationElementContext ctx) {
-    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
 
     for (AggregationCallContext aggregationCallContext : ctx.aggregationCall()) {
       BuiltInFunctionCallContext builtInFunctionCallContext = aggregationCallContext
@@ -1279,7 +1279,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   @Override
   public void enterTableElement(TableElementContext ctx) {
-    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
 
     for (SuffixPathOrUdtfCallContext suffixPathOrUdfCallContext : ctx.suffixPathOrUdtfCall()) {
       SuffixPathContext suffixPathContext = suffixPathOrUdfCallContext.suffixPath();
@@ -1314,7 +1314,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLastElement(SqlBaseParser.LastElementContext ctx) {
     super.enterLastElement(ctx);
-    selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
     selectOp.setLastQuery();
     LastClauseContext lastClauseContext = ctx.lastClause();
     List<SuffixPathContext> suffixPaths = lastClauseContext.suffixPath();
@@ -1352,31 +1352,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
   private Long parseDuration(String durationStr) {
-    String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-
-    long total = 0;
-    long tmp = 0;
-    for (int i = 0; i < durationStr.length(); i++) {
-      char ch = durationStr.charAt(i);
-      if (Character.isDigit(ch)) {
-        tmp *= 10;
-        tmp += (ch - '0');
-      } else {
-        String unit = durationStr.charAt(i) + "";
-        // This is to identify units with two letters.
-        if (i + 1 < durationStr.length() && !Character.isDigit(durationStr.charAt(i + 1))) {
-          i++;
-          unit += durationStr.charAt(i);
-        }
-        total += DatetimeUtils
-            .convertDurationStrToLong(tmp, unit.toLowerCase(), timestampPrecision);
-        tmp = 0;
-      }
-    }
-    if (total <= 0) {
+    long time = DatetimeUtils.convertDurationStrToLong(durationStr);
+    if (time <= 0) {
       throw new SQLParserException("Interval must more than 0.");
     }
-    return total;
+    return time;
   }
 
   @Override

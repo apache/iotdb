@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.core.executor;
 
+import java.time.ZoneId;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
@@ -36,9 +37,9 @@ public class UDTFExecutor {
   protected UDTF udtf;
   protected ElasticSerializableTVList collector;
 
-  public UDTFExecutor(UDFContext context) throws QueryProcessException {
+  public UDTFExecutor(UDFContext context, ZoneId zoneId) throws QueryProcessException {
     this.context = context;
-    configurations = new UDTFConfigurations();
+    configurations = new UDTFConfigurations(zoneId);
     udtf = (UDTF) UDFRegistrationService.getInstance().reflect(context);
     try {
       udtf.beforeStart(new UDFParameters(context.getPaths(), context.getAttributes()),
