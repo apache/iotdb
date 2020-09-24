@@ -75,9 +75,7 @@ gpg2 --import key.asc
 
 ## Verify the source distribution
 
-* (Incubation stage) Verify if `incubating`
-
-* Verify that there are DISCLAIMER, NOTICE, LICENSE, and the content is correct.
+* Verify that there are  NOTICE, LICENSE, and the content is correct.
 
 * Verify README, RELEASE_NOTES
 
@@ -109,9 +107,7 @@ Should end up all SUCCESS
 
 ## Verifying the binary release
 
-* (Incubation stage) Verify if `incubating`
-
-* Verify that there are DISCLAIMER, NOTICE, LICENSE, and the content is correct.
+* Verify that there are NOTICE, LICENSE, and the content is correct.
 
 * Verify README, RELEASE_NOTES
 
@@ -162,16 +158,12 @@ Hi,
 +1 (PMC could binding)
 
 The source release:
-Incubating in name [ok]
-Has DISCLAIMER [ok]
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 All files have ASF header [ok]
 could compile from source: ./mvnw.sh clean install [ok]
 
 The binary distribution:
-Incubating in name [ok]
-Has DISCLAIMER [ok]
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 Could run with the following statements [ok]

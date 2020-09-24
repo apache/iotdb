@@ -912,18 +912,18 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  protected MeasurementMNode[] getSeriesSchemas(InsertPlan insertPlan)
+  private MNode getSeriesSchemas(InsertPlan insertPlan)
       throws MetadataException {
-    return mManager
-        .getSeriesSchemasAndReadLockDevice(insertPlan.getDeviceId(), insertPlan.getMeasurements(),
-            insertPlan);
+    return mManager.getSeriesSchemasAndReadLockDevice(insertPlan);
   }
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
+    MNode deviceNode = null;
     try {
-      MeasurementMNode[] mNodes = getSeriesSchemas(insertRowPlan);
-      insertRowPlan.setMNodesAndTransferType(mNodes);
+      insertRowPlan.setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+      deviceNode = getSeriesSchemas(insertRowPlan);
+      insertRowPlan.transferType();
       StorageEngine.getInstance().insert(insertRowPlan);
       if (insertRowPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
@@ -932,15 +932,18 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockDeviceReadLock(insertRowPlan.getDeviceId());
+      if (deviceNode != null) {
+        deviceNode.readUnlock();
+      }
     }
   }
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
+    MNode deviceMNode = null;
     try {
-      MeasurementMNode[] mNodes = getSeriesSchemas(insertTabletPlan);
-      insertTabletPlan.setMeasurementMNodes(mNodes);
+      insertTabletPlan.setMeasurementMNodes(new MeasurementMNode[insertTabletPlan.getMeasurements().length]);
+      deviceMNode = getSeriesSchemas(insertTabletPlan);
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
@@ -949,7 +952,9 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockDeviceReadLock(insertTabletPlan.getDeviceId());
+      if (deviceMNode != null) {
+        deviceMNode.readUnlock();
+      }
     }
   }
 
