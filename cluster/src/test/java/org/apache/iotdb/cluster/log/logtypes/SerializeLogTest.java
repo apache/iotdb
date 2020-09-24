@@ -33,13 +33,13 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
 public class SerializeLogTest {
@@ -56,12 +56,12 @@ public class SerializeLogTest {
     plan.setNeedInferType(true);
     plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
     plan.setValues(new Object[]{"0.1", "1", "\"dd\""});
-    MeasurementSchema[] schemas = {TestUtils.getTestMeasurementSchema(1),
-        TestUtils.getTestMeasurementSchema(2), TestUtils.getTestMeasurementSchema(3)};
-    schemas[0].setType(TSDataType.DOUBLE);
-    schemas[1].setType(TSDataType.INT32);
-    schemas[2].setType(TSDataType.TEXT);
-    plan.setSchemasAndTransferType(schemas);
+    MeasurementMNode[] schemas = {TestUtils.getTestMeasurementMNode(1),
+        TestUtils.getTestMeasurementMNode(2), TestUtils.getTestMeasurementMNode(3)};
+    schemas[0].getSchema().setType(TSDataType.DOUBLE);
+    schemas[1].getSchema().setType(TSDataType.INT32);
+    schemas[2].getSchema().setType(TSDataType.TEXT);
+    plan.setMNodesAndTransferType(schemas);
     plan.setTime(1);
     log.setPlan(plan);
 

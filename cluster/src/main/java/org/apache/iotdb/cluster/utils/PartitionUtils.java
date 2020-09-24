@@ -135,7 +135,7 @@ public class PartitionUtils {
     newPlan.setColumns(values);
     newPlan.setTimes(times);
     newPlan.setRowCount(times.length);
-    newPlan.setSchemas(plan.getSchemas());
+    newPlan.setMeasurementMNodes(plan.getMeasurementMNodes());
     return newPlan;
   }
 

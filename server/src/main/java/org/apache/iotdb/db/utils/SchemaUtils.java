@@ -31,8 +31,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -105,9 +105,12 @@ public class SchemaUtils {
     TSDataType dataType = schema.getType();
     TSEncoding encoding = schema.getEncodingType();
     CompressionType compressionType = schema.getCompressor();
-    IoTDB.metaManager.cacheMeta(path,
-        new MeasurementMeta(new MeasurementSchema(path.getMeasurement(),
-        dataType, encoding, compressionType)));
+    MeasurementSchema measurementSchema = new MeasurementSchema(path.getMeasurement(),
+        dataType, encoding, compressionType);
+
+    MeasurementMNode measurementMNode = new MeasurementMNode(null, path.getMeasurement(),
+        measurementSchema, null);
+    IoTDB.metaManager.cacheMeta(path, measurementMNode);
   }
 
   public static List<TSDataType> getSeriesTypesByPath(Collection<PartialPath> paths)

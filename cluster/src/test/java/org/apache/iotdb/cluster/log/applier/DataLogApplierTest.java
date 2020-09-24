@@ -64,6 +64,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -71,9 +72,7 @@ import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
@@ -184,10 +183,8 @@ public class DataLogApplierTest extends IoTDBTest {
           @Override
           public void pullMeasurementSchema(PullSchemaRequest request,
               AsyncMethodCallback<PullSchemaResp> resultHandler) {
-            new Thread(() -> {
-              new DataAsyncService(testDataGroupMember).pullMeasurementSchema(request,
-                  resultHandler);
-            }).start();
+            new Thread(() -> new DataAsyncService(testDataGroupMember).pullMeasurementSchema(request,
+                resultHandler)).start();
           }
         };
       }
@@ -207,7 +204,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyInsert()
-    throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException, TException, InterruptedException {
+    throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException {
     InsertRowPlan insertPlan = new InsertRowPlan();
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setPlan(insertPlan);
@@ -221,7 +218,7 @@ public class DataLogApplierTest extends IoTDBTest {
     insertPlan.setValues(new Object[]{"1.0"});
     insertPlan.setNeedInferType(true);
     insertPlan
-      .setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+      .setMNodesAndTransferType(new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
 
     applier.apply(log);
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(1, 0)), null);
@@ -268,7 +265,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyDeletion()
-    throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException, TException, InterruptedException {
+    throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException {
     DeletePlan deletePlan = new DeletePlan();
     deletePlan.setPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 0))));
     deletePlan.setDeleteEndTime(50);

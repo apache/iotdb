@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -169,6 +170,16 @@ public class TestUtils {
         Collections.emptyMap());
   }
 
+  public static MeasurementMNode getTestMeasurementMNode(int seriesNum) {
+    TSDataType dataType = TSDataType.DOUBLE;
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
+    MeasurementSchema measurementSchema = new MeasurementSchema(
+        TestUtils.getTestMeasurement(seriesNum), dataType, encoding,
+        CompressionType.UNCOMPRESSED,
+        Collections.emptyMap());
+    return new MeasurementMNode(null, measurementSchema.getMeasurementId(), measurementSchema, null);
+  }
+
   public static TimeseriesSchema getTestTimeSeriesSchema(int sgNum, int seriesNum) {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
@@ -242,11 +253,11 @@ public class TestUtils {
     for (int j = 0; j < 10; j++) {
       insertPlan.setDeviceId(new PartialPath(getTestSg(j)));
       String[] measurements = new String[10];
-      MeasurementSchema[] schemas = new MeasurementSchema[10];
+      MeasurementMNode[] mNodes = new MeasurementMNode[10];
       // 10 series each device, all double
       for (int i = 0; i < 10; i++) {
         measurements[i] = getTestMeasurement(i);
-        schemas[i] = TestUtils.getTestMeasurementSchema(i);
+        mNodes[i] = TestUtils.getTestMeasurementMNode(i);
       }
       insertPlan.setMeasurements(measurements);
       insertPlan.setNeedInferType(true);
@@ -259,7 +270,7 @@ public class TestUtils {
           values[k] = String.valueOf(i);
         }
         insertPlan.setValues(values);
-        insertPlan.setSchemasAndTransferType(schemas);
+        insertPlan.setMNodesAndTransferType(mNodes);
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -272,7 +283,7 @@ public class TestUtils {
           values[k] = String.valueOf(i);
         }
         insertPlan.setValues(values);
-        insertPlan.setSchemasAndTransferType(schemas);
+        insertPlan.setMNodesAndTransferType(mNodes);
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -285,7 +296,7 @@ public class TestUtils {
           values[k] = String.valueOf(i);
         }
         insertPlan.setValues(values);
-        insertPlan.setSchemasAndTransferType(schemas);
+        insertPlan.setMNodesAndTransferType(mNodes);
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -295,7 +306,7 @@ public class TestUtils {
     // data for fill
     insertPlan.setDeviceId(new PartialPath(getTestSg(0)));
     String[] measurements = new String[]{getTestMeasurement(10)};
-    MeasurementSchema[] schemas = new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(10)};
+    MeasurementMNode[] schemas = new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(10)};
     insertPlan.setMeasurements(measurements);
     insertPlan.setNeedInferType(true);
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -303,7 +314,7 @@ public class TestUtils {
       insertPlan.setTime(i);
       Object[] values = new Object[]{String.valueOf(i)};
       insertPlan.setValues(values);
-      insertPlan.setSchemasAndTransferType(schemas);
+      insertPlan.setMNodesAndTransferType(schemas);
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }

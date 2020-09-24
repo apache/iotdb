@@ -32,8 +32,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -144,7 +144,9 @@ abstract class BaseApplier implements LogApplier {
   }
 
   protected void registerMeasurement(PartialPath path, MeasurementSchema schema) {
-    IoTDB.metaManager.cacheMeta(path, new MeasurementMeta(schema));
+    MeasurementMNode measurementMNode = new MeasurementMNode(null, schema.getMeasurementId(),
+        schema, null);
+    IoTDB.metaManager.cacheMeta(path,measurementMNode);
   }
 
   private PlanExecutor getQueryExecutor() throws QueryProcessException {

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -106,9 +107,9 @@ public abstract class IoTDBTest {
     for (int i = 0; i < measurements.length; i++) {
       measurements[i] = TestUtils.getTestMeasurement(i);
     }
-    MeasurementSchema[] schemas = new MeasurementSchema[10];
+    MeasurementMNode[] schemas = new MeasurementMNode[10];
     for (int i = 0; i < measurements.length; i++) {
-      schemas[i] = TestUtils.getTestMeasurementSchema(i);
+      schemas[i] = TestUtils.getTestMeasurementMNode(i);
     }
     insertPlan.setMeasurements(measurements);
     insertPlan.setNeedInferType(true);
@@ -119,7 +120,7 @@ public abstract class IoTDBTest {
       insertPlan.setTime(i);
       Arrays.fill(values, String.valueOf(i * 1.0));
       insertPlan.setValues(values);
-      insertPlan.setSchemasAndTransferType(schemas);
+      insertPlan.setMNodesAndTransferType(schemas);
       planExecutor.insert(insertPlan);
     }
   }

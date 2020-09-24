@@ -90,6 +90,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -441,7 +442,7 @@ public class DataGroupMemberTest extends MemberTest {
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     insertPlan.setValues(new Object[]{"1.0"});
     insertPlan
-        .setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+        .setMNodesAndTransferType(new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
     processor.insert(insertPlan);
     processor.syncCloseAllWorkingTsFileProcessors();
 
@@ -583,8 +584,8 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setSchemasAndTransferType(
-          new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+      insertPlan.setMNodesAndTransferType(
+          new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -641,8 +642,8 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setSchemasAndTransferType(
-          new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+      insertPlan.setMNodesAndTransferType(
+          new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -699,8 +700,8 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setSchemasAndTransferType(
-          new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+      insertPlan.setMNodesAndTransferType(
+          new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -755,8 +756,8 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setSchemasAndTransferType(
-          new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+      insertPlan.setMNodesAndTransferType(
+          new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
