@@ -21,7 +21,18 @@
 
 set current_dir=%~dp0
 set superior_dir=%current_dir%\..\
-for /f  "eol=; tokens=2,2 delims==" %%i IN ('findstr /i "rpc_port" %superior_dir%\conf\iotdb-engine.properties') DO set rpc_port=%%i
-for /f  "eol=; tokens=2,2 delims==" %%i IN ('findstr /i "rpc_address" %superior_dir%\conf\iotdb-engine.properties') DO set rpc_address=%%i
-for /f "tokens=5" %%a in ('netstat /ano ^| findstr %rpc_address%:%rpc_port%') do taskkill /F /pid %%a
+
+for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "rpc_port"
+%superior_dir%\conf\iotdb-engine.properties') do (
+  set rpc_port=%%i
+)
+
+for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "rpc_address"
+%superior_dir%\conf\iotdb-engine.properties') do (
+  set rpc_address=%%i
+)
+
+for /f "tokens=5" %%a in ('netstat /ano ^| findstr %rpc_address%:%rpc_port%') do (
+  taskkill /f /pid %%a
+)
 rem ps ax | grep -i 'iotdb.IoTDB' | grep -v grep | awk '{print $1}' | xargs kill -SIGTERM
