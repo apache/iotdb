@@ -51,7 +51,6 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
  */
 public class ReadWriteIOUtils {
 
-  private static final int BYTE_LEN = 1;
   private static final int SHORT_LEN = 2;
   private static final int INT_LEN = 4;
   private static final int LONG_LEN = 8;
@@ -81,19 +80,6 @@ public class ReadWriteIOUtils {
   public static boolean readBool(ByteBuffer buffer) {
     byte a = buffer.get();
     return a == 1;
-  }
-
-  /**
-   * read a byte from inputStream.
-   */
-  public static byte readByte(InputStream inputStream) throws IOException {
-    byte[] bytes = new byte[BYTE_LEN];
-    int readLen = inputStream.read(bytes);
-    if (readLen != BYTE_LEN) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
-          BYTE_LEN, readLen));
-    }
-    return bytes[0];
   }
 
   /**

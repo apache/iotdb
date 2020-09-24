@@ -98,11 +98,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     measurementSchema.measurementId = ReadWriteIOUtils.readString(inputStream);
 
-    measurementSchema.type = ReadWriteIOUtils.readByte(inputStream);
+    measurementSchema.type = ReadWriteIOUtils.readDataType(inputStream).enumToByte();
 
-    measurementSchema.encoding = ReadWriteIOUtils.readByte(inputStream);
+    measurementSchema.encoding = ReadWriteIOUtils.readEncoding(inputStream).enumToByte();
 
-    measurementSchema.compressor = ReadWriteIOUtils.readByte(inputStream);
+    measurementSchema.compressor = ReadWriteIOUtils.readCompressionType(inputStream).enumToByte();
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     if (size > 0) {
@@ -127,11 +127,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     measurementSchema.measurementId = ReadWriteIOUtils.readString(buffer);
 
-    measurementSchema.type = ReadWriteIOUtils.readByte(buffer);
+    measurementSchema.type = ReadWriteIOUtils.readDataType(buffer).enumToByte();
 
-    measurementSchema.encoding = ReadWriteIOUtils.readByte(buffer);
+    measurementSchema.encoding = ReadWriteIOUtils.readEncoding(buffer).enumToByte();
 
-    measurementSchema.compressor = ReadWriteIOUtils.readByte(buffer);
+    measurementSchema.compressor = ReadWriteIOUtils.readCompressionType(buffer).enumToByte();
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
@@ -210,11 +210,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
 
-    byteLen += ReadWriteIOUtils.write(type, outputStream);
+    byteLen += ReadWriteIOUtils.write(TSDataType.byteToEnum(type), outputStream);
 
-    byteLen += ReadWriteIOUtils.write(encoding, outputStream);
+    byteLen += ReadWriteIOUtils.write(TSEncoding.byteToEnum(encoding), outputStream);
 
-    byteLen += ReadWriteIOUtils.write(compressor, outputStream);
+    byteLen += ReadWriteIOUtils.write(CompressionType.byteToEnum(compressor), outputStream);
 
     if (props == null) {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
@@ -237,11 +237,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     byteLen += ReadWriteIOUtils.write(measurementId, buffer);
 
-    byteLen += ReadWriteIOUtils.write(type, buffer);
+    byteLen += ReadWriteIOUtils.write(TSDataType.byteToEnum(type), buffer);
 
-    byteLen += ReadWriteIOUtils.write(encoding, buffer);
+    byteLen += ReadWriteIOUtils.write(TSEncoding.byteToEnum(encoding), buffer);
 
-    byteLen += ReadWriteIOUtils.write(compressor, buffer);
+    byteLen += ReadWriteIOUtils.write(CompressionType.byteToEnum(compressor), buffer);
 
     if (props == null) {
       byteLen += ReadWriteIOUtils.write(0, buffer);
