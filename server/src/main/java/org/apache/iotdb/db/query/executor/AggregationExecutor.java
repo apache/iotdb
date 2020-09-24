@@ -129,7 +129,7 @@ public class AggregationExecutor {
       // construct AggregateResult
       AggregateResult aggregateResult = AggregateResultFactory
           .getAggrResultByName(aggregations.get(i), tsDataType);
-      if (aggregateResult.isAscending()) {
+      if (aggregateResult.needAscReader()) {
         ascAggregateResultList.add(aggregateResult);
         isAsc[i] = true;
       } else {
@@ -220,13 +220,6 @@ public class AggregationExecutor {
 
   /**
    * Aggregate each result in the list with the statistics
-   *
-   * @param aggregateResultList
-   * @param isCalculatedArray
-   * @param remainingToCalculate
-   * @param statistics
-   * @return new remainingToCalculate
-   * @throws QueryProcessException
    */
   private static int aggregateStatistics(List<AggregateResult> aggregateResultList,
       boolean[] isCalculatedArray, int remainingToCalculate, Statistics statistics)
@@ -305,7 +298,7 @@ public class AggregationExecutor {
     for (int i = 0; i < selectedSeries.size(); i++) {
       TSDataType type = dataTypes.get(i);
       AggregateResult result = AggregateResultFactory
-          .getAggrResultByName(aggregations.get(i), type);
+          .getAggrResultByName(aggregations.get(i), type, ascending);
       aggregateResults.add(result);
     }
     aggregateWithValueFilter(aggregateResults, timestampGenerator, readersOfSelectedSeries);

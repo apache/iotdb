@@ -27,6 +27,7 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.DescBatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
@@ -48,8 +49,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
     seriesReader.setTimeFilter(timestamp);
-    if ((batchData == null || (batchData.getTimeByIndex(batchData.length() - 1) < timestamp))
-        && !hasNext(timestamp)) {
+    if ((batchData == null || !batchData.hasMoreData(timestamp)) && !hasNext(timestamp)) {
       return null;
     }
 
@@ -119,7 +119,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
       if (isEmpty(batchData)) {
         continue;
       }
-      if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
+      if (batchData.hasMoreData(timestamp)) {
         return true;
       }
     }

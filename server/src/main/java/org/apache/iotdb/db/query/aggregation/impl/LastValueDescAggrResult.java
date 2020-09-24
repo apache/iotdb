@@ -16,39 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class FirstValueAggrResult extends AggregateResult {
+public class LastValueDescAggrResult extends LastValueAggrResult {
 
-  // timestamp of current value
-  protected long timestamp = Long.MAX_VALUE;
-
-  public FirstValueAggrResult(TSDataType dataType) {
-    super(dataType, AggregationType.FIRST_VALUE);
-    reset();
-  }
-
-  @Override
-  public void reset() {
-    super.reset();
-    timestamp = Long.MAX_VALUE;
-  }
-
-  @Override
-  public Object getResult() {
-    return hasResult() ? getValue() : null;
+  public LastValueDescAggrResult(TSDataType dataType) {
+    super(dataType);
   }
 
   @Override
@@ -56,35 +35,29 @@ public class FirstValueAggrResult extends AggregateResult {
     if (hasResult()) {
       return;
     }
-
-    Object firstVal = statistics.getFirstValue();
-    setValue(firstVal);
-    timestamp = statistics.getStartTime();
+    Object lastVal = statistics.getLastValue();
+    setValue(lastVal);
+    timestamp = statistics.getEndTime();
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     if (hasResult()) {
       return;
     }
-    if (dataInThisPage.hasCurrent()) {
-      setValue(dataInThisPage.currentValue());
-      timestamp = dataInThisPage.currentTime();
-    }
-  }
-
-  @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
-    if (hasResult()) {
-      return;
-    }
+    long time = Long.MIN_VALUE;
+    Object lastVal = null;
     if (dataInThisPage.hasCurrent()
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
-      setValue(dataInThisPage.currentValue());
-      timestamp = dataInThisPage.currentTime();
+      time = dataInThisPage.currentTime();
+      lastVal = dataInThisPage.currentValue();
       dataInThisPage.next();
+    }
+
+    if (time != Long.MIN_VALUE) {
+      setValue(lastVal);
+      timestamp = time;
     }
   }
 
@@ -94,14 +67,19 @@ public class FirstValueAggrResult extends AggregateResult {
     if (hasResult()) {
       return;
     }
-
+    long time = Long.MIN_VALUE;
+    Object lastVal = null;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        setValue(value);
-        timestamp = timestamps[i];
+        time = timestamps[i];
+        lastVal = value;
         break;
       }
+    }
+    if (time != Long.MIN_VALUE) {
+      setValue(lastVal);
+      timestamp = time;
     }
   }
 
@@ -111,21 +89,7 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void merge(AggregateResult another) {
-    FirstValueAggrResult anotherFirst = (FirstValueAggrResult) another;
-    if (this.getValue() == null || this.timestamp > anotherFirst.timestamp) {
-      setValue(anotherFirst.getValue());
-      timestamp = anotherFirst.timestamp;
-    }
-  }
-
-  @Override
-  protected void deserializeSpecificFields(ByteBuffer buffer) {
-    timestamp = buffer.getLong();
-  }
-
-  @Override
-  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(timestamp, outputStream);
+  public boolean needAscReader() {
+    return false;
   }
 }

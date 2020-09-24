@@ -45,9 +45,6 @@ public abstract class AggregateResult {
   private Binary binaryValue;
 
   protected boolean hasResult;
-  protected boolean isChanged;
-  protected boolean ascending = true;
-
 
   /**
    * construct.
@@ -58,7 +55,6 @@ public abstract class AggregateResult {
     this.aggregationType = aggregationType;
     this.resultDataType = resultDataType;
     this.hasResult = false;
-    this.isChanged = false;
   }
 
   public abstract Object getResult();
@@ -113,8 +109,9 @@ public abstract class AggregateResult {
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {
     AggregationType aggregationType = AggregationType.deserialize(buffer);
     TSDataType dataType = TSDataType.deserialize(buffer.getShort());
+    boolean ascending = ReadWriteIOUtils.readBool(buffer);
     AggregateResult aggregateResult = AggregateResultFactory
-        .getAggrResultByType(aggregationType, dataType);
+        .getAggrResultByType(aggregationType, dataType, ascending);
     boolean hasResult = ReadWriteIOUtils.readBool(buffer);
     if (hasResult) {
       switch (dataType) {
@@ -149,6 +146,7 @@ public abstract class AggregateResult {
   public void serializeTo(OutputStream outputStream) throws IOException {
     aggregationType.serializeTo(outputStream);
     ReadWriteIOUtils.write(resultDataType, outputStream);
+    ReadWriteIOUtils.write(needAscReader(), outputStream);
     ReadWriteIOUtils.write(hasResult(), outputStream);
     if (hasResult()) {
       switch (resultDataType) {
@@ -181,7 +179,6 @@ public abstract class AggregateResult {
 
   public void reset() {
     hasResult = false;
-    isChanged = false;
     booleanValue = false;
     doubleValue = 0;
     floatValue = 0;
@@ -302,10 +299,6 @@ public abstract class AggregateResult {
     return hasResult;
   }
 
-  public boolean isAscending() {
-    return ascending;
-  }
-
   @Override
   public String toString() {
     return String.valueOf(getResult());
@@ -313,5 +306,9 @@ public abstract class AggregateResult {
 
   public AggregationType getAggregationType() {
     return aggregationType;
+  }
+
+  public boolean needAscReader() {
+    return true;
   }
 }

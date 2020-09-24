@@ -41,6 +41,10 @@ public class SeriesAggregateReader implements IAggregateReader {
         timeFilter, valueFilter, fileFilter, ascending);
   }
 
+  public boolean isAscending() {
+    return seriesReader.getOrderUtils().getAscending();
+  }
+
   @Override
   public boolean hasNextFile() throws IOException {
     return seriesReader.hasNextFile();

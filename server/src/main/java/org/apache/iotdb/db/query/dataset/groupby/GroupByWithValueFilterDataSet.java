@@ -122,7 +122,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     for (int i = 0; i < paths.size(); i++) {
       aggregateResultList.add(AggregateResultFactory.getAggrResultByName(
           groupByTimePlan.getDeduplicatedAggregations().get(i),
-          groupByTimePlan.getDeduplicatedDataTypes().get(i)));
+          groupByTimePlan.getDeduplicatedDataTypes().get(i), ascending));
     }
 
     long[] timestampArray = new long[timeStampFetchSize];
@@ -183,7 +183,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     long[] timestampArray = new long[1];
     AggregateResult aggrResultByName = AggregateResultFactory.getAggrResultByName(
         groupByTimePlan.getDeduplicatedAggregations().get(i),
-        groupByTimePlan.getDeduplicatedDataTypes().get(i));
+        groupByTimePlan.getDeduplicatedDataTypes().get(i), ascending);
 
     long tmpStartTime = curStartTime - slidingStep;
     int index = 0;
