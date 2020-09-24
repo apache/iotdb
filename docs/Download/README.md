@@ -62,6 +62,8 @@
 </table>
 
 **<font color=red>Attention</font>**:
+- <font color=red>Data File Formats (i.e., TsFile) between v0.10.1 and v0.10.0 are not compatible. 
+We will fix it in the next release.</fomt>
 
 - How to upgrade a minor version (e.g., from v0.9.0 to v0.9.3)?
   * versions which have the same major version are compatible.
