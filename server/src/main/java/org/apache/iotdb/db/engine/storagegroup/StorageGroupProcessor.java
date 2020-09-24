@@ -1565,6 +1565,7 @@ public class StorageGroupProcessor {
                 tsFileManagement.new HotCompactionMergeTask(this::closeHotCompactionMergeCallBack,
                     tsFileProcessor.getTimeRangeId()));
       } catch (RejectedExecutionException | IOException e) {
+        e.printStackTrace();
         this.closeHotCompactionMergeCallBack();
         logger.error("{} hot compaction submit task failed", storageGroupName);
       }

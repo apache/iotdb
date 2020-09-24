@@ -58,8 +58,9 @@ public class HotCompactionUtils {
     throw new IllegalStateException("Utility class");
   }
 
-  private static Pair<ChunkMetadata, Chunk> writeSeqChunk(String storageGroup,
-      Map<String, TsFileSequenceReader> tsFileSequenceReaderMap, String deviceId,
+  private static Pair<ChunkMetadata, Chunk> readSeqChunk(String storageGroup,
+      Map<String, TsFileSequenceReader> tsFileSequenceReaderMap,
+      Map<String, List<String>> tsFileDevicesMap, String deviceId,
       String measurementId,
       List<TsFileResource> levelResources)
       throws IOException {
@@ -69,7 +70,8 @@ public class HotCompactionUtils {
       TsFileSequenceReader reader = buildReaderFromTsFileResource(levelResource,
           tsFileSequenceReaderMap,
           storageGroup);
-      if (reader == null || !reader.getAllDevices().contains(deviceId)) {
+      if (reader == null || !tsFileDevicesMap.get(levelResource.getTsFile().getAbsolutePath())
+          .contains(deviceId)) {
         continue;
       }
       List<ChunkMetadata> chunkMetadataList = reader
@@ -125,7 +127,8 @@ public class HotCompactionUtils {
   private static void fillDeviceMeasurementMap(Set<String> devices,
       Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap,
       List<TsFileResource> subLevelResources,
-      Map<String, TsFileSequenceReader> tsFileSequenceReaderMap, String storageGroup)
+      Map<String, TsFileSequenceReader> tsFileSequenceReaderMap,
+      Map<String, List<String>> tsFileDevicesMap, String storageGroup)
       throws IOException {
     for (TsFileResource levelResource : subLevelResources) {
       TsFileSequenceReader reader = buildReaderFromTsFileResource(levelResource,
@@ -134,6 +137,8 @@ public class HotCompactionUtils {
       if (reader == null) {
         continue;
       }
+      tsFileDevicesMap
+          .putIfAbsent(levelResource.getTsFile().getAbsolutePath(), reader.getAllDevices());
       List<Path> allPaths = reader.getAllPaths();
       Map<String, TSDataType> allMeasurements = reader.getAllMeasurements();
       // device, measurement -> chunk metadata list
@@ -158,10 +163,11 @@ public class HotCompactionUtils {
       Set<String> devices, boolean sequence) throws IOException {
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
+    Map<String, List<String>> tsFileDevicesMap = new HashMap<>();
     Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap = new HashMap<>();
     RateLimiter compactionRateLimiter = MergeManager.getINSTANCE().getMergeRateLimiter();
     fillDeviceMeasurementMap(devices, deviceMeasurementMap, tsFileResources,
-        tsFileSequenceReaderMap, storageGroup);
+        tsFileSequenceReaderMap, tsFileDevicesMap, storageGroup);
     if (!sequence) {
       for (Entry<String, Map<String, MeasurementSchema>> deviceMeasurementEntry : deviceMeasurementMap
           .entrySet()) {
@@ -199,8 +205,8 @@ public class HotCompactionUtils {
         for (Entry<String, MeasurementSchema> entry : deviceMeasurementEntry.getValue()
             .entrySet()) {
           String measurementId = entry.getKey();
-          Pair<ChunkMetadata, Chunk> chunkPair = writeSeqChunk(storageGroup,
-              tsFileSequenceReaderMap, deviceId, measurementId, tsFileResources);
+          Pair<ChunkMetadata, Chunk> chunkPair = readSeqChunk(storageGroup,
+              tsFileSequenceReaderMap, tsFileDevicesMap, deviceId, measurementId, tsFileResources);
           ChunkMetadata newChunkMetadata = chunkPair.left;
           Chunk newChunk = chunkPair.right;
           if (newChunkMetadata != null && newChunk != null) {

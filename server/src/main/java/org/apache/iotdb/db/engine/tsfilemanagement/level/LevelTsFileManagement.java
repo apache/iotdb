@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -43,17 +42,15 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.FileChunkPointSizeCache;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagement;
 import org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger;
 import org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionUtils;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,9 +72,9 @@ public class LevelTsFileManagement extends TsFileManagement {
   private final List<List<TsFileResource>> forkedSequenceTsFileResources = new ArrayList<>();
   private final List<List<TsFileResource>> forkedUnSequenceTsFileResources = new ArrayList<>();
   private long forkedSeqListPointNum = 0;
-  private Map<Path, MeasurementSchema> forkedSeqListPathMeasurementSchemaMap = new HashMap<>();
+  private Set<String> forkedSeqListDeviceSet = new HashSet<>();
   private long forkedUnSeqListPointNum = 0;
-  private Map<Path, MeasurementSchema> forkedUnSeqListPathMeasurementSchemaMap = new HashMap<>();
+  private Set<String> forkedUnSeqListDeviceSet = new HashSet<>();
 
   public LevelTsFileManagement(String storageGroupName, String storageGroupDir) {
     super(storageGroupName, storageGroupDir);
@@ -407,74 +404,55 @@ public class LevelTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public void forkCurrentFileList(long timePartition) throws IOException {
-    Pair<Long, Map<Path, MeasurementSchema>> seqResult = forkTsFileList(
+  public void forkCurrentFileList(long timePartition) {
+    Pair<Long, Set<String>> seqResult = forkTsFileList(
         forkedSequenceTsFileResources,
         sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources));
     forkedSeqListPointNum = seqResult.left;
-    forkedSeqListPathMeasurementSchemaMap = seqResult.right;
-    Pair<Long, Map<Path, MeasurementSchema>> unSeqResult = forkTsFileList(
+    forkedSeqListDeviceSet = seqResult.right;
+    Pair<Long, Set<String>> unSeqResult = forkTsFileList(
         forkedUnSequenceTsFileResources,
         unSequenceTsFileResources
             .computeIfAbsent(timePartition, this::newUnSequenceTsFileResources));
     forkedUnSeqListPointNum = unSeqResult.left;
-    forkedUnSeqListPathMeasurementSchemaMap = unSeqResult.right;
+    forkedUnSeqListDeviceSet = unSeqResult.right;
   }
 
-  private Pair<Long, Map<Path, MeasurementSchema>> forkTsFileList(
+  private Pair<Long, Set<String>> forkTsFileList(
       List<List<TsFileResource>> forkedTsFileResources,
-      List rawTsFileResources) throws IOException {
+      List rawTsFileResources) {
     forkedTsFileResources.clear();
     // just fork part of the TsFile list, controlled by max_merge_chunk_point
     long pointNum = 0;
     // all flush to target file
-    Map<Path, MeasurementSchema> pathMeasurementSchemaMap = new HashMap<>();
+    Set<String> deviceSet = new HashSet<>();
     for (int i = 0; i < maxLevelNum - 1; i++) {
       List<TsFileResource> forkedLevelTsFileResources = new ArrayList<>();
       Collection<TsFileResource> levelRawTsFileResources = (Collection<TsFileResource>) rawTsFileResources
           .get(i);
-      for (TsFileResource tsFileResource : levelRawTsFileResources) {
-        if (tsFileResource.isClosed()) {
-          RestorableTsFileIOWriter writer;
-          try {
-            writer = new RestorableTsFileIOWriter(
-                tsFileResource.getTsFile());
-          } catch (Exception e) {
-            logger.error("[Hot Compaction] {} open writer failed",
-                tsFileResource.getTsFile().getPath(), e);
-            continue;
-          }
-          Map<String, Map<String, List<ChunkMetadata>>> schemaMap = writer
-              .getMetadatasForQuery();
-          for (Entry<String, Map<String, List<ChunkMetadata>>> schemaMapEntry : schemaMap
-              .entrySet()) {
-            String device = schemaMapEntry.getKey();
-            for (Entry<String, List<ChunkMetadata>> entry : schemaMapEntry.getValue()
-                .entrySet()) {
-              String measurement = entry.getKey();
-              List<ChunkMetadata> chunkMetadataList = entry.getValue();
-              for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-                pointNum += chunkMetadata.getNumOfPoints();
-              }
-              pathMeasurementSchemaMap.computeIfAbsent(new Path(device, measurement), k ->
-                  new MeasurementSchema(measurement, chunkMetadataList.get(0).getDataType()));
+      synchronized (levelRawTsFileResources) {
+        for (TsFileResource tsFileResource : levelRawTsFileResources) {
+          if (tsFileResource.isClosed()) {
+            Map<String, Long> chunkPointMap = FileChunkPointSizeCache.getInstance()
+                .get(tsFileResource.getTsFile());
+            for (Entry<String, Long> deviceChunkPoint : chunkPointMap.entrySet()) {
+              deviceSet.add(deviceChunkPoint.getKey());
+              pointNum += deviceChunkPoint.getValue();
             }
           }
-          writer.close();
-          forkedLevelTsFileResources.add(tsFileResource);
-        }
-        if (pathMeasurementSchemaMap.size() > 0
-            && pointNum / pathMeasurementSchemaMap.size() >= maxChunkPointNum) {
-          break;
+          if (deviceSet.size() > 0
+              && pointNum / deviceSet.size() >= maxChunkPointNum) {
+            break;
+          }
         }
       }
-      if (pathMeasurementSchemaMap.size() > 0
-          && pointNum / pathMeasurementSchemaMap.size() >= maxChunkPointNum) {
+      if (deviceSet.size() > 0
+          && pointNum / deviceSet.size() >= maxChunkPointNum) {
         break;
       }
       forkedTsFileResources.add(forkedLevelTsFileResources);
     }
-    return new Pair<>(pointNum, pathMeasurementSchemaMap);
+    return new Pair<>(pointNum, deviceSet);
   }
 
   @Override
@@ -490,24 +468,22 @@ public class LevelTsFileManagement extends TsFileManagement {
     try {
       logger.info("{} start to filter hot compaction condition", storageGroupName);
       long pointNum = sequence ? forkedSeqListPointNum : forkedUnSeqListPointNum;
-      Map<Path, MeasurementSchema> pathMeasurementSchemaMap =
-          sequence ? forkedSeqListPathMeasurementSchemaMap
-              : forkedUnSeqListPathMeasurementSchemaMap;
-      logger.info("{} current sg subLevel point num: {}, measurement num: {}", storageGroupName,
-          pointNum, pathMeasurementSchemaMap.size());
+      Set<String> deviceSet =
+          sequence ? forkedSeqListDeviceSet : forkedUnSeqListDeviceSet;
+      logger
+          .info("{} current sg subLevel point num: {}, device num: {}", storageGroupName, pointNum,
+              deviceSet.size());
       HotCompactionLogger hotCompactionLogger = new HotCompactionLogger(storageGroupDir,
           storageGroupName);
-      if (pathMeasurementSchemaMap.size() > 0
-          && pointNum / pathMeasurementSchemaMap.size() > IoTDBDescriptor.getInstance().getConfig()
-          .getMergeChunkPointNumberThreshold()) {
+      if (deviceSet.size() > 0 && pointNum / deviceSet.size() > IoTDBDescriptor.getInstance()
+          .getConfig().getMergeChunkPointNumberThreshold()) {
         // merge all tsfile to last level
         logger.info("{} merge {} level tsfiles to next level", storageGroupName,
             mergeResources.size());
         flushAllFilesToLastLevel(timePartition, mergeResources, hotCompactionLogger, sequence);
       } else {
         for (int i = 0; i < maxLevelNum - 1; i++) {
-          if (IoTDBDescriptor.getInstance().getConfig().getMaxFileNumInEachLevel() <= mergeResources
-              .get(i).size()) {
+          if (maxFileNumInEachLevel <= mergeResources.get(i).size()) {
             for (TsFileResource mergeResource : mergeResources.get(i)) {
               hotCompactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
             }
