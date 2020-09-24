@@ -48,6 +48,11 @@ public abstract class AbstractScript {
     r.close();
     p.destroy();
 
+    System.out.println("Expected output:");
+    for (String s : output) {
+      System.out.println(s);
+    }
+
     System.out.println("Process output:");
     for (String s : actualOutput) {
       System.out.println(s);
