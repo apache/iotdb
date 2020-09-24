@@ -31,7 +31,9 @@ abstract public class InsertPlan extends PhysicalPlan {
 
   protected PartialPath deviceId;
   protected String[] measurements;
+  // get from client
   protected TSDataType[] dataTypes;
+  // get from MManager
   protected MeasurementMNode[] measurementMNodes;
 
   // record the failed measurements
