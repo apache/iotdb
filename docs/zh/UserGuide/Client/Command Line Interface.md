@@ -80,7 +80,7 @@ IoTDB>
 
 |参数名|参数类型|是否为必需参数| 说明| 例子 |
 |:---|:---|:---|:---|:---|
-|-disableIS08601 |没有参数 | 否 |如果设置了这个参数，IoTDB将以数字的形式打印时间戳(timestamp)。|-disableIS08601|
+|-disableISO8601 |没有参数 | 否 |如果设置了这个参数，IoTDB将以数字的形式打印时间戳(timestamp)。|-disableISO8601|
 |-h <`host`> |string类型，不需要引号|是|IoTDB客户端连接IoTDB服务器的IP地址。|-h 10.129.187.21|
 |-help|没有参数|否|打印IoTDB的帮助信息|-help|
 |-p <`rpcPort`>|int类型|是|IoTDB连接服务器的端口号，IoTDB默认运行在6667端口。|-p 6667|
@@ -95,12 +95,12 @@ IoTDB>
 Linux系统与MacOS系统启动命令如下：
 
 ```
-  Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 Windows系统启动命令如下：
 
 ```
-  Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 
 ## 使用OpenID作为用户名认证登录
