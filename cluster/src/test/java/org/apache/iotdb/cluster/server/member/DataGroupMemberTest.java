@@ -443,6 +443,7 @@ public class DataGroupMemberTest extends MemberTest {
     insertPlan.setValues(new Object[]{"1.0"});
     insertPlan
         .setMeasurementMNodes(new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
+    insertPlan.transferType();
     processor.insert(insertPlan);
     processor.syncCloseAllWorkingTsFileProcessors();
 
