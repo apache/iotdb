@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestSnapshot;
+import org.apache.iotdb.cluster.common.TestSyncClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
@@ -39,6 +40,7 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
@@ -56,32 +58,45 @@ public class SnapshotCatchUpTaskTest {
   private Node header = new Node();
   private boolean testLeadershipFlag;
   private boolean prevUseAsyncServer;
+  private boolean noConnection = false;
 
   private RaftMember sender = new TestMetaGroupMember() {
     @Override
     public AsyncClient getAsyncClient(Node node) {
+      if (noConnection) {
+        return null;
+      }
       return new TestAsyncClient() {
         @Override
         public void appendEntry(AppendEntryRequest request,
             AsyncMethodCallback<Long> resultHandler) {
-          new Thread(() -> {
-            TestLog testLog = new TestLog();
-            testLog.deserialize(request.entry);
-            receivedLogs.add(testLog);
-            resultHandler.onComplete(Response.RESPONSE_AGREE);
-          }).start();
+          new Thread(() -> resultHandler.onComplete(dummyAppendEntry(request))).start();
         }
 
         @Override
         public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
           new Thread(() -> {
-            receivedSnapshot = new TestSnapshot();
-            receivedSnapshot.deserialize(request.snapshotBytes);
-            if (testLeadershipFlag) {
-              sender.setCharacter(NodeCharacter.ELECTOR);
-            }
+            dummySendSnapshot(request);
             resultHandler.onComplete(null);
           }).start();
+        }
+      };
+    }
+
+    @Override
+    public Client getSyncClient(Node node) {
+      if (noConnection) {
+        return null;
+      }
+      return new TestSyncClient() {
+        @Override
+        public long appendEntry(AppendEntryRequest request) {
+          return dummyAppendEntry(request);
+        }
+
+        @Override
+        public void sendSnapshot(SendSnapshotRequest request) {
+          dummySendSnapshot(request);
         }
       };
     }
@@ -92,6 +107,21 @@ public class SnapshotCatchUpTaskTest {
     }
   };
 
+  private long dummyAppendEntry(AppendEntryRequest request) {
+    TestLog testLog = new TestLog();
+    testLog.deserialize(request.entry);
+    receivedLogs.add(testLog);
+    return Response.RESPONSE_AGREE;
+  }
+
+  private void dummySendSnapshot(SendSnapshotRequest request) {
+    receivedSnapshot = new TestSnapshot();
+    receivedSnapshot.deserialize(request.snapshotBytes);
+    if (testLeadershipFlag) {
+      sender.setCharacter(NodeCharacter.ELECTOR);
+    }
+  }
+
   @Before
   public void setUp() {
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
@@ -99,6 +129,7 @@ public class SnapshotCatchUpTaskTest {
     testLeadershipFlag = false;
     receivedSnapshot = null;
     receivedLogs.clear();
+    noConnection = false;
   }
 
   @After
@@ -109,7 +140,7 @@ public class SnapshotCatchUpTaskTest {
   }
 
   @Test
-  public void testCatchUp() throws InterruptedException, TException, LeaderUnknownException {
+  public void testCatchUpAsync() throws InterruptedException, TException, LeaderUnknownException {
     List<Log> logList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       Log log = new TestLog();
@@ -125,6 +156,52 @@ public class SnapshotCatchUpTaskTest {
 
     assertEquals(logList, receivedLogs);
     assertEquals(snapshot, receivedSnapshot);
+  }
+
+  @Test
+  public void testNoConnection() throws InterruptedException, TException, LeaderUnknownException {
+    noConnection = true;
+    List<Log> logList = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      Log log = new TestLog();
+      log.setCurrLogIndex(i);
+      log.setCurrLogTerm(i);
+      logList.add(log);
+    }
+    Snapshot snapshot = new TestSnapshot(9989);
+    Node receiver = new Node();
+    sender.setCharacter(NodeCharacter.LEADER);
+    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    task.call();
+
+    assertTrue(receivedLogs.isEmpty());
+    assertNull(receivedSnapshot);
+  }
+
+  @Test
+  public void testCatchUp() throws InterruptedException, TException, LeaderUnknownException {
+    boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(false);
+
+    try {
+      List<Log> logList = new ArrayList<>();
+      for (int i = 0; i < 10; i++) {
+        Log log = new TestLog();
+        log.setCurrLogIndex(i);
+        log.setCurrLogTerm(i);
+        logList.add(log);
+      }
+      Snapshot snapshot = new TestSnapshot(9989);
+      Node receiver = new Node();
+      sender.setCharacter(NodeCharacter.LEADER);
+      SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+      task.call();
+
+      assertEquals(logList, receivedLogs);
+      assertEquals(snapshot, receivedSnapshot);
+    } finally {
+      ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
+    }
   }
 
   @Test

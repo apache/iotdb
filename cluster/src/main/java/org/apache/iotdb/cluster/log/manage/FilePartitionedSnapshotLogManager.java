@@ -57,7 +57,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   /**
    * send FlushPlan to all nodes in one dataGroup
    */
-  public void syncFlushAllProcessor() {
+  private void syncFlushAllProcessor() {
     logger.info("{}: Start flush all storage group processor in one data group", getName());
     Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions = StorageEngine.getInstance()
         .getWorkingStorageGroupPartitions();

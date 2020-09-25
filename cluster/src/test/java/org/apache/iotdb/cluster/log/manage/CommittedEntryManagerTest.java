@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
@@ -260,6 +261,8 @@ public class CommittedEntryManagerTest {
 			// entries that have been compacted;
 			add(new CommittedEntryManagerTester(2, 6, null, EntryCompactedException.class));
 			add(new CommittedEntryManagerTester(3, 4, null, EntryCompactedException.class));
+			// illegal range
+			add(new CommittedEntryManagerTester(5, 4, Collections.EMPTY_LIST, null));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
 			CommittedEntryManager instance = new CommittedEntryManager(entries);

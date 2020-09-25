@@ -98,7 +98,7 @@ public class SyncClientAdaptor {
 
   public static Boolean matchTerm(AsyncClient client, Node target, long prevLogIndex,
       long prevLogTerm, Node header) throws TException, InterruptedException {
-    AtomicReference<Boolean> resultRef = new AtomicReference<>(false);
+    AtomicReference<Boolean> resultRef = new AtomicReference<>(null);
     GenericHandler<Boolean> matchTermHandler = new GenericHandler<>(target, resultRef);
 
     client.matchTerm(prevLogIndex, prevLogTerm, header, matchTermHandler);

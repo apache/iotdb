@@ -19,9 +19,12 @@
 package org.apache.iotdb.cluster.log.manage.serializable;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.List;
@@ -29,8 +32,11 @@ import java.util.Set;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.junit.Test;
 
 public class SyncLogDequeSerializerTest extends IoTDBTest {
@@ -55,8 +61,33 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       List<Log> testLogs2 = TestUtils.prepareNodeLogs(5);
       syncLogDequeSerializer.append(testLogs2);
       assertEquals(15, syncLogDequeSerializer.getLogSizeDeque().size());
+
+      int flushRaftLogThreshold = ClusterDescriptor.getInstance().getConfig()
+          .getFlushRaftLogThreshold();
+      List<Log> testLogs3 = TestUtils.prepareNodeLogs(flushRaftLogThreshold);
+      syncLogDequeSerializer.append(testLogs3);
+      assertEquals(15 + flushRaftLogThreshold, syncLogDequeSerializer.getLogSizeDeque().size());
     } finally {
       syncLogDequeSerializer.close();
+    }
+  }
+
+  @Test
+  public void testAppendOverflow() {
+    int raftLogBufferSize = ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize();
+    ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(0);
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    try {
+      List<Log> testLogs1 = TestUtils.prepareNodeLogs(10);
+      try {
+        syncLogDequeSerializer.append(testLogs1);
+        fail("No exception thrown");
+      } catch (IOException e) {
+        assertTrue(e.getCause() instanceof BufferOverflowException);
+      }
+      assertEquals(0, syncLogDequeSerializer.getLogSizeDeque().size());
+    } finally {
+      ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(raftLogBufferSize);
     }
   }
 
@@ -65,11 +96,15 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     int logNum;
     List<Log> testLogs1;
+    HardState hardState = new HardState();
+    hardState.setCurrentTerm(10);
+    hardState.setVoteFor(TestUtils.getNode(5));
     try {
       logNum = 10;
       testLogs1 = TestUtils.prepareNodeLogs(logNum);
       syncLogDequeSerializer.append(testLogs1);
       assertEquals(logNum, syncLogDequeSerializer.getLogSizeDeque().size());
+      syncLogDequeSerializer.setHardStateAndFlush(hardState);
     } finally {
       syncLogDequeSerializer.close();
     }
@@ -77,11 +112,12 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     // recovery
     syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     try {
-      List<Log> logDeque = syncLogDequeSerializer.recoverLog();
+      List<Log> logDeque = syncLogDequeSerializer.getAllEntries();
       assertEquals(logNum, logDeque.size());
       for (int i = 0; i < logNum; i++) {
         assertEquals(testLogs1.get(i), logDeque.get(i));
       }
+      assertEquals(hardState, syncLogDequeSerializer.getHardState());
     } finally {
       syncLogDequeSerializer.close();
     }
@@ -100,6 +136,65 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       syncLogDequeSerializer.append(testLogs2);
       syncLogDequeSerializer.removeFirst(3);
       assertEquals(12, syncLogDequeSerializer.getLogSizeDeque().size());
+    } finally {
+      syncLogDequeSerializer.close();
+    }
+  }
+
+  @Test
+  public void testRemoveCompactedEntries() throws IOException {
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    try {
+      syncLogDequeSerializer.setMaxRemovedLogSize(0);
+      List<Log> testLogs1 = TestUtils.prepareNodeLogs(10);
+      syncLogDequeSerializer.append(testLogs1);
+      assertEquals(10, syncLogDequeSerializer.getLogSizeDeque().size());
+
+      syncLogDequeSerializer.removeCompactedEntries(-1);
+      assertEquals(10, syncLogDequeSerializer.getLogSizeDeque().size());
+
+      syncLogDequeSerializer.removeCompactedEntries(4);
+      assertEquals(5, syncLogDequeSerializer.getLogSizeDeque().size());
+
+      syncLogDequeSerializer.removeCompactedEntries(11);
+      assertEquals(0, syncLogDequeSerializer.getLogSizeDeque().size());
+    } finally {
+      syncLogDequeSerializer.close();
+    }
+  }
+  
+  @Test
+  public void testRecoverFromTemp() throws IOException {
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    int logNum;
+    List<Log> testLogs1;
+    HardState hardState = new HardState();
+    hardState.setCurrentTerm(10);
+    hardState.setVoteFor(TestUtils.getNode(5));
+    try {
+      logNum = 10;
+      testLogs1 = TestUtils.prepareNodeLogs(logNum);
+      syncLogDequeSerializer.append(testLogs1);
+      assertEquals(logNum, syncLogDequeSerializer.getLogSizeDeque().size());
+      syncLogDequeSerializer.setHardStateAndFlush(hardState);
+    } finally {
+      syncLogDequeSerializer.close();
+    }
+    String logDir = syncLogDequeSerializer.getLogDir();
+    File metaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta");
+    File tempMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta.tmp");
+    metaFile.renameTo(tempMetaFile);
+    metaFile.createNewFile();
+
+    // recovery
+    syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    try {
+      List<Log> logDeque = syncLogDequeSerializer.getAllEntries();
+      assertEquals(logNum, logDeque.size());
+      for (int i = 0; i < logNum; i++) {
+        assertEquals(testLogs1.get(i), logDeque.get(i));
+      }
+      assertEquals(hardState, syncLogDequeSerializer.getHardState());
     } finally {
       syncLogDequeSerializer.close();
     }

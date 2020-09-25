@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log.applier;
 
 import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 
 import java.io.IOException;
@@ -31,6 +32,7 @@ import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -55,6 +57,11 @@ public class MetaLogApplierTest extends IoTDBTest {
     public void applyAddNode(Node newNode) {
       nodes.add(newNode);
     }
+
+    @Override
+    public void applyRemoveNode(Node oldNode) {
+      nodes.remove(oldNode);
+    }
   };
 
   private LogApplier applier = new MetaLogApplier(testMetaGroupMember);
@@ -77,6 +84,19 @@ public class MetaLogApplierTest extends IoTDBTest {
     applier.apply(log);
 
     assertTrue(nodes.contains(node));
+  }
+
+  @Test
+  public void testApplyRemoveNode()
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+    nodes.clear();
+
+    Node node = testMetaGroupMember.getThisNode();
+    RemoveNodeLog log = new RemoveNodeLog();
+    log.setRemovedNode(node);
+    applier.apply(log);
+
+    assertFalse(nodes.contains(node));
   }
 
   @Test

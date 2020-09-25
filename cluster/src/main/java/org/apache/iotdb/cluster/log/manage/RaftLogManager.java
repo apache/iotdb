@@ -116,9 +116,6 @@ public abstract class RaftLogManager {
    */
   private final Object logUpdateCondition = new Object();
 
-  private IOException logApplierWaitTimeOutException = new IOException(
-      "wait all log applied time out");
-
   private List<Log> blockedUnappliedLogList;
 
   private ExecutorService logApplierExecutor;
@@ -215,13 +212,14 @@ public abstract class RaftLogManager {
     logger.info(
         "{}: before take snapshot, blockAppliedCommitIndex={}, maxHaveAppliedCommitIndex={}, commitIndex={}",
         name, blockAppliedCommitIndex, maxHaveAppliedCommitIndex, commitIndex);
-    while (blockAppliedCommitIndex != maxHaveAppliedCommitIndex) {
+    while (blockAppliedCommitIndex > maxHaveAppliedCommitIndex) {
       long waitTime = System.currentTimeMillis() - startTime;
       if (waitTime > LOG_APPLIER_WAIT_TIME_MS) {
         logger.error(
             "{}: wait all log applied time out, time cost={}, blockAppliedCommitIndex={}, maxHaveAppliedCommitIndex={},commitIndex={}",
             name, waitTime, blockAppliedCommitIndex, maxHaveAppliedCommitIndex, commitIndex);
-        throw logApplierWaitTimeOutException;
+        throw new IOException(
+            "wait all log applied time out");
       }
     }
   }
@@ -682,6 +680,10 @@ public abstract class RaftLogManager {
     this.blockAppliedCommitIndex = -1;
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
     this.logApplierExecutor = Executors.newSingleThreadExecutor();
+    this.checkLogApplierExecutorService = new ScheduledThreadPoolExecutor(1,
+        new BasicThreadFactory.Builder().namingPattern("check-log-applier-%d").daemon(true)
+            .build());
+    this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
   }
 
   @TestOnly

@@ -120,9 +120,7 @@ public class SerializeLogTest {
 
   @Test
   public void testEmptyContentLog() throws UnknownLogTypeException {
-    EmptyContentLog log = new EmptyContentLog();
-    log.setCurrLogIndex(2);
-    log.setCurrLogTerm(2);
+    EmptyContentLog log = new EmptyContentLog(2, 2);
     ByteBuffer byteBuffer = log.serialize();
     EmptyContentLog logPrime = (EmptyContentLog) LogParser.getINSTANCE().parse(byteBuffer);
     assertEquals(log, logPrime);

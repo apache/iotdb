@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log.catchup;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.nio.ByteBuffer;
@@ -29,6 +30,7 @@ import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
+import org.apache.iotdb.cluster.common.TestSyncClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
@@ -37,9 +39,11 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
@@ -60,33 +64,28 @@ public class LogCatchUpTaskTest {
         @Override
         public void appendEntry(AppendEntryRequest request,
             AsyncMethodCallback<Long> resultHandler) {
-          new Thread(() -> {
-            TestLog testLog = new TestLog();
-            testLog.deserialize(request.entry);
-            receivedLogs.add(testLog);
-            if (testLeadershipFlag && testLog.getCurrLogIndex() == 4) {
-              sender.setCharacter(NodeCharacter.ELECTOR);
-            }
-            resultHandler.onComplete(Response.RESPONSE_AGREE);
-          }).start();
+          new Thread(() -> resultHandler.onComplete(dummyAppendEntry(request))).start();
         }
 
         @Override
         public void appendEntries(AppendEntriesRequest request,
             AsyncMethodCallback<Long> resultHandler) {
-          new Thread(() -> {
-            TestLog testLog = new TestLog();
-            for (ByteBuffer byteBuffer : request.getEntries()) {
-              testLog = new TestLog();
-              testLog.deserialize(byteBuffer);
-              receivedLogs.add(testLog);
-            }
+          new Thread(() -> resultHandler.onComplete(dummyAppendEntries(request))).start();
+        }
+      };
+    }
 
-            if (testLeadershipFlag && testLog.getCurrLogIndex() == 1023) {
-              sender.setCharacter(NodeCharacter.ELECTOR);
-            }
-            resultHandler.onComplete(Response.RESPONSE_AGREE);
-          }).start();
+    @Override
+    public Client getSyncClient(Node node) {
+      return new TestSyncClient() {
+        @Override
+        public long appendEntry(AppendEntryRequest request) {
+          return dummyAppendEntry(request);
+        }
+
+        @Override
+        public long appendEntries(AppendEntriesRequest request) {
+          return dummyAppendEntries(request);
         }
       };
     }
@@ -96,6 +95,30 @@ public class LogCatchUpTaskTest {
       return header;
     }
   };
+
+  private long dummyAppendEntry(AppendEntryRequest request) {
+    TestLog testLog = new TestLog();
+    testLog.deserialize(request.entry);
+    receivedLogs.add(testLog);
+    if (testLeadershipFlag && testLog.getCurrLogIndex() == 4) {
+      sender.setCharacter(NodeCharacter.ELECTOR);
+    }
+    return Response.RESPONSE_AGREE;
+  }
+
+  private long dummyAppendEntries(AppendEntriesRequest request) {
+    TestLog testLog = new TestLog();
+    for (ByteBuffer byteBuffer : request.getEntries()) {
+      testLog = new TestLog();
+      testLog.deserialize(byteBuffer);
+      receivedLogs.add(testLog);
+    }
+
+    if (testLeadershipFlag && testLog.getCurrLogIndex() == 1023) {
+      sender.setCharacter(NodeCharacter.ELECTOR);
+    }
+    return Response.RESPONSE_AGREE;
+  }
 
   @Before
   public void setUp() {
@@ -112,7 +135,7 @@ public class LogCatchUpTaskTest {
   }
 
   @Test
-  public void testCatchUp() throws InterruptedException, TException, LeaderUnknownException {
+  public void testCatchUpAsync() throws InterruptedException, TException, LeaderUnknownException {
     List<Log> logList = TestUtils.prepareTestLogs(10);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
@@ -123,7 +146,25 @@ public class LogCatchUpTaskTest {
   }
 
   @Test
-  public void testLeadershipLost() throws InterruptedException, TException, LeaderUnknownException {
+  public void testCatchUpSync() throws InterruptedException, TException, LeaderUnknownException {
+    boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(false);
+
+    try {
+      List<Log> logList = TestUtils.prepareTestLogs(10);
+      Node receiver = new Node();
+      sender.setCharacter(NodeCharacter.LEADER);
+      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, false);
+      task.call();
+
+      assertEquals(logList, receivedLogs);
+    } finally {
+      ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
+    }
+  }
+
+  @Test
+  public void testLeadershipLost() {
     testLeadershipFlag = true;
     // the leadership will be lost after sending 5 logs
     List<Log> logList = TestUtils.prepareTestLogs(10);
@@ -188,5 +229,43 @@ public class LogCatchUpTaskTest {
     task.call();
 
     assertEquals(logList.subList(0, 1024), receivedLogs);
+  }
+
+  @Test
+  public void testSmallFrameSize() throws InterruptedException, TException, LeaderUnknownException {
+    int preFrameSize = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+    try {
+      // thrift frame size is small so the logs must be sent in more than one batch
+      List<Log> logList = TestUtils.prepareTestLogs(500);
+      int singleLogSize = logList.get(0).serialize().limit();
+      IoTDBDescriptor.getInstance().getConfig().setThriftMaxFrameSize(100 * singleLogSize);
+      Node receiver = new Node();
+      sender.setCharacter(NodeCharacter.LEADER);
+      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
+      task.call();
+
+      assertEquals(logList, receivedLogs);
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setThriftMaxFrameSize(preFrameSize);
+    }
+  }
+
+  @Test
+  public void testVerySmallFrameSize() throws InterruptedException, TException,
+      LeaderUnknownException {
+    int preFrameSize = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+    try {
+      // thrift frame size is too small so no logs can be sent successfully
+      List<Log> logList = TestUtils.prepareTestLogs(500);
+      IoTDBDescriptor.getInstance().getConfig().setThriftMaxFrameSize(0);
+      Node receiver = new Node();
+      sender.setCharacter(NodeCharacter.LEADER);
+      LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
+      task.call();
+
+      assertTrue(receivedLogs.isEmpty());
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setThriftMaxFrameSize(preFrameSize);
+    }
   }
 }

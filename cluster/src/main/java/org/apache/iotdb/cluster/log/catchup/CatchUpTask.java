@@ -65,7 +65,6 @@ public class CatchUpTask implements Runnable {
    * @throws InterruptedException
    */
   private boolean checkMatchIndex() throws TException, InterruptedException, LeaderUnknownException {
-    boolean isLogDebug = logger.isDebugEnabled();
     long lo = 0;
     long hi = 0;
     logger.debug("Checking the match index of {}", node);
@@ -79,7 +78,7 @@ public class CatchUpTask implements Runnable {
       if (logs.isEmpty()) {
         return true;
       }
-      if (isLogDebug) {
+      if (logger.isInfoEnabled()) {
         logger.info(
             "{}: use {} logs of [{}, {}] to fix log inconsistency with node [{}], "
                 + "local first index: {}",

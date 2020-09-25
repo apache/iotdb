@@ -67,6 +67,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -252,13 +253,13 @@ public class DataLogApplierTest extends IoTDBTest {
     }
 
     // this storage group is not even set
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(6)));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(16)));
     try {
       applier.apply(log);
       fail("exception should be thrown");
-    } catch (QueryProcessException e) {
+    } catch (StorageGroupNotSetException e) {
       assertEquals(
-        "org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.test6.s0] does not exist",
+        "Storage group is not set for current seriesPath: [root.test16]",
         e.getMessage());
     }
   }
@@ -291,5 +292,32 @@ public class DataLogApplierTest extends IoTDBTest {
     CloseFileLog closeFileLog = new CloseFileLog(TestUtils.getTestSg(0), 0, true);
     applier.apply(closeFileLog);
     TestCase.assertTrue(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
+  }
+
+  @Test
+  public void testApplyFlush()
+      throws IllegalPathException {
+    // existing sg
+    FlushPlan flushPlan = new FlushPlan(null,
+        Collections.singletonList(new PartialPath(TestUtils.getTestSg(0))));
+    PhysicalPlanLog log = new PhysicalPlanLog(flushPlan);
+
+    try {
+      applier.apply(log);
+    } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
+      fail(e.getMessage());
+    }
+
+    // non-existing sg
+    flushPlan = new FlushPlan(null,
+        Collections.singletonList(new PartialPath(TestUtils.getTestSg(20))));
+    log = new PhysicalPlanLog(flushPlan);
+    try {
+      applier.apply(log);
+    } catch (QueryProcessException | StorageEngineException e) {
+      fail(e.getMessage());
+    } catch (StorageGroupNotSetException e) {
+      assertEquals("Storage group is not set for current seriesPath: [root.test20]", e.getMessage());
+    }
   }
 }

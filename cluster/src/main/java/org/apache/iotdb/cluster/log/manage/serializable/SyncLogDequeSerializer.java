@@ -105,6 +105,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   public SyncLogDequeSerializer(String logPath) {
     logFileList = new ArrayList<>();
     logDir = logPath + File.separator;
+    try {
+      versionController = new SimpleFileVersionController(logDir);
+    } catch (IOException e) {
+      logger.error("log serializer build version controller failed", e);
+    }
     init();
   }
 
@@ -169,17 +174,17 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   @Override
   public void append(List<Log> entries) throws IOException {
-    Log entry = entries.get(entries.size() - 1);
-    meta.setCommitLogIndex(entry.getCurrLogIndex());
-    meta.setCommitLogTerm(entry.getCurrLogTerm());
-    meta.setLastLogIndex(entry.getCurrLogIndex());
-    meta.setLastLogTerm(entry.getCurrLogTerm());
     lock.writeLock().lock();
     try {
       putLogs(entries);
       if (bufferedLogNum >= flushRaftLogThreshold) {
         flushLogBuffer();
       }
+      Log entry = entries.get(entries.size() - 1);
+      meta.setCommitLogIndex(entry.getCurrLogIndex());
+      meta.setCommitLogTerm(entry.getCurrLogTerm());
+      meta.setLastLogIndex(entry.getCurrLogIndex());
+      meta.setLastLogTerm(entry.getCurrLogTerm());
     } catch (BufferOverflowException e) {
       throw new IOException(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
@@ -200,19 +205,21 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     for (Log log : entries) {
       logBuffer.mark();
       ByteBuffer logData = log.serialize();
+      int size = logData.capacity() + Integer.BYTES;
       try {
-        int size = logData.capacity() + Integer.BYTES;
-        logSizeDeque.addLast(size);
         logBuffer.putInt(logData.capacity());
         logBuffer.put(logData);
+        logSizeDeque.addLast(size);
+        bufferedLogNum++;
       } catch (BufferOverflowException e) {
         logger.info("Raft log buffer overflow!");
         logBuffer.reset();
         flushLogBuffer();
         logBuffer.putInt(logData.capacity());
         logBuffer.put(logData);
+        logSizeDeque.addLast(size);
+        bufferedLogNum++;
       }
-      bufferedLogNum++;
     }
   }
 
@@ -273,9 +280,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   public void removeCompactedEntries(long index) {
     long distance = meta.getCommitLogIndex() - index;
     if (distance <= 0) {
-      logger
-          .info("compact ({}) is out of bound lastIndex ({})", index, meta.getCommitLogIndex());
-      return;
+      distance = 0;
     }
     if (distance > logSizeDeque.size()) {
       logger.info(
@@ -416,66 +421,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     return logFile;
   }
 
-  public void truncateLog(int count, LogManagerMeta meta) {
-    truncateLogIntern(count);
-    serializeMeta(meta);
-  }
-
   private File getCurrentLogFile() {
     return logFileList.get(logFileList.size() - 1);
-  }
-
-  @SuppressWarnings("resource")
-  private void truncateLogIntern(int count) {
-    if (logSizeDeque.size() < count) {
-      throw new IllegalArgumentException("truncate log count is bigger than total log count");
-    }
-
-    int size = 0;
-    lock.writeLock().lock();
-    try {
-      for (int i = 0; i < count; i++) {
-        size += logSizeDeque.removeLast();
-      }
-    } finally {
-      lock.writeLock().unlock();
-    }
-
-    // truncate file
-    while (size > 0) {
-      File currentLogFile = getCurrentLogFile();
-      // if the last file is smaller than truncate size, we can delete it directly
-      if (currentLogFile.length() < size) {
-        size -= currentLogFile.length();
-        try {
-          if (currentLogOutputStream != null) {
-            currentLogOutputStream.close();
-          }
-          // if system down before delete, we can use this to delete file during recovery
-          maxAvailableVersion = getFileVersion(currentLogFile);
-          serializeMeta(meta);
-
-          Files.delete(currentLogFile.toPath());
-          logFileList.remove(logFileList.size() - 1);
-          logFileList.add(createNewLogFile(logDir));
-        } catch (IOException e) {
-          logger.error("Error when truncating {} logs: ", count, e);
-        }
-
-        logFileList.remove(logFileList.size() - 1);
-      }
-      // else we just truncate it
-      else {
-        try {
-          checkStream();
-          currentLogOutputStream.getChannel().truncate(getCurrentLogFile().length() - size);
-          break;
-        } catch (IOException e) {
-          logger.error("Error truncating {} logs serialization: ", count, e);
-        }
-      }
-    }
-
   }
 
   void removeFirst(int num) {

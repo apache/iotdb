@@ -33,13 +33,11 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,19 +72,26 @@ abstract class BaseApplier implements LogApplier {
         getQueryExecutor().processNonQuery(plan);
       } catch (QueryProcessException e) {
         if (e.getCause() instanceof StorageGroupNotSetException) {
-          try {
-            metaGroupMember.syncLeaderWithConsistencyCheck();
-          } catch (CheckConsistencyException ce) {
-            throw new QueryProcessException(ce.getMessage());
-          }
-          getQueryExecutor().processNonQuery(plan);
+          executeAfterSync(plan);
         } else {
           throw e;
         }
+      } catch (StorageGroupNotSetException e) {
+        executeAfterSync(plan);
       }
     } else if (plan != null){
       logger.error("Unsupported physical plan: {}", plan);
     }
+  }
+
+  private void executeAfterSync(PhysicalPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException ce) {
+      throw new QueryProcessException(ce.getMessage());
+    }
+    getQueryExecutor().processNonQuery(plan);
   }
 
   /**
@@ -105,7 +110,6 @@ abstract class BaseApplier implements LogApplier {
       // check if this is caused by metadata missing, if so, pull metadata and retry
       Throwable metaMissingException = SchemaUtils.findMetaMissingException(e);
       boolean causedByPathNotExist = metaMissingException instanceof PathNotExistException;
-      boolean causedByStorageGroupNotSet = metaMissingException instanceof StorageGroupNotSetException;
 
       if (causedByPathNotExist) {
         if (logger.isDebugEnabled()) {
@@ -113,13 +117,6 @@ abstract class BaseApplier implements LogApplier {
               metaGroupMember.getName(), e.getCause().getMessage());
         }
         pullTimeseriesSchema(plan, dataGroupMember.getHeader());
-        getQueryExecutor().processNonQuery(plan);
-      } else if (causedByStorageGroupNotSet) {
-        try {
-          metaGroupMember.syncLeaderWithConsistencyCheck();
-        } catch (CheckConsistencyException ce) {
-          throw new QueryProcessException(ce.getMessage());
-        }
         getQueryExecutor().processNonQuery(plan);
       } else {
         throw e;
@@ -141,12 +138,6 @@ abstract class BaseApplier implements LogApplier {
     } catch (MetadataException e1) {
       throw new QueryProcessException(e1);
     }
-  }
-
-  protected void registerMeasurement(PartialPath path, MeasurementSchema schema) {
-    MeasurementMNode measurementMNode = new MeasurementMNode(null, schema.getMeasurementId(),
-        schema, null);
-    IoTDB.metaManager.cacheMeta(path,measurementMNode);
   }
 
   private PlanExecutor getQueryExecutor() throws QueryProcessException {

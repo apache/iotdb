@@ -49,7 +49,9 @@ import org.junit.Test;
 
 public class RaftLogManagerTest {
 
-  class TestRaftLogManager extends RaftLogManager {
+  static class TestRaftLogManager extends RaftLogManager {
+
+    private Snapshot snapshot;
 
     public TestRaftLogManager(StableEntryManager stableEntryManager, LogApplier applier,
         String name) {
@@ -63,19 +65,24 @@ public class RaftLogManagerTest {
 
     @Override
     public Snapshot getSnapshot() {
-      return null;
+      return snapshot;
     }
 
     @Override
     public void takeSnapshot() throws IOException {
-
+      super.takeSnapshot();
+      snapshot = new SimpleSnapshot(getLastLogIndex(), getLastLogTerm());
     }
   }
 
   private Map<Long, Log> appliedLogs;
+  private volatile boolean blocked = false;
   private LogApplier logApplier = new TestLogApplier() {
     @Override
     public void apply(Log log) {
+      while (blocked) {
+        // stuck
+      }
       appliedLogs.put(log.getCurrLogIndex(), log);
       log.setApplied(true);
     }
@@ -99,6 +106,35 @@ public class RaftLogManagerTest {
     }
     dir.delete();
     ClusterDescriptor.getInstance().getConfig().setEnableRaftLogPersistence(prevLogPersistence);
+  }
+
+  @Test
+  public void testBlockedSnapshot() throws LogExecutionException, IOException {
+    CommittedEntryManager committedEntryManager =
+        new CommittedEntryManager(
+            ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+    RaftLogManager instance = new TestRaftLogManager(committedEntryManager,
+        new SyncLogDequeSerializer(testIdentifier), logApplier);
+    List<Log> logs = TestUtils.prepareTestLogs(100);
+    instance.append(logs.subList(0, 50));
+    instance.commitTo(49, true);
+
+    blocked = true;
+    instance.setBlockAppliedCommitIndex(99);
+    instance.append(logs.subList(50, 100));
+    instance.commitTo(99, true);
+
+    try {
+      // applier is blocked, so this should time out
+      instance.takeSnapshot();
+      fail("No exception");
+    } catch (IOException e) {
+      assertEquals("wait all log applied time out", e.getMessage());
+    }
+    blocked = false;
+    // applier is unblocked, BlockAppliedCommitIndex should be soon reached
+    instance.takeSnapshot();
+    assertEquals(new SimpleSnapshot(99, 99), instance.getSnapshot());
   }
 
   @Test

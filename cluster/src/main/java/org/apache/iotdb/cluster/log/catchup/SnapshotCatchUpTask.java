@@ -54,7 +54,6 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     this.snapshot = snapshot;
   }
 
-
   private void doSnapshotCatchUp()
       throws TException, InterruptedException, LeaderUnknownException {
     SendSnapshotRequest request = new SendSnapshotRequest();
