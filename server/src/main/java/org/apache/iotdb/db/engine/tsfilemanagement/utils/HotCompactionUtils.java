@@ -123,13 +123,11 @@ public class HotCompactionUtils {
   }
 
   /**
-   *
    * @param targetResource the target resource to be merged to
    * @param tsFileResources the source resource to be merged
    * @param storageGroup the storage group name
    * @param hotCompactionLogger the logger
    * @param devices the devices to be skipped(used by recover)
-   * @throws IOException
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void merge(TsFileResource targetResource,
@@ -205,6 +203,7 @@ public class HotCompactionUtils {
             hotCompactionLogger.logDevice(device, writer.getPos());
           }
         }
+        writer.writeVersion(maxVersion);
         writer.endChunkGroup();
       } else {
         for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry : measurementChunkMetadataMap
