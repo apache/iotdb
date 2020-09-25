@@ -46,7 +46,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.Planner;
@@ -145,8 +144,9 @@ public class TTLTest {
     plan.setMeasurements(new String[]{"s1"});
     plan.setDataTypes(new TSDataType[]{TSDataType.INT64});
     plan.setValues(new Object[]{1L});
-    plan.setMNodesAndTransferType(new MeasurementMNode[]{new MeasurementMNode(null, null,
-            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)});
+    plan.setMeasurementMNodes(new MeasurementMNode[]{new MeasurementMNode(null, null,
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)});
+    plan.transferType();
 
     // ok without ttl
     storageGroupProcessor.insert(plan);
@@ -173,8 +173,9 @@ public class TTLTest {
     plan.setMeasurements(new String[]{"s1"});
     plan.setDataTypes(new TSDataType[]{TSDataType.INT64});
     plan.setValues(new Object[]{1L});
-    plan.setMNodesAndTransferType(new MeasurementMNode[]{new MeasurementMNode(null, null,
-            new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)});
+    plan.setMeasurementMNodes(new MeasurementMNode[]{new MeasurementMNode(null, null,
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)});
+    plan.transferType();
 
     long initTime = System.currentTimeMillis();
     // sequence data

@@ -77,6 +77,19 @@ public class InsertRowPlan extends InsertPlan {
     System.arraycopy(another.dataTypes, 0, this.dataTypes, 0, another.dataTypes.length);
   }
 
+  public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurementList,
+      String[] insertValues) {
+    super(Operator.OperatorType.INSERT);
+    this.time = insertTime;
+    this.deviceId = deviceId;
+    this.measurements = measurementList;
+    this.dataTypes = new TSDataType[measurements.length];
+    // We need to create an Object[] for the data type casting, because we can not set Float, Long to String[i]
+    this.values = new Object[measurements.length];
+    System.arraycopy(insertValues, 0, values, 0, measurements.length);
+    isNeedInferType = true;
+  }
+
   @TestOnly
   public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurements,
       TSDataType[] dataTypes, String[] insertValues) {
@@ -111,6 +124,7 @@ public class InsertRowPlan extends InsertPlan {
     }
   }
 
+  @TestOnly
   public InsertRowPlan(TSRecord tsRecord) throws IllegalPathException {
     super(OperatorType.INSERT);
     this.deviceId = new PartialPath(tsRecord.deviceId);
@@ -128,30 +142,6 @@ public class InsertRowPlan extends InsertPlan {
       values[i] = tsRecord.dataPointList.get(i).getValue();
     }
   }
-
-  public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurementList,
-      TSDataType[] dataTypes, Object[] insertValues) {
-    super(Operator.OperatorType.INSERT);
-    this.time = insertTime;
-    this.deviceId = deviceId;
-    this.measurements = measurementList;
-    this.dataTypes = dataTypes;
-    this.values = insertValues;
-  }
-
-  public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurementList,
-      String[] insertValues) {
-    super(Operator.OperatorType.INSERT);
-    this.time = insertTime;
-    this.deviceId = deviceId;
-    this.measurements = measurementList;
-    this.dataTypes = new TSDataType[measurements.length];
-    // We need to create an Object[] for the data type casting, because we can not set Float, Long to String[i]
-    this.values = new Object[measurements.length];
-    System.arraycopy(insertValues, 0, values, 0, measurements.length);
-    isNeedInferType = true;
-  }
-
 
   public long getTime() {
     return time;
@@ -174,11 +164,10 @@ public class InsertRowPlan extends InsertPlan {
    * Double, Binary)
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void setMNodesAndTransferType(MeasurementMNode[] mNodes) throws QueryProcessException {
-    this.measurementMNodes = mNodes;
+  public void transferType() throws QueryProcessException {
     if (isNeedInferType) {
-      for (int i = 0; i < mNodes.length; i++) {
-        if (mNodes[i] == null) {
+      for (int i = 0; i < measurementMNodes.length; i++) {
+        if (measurementMNodes[i] == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
             markFailedMeasurementInsertion(i, new QueryProcessException(new PathNotExistException(
                 deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i])));
@@ -188,7 +177,7 @@ public class InsertRowPlan extends InsertPlan {
           }
           continue;
         }
-        dataTypes[i] = mNodes[i].getSchema().getType();
+        dataTypes[i] = measurementMNodes[i].getSchema().getType();
         try {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
         } catch (Exception e) {
@@ -196,7 +185,7 @@ public class InsertRowPlan extends InsertPlan {
               measurements[i], values[i], dataTypes[i]);
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
             markFailedMeasurementInsertion(i, e);
-            mNodes[i] = null;
+            measurementMNodes[i] = null;
           } else {
             throw e;
           }

@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -423,7 +422,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   private List<String> getAllDevices(MetadataIndexNode metadataIndexNode) throws IOException {
-    Set<String> deviceSet = new TreeSet<>();
+    List<String> deviceList = new ArrayList<>();
     int metadataIndexListSize = metadataIndexNode.getChildren().size();
     for (int i = 0; i < metadataIndexListSize; i++) {
       MetadataIndexEntry metadataIndex = metadataIndexNode.getChildren().get(i);
@@ -431,7 +430,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         case LEAF_MEASUREMENT:
         case INTERNAL_MEASUREMENT:
           for (MetadataIndexEntry index : metadataIndexNode.getChildren()) {
-            deviceSet.add(index.getName());
+            deviceList.add(index.getName());
           }
           break;
         case LEAF_DEVICE:
@@ -442,11 +441,11 @@ public class TsFileSequenceReader implements AutoCloseable {
           }
           ByteBuffer buffer = readData(metadataIndex.getOffset(), endOffset);
           MetadataIndexNode node = MetadataIndexNode.deserializeFrom(buffer);
-          deviceSet.addAll(getAllDevices(node));
+          deviceList.addAll(getAllDevices(node));
           break;
       }
     }
-    return new ArrayList<>(deviceSet);
+    return deviceList;
   }
 
   /**
