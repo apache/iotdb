@@ -169,8 +169,9 @@ public class LogReplayer {
       InsertRowPlan tPlan = (InsertRowPlan) plan;
       //only infer type when users pass a String value
       //WAL already serializes the real data type, so no need to infer type
+      tPlan.setMeasurementMNodes(mNodes);
       ((InsertRowPlan) plan).setNeedInferType(false);
-      tPlan.setMNodesAndTransferType(mNodes);
+      tPlan.transferType();
       //mark failed plan manually 
       checkDataTypeAndMarkFailed(mNodes, tPlan);
       recoverMemTable.insert(tPlan);

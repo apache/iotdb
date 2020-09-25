@@ -75,9 +75,7 @@ gpg2 --import key.asc
 
 ## 验证源码发布版
 
-* （孵化阶段）验证是否名字中有 ```incubating```
-
-* 验证是否有 DISCLAIMER、NOTICE、LICENSE，以及内容是否正确。
+* 验证是否有 NOTICE、LICENSE，以及内容是否正确。
 
 * 验证 README、RELEASE_NOTES
 
@@ -109,9 +107,7 @@ mvnw.sh install
 
 ## 验证二进制发布版
 
-* （孵化阶段）验证是否名字中有 ```incubating```
-
-* 验证是否有 DISCLAIMER、NOTICE、LICENSE，以及内容是否正确。
+* 验证是否有 NOTICE、LICENSE，以及内容是否正确。
 
 * 验证 README、RELEASE_NOTES
 
@@ -162,16 +158,12 @@ Hi,
 +1 (PMC could binding)
 
 The source release:
-Incubating in name [ok]
-Has DISCLAIMER [ok]
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 All files have ASF header [ok]
 could compile from source: ./mvnw.sh clean install [ok]
 
 The binary distribution:
-Incubating in name [ok]
-Has DISCLAIMER [ok]
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 Could run with the following statements [ok]

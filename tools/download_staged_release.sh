@@ -119,8 +119,8 @@ mkdir -p ${DST_VER_DIR}
 cd ${DST_VER_DIR}
 mywget ${URL}/README.md
 mywget ${URL}/RELEASE_NOTES.md
-getSignedBundle ${URL}/apache-iotdb-${VER}-incubating-source-release.zip
-getSignedBundle ${URL}/apache-iotdb-${VER}-incubating-bin.zip
+getSignedBundle ${URL}/apache-iotdb-${VER}-source-release.zip
+getSignedBundle ${URL}/apache-iotdb-${VER}-bin.zip
 
 echo
 echo Done Downloading to ${DST_BASE_DIR}

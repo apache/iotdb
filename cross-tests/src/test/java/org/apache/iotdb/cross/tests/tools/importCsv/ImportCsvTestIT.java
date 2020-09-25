@@ -64,7 +64,7 @@ public class ImportCsvTestIT extends AbstractScript {
     EnvironmentUtils.cleanEnv();
   }
 
-  private static void createSchema() throws ClassNotFoundException, SQLException {
+  private static void createSchema() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -119,13 +119,13 @@ public class ImportCsvTestIT extends AbstractScript {
   @Override
   protected void testOnWindows() throws IOException {
     final String[] output = {
-        "````````````````````````````````````````````````",
-        "Starting IoTDB Client Import Script",
-        "````````````````````````````````````````````````",
-        "Start to import data from: test.csv",
-        "",
-        "Import from: test.csv   0%",
-        "Import from: test.csv 100%"
+      "````````````````````````````````````````````````",
+      "Starting IoTDB Client Import Script",
+      "````````````````````````````````````````````````",
+      "Start to import data from: test.csv",
+      "",
+      "Import from: test.csv",
+      "Import from: test.csv 100%"
     };
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
@@ -138,13 +138,13 @@ public class ImportCsvTestIT extends AbstractScript {
   @Override
   protected void testOnUnix() throws IOException {
     final String[] output = {
-        "------------------------------------------",
-        "Starting IoTDB Client Import Script",
-        "------------------------------------------",
-        "Start to import data from: test.csv",
-        "",
-        "Import from: test.csv   0%",
-        "Import from: test.csv 100%"
+            "------------------------------------------",
+            "Starting IoTDB Client Import Script",
+            "------------------------------------------",
+            "Start to import data from: test.csv",
+            "",
+            "Import from: test.csv",
+            "Import from: test.csv 100%"
     };
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("sh",
