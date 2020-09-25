@@ -129,6 +129,20 @@ public class IoTDBAggregationIT {
       }
 
       hasResultSet = statement.execute(
+          "SELECT count(temperature) FROM root.ln.wf01.wt01 WHERE time > 3 order by time desc");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet();) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," +
+              resultSet.getString(count(TEMPERATURE_STR));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      hasResultSet = statement.execute(
           "SELECT min_time(temperature) FROM root.ln.wf01.wt01 WHERE time > 3");
 
       Assert.assertTrue(hasResultSet);
@@ -284,24 +298,24 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(2, cnt);
       }
 
-        // keep the correctness of `order by time desc`
-        hasResultSet = statement
-            .execute("SELECT first_value(s0),first_value(s1),first_value(s2),first_value(s3) " +
-                "FROM root.vehicle.d0 WHERE time >= 1500 AND time <= 9000 order by time desc");
-        Assert.assertTrue(hasResultSet);
-        try (ResultSet resultSet = statement.getResultSet()) {
-          cnt = 0;
-          while (resultSet.next()) {
-            String ans =
-                resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first_value(d0s0))
-                    + "," + resultSet.getString(first_value(d0s1)) + "," + resultSet
-                    .getString(first_value(d0s2))
-                    + "," + resultSet.getString(first_value(d0s3));
-            Assert.assertEquals(retArray[cnt], ans);
-            cnt++;
-          }
-          Assert.assertEquals(1, cnt);
+      // keep the correctness of `order by time desc`
+      hasResultSet = statement
+          .execute("SELECT first_value(s0),first_value(s1),first_value(s2),first_value(s3) " +
+              "FROM root.vehicle.d0 WHERE time >= 1500 AND time <= 9000 order by time desc");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first_value(d0s0))
+                  + "," + resultSet.getString(first_value(d0s1)) + "," + resultSet
+                  .getString(first_value(d0s2))
+                  + "," + resultSet.getString(first_value(d0s3));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(1, cnt);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -362,6 +376,22 @@ public class IoTDBAggregationIT {
           cnt++;
         }
         Assert.assertEquals(3, cnt);
+      }
+
+      hasResultSet = statement.execute("SELECT last_value(s0),last_value(s2) " +
+          "FROM root.vehicle.d0 WHERE time <= 2200 order by time desc");
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last_value(d0s0))
+                  + "," + resultSet.getString(last_value(d0s2));
+          Assert.assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
       }
 
       // keep the correctness of `order by time desc`
