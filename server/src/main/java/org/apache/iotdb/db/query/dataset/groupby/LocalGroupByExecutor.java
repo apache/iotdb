@@ -219,6 +219,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       throws IOException {
     try {
       if (preCachedData != null && preCachedData.hasCurrent()) {
+        //save context
         int readCurArrayIndex = preCachedData.getReadCurArrayIndex();
         int readCurListIndex = preCachedData.getReadCurListIndex();
 
@@ -226,13 +227,23 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         if (aggregateResults == null || aggregateResults.get(0).getResult() == null) {
           return null;
         }
+        // restore context
+        lastReadCurListIndex = readCurListIndex;
+        lastReadCurArrayIndex = readCurArrayIndex;
         preCachedData.resetBatchData(readCurArrayIndex, readCurListIndex);
         return new Pair<>(nextStartTime, aggregateResults.get(0).getResult());
       } else {
+        //save context
+        int readCurArrayIndex = lastReadCurArrayIndex;
+        int readCurListIndex = lastReadCurListIndex;
+
         List<AggregateResult> aggregateResults = calcResult(nextStartTime, nextEndTime);
-        if (aggregateResults == null || aggregateResults.get(0) == null) {
+        if (aggregateResults == null || aggregateResults.get(0).getResult() == null) {
           return null;
         }
+        // restore context
+        lastReadCurListIndex = readCurListIndex;
+        lastReadCurArrayIndex = readCurArrayIndex;
         if (preCachedData != null) {
           preCachedData.resetBatchData();
         }
