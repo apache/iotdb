@@ -35,6 +35,18 @@ public class HttpConstant {
   public static final String ROUTING_TIME_SERIES_DELETE = "/timeSeries/delete";
   public static final String ROUTING_GET_TIME_SERIES = "/getTimeSeries";
 
+  public static final String AGGREGATIONS = "aggregations";
+  public static final String PREVIOUS = "previous";
+  public static final String DURATION = "duration";
+  public static final String PREVIOUS_UNTIL_LAST = "previousUntilLast";
+  public static final String IS_AGGREGATED = "isAggregated";
+  public static final String SAMPLING_POINTS = "samplingPoints";
+  public static final String SAMPLING_INTERVAL = "samplingInterval";
+  public static final String STEP = "step";
+  public static final String GROUP_BY = "groupBy";
+  public static final String isPoint = "isPoint";
+  public static final String FILLS = "fills";
+  public static final String TO = "to";
   public static final char QUESTION_MARK = '?';
   public static final String USERNAME = "username";
   public static final String PASSWORD = "password";
