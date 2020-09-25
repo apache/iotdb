@@ -203,8 +203,8 @@ public class HotCompactionUtils {
             hotCompactionLogger.logDevice(device, writer.getPos());
           }
         }
-        writer.writeVersion(maxVersion);
         writer.endChunkGroup();
+        writer.writeVersion(maxVersion);
       } else {
         for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry : measurementChunkMetadataMap
             .entrySet()) {
