@@ -29,15 +29,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 public class RowIteratorImpl implements RowIterator {
 
   private final ElasticSerializableRowRecordList rowRecordList;
-
+  private final IntList windowRowIndexes;
   private final RowImpl row;
-
-  private IntList windowRowIndexes;
   private int rowIndex;
 
   public RowIteratorImpl(ElasticSerializableRowRecordList rowRecordList, int[] columnIndexes,
-      TSDataType[] dataTypes) {
+      TSDataType[] dataTypes, IntList windowRowIndexes) {
     this.rowRecordList = rowRecordList;
+    this.windowRowIndexes = windowRowIndexes;
     row = new RowImpl(columnIndexes, dataTypes);
   }
 
@@ -51,9 +50,8 @@ public class RowIteratorImpl implements RowIterator {
     return row.setRowRecord(rowRecordList.getRowRecord(windowRowIndexes.get(++rowIndex)));
   }
 
-  public RowIteratorImpl set(IntList windowRowIndexes) {
-    this.windowRowIndexes = windowRowIndexes;
+  @Override
+  public void reset() {
     rowIndex = 0;
-    return this;
   }
 }

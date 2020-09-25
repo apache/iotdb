@@ -33,19 +33,19 @@ public class RowWindowImpl implements RowWindow {
 
   private final int[] columnIndexes;
   private final TSDataType[] dataTypes;
+  private final IntList windowRowIndexes;
 
   private final RowImpl row;
   private final RowIteratorImpl rowIterator;
 
-  private IntList windowRowIndexes;
-
   public RowWindowImpl(ElasticSerializableRowRecordList rowRecordList, int[] columnIndexes,
-      TSDataType[] dataTypes) {
+      TSDataType[] dataTypes, IntList windowRowIndexes) {
     this.rowRecordList = rowRecordList;
     this.columnIndexes = columnIndexes;
     this.dataTypes = dataTypes;
+    this.windowRowIndexes = windowRowIndexes;
     row = new RowImpl(columnIndexes, dataTypes);
-    rowIterator = new RowIteratorImpl(rowRecordList, columnIndexes, dataTypes);
+    rowIterator = new RowIteratorImpl(rowRecordList, columnIndexes, dataTypes, windowRowIndexes);
   }
 
   @Override
@@ -65,11 +65,7 @@ public class RowWindowImpl implements RowWindow {
 
   @Override
   public RowIterator getRowIterator() {
-    return rowIterator.set(windowRowIndexes);
-  }
-
-  public RowWindowImpl set(IntList windowRowIndexes) {
-    this.windowRowIndexes = windowRowIndexes;
-    return this;
+    rowIterator.reset();
+    return rowIterator;
   }
 }

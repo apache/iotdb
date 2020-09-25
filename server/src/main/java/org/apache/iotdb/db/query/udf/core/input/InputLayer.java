@@ -311,14 +311,14 @@ public class InputLayer {
               DATA_ID_PREFIX + elasticSerializableIntListCount++,
               ElasticSerializableIntList.DEFAULT_MEMORY_USAGE_LIMIT,
               ElasticSerializableIntList.DEFAULT_CACHE_SIZE);
-      rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes);
+      rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes, rowIndexes);
 
       maxIndexInLastWindow = -1;
     }
 
     @Override
     public boolean next() throws IOException {
-      if (0 < rowRecordList.size()) {
+      if (0 < rowIndexes.size()) {
         return true;
       }
 
@@ -368,7 +368,7 @@ public class InputLayer {
 
     @Override
     public RowWindow currentWindow() {
-      return rowWindow.set(rowIndexes);
+      return rowWindow;
     }
   }
 
@@ -408,7 +408,7 @@ public class InputLayer {
           DATA_ID_PREFIX + elasticSerializableIntListCount++,
           ElasticSerializableIntList.DEFAULT_MEMORY_USAGE_LIMIT,
           ElasticSerializableIntList.DEFAULT_CACHE_SIZE);
-      rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes);
+      rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes, rowIndexes);
 
       nextWindowTimeBegin = accessStrategy.getDisplayWindowBegin();
       nextIndexBegin = 0;
@@ -424,7 +424,7 @@ public class InputLayer {
       if (displayWindowEnd <= nextWindowTimeBegin) {
         return false;
       }
-      if (!hasAtLeastOneRow || 0 < rowRecordList.size()) {
+      if (!hasAtLeastOneRow || 0 < rowIndexes.size()) {
         return true;
       }
 
@@ -475,7 +475,7 @@ public class InputLayer {
 
     @Override
     public RowWindow currentWindow() {
-      return rowWindow.set(rowIndexes);
+      return rowWindow;
     }
   }
 

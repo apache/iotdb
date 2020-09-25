@@ -26,4 +26,6 @@ public interface RowIterator {
   boolean hasNextRow();
 
   Row next() throws IOException;
+
+  void reset();
 }

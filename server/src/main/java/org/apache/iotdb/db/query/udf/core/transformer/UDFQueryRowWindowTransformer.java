@@ -36,7 +36,7 @@ public class UDFQueryRowWindowTransformer extends UDFQueryTransformer {
 
   @Override
   protected boolean executeUDFOnce() throws QueryProcessException, IOException {
-    if (layerRowWindowReader.next()) {
+    if (!layerRowWindowReader.next()) {
       return false;
     }
     executor.execute(layerRowWindowReader.currentWindow());
