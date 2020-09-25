@@ -24,6 +24,7 @@ import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.*;
 import java.io.IOException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
@@ -33,11 +34,11 @@ import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAc
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.TumblingWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class Counter extends UDTF {
+public class Accumulator extends UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("Counter#beforeStart");
+    System.out.println("Accumulator#beforeStart");
     configurations.setOutputDataType(TSDataType.INT32);
     switch (parameters.getStringOrDefault(ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ONE_BY_ONE)) {
       case ACCESS_STRATEGY_TUMBLING:
@@ -58,19 +59,24 @@ public class Counter extends UDTF {
   }
 
   @Override
-  public void transform(Row row, PointCollector collector) throws Exception {
-    collector.putInt(row.getTime(), 1);
+  public void transform(Row row, PointCollector collector) throws IOException {
+    collector.putInt(row.getTime(), row.getInt(0));
   }
 
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector) throws IOException {
+    int accumulator = 0;
+    RowIterator rowIterator = rowWindow.getRowIterator();
+    while (rowIterator.hasNextRow()) {
+      accumulator += rowIterator.next().getInt(0);
+    }
     if (rowWindow.windowSize() != 0) {
-      collector.putInt(rowWindow.getRow(0).getTime(), rowWindow.windowSize());
+      collector.putInt(rowWindow.getRow(0).getTime(), accumulator);
     }
   }
 
   @Override
   public void beforeDestroy() {
-    System.out.println("Counter#beforeDestroy");
+    System.out.println("Accumulator#beforeDestroy");
   }
 }

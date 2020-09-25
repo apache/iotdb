@@ -29,7 +29,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.query.udf.example.Counter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -42,7 +41,19 @@ import org.junit.Test;
 
 public class IoTDBUDFWindowQueryIT {
 
-  protected final static int ITERATION_TIMES = 1_000;
+  public static final String ACCESS_STRATEGY_KEY = "access";
+  public static final String ACCESS_STRATEGY_ONE_BY_ONE = "one-by-one";
+  public static final String ACCESS_STRATEGY_TUMBLING = "tumbling";
+  public static final String ACCESS_STRATEGY_SLIDING = "access";
+
+  public static final String WINDOW_SIZE_KEY = "windowSize";
+
+  public static final String TIME_INTERVAL_KEY = "timeInterval";
+  public static final String SLIDING_STEP_KEY = "slidingStep";
+  public static final String DISPLAY_WINDOW_BEGIN_KEY = "displayWindowBegin";
+  public static final String DISPLAY_WINDOW_END_KEY = "displayWindowEnd";
+
+  protected final static int ITERATION_TIMES = 10_000;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -78,7 +89,11 @@ public class IoTDBUDFWindowQueryIT {
     try (Connection connection = DriverManager.getConnection(
         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Counter\"");
+      statement
+          .execute("create function counter as \"org.apache.iotdb.db.query.udf.example.Counter\"");
+      statement
+          .execute(
+              "create function accumulator as \"org.apache.iotdb.db.query.udf.example.Accumulator\"");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -91,8 +106,8 @@ public class IoTDBUDFWindowQueryIT {
 
   @Test
   public void testRowByRow() {
-    String sql = String.format("select udf(s1, \"%s\"=\"%s\") from root.vehicle.d1",
-        Counter.ACCESS_STRATEGY_KEY, Counter.ACCESS_STRATEGY_ONE_BY_ONE);
+    String sql = String.format("select counter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
+        ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ONE_BY_ONE);
 
     try (Statement statement = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
@@ -112,9 +127,9 @@ public class IoTDBUDFWindowQueryIT {
   @Test
   public void testTumblingWindow1() {
     final int WINDOW_SIZE = (int) (0.1 * ITERATION_TIMES);
-    String sql = String.format("select udf(s1, \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
-        Counter.ACCESS_STRATEGY_KEY, Counter.ACCESS_STRATEGY_TUMBLING,
-        Counter.WINDOW_SIZE, WINDOW_SIZE);
+    String sql = String
+        .format("select counter(s1, \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
+            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_TUMBLING, WINDOW_SIZE_KEY, WINDOW_SIZE);
 
     try (Statement statement = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
@@ -139,9 +154,9 @@ public class IoTDBUDFWindowQueryIT {
   @Test
   public void testTumblingWindow2() {
     final int WINDOW_SIZE = (int) (0.333 * ITERATION_TIMES);
-    String sql = String.format("select udf(s1, \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
-        Counter.ACCESS_STRATEGY_KEY, Counter.ACCESS_STRATEGY_TUMBLING,
-        Counter.WINDOW_SIZE, WINDOW_SIZE);
+    String sql = String
+        .format("select counter(s1, \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
+            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_TUMBLING, WINDOW_SIZE_KEY, WINDOW_SIZE);
 
     try (Statement statement = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
@@ -158,6 +173,34 @@ public class IoTDBUDFWindowQueryIT {
       }
       assertEquals(ITERATION_TIMES / WINDOW_SIZE + (ITERATION_TIMES % WINDOW_SIZE == 0 ? 0 : 1),
           count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testTumblingWindow3() {
+    final int WINDOW_SIZE = (int) (0.33 * ITERATION_TIMES);
+    String sql = String
+        .format("select accumulator(s1, \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
+            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_TUMBLING, WINDOW_SIZE_KEY, WINDOW_SIZE);
+
+    try (Statement statement = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      int count = 0;
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
+      while (resultSet.next()) {
+        int expectedWindowSize = (count < ITERATION_TIMES / WINDOW_SIZE)
+            ? WINDOW_SIZE : ITERATION_TIMES - (ITERATION_TIMES / WINDOW_SIZE) * WINDOW_SIZE;
+        int expectedAccumulation = 0;
+        for (int i = count * WINDOW_SIZE; i < count * WINDOW_SIZE + expectedWindowSize; ++i) {
+          expectedAccumulation += i;
+        }
+        assertEquals(expectedAccumulation, (int) (Double.parseDouble(resultSet.getString(2))));
+        ++count;
+      }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

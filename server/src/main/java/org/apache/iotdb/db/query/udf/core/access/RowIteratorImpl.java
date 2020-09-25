@@ -38,6 +38,7 @@ public class RowIteratorImpl implements RowIterator {
     this.rowRecordList = rowRecordList;
     this.windowRowIndexes = windowRowIndexes;
     row = new RowImpl(columnIndexes, dataTypes);
+    rowIndex = -1;
   }
 
   @Override
@@ -52,6 +53,6 @@ public class RowIteratorImpl implements RowIterator {
 
   @Override
   public void reset() {
-    rowIndex = 0;
+    rowIndex = -1;
   }
 }
