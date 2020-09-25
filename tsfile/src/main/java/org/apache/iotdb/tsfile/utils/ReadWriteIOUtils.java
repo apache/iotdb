@@ -150,6 +150,26 @@ public class ReadWriteIOUtils {
     return length;
   }
 
+  public static int write(Map<String, String> map, ByteBuffer buffer) {
+    int length = 0;
+    byte[] bytes;
+    buffer.putInt(map.size());
+    length += 4;
+    for (Entry<String, String> entry : map.entrySet()) {
+      bytes = entry.getKey().getBytes();
+      buffer.putInt(bytes.length);
+      length += 4;
+      buffer.put(bytes);
+      length += bytes.length;
+      bytes = entry.getValue().getBytes();
+      buffer.putInt(bytes.length);
+      length += 4;
+      buffer.put(bytes);
+      length += bytes.length;
+    }
+    return length;
+  }
+
 
 
   /**

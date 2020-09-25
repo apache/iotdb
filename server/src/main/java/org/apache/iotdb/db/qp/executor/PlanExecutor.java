@@ -98,26 +98,7 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.CountPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
-import org.apache.iotdb.db.qp.physical.sys.MergePlan;
-import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -130,11 +111,14 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -145,8 +129,11 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PlanExecutor implements IPlanExecutor {
+  private final static Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
 
   // for data query
   protected IQueryRouter queryRouter;
@@ -220,6 +207,8 @@ public class PlanExecutor implements IPlanExecutor {
         return deleteTimeSeries((DeleteTimeSeriesPlan) plan);
       case CREATE_TIMESERIES:
         return createTimeSeries((CreateTimeSeriesPlan) plan);
+      case CREATE_MULTI_TIMESERIES:
+        return createMultiTimeSeries((CreateMultiTimeSeriesPlan) plan);
       case ALTER_TIMESERIES:
         return alterTimeSeries((AlterTimeSeriesPlan) plan);
       case SET_STORAGE_GROUP:
@@ -1037,6 +1026,31 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
+    return true;
+  }
+
+  private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan) {
+    Map<Integer, Boolean> results = new HashMap<>(createMultiTimeSeriesPlan.getPaths().size());
+    for (int i = 0; i < createMultiTimeSeriesPlan.getPaths().size(); i++) {
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(createMultiTimeSeriesPlan.getPaths().get(i),
+        createMultiTimeSeriesPlan.getDataTypes().get(i), createMultiTimeSeriesPlan.getEncodings().get(i),
+        createMultiTimeSeriesPlan.getCompressors().get(i),
+        createMultiTimeSeriesPlan.getProps() == null ? null : createMultiTimeSeriesPlan.getProps().get(i),
+        createMultiTimeSeriesPlan.getTags() == null ? null : createMultiTimeSeriesPlan.getTags().get(i),
+        createMultiTimeSeriesPlan.getAttributes() == null ? null : createMultiTimeSeriesPlan.getAttributes().get(i),
+        createMultiTimeSeriesPlan.getAlias() == null ? null : createMultiTimeSeriesPlan.getAlias().get(i));
+
+      boolean success = false;
+      try {
+        success = createTimeSeries(plan);
+      } catch (QueryProcessException e) {
+        // do nothing
+        logger.debug("meet error while processing create timeseries. ", e);
+      } finally {
+        results.put(createMultiTimeSeriesPlan.getIndexes().get(i), success);
+      }
+    }
+    createMultiTimeSeriesPlan.setResults(results);
     return true;
   }
 
