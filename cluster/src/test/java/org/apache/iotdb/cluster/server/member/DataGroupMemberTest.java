@@ -442,7 +442,7 @@ public class DataGroupMemberTest extends MemberTest {
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     insertPlan.setValues(new Object[]{"1.0"});
     insertPlan
-        .setMNodesAndTransferType(new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
+        .setMeasurementMNodes(new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
     processor.insert(insertPlan);
     processor.syncCloseAllWorkingTsFileProcessors();
 
@@ -584,7 +584,7 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setMNodesAndTransferType(
+      insertPlan.setMeasurementMNodes(
           new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
@@ -642,7 +642,7 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setMNodesAndTransferType(
+      insertPlan.setMeasurementMNodes(
           new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
@@ -700,7 +700,7 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setMNodesAndTransferType(
+      insertPlan.setMeasurementMNodes(
           new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
@@ -756,7 +756,7 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setMNodesAndTransferType(
+      insertPlan.setMeasurementMNodes(
           new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);

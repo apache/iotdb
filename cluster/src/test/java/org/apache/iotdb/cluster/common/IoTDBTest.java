@@ -120,7 +120,7 @@ public abstract class IoTDBTest {
       insertPlan.setTime(i);
       Arrays.fill(values, String.valueOf(i * 1.0));
       insertPlan.setValues(values);
-      insertPlan.setMNodesAndTransferType(schemas);
+      insertPlan.setMeasurementMNodes(schemas);
       planExecutor.insert(insertPlan);
     }
   }

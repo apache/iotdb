@@ -270,7 +270,7 @@ public class TestUtils {
           values[k] = String.valueOf(i);
         }
         insertPlan.setValues(values);
-        insertPlan.setMNodesAndTransferType(mNodes);
+        insertPlan.setMeasurementMNodes(mNodes);
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -283,7 +283,7 @@ public class TestUtils {
           values[k] = String.valueOf(i);
         }
         insertPlan.setValues(values);
-        insertPlan.setMNodesAndTransferType(mNodes);
+        insertPlan.setMeasurementMNodes(mNodes);
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -296,7 +296,7 @@ public class TestUtils {
           values[k] = String.valueOf(i);
         }
         insertPlan.setValues(values);
-        insertPlan.setMNodesAndTransferType(mNodes);
+        insertPlan.setMeasurementMNodes(mNodes);
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -314,7 +314,7 @@ public class TestUtils {
       insertPlan.setTime(i);
       Object[] values = new Object[]{String.valueOf(i)};
       insertPlan.setValues(values);
-      insertPlan.setMNodesAndTransferType(schemas);
+      insertPlan.setMeasurementMNodes(schemas);
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }

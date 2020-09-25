@@ -63,7 +63,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -627,7 +626,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected MeasurementMNode[] getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
+  protected MNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
     String[] measurementList = insertPlan.getMeasurements();
     PartialPath deviceId = insertPlan.getDeviceId();
 

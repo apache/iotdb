@@ -59,7 +59,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -288,19 +287,20 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public MeasurementMNode[] getSeriesSchemasAndReadLockDevice(PartialPath deviceId,
-      String[] measurementList, InsertPlan plan) throws MetadataException {
-    MeasurementMNode[] measurementSchemas = new MeasurementMNode[measurementList.length];
-    getDeviceNode(deviceId).readLock();
-    int nonExistSchemaIndex = getMNodesLocally(deviceId, measurementList, measurementSchemas);
+  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
+    MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
+    MNode deviceNode = getDeviceNode(plan.getDeviceId());
+    deviceNode.readLock();
+    int nonExistSchemaIndex = getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
     if (nonExistSchemaIndex == -1) {
-      return measurementSchemas;
+      plan.setMeasurementMNodes(measurementMNodes);
+      return deviceNode;
     } else {
-      unlockDeviceReadLock(deviceId);
+      deviceNode.readUnlock();
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
-    return super.getSeriesSchemasAndReadLockDevice(deviceId, measurementList, plan);
+    return super.getSeriesSchemasAndReadLockDevice(plan);
   }
 
   @Override
@@ -1105,11 +1105,12 @@ public class CMManager extends MManager {
     plan.setPaths(fullPaths);
   }
 
+  @Override
   protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
     MeasurementMNode child;
     child = (MeasurementMNode) getChild(deviceMNode, measurement);
     if (child == null) {
-
+      child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurement));
     }
     return child;
   }

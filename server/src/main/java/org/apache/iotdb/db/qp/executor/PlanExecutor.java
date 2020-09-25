@@ -926,7 +926,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private MNode getSeriesSchemas(InsertPlan insertPlan)
+  protected MNode getSeriesSchemas(InsertPlan insertPlan)
       throws MetadataException {
     return IoTDB.metaManager
         .getSeriesSchemasAndReadLockDevice(insertPlan);

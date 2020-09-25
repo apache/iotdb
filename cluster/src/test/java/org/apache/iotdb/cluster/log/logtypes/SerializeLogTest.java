@@ -46,7 +46,7 @@ public class SerializeLogTest {
 
   @Test
   public void testPhysicalPlanLog()
-      throws UnknownLogTypeException, QueryProcessException, IllegalPathException {
+      throws UnknownLogTypeException, IllegalPathException {
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
@@ -61,7 +61,7 @@ public class SerializeLogTest {
     schemas[0].getSchema().setType(TSDataType.DOUBLE);
     schemas[1].getSchema().setType(TSDataType.INT32);
     schemas[2].getSchema().setType(TSDataType.TEXT);
-    plan.setMNodesAndTransferType(schemas);
+    plan.setMeasurementMNodes(schemas);
     plan.setTime(1);
     log.setPlan(plan);
 

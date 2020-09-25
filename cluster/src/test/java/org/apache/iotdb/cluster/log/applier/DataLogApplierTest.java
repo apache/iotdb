@@ -218,7 +218,7 @@ public class DataLogApplierTest extends IoTDBTest {
     insertPlan.setValues(new Object[]{"1.0"});
     insertPlan.setNeedInferType(true);
     insertPlan
-      .setMNodesAndTransferType(new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
+      .setMeasurementMNodes(new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
 
     applier.apply(log);
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(1, 0)), null);

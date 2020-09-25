@@ -487,7 +487,7 @@ public class MetaGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setMNodesAndTransferType(
+      insertPlan.setMeasurementMNodes(
           new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
@@ -754,7 +754,7 @@ public class MetaGroupMemberTest extends MemberTest {
       for (int j = 0; j < 10; j++) {
         insertPlan.setTime(j);
         insertPlan.setValues(new Object[]{String.valueOf(j)});
-        insertPlan.setMNodesAndTransferType(
+        insertPlan.setMeasurementMNodes(
             new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
         planExecutor.processNonQuery(insertPlan);
       }
@@ -801,7 +801,7 @@ public class MetaGroupMemberTest extends MemberTest {
       for (int j = 0; j < 10; j++) {
         insertPlan.setTime(j);
         insertPlan.setValues(new Object[]{String.valueOf(j)});
-        insertPlan.setMNodesAndTransferType(
+        insertPlan.setMeasurementMNodes(
             new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
         planExecutor.processNonQuery(insertPlan);
       }
