@@ -133,7 +133,6 @@ public class AggregationExecutor {
         isAsc[i] = true;
       } else {
         descAggregateResultList.add(aggregateResult);
-        isAsc[i] = false;
       }
     }
     aggregateOneSeries(seriesPath, measurements, context, timeFilter, tsDataType,

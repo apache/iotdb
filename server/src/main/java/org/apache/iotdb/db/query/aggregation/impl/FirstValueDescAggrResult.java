@@ -39,16 +39,7 @@ public class FirstValueDescAggrResult extends FirstValueAggrResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) {
-    if (dataInThisPage.hasCurrent()) {
-      setValue(dataInThisPage.currentValue());
-      timestamp = dataInThisPage.currentTime();
-    }
-  }
-
-  @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     while (dataInThisPage.hasCurrent()
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
@@ -72,11 +63,6 @@ public class FirstValueDescAggrResult extends FirstValueAggrResult {
 
   @Override
   public boolean isCalculatedAggregationResult() {
-    return false;
-  }
-
-  @Override
-  public boolean needAscReader() {
     return false;
   }
 }
