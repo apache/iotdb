@@ -38,6 +38,7 @@ import java.sql.Statement;
 import static org.junit.Assert.assertTrue;
 
 public class ImportCsvTestIT extends AbstractScript {
+
   private final String CSV_FILE = "target" + File.separator + "test.csv";
 
   private static String[] sqls = new String[]{
@@ -119,13 +120,13 @@ public class ImportCsvTestIT extends AbstractScript {
   @Override
   protected void testOnWindows() throws IOException {
     final String[] output = {
-      "````````````````````````````````````````````````",
-      "Starting IoTDB Client Import Script",
-      "````````````````````````````````````````````````",
-      "Start to import data from: test.csv",
-      "",
-      "Import from: test.csv",
-      "Import from: test.csv 100%"
+        "````````````````````````````````````````````````",
+        "Starting IoTDB Client Import Script",
+        "````````````````````````````````````````````````",
+        "Start to import data from: test.csv",
+        "",
+        "Import from: test.csv",
+        "Import from: test.csv 100%"
     };
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
@@ -138,13 +139,13 @@ public class ImportCsvTestIT extends AbstractScript {
   @Override
   protected void testOnUnix() throws IOException {
     final String[] output = {
-            "------------------------------------------",
-            "Starting IoTDB Client Import Script",
-            "------------------------------------------",
-            "Start to import data from: test.csv",
-            "",
-            "Import from: test.csv",
-            "Import from: test.csv 100%"
+        "------------------------------------------",
+        "Starting IoTDB Client Import Script",
+        "------------------------------------------",
+        "Start to import data from: test.csv",
+        "",
+        "Import from: test.csv",
+        "Import from: test.csv 100%"
     };
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("sh",
