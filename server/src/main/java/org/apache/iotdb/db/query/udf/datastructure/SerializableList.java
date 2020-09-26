@@ -23,11 +23,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import org.apache.iotdb.db.query.udf.datastructure.primitive.SerializableIntList;
-import org.apache.iotdb.db.query.udf.datastructure.row.SerializableRowRecordList;
-import org.apache.iotdb.db.query.udf.datastructure.tv.SerializableTVList;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 public interface SerializableList {
@@ -42,6 +38,8 @@ public interface SerializableList {
   void deserialize(ByteBuffer byteBuffer);
 
   SerializationRecorder getSerializationRecorder();
+
+  void clear();
 
   class SerializationRecorder {
 
@@ -154,13 +152,7 @@ public interface SerializableList {
       byteBuffer.flip();
       recorder.getFileChannel().write(byteBuffer);
       recorder.closeFile();
-      if (this instanceof SerializableTVList) {
-        ((BatchData) this).init(((BatchData) this).getDataType());
-      } else if (this instanceof SerializableRowRecordList) {
-        ((SerializableRowRecordList) this).clear();
-      } else if (this instanceof SerializableIntList) {
-        ((SerializableIntList) this).clear();
-      }
+      clear();
       recorder.markAsSerialized();
     }
   }

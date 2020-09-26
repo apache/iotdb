@@ -79,4 +79,8 @@ public interface SerializableTVList extends SerializableList {
         throw new UnSupportedDataTypeException(dataType.toString());
     }
   }
+
+  default void clear() {
+    ((BatchData) this).init(((BatchData) this).getDataType());
+  }
 }
