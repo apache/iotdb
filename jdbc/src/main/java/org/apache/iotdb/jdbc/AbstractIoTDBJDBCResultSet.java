@@ -323,7 +323,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   @Override
   public float getFloat(int columnIndex) throws SQLException {
     try {
-      return getInt(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
+      return getFloat(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
