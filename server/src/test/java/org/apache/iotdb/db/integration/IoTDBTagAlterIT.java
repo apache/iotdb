@@ -48,9 +48,12 @@ public class IoTDBTagAlterIT {
 
   @Test
   public void renameTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
-    String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
-            "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    String[] ret1 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
+    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag2\":\"v2\",\"tagNew1\":\"v1\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
+    String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT,"
+        + " encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -68,17 +71,15 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
-          assertEquals(ret[count], ans);
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
+          assertEquals(ret1[count], ans);
           count++;
         }
       } finally {
         resultSet.close();
       }
-      assertEquals(ret.length, count);
+      assertEquals(ret1.length, count);
 
       try {
         statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME tag3 TO tagNew3");
@@ -107,17 +108,15 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tagNew1")
-                  + "," + resultSet.getString("tag2");
-          assertEquals(ret[count], ans);
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
+          assertEquals(ret2[count], ans);
           count++;
         }
       } finally {
         resultSet.close();
       }
-      assertEquals(ret.length, count);
+      assertEquals(ret2.length, count);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -126,8 +125,10 @@ public class IoTDBTagAlterIT {
 
   @Test
   public void setTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
-    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,newV2,newV1,v2"};
+    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
+    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"newV1\",\"tag2\":\"v2\"},{\"attr2\":\"newV2\",\"attr1\":\"v1\"}"};
 
     String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
@@ -148,10 +149,8 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -180,10 +179,8 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret2[count], ans);
           count++;
         }
@@ -199,8 +196,9 @@ public class IoTDBTagAlterIT {
 
   @Test
   public void dropTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
-    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v2,v2"};
+    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
+    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"tag2\":\"v2\"},{\"attr2\":\"v2\"}"};
 
     String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
@@ -221,10 +219,8 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -246,8 +242,8 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag2");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret2[count], ans);
           count++;
         }
@@ -270,8 +266,10 @@ public class IoTDBTagAlterIT {
 
   @Test
   public void addTagTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
-    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2,v3,v4"};
+    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
+    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"v1\",\"tag4\":\"v4\",\"tag2\":\"v2\",\"tag3\":\"v3\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
 
     String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
@@ -292,10 +290,8 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -317,12 +313,8 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2")
-                  + "," + resultSet.getString("tag3")
-                  + "," + resultSet.getString("tag4");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret2[count], ans);
           count++;
         }
@@ -338,8 +330,10 @@ public class IoTDBTagAlterIT {
 
   @Test
   public void addAttributeTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
-    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v3,v4,v1,v2"};
+    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
+    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\",\"attr4\":\"v4\",\"attr3\":\"v3\"}"};
 
     String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
@@ -360,10 +354,8 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -385,12 +377,8 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("attr3")
-                  + "," + resultSet.getString("attr4")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret2[count], ans);
           count++;
         }
@@ -406,9 +394,12 @@ public class IoTDBTagAlterIT {
 
   @Test
   public void upsertTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
-    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,newV2,v3"};
-    String[] ret3 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,newA1,v2,v3,newV1,newV2,newV3"};
+    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
+    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"tag1\":\"v1\",\"tag2\":\""
+        + "newV2\",\"tag3\":\"v3\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}"};
+    String[] ret3 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"tag1\":\"newV1\",\"tag2\":\""
+        + "newV2\",\"tag3\":\"newV3\"},{\"attr2\":\"v2\",\"attr1\":\"newA1\",\"attr3\":\"v3\"}"};
 
 
     String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
@@ -430,10 +421,8 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret[count], ans);
           count++;
         }
@@ -455,11 +444,8 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2")
-                  + "," + resultSet.getString("tag3");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret2[count], ans);
           count++;
         }
@@ -481,12 +467,8 @@ public class IoTDBTagAlterIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("attr3")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2")
-                  + "," + resultSet.getString("tag3");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
           assertEquals(ret3[count], ans);
           count++;
         }

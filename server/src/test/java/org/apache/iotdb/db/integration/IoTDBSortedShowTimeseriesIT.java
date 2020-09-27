@@ -99,34 +99,59 @@ public class IoTDBSortedShowTimeseriesIT {
 
   @Test
   public void showTimeseriesOrderByHeatTest1() throws ClassNotFoundException {
+
     List<String> retArray1 = Arrays.asList(
-        "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test1,100,50,null,null,f",
-        "root.turbine.d0.s1,power,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test2,99.9,44.4,null,null,kw",
-        "root.turbine.d0.s2,cpu,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a cpu,99.9,44.4,null,null,cores",
-        "root.turbine.d0.s3,gpu0,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a gpu,99.9,44.4,null,null,cores",
-        "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a tpu,99.9,44.4,null,null,cores",
-        "root.turbine.d1.s0,status,root.turbine,INT32,RLE,SNAPPY,turbine this is a test3,9,5,null,null,null",
-        "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test1,null,null,100,1,f",
-        "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test2,null,null,99.9,44.4,kw",
-        "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,turbine d2 this is a test3,null,null,9,5,null",
-        "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,ln this is a test1,1000,500,null,null,c",
-        "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,ln this is a test2,9.9,4.4,null,null,w",
-        "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,ln this is a test3,90,50,null,null,null"
+        "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\""
+            + "turbine this is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"100\",\"M_Alarm\":\"50\"}",
+        "root.turbine.d0.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
+            + "this is a test2\",\"unit\":\"kw\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+        "root.turbine.d0.s2,cpu,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this "
+            + "is a cpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+        "root.turbine.d0.s3,gpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this "
+            + "is a gpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+        "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this "
+            + "is a tpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+        "root.turbine.d1.s0,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine this "
+            + "is a test3\"},{\"H_Alarm\":\"9\",\"M_Alarm\":\"5\"}",
+        "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine"
+            + " d2 this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}",
+        "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 this"
+            + " is a test2\",\"unit\":\"kw\"},{\"MinValue\":\"44.4\",\"MaxValue\":\"99.9\"}",
+        "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine d2"
+            + " this is a test3\"},{\"MinValue\":\"5\",\"MaxValue\":\"9\"}",
+        "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a "
+            + "test1\",\"unit\":\"c\"},{\"H_Alarm\":\"1000\",\"M_Alarm\":\"500\"}",
+        "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a test2\",\""
+            + "unit\":\"w\"},{\"H_Alarm\":\"9.9\",\"M_Alarm\":\"4.4\"}",
+        "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,{\"description\":\"ln this is a test3\"},"
+            + "{\"H_Alarm\":\"90\",\"M_Alarm\":\"50\"}"
     );
 
     List<String> retArray2 = Arrays.asList(
-        "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test1,null,null,100,1,f",
-        "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test2,null,null,99.9,44.4,kw",
-        "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,turbine d2 this is a test3,null,null,9,5,null",
-        "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a tpu,99.9,44.4,null,null,cores",
-        "root.turbine.d0.s3,gpu0,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a gpu,99.9,44.4,null,null,cores",
-        "root.turbine.d0.s2,cpu,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a cpu,99.9,44.4,null,null,cores",
-        "root.turbine.d0.s1,power,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test2,99.9,44.4,null,null,kw",
-        "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test1,100,50,null,null,f",
-        "root.turbine.d1.s0,status,root.turbine,INT32,RLE,SNAPPY,turbine this is a test3,9,5,null,null,null",
-        "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,ln this is a test1,1000,500,null,null,c",
-        "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,ln this is a test2,9.9,4.4,null,null,w",
-        "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,ln this is a test3,90,50,null,null,null"
+        "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 "
+            + "this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}",
+        "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 this "
+            + "is a test2\",\"unit\":\"kw\"},{\"MinValue\":\"44.4\",\"MaxValue\":\"99.9\"}",
+        "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine d2 this "
+            + "is a test3\"},{\"MinValue\":\"5\",\"MaxValue\":\"9\"}",
+        "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a"
+            + " tpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+        "root.turbine.d0.s3,gpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a"
+            + " gpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+        "root.turbine.d0.s2,cpu,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a "
+            + "cpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+        "root.turbine.d0.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a "
+            + "test2\",\"unit\":\"kw\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+        "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine"
+            + " this is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"100\",\"M_Alarm\":\"50\"}",
+        "root.turbine.d1.s0,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine this is a "
+            + "test3\"},{\"H_Alarm\":\"9\",\"M_Alarm\":\"5\"}",
+        "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a test1\""
+            + ",\"unit\":\"c\"},{\"H_Alarm\":\"1000\",\"M_Alarm\":\"500\"}",
+        "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a test2\",\""
+            + "unit\":\"w\"},{\"H_Alarm\":\"9.9\",\"M_Alarm\":\"4.4\"}",
+        "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,{\"description\":\"ln this is a test3\"},"
+            + "{\"H_Alarm\":\"90\",\"M_Alarm\":\"50\"}"
         );
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -145,12 +170,8 @@ public class IoTDBSortedShowTimeseriesIT {
             + "," + resultSet.getString("dataType")
             + "," + resultSet.getString("encoding")
             + "," + resultSet.getString("compression")
-            + "," + resultSet.getString("description")
-            + "," + resultSet.getString("H_Alarm")
-            + "," + resultSet.getString("M_Alarm")
-            + "," + resultSet.getString("MaxValue")
-            + "," + resultSet.getString("MinValue")
-            + "," + resultSet.getString("unit");
+            + "," + resultSet.getString("tags")
+            + "," + resultSet.getString("attributes");
 
         assertTrue(retArray1.contains(ans));
         count++;
@@ -168,13 +189,8 @@ public class IoTDBSortedShowTimeseriesIT {
             + "," + resultSet.getString("dataType")
             + "," + resultSet.getString("encoding")
             + "," + resultSet.getString("compression")
-            + "," + resultSet.getString("description")
-            + "," + resultSet.getString("H_Alarm")
-            + "," + resultSet.getString("M_Alarm")
-            + "," + resultSet.getString("MaxValue")
-            + "," + resultSet.getString("MinValue")
-            + "," + resultSet.getString("unit");
-
+            + "," + resultSet.getString("tags")
+            + "," + resultSet.getString("attributes");
         System.out.println("\"" + ans + "\",");
         assertTrue(retArray2.contains(ans));
         count++;
@@ -191,11 +207,16 @@ public class IoTDBSortedShowTimeseriesIT {
   public void showTimeseriesOrderByHeatWithLimitTest() throws ClassNotFoundException {
 
     String[] retArray = new String[]{
-        "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test1,null,null,100,1,f",
-        "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test2,null,null,99.9,44.4,kw",
-        "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,turbine d2 this is a test3,null,null,9,5,null",
-        "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a tpu,99.9,44.4,null,null,cores",
-        "root.turbine.d0.s3,gpu0,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a gpu,99.9,44.4,null,null,cores",
+        "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2"
+            + " this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}",
+        "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 this "
+            + "is a test2\",\"unit\":\"kw\"},{\"MinValue\":\"44.4\",\"MaxValue\":\"99.9\"}",
+        "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine d2 this "
+            + "is a test3\"},{\"MinValue\":\"5\",\"MaxValue\":\"9\"}",
+        "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a "
+            + "tpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+        "root.turbine.d0.s3,gpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a "
+            + "gpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -214,12 +235,8 @@ public class IoTDBSortedShowTimeseriesIT {
             + "," + resultSet.getString("dataType")
             + "," + resultSet.getString("encoding")
             + "," + resultSet.getString("compression")
-            + "," + resultSet.getString("description")
-            + "," + resultSet.getString("H_Alarm")
-            + "," + resultSet.getString("M_Alarm")
-            + "," + resultSet.getString("MaxValue")
-            + "," + resultSet.getString("MinValue")
-            + "," + resultSet.getString("unit");
+            + "," + resultSet.getString("tags")
+            + "," + resultSet.getString("attributes");
 
         assertEquals(retArray[count], ans);
         count++;
@@ -236,9 +253,12 @@ public class IoTDBSortedShowTimeseriesIT {
   public void showTimeseriesOrderByHeatWithWhereTest() throws ClassNotFoundException {
 
     String[] retArray = new String[]{
-        "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a tpu,99.9,44.4,cores",
-        "root.turbine.d0.s3,gpu0,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a gpu,99.9,44.4,cores",
-        "root.turbine.d0.s2,cpu,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a cpu,99.9,44.4,cores",
+        "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a"
+            + " tpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+        "root.turbine.d0.s3,gpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a "
+            + "gpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+        "root.turbine.d0.s2,cpu,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a"
+            + " cpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -257,10 +277,8 @@ public class IoTDBSortedShowTimeseriesIT {
             + "," + resultSet.getString("dataType")
             + "," + resultSet.getString("encoding")
             + "," + resultSet.getString("compression")
-            + "," + resultSet.getString("description")
-            + "," + resultSet.getString("H_Alarm")
-            + "," + resultSet.getString("M_Alarm")
-            + "," + resultSet.getString("unit");
+            + "," + resultSet.getString("tags")
+            + "," + resultSet.getString("attributes");
 
         assertEquals(retArray[count], ans);
         count++;

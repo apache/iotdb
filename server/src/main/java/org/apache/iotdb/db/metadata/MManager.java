@@ -97,7 +97,7 @@ import org.slf4j.LoggerFactory;
 public class MManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
-  private static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
+  public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
   /**
    * A thread will check whether the MTree is modified lately each such interval. Unit: second
@@ -938,15 +938,13 @@ public class MManager {
             }
           }
           try {
-            Pair<Map<String, String>, Map<String, String>> pair =
+            Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
                 tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
-            pair.left.putAll(pair.right);
             MeasurementSchema measurementSchema = leaf.getSchema();
             res.add(new ShowTimeSeriesResult(leaf.getFullPath(), leaf.getAlias(),
-                getStorageGroupPath(leaf.getPartialPath()).getFullPath(),
-                measurementSchema.getType().toString(),
-                measurementSchema.getEncodingType().toString(),
-                measurementSchema.getCompressor().toString(), pair.left));
+                getStorageGroupPath(leaf.getPartialPath()).getFullPath(), measurementSchema.getType(),
+                measurementSchema.getEncodingType(),
+                measurementSchema.getCompressor(), tagAndAttributePair.left, tagAndAttributePair.right));
             if (limit != 0) {
               count++;
             }
@@ -1007,20 +1005,14 @@ public class MManager {
       for (Pair<PartialPath, String[]> ansString : ans) {
         long tagFileOffset = Long.parseLong(ansString.right[5]);
         try {
-          if (tagFileOffset < 0) {
-            // no tags/attributes
-            res.add(new ShowTimeSeriesResult(ansString.left.getFullPath(), ansString.right[0],
-                ansString.right[1], ansString.right[2],
-                ansString.right[3], ansString.right[4], Collections.emptyMap()));
-          } else {
-            // has tags/attributes
-            Pair<Map<String, String>, Map<String, String>> pair =
-                tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
-            pair.left.putAll(pair.right);
-            res.add(new ShowTimeSeriesResult(ansString.left.getFullPath(), ansString.right[0],
-                ansString.right[1], ansString.right[2],
-                ansString.right[3], ansString.right[4], pair.left));
+          Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
+              new Pair<>(Collections.emptyMap(),Collections.emptyMap());
+          if (tagFileOffset >= 0) {
+            tagAndAttributePair = tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
           }
+          res.add(new ShowTimeSeriesResult(ansString.left.getFullPath(), ansString.right[0], ansString.right[1],
+              TSDataType.valueOf(ansString.right[2]), TSEncoding.valueOf(ansString.right[3]),
+              CompressionType.valueOf(ansString.right[4]), tagAndAttributePair.left, tagAndAttributePair.right));
         } catch (IOException e) {
           throw new MetadataException(
               "Something went wrong while deserialize tag info of " + ansString.left.getFullPath(),

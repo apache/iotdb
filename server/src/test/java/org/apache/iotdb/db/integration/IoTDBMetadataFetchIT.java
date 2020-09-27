@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -30,6 +32,7 @@ import java.sql.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.iotdb.db.metadata.MManager.TIME_SERIES_TREE_HEADER;
 import static org.junit.Assert.fail;
 
 /**
@@ -90,20 +93,20 @@ public class IoTDBMetadataFetchIT {
           "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
       };
       String[] standards = new String[]{
-          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n",
 
-          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,\n",
 
-          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,\n",
 
-          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,\n",
 
           ""
       };
@@ -494,6 +497,14 @@ public class IoTDBMetadataFetchIT {
             + "\t}\n"
             + "}";
 
-    Assert.assertEquals(standard, metadataInJson);
+    //TODO Remove the constant json String.
+    // Do not depends on the sequence of property in json string if you do not
+    // explictly mark the sequence, when we use jackson, the json result may change again
+    String rawJsonString = metadataInJson.substring(TIME_SERIES_TREE_HEADER.length());
+    Gson gson = new Gson();
+    JsonObject actual = gson.fromJson(rawJsonString, JsonObject.class);
+    JsonObject expected = gson.fromJson(standard.substring(TIME_SERIES_TREE_HEADER.length()), JsonObject.class);
+
+    Assert.assertEquals(expected, actual);
   }
 }
