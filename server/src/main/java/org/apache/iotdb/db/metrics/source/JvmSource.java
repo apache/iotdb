@@ -26,7 +26,7 @@ import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 
 public class JvmSource implements Source {
 
-  public String SOURCE_NAME = "jvm";
+  public final static String SOURCE_NAME = "jvm";
   public MetricRegistry metricRegistry;
 
   public JvmSource(MetricRegistry metricRegistry) {
