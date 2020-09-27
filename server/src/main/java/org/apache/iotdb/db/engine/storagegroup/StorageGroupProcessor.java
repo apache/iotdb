@@ -626,14 +626,20 @@ public class StorageGroupProcessor {
       // init map
       long timePartitionId = StorageEngine.getTimePartition(insertRowPlan.getTime());
 
-      latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
       partitionLatestFlushedTimeForEachDevice
           .computeIfAbsent(timePartitionId, id -> new HashMap<>());
 
+      boolean isSequence = insertRowPlan.getTime() > partitionLatestFlushedTimeForEachDevice.get(timePartitionId)
+          .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+
+      //is unsequence and user set config to discard out of order data
+      if (!isSequence && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+        return;
+      }
+
+      latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
       // insert to sequence or unSequence file
-      insertToTsFileProcessor(insertRowPlan,
-          insertRowPlan.getTime() > partitionLatestFlushedTimeForEachDevice.get(timePartitionId)
-              .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE));
+      insertToTsFileProcessor(insertRowPlan, isSequence);
 
     } finally {
       writeUnlock();
@@ -690,9 +696,11 @@ public class StorageGroupProcessor {
         // start next partition
         if (curTimePartition != beforeTimePartition) {
           // insert last time partition
-          noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
-              results,
-              beforeTimePartition) && noFailure;
+          if (isSequence || !IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+            noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
+                results,
+                beforeTimePartition) && noFailure;
+          }
           // re initialize
           before = loc;
           beforeTimePartition = curTimePartition;
@@ -706,8 +714,11 @@ public class StorageGroupProcessor {
           // judge if we should insert sequence
           if (!isSequence && time > lastFlushTime) {
             // insert into unsequence and then start sequence
-            noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, false, results,
-                beforeTimePartition) && noFailure;
+            if (!IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+              noFailure =
+                  insertTabletToTsFileProcessor(insertTabletPlan, before, loc, false, results,
+                      beforeTimePartition) && noFailure;
+            }
             before = loc;
             isSequence = true;
           }
@@ -717,8 +728,10 @@ public class StorageGroupProcessor {
 
       // do not forget last part
       if (before < loc) {
-        noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
-            results, beforeTimePartition) && noFailure;
+        if (isSequence || !IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+          noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
+              results, beforeTimePartition) && noFailure;
+        }
       }
       long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
           insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
