@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBDataSource implements DataSource {
 
-    private final Logger logger = LoggerFactory.getLogger(IoTDBDataSource.class);
     private static final String PASSWORD = "password";
     private String url;
     private String user;

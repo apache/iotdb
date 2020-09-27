@@ -75,7 +75,6 @@ public class DatabaseConnectController {
   @RequestMapping(value = "/search")
   @ResponseBody
   public String metricFindQuery(HttpServletRequest request, HttpServletResponse response) {
-    Map<Integer, String> target = new HashMap<>();
     JSONObject jsonObject = new JSONObject();
     response.setStatus(200);
     List<String> columnsName = new ArrayList<>();

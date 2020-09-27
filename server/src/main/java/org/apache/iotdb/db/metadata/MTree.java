@@ -896,8 +896,8 @@ public class MTree implements Serializable {
           continue;
         }
         findPath(child, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast, queryContext);
-        if (hasLimit) {
-          if (count.get().intValue() == limit.get().intValue()) {
+        if (hasLimit && count.get().intValue() == limit.get().intValue()) {
+           {
             return;
           }
         }

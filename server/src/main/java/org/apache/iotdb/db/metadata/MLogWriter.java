@@ -133,8 +133,8 @@ public class MLogWriter {
     }
 
     // if both old mlog and mlog.tmp exist, delete mlog tmp, then do upgrading
-    if (tmpLogFile.exists()) {
-      if (!tmpLogFile.delete()) {
+    if (tmpLogFile.exists() && !tmpLogFile.delete()) {
+      {
         throw new IOException("Deleting " + tmpLogFile + "failed.");
       }
     }

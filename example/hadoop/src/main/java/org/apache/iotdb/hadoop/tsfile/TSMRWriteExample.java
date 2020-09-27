@@ -77,7 +77,6 @@ public class TSMRWriteExample {
     }
     TSFOutputFormat.setSchema(schema);
 
-    String HDFSURL = args[0];
     Path inputPath = new Path(args[1]);
     Path outputPath = new Path(args[2]);
 
@@ -138,8 +137,6 @@ public class TSMRWriteExample {
   }
 
   public static class TSMapper extends Mapper<NullWritable, MapWritable, Text, MapWritable> {
-
-    private static final Logger logger = LoggerFactory.getLogger(TSMapper.class);
 
     @Override
     protected void map(NullWritable key, MapWritable value,
