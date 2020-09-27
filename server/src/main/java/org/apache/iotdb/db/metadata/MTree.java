@@ -85,7 +85,7 @@ public class MTree implements Serializable {
 
   private static final long serialVersionUID = -4200394435237291964L;
   private static final Logger logger = LoggerFactory.getLogger(MTree.class);
-  private static final String NO_CHILDNODE_MSG= " does not have the child node ";
+  private static final String NO_CHILDNODE_MSG = " does not have the child node ";
 
   private MNode root;
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
