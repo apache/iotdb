@@ -41,7 +41,7 @@ public class SyncDataClient extends Client {
   Node node;
   SyncClientPool pool;
 
-  SyncDataClient(TProtocol prot) {
+  public SyncDataClient(TProtocol prot) {
     super(prot);
   }
 

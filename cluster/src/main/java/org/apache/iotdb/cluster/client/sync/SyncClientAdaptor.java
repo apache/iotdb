@@ -118,7 +118,7 @@ public class SyncClientAdaptor {
 
     client.querySingleSeriesByTimestamp(request, handler);
     synchronized (result) {
-      if (result.get() == null) {
+      if (result.get() == null && handler.getException() == null) {
         result.wait(RaftServer.getReadOperationTimeoutMS());
       }
     }
@@ -141,7 +141,7 @@ public class SyncClientAdaptor {
 
     client.querySingleSeries(request, handler);
     synchronized (result) {
-      if (result.get() == null) {
+      if (result.get() == null && handler.getException() == null) {
         result.wait(RaftServer.getReadOperationTimeoutMS());
       }
     }
@@ -212,6 +212,9 @@ public class SyncClientAdaptor {
         resultRef.wait(RaftServer.getReadOperationTimeoutMS());
       }
     }
+    if (handler.getException() != null) {
+      throw new TException(handler.getException());
+    }
     return resultRef.get();
   }
 
@@ -225,6 +228,9 @@ public class SyncClientAdaptor {
       if (resultRef.get() == null) {
         resultRef.wait(RaftServer.getReadOperationTimeoutMS());
       }
+    }
+    if (handler.getException() != null) {
+      throw new TException(handler.getException());
     }
     return resultRef.get();
   }
@@ -288,6 +294,9 @@ public class SyncClientAdaptor {
         resultReference.wait(RaftServer.getReadOperationTimeoutMS());
       }
     }
+    if (handler.getException() != null) {
+      throw new TException(handler.getException());
+    }
     return resultReference.get();
   }
 
@@ -298,9 +307,12 @@ public class SyncClientAdaptor {
 
     client.getUnregisteredTimeseries(header, seriesPaths, handler);
     synchronized (remoteResult) {
-      if (remoteResult.get() == null) {
+      if (remoteResult.get() == null && handler.getException() == null) {
         remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
       }
+    }
+    if (handler.getException() != null) {
+      throw new TException(handler.getException());
     }
     return remoteResult.get();
   }
@@ -313,9 +325,12 @@ public class SyncClientAdaptor {
 
     client.getAllPaths(header, pathsToQuery, handler);
     synchronized (remoteResult) {
-      if (remoteResult.get() == null) {
+      if (remoteResult.get() == null && handler.getException() == null) {
         remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
       }
+    }
+    if (handler.getException() != null) {
+      throw new TException(handler.getException());
     }
     return remoteResult.get();
   }
@@ -328,9 +343,12 @@ public class SyncClientAdaptor {
 
     client.getPathCount(header, pathsToQuery, level, handler);
     synchronized (remoteResult) {
-      if (remoteResult.get() == null) {
+      if (remoteResult.get() == null && handler.getException() == null) {
         remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
       }
+    }
+    if (handler.getException() != null) {
+      throw new TException(handler.getException());
     }
     return remoteResult.get();
   }
@@ -343,9 +361,12 @@ public class SyncClientAdaptor {
 
     client.getAllDevices(header, pathsToQuery, handler);
     synchronized (remoteResult) {
-      if (remoteResult.get() == null) {
+      if (remoteResult.get() == null && handler.getException() == null) {
         remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
       }
+    }
+    if (handler.getException() != null) {
+      throw new TException(handler.getException());
     }
     return remoteResult.get();
   }
@@ -357,9 +378,12 @@ public class SyncClientAdaptor {
 
     client.getGroupByExecutor(request, handler);
     synchronized (result) {
-      if (result.get() == null) {
+      if (result.get() == null && handler.getException() == null) {
         result.wait(RaftServer.getReadOperationTimeoutMS());
       }
+    }
+    if (handler.getException() != null) {
+      throw new TException(handler.getException());
     }
     return result.get();
   }
@@ -404,9 +428,12 @@ public class SyncClientAdaptor {
 
     client.readFile(remotePath, offset, fetchSize, handler);
     synchronized (result) {
-      if (result.get() == null) {
+      if (result.get() == null && handler.getException() == null) {
         result.wait(RaftServer.getWriteOperationTimeoutMS());
       }
+    }
+    if (handler.getException() != null) {
+      throw new TException(handler.getException());
     }
     return result.get();
   }
@@ -419,9 +446,12 @@ public class SyncClientAdaptor {
 
     client.getGroupByResult(header, executorId, curStartTime, curEndTime, handler);
     synchronized (fetchResult) {
-      if (fetchResult.get() == null) {
+      if (fetchResult.get() == null && handler.getException() == null) {
         fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
       }
+    }
+    if (handler.getException() != null) {
+      throw new TException(handler.getException());
     }
     return fetchResult.get();
   }
@@ -434,7 +464,7 @@ public class SyncClientAdaptor {
 
     client.peekNextNotNullValue(header, executorId, curStartTime, curEndTime, handler);
     synchronized (fetchResult) {
-      if (fetchResult.get() == null) {
+      if (fetchResult.get() == null && handler.getException() == null) {
         fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
       }
     }
@@ -466,7 +496,7 @@ public class SyncClientAdaptor {
 
     client.last(request, handler);
     synchronized (result) {
-      if (result.get() == null) {
+      if (result.get() == null && handler.getException() == null) {
         result.wait(RaftServer.getReadOperationTimeoutMS());
       }
     }
@@ -480,7 +510,7 @@ public class SyncClientAdaptor {
 
     client.onSnapshotApplied(header, slots, handler);
     synchronized (result) {
-      if (result.get() == null) {
+      if (result.get() == null && handler.getException() == null) {
         result.wait(RaftServer.getWriteOperationTimeoutMS());
       }
     }

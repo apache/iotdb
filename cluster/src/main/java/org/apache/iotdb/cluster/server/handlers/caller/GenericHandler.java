@@ -37,6 +37,7 @@ public class GenericHandler<T> implements AsyncMethodCallback<T> {
 
   private Node source;
   private AtomicReference<T> result;
+  private Exception e;
 
   public GenericHandler(Node source, AtomicReference<T> result) {
     this.source = source;
@@ -59,7 +60,12 @@ public class GenericHandler<T> implements AsyncMethodCallback<T> {
     if (result != null) {
       synchronized (result) {
         result.notifyAll();
+        e = exception;
       }
     }
+  }
+
+  public Exception getException() {
+    return e;
   }
 }

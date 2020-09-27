@@ -7,20 +7,22 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
@@ -38,7 +40,10 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.transport.TTransport;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,7 +51,9 @@ import org.junit.Test;
 public class FileSnapshotTest {
 
   private DataGroupMember dataGroupMember;
-  private MetaGroupMember metaGroupMember;
+  private final int failureFrequency = 10;
+  private int failureCnt;
+  private boolean addNetFailure = false;
 
   @Before
   public void setUp() throws MetadataException, StartupException {
@@ -57,16 +64,67 @@ public class FileSnapshotTest {
           @Override
           public void readFile(String filePath, long offset, int length,
               AsyncMethodCallback<ByteBuffer> resultHandler) {
+            new Thread(() -> {
+              if (addNetFailure && (failureCnt ++) % failureFrequency == 0) {
+                // insert 1 failure in every 10 requests
+                resultHandler.onError(new Exception("Faked network failure"));
+                return;
+              }
+              try {
+                resultHandler.onComplete(IOUtils.readFile(filePath, offset, length));
+              } catch (IOException e) {
+                resultHandler.onError(e);
+              }
+            }).start();
+          }
+        };
+      }
+
+      @Override
+      public Client getSyncClient(Node node) {
+        return new SyncDataClient(new TBinaryProtocol(new TTransport() {
+          @Override
+          public boolean isOpen() {
+            return false;
+          }
+
+          @Override
+          public void open() {
+
+          }
+
+          @Override
+          public void close() {
+
+          }
+
+          @Override
+          public int read(byte[] bytes, int i, int i1) {
+            return 0;
+          }
+
+          @Override
+          public void write(byte[] bytes, int i, int i1) {
+
+          }
+        })) {
+          @Override
+          public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
+            if (addNetFailure && (failureCnt ++) % failureFrequency == 0) {
+              // simulate failures
+              throw new TException("Faked network failure");
+            }
             try {
-              resultHandler.onComplete(IOUtils.readFile(filePath, offset, length));
+              return IOUtils.readFile(filePath, offset, length);
             } catch (IOException e) {
-              resultHandler.onError(e);
+              throw new TException(e);
             }
           }
         };
       }
     };
-    metaGroupMember = new TestMetaGroupMember() {
+    // do nothing
+    MetaGroupMember metaGroupMember = new TestMetaGroupMember() {
       @Override
       public void syncLeaderWithConsistencyCheck() {
         // do nothing
@@ -77,6 +135,7 @@ public class FileSnapshotTest {
     for (int i = 0; i < 10; i++) {
       IoTDB.metaManager.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
     }
+    addNetFailure = false;
   }
 
   @After
@@ -113,6 +172,20 @@ public class FileSnapshotTest {
   @Test
   public void testInstallSingle()
       throws IOException, SnapshotInstallationException, IllegalPathException, StorageEngineException, WriteProcessException {
+    testInstallSingle(false);
+  }
+
+  @Test
+  public void testInstallSingleWithFailure()
+      throws IOException, SnapshotInstallationException, IllegalPathException, StorageEngineException, WriteProcessException {
+    testInstallSingle(true);
+  }
+
+
+  public void testInstallSingle(boolean addNetFailure)
+      throws IOException, SnapshotInstallationException, IllegalPathException, StorageEngineException, WriteProcessException {
+    this.addNetFailure = addNetFailure;
+
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
     List<TsFileResource> tsFileResources = TestUtils.prepareTsFileResources(0, 10, 10, 10, true);
@@ -145,6 +218,51 @@ public class FileSnapshotTest {
     for (TsFileResource tsFileResource : tsFileResources) {
       // source files should be deleted after being pulled
       assertFalse(tsFileResource.getTsFile().exists());
+    }
+  }
+
+  @Test
+  public void testInstallSync()
+      throws IOException, SnapshotInstallationException, IllegalPathException, StorageEngineException, WriteProcessException {
+    boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(false);
+
+    try {
+      FileSnapshot snapshot = new FileSnapshot();
+      List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
+      List<TsFileResource> tsFileResources = TestUtils.prepareTsFileResources(0, 10, 10, 10, true);
+      for (int i = 0; i < 10; i++) {
+        snapshot.addFile(tsFileResources.get(i), TestUtils.getNode(i));
+        timeseriesSchemas.add(TestUtils.getTestTimeSeriesSchema(0, i));
+      }
+      snapshot.setTimeseriesSchemas(timeseriesSchemas);
+
+      SnapshotInstaller<FileSnapshot> defaultInstaller = snapshot
+          .getDefaultInstaller(dataGroupMember);
+      dataGroupMember.getSlotManager().setToPulling(0, TestUtils.getNode(0));
+      defaultInstaller.install(snapshot, 0);
+      // after installation, the slot should be available again
+      assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
+
+      for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
+        assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
+      }
+      StorageGroupProcessor processor = StorageEngine.getInstance()
+          .getProcessor(new PartialPath(TestUtils.getTestSg(0)));
+      assertEquals(9, processor.getPartitionMaxFileVersions(0));
+      List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
+      assertEquals(tsFileResources.size(), loadedFiles.size());
+      for (int i = 0; i < 9; i++) {
+        assertEquals(i, loadedFiles.get(i).getMaxVersion());
+      }
+      assertEquals(0, processor.getUnSequenceFileList().size());
+
+      for (TsFileResource tsFileResource : tsFileResources) {
+        // source files should be deleted after being pulled
+        assertFalse(tsFileResource.getTsFile().exists());
+      }
+    } finally {
+      ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
     }
   }
 
