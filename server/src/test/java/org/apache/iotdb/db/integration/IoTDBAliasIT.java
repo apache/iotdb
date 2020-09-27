@@ -292,11 +292,11 @@ public class IoTDBAliasIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression");
+              + "," + resultSet.getString("alias")
+              + "," + resultSet.getString("storage group")
+              + "," + resultSet.getString("dataType")
+              + "," + resultSet.getString("encoding")
+              + "," + resultSet.getString("compression");
           assertEquals(ret, ans);
         }
       }
@@ -319,6 +319,29 @@ public class IoTDBAliasIT {
             builder.append(resultSet.getString(i)).append(",");
           }
           assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResult = statement.execute("select powerNew from root.sg.d2 order by time desc ");
+      assertTrue(hasResult);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        assertEquals("Time,root.sg.d2.powerNew,", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          assertEquals(retArray[retArray.length - cnt - 1], builder.toString());
           cnt++;
         }
         assertEquals(retArray.length, cnt);

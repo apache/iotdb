@@ -242,6 +242,52 @@ public class IoTDBAlignByDeviceIT {
         }
         Assert.assertEquals(14, cnt);
       }
+
+      String[] retArray2 = new String[]{
+          "946684800000,root.vehicle.d0,null,null,100,",
+          "1000,root.vehicle.d0,22222,22222,55555,",
+          "106,root.vehicle.d0,99,99,null,",
+          "105,root.vehicle.d0,99,99,199,",
+          "104,root.vehicle.d0,90,90,190,",
+          "103,root.vehicle.d0,99,99,199,",
+          "102,root.vehicle.d0,80,80,180,",
+          "101,root.vehicle.d0,99,99,199,",
+          "100,root.vehicle.d0,99,99,199,",
+          "50,root.vehicle.d0,10000,10000,50000,",
+          "2,root.vehicle.d0,10000,10000,40000,",
+          "1,root.vehicle.d0,101,101,1101,",
+          "1000,root.vehicle.d1,888,888,null,",
+          "1,root.vehicle.d1,999,999,null,",
+      };
+
+      hasResultSet = statement.execute(
+          "select s0,s0,s1 from root.vehicle.d0, root.vehicle.d1 order by time desc align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,s0,s0,s1,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(5));
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray2[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(14, cnt);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -404,6 +450,37 @@ public class IoTDBAlignByDeviceIT {
         }
         Assert.assertEquals(6, cnt);
       }
+
+      hasResultSet = statement.execute(
+          "select * from root.vehicle.d0 where s0 > 0 AND s1 < 200 order by time desc align by device ");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,s0,s1,s2,s3,s4,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(7));
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[retArray.length - cnt - 1], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(6, cnt);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -500,6 +577,47 @@ public class IoTDBAlignByDeviceIT {
             builder.append(resultSet.getString(i)).append(",");
           }
           Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(6, cnt);
+      }
+
+      String[] retArray2 = new String[]{
+          "42,root.vehicle.d0,0,0,0,0,0,",
+          "22,root.vehicle.d0,0,0,0,0,0,",
+          "2,root.vehicle.d0,1,1,3,0,0,",
+          "42,root.vehicle.d1,0,null,null,null,null,",
+          "22,root.vehicle.d1,0,null,null,null,null,",
+          "2,root.vehicle.d1,0,null,null,null,null,",
+      };
+
+      hasResultSet = statement.execute(
+          "select count(*) from root.vehicle GROUP BY ([2,50),20ms) order by time desc align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,count(s0),count(s1),count(s2),count(s3),count(s4),",
+            header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(6));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(7));
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray2[cnt], builder.toString());
           cnt++;
         }
         Assert.assertEquals(6, cnt);
@@ -881,7 +999,6 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
         Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(9));
 
-
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
@@ -889,6 +1006,41 @@ public class IoTDBAlignByDeviceIT {
             builder.append(resultSet.getString(i)).append(",");
           }
           Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(17, cnt);
+      }
+
+      hasResultSet = statement.execute(
+          "select s0, s1,'11', s2, '22', s3, s4 from root.vehicle.d0 order by time desc align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("Time,Device,s0,s1,'11',s2,'22',s3,s4,", header.toString());
+        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
+        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(5));
+        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(6));
+        // constant column
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(7));
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
+        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(9));
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[retArray.length - cnt - 1], builder.toString());
           cnt++;
         }
         Assert.assertEquals(17, cnt);
@@ -951,7 +1103,6 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(9));
         Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(10));
-
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -1026,7 +1177,6 @@ public class IoTDBAlignByDeviceIT {
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(10));
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(11));
         Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(12));
-
 
         int cnt = 0;
         while (resultSet.next()) {
