@@ -92,13 +92,6 @@ public class ChunkMetadataCacheTest {
     record.addTuple(DataPoint.getDataPoint(TSDataType.DOUBLE, measurementId3, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.BOOLEAN, measurementId4, "True"));
     InsertRowPlan insertRowPlan = new InsertRowPlan(record);
-    MNode mNode = new MNode(null, storageGroup);
-    mNode.addChild(measurementId0, new MeasurementMNode(null, null, null, null));
-    mNode.addChild(measurementId1, new MeasurementMNode(null, null, null, null));
-    mNode.addChild(measurementId2, new MeasurementMNode(null, null, null, null));
-    mNode.addChild(measurementId3, new MeasurementMNode(null, null, null, null));
-    mNode.addChild(measurementId4, new MeasurementMNode(null, null, null, null));
-    insertRowPlan.setDeviceMNode(mNode);
     storageGroupProcessor.insert(insertRowPlan);
   }
 

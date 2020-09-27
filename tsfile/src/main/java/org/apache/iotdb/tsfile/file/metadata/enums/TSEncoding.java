@@ -25,11 +25,46 @@ public enum TSEncoding {
   /**
    * judge the encoding deserialize type.
    *
-   * @param i -use to determine encoding type
+   * @param encoding -use to determine encoding type
    * @return -encoding type
    */
-  public static TSEncoding deserialize(short i) {
-    switch (i) {
+  public static TSEncoding deserialize(short encoding) {
+    if (encoding >= 8) {
+      throw new IllegalArgumentException("Invalid input: " + encoding);
+    }
+    switch (encoding) {
+      case 0:
+        return PLAIN;
+      case 1:
+        return PLAIN_DICTIONARY;
+      case 2:
+        return RLE;
+      case 3:
+        return DIFF;
+      case 4:
+        return TS_2DIFF;
+      case 5:
+        return BITMAP;
+      case 6:
+        return GORILLA;
+      case 7:
+        return REGULAR;
+      default:
+        return PLAIN;
+    }
+  }
+
+  /**
+   * give an byte to return a encoding type.
+   *
+   * @param encoding byte number
+   * @return encoding type
+   */
+  public static TSEncoding byteToEnum(byte encoding) {
+    if (encoding >= 8) {
+      throw new IllegalArgumentException("Invalid input: " + encoding);
+    }
+    switch (encoding) {
       case 0:
         return PLAIN;
       case 1:
@@ -61,6 +96,32 @@ public enum TSEncoding {
    * @return -encoding type
    */
   public short serialize() {
+    switch (this) {
+      case PLAIN:
+        return 0;
+      case PLAIN_DICTIONARY:
+        return 1;
+      case RLE:
+        return 2;
+      case DIFF:
+        return 3;
+      case TS_2DIFF:
+        return 4;
+      case BITMAP:
+        return 5;
+      case GORILLA:
+        return 6;
+      case REGULAR:
+        return 7;
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * @return byte number
+   */
+  public byte enumToByte() {
     switch (this) {
       case PLAIN:
         return 0;

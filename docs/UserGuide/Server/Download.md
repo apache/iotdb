@@ -57,7 +57,7 @@ Under the root path of incubator-iotdb:
 > mvn clean package -DskipTests
 ```
 
-Then the binary version (including both server and client) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
+Then the binary version (including both server and client) can be found at **distribution/target/apache-iotdb-{project.version}-bin.zip**
 
 > NOTE: Directories "thrift/target/generated-sources/thrift" and "antlr/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in IDE.
 

@@ -83,11 +83,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
    */
   public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding,
       CompressionType compressionType, Map<String, String> props) {
-    this.type = (byte) type.serialize();
+    this.type = type.enumToByte();
     this.measurementId = measurementId;
-    this.encoding = (byte) encoding.serialize();
+    this.encoding = encoding.enumToByte();
     this.props = props;
-    this.compressor = (byte) compressionType.serialize();
+    this.compressor = compressionType.enumToByte();
   }
 
   /**
@@ -98,12 +98,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     measurementSchema.measurementId = ReadWriteIOUtils.readString(inputStream);
 
-    measurementSchema.type = (byte) ReadWriteIOUtils.readDataType(inputStream).serialize();
+    measurementSchema.type = ReadWriteIOUtils.readDataType(inputStream).enumToByte();
 
-    measurementSchema.encoding = (byte) ReadWriteIOUtils.readEncoding(inputStream).serialize();
+    measurementSchema.encoding = ReadWriteIOUtils.readEncoding(inputStream).enumToByte();
 
-    measurementSchema.compressor = (byte) ReadWriteIOUtils.readCompressionType(inputStream)
-        .serialize();
+    measurementSchema.compressor = ReadWriteIOUtils.readCompressionType(inputStream).enumToByte();
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     if (size > 0) {
@@ -128,11 +127,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     measurementSchema.measurementId = ReadWriteIOUtils.readString(buffer);
 
-    measurementSchema.type = (byte) ReadWriteIOUtils.readDataType(buffer).serialize();
+    measurementSchema.type = ReadWriteIOUtils.readDataType(buffer).enumToByte();
 
-    measurementSchema.encoding = (byte) ReadWriteIOUtils.readEncoding(buffer).serialize();
+    measurementSchema.encoding = ReadWriteIOUtils.readEncoding(buffer).enumToByte();
 
-    measurementSchema.compressor = (byte) ReadWriteIOUtils.readCompressionType(buffer).serialize();
+    measurementSchema.compressor = ReadWriteIOUtils.readCompressionType(buffer).enumToByte();
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
@@ -162,11 +161,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   }
 
   public TSEncoding getEncodingType() {
-    return TSEncoding.deserialize(encoding);
+    return TSEncoding.byteToEnum(encoding);
   }
 
   public TSDataType getType() {
-    return TSDataType.deserialize(type);
+    return TSDataType.byteToEnum(type);
   }
 
   public void setProps(Map<String, String> props) {
@@ -200,7 +199,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   }
 
   public CompressionType getCompressor() {
-    return CompressionType.deserialize(compressor);
+    return CompressionType.byteToEnum(compressor);
   }
 
   /**
@@ -211,11 +210,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
 
-    byteLen += ReadWriteIOUtils.write(type, outputStream);
+    byteLen += ReadWriteIOUtils.write(TSDataType.byteToEnum(type), outputStream);
 
-    byteLen += ReadWriteIOUtils.write(encoding, outputStream);
+    byteLen += ReadWriteIOUtils.write(TSEncoding.byteToEnum(encoding), outputStream);
 
-    byteLen += ReadWriteIOUtils.write(compressor, outputStream);
+    byteLen += ReadWriteIOUtils.write(CompressionType.byteToEnum(compressor), outputStream);
 
     if (props == null) {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
@@ -238,11 +237,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     byteLen += ReadWriteIOUtils.write(measurementId, buffer);
 
-    byteLen += ReadWriteIOUtils.write(type, buffer);
+    byteLen += ReadWriteIOUtils.write(TSDataType.byteToEnum(type), buffer);
 
-    byteLen += ReadWriteIOUtils.write(encoding, buffer);
+    byteLen += ReadWriteIOUtils.write(TSEncoding.byteToEnum(encoding), buffer);
 
-    byteLen += ReadWriteIOUtils.write(compressor, buffer);
+    byteLen += ReadWriteIOUtils.write(CompressionType.byteToEnum(compressor), buffer);
 
     if (props == null) {
       byteLen += ReadWriteIOUtils.write(0, buffer);
