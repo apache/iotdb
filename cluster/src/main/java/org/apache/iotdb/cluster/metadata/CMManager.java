@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.cluster.metadata;
 
+import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.LOG_FAIL_CONNECT;
+import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.THREAD_POOL_SIZE;
+import static org.apache.iotdb.cluster.query.ClusterPlanExecutor.waitForThreadPool;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
@@ -28,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -35,6 +41,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -50,6 +58,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
@@ -70,6 +79,9 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -1113,5 +1125,140 @@ public class CMManager extends MManager {
       child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurement));
     }
     return child;
+  }
+
+  @Override
+  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
+      throws MetadataException {
+    ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
+    ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
+    List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+
+    int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();
+    int offset = plan.getOffset();
+    // do not use limit and offset in sub-queries unless offset is 0, otherwise the results are
+    // not combinable
+    if (offset != 0) {
+      plan.setLimit(0);
+      plan.setOffset(0);
+    }
+
+    if (logger.isDebugEnabled()) {
+      logger.debug("Fetch timeseries schemas of {} from {} groups", plan.getPath(),
+          globalGroups.size());
+    }
+
+    List<Future<Void>> futureList = new ArrayList<>();
+    for (PartitionGroup group : globalGroups) {
+      futureList.add(pool.submit(() -> {
+        try {
+          showTimeseries(group, plan, resultSet, context);
+        } catch (CheckConsistencyException e) {
+          logger.error("Cannot get show timeseries result of {} from {}", plan, group);
+        }
+        return null;
+      }));
+    }
+
+    waitForThreadPool(futureList, pool);
+    List<ShowTimeSeriesResult> showTimeSeriesResults = applyShowTimeseriesLimitOffset(resultSet,
+        limit, offset);
+    logger.debug("Show {} has {} results", plan.getPath(), showTimeSeriesResults.size());
+    return showTimeSeriesResults;
+  }
+
+  private List<ShowTimeSeriesResult> applyShowTimeseriesLimitOffset(
+      ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet,
+      int limit, int offset) {
+    List<ShowTimeSeriesResult> showTimeSeriesResults = new ArrayList<>();
+    Iterator<ShowTimeSeriesResult> iterator = resultSet.iterator();
+    while (iterator.hasNext() && limit > 0) {
+      if (offset > 0) {
+        offset--;
+        iterator.next();
+      } else {
+        limit--;
+        showTimeSeriesResults.add(iterator.next());
+      }
+    }
+
+    return showTimeSeriesResults;
+  }
+
+  private void showTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
+      Set<ShowTimeSeriesResult> resultSet, QueryContext context) throws CheckConsistencyException {
+    if (group.contains(metaGroupMember.getThisNode())) {
+      showLocalTimeseries(group, plan, resultSet, context);
+    } else {
+      showRemoteTimeseries(group, plan, resultSet);
+    }
+  }
+
+  private void showLocalTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
+      Set<ShowTimeSeriesResult> resultSet, QueryContext context) throws CheckConsistencyException {
+    Node header = group.getHeader();
+    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    localDataMember.syncLeaderWithConsistencyCheck();
+    try {
+      List<ShowTimeSeriesResult> localResult = IoTDB.metaManager.showTimeseries(plan, context);
+      resultSet.addAll(localResult);
+      logger.debug("Fetched {} schemas of {} from {}", localResult.size(), plan.getPath(), group);
+    } catch (MetadataException e) {
+      logger
+          .error("Cannot execute show timeseries plan  {} from {} locally.", plan, group);
+    }
+  }
+
+  private void showRemoteTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
+      Set<ShowTimeSeriesResult> resultSet) {
+    ByteBuffer resultBinary = null;
+    for (Node node : group) {
+      try {
+        resultBinary = showRemoteTimeseries(node, group, plan);
+
+        if (resultBinary != null) {
+          break;
+        }
+      } catch (IOException e) {
+        logger.error(LOG_FAIL_CONNECT, node, e);
+      } catch (TException e) {
+        logger.error("Error occurs when getting timeseries schemas in node {}.", node, e);
+      } catch (InterruptedException e) {
+        logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
+        Thread.currentThread().interrupt();
+      }
+    }
+
+    if (resultBinary != null) {
+      int size = resultBinary.getInt();
+      logger.debug("Fetched {} schemas of {} from {}", size, plan.getPath(), group);
+      for (int i = 0; i < size; i++) {
+        resultSet.add(ShowTimeSeriesResult.deserialize(resultBinary));
+      }
+    } else {
+      logger.error("Failed to execute show timeseries {} in group: {}.", plan, group);
+    }
+  }
+
+  private ByteBuffer showRemoteTimeseries(Node node, PartitionGroup group, ShowTimeSeriesPlan plan)
+      throws IOException, TException, InterruptedException {
+    ByteBuffer resultBinary;
+
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncDataClient client = metaGroupMember
+          .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(),
+          plan);
+    } else {
+      SyncDataClient syncDataClient = metaGroupMember
+          .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+      plan.serialize(dataOutputStream);
+      resultBinary = syncDataClient.getAllMeasurementSchema(group.getHeader(),
+          ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      ClientUtils.putBackSyncClient(syncDataClient);
+    }
+    return resultBinary;
   }
 }

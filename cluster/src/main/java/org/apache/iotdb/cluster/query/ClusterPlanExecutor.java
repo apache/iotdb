@@ -90,8 +90,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private static final Logger logger = LoggerFactory.getLogger(ClusterPlanExecutor.class);
   private MetaGroupMember metaGroupMember;
 
-  private static final int THREAD_POOL_SIZE = 6;
-  private static final String LOG_FAIL_CONNECT = "Failed to connect to node: {}";
+  public static final int THREAD_POOL_SIZE = 6;
+  public static final String LOG_FAIL_CONNECT = "Failed to connect to node: {}";
 
   public ClusterPlanExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
     super();
@@ -488,141 +488,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
       }
     }
     return nextChildren;
-  }
-
-  @Override
-  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
-      throws MetadataException {
-    ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
-    ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
-    List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
-
-    int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();
-    int offset = plan.getOffset();
-    // do not use limit and offset in sub-queries unless offset is 0, otherwise the results are
-    // not combinable
-    if (offset != 0) {
-      plan.setLimit(0);
-      plan.setOffset(0);
-    }
-
-    if (logger.isDebugEnabled()) {
-      logger.debug("Fetch timeseries schemas of {} from {} groups", plan.getPath(),
-          globalGroups.size());
-    }
-
-    List<Future<Void>> futureList = new ArrayList<>();
-    for (PartitionGroup group : globalGroups) {
-      futureList.add(pool.submit(() -> {
-        try {
-          showTimeseries(group, plan, resultSet, context);
-        } catch (CheckConsistencyException e) {
-          logger.error("Cannot get show timeseries result of {} from {}", plan, group);
-        }
-        return null;
-      }));
-    }
-
-    waitForThreadPool(futureList, pool);
-    List<ShowTimeSeriesResult> showTimeSeriesResults = applyShowTimeseriesLimitOffset(resultSet,
-        limit, offset);
-    logger.debug("Show {} has {} results", plan.getPath(), showTimeSeriesResults.size());
-    return showTimeSeriesResults;
-  }
-
-  private List<ShowTimeSeriesResult> applyShowTimeseriesLimitOffset(
-      ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet,
-      int limit, int offset) {
-    List<ShowTimeSeriesResult> showTimeSeriesResults = new ArrayList<>();
-    Iterator<ShowTimeSeriesResult> iterator = resultSet.iterator();
-    while (iterator.hasNext() && limit > 0) {
-      if (offset > 0) {
-        offset--;
-        iterator.next();
-      } else {
-        limit--;
-        showTimeSeriesResults.add(iterator.next());
-      }
-    }
-
-    return showTimeSeriesResults;
-  }
-
-  private void showTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet, QueryContext context) throws CheckConsistencyException {
-    if (group.contains(metaGroupMember.getThisNode())) {
-      showLocalTimeseries(group, plan, resultSet, context);
-    } else {
-      showRemoteTimeseries(group, plan, resultSet);
-    }
-  }
-
-  private void showLocalTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet, QueryContext context) throws CheckConsistencyException {
-    Node header = group.getHeader();
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
-    localDataMember.syncLeaderWithConsistencyCheck();
-    try {
-      List<ShowTimeSeriesResult> localResult = IoTDB.metaManager.showTimeseries(plan, context);
-      resultSet.addAll(localResult);
-      logger.debug("Fetched {} schemas of {} from {}", localResult.size(), plan.getPath(), group);
-    } catch (MetadataException e) {
-      logger
-          .error("Cannot execute show timeseries plan  {} from {} locally.", plan, group);
-    }
-  }
-
-  private void showRemoteTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet) {
-    ByteBuffer resultBinary = null;
-    for (Node node : group) {
-      try {
-        resultBinary = showRemoteTimeseries(node, group, plan);
-
-        if (resultBinary != null) {
-          break;
-        }
-      } catch (IOException e) {
-        logger.error(LOG_FAIL_CONNECT, node, e);
-      } catch (TException e) {
-        logger.error("Error occurs when getting timeseries schemas in node {}.", node, e);
-      } catch (InterruptedException e) {
-        logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
-        Thread.currentThread().interrupt();
-      }
-    }
-
-    if (resultBinary != null) {
-      int size = resultBinary.getInt();
-      logger.debug("Fetched {} schemas of {} from {}", size, plan.getPath(), group);
-      for (int i = 0; i < size; i++) {
-        resultSet.add(ShowTimeSeriesResult.deserialize(resultBinary));
-      }
-    } else {
-      logger.error("Failed to execute show timeseries {} in group: {}.", plan, group);
-    }
-  }
-
-  private ByteBuffer showRemoteTimeseries(Node node, PartitionGroup group, ShowTimeSeriesPlan plan)
-      throws IOException, TException, InterruptedException {
-    ByteBuffer resultBinary;
-
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client = metaGroupMember
-          .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(),
-          plan);
-    } else {
-      SyncDataClient syncDataClient = metaGroupMember
-          .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-      plan.serialize(dataOutputStream);
-      resultBinary = syncDataClient.getAllMeasurementSchema(group.getHeader(),
-          ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-      ClientUtils.putBackSyncClient(syncDataClient);
-    }
-    return resultBinary;
   }
 
   @Override
