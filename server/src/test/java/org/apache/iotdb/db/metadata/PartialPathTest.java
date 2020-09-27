@@ -69,7 +69,9 @@ public class PartialPathTest {
     arr1[0] = "root";
     arr1[1] = "sg1";
     PartialPath a = new PartialPath(arr1);
-    a.concatNode("d1");
+    String[] arr2 = new String[1];
+    arr2[0] = "d1";
+    a.concatPath(arr2);
     Assert.assertEquals("[root, sg1, d1]", Arrays.toString(a.getNodes()));
     Assert.assertEquals("root.sg1.d1", a.getFullPath());
   }
