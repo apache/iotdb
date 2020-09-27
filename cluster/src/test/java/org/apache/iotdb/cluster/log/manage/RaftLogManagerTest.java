@@ -21,12 +21,15 @@
 package org.apache.iotdb.cluster.log.manage;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +39,8 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
+import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
+import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -109,32 +114,56 @@ public class RaftLogManagerTest {
   }
 
   @Test
+  public void testHardState() {
+    CommittedEntryManager committedEntryManager =
+        new CommittedEntryManager(
+            ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+    RaftLogManager instance = new TestRaftLogManager(committedEntryManager,
+        new SyncLogDequeSerializer(testIdentifier), logApplier);
+
+    try {
+      HardState hardState = new HardState();
+      hardState.setVoteFor(TestUtils.getNode(10));
+      hardState.setCurrentTerm(11);
+      assertNotEquals(hardState, instance.getHardState());
+      instance.updateHardState(hardState);
+      assertEquals(hardState, instance.getHardState());
+    } finally {
+      instance.close();
+    }
+  }
+
+  @Test
   public void testBlockedSnapshot() throws LogExecutionException, IOException {
     CommittedEntryManager committedEntryManager =
         new CommittedEntryManager(
             ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     RaftLogManager instance = new TestRaftLogManager(committedEntryManager,
         new SyncLogDequeSerializer(testIdentifier), logApplier);
-    List<Log> logs = TestUtils.prepareTestLogs(100);
-    instance.append(logs.subList(0, 50));
-    instance.commitTo(49, true);
-
-    blocked = true;
-    instance.setBlockAppliedCommitIndex(99);
-    instance.append(logs.subList(50, 100));
-    instance.commitTo(99, true);
-
     try {
-      // applier is blocked, so this should time out
+      List<Log> logs = TestUtils.prepareTestLogs(100);
+      instance.append(logs.subList(0, 50));
+      instance.commitTo(49, true);
+
+      blocked = true;
+      instance.setBlockAppliedCommitIndex(99);
+      instance.append(logs.subList(50, 100));
+      instance.commitTo(99, true);
+
+      try {
+        // applier is blocked, so this should time out
+        instance.takeSnapshot();
+        fail("No exception");
+      } catch (IOException e) {
+        assertEquals("wait all log applied time out", e.getMessage());
+      }
+      blocked = false;
+      // applier is unblocked, BlockAppliedCommitIndex should be soon reached
       instance.takeSnapshot();
-      fail("No exception");
-    } catch (IOException e) {
-      assertEquals("wait all log applied time out", e.getMessage());
+      assertEquals(new SimpleSnapshot(99, 99), instance.getSnapshot());
+    } finally {
+      instance.close();
     }
-    blocked = false;
-    // applier is unblocked, BlockAppliedCommitIndex should be soon reached
-    instance.takeSnapshot();
-    assertEquals(new SimpleSnapshot(99, 99), instance.getSnapshot());
   }
 
   @Test
@@ -643,6 +672,99 @@ public class RaftLogManagerTest {
   }
 
   @Test
+  public void testAppendCommitted()
+      throws LogExecutionException, GetEntriesWrongParametersException, EntryCompactedException {
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+    RaftLogManager instance = new TestRaftLogManager(committedEntryManager,
+        new SyncLogDequeSerializer(testIdentifier), logApplier);
+
+    try {
+      List<Log> logs = TestUtils.prepareTestLogs(10);
+      instance.append(logs);
+      instance.commitTo(9, true);
+
+      // committed logs cannot be overwrite
+      Log log = new EmptyContentLog(9, 10000);
+      instance.maybeAppend(8, 8, 9, log);
+      assertNotEquals(log, instance.getEntries(9, 10).get(0));
+      instance.maybeAppend(8, 8, 9, Collections.singletonList(log));
+      assertNotEquals(log, instance.getEntries(9, 10).get(0));
+    } finally {
+      instance.close();
+    }
+  }
+
+  @Test
+  public void testInnerDeleteLogs() {
+    int minNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig().getMinNumOfLogsInMem();
+    int maxNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem();
+    ClusterDescriptor.getInstance().getConfig().setMaxNumOfLogsInMem(10);
+    ClusterDescriptor.getInstance().getConfig().setMinNumOfLogsInMem(10);
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+    RaftLogManager instance = new TestRaftLogManager(committedEntryManager,
+        new SyncLogDequeSerializer(testIdentifier), logApplier);
+    List<Log> logs = TestUtils.prepareTestLogs(20);
+
+    try {
+      instance.append(logs.subList(0, 15));
+      instance.maybeCommit(14, 14);
+      while (instance.getMaxHaveAppliedCommitIndex() < 14) {
+        // wait
+      }
+      instance.append(logs.subList(15, 20));
+      instance.maybeCommit(19, 19);
+
+      List<Log> entries = instance.getEntries(0, 20);
+      assertEquals(logs.subList(10, 20), entries);
+    } finally {
+      instance.close();
+      ClusterDescriptor.getInstance().getConfig().setMaxNumOfLogsInMem(maxNumOfLogsInMem);
+      ClusterDescriptor.getInstance().getConfig().setMinNumOfLogsInMem(minNumOfLogsInMem);
+    }
+  }
+
+  @Test
+  @SuppressWarnings("java:S2925")
+  public void testReapplyBlockedLogs() throws LogExecutionException, InterruptedException {
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+    RaftLogManager instance = new TestRaftLogManager(committedEntryManager,
+        new SyncLogDequeSerializer(testIdentifier), logApplier);
+    List<Log> logs = TestUtils.prepareTestLogs(20);
+
+    try {
+      instance.append(logs.subList(0, 10));
+      blocked = true;
+      instance.commitTo(10, true);
+      instance.setBlockAppliedCommitIndex(9);
+
+      // as [0, 10) are blocked and we require a block index of 9, [10, 20) should be added to the
+      // blocked list
+      instance.append(logs.subList(10, 20));
+      instance.commitTo(20, true);
+
+      blocked = false;
+      while (instance.getMaxHaveAppliedCommitIndex() < 9) {
+        // wait until [0, 10) are applied
+      }
+      Thread.sleep(200);
+      // [10, 20) can still not be applied because we do not call `resetBlockAppliedCommitIndex`
+      for (Log log : logs.subList(10, 20)) {
+        assertFalse(log.isApplied());
+      }
+      // [10, 20) can be applied now
+      instance.resetBlockAppliedCommitIndex();
+      while (instance.getMaxHaveAppliedCommitIndex() < 19) {
+        // wait until [10, 20) are applied
+      }
+    } finally {
+      instance.close();
+    }
+  }
+
+  @Test
   public void appendBatch() {
     class RaftLogManagerTester {
 
@@ -885,7 +1007,7 @@ public class RaftLogManagerTest {
   }
 
   @Test
-  public void getEntries() {
+  public void getEntries() throws TruncateCommittedEntryException {
     class RaftLogManagerTester {
 
       public long low;
@@ -907,24 +1029,24 @@ public class RaftLogManagerTest {
     CommittedEntryManager committedEntryManager = new CommittedEntryManager(
         ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
+    List<Log> logs = new ArrayList<>();
     for (long i = 1; i < num / 2; i++) {
-      long index = i;
-      try {
-        committedEntryManager.append(new ArrayList<Log>() {{
-          add(new EmptyContentLog(offset + index, offset + index));
-        }});
-      } catch (Exception e) {
-      }
+      logs.add(new EmptyContentLog(offset + i, offset + i));
     }
+    committedEntryManager.append(logs);
+
     RaftLogManager instance = new TestRaftLogManager(committedEntryManager,
         new SyncLogDequeSerializer(testIdentifier), logApplier);
     try {
       for (long i = num / 2; i < num; i++) {
         long index = i;
+        logs.add(new EmptyContentLog(offset + index, offset + index));
         instance.append(new ArrayList<Log>() {{
           add(new EmptyContentLog(offset + index, offset + index));
         }});
       }
+      instance.append(logs.subList((int) num / 2 - 1, (int) num - 1));
+
       List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
         add(new RaftLogManagerTester(offset + 1, offset + 1, new ArrayList<>(), null));
         add(new RaftLogManagerTester(offset + 1, offset + 2, new ArrayList<Log>() {{
@@ -947,11 +1069,10 @@ public class RaftLogManagerTest {
         add(new RaftLogManagerTester(last, last + 1, new ArrayList<>(), null));
         add(new RaftLogManagerTester(last + 1, last + 2, new ArrayList<>(), null));
         // test GetEntriesWrongParametersException
-        add(new RaftLogManagerTester(offset + 1, offset, null,
-            GetEntriesWrongParametersException.class));
+        add(new RaftLogManagerTester(offset + 1, offset, Collections.emptyList(), null));
         // test EntryCompactedException
-        add(new RaftLogManagerTester(offset - 1, offset + 1, null, EntryCompactedException.class));
-        add(new RaftLogManagerTester(offset, offset + 1, null, EntryCompactedException.class));
+        add(new RaftLogManagerTester(offset - 1, offset + 1, Collections.emptyList(), null));
+        add(new RaftLogManagerTester(offset, offset + 1, Collections.emptyList(), null));
       }};
       for (RaftLogManagerTester test : tests) {
         try {

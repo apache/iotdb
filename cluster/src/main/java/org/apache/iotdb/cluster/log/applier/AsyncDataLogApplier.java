@@ -108,9 +108,11 @@ public class AsyncDataLogApplier implements LogApplier {
   private class DataLogConsumer implements Runnable, Consumer<Log> {
 
     private BlockingQueue<Log> logQueue = new LinkedBlockingQueue<>();
+    private long lastLogIndex;
+    private long lastAppliedLogIndex;
 
     public boolean isEmpty() {
-      return logQueue.isEmpty();
+      return logQueue.isEmpty() && lastLogIndex == lastAppliedLogIndex;
     }
 
     @Override
@@ -119,6 +121,7 @@ public class AsyncDataLogApplier implements LogApplier {
         try {
           Log log = logQueue.take();
           applyInternal(log);
+          lastAppliedLogIndex = log.getCurrLogIndex();
         } catch (InterruptedException e) {
           logger.info("DataLogConsumer exits");
           Thread.currentThread().interrupt();
@@ -131,6 +134,8 @@ public class AsyncDataLogApplier implements LogApplier {
     public void accept(Log log) {
       if (!logQueue.offer(log)) {
         logger.error("Cannot insert log into queue");
+      } else {
+        lastLogIndex = log.getCurrLogIndex();
       }
     }
   }

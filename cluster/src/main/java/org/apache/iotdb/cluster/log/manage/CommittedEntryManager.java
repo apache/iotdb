@@ -125,19 +125,18 @@ public class CommittedEntryManager {
    *
    * @param low  request index low bound
    * @param high request index upper bound
-   * @throws EntryCompactedException
    */
-  public List<Log> getEntries(long low, long high) throws EntryCompactedException {
+  public List<Log> getEntries(long low, long high) {
     if (low > high) {
       logger.debug("invalid getEntries: parameter: {} > {}", low, high);
       return Collections.emptyList();
     }
     long dummyIndex = getDummyIndex();
-    if (low <= dummyIndex || entries.size() == 1) {
-      logger.info(
-          "entries before request index ({}) have been compacted, and the compactIndex is ({})",
-          low, dummyIndex);
-      throw new EntryCompactedException(low, dummyIndex);
+    if (low <= dummyIndex) {
+      logger.debug(
+          "entries low ({}) is out of bound dummyIndex ({}), adjust parameter 'low' to {}",
+          low, dummyIndex, dummyIndex);
+      low = dummyIndex + 1;
     }
     long lastIndex = getLastIndex();
     if (high > lastIndex + 1) {

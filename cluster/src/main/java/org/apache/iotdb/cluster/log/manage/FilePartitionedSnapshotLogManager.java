@@ -85,7 +85,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
         logger.info("{}: Snapshot is taken", getName());
       }
     } finally {
-      super.setBlockAppliedCommitIndex(-1);
+      super.resetBlockAppliedCommitIndex();
     }
   }
 

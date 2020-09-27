@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log.manage;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -508,12 +509,11 @@ public abstract class RaftLogManager {
    *
    * @param low  request index low bound
    * @param high request index upper bound
-   * @throws EntryCompactedException
-   * @throws GetEntriesWrongParametersException
    */
-  public List<Log> getEntries(long low, long high)
-      throws EntryCompactedException, GetEntriesWrongParametersException {
-    checkBound(low, high);
+  public List<Log> getEntries(long low, long high) {
+    if (low >= high) {
+      return Collections.emptyList();
+    }
     List<Log> entries = new ArrayList<>();
     long offset = getUnCommittedEntryManager().getFirstUnCommittedIndex();
     if (low < offset) {
@@ -540,16 +540,23 @@ public abstract class RaftLogManager {
     List<Log> entries = new ArrayList<>(getUnCommittedEntryManager()
         .getEntries(lo, hi));
     if (!entries.isEmpty()) {
-      if (getCommitLogIndex() >= entries.get(0).getCurrLogIndex()) {
-        entries
-            .subList(0,
+      long commitLogIndex = getCommitLogIndex();
+      long firstLogIndex = entries.get(0).getCurrLogIndex();
+      if (commitLogIndex >= firstLogIndex) {
+        logger.warn("Committing logs that has already been committed: {} >= {}", commitLogIndex,
+            firstLogIndex);
+        entries.subList(0,
                 (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
             .clear();
       }
       try {
-        if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
+        int currentSize = (int) committedEntryManager.getTotalSize();
+        int deltaSize = entries.size();
+        if (currentSize + deltaSize > maxNumOfLogsInMem) {
+          int sizeToReserveForNew = maxNumOfLogsInMem - deltaSize;
+          int sizeToReserveForConfig = minNumOfLogsInMem;
           synchronized (this) {
-            innerDeleteLog();
+            innerDeleteLog(Math.min(sizeToReserveForConfig, sizeToReserveForNew));
           }
         }
         getCommittedEntryManager().append(entries);
@@ -787,7 +794,7 @@ public abstract class RaftLogManager {
       if (committedEntryManager.getTotalSize() <= minNumOfLogsInMem) {
         return;
       }
-      innerDeleteLog();
+      innerDeleteLog(minNumOfLogsInMem);
     }
   }
 
@@ -797,8 +804,8 @@ public abstract class RaftLogManager {
     }
   }
 
-  private void innerDeleteLog() {
-    long removeSize = committedEntryManager.getTotalSize() - minNumOfLogsInMem;
+  private void innerDeleteLog(int sizeToReserve) {
+    long removeSize = committedEntryManager.getTotalSize() - sizeToReserve;
     long compactIndex = Math
         .min(committedEntryManager.getDummyIndex() + removeSize, maxHaveAppliedCommitIndex - 1);
     try {
@@ -832,13 +839,7 @@ public abstract class RaftLogManager {
       return;
     }
 
-    List<Log> entries;
-    try {
-      entries = new ArrayList<>(getCommittedEntryManager().getEntries(lo, hi));
-    } catch (EntryCompactedException e) {
-      logger.error("{}: apply all committed log failed when get entries", name, e);
-      return;
-    }
+    List<Log> entries = new ArrayList<>(getCommittedEntryManager().getEntries(lo, hi));
     try {
       applyEntries(entries, true);
     } catch (LogExecutionException e) {
@@ -883,17 +884,28 @@ public abstract class RaftLogManager {
     }
   }
 
-  public long getBlockAppliedCommitIndex() {
-    return blockAppliedCommitIndex;
+  /**
+   * Clear the fence that blocks the application of new logs, and continue to apply the cached
+   * unapplied logs.
+   */
+  public void resetBlockAppliedCommitIndex() {
+    this.blockAppliedCommitIndex = -1;
+    this.reapplyBlockedLogs();
   }
 
+  /**
+   * Set a fence to prevent newer logs, which have larger indexes than `blockAppliedCommitIndex`,
+   * from being applied, so the underlying state machine may remain unchanged for a while for
+   * snapshots. New committed logs will be cached until `resetBlockAppliedCommitIndex()` is called.
+   * @param blockAppliedCommitIndex
+   */
   public void setBlockAppliedCommitIndex(long blockAppliedCommitIndex) {
     this.blockAppliedCommitIndex = blockAppliedCommitIndex;
-    if (blockAppliedCommitIndex < 0) {
-      this.reapplyBlockedLogs();
-    }
   }
 
+  /**
+   * Apply the committed logs that were previously blocked by `blockAppliedCommitIndex` if any.
+   */
   private void reapplyBlockedLogs() {
     try {
       if (!blockedUnappliedLogList.isEmpty()) {

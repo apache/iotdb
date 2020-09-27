@@ -259,8 +259,8 @@ public class CommittedEntryManagerTest {
 				add(new EmptyContentLog(6, 6));
 			}}, null));
 			// entries that have been compacted;
-			add(new CommittedEntryManagerTester(2, 6, null, EntryCompactedException.class));
-			add(new CommittedEntryManagerTester(3, 4, null, EntryCompactedException.class));
+			add(new CommittedEntryManagerTester(2, 6, entries.subList(1, 3), null));
+			add(new CommittedEntryManagerTester(3, 4, Collections.EMPTY_LIST, null));
 			// illegal range
 			add(new CommittedEntryManagerTester(5, 4, Collections.EMPTY_LIST, null));
 		}};

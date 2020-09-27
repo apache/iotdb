@@ -60,4 +60,8 @@ public class TestLog extends Log {
     return Objects.hash(getCurrLogIndex(), getCurrLogTerm());
   }
 
+  @Override
+  public String toString() {
+    return "TestLog{" + getCurrLogIndex() + "-" + getCurrLogTerm() + "}";
+  }
 }

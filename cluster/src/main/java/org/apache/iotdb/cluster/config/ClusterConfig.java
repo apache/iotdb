@@ -252,7 +252,7 @@ public class ClusterConfig {
     return minNumOfLogsInMem;
   }
 
-  void setMinNumOfLogsInMem(int minNumOfLogsInMem) {
+  public void setMinNumOfLogsInMem(int minNumOfLogsInMem) {
     this.minNumOfLogsInMem = minNumOfLogsInMem;
   }
 
@@ -308,7 +308,7 @@ public class ClusterConfig {
     return maxNumOfLogsInMem;
   }
 
-  void setMaxNumOfLogsInMem(int maxNumOfLogsInMem) {
+  public void setMaxNumOfLogsInMem(int maxNumOfLogsInMem) {
     this.maxNumOfLogsInMem = maxNumOfLogsInMem;
   }
 
