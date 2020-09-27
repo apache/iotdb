@@ -69,7 +69,7 @@ public abstract class HttpPrepData {
   protected static MManager mmanager = IoTDB.metaManager;
   static Router router;
   static final String SUCCESSFUL_RESPONSE = "{\"result\":\"successful operation\"}";
-  private QueryRouter queryRouter = new QueryRouter();
+  private final QueryRouter queryRouter = new QueryRouter();
   static final String LOGIN_URI = "/user/login?username=root&password=root";
 
   protected void prepareData() throws MetadataException, StorageEngineException {
@@ -227,12 +227,35 @@ public abstract class HttpPrepData {
 
   JSONObject queryJsonExample() {
     JSONObject query = new JSONObject();
-    query.put(HttpConstant.SELECT, measurements[1]);
-    query.put(HttpConstant.FROM, processorName);
-    JSONObject range = new JSONObject();
-    range.put(HttpConstant.START, "0");
-    range.put(HttpConstant.END, "6");
-    query.put(HttpConstant.RANGE, range);
+
+    //add timeSeries
+    JSONArray timeSeries = new JSONArray();
+    timeSeries.add(processorName + TsFileConstant.PATH_SEPARATOR + measurements[0]);
+    timeSeries.add(processorName + TsFileConstant.PATH_SEPARATOR + measurements[9]);
+    query.put(HttpConstant.TIME_SERIES, timeSeries);
+
+    //set isAggregated
+    query.put(HttpConstant.IS_AGGREGATED, true);
+
+    // add functions
+    JSONArray aggregations = new JSONArray();
+    aggregations.add("COUNT");
+    aggregations.add("COUNT");
+    query.put(HttpConstant.AGGREGATIONS, aggregations);
+
+    //set time filter
+    query.put(HttpConstant.FROM, 1L);
+    query.put(HttpConstant.TO, 20L);
+
+    //Sets the number of partition
+    query.put(HttpConstant.isPoint, true);
+
+    //set Group by
+    JSONObject groupBy = new JSONObject();
+    groupBy.put(HttpConstant.SAMPLING_POINTS, 19);
+    query.put(HttpConstant.GROUP_BY, groupBy);
     return query;
   }
+
+
 }

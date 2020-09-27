@@ -91,6 +91,7 @@ public class QueryHandler extends Handler{
     queryOp.setFilterOperator(filterOp);
 
     if(isAggregated) {
+      selectOp.getSuffixPaths().clear();
       JSONArray fills = (JSONArray) jsonObject.get(HttpConstant.FILLS);
       Boolean isPoint = (Boolean) jsonObject.get(HttpConstant.isPoint);
       JSONObject groupBy = (JSONObject) jsonObject.get(HttpConstant.GROUP_BY);
@@ -98,6 +99,7 @@ public class QueryHandler extends Handler{
       List<String> aggregationsList = new ArrayList<>();
       for(Object o: aggregations) {
         aggregationsList.add((String) o);
+        selectOp.addSelectPath(new PartialPath(new String[]{""}));
       }
       selectOp.setAggregations(aggregationsList);
       String step = null;
@@ -110,7 +112,7 @@ public class QueryHandler extends Handler{
         // set unit and sliding step
         if (isPoint) {
           Integer points = (Integer) groupBy.get(HttpConstant.SAMPLING_POINTS);
-          long unit = (from - to) / points;
+          long unit = Math.abs(to - from) / points;
           queryOp.setUnit(unit);
           queryOp.setSlidingStep(unit);
         } else {
