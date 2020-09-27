@@ -79,7 +79,7 @@ public class LastQueryExecutor {
 
     ListDataSet dataSet = new ListDataSet(
         Arrays.asList(new PartialPath(COLUMN_TIMESERIES, false), new PartialPath(COLUMN_VALUE, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     for (int i = 0; i < selectedSeries.size(); i++) {
       TimeValuePair lastTimeValuePair = null;
@@ -223,7 +223,7 @@ public class LastQueryExecutor {
   }
 
   private static TimeValuePair constructLastPair(long timestamp, Object value,
-      TSDataType dataType) {
+                                                 TSDataType dataType) {
     return new TimeValuePair(timestamp, TsPrimitiveType.getByType(dataType, value));
   }
 }
