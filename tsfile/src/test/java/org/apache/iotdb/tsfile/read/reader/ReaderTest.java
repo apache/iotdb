@@ -69,7 +69,7 @@ public class ReaderTest {
     int count = 0;
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
     List<ChunkMetadata> chunkMetadataList = metadataQuerierByFile
-        .getChunkMetaDataList(new Path("d1.s1"));
+        .getChunkMetaDataList(new Path("d1", "s1"));
 
     AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
         chunkMetadataList, null);
@@ -87,7 +87,7 @@ public class ReaderTest {
     }
     Assert.assertEquals(rowCount, count);
 
-    chunkMetadataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d1.s4"));
+    chunkMetadataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d1", "s4"));
     seriesReader = new FileSeriesReader(seriesChunkLoader, chunkMetadataList, null);
     count = 0;
 
@@ -105,12 +105,12 @@ public class ReaderTest {
   public void readWithFilterTest() throws IOException {
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
     List<ChunkMetadata> chunkMetadataList = metadataQuerierByFile
-        .getChunkMetaDataList(new Path("d1.s1"));
+        .getChunkMetaDataList(new Path("d1", "s1"));
 
     Filter filter = new FilterFactory().or(
         FilterFactory.and(TimeFilter.gt(1480563570029L), TimeFilter.lt(1480563570033L)),
         FilterFactory.and(ValueFilter.gtEq(9520331), ValueFilter.ltEq(9520361)));
-    SingleSeriesExpression singleSeriesExp = new SingleSeriesExpression(new Path("d1.s1"), filter);
+    SingleSeriesExpression singleSeriesExp = new SingleSeriesExpression(new Path("d1", "s1"), filter);
     AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
         chunkMetadataList,
         singleSeriesExp.getFilter());

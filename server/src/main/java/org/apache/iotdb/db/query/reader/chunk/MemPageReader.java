@@ -18,40 +18,46 @@
  */
 package org.apache.iotdb.db.query.reader.chunk;
 
+import java.io.IOException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 public class MemPageReader implements IPageReader {
 
-  private BatchData batchData;
-  private Statistics statistics;
+  private final IPointReader timeValuePairIterator;
+  private final ChunkMetadata chunkMetadata;
   private Filter valueFilter;
 
-  public MemPageReader(BatchData batchData, Statistics statistics) {
-    this.batchData = batchData;
-    this.statistics = statistics;
+  public MemPageReader(IPointReader timeValuePairIterator, ChunkMetadata chunkMetadata,
+      Filter filter) {
+    this.timeValuePairIterator = timeValuePairIterator;
+    this.chunkMetadata = chunkMetadata;
+    this.valueFilter = filter;
   }
 
   @Override
-  public BatchData getAllSatisfiedPageData() {
-    if (valueFilter == null) {
-      return batchData;
-    }
-    BatchData filteredBatchData = new BatchData(batchData.getDataType());
-    while (batchData.hasCurrent()) {
-      if (valueFilter.satisfy(batchData.currentTime(), batchData.currentValue())) {
-        filteredBatchData.putAnObject(batchData.currentTime(), batchData.currentValue());
+  public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
+    BatchData batchData = BatchDataFactory
+        .createBatchData(chunkMetadata.getDataType(), ascending);
+    while (timeValuePairIterator.hasNextTimeValuePair()) {
+      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
+      if (valueFilter == null || valueFilter
+          .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+        batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
       }
-      batchData.next();
     }
-    return filteredBatchData;
+    return batchData.flip();
   }
 
   @Override
   public Statistics getStatistics() {
-    return statistics;
+    return chunkMetadata.getStatistics();
   }
 
   @Override

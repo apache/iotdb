@@ -112,53 +112,59 @@ public class TimeSeriesMetadataCache {
 
     cacheRequestNum.incrementAndGet();
 
+    TimeseriesMetadata timeseriesMetadata;
+    lock.readLock().lock();
     try {
-      lock.readLock().lock();
-      TimeseriesMetadata timeseriesMetadata = lruCache.get(key);
-      if (timeseriesMetadata != null) {
-        cacheHitNum.incrementAndGet();
-        printCacheLog(true);
-        return new TimeseriesMetadata(timeseriesMetadata);
-      }
+      timeseriesMetadata = lruCache.get(key);
     } finally {
       lock.readLock().unlock();
     }
 
-    try {
-      lock.writeLock().lock();
-      TimeseriesMetadata tsMetadata = lruCache.get(key);
-      if (tsMetadata != null) {
-        cacheHitNum.incrementAndGet();
-        printCacheLog(true);
-        return new TimeseriesMetadata(tsMetadata);
+    if (timeseriesMetadata != null) {
+      cacheHitNum.incrementAndGet();
+      printCacheLog(true);
+    } else {
+      // allow for the parallelism of different devices
+      synchronized (key.device.intern()) {
+        // double check
+        lock.readLock().lock();
+        try {
+          timeseriesMetadata = lruCache.get(key);
+        } finally {
+          lock.readLock().unlock();
+        }
+        if (timeseriesMetadata != null) {
+          cacheHitNum.incrementAndGet();
+          printCacheLog(true);
+        } else {
+          printCacheLog(false);
+          // bloom filter part
+          TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
+          BloomFilter bloomFilter = reader.readBloomFilter();
+          if (bloomFilter != null && !bloomFilter
+              .contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+            return null;
+          }
+          List<TimeseriesMetadata> timeSeriesMetadataList = reader
+              .readTimeseriesMetadata(key.device, allSensors);
+          // put TimeSeriesMetadata of all sensors used in this query into cache
+          lock.writeLock().lock();
+          try {
+            timeSeriesMetadataList.forEach(metadata ->
+                lruCache.put(new TimeSeriesMetadataCacheKey(key.filePath, key.device,
+                    metadata.getMeasurementId()), metadata));
+            timeseriesMetadata = lruCache.get(key);
+          } finally {
+            lock.writeLock().unlock();
+          }
+        }
       }
-      printCacheLog(false);
-      // bloom filter part
-      TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-      BloomFilter bloomFilter = reader.readBloomFilter();
-      if (bloomFilter != null && !bloomFilter
-          .contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
-        return null;
-      }
-      List<TimeseriesMetadata> timeSeriesMetadataList = reader
-          .readTimeseriesMetadata(key.device, allSensors);
-      // put TimeSeriesMetadata of all sensors used in this query into cache
-      timeSeriesMetadataList.forEach(t ->
-          lruCache.put(new TimeSeriesMetadataCacheKey(key.filePath, key.device,
-              t.getMeasurementId()), t));
-      tsMetadata = lruCache.get(key);
-      if (tsMetadata == null) {
-        return null;
-      } else {
-        return new TimeseriesMetadata(tsMetadata);
-      }
-    } catch (IOException e) {
-      logger.error("something wrong happened while reading {}", key.filePath);
-      throw e;
-    } finally {
-      lock.writeLock().unlock();
     }
-
+    if (timeseriesMetadata == null) {
+      return null;
+    } else {
+      return new TimeseriesMetadata(timeseriesMetadata);
+    }
   }
 
 

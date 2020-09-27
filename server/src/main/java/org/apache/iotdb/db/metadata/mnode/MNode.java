@@ -23,7 +23,9 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.Lock;
@@ -32,6 +34,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.rescon.CachedStringPool;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -48,15 +52,17 @@ public class MNode implements Serializable {
 
   protected MNode parent;
 
+  private static Map<String, String> cachedPathPool = CachedStringPool.getInstance().getCachedPool();
+
   /**
    * from root to this node, only be set when used once for InternalMNode
    */
   protected String fullPath;
 
-  transient Map<String, MNode> children;
-  transient Map<String, MNode> aliasChildren;
+  transient Map<String, MNode> children = null;
+  private transient Map<String, MNode> aliasChildren = null;
 
-  protected transient ReadWriteLock lock = new ReentrantReadWriteLock();
+  protected transient ReadWriteLock lock = null;
 
   /**
    * Constructor of MNode.
@@ -80,6 +86,9 @@ public class MNode implements Serializable {
   public void addChild(String name, MNode child) {
     if (children == null) {
       children = new LinkedHashMap<>();
+      if (lock == null) {
+        lock = new ReentrantReadWriteLock();
+      }
     }
     children.put(name, child);
   }
@@ -90,7 +99,15 @@ public class MNode implements Serializable {
   public void deleteChild(String name) throws DeleteFailedException {
     if (children != null && children.containsKey(name)) {
       // acquire the write lock of its child node.
-      Lock writeLock = (children.get(name)).lock.writeLock();
+      Lock writeLock;
+      MNode node = children.get(name);
+      // if its child node is leaf node, we need to acquire the write lock of the current device node
+      if (node.children == null) {
+        writeLock = lock.writeLock();
+      } else {
+        // otherwise, we only need to acquire the write lock of its child node.
+        writeLock = node.lock.writeLock();
+      }
       if (writeLock.tryLock()) {
         children.remove(name);
         writeLock.unlock();
@@ -157,11 +174,27 @@ public class MNode implements Serializable {
    * get full path
    */
   public String getFullPath() {
-    if (fullPath != null) {
-      return fullPath;
+    if (fullPath == null) {
+      fullPath = concatFullPath();
+      String cachedFullPath = cachedPathPool.get(fullPath);
+      if (cachedFullPath == null) {
+        cachedPathPool.put(fullPath, fullPath);
+      } else {
+        fullPath = cachedFullPath;
+      }
     }
-    fullPath = concatFullPath();
     return fullPath;
+  }
+
+  public PartialPath getPartialPath() {
+    List<String> detachedPath = new ArrayList<>();
+    MNode temp = this;
+    detachedPath.add(temp.getName());
+    while (temp.getParent() != null) {
+      temp = temp.getParent();
+      detachedPath.add(0, temp.getName());
+    }
+    return new PartialPath(detachedPath.toArray(new String[0]));
   }
 
   String concatFullPath() {
@@ -204,15 +237,17 @@ public class MNode implements Serializable {
 
   public void setChildren(Map<String, MNode> children) {
     this.children = children;
+    if (children != null && lock == null) {
+      lock = new ReentrantReadWriteLock();
+    }
   }
 
   public void serializeTo(BufferedWriter bw) throws IOException {
     serializeChildren(bw);
 
-    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.MNODE_TYPE));
-    s.append(",").append(name).append(",");
-    s.append(children == null ? "0" : children.size());
-    bw.write(s.toString());
+    String s = String.valueOf(MetadataConstant.MNODE_TYPE) + "," + name + ","
+        + (children == null ? "0" : children.size());
+    bw.write(s);
     bw.newLine();
   }
 
@@ -228,6 +263,9 @@ public class MNode implements Serializable {
   public void readLock() {
     MNode node = this;
     while (node != null) {
+      if (node.lock == null) {
+        node.lock = new ReentrantReadWriteLock();
+      }
       node.lock.readLock().lock();
       node = node.parent;
     }

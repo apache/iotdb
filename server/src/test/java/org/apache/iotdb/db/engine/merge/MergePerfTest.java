@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.db.engine.merge;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MergePerfTest extends MergeTest{
 
@@ -37,7 +38,7 @@ public class MergePerfTest extends MergeTest{
   private File tempSGDir;
 
   public void test() throws Exception {
-    MManager.getInstance().init();
+    IoTDB.metaManager.init();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
     setUp();

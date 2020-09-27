@@ -66,11 +66,11 @@ public class ReadOnlyTsFileTest {
     Filter filter3 = FilterFactory.and(TimeFilter.gtEq(1480562618000L), TimeFilter.ltEq(1480562618100L));
 
     IExpression IExpression = BinaryExpression
-        .or(BinaryExpression.and(new SingleSeriesExpression(new Path("d1.s1"), filter),
-            new SingleSeriesExpression(new Path("d1.s4"), filter2)), new GlobalTimeExpression(filter3));
+        .or(BinaryExpression.and(new SingleSeriesExpression(new Path("d1", "s1"), filter),
+            new SingleSeriesExpression(new Path("d1","s4"), filter2)), new GlobalTimeExpression(filter3));
 
-    QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1.s1"))
-        .addSelectedPath(new Path("d1.s4")).setExpression(IExpression);
+    QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1", "s1"))
+        .addSelectedPath(new Path("d1", "s4")).setExpression(IExpression);
     QueryDataSet queryDataSet = tsFile.query(queryExpression);
     long aimedTimestamp = 1480562618000L;
     while (queryDataSet.hasNext()) {
@@ -82,7 +82,7 @@ public class ReadOnlyTsFileTest {
       aimedTimestamp++;
     }
 
-    queryExpression = QueryExpression.create().addSelectedPath(new Path("d1.s1")).addSelectedPath(new Path("d1.s4"));
+    queryExpression = QueryExpression.create().addSelectedPath(new Path("d1", "s1")).addSelectedPath(new Path("d1", "s4"));
     queryDataSet = tsFile.query(queryExpression);
     aimedTimestamp = 1480562618000L;
     int count = 0;
@@ -94,7 +94,7 @@ public class ReadOnlyTsFileTest {
     }
     Assert.assertEquals(rowCount, count);
 
-    queryExpression = QueryExpression.create().addSelectedPath(new Path("d1.s1")).addSelectedPath(new Path("d1.s4"))
+    queryExpression = QueryExpression.create().addSelectedPath(new Path("d1", "s1")).addSelectedPath(new Path("d1", "s4"))
         .setExpression(new GlobalTimeExpression(filter3));
     queryDataSet = tsFile.query(queryExpression);
     aimedTimestamp = 1480562618000L;
@@ -123,8 +123,8 @@ public class ReadOnlyTsFileTest {
 
   void queryTest2() throws IOException {
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("d1.s6"));
-    paths.add(new Path("d2.s1"));
+    paths.add(new Path("d1", "s6"));
+    paths.add(new Path("d2", "s1"));
 
     IExpression expression = new GlobalTimeExpression(TimeFilter.gt(1480562664760L));
 
@@ -143,8 +143,8 @@ public class ReadOnlyTsFileTest {
 
   void queryNonExistPathTest() throws Exception {
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("dr.s1"));
-    paths.add(new Path("d2.s1"));
+    paths.add(new Path("dr", "s1"));
+    paths.add(new Path("d2", "s1"));
     IExpression expression = new GlobalTimeExpression(TimeFilter.gt(1480562664760L));
     QueryExpression queryExpression = QueryExpression.create(paths, expression);
     try {

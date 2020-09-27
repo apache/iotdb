@@ -22,7 +22,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.*;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -54,6 +54,6 @@ public class PublishHandlerTest {
         MqttPublishMessage publishMessage = new MqttPublishMessage(fixedHeader, variableHeader, buf);
         InterceptPublishMessage message = new InterceptPublishMessage(publishMessage, null, null);
         handler.onPublish(message);
-        verify(executor).processNonQuery(any(InsertPlan.class));
+        verify(executor).processNonQuery(any(InsertRowPlan.class));
     }
 }

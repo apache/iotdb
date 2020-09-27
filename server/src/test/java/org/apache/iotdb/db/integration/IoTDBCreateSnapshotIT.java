@@ -68,14 +68,13 @@ public class IoTDBCreateSnapshotIT {
 
       // create snapshot
       statement.execute("CREATE SNAPSHOT FOR SCHEMA");
-      File snapshotFile = new File(config.getSchemaDir() + File.separator + "mtree.snapshot");
+      File snapshotFile = new File(config.getSchemaDir() + File.separator + "mtree-1.snapshot");
 
       // test snapshot file exists
       Assert.assertTrue(snapshotFile.exists());
 
       // test snapshot content correct
       String[] exp = new String[]{
-          "10",
           "2,s0,,1,2,1,,-1,0",
           "2,s1,,2,2,1,,-1,0",
           "2,s2,,3,2,1,,-1,0",

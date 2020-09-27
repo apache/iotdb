@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -43,12 +42,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * a restorable tsfile.
+ * This writer is for opening and recover a TsFile
+ *
+ * (1) If the TsFile is closed normally, hasCrashed()=false and canWrite()=false
+ *
+ * (2) Otherwise, the writer generates metadata for already flushed Chunks and truncate crashed data.
+ * The hasCrashed()=true and canWrite()=true
+ *
+ * Notice!!!
+ * If you want to query this file through the generated metadata, remember to call the makeMetadataVisible()
+ *
  */
 public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   private static final Logger logger = LoggerFactory.getLogger("FileMonitor");
-  private long truncatedPosition = -1;
+  private long truncatedSize = -1;
   private Map<Path, MeasurementSchema> knownSchemas = new HashMap<>();
 
   private int lastFlushedChunkGroupIndex = 0;
@@ -74,36 +82,29 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     // file doesn't exist
     if (file.length() == 0) {
       startFile();
+      crashed = true;
+      canWrite = true;
       return;
     }
 
     if (file.exists()) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
 
-        // this tsfile is complete
-        if (reader.isComplete()) {
+        truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, versionInfo, true);
+        totalChunkNum = reader.getTotalChunkNum();
+        if (truncatedSize == TsFileCheckStatus.COMPLETE_FILE) {
           crashed = false;
           canWrite = false;
           out.close();
-          return;
-        }
-
-        // uncompleted file
-        truncatedPosition = reader.selfCheck(knownSchemas, chunkGroupMetadataList, versionInfo, true);
-        totalChunkNum = reader.getTotalChunkNum();
-        if (truncatedPosition == TsFileCheckStatus.INCOMPATIBLE_FILE) {
+        } else if (truncatedSize == TsFileCheckStatus.INCOMPATIBLE_FILE) {
           out.close();
           throw new NotCompatibleTsFileException(
               String.format("%s is not in TsFile format.", file.getAbsolutePath()));
-        } else if (truncatedPosition == TsFileCheckStatus.ONLY_MAGIC_HEAD) {
-          crashed = true;
-          out.truncate(
-              (long) TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
-                  .getBytes().length);
         } else {
           crashed = true;
+          canWrite = true;
           // remove broken data
-          out.truncate(truncatedPosition);
+          out.truncate(truncatedSize);
         }
       }
     }
@@ -140,8 +141,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     return new RestorableTsFileIOWriter(file);
   }
 
-  long getTruncatedPosition() {
-    return truncatedPosition;
+  long getTruncatedSize() {
+    return truncatedSize;
   }
 
   public Map<Path, MeasurementSchema> getKnownSchema() {
@@ -169,6 +170,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         // all the stale data.
         if (dataType == null || dataType.equals(chunkMetaData.getDataType())) {
           chunkMetadataList.add(chunkMetaData);
+          VersionUtils.applyVersion(chunkMetadataList, versionInfo);
         }
       }
     }

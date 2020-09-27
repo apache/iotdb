@@ -34,6 +34,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
+                <version>${maven.assembly.version}</version>
                 <executions>
                     <!-- Package binaries-->
                     <execution>
@@ -46,7 +47,7 @@
                             <descriptors>
                                 <descriptor>src/assembly/distribution.xml</descriptor>
                             </descriptors>
-                            <finalName>apache-iotdb-${project.version}-incubating</finalName>
+                            <finalName>apache-iotdb-${project.version}</finalName>
                         </configuration>
                     </execution>
                 </executions>
@@ -73,7 +74,7 @@
                                 <fileSet>
                                     <directory>${project.build.directory}</directory>
                                     <includes>
-                                        <include>apache-iotdb-${project.version}-incubating-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>

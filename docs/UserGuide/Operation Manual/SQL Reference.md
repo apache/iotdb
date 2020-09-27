@@ -30,21 +30,6 @@ In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a S
 
 All of these statements are write in IoTDB's own syntax, for details about the syntax composition, please check the `Reference` section.
 
-## Keywords
-
-Please not use these keywords as identifiers.
-
-```
-CREATE, INSERT, UPDATE, DELETE, SELECT, SHOW, GRANT, INTO, SET, WHERE, FROM, TO, BY, DEVICE,
-CONFIGURATION, DESCRIBE, SLIMIT, LIMIT, UNLINK, OFFSET, SOFFSET, FILL, LINEAR, PREVIOUS, PREVIOUSUNTILLAST,
-METADATA, TIMESERIES, TIMESTAMP, PROPERTY, WITH, ROOT, DATATYPE, COMPRESSOR, STORAGE, GROUP, LABEL,INT32,
-INT64, FLOAT, DOUBLE, BOOLEAN, TEXT, ENCODING, PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, GORILLA, REGULAR,
-BITMAP, ADD, UPSERT, VALUES, NOW, LINK, INDEX, USING, ON, DROP, MERGE, LIST, USER, PRIVILEGES, ROLE, ALL, OF,
-ALTER, PASSWORD, REVOKE, LOAD, WATERMARK_EMBEDDING, UNSET, TTL, FLUSH, TASK, INFO, DYNAMIC, PARAMETER, VERSION,
-REMOVE, MOVE, CHILD, PATHS, DEVICES, COUNT, NODES, LEVEL, MIN_TIME, MAX_TIME, MIN_VALUE, MAX_VALUE, AVG, FIRST_VALUE,
-SUM, LAST_VALUE, LAST, DISABLE, ALIGN, COMPRESSION, TIME, ATTRIBUTES, TAGS,RENAME, FULL, CLEAR, CACHE
-```
-
 ## Show Version
 
 ```sql
@@ -284,6 +269,12 @@ Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
 Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
+
+* Create snapshot for schema
+```
+CREATE SNAPSHOT FOR SCHEMA
+```
+
 ## Data Management Statement
 
 * Insert Record Statement
@@ -316,10 +307,13 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 * Delete Record Statement
 
 ```
-DELETE FROM <PrefixPath> [COMMA <PrefixPath>]* WHERE TIME LESSTHAN <TimeValue>
-Eg: DELETE FROM root.ln.wf01.wt01.temperature WHERE time < 2017-11-1T00:05:00+08:00
+DELETE FROM <PrefixPath> [COMMA <PrefixPath>]* [WHERE <WhereClause>]?
+WhereClause : <Condition> [(AND) <Condition>]*
+Condition  : <TimeExpr> [(AND) <TimeExpr>]*
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
+Eg: DELETE FROM root.ln.wf01.wt01.temperature WHERE time > 2016-01-05T00:15:00+08:00 and time < 2017-11-1T00:05:00+08:00
 Eg: DELETE FROM root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature WHERE time < NOW()
-Eg: DELETE FROM root.ln.wf01.wt01.* WHERE time < 1509466140000
+Eg: DELETE FROM root.ln.wf01.wt01.* WHERE time >= 1509466140000
 ```
 
 * Select Record Statement
@@ -438,6 +432,19 @@ Eg: SELECT last_value(temperature), last_value(power) FROM root.ln.wf01.wt01 GRO
 Note: In group by fill, sliding step is not supported in group by clause
 Note: Now, only last_value aggregation function is supported in group by fill.
 Note: Linear fill is not supported in group by fill.
+```
+
+* Order by time Statement
+
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause> (FILL <GROUPBYFillClause>)? orderByTimeClause?
+orderByTimeClause: order by time (asc | desc)?
+
+Eg: SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([20, 100), 5m) FILL (float[PREVIOUS]) order by time desc
+Eg: SELECT * from root order by time desc
+Eg: SELECT * from root order by time desc align by device 
+Eg: SELECT * from root order by time desc disable align
+Eg: SELECT last * from root order by time desc
 ```
 
 * Limit Statement
@@ -620,6 +627,53 @@ For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result 
 
 ```
 
+* As Statement
+
+As statement assigns an alias to time seires queried in SELECT statement
+
+```
+You can use as statement in all queries, but some rules are restricted about wildcard.
+
+1. Raw data query
+select s1 as speed, s2 as temperature from root.sg.d1
+
+The result set will be like：
+| Time | speed | temperature |
+|  ... |  ...  |     ....    |
+
+2. Aggregation query
+select count(s1) as s1_num, max_value(s2) as s2_max from root.sg.d1
+
+3. Down-frequence query
+select count(s1) as s1_num from root.sg.d1 group by ([100,500), 80ms)
+
+4. Align by device query
+select s1 as speed, s2 as temperature from root.sg.d1 align by device
+
+select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg.d2 align by device
+
+5. Last Record query
+select last s1 as speed, s2 from root.sg.d1
+
+Rules：
+1. In addition to Align by device query，each AS statement has to corresponding to one time series exactly.
+
+E.g. select s1 as temperature from root.sg.*
+
+At this time if `root.sg.*` includes more than one device，then an exception will be thrown。
+
+2. In align by device query，the prefix path that each AS statement corresponding to can includes multiple device, but the suffix path can only be single sensor.
+
+E.g. select s1 as temperature from root.sg.*
+
+In this situation, it will be show correctly even if multiple devices are selected.
+
+E.g. select * as temperature from root.sg.d1
+
+In this situation, it will throws an exception if * corresponds to multiple sensors.
+
+```
+
 ## Database Management Statement
 
 * Create User
@@ -710,7 +764,7 @@ Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
 REVOKE <roleName> FROM <userName>;
 roleName:=identifier
 userName:=identifier
-Eg: IoTDB > REVOKE temproleFROM tempuser;
+Eg: IoTDB > REVOKE temprole FROM tempuser;
 ```
 
 * List Users
@@ -733,7 +787,7 @@ Eg: IoTDB > LIST ROLE
 LIST PRIVILEGES USER  <username> ON <path>;    
 username:=identifier    
 path=‘root’ (DOT identifier)*
-Eg: IoTDB > LIST PRIVIEGES USER sgcc_wirte_user ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;
 ```
 
 * List Privileges of Roles(On Specific Path)
@@ -742,7 +796,7 @@ Eg: IoTDB > LIST PRIVIEGES USER sgcc_wirte_user ON root.sgcc;
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
 roleName:=identifier  
 path=‘root’ (DOT identifier)*
-Eg: IoTDB > LIST PRIVIEGES ROLE wirte_role ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES ROLE wirte_role ON root.sgcc;
 ```
 
 * List Privileges of Users
@@ -750,7 +804,7 @@ Eg: IoTDB > LIST PRIVIEGES ROLE wirte_role ON root.sgcc;
 ```
 LIST USER PRIVILEGES <username> ;   
 username:=identifier  
-Eg: IoTDB > LIST USER PRIVIEGES tempuser;
+Eg: IoTDB > LIST USER PRIVILEGES tempuser;
 ```
 
 * List Privileges of Roles
@@ -758,7 +812,7 @@ Eg: IoTDB > LIST USER PRIVIEGES tempuser;
 ```
 LIST ROLE PRIVILEGES <roleName>
 roleName:=identifier
-Eg: IoTDB > LIST ROLE PRIVIEGES actor;
+Eg: IoTDB > LIST ROLE PRIVILEGES actor;
 ```
 
 * List Roles of Users
@@ -937,13 +991,30 @@ atomicity of data deletion is not guaranteed for efficiency concerns. So we reco
 not change the TTL once it is set or at least do not reset it frequently, unless you are determined 
 to suffer the unpredictability. 
 
+* Delete Partition (experimental)
+```
+DELETE PARTITION StorageGroupName INT(COMMA INT)*
+Eg DELETE PARTITION root.sg1 0,1,2
+This example will delete the first 3 time partitions of storage group root.sg1.
+```
+The partitionId can be found in data folders or converted using `timestamp / partitionInterval`.
+
+## Performance Tracing
+
+IoTDB supports tracking the execution of query statements by using `TRACING` statements. The number of tsfile files and chunks accessed by the query etc are output through the log file. The default output location is in `./data/tracing`. The performance tracing function is turned off by default. Users can use the TRACING ON/OFF command to turn this function on/off.
+
+```
+TRACING ON    // Open performance tracing
+TRACING OFF   // Close performance tracing
+```
+
 # Reference
 
 ## Keywords
 
 ```
 Keywords for IoTDB (case insensitive):
-ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SELECT, SET, SHOW, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, UPDATE, USER, USING, VALUE, VALUES, WHERE, WITH
+ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FOR, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SCHEMA, SELECT, SET, SHOW, SNAPSHOT, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, UPDATE, USER, USING, VALUE, VALUES, WHERE, WITH
 
 Keywords with special meanings (case insensitive):
 * Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT 

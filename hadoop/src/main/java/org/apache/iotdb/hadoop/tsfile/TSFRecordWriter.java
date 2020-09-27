@@ -45,7 +45,8 @@ public class TSFRecordWriter extends RecordWriter<NullWritable, HDFSTSRecord> {
   }
 
   @Override
-  public synchronized void write(NullWritable key, HDFSTSRecord value) throws IOException, InterruptedException {
+  public synchronized void write(NullWritable key, HDFSTSRecord value)
+      throws IOException, InterruptedException {
     try {
       writer.write(value.convertToTSRecord());
     } catch (WriteProcessException e) {

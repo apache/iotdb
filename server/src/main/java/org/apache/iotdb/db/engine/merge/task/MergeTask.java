@@ -34,11 +34,11 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,13 +126,13 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    Set<String> devices = MManager.getInstance().getDevices(storageGroupName);
-    Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
-    List<Path> unmergedSeries = new ArrayList<>();
-    for (String device : devices) {
-      MNode deviceNode = MManager.getInstance().getNodeByPath(device);
+    Set<PartialPath> devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
+    Map<PartialPath, MeasurementSchema> measurementSchemaMap = new HashMap<>();
+    List<PartialPath> unmergedSeries = new ArrayList<>();
+    for (PartialPath device : devices) {
+      MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
-        Path path = new Path(device, entry.getKey());
+        PartialPath path = device.concatNode(entry.getKey());
         measurementSchemaMap.put(path, ((MeasurementMNode) entry.getValue()).getSchema());
         unmergedSeries.add(path);
       }
@@ -190,7 +190,7 @@ public class MergeTask implements Callable<Void> {
     }
 
     for (TsFileResource seqFile : resource.getSeqFiles()) {
-      File mergeFile = new File(seqFile.getPath() + MERGE_SUFFIX);
+      File mergeFile = new File(seqFile.getTsFilePath() + MERGE_SUFFIX);
       mergeFile.delete();
       seqFile.setMerging(false);
     }

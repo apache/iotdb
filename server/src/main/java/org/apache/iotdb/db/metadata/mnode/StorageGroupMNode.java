@@ -35,7 +35,6 @@ public class StorageGroupMNode extends MNode {
   public StorageGroupMNode(MNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
-    this.fullPath = getFullPath();
   }
 
   public long getDataTTL() {

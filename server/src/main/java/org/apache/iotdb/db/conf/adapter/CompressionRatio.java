@@ -162,7 +162,9 @@ public class CompressionRatio {
       }
       calcTimes = maxTimes;
       compressionRatioSum = maxCompressionRatioSum;
-      compressionRatio.set(compressionRatioSum / calcTimes);
+      if (calcTimes != 0) {
+        compressionRatio.set(compressionRatioSum / calcTimes);
+      }
       LOGGER.debug(
           "After restoring from compression ratio file, compressionRatioSum = {}, calcTimes = {}",
           compressionRatioSum, calcTimes);

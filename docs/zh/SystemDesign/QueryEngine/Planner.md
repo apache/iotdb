@@ -29,9 +29,9 @@
 
 SQL 解析采用 Antlr4
 
-* server/src/main/antlr4/org/apache/iotdb/db/qp/strategy/SqlBase.g4
+* antlr/src/main/antlr4/org/apache/iotdb/db/qp/strategy/SqlBase.g4
 
-mvn clean compile 之后生成代码位置：server/target/generated-sources/antlr4
+`mvn clean compile -pl antlr` 之后生成代码位置：antlr/target/generated-sources/antlr4
 
 ## 逻辑计划生成器
 

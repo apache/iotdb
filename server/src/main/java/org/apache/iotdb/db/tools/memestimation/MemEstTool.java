@@ -70,7 +70,13 @@ public class MemEstTool {
       err(Throwables.getRootCause(e));
       status = 2;
     }
-    FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(IoTDBDescriptor.getInstance().getConfig().getBaseDir()));
+
+    FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(IoTDBDescriptor.getInstance().getConfig().getSystemDir()));
+    FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(IoTDBDescriptor.getInstance().getConfig().getWalDir()));
+    for(int i=0; i < IoTDBDescriptor.getInstance().getConfig().getDataDirs().length; i++){
+      FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(IoTDBDescriptor.getInstance().getConfig().getDataDirs()[i]));
+    }
+
     System.exit(status);
   }
 

@@ -127,7 +127,8 @@ public class TSMRWriteExample {
     try {
       isSuccess = job.waitForCompletion(true);
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      Thread.currentThread().interrupt();
+      throw new IOException(e.getMessage());
     }
     if (isSuccess) {
       System.out.println("Execute successfully");

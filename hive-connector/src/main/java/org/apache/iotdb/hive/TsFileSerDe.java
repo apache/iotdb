@@ -18,6 +18,15 @@
  */
 package org.apache.iotdb.hive;
 
+import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_DELTAOBJECTS;
+import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_MEASUREMENTID;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
+import javax.annotation.Nullable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.StringInternUtils;
 import org.apache.hadoop.hive.serde.serdeConstants;
@@ -35,9 +44,6 @@ import org.apache.hadoop.io.Writable;
 import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nullable;
-import java.util.*;
 
 public class TsFileSerDe extends AbstractSerDe {
 
@@ -63,7 +69,6 @@ public class TsFileSerDe extends AbstractSerDe {
 
     deviceId = tbl.getProperty(DEVICE_ID);
 
-
     if (columnNameProperty == null || columnNameProperty.isEmpty()
     || columnTypeProperty == null || columnTypeProperty.isEmpty()) {
       columnNames = Collections.emptyList();
@@ -78,6 +83,11 @@ public class TsFileSerDe extends AbstractSerDe {
     // Check column and types equals
     if (columnTypes.size() != columnNames.size()) {
       throw new TsFileSerDeException("len(columnNames) != len(columnTypes)");
+    }
+
+    if (conf != null) {
+      conf.set(READ_DELTAOBJECTS, deviceId);
+      conf.set(READ_MEASUREMENTID, columnNames.get(1));
     }
 
     oi = createObjectInspector();

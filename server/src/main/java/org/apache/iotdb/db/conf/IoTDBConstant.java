@@ -70,6 +70,8 @@ public class IoTDBConstant {
   public static final String COLUMN_DEVICES = "devices";
   public static final String COLUMN_COLUMN = "column";
   public static final String COLUMN_COUNT = "count";
+  public static final String COLUMN_TAGS = "tags";
+  public static final String COLUMN_ATTRIBUTES = "attributes";
 
   public static final String COLUMN_ROLE = "role";
   public static final String COLUMN_USER = "user";
@@ -85,11 +87,12 @@ public class IoTDBConstant {
   public static final String COLUMN_DONE = "done";
 
   public static final String PATH_WILDCARD = "*";
+  public static final String TIME = "time";
 
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
-  public static final String TSFILE_NAME_SEPARATOR = "-";
+  public static final String FILE_NAME_SEPARATOR = "-";
   public static final String UPGRADE_FOLDER_NAME = "upgrade";
 
   // system folder name
@@ -97,6 +100,8 @@ public class IoTDBConstant {
   public static final String SCHEMA_FOLDER_NAME = "schema";
   public static final String SYNC_FOLDER_NAME = "sync";
   public static final String QUERY_FOLDER_NAME = "query";
+  public static final String TRACING_FOLDER_NAME = "tracing";
+  public static final String TRACING_LOG = "tracing.txt";
 
   // mqtt  
   public static final String ENABLE_MQTT = "enable_mqtt_service";

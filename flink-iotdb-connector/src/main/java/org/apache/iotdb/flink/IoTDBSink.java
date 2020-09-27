@@ -22,6 +22,7 @@ import com.google.common.base.Preconditions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,7 +161,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
     if (device != null && measurements != null && values != null && measurements.size() == values
         .size()) {
       for (int i = 0; i < measurements.size(); i++) {
-        String measurement = device + "." + measurements.get(i);
+        String measurement = device + TsFileConstant.PATH_SEPARATOR + measurements.get(i);
         IoTDBOptions.TimeseriesOption timeseriesOption = timeseriesOptionMap.get(measurement);
         if (timeseriesOption != null && TSDataType.TEXT.equals(timeseriesOption.getDataType())) {
           // The TEXT data type should be covered by " or '

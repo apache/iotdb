@@ -155,33 +155,36 @@ public class WriteTest {
     startTime = startTime - startTime % 1000;
 
     // first stage:int, long, float, double, boolean, enums
-    for (int i = 0; i < ROW_COUNT; i++) {
-      // write d1
-      String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2);
-      if (rm.nextInt(1000) < 100) {
-        d1 = "d1," + (startTime + i) + ",s1,,s2," + (i * 10 + 2) + ",s4,HIGH";
-      }
-      if (i % 5 == 0) {
-        d1 += ",s3," + (i * 10 + 3);
-      }
-      fw.write(d1 + "\r\n");
+    try {
+      for (int i = 0; i < ROW_COUNT; i++) {
+        // write d1
+        String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2);
+        if (rm.nextInt(1000) < 100) {
+          d1 = "d1," + (startTime + i) + ",s1,,s2," + (i * 10 + 2) + ",s4,HIGH";
+        }
+        if (i % 5 == 0) {
+          d1 += ",s3," + (i * 10 + 3);
+        }
+        fw.write(d1 + "\r\n");
 
-      // write d2
-      String d2 = "d2," + (startTime + i) + ",s2," + (i * 10 + 2) + ",s3," + (i * 10 + 3);
-      if (rm.nextInt(1000) < 100) {
-        d2 = "d2," + (startTime + i) + ",s2,,s3," + (i * 10 + 3) + ",s5,MAN";
+        // write d2
+        String d2 = "d2," + (startTime + i) + ",s2," + (i * 10 + 2) + ",s3," + (i * 10 + 3);
+        if (rm.nextInt(1000) < 100) {
+          d2 = "d2," + (startTime + i) + ",s2,,s3," + (i * 10 + 3) + ",s5,MAN";
+        }
+        if (i % 5 == 0) {
+          d2 += ",s1," + (i * 10 + 1);
+        }
+        fw.write(d2 + "\r\n");
       }
-      if (i % 5 == 0) {
-        d2 += ",s1," + (i * 10 + 1);
-      }
-      fw.write(d2 + "\r\n");
+      // write error
+      String d = "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10 + 3);
+      fw.write(d + "\r\n");
+      d = "d2," + (startTime + ROW_COUNT + 1) + ",2,s-1," + (ROW_COUNT * 10 + 2);
+      fw.write(d + "\r\n");
+    } finally {
+      fw.close();
     }
-    // write error
-    String d = "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10 + 3);
-    fw.write(d + "\r\n");
-    d = "d2," + (startTime + ROW_COUNT + 1) + ",2,s-1," + (ROW_COUNT * 10 + 2);
-    fw.write(d + "\r\n");
-    fw.close();
   }
 
   @Test

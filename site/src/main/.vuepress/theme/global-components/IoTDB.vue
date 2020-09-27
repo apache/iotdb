@@ -30,11 +30,10 @@
     text-align: center;"
       >Database for Internet of Things</p>
       <p style="font-size: 20px;margin: 50px 0 10px 0;text-align:justify!important;">
-        Apache IoTDB (incubating) (Database for Internet of Things) is an integrated data
-        management engine designed for timeseries data. It provides users with services for
-        data collection, storage and analysis. Due to its light-weight architecture, high
-        performance and rich feature set together with its deep integration with Apache
-        Hadoop, Spark and Flink, Apache IoTDB (incubating) can meet the requirements of massive
+        Apache IoTDB (Database for Internet of Things) is an IoT native database with high performance
+        for data management and analysis, deployable on the edge and the cloud. Due to its light-weight architecture,
+        high performance and rich feature set together with its deep integration with Apache
+        Hadoop, Spark and Flink, Apache IoTDB can meet the requirements of massive
         data storage, high-speed data ingestion and complex data analysis in the IoT
         industrial fields.
       </p>
@@ -79,7 +78,7 @@
             title="High-throughput read and write"
             width="350"
             trigger="hover"
-            content="Apache IoTDB (incubating) can support high-speed write access for millions of low-power and intelligently networked devices. It also provides lightning read access for retrieving data."
+            content="Apache IoTDB can support high-speed write access for millions of low-power and intelligently networked devices. It also provides lightning read access for retrieving data."
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
               <img src="/img/home-icon1.png" style="width:40px;height:40px;">
@@ -93,7 +92,7 @@
             title="Efficient directory structure"
             width="350"
             trigger="hover"
-            content="Apache IoTDB (incubating) can efficiently organize complex data structure from IoT devices and large size of timeseries data with fuzzy searching strategy for complex directory of timeseries data."
+            content="Apache IoTDB can efficiently organize complex data structure from IoT devices and large size of timeseries data with fuzzy searching strategy for complex directory of timeseries data."
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
               <img src="/img/home-icon2.png" style="width:40px;height:40px;">
@@ -135,7 +134,7 @@
             title="Flexible deployment"
             width="400"
             trigger="hover"
-            content="Apache IoTDB (incubating) can provide users one-click installation tool on the cloud, terminal tool on desktop and the bridge tool between cloud platform and on premise machine (Data Synchronization Tool)."
+            content="Apache IoTDB (incubating) can provide users one-click installation on the cloud, terminal tool on desktop and the bridge tool between cloud platform and on premise machine (Data Synchronization Tool)."
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon5.png" style="width:40px;height:40px;">
@@ -148,7 +147,7 @@
             title="Intense integration with Open Source Ecosystem"
             width="400"
             trigger="hover"
-            content="Apache IoTDB (incubating) can support analysis ecosystems, for example, Hadoop, Spark, Flink and Grafana as visualization tool."
+            content="Apache IoTDB (incubating) can support analysis ecosystems, for example, Hadoop, Spark, Flink and Grafana （visualization tool）."
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon6.png" style="width:40px;height:40px;">

@@ -133,16 +133,16 @@ public class ReadWriteIOUtils {
   public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
     int length = 0;
     byte[] bytes;
-    stream.write(map.size());
+    stream.writeInt(map.size());
     length += 4;
     for (Entry<String, String> entry : map.entrySet()) {
       bytes = entry.getKey().getBytes();
-      stream.write(bytes.length);
+      stream.writeInt(bytes.length);
       length += 4;
       stream.write(bytes);
       length += bytes.length;
       bytes = entry.getValue().getBytes();
-      stream.write(bytes.length);
+      stream.writeInt(bytes.length);
       length += 4;
       stream.write(bytes);
       length += bytes.length;
@@ -344,6 +344,9 @@ public class ReadWriteIOUtils {
    * @return the length of string represented by byte[].
    */
   public static int write(String s, ByteBuffer buffer) {
+    if (s == null) {
+      return write(-1, buffer);
+    }
     int len = 0;
     byte[] bytes = s.getBytes();
     len += write(bytes.length, buffer);
@@ -563,6 +566,9 @@ public class ReadWriteIOUtils {
    */
   public static String readString(ByteBuffer buffer) {
     int strLength = readInt(buffer);
+    if (strLength < 0) {
+      return null;
+    }
     byte[] bytes = new byte[strLength];
     buffer.get(bytes, 0, strLength);
     return new String(bytes, 0, strLength);

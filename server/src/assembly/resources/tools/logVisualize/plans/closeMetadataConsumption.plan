@@ -1,6 +1,0 @@
-#
-#Tue Sep 03 09:20:46 CST 2019
-legends=Time
-name=closeMetadataConsumption
-content_pattern=Storage group .* close the file .*, start time is .*, end time is .*, time consumption of flushing metadata is (.*)ms
-measurement_positions=1

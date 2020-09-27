@@ -1,6 +1,0 @@
-#
-#Tue Sep 03 09:20:46 CST 2019
-legends=MemTableSize,TsFileSizeThreshold,MemTableNumber
-name=dynamicParameters
-content_pattern=After updating compression ratio, trying to adjust parameters, the modified parameters: MemTableSize threshold is (.*)B, TsfileSize threshold is (.*)B, MemTableNumber is (.*)
-measurement_positions=1,2,3

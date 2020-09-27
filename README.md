@@ -129,7 +129,7 @@ Under the root path of incubator-iotdb:
 
 Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
 
-> NOTE: Directories "service-rpc/target/generated-sources/thrift" and "server/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in the IDE.
+> NOTE: Directories "thrift/target/generated-sources/thrift" and "antlr/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in the IDE.
 
 ### Configurations
 

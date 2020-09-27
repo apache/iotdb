@@ -18,28 +18,34 @@
  */
 package org.apache.iotdb.db.engine.upgrade;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.service.UpgradeSevice;
-import org.apache.iotdb.db.tools.upgrade.TsFileOnlineUpgradeTool;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.tools.upgrade.TsFileOnlineUpgradeTool;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class UpgradeTask extends WrappedRunnable {
 
   private TsFileResource upgradeResource;
   private static final Logger logger = LoggerFactory.getLogger(UpgradeTask.class);
   private static final String COMMA_SEPERATOR = ",";
+  private static final int maxLevelNum = IoTDBDescriptor.getInstance().getConfig().getMaxLevelNum();
 
+  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   public UpgradeTask(TsFileResource upgradeResource) {
     this.upgradeResource = upgradeResource;
@@ -50,20 +56,19 @@ public class UpgradeTask extends WrappedRunnable {
     try {
       List<TsFileResource> upgradedResources = generateUpgradedFiles();
       upgradeResource.writeLock();
-      String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
+      String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
       String oldModificationFilePath = oldTsfilePath + ModificationFile.FILE_SUFFIX;
       try {
         // delete old TsFile and resource
-        Files.delete(FSFactoryProducer.getFSFactory().getFile(oldTsfilePath).toPath());
-        Files.delete(FSFactoryProducer.getFSFactory()
-            .getFile(oldTsfilePath + TsFileResource.RESOURCE_SUFFIX).toPath());
+        upgradeResource.delete();
         File modificationFile = FSFactoryProducer.getFSFactory().getFile(oldModificationFilePath);
         // move upgraded TsFiles and modificationFile to their own partition directories
         for (TsFileResource upgradedResource : upgradedResources) {
-          File upgradedFile = upgradedResource.getFile();
+          File upgradedFile = upgradedResource.getTsFile();
           long partition = upgradedResource.getTimePartition();
           String storageGroupPath = upgradedFile.getParentFile().getParentFile().getParent();
-          File partitionDir = FSFactoryProducer.getFSFactory().getFile(storageGroupPath, partition + "");
+          File partitionDir = FSFactoryProducer.getFSFactory()
+              .getFile(storageGroupPath, partition + "");
           if (!partitionDir.exists()) {
             partitionDir.mkdir();
           }
@@ -73,25 +78,35 @@ public class UpgradeTask extends WrappedRunnable {
               FSFactoryProducer.getFSFactory().getFile(partitionDir, upgradedFile.getName()));
           // copy mods file to partition directories
           if (modificationFile.exists()) {
-            Files.copy(modificationFile.toPath(), 
+            Files.copy(modificationFile.toPath(),
                 FSFactoryProducer.getFSFactory().getFile(partitionDir, upgradedFile.getName()
                     + ModificationFile.FILE_SUFFIX).toPath());
           }
           upgradedResource.serialize();
           // delete tmp partition folder when it is empty
-          if (upgradedFile.getParentFile().isDirectory() 
+          if (upgradedFile.getParentFile().isDirectory()
               && upgradedFile.getParentFile().listFiles().length == 0) {
             Files.delete(upgradedFile.getParentFile().toPath());
           }
+          // rename all files to 0 level
+          upgradedFile = upgradedResource.getTsFile();
+          File zeroMergeVersionFile = getMaxMergeVersionFile(upgradedFile);
+          fsFactory.moveFile(upgradedFile, zeroMergeVersionFile);
+          fsFactory.moveFile(
+              fsFactory.getFile(upgradedFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+              fsFactory
+                  .getFile(
+                      zeroMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+          upgradedResource.setFile(upgradedFile);
         }
         // delete old modificationFile 
         if (modificationFile.exists()) {
           Files.delete(modificationFile.toPath());
         }
         // delete upgrade folder when it is empty
-        if (upgradeResource.getFile().getParentFile().isDirectory()
-            && upgradeResource.getFile().getParentFile().listFiles().length == 0) {
-          Files.delete(upgradeResource.getFile().getParentFile().toPath());
+        if (upgradeResource.getTsFile().getParentFile().isDirectory()
+            && upgradeResource.getTsFile().getParentFile().listFiles().length == 0) {
+          Files.delete(upgradeResource.getTsFile().getParentFile().toPath());
         }
         upgradeResource.setUpgradedResources(upgradedResources);
         UpgradeLog.writeUpgradeLogFile(
@@ -104,14 +119,14 @@ public class UpgradeTask extends WrappedRunnable {
       logger.info("Upgrade completes, file path:{} , the remaining upgraded file num: {}",
           oldTsfilePath, UpgradeSevice.getCntUpgradeFileNum());
     } catch (Exception e) {
-      logger.error("meet error when upgrade file:{}", upgradeResource.getFile().getAbsolutePath(),
+      logger.error("meet error when upgrade file:{}", upgradeResource.getTsFile().getAbsolutePath(),
           e);
     }
   }
 
   private List<TsFileResource> generateUpgradedFiles() throws WriteProcessException {
     upgradeResource.readLock();
-    String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
+    String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
     List<TsFileResource> upgradedResources = new ArrayList<>();
     UpgradeLog.writeUpgradeLogFile(
         oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
@@ -127,4 +142,13 @@ public class UpgradeTask extends WrappedRunnable {
     }
     return upgradedResources;
   }
+
+  private File getMaxMergeVersionFile(File seqFile) {
+    String[] splits = seqFile.getName().replace(TSFILE_SUFFIX, "")
+        .split(IoTDBConstant.FILE_NAME_SEPARATOR);
+    return fsFactory.getFile(seqFile.getParentFile(),
+        splits[0] + IoTDBConstant.FILE_NAME_SEPARATOR + splits[1]
+            + IoTDBConstant.FILE_NAME_SEPARATOR + (maxLevelNum - 1) + TSFILE_SUFFIX);
+  }
+
 }

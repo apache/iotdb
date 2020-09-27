@@ -35,7 +35,7 @@ We add a Last data cache to the MNode structure corresponding to the time series
 
 ```
 try {
-  node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(seriesPath.toString());
+  node = IoTDB.metaManager.getDeviceNodeWithAutoCreateStorageGroup(seriesPath.toString());
 } catch (MetadataException e) {
   throw new QueryProcessException(e);
 }

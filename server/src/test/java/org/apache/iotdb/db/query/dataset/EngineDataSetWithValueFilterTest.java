@@ -18,22 +18,19 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 public class EngineDataSetWithValueFilterTest {
 
@@ -81,7 +78,7 @@ public class EngineDataSetWithValueFilterTest {
       "insert into root.test.d0(timestamp,s1) values(3000,'1309')"};
 
   static {
-    MManager.getInstance().init();
+    IoTDB.metaManager.init();
   }
 
   public EngineDataSetWithValueFilterTest() throws QueryProcessException {
@@ -98,13 +95,14 @@ public class EngineDataSetWithValueFilterTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-   }
+  }
 
   @Test
   public void testHasNextAndNext() throws Exception {
     QueryPlan queryPlan = (QueryPlan) processor
         .parseSQLToPhysicalPlan("select test.d0.s1 from root where root.vehicle.d0.s0 > 100");
-    QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    QueryDataSet dataSet = queryExecutor
+        .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     assertTrue(dataSet.hasNext());
     assertEquals("16\t109", dataSet.next().toString());
     assertTrue(dataSet.hasNext());
@@ -128,5 +126,25 @@ public class EngineDataSetWithValueFilterTest {
     assertFalse(dataSet.hasNext());
     assertNull(dataSet.next());
 
+  }
+
+  @Test
+  public void testOrderByTimeDesc() throws Exception {
+    QueryPlan queryPlan = (QueryPlan) processor
+        .parseSQLToPhysicalPlan("select vehicle.d0.s1 from root where root.vehicle.d0.s0 > 100 order by time desc");
+    QueryDataSet dataSet = queryExecutor
+        .processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+
+    assertTrue(dataSet.hasNext());
+    assertEquals("206\t132", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("38\t122", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("22\t1002", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("18\t198", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("12\t102", dataSet.next().toString());
+    assertFalse(dataSet.hasNext());
   }
 }

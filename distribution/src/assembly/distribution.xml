@@ -78,15 +78,15 @@
             <source>${maven.multiModuleProjectDirectory}/README.md</source>
         </file>
         <file>
+            <source>${maven.multiModuleProjectDirectory}/README_ZH.md</source>
+        </file>
+        <file>
             <source>${maven.multiModuleProjectDirectory}/LICENSE-binary</source>
             <destName>LICENSE</destName>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/NOTICE-binary</source>
             <destName>NOTICE</destName>
-        </file>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/DISCLAIMER</source>
         </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/RELEASE_NOTES.md</source>

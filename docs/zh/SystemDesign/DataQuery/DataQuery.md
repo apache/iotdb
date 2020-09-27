@@ -30,17 +30,19 @@
 * 最新数据查询
 * 按设备对齐查询
 * 降采样补空值查询
+* 按时间倒序查询
 
 为了实现以上几种查询，IoTDB 查询引擎中设计了针对单个时间序列的基础查询组件，在此基础上，实现了多种查询功能。
 
 ## 相关文档
 
-* [查询基础介绍](/zh/SystemDesign/DataQuery/QueryFundamentals.html)
-* [基础查询组件](/zh/SystemDesign/DataQuery/SeriesReader.html)
-* [原始数据查询](/zh/SystemDesign/DataQuery/RawDataQuery.html)
-* [聚合查询](/zh/SystemDesign/DataQuery/AggregationQuery.html)
-* [降采样查询](/zh/SystemDesign/DataQuery/GroupByQuery.html)
-* [最近时间戳查询](/zh/SystemDesign/DataQuery/LastQuery.html)
-* [按设备对齐查询](/zh/SystemDesign/DataQuery/AlignByDeviceQuery.html)
-* [空值填充](/zh/SystemDesign/DataQuery/FillFunction.html)
-* [降采样补空值查询](/zh/SystemDesign/DataQuery/GroupByFillQuery.html)
+* [查询基础介绍](../DataQuery/QueryFundamentals.md)
+* [基础查询组件](../DataQuery/SeriesReader.md)
+* [原始数据查询](../DataQuery/RawDataQuery.md)
+* [聚合查询](../DataQuery/AggregationQuery.md)
+* [降采样查询](../DataQuery/GroupByQuery.md)
+* [最近时间戳查询](../DataQuery/LastQuery.md)
+* [按设备对齐查询](../DataQuery/AlignByDeviceQuery.md)
+* [空值填充](../DataQuery/FillFunction.md)
+* [降采样补空值查询](../DataQuery/GroupByFillQuery.md)
+* [按时间倒序查询](../DataQuery/OrderByTimeQuery.md)

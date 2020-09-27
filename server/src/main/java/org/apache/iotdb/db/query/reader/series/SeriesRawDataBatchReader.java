@@ -24,12 +24,12 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class SeriesRawDataBatchReader implements ManagedSeriesReader {
@@ -47,21 +47,22 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     this.seriesReader = seriesReader;
   }
 
-  public SeriesRawDataBatchReader(Path seriesPath, Set<String> allSensors, TSDataType dataType,
+  public SeriesRawDataBatchReader(PartialPath seriesPath, Set<String> allSensors, TSDataType dataType,
       QueryContext context, QueryDataSource dataSource, Filter timeFilter, Filter valueFilter,
-      TsFileFilter fileFilter) {
+      TsFileFilter fileFilter, boolean ascending) {
     this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, dataSource,
-        timeFilter, valueFilter, fileFilter);
+        timeFilter, valueFilter, fileFilter, ascending);
   }
 
   @TestOnly
-  public SeriesRawDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
+  @SuppressWarnings("squid:S107")
+  public SeriesRawDataBatchReader(PartialPath seriesPath, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
-      Filter timeFilter, Filter valueFilter) {
+      Filter timeFilter, Filter valueFilter, boolean ascending) {
     Set<String> allSensors = new HashSet<>();
     allSensors.add(seriesPath.getMeasurement());
     this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
-        seqFileResource, unseqFileResource, timeFilter, valueFilter);
+        seqFileResource, unseqFileResource, timeFilter, valueFilter, ascending);
   }
 
   /**

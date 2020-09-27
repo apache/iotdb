@@ -126,7 +126,7 @@ git checkout release/x.x.x
 
 执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
 
-> 注意:"service-rpc/target/generated-sources/thrift" 和 "server/target/generated-sources/antlr4" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。
+> 注意:"thrift/target/generated-sources/thrift" 和 "antlr/target/generated-sources/antlr4" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。
 
 ### 配置
 
