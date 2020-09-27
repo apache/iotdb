@@ -85,11 +85,31 @@ public class IoTDBAggregationAlignByDeviceIT {
               resultSet.getString("Device") + "," + resultSet.getString(count("s1"))
                   + "," + resultSet.getString(count("s2")) + "," + resultSet
                   .getString(count("s3"));
+          System.out.println(ans);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(retArray.length, cnt);
       }
+
+      hasResultSet = statement
+          .execute("SELECT count(*) from root order by time desc align by device ");
+
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString("Device") + "," + resultSet.getString(count("s1"))
+                  + "," + resultSet.getString(count("s2")) + "," + resultSet
+                  .getString(count("s3"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

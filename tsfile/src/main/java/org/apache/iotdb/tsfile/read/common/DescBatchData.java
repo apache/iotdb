@@ -74,8 +74,4 @@ public class DescBatchData extends BatchData {
     }
     return null;
   }
-
-  public boolean hasMoreData(long time) {
-    return getMinTimestamp() <= time;
-  }
 }

@@ -560,10 +560,6 @@ public class BatchData implements Serializable {
     return null;
   }
 
-  public boolean hasMoreData(long time) {
-    return getMaxTimestamp() >= time;
-  }
-
   public long getMaxTimestamp() {
     return getTimeByIndex(length() - 1);
   }

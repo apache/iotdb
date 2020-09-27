@@ -56,8 +56,4 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
     return false;
   }
 
-  @Override
-  public boolean needAscReader() {
-    return false;
-  }
 }

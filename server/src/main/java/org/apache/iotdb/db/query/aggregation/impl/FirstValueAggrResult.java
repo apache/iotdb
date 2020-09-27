@@ -74,8 +74,7 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     if (hasResult()) {
       return;
     }
