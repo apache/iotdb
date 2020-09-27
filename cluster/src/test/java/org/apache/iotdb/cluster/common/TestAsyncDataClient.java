@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.common;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -37,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MemberTest;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
+import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -116,11 +118,20 @@ public class TestAsyncDataClient extends AsyncDataClient {
   public void readFile(String filePath, long offset, int length,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(() -> {
-      if (offset == 0) {
-        resultHandler.onComplete(
-            ByteBuffer.wrap((filePath + "@" + offset + "#" + length).getBytes()));
+      File file = new File(filePath);
+      if (file.exists()) {
+        try {
+          resultHandler.onComplete(IOUtils.readFile(filePath, offset, length));
+        } catch (IOException e) {
+          resultHandler.onError(e);
+        }
       } else {
-        resultHandler.onComplete(ByteBuffer.allocate(0));
+        if (offset == 0) {
+          resultHandler.onComplete(
+              ByteBuffer.wrap((filePath + "@" + offset + "#" + length).getBytes()));
+        } else {
+          resultHandler.onComplete(ByteBuffer.allocate(0));
+        }
       }
     }).start();
   }

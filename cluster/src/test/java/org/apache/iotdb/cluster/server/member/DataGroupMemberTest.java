@@ -132,7 +132,7 @@ public class DataGroupMemberTest extends MemberTest {
     snapshotMap = new HashMap<>();
     for (int i = 0; i < ClusterConstant.SLOT_NUM; i++) {
       FileSnapshot fileSnapshot = new FileSnapshot();
-      fileSnapshot.setTimeseriesSchemas(Collections.singleton(TestUtils.getTestTimeSeriesSchema(0
+      fileSnapshot.setTimeseriesSchemas(Collections.singletonList(TestUtils.getTestTimeSeriesSchema(0
           , i)));
       snapshotMap.put(i, fileSnapshot);
     }
@@ -416,12 +416,12 @@ public class DataGroupMemberTest extends MemberTest {
     // resource1, resource1 exists locally, resource2 is closed but resource1 is not
     // resource3 does not exist locally and without modification,
     // resource4 does not exist locally and with modification
-    snapshot.addFile(prepareResource(1, false), TestUtils.getNode(0));
-    snapshot.addFile(prepareResource(2, false), TestUtils.getNode(0));
-    snapshot.addFile(prepareResource(3, false), TestUtils.getNode(0));
-    snapshot.addFile(prepareResource(4, true), TestUtils.getNode(0));
-    // resource4 is the merge result of 3,4,5
-    TsFileResource tsFileResource = prepareResource(5, true);
+    snapshot.addFile(prepareResource(1, false, true), TestUtils.getNode(0));
+    snapshot.addFile(prepareResource(2, false, true), TestUtils.getNode(0));
+    snapshot.addFile(prepareResource(3, false, true), TestUtils.getNode(0));
+    snapshot.addFile(prepareResource(4, true, true), TestUtils.getNode(0));
+    // resource5 is the merge result of 3,4,5
+    TsFileResource tsFileResource = prepareResource(5, true, true);
     tsFileResource.updateStartTime(TestUtils.getTestSg(0), 300);
     tsFileResource.updateEndTime(TestUtils.getTestSg(0), 599);
     Set<Long> versionSet = new HashSet<>();
@@ -850,11 +850,17 @@ public class DataGroupMemberTest extends MemberTest {
     assertEquals("The requested reader 0 is not found", exception.getMessage());
   }
 
-  private TsFileResource prepareResource(long serialNum, boolean withModification)
+  private TsFileResource prepareResource(long serialNum, boolean withModification,
+      boolean asHardLink)
       throws IOException, IllegalPathException {
     TsFileResource resource = new RemoteTsFileResource();
-    File file = new File("target" + File.separator + TestUtils.getTestSg(0) + File.separator + "0",
-        "0-" + serialNum + "-0.tsfile");
+    String fileName =
+        "target" + File.separator + TestUtils.getTestSg(0) + File.separator + "0" + File.separator +
+    "0-" + serialNum + "-0.tsfile";
+    if (asHardLink) {
+      fileName = fileName + ".0_0";
+    }
+    File file = new File(fileName);
     file.getParentFile().mkdirs();
     file.createNewFile();
 
