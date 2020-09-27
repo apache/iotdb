@@ -160,8 +160,8 @@ IoTDB> show timeseries root.fit.d1.*
 
 ## 如何更改IoTDB的客户端时间显示格式？
 
-IoTDB 客户端默认显示的时间是人类可读的(比如：```1970-01-01T08:00:00.001```)，如果您想显示是时间戳或者其他可读格式, 请在启动命令上添加参数```-disableIS08601```:
+IoTDB 客户端默认显示的时间是人类可读的(比如：```1970-01-01T08:00:00.001```)，如果您想显示是时间戳或者其他可读格式, 请在启动命令上添加参数```-disableISO8601```:
 
 ```
-> $IOTDB_CLI_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
+> $IOTDB_CLI_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableISO8601
 ```
