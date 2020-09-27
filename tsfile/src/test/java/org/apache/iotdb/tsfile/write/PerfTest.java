@@ -25,13 +25,12 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.Scanner;
 
+import com.google.gson.JsonObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.alibaba.fastjson.JSONObject;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
@@ -42,7 +41,6 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -170,10 +168,11 @@ public class PerfTest {
     schema.registerTimeseries(new Path("d2", "s3"),
         new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(new Path("d2", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
-    JSONObject s4 = new JSONObject();
-    s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
-    s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
-    s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
+
+    JsonObject s4 = new JsonObject();
+    s4.addProperty(JsonFormatConstant.MEASUREMENT_UID, "s4");
+    s4.addProperty(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
+    s4.addProperty(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
     return schema;
   }
 
