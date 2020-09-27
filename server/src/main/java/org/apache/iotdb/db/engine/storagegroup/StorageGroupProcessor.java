@@ -1395,7 +1395,6 @@ public class StorageGroupProcessor {
       }
 
       // write log to impacted working TsFileProcessors
-      // TODO rewrite logDeletion
       logDeletion(startTime, endTime, path);
 
       Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
