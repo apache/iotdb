@@ -42,7 +42,6 @@ public interface IUnCompressor {
    * @param name CompressionType
    * @return the UnCompressor of specified CompressionType
    */
-
   static IUnCompressor getUnCompressor(CompressionType name) {
     if (name == null) {
       throw new CompressionTypeNotSupportedException("NULL");

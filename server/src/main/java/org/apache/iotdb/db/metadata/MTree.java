@@ -85,7 +85,7 @@ public class MTree implements Serializable {
 
   private static final long serialVersionUID = -4200394435237291964L;
   private static final Logger logger = LoggerFactory.getLogger(MTree.class);
-  private static final String NO_CHILDNODE= " does not have the child node ";
+  private static final String NO_CHILDNODE_MSG= " does not have the child node ";
 
   private MNode root;
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
@@ -692,7 +692,7 @@ public class MTree implements Serializable {
       if (node.getChild(nodes[i]) != null) {
         node = node.getChild(nodes[i]);
       } else {
-        throw new MetadataException(nodes[i - 1] + NO_CHILDNODE + nodes[i]);
+        throw new MetadataException(nodes[i - 1] + NO_CHILDNODE_MSG + nodes[i]);
       }
     }
     return getCountInGivenLevel(node, level - (nodes.length - 1));
@@ -711,7 +711,7 @@ public class MTree implements Serializable {
           return getCount(node.getChild(nodeReg), nodes, idx + 1);
         }
       } else {
-        throw new MetadataException(node.getName() + NO_CHILDNODE + nodeReg);
+        throw new MetadataException(node.getName() + NO_CHILDNODE_MSG + nodeReg);
       }
     } else {
       int cnt = 0;
@@ -899,10 +899,8 @@ public class MTree implements Serializable {
           continue;
         }
         findPath(child, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast, queryContext);
-        if (hasLimit && count.get().intValue() == limit.get().intValue()) {
-           {
+        if (hasLimit && count.get().intValue == limit.get().intValue) {
             return;
-          }
         }
       }
     }
@@ -1056,7 +1054,7 @@ public class MTree implements Serializable {
           return res;
         }
       } else {
-        throw new MetadataException(nodes[i - 1] + NO_CHILDNODE + nodes[i]);
+        throw new MetadataException(nodes[i - 1] + NO_CHILDNODE_MSG + nodes[i]);
       }
     }
     findNodes(node, path, res, nodeLevel - (nodes.length - 1), filter);

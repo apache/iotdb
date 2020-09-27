@@ -200,8 +200,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   private UpdateOperator updateOp;
   private QueryOperator queryOp;
   private DeleteDataOperator deleteDataOp;
-  private static final String FOR_DELETE_STATEMENT = "For delete statement, where clause can only contain atomic expressions like : ";
-  private static final String ATOMIC_EXPRESSION_RULE = "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
+  private static final String DELETE_RANGE_ERROR_MSG = 
+  "For delete statement, where clause can only contain atomic expressions like : time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
 
 
   LogicalGenerator(ZoneId zoneId) {
@@ -1632,8 +1632,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     FilterOperator filterOperator = operator.getFilterOperator();
     if (!filterOperator.isLeaf() && filterOperator.getTokenIntType() != SQLConstant.KW_AND) {
       throw new SQLParserException(
-          FOR_DELETE_STATEMENT
-              + ATOMIC_EXPRESSION_RULE);
+          DELETE_RANGE_ERROR_MSG);
     }
 
     if (filterOperator.isLeaf()) {
@@ -1645,8 +1644,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     FilterOperator rOperator = children.get(1);
     if (!lOperator.isLeaf() || !rOperator.isLeaf()) {
       throw new SQLParserException(
-          FOR_DELETE_STATEMENT
-              + ATOMIC_EXPRESSION_RULE);
+          DELETE_RANGE_ERROR_MSG);
     }
 
     Pair<Long, Long> leftOpInterval = calcOperatorInterval(lOperator);
@@ -1676,8 +1674,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         return new Pair<>(time, time);
       default:
         throw new SQLParserException(
-            FOR_DELETE_STATEMENT
-                + ATOMIC_EXPRESSION_RULE);
+            DELETE_RANGE_ERROR_MSG);
     }
   }
 
