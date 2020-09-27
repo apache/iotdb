@@ -83,7 +83,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
   public FileSnapshot() {
     dataFiles = new ArrayList<>();
-    timeseriesSchemas = new HashSet<>();
+    timeseriesSchemas = new ArrayList<>();
   }
 
   public void addFile(TsFileResource resource, Node header) throws IOException {
@@ -138,24 +138,6 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
   public void setTimeseriesSchemas(
       Collection<TimeseriesSchema> timeseriesSchemas) {
     this.timeseriesSchemas = timeseriesSchemas;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    FileSnapshot that = (FileSnapshot) o;
-    return Objects.equals(timeseriesSchemas, that.timeseriesSchemas) &&
-        Objects.equals(dataFiles, that.dataFiles);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(timeseriesSchemas, dataFiles);
   }
 
   @Override
@@ -359,7 +341,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       File remoteModFile =
           new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
       try {
-        StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
+        StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource, true);
         StorageEngine.getInstance().getProcessor(storageGroupName)
             .removeFullyOverlapFiles(resource);
       } catch (StorageEngineException | LoadFileException e) {
@@ -372,13 +354,15 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         File localModFile =
             new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
         try {
-          Files.delete(localModFile.toPath());
+          Files.deleteIfExists(localModFile.toPath());
         } catch (IOException e) {
           logger.warn("Cannot delete localModFile {}", localModFile, e);
         }
         if (!remoteModFile.renameTo(localModFile)) {
           logger.warn("Cannot rename remoteModFile {}", remoteModFile);
         }
+        // ModFile will be updated during the next call to `getModFile`
+        resource.setModFile(null);
       }
       resource.setRemote(false);
     }
@@ -528,5 +512,23 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       }
       dest.flush();
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    FileSnapshot snapshot = (FileSnapshot) o;
+    return Objects.equals(timeseriesSchemas, snapshot.timeseriesSchemas) &&
+        Objects.equals(dataFiles, snapshot.dataFiles);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(timeseriesSchemas, dataFiles);
   }
 }

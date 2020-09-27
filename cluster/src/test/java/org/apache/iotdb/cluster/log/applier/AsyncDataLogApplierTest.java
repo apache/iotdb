@@ -86,6 +86,7 @@ public class AsyncDataLogApplierTest {
       PhysicalPlan plan = new InsertRowPlan(new PartialPath(TEST_SG + i), i, new String[0],
           new String[0]);
       PhysicalPlanLog log = new PhysicalPlanLog(plan);
+      log.setCurrLogIndex(i);
       logsToApply.add(log);
     }
     Log finalLog = new EmptyContentLog();

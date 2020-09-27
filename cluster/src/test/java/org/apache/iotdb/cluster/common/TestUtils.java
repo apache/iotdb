@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cluster.common;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -32,6 +34,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -40,13 +43,18 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -177,7 +185,8 @@ public class TestUtils {
         TestUtils.getTestMeasurement(seriesNum), dataType, encoding,
         CompressionType.UNCOMPRESSED,
         Collections.emptyMap());
-    return new MeasurementMNode(null, measurementSchema.getMeasurementId(), measurementSchema, null);
+    return new MeasurementMNode(null, measurementSchema.getMeasurementId(), measurementSchema,
+        null);
   }
 
   public static TimeseriesSchema getTestTimeSeriesSchema(int sgNum, int seriesNum) {
@@ -318,5 +327,47 @@ public class TestUtils {
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }
+  }
+
+  public static List<TsFileResource> prepareTsFileResources(int sgNum, int fileNum, int seriesNum,
+      int ptNum, boolean asHardLink) throws IOException, WriteProcessException {
+    List<TsFileResource> ret = new ArrayList<>();
+    for (int i = 0; i < fileNum; i++) {
+      String fileName = "target" + File.separator + String
+          .format(TestUtils.getTestSg(sgNum) + File.separator + 0 +
+              File.separator + "0-%d-0.tsFile", i);
+      if (asHardLink) {
+        fileName = fileName + ".0_0";
+      }
+      File file = new File(fileName);
+      file.getParentFile().mkdirs();
+      try (TsFileWriter writer = new TsFileWriter(file)) {
+        for (int k = 0; k < seriesNum; k++) {
+          MeasurementSchema schema = getTestMeasurementSchema(k);
+          writer.registerTimeseries(new Path(getTestSg(sgNum), schema.getMeasurementId()), schema);
+        }
+
+        for (int j = 0; j < ptNum; j++) {
+          long timestamp = i * ptNum + j;
+          TSRecord record = new TSRecord(timestamp, getTestSg(sgNum));
+          for (int k = 0; k < seriesNum; k++) {
+            MeasurementSchema schema = getTestMeasurementSchema(k);
+            DataPoint dataPoint = DataPoint.getDataPoint(schema.getType(),
+                schema.getMeasurementId(), String.valueOf(k));
+            record.addTuple(dataPoint);
+          }
+          writer.write(record);
+        }
+      }
+
+      TsFileResource resource = new TsFileResource(file);
+      resource.updateStartTime(TestUtils.getTestSg(sgNum), i * ptNum);
+      resource.updateEndTime(TestUtils.getTestSg(sgNum), (i + 1) * ptNum - 1);
+      resource.setHistoricalVersions(Collections.singleton((long) i));
+
+      resource.serialize();
+      ret.add(resource);
+    }
+    return ret;
   }
 }

@@ -87,6 +87,7 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -1937,9 +1938,11 @@ public class StorageGroupProcessor {
    * Finally, update the latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
    *
    * @param newTsFileResource tsfile resource
+   * @param preserveVersion if true, the version of the file will be set to its
+   *                        maxHistoricalVersion, or a new version will be assigned to it
    * @UsedBy load external tsfile module
    */
-  public void loadNewTsFile(TsFileResource newTsFileResource) throws LoadFileException {
+  public void loadNewTsFile(TsFileResource newTsFileResource, boolean preserveVersion) throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock();
@@ -1961,8 +1964,9 @@ public class StorageGroupProcessor {
 
         // check whether the file name needs to be renamed.
         if (!tsFileManagement.isEmpty(true)) {
+          long version = preserveVersion ? newTsFileResource.getMaxVersion() : -1;
           String newFileName = getFileNameForLoadingFile(tsfileToBeInserted.getName(), insertPos,
-              newTsFileResource.getTimePartition(), sequenceList);
+              newTsFileResource.getTimePartition(), sequenceList, version);
           if (!newFileName.equals(tsfileToBeInserted.getName())) {
             logger.info("Tsfile {} must be renamed to {} for loading into the sequence list.",
                 tsfileToBeInserted.getName(), newFileName);
@@ -2185,10 +2189,12 @@ public class StorageGroupProcessor {
    * @param tsfileName origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
    * 1]
+   * @param version the specified version number of the new file if not -1, else use a new
+   *                version number from the version controller
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
-      long timePartitionId, List<TsFileResource> sequenceList) {
+      long timePartitionId, List<TsFileResource> sequenceList, long version) {
     long currentTsFileTime = Long
         .parseLong(tsfileName.split(FILE_NAME_SEPARATOR)[0]);
     long preTime;
@@ -2199,7 +2205,13 @@ public class StorageGroupProcessor {
       preTime = Long.parseLong(preName.split(FILE_NAME_SEPARATOR)[0]);
     }
     if (insertIndex == tsFileManagement.size(true) - 1) {
-      return preTime < currentTsFileTime ? tsfileName : getNewTsFileName(timePartitionId);
+      if (preTime < currentTsFileTime) {
+        return tsfileName;
+      } else if (version == -1) {
+        return getNewTsFileName(timePartitionId);
+      } else {
+        return getNewTsFileName(System.currentTimeMillis(), version, 0);
+      }
     } else {
       String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
       long subsequenceTime = Long
@@ -2209,8 +2221,13 @@ public class StorageGroupProcessor {
       if (preTime < currentTsFileTime && currentTsFileTime < subsequenceTime) {
         return tsfileName;
       } else {
-        return getNewTsFileName(preTime + ((subsequenceTime - preTime) >> 1), subsequenceVersion,
-            0);
+        if (version == -1) {
+          return getNewTsFileName(preTime + ((subsequenceTime - preTime) >> 1), subsequenceVersion,
+              0);
+        } else {
+          return getNewTsFileName(preTime + ((subsequenceTime - preTime) >> 1), version,
+              0);
+        }
       }
     }
   }
@@ -2592,5 +2609,10 @@ public class StorageGroupProcessor {
   public interface TimePartitionFilter {
 
     boolean satisfy(String storageGroupName, long timePartitionId);
+  }
+
+  @TestOnly
+  public long getPartitionMaxFileVersions(long partitionId) {
+    return partitionMaxFileVersions.getOrDefault(partitionId, -1L);
   }
 }

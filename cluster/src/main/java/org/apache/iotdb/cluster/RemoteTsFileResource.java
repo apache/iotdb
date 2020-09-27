@@ -86,8 +86,8 @@ public class RemoteTsFileResource extends TsFileResource {
       // if it is absolute
       SerializeUtils.serialize(getTsFile().getPath(), dataOutputStream);
 
-      int deviceNum = startTimes.length;
-      dataOutputStream.writeInt(startTimes.length);
+      int deviceNum = deviceToIndex.size();
+      dataOutputStream.writeInt(deviceNum);
       for (int i = 0; i < deviceNum; i++) {
         dataOutputStream.writeLong(startTimes[i]);
         dataOutputStream.writeLong(endTimes[i]);
