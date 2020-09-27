@@ -65,8 +65,8 @@ public class IoTDBEnumerator implements Enumerator<Object> {
     ResultSetMetaData metaData = currentResultSet.getMetaData();
     int indexInFieldTypes = 0;
     for (int i = 1; i <= metaData.getColumnCount(); i++) {
-      if (i > 2 || metaData.getColumnName(i).toLowerCase()
-          .equals(fieldTypes.get(indexInFieldTypes).getName())) {
+      if (i > 2 || metaData.getColumnName(i)
+          .equalsIgnoreCase(fieldTypes.get(indexInFieldTypes).getName())) {
         indexInFieldTypes++;
         indexInResultSet.add(i);
       }

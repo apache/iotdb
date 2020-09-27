@@ -38,12 +38,13 @@ import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.Util;
 import org.apache.iotdb.calcite.exception.FilterException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,7 +143,11 @@ public class IoTDBFilter extends Filter implements IoTDBRel {
     switch (left.getKind()) {
       case INPUT_REF:
         String name = fieldNames.get(((RexInputRef) left).getIndex());
-        return new BasicFunctionOperator(tokenIntType, new Path(name), literalValue(rightLiteral));
+        try {
+          return new BasicFunctionOperator(tokenIntType, new PartialPath(name), literalValue(rightLiteral));
+        } catch (IllegalPathException e) {
+          logger.error("Error while constructing partial path: " + name);
+        }
       case CAST:
         return getBasicOperator2(tokenIntType, ((RexCall) left).getOperands().get(0), right);
       default:
