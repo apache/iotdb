@@ -20,10 +20,13 @@
 package org.apache.iotdb.db.query.udf.datastructure;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.util.Random;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -85,7 +88,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
 
   private void initESTVList(TSDataType dataType) {
     try {
-      tvList = new ElasticSerializableTVList(dataType, QUERY_ID, UNIQUE_ID,
+      tvList = ElasticSerializableTVList.newElasticSerializableTVList(dataType, QUERY_ID, UNIQUE_ID,
           MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
     } catch (QueryProcessException e) {
       fail(e.toString());
@@ -127,7 +130,7 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
           }
           break;
       }
-    } catch (IOException e) {
+    } catch (IOException | QueryProcessException e) {
       fail(e.toString());
     }
     assertEquals(ITERATION_TIMES, tvList.size());
@@ -176,5 +179,73 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     } catch (IOException e) {
       fail(e.toString());
     }
+  }
+
+  @Test
+  public void testMemoryControl() {
+    initESTVList(TSDataType.TEXT);
+
+    int byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 2;
+    int byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 8;
+    Random random = new Random();
+
+    try {
+      for (int i = 0; i < ITERATION_TIMES; ++i) {
+        tvList.putBinary(i, Binary.valueOf(
+            generateRandomString(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+      }
+      LayerPointReader reader = tvList.getPointReaderUsingEvictionStrategy();
+      while (reader.next()) {
+        int length = reader.currentBinary().getLength();
+        assertTrue(byteLengthMin <= length && length < byteLengthMax);
+        reader.readyForNext();
+      }
+
+      byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
+      byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
+      for (int i = 0; i < ITERATION_TIMES; ++i) {
+        tvList.putBinary(i, Binary.valueOf(
+            generateRandomString(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+      }
+      while (reader.next()) {
+        int length = reader.currentBinary().getLength();
+        assertTrue(byteLengthMin <= length && length < byteLengthMax);
+        reader.readyForNext();
+      }
+
+      byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
+      byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
+      for (int i = 0; i < ITERATION_TIMES; ++i) {
+        tvList.putBinary(i, Binary.valueOf(
+            generateRandomString(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+      }
+      while (reader.next()) {
+        int length = reader.currentBinary().getLength();
+        assertTrue(byteLengthMin <= length && length < byteLengthMax);
+        reader.readyForNext();
+      }
+
+      for (int i = 0; i < 2 * ITERATION_TIMES; ++i) {
+        tvList.putBinary(i, Binary.valueOf(
+            generateRandomString(byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        reader.next();
+        int length = reader.currentBinary().getLength();
+        assertTrue(byteLengthMin <= length && length < byteLengthMax);
+        reader.readyForNext();
+      }
+
+      assertEquals(ITERATION_TIMES * 5, tvList.size());
+    } catch (QueryProcessException | IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private String generateRandomString(int length) {
+    StringBuilder stringBuilder = new StringBuilder();
+    for (int i = 0; i < length; ++i) {
+      stringBuilder.append('.');
+    }
+    return stringBuilder.toString();
   }
 }

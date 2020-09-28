@@ -47,7 +47,8 @@ public interface SerializableTVList extends SerializableList {
         size = SerializableBooleanTVList.calculateCapacity(memoryLimitInMB);
         break;
       case TEXT:
-        size = SerializableBinaryTVList.calculateCapacity(memoryLimitInMB);
+        size = SerializableBinaryTVList.calculateCapacity(memoryLimitInMB,
+            SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
         break;
       default:
         throw new UnSupportedDataTypeException(dataType.toString());

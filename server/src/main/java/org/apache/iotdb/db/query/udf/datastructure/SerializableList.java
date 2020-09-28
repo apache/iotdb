@@ -31,7 +31,7 @@ public interface SerializableList {
   int MIN_OBJECT_HEADER_SIZE = 8;
   int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
 
-  int INITIAL_BINARY_LENGTH_FOR_MEMORY_CONTROL = 48; // todo: parameterization
+  int INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL = 32; // todo: parameterization
 
   void serialize(PublicBAOS outputStream) throws IOException;
 

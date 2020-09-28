@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.udf.api.collector;
 
 import java.io.IOException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public interface PointCollector {
@@ -34,7 +35,7 @@ public interface PointCollector {
 
   void putBoolean(long timestamp, boolean value) throws IOException;
 
-  void putBinary(long timestamp, Binary value) throws IOException;
+  void putBinary(long timestamp, Binary value) throws IOException, QueryProcessException;
 
-  void putString(long timestamp, String value) throws IOException;
+  void putString(long timestamp, String value) throws IOException, QueryProcessException;
 }

@@ -32,12 +32,18 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class SerializableBinaryTVList extends BatchData implements SerializableTVList {
 
-  static int calculateCapacity(float memoryLimitInMB) {
+  static int calculateCapacity(float memoryLimitInMB, int byteArrayLength) {
     float memoryLimitInB = memoryLimitInMB * MB / 2;
     return TSFileConfig.ARRAY_CAPACITY_THRESHOLD *
         (int) (memoryLimitInB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD *
-            (ReadWriteIOUtils.LONG_LEN + SerializableList.MIN_OBJECT_HEADER_SIZE + SerializableList.MIN_ARRAY_HEADER_SIZE
-                + SerializableList.INITIAL_BINARY_LENGTH_FOR_MEMORY_CONTROL)));
+            calculateSingleBinaryTVPairMemory(byteArrayLength)));
+  }
+
+  static int calculateSingleBinaryTVPairMemory(int byteArrayLength) {
+    return ReadWriteIOUtils.LONG_LEN // time
+        + SerializableList.MIN_OBJECT_HEADER_SIZE // value: header length of Binary
+        + SerializableList.MIN_ARRAY_HEADER_SIZE // value: header length of values in Binary
+        + byteArrayLength; // value: length of values array in Binary
   }
 
   private final SerializationRecorder serializationRecorder;

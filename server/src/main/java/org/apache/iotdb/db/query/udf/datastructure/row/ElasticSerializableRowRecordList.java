@@ -38,7 +38,6 @@ public class ElasticSerializableRowRecordList {
   protected int internalRowRecordListCapacity;
   protected LRUCache cache;
   protected List<SerializableRowRecordList> rowRecordLists;
-  protected List<Long> minTimestamps;
   protected int size;
   protected int evictionUpperBound;
 
@@ -56,7 +55,6 @@ public class ElasticSerializableRowRecordList {
     }
     cache = new ElasticSerializableRowRecordList.LRUCache(cacheSize);
     rowRecordLists = new ArrayList<>();
-    minTimestamps = new ArrayList<>();
     size = 0;
     evictionUpperBound = 0;
   }
@@ -86,7 +84,6 @@ public class ElasticSerializableRowRecordList {
       int index = rowRecordLists.size();
       rowRecordLists.add(SerializableRowRecordList
           .newSerializableRowRecordList(dataTypes, queryId, dataId, index));
-      minTimestamps.add(timestamp);
     }
   }
 

@@ -61,7 +61,7 @@ public class SerializableRowRecordList implements SerializableList {
           break;
         case TEXT:
           rowLength += MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE
-              + INITIAL_BINARY_LENGTH_FOR_MEMORY_CONTROL;
+              + INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
           break;
         default:
           throw new UnSupportedDataTypeException(dataType.toString());

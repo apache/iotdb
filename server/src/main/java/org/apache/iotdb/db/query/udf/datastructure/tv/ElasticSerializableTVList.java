@@ -34,33 +34,61 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public class ElasticSerializableTVList implements PointCollector {
 
+  public static ElasticSerializableTVList newElasticSerializableTVList(TSDataType dataType,
+      long queryId, String uniqueId, float memoryLimitInMB, int cacheSize)
+      throws QueryProcessException {
+    if (dataType.equals(TSDataType.TEXT)) {
+      return new ElasticSerializableBinaryTVList(queryId, uniqueId, memoryLimitInMB, cacheSize);
+    }
+    return new ElasticSerializableTVList(dataType, queryId, uniqueId, memoryLimitInMB, cacheSize);
+  }
+
   public static final float DEFAULT_MEMORY_USAGE_LIMIT = 100;
   public static final int DEFAULT_CACHE_SIZE = 3;
 
   protected TSDataType dataType;
   protected long queryId;
   protected String uniqueId;
+  protected float memoryLimitInMB;
   protected int internalTVListCapacity;
+  protected int cacheSize;
+
   protected LRUCache cache;
   protected List<BatchData> tvLists;
-  protected List<Long> minTimestamps;
   protected int size;
   protected int evictionUpperBound;
 
-  public ElasticSerializableTVList(TSDataType dataType, long queryId, String uniqueId,
+  protected ElasticSerializableTVList(TSDataType dataType, long queryId, String uniqueId,
       float memoryLimitInMB, int cacheSize) throws QueryProcessException {
     this.dataType = dataType;
     this.queryId = queryId;
     this.uniqueId = uniqueId;
+    this.memoryLimitInMB = memoryLimitInMB;
     int allocatableCapacity = SerializableTVList.calculateCapacity(dataType, memoryLimitInMB);
     internalTVListCapacity = allocatableCapacity / cacheSize;
     if (internalTVListCapacity == 0) {
       cacheSize = 1;
       internalTVListCapacity = allocatableCapacity;
     }
+    this.cacheSize = cacheSize;
+
     cache = new LRUCache(cacheSize);
     tvLists = new ArrayList<>();
-    minTimestamps = new ArrayList<>();
+    size = 0;
+    evictionUpperBound = 0;
+  }
+
+  protected ElasticSerializableTVList(TSDataType dataType, long queryId, String uniqueId,
+      float memoryLimitInMB, int internalTVListCapacity, int cacheSize) {
+    this.dataType = dataType;
+    this.queryId = queryId;
+    this.uniqueId = uniqueId;
+    this.memoryLimitInMB = memoryLimitInMB;
+    this.internalTVListCapacity = internalTVListCapacity;
+    this.cacheSize = cacheSize;
+
+    cache = new LRUCache(cacheSize);
+    tvLists = new ArrayList<>();
     size = 0;
     evictionUpperBound = 0;
   }
@@ -113,7 +141,7 @@ public class ElasticSerializableTVList implements PointCollector {
         .getBinaryByIndex(index % internalTVListCapacity).getStringValue();
   }
 
-  public void put(long timestamp, Object value) throws IOException {
+  public void put(long timestamp, Object value) throws IOException, QueryProcessException {
     switch (dataType) {
       case INT32:
         putInt(timestamp, (Integer) value);
@@ -141,58 +169,57 @@ public class ElasticSerializableTVList implements PointCollector {
 
   @Override
   public void putInt(long timestamp, int value) throws IOException {
-    checkExpansion(timestamp);
+    checkExpansion();
     cache.get(size / internalTVListCapacity).putInt(timestamp, value);
     ++size;
   }
 
   @Override
   public void putLong(long timestamp, long value) throws IOException {
-    checkExpansion(timestamp);
+    checkExpansion();
     cache.get(size / internalTVListCapacity).putLong(timestamp, value);
     ++size;
   }
 
   @Override
   public void putFloat(long timestamp, float value) throws IOException {
-    checkExpansion(timestamp);
+    checkExpansion();
     cache.get(size / internalTVListCapacity).putFloat(timestamp, value);
     ++size;
   }
 
   @Override
   public void putDouble(long timestamp, double value) throws IOException {
-    checkExpansion(timestamp);
+    checkExpansion();
     cache.get(size / internalTVListCapacity).putDouble(timestamp, value);
     ++size;
   }
 
   @Override
   public void putBoolean(long timestamp, boolean value) throws IOException {
-    checkExpansion(timestamp);
+    checkExpansion();
     cache.get(size / internalTVListCapacity).putBoolean(timestamp, value);
     ++size;
   }
 
   @Override
-  public void putBinary(long timestamp, Binary value) throws IOException {
-    checkExpansion(timestamp);
+  public void putBinary(long timestamp, Binary value) throws IOException, QueryProcessException {
+    checkExpansion();
     cache.get(size / internalTVListCapacity).putBinary(timestamp, value);
     ++size;
   }
 
   @Override
-  public void putString(long timestamp, String value) throws IOException {
-    checkExpansion(timestamp);
+  public void putString(long timestamp, String value) throws IOException, QueryProcessException {
+    checkExpansion();
     cache.get(size / internalTVListCapacity).putBinary(timestamp, Binary.valueOf(value));
     ++size;
   }
 
-  private void checkExpansion(long timestamp) {
+  private void checkExpansion() {
     if (size % internalTVListCapacity == 0) {
       int index = tvLists.size();
       tvLists.add(SerializableTVList.newSerializableTVList(dataType, queryId, uniqueId, index));
-      minTimestamps.add(timestamp);
     }
   }
 
