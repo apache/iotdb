@@ -130,7 +130,7 @@ public class SessionDataSet {
 
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {
     if (!ioTDBRpcDataSet.hasCachedRecord && !hasNext()) {
-        return null;
+      return null;
     }
     ioTDBRpcDataSet.hasCachedRecord = false;
 
