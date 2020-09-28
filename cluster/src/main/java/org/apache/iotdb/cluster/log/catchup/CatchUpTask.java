@@ -64,7 +64,8 @@ public class CatchUpTask implements Runnable {
    * @throws TException
    * @throws InterruptedException
    */
-  private boolean checkMatchIndex() throws TException, InterruptedException, LeaderUnknownException {
+  private boolean checkMatchIndex()
+      throws TException, InterruptedException, LeaderUnknownException {
     long lo = 0;
     long hi = 0;
     logger.debug("Checking the match index of {}", node);
@@ -134,6 +135,9 @@ public class CatchUpTask implements Runnable {
     boolean matched;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       RaftService.AsyncClient client = raftMember.getAsyncClient(node);
+      if (client == null) {
+        return false;
+      }
       matched = SyncClientAdaptor
           .matchTerm(client, node, prevLogIndex, prevLogTerm, raftMember.getHeader());
     } else {

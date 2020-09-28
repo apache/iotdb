@@ -684,8 +684,7 @@ public abstract class RaftMember {
       // check if the last catch-up is still ongoing and does not time out yet
       Long lastCatchupResp = lastCatchUpResponseTime.get(follower);
       if (lastCatchupResp != null
-          && System.currentTimeMillis() - lastCatchupResp < RaftServer
-          .getWriteOperationTimeoutMS()) {
+          && System.currentTimeMillis() - lastCatchupResp < config.getCatchUpTimeoutMS()) {
         logger.debug("{}: last catch up of {} is ongoing", name, follower);
         return;
       } else {
@@ -1104,10 +1103,10 @@ public abstract class RaftMember {
   /**
    * Forward a non-query plan to a node using the default client.
    *
-   * @param plan a non-query plan
-   * @param node cannot be the local node
+   * @param plan   a non-query plan
+   * @param node   cannot be the local node
    * @param header must be set for data group communication, set to null for meta group
-   * communication
+   *               communication
    * @return a TSStatus indicating if the forwarding is successful.
    */
   TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
@@ -1127,12 +1126,16 @@ public abstract class RaftMember {
   /**
    * Forward a non-query plan to "receiver" using "client".
    *
-   * @param plan a non-query plan
+   * @param plan   a non-query plan
    * @param header to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
   private TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header) {
     AsyncClient client = getAsyncClient(receiver);
+    if (client == null) {
+      logger.error("{}: can not get client for node={}", name, receiver);
+      return StatusUtils.INTERNAL_ERROR;
+    }
     return forwardPlanAsync(plan, receiver, header, client);
   }
 
@@ -1213,7 +1216,6 @@ public abstract class RaftMember {
     if (node == null) {
       return null;
     }
-
     AsyncClient client = null;
     try {
       do {
@@ -1319,7 +1321,8 @@ public abstract class RaftMember {
       return RpcUtils
           .getStatus(Arrays.asList(((BatchInsertionException) cause).getFailingStatus()));
     }
-    TSStatus tsStatus = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,cause.getClass().getName() + ":" + cause.getMessage());
+    TSStatus tsStatus = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
+        cause.getClass().getName() + ":" + cause.getMessage());
     if (cause instanceof IoTDBException) {
       tsStatus.setCode(((IoTDBException) cause).getErrorCode());
     }
@@ -1358,7 +1361,7 @@ public abstract class RaftMember {
    * heartbeat timer.
    *
    * @param fromLeader true if the request is from a leader, false if the request is from an
-   * elector.
+   *                   elector.
    */
   public void stepDown(long newTerm, boolean fromLeader) {
     synchronized (term) {
@@ -1464,7 +1467,7 @@ public abstract class RaftMember {
    * success.
    *
    * @param requiredQuorum the number of votes needed to make the log valid, when requiredQuorum <=
-   * 0, half of the cluster size will be used.
+   *                       0, half of the cluster size will be used.
    * @return an AppendLogResult
    */
   private AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {

@@ -74,18 +74,24 @@ public class LogDispatcher {
   public void offer(SendLogRequest log) {
     for (int i = 0; i < nodeLogQueues.size(); i++) {
       BlockingQueue<SendLogRequest> nodeLogQueue = nodeLogQueues.get(i);
-      if (!nodeLogQueue.add(log)) {
+      try {
+        if (!nodeLogQueue.add(log)) {
+          logger.debug("Log queue[{}] of {} is full, ignore the log to this node", i,
+              member.getName());
+        } else {
+          log.setEnqueueTime(System.nanoTime());
+        }
+      } catch (IllegalStateException e) {
         logger.debug("Log queue[{}] of {} is full, ignore the log to this node", i,
             member.getName());
-      } else {
-        log.setEnqueueTime(System.nanoTime());
       }
     }
   }
 
   private BlockingQueue<SendLogRequest> createQueueAndBindingThread(Node node) {
     BlockingQueue<SendLogRequest> logBlockingQueue =
-        new ArrayBlockingQueue<>(ClusterDescriptor.getInstance().getConfig().getMinNumOfLogsInMem());
+        new ArrayBlockingQueue<>(
+            ClusterDescriptor.getInstance().getConfig().getMinNumOfLogsInMem());
     int bindingThreadNum = 1;
     for (int i = 0; i < bindingThreadNum; i++) {
       executorService.submit(new DispatcherThread(node, logBlockingQueue));
@@ -213,7 +219,8 @@ public class LogDispatcher {
       logger.info("Dispatcher exits");
     }
 
-    private void appendEntriesAsync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch)
+    private void appendEntriesAsync(List<ByteBuffer> logList, AppendEntriesRequest request,
+        List<SendLogRequest> currBatch)
         throws TException {
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
       AsyncClient client = member.getSendLogAsyncClient(receiver);
@@ -223,7 +230,8 @@ public class LogDispatcher {
       client.appendEntries(request, handler);
     }
 
-    private void appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch) {
+    private void appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request,
+        List<SendLogRequest> currBatch) {
 
       long start;
       if (Timer.ENABLE_INSTRUMENTING) {
@@ -236,7 +244,6 @@ public class LogDispatcher {
       }
       Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.addNanoFromStart(start);
 
-
       Client client = member.getSyncClient(receiver);
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
       try {
@@ -246,7 +253,8 @@ public class LogDispatcher {
         long result = client.appendEntries(request);
         Timer.Statistic.RAFT_SENDER_SEND_LOG.addNanoFromStart(start);
         if (result != -1 && logger.isInfoEnabled()) {
-          logger.info("{}: Append {} logs to {}, resp: {}", member.getName(), logList.size(), receiver, result);
+          logger.info("{}: Append {} logs to {}, resp: {}", member.getName(), logList.size(),
+              receiver, result);
         }
         handler.onComplete(result);
       } catch (TException e) {
@@ -257,7 +265,8 @@ public class LogDispatcher {
       }
     }
 
-    private AppendEntriesRequest prepareRequest(List<ByteBuffer> logList, List<SendLogRequest> currBatch) {
+    private AppendEntriesRequest prepareRequest(List<ByteBuffer> logList,
+        List<SendLogRequest> currBatch) {
       AppendEntriesRequest request = new AppendEntriesRequest();
 
       if (member.getHeader() != null) {
@@ -304,7 +313,8 @@ public class LogDispatcher {
       member.sendLogToFollower(logRequest.getLog(), logRequest.getVoteCounter(), receiver,
           logRequest.getLeaderShipStale(), logRequest.getNewLeaderTerm(),
           logRequest.getAppendEntryRequest());
-      Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.addNanoFromStart(logRequest.getCreateTime());
+      Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END
+          .addNanoFromStart(logRequest.getCreateTime());
     }
 
     class AppendEntriesHandler implements AsyncMethodCallback<Long> {
@@ -337,7 +347,6 @@ public class LogDispatcher {
       }
     }
   }
-
 
 
   public AppendNodeEntryHandler getAppendNodeEntryHandler(Log log, AtomicInteger voteCounter,

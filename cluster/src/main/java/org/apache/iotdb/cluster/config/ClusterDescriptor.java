@@ -219,6 +219,10 @@ public class ClusterDescriptor {
         .getProperty("read_operation_timeout_ms",
             String.valueOf(config.getReadOperationTimeoutMS()))));
 
+    config.setCatchUpTimeoutMS(Integer.parseInt(properties
+        .getProperty("catch_up_timeout_ms",
+            String.valueOf(config.getCatchUpTimeoutMS()))));
+
     config.setWriteOperationTimeoutMS(Integer.parseInt(properties
         .getProperty("write_operation_timeout_ms",
             String.valueOf(config.getWriteOperationTimeoutMS()))));
@@ -245,12 +249,12 @@ public class ClusterDescriptor {
             String.valueOf(config.isEnableAutoCreateSchema()))));
 
     config.setUseAsyncServer(
-            Boolean.parseBoolean(properties.getProperty("is_use_async_server",
-                    String.valueOf(config.isUseAsyncServer()))));
+        Boolean.parseBoolean(properties.getProperty("is_use_async_server",
+            String.valueOf(config.isUseAsyncServer()))));
 
     config.setUseAsyncApplier(
-            Boolean.parseBoolean(properties.getProperty("is_use_async_applier",
-                    String.valueOf(config.isUseAsyncApplier()))));
+        Boolean.parseBoolean(properties.getProperty("is_use_async_applier",
+            String.valueOf(config.isUseAsyncApplier()))));
 
     config.setEnableRaftLogPersistence(
         Boolean.parseBoolean(properties.getProperty("is_enable_raft_log_persistence",
