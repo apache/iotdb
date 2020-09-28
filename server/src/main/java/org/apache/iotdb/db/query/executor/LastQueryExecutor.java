@@ -23,6 +23,7 @@ package org.apache.iotdb.db.query.executor;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -53,6 +54,8 @@ import java.util.List;
 public class LastQueryExecutor {
   private List<Path> selectedSeries;
   private List<TSDataType> dataTypes;
+  private static boolean lastCacheEnabled =
+      IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
@@ -112,16 +115,23 @@ public class LastQueryExecutor {
       throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode
-    LeafMNode node;
-    try {
-      node = (LeafMNode) MManager.getInstance().getNodeByPath(seriesPath.toString());
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+    LeafMNode node = null;
+    if (lastCacheEnabled) {
+      try {
+        node = (LeafMNode) MManager.getInstance().getNodeByPath(seriesPath.toString());
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
+      if (node != null && node.getCachedLast() != null) {
+        return node.getCachedLast();
+      }
     }
-    if (node.getCachedLast() != null) {
-      return node.getCachedLast();
-    }
+    return calculateLastPairByScanningTsFiles(seriesPath, tsDataType, context, sensors, node);
+  }
 
+  private static TimeValuePair calculateLastPairByScanningTsFiles(
+      Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> sensors,
+      LeafMNode node) throws QueryProcessException, StorageEngineException, IOException {
     QueryDataSource dataSource =
         QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, null);
 
@@ -180,7 +190,9 @@ public class LastQueryExecutor {
     }
 
     // Update cached last value with low priority
-    node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
+    if (lastCacheEnabled && node != null) {
+      node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
+    }
     return resultPair;
   }
 

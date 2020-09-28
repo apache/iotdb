@@ -742,6 +742,9 @@ public class StorageGroupProcessor {
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime)
       throws WriteProcessException {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+      return;
+    }
     MNode node = plan.getDeviceMNode();
     String[] measurementList = plan.getMeasurements();
     for (int i = 0; i < measurementList.length; i++) {
@@ -786,6 +789,9 @@ public class StorageGroupProcessor {
 
   private void tryToUpdateInsertLastCache(InsertPlan plan, Long latestFlushedTime)
       throws WriteProcessException {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+      return;
+    }
     MNode node = plan.getDeviceMNode();
     String[] measurementList = plan.getMeasurements();
     for (int i = 0; i < measurementList.length; i++) {
