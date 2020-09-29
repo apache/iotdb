@@ -323,29 +323,6 @@ public class IoTDBAliasIT {
         }
         assertEquals(retArray.length, cnt);
       }
-
-      hasResult = statement.execute("select powerNew from root.sg.d2 order by time desc ");
-      assertTrue(hasResult);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        assertEquals("Time,root.sg.d2.powerNew,", header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          assertEquals(retArray[retArray.length - cnt - 1], builder.toString());
-          cnt++;
-        }
-        assertEquals(retArray.length, cnt);
-      }
     } catch (Exception e) {
       fail(e.getMessage());
       e.printStackTrace();

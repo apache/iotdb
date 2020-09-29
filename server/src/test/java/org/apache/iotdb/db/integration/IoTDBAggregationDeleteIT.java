@@ -75,15 +75,6 @@ public class IoTDBAggregationDeleteIT {
         }
       }
 
-      hasResultSet =
-          statement.execute("select count(*) from root order by time desc");
-      assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          assertEquals("3", resultSet.getString(count("root.turbine.d1.s1")));
-        }
-      }
-
     } catch (SQLException e) {
       e.printStackTrace();
       fail();

@@ -475,7 +475,7 @@ public class IoTDBAggregationLargeDataIT {
       // keep the correctness of `order by time desc`
       hasResultSet = statement.execute(
           "select min_time(s0),min_time(s1),min_time(s2),min_time(s3),min_time(s4)" +
-              " from root.vehicle.d0 where s1 >= 0");
+              " from root.vehicle.d0 where s1 >= 0 order by time desc");
       Assert.assertTrue(hasResultSet);
       resultSet = statement.getResultSet();
       cnt = 0;
@@ -657,8 +657,7 @@ public class IoTDBAggregationLargeDataIT {
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select sum(s0),count(s0),avg(s0),avg(s1),"
-          + "avg(s2) from root.vehicle.d0 " +
-          "where s1 >= 0 or s2 < 10");
+          + "avg(s2) from root.vehicle.d0 where s1 >= 0 or s2 < 10");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
@@ -694,8 +693,8 @@ public class IoTDBAggregationLargeDataIT {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select sum(s0),sum(s1),sum(s2) from root.vehicle.d0"
-          + " where s1 >= 0 or s2 < 10");
+      boolean hasResultSet = statement
+          .execute("select sum(s0),sum(s1),sum(s2) from root.vehicle.d0 where s1 >= 0 or s2 < 10");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;

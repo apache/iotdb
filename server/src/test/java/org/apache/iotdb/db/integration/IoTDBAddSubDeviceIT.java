@@ -197,31 +197,6 @@ public class IoTDBAddSubDeviceIT {
         }
         Assert.assertEquals(retArray.length, cnt);
       }
-
-      hasResultSet = statement.execute(
-          "SELECT * FROM root.sg1.d1 order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,root.sg1.d1.s1,root.sg1.d1.s1.s1,root.sg1.d1.s1.s2,",
-            header.toString());
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          Assert.assertEquals(retArray[retArray.length - cnt - 1], builder.toString());
-          cnt++;
-        }
-        Assert.assertEquals(retArray.length, cnt);
-      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
