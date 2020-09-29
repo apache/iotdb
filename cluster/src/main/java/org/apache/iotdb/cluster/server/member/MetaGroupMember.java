@@ -484,7 +484,7 @@ public class MetaGroupMember extends RaftMember {
           return;
         }
         // wait 5s to start the next try
-        Thread.sleep(5000);
+        Thread.sleep(ClusterDescriptor.getInstance().getConfig().getJoinClusterTimeOutMs());
       } catch (TException e) {
         logger.warn("Cannot join the cluster from {}, because:", node, e);
       } catch (InterruptedException e) {

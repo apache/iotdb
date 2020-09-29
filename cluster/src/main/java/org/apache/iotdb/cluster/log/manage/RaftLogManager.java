@@ -27,6 +27,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.RunnableScheduledFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -96,7 +97,8 @@ public abstract class RaftLogManager {
   private ExecutorService checkLogApplierExecutorService;
   private Future<?> checkLogApplierFuture;
 
-  private ScheduledExecutorService flushLogExecutorService;
+  private ScheduledThreadPoolExecutor flushLogExecutorService;
+  private RunnableScheduledFuture<?> flushLogFuture;
 
   /**
    * minimum number of committed logs in memory
@@ -109,9 +111,7 @@ public abstract class RaftLogManager {
    */
   private int maxNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig()
       .getMaxNumOfLogsInMem();
-
-  private static final int LOG_APPLIER_WAIT_TIME_MS = ClusterDescriptor.getInstance().getConfig()
-      .getCatchUpTimeoutMS();
+  
   /**
    * Each time new logs are appended, this condition will be notified so logs that have larger
    * indices but arrived earlier can proceed.
@@ -183,8 +183,11 @@ public abstract class RaftLogManager {
         flushLogExecutorService = new ScheduledThreadPoolExecutor(1,
             new BasicThreadFactory.Builder().namingPattern("raft-log-write-%d").daemon(true)
                 .build());
+        flushLogExecutorService.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
+        flushLogExecutorService.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+        flushLogExecutorService.setRemoveOnCancelPolicy(true);
       }
-      flushLogExecutorService
+      flushLogFuture = (RunnableScheduledFuture<?>) flushLogExecutorService
           .scheduleAtFixedRate(this::flushLogPeriodically, logFlushTimeIntervalMS,
               logFlushTimeIntervalMS, TimeUnit.MILLISECONDS);
 
@@ -216,7 +219,8 @@ public abstract class RaftLogManager {
         name, blockAppliedCommitIndex, maxHaveAppliedCommitIndex, commitIndex);
     while (blockAppliedCommitIndex > maxHaveAppliedCommitIndex) {
       long waitTime = System.currentTimeMillis() - startTime;
-      if (waitTime > LOG_APPLIER_WAIT_TIME_MS) {
+      if (waitTime > ClusterDescriptor.getInstance().getConfig()
+          .getCatchUpTimeoutMS()) {
         logger.error(
             "{}: wait all log applied time out, time cost={}, blockAppliedCommitIndex={}, maxHaveAppliedCommitIndex={},commitIndex={}",
             name, waitTime, blockAppliedCommitIndex, maxHaveAppliedCommitIndex, commitIndex);
@@ -736,23 +740,13 @@ public abstract class RaftLogManager {
     }
 
     if (flushLogExecutorService != null) {
-      flushLogExecutorService.shutdown();
-      try {
-        flushLogExecutorService.awaitTermination(30, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        logger.warn("force flush raft log thread still doesn't exit after 30s.");
-        Thread.currentThread().interrupt();
-      }
+      flushLogExecutorService.shutdownNow();
+      flushLogFuture.cancel(true);
       flushLogExecutorService = null;
     }
     if (logApplierExecutor != null) {
       logApplierExecutor.shutdown();
-      try {
-        logApplierExecutor.awaitTermination(30, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        logger.warn("log applier log thread still doesn't exit after 30s.");
-        Thread.currentThread().interrupt();
-      }
+      // do not wait for logApplierExecutor, because it may be triggering this close
       logApplierExecutor = null;
     }
   }

@@ -154,6 +154,9 @@ public class MetaGroupMemberTest extends MemberTest {
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(Collections.emptyList());
     prevReplicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(2);
+    RaftServer.setConnectionTimeoutInMS(100);
+    RaftServer.setWriteOperationTimeoutMS(100);
+    RaftServer.setReadOperationTimeoutMS(100);
 
     super.setUp();
     dummyResponse.set(Response.RESPONSE_AGREE);
@@ -596,6 +599,7 @@ public class MetaGroupMemberTest extends MemberTest {
     System.out.println("Start testJoinClusterFailed()");
     long prevInterval = RaftServer.getHeartBeatIntervalMs();
     RaftServer.setHeartBeatIntervalMs(10);
+    ClusterDescriptor.getInstance().getConfig().setJoinClusterTimeOutMs(100);
     dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
     MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
     try {
@@ -925,7 +929,7 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testRemoteAddNode() {
     System.out.println("Start testRemoteAddNode()");
     int prevTimeout = RaftServer.getConnectionTimeoutInMS();
-    RaftServer.setConnectionTimeoutInMS(100);
+
     try {
       // cannot add node when partition table is not built
       testMetaMember.setPartitionTable(null);

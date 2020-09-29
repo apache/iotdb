@@ -123,6 +123,8 @@ public class ClusterConfig {
    */
   private ConsistencyLevel consistencyLevel = ConsistencyLevel.MID_CONSISTENCY;
 
+  private long joinClusterTimeOutMs = 5000L;
+
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
@@ -256,7 +258,7 @@ public class ClusterConfig {
     return writeOperationTimeoutMS;
   }
 
-  void setWriteOperationTimeoutMS(int writeOperationTimeoutMS) {
+  public void setWriteOperationTimeoutMS(int writeOperationTimeoutMS) {
     this.writeOperationTimeoutMS = writeOperationTimeoutMS;
   }
 
@@ -348,4 +350,11 @@ public class ClusterConfig {
     this.forceRaftLogPeriodInMS = forceRaftLogPeriodInMS;
   }
 
+  public long getJoinClusterTimeOutMs() {
+    return joinClusterTimeOutMs;
+  }
+
+  public void setJoinClusterTimeOutMs(long joinClusterTimeOutMs) {
+    this.joinClusterTimeOutMs = joinClusterTimeOutMs;
+  }
 }

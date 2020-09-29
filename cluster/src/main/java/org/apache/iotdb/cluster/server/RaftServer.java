@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -225,5 +226,15 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
     clientService.submit(() -> poolServer.serve());
 
     logger.info("Cluster node {} is up", thisNode);
+  }
+
+  @TestOnly
+  public static void setReadOperationTimeoutMS(int readOperationTimeoutMS) {
+    RaftServer.readOperationTimeoutMS = readOperationTimeoutMS;
+  }
+
+  @TestOnly
+  public static void setWriteOperationTimeoutMS(int writeOperationTimeoutMS) {
+    RaftServer.writeOperationTimeoutMS = writeOperationTimeoutMS;
   }
 }

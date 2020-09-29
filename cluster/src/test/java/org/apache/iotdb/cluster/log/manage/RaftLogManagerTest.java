@@ -99,6 +99,7 @@ public class RaftLogManagerTest {
   @Before
   public void setUp() {
     prevLogPersistence = ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence();
+    ClusterDescriptor.getInstance().getConfig().setCatchUpTimeoutMS(100);
     ClusterDescriptor.getInstance().getConfig().setEnableRaftLogPersistence(true);
     appliedLogs = new ConcurrentHashMap<>();
   }
