@@ -57,15 +57,4 @@ public class ClusterNode extends Node {
   public int hashCode() {
     return Objects.hash(ip, metaPort, dataPort, clientPort);
   }
-
-  @Override
-  public String toString() {
-    return "ClusterNode{"
-        + " ip='" + ip + '\''
-        + ", metaPort=" + metaPort
-        + ", nodeIdentifier=" + nodeIdentifier
-        + ", dataPort=" + dataPort
-        + ", clientPort=" + clientPort
-        + "}";
-  }
 }

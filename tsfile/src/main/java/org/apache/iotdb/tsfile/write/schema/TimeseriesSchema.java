@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
  * path.
  */
 public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializable {
+
   private String fullPath;
   private TSDataType type;
   private TSEncoding encoding;
@@ -144,13 +145,16 @@ public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializa
    * function for getting time encoder.
    */
   public Encoder getTimeEncoder() {
-    TSEncoding timeEncoding = TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
-    TSDataType timeType = TSDataType.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
+    TSEncoding timeEncoding = TSEncoding
+        .valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+    TSDataType timeType = TSDataType
+        .valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
     return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
   }
 
   /**
    * get Encoder of value from encodingConverter by measurementID and data type.
+   *
    * @return Encoder for value
    */
   public Encoder getValueEncoder() {

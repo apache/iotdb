@@ -172,8 +172,7 @@ public class ClientMain {
     failedQueries = new HashMap<>();
     prepareSchema();
 
-
-    if (commandLine.hasOption(PARAM_INSERT_PORT)){
+    if (commandLine.hasOption(PARAM_INSERT_PORT)) {
       port = Integer.parseInt(commandLine.getOptionValue(PARAM_INSERT_PORT));
     }
 
@@ -315,7 +314,8 @@ public class ClientMain {
       logger.info("{ {} }", query);
     }
     TSExecuteStatementResp resp = client
-        .executeQueryStatement(new TSExecuteStatementReq(sessionId, query, statementId).setFetchSize(1000));
+        .executeQueryStatement(
+            new TSExecuteStatementReq(sessionId, query, statementId).setFetchSize(1000));
     if (resp.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       failedQueries.put(query, resp.status);
       return;
@@ -431,9 +431,11 @@ public class ClientMain {
 
   private static void testBatch(String ip, int port) throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
+    String userName = "root";
+    String password = "root";
     try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + String.format("%s:%d/", ip, port), "root",
-            "root");
+        .getConnection(Config.IOTDB_URL_PREFIX + String.format("%s:%d/", ip, port), userName,
+            password);
         Statement statement = connection.createStatement()) {
 
       statement.addBatch("SET STORAGE GROUP TO root.batch1");
