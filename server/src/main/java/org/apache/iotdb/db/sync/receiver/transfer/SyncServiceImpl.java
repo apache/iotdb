@@ -178,6 +178,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     return getSuccessResult();
   }
 
+  @SuppressWarnings("squid:S2095") // Suppress unclosed resource warning
   @Override
   public SyncStatus initSyncData(String filename) throws TException {
     try {
@@ -223,6 +224,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     return getSuccessResult();
   }
 
+  @SuppressWarnings("squid:S2095") // Suppress unclosed resource warning
   @Override
   public SyncStatus checkDataMD5(String md5OfSender) throws TException {
     String md5OfReceiver = (new BigInteger(1, messageDigest.get().digest())).toString(16);
