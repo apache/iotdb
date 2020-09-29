@@ -123,17 +123,13 @@ public class GroupByFillDataSet extends QueryDataSet {
       // current group by result is null
       if (field == null || field.getDataType() == null) {
         TSDataType tsDataType = dataTypes.get(i);
+        //for desc query peek previous time and value
+        if (!ascending && !isPeekEnded && !canUseCacheData(rowRecord, tsDataType, i)) {
+          fillCache(i);
+        }
+
         if (canUseCacheData(rowRecord, tsDataType, i)) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], tsDataType));
-          continue;
-        }
-        //for desc query peek previous time and value
-        if (!ascending && !isPeekEnded) {
-          fillCache(i);
-
-          if (!cacheIsEmpty(i) && canUseCacheData(rowRecord, tsDataType, i)) {
-            rowRecord.getFields().set(i, Field.getField(previousValue[i], tsDataType));
-          }
         }
       } else {
         // use now value update previous value
