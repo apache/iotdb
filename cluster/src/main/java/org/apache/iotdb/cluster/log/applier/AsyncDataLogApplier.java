@@ -48,6 +48,8 @@ public class AsyncDataLogApplier implements LogApplier {
   private ExecutorService consumerPool;
   private String name;
 
+  private final Object consumerEmptyCondition = new Object();
+
   public AsyncDataLogApplier(LogApplier embeddedApplier, String name) {
     this.embeddedApplier = embeddedApplier;
     consumerMap = new ConcurrentHashMap<>();
@@ -80,8 +82,16 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   private void drainConsumers() {
-    while (!allConsumersEmpty()) {
-      // wait until all consumers empty
+    synchronized (consumerEmptyCondition) {
+      while (!allConsumersEmpty()) {
+        // wait until all consumers empty
+        try {
+          consumerEmptyCondition.wait();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return;
+        }
+      }
     }
   }
 
@@ -119,7 +129,7 @@ public class AsyncDataLogApplier implements LogApplier {
     }
 
     public boolean isEmpty() {
-      return logQueue.isEmpty() && lastLogIndex == lastAppliedLogIndex;
+      return lastLogIndex == lastAppliedLogIndex;
     }
 
     @Override
@@ -132,6 +142,11 @@ public class AsyncDataLogApplier implements LogApplier {
             applyInternal(log);
           } finally {
             lastAppliedLogIndex = log.getCurrLogIndex();
+            if (isEmpty()) {
+              synchronized (consumerEmptyCondition) {
+                consumerEmptyCondition.notifyAll();
+              }
+            }
           }
         } catch (InterruptedException e) {
           logger.info("DataLogConsumer exits");
