@@ -82,7 +82,7 @@ public class LastQueryExecutor {
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     for (int i = 0; i < selectedSeries.size(); i++) {
-      TimeValuePair lastTimeValuePair = null;
+      TimeValuePair lastTimeValuePair;
       lastTimeValuePair = calculateLastPairForOneSeries(
               selectedSeries.get(i), dataTypes.get(i), context,
               lastQueryPlan.getAllMeasurementsInDevice(selectedSeries.get(i).getDevice()));
