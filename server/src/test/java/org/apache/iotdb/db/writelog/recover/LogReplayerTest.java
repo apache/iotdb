@@ -44,7 +44,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -58,8 +57,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -204,9 +201,9 @@ public class LogReplayerTest {
 
     String deviceId = "root.sg.device5";
 
-    MNode deviceMNode = new MNode(null, deviceId);
-    deviceMNode.addChild("sensor0", new MeasurementMNode(null, null, null, null));
-    deviceMNode.addChild("sensor1", new MeasurementMNode(null, null, null, null));
+    MeasurementMNode[] mNodes = new MeasurementMNode[2];
+    mNodes[0] = new MeasurementMNode(null, "sensor0", null, null);
+    mNodes[0] = new MeasurementMNode(null, "sensor1", null, null);
 
     InsertTabletPlan insertTabletPlan = new InsertTabletPlan(new PartialPath(deviceId), measurements, dataTypes);
 
@@ -223,7 +220,7 @@ public class LogReplayerTest {
     insertTabletPlan.setTimes(times);
     insertTabletPlan.setColumns(columns);
     insertTabletPlan.setRowCount(times.length);
-    insertTabletPlan.setDeviceMNode(deviceMNode);
+    insertTabletPlan.setMeasurementMNodes(mNodes);
     insertTabletPlan.setStart(0);
     insertTabletPlan.setEnd(100);
 

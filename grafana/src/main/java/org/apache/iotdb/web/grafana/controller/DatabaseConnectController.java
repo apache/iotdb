@@ -25,16 +25,15 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONException;
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
 import org.apache.iotdb.web.grafana.service.DatabaseConnectService;
@@ -54,6 +53,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 public class DatabaseConnectController {
 
   private static final Logger logger = LoggerFactory.getLogger(DatabaseConnectController.class);
+  public static final Gson GSON = new GsonBuilder().create();
 
   @Autowired
   private DatabaseConnectService databaseConnectService;
@@ -75,8 +75,7 @@ public class DatabaseConnectController {
   @RequestMapping(value = "/search")
   @ResponseBody
   public String metricFindQuery(HttpServletRequest request, HttpServletResponse response) {
-    Map<Integer, String> target = new HashMap<>();
-    JSONObject jsonObject = new JSONObject();
+    JsonObject root = new JsonObject();
     response.setStatus(200);
     List<String> columnsName = new ArrayList<>();
     try {
@@ -86,9 +85,10 @@ public class DatabaseConnectController {
     }
     Collections.sort(columnsName);
     for (int i = 0; i < columnsName.size(); i++) {
-      jsonObject.put( i + "", columnsName.get(i));
+      root.addProperty(String.valueOf(i), columnsName.get(i));
     }
-    return jsonObject.toString();
+
+    return root.toString();
   }
 
   /**
@@ -104,25 +104,30 @@ public class DatabaseConnectController {
     String targetStr = "target";
     response.setStatus(200);
     try {
-      JSONObject jsonObject = getRequestBodyJson(request);
+      JsonObject jsonObject = getRequestBodyJson(request);
+      if (Objects.isNull(jsonObject)) {
+        return null;
+      }
+
       Pair<ZonedDateTime, ZonedDateTime> timeRange = getTimeFromAndTo(jsonObject);
-      JSONArray array = (JSONArray) jsonObject.get("targets"); // []
-      JSONArray result = new JSONArray();
+      JsonArray array = (JsonArray) jsonObject.get("targets"); // []
+      JsonArray result = new JsonArray();
       for (int i = 0; i < array.size(); i++) {
-        JSONObject object = (JSONObject) array.get(i); // {}
-        if (!object.containsKey(targetStr)) {
+        JsonObject object = array.get(i).getAsJsonObject(); // {}
+        if (!object.has(targetStr)) {
           return "[]";
         }
-        String target = (String) object.get(targetStr);
+        String target = object.get(targetStr).getAsString();
         String type = getJsonType(jsonObject);
-        JSONObject obj = new JSONObject();
-        obj.put("target", target);
+
+        JsonObject obj = new JsonObject();
+        obj.addProperty("target", target);
         if (type.equals("table")) {
           setJsonTable(obj, target, timeRange);
         } else if (type.equals("timeserie")) {
           setJsonTimeseries(obj, target, timeRange);
         }
-        result.add(i, obj);
+        result.add(obj);
       }
       logger.info("query finished");
       return result.toString();
@@ -132,64 +137,65 @@ public class DatabaseConnectController {
     return null;
   }
 
-  private Pair<ZonedDateTime, ZonedDateTime> getTimeFromAndTo(JSONObject jsonObject)
-      throws JSONException {
-    JSONObject obj = (JSONObject) jsonObject.get("range");
-    Instant from = Instant.parse((String) obj.get("from"));
-    Instant to = Instant.parse((String) obj.get("to"));
+  private Pair<ZonedDateTime, ZonedDateTime> getTimeFromAndTo(JsonObject jsonObject) {
+    JsonObject obj = jsonObject.get("range").getAsJsonObject();
+    Instant from = Instant.parse(obj.get("from").getAsString());
+    Instant to = Instant.parse(obj.get("to").getAsString());
     return new Pair<>(from.atZone(ZoneId.of("Asia/Shanghai")),
         to.atZone(ZoneId.of("Asia/Shanghai")));
   }
 
-  private void setJsonTable(JSONObject obj, String target,
-      Pair<ZonedDateTime, ZonedDateTime> timeRange)
-      throws JSONException {
+  private void setJsonTable(JsonObject obj, String target,
+      Pair<ZonedDateTime, ZonedDateTime> timeRange) {
     List<TimeValues> timeValues = databaseConnectService.querySeries(target, timeRange);
-    JSONArray columns = new JSONArray();
-    JSONObject column = new JSONObject();
-    column.put("text", "Time");
-    column.put("type", "time");
+    JsonArray columns = new JsonArray();
+    JsonObject column = new JsonObject();
+
+    column.addProperty("text", "Time");
+    column.addProperty("type", "time");
     columns.add(column);
-    column = new JSONObject();
-    column.put("text", "Number");
-    column.put("type", "number");
+
+    column = new JsonObject();
+    column.addProperty("text", "Number");
+    column.addProperty("type", "number");
     columns.add(column);
-    obj.put("columns", columns);
-    JSONArray values = new JSONArray();
+
+    obj.add("columns", columns);
+    JsonArray values = new JsonArray();
     for (TimeValues tv : timeValues) {
-      JSONArray value = new JSONArray();
+      JsonArray value = new JsonArray();
       value.add(tv.getTime());
-      value.add(tv.getValue());
+      values.add(GSON.toJsonTree(tv.getValue()));
       values.add(value);
     }
-    obj.put("values", values);
+
+    obj.add("values", values);
   }
 
-  private void setJsonTimeseries(JSONObject obj, String target,
-      Pair<ZonedDateTime, ZonedDateTime> timeRange)
-      throws JSONException {
+  private void setJsonTimeseries(JsonObject obj, String target,
+      Pair<ZonedDateTime, ZonedDateTime> timeRange) {
     List<TimeValues> timeValues = databaseConnectService.querySeries(target, timeRange);
     logger.info("query size: {}", timeValues.size());
-    JSONArray dataPoints = new JSONArray();
+
+    JsonArray dataPoints = new JsonArray();
     for (TimeValues tv : timeValues) {
       long time = tv.getTime();
       Object value = tv.getValue();
-      JSONArray jsonArray = new JSONArray();
-      jsonArray.add(value);
+      JsonArray jsonArray = new JsonArray();
       jsonArray.add(time);
+      jsonArray.add(GSON.toJsonTree(value));
       dataPoints.add(jsonArray);
     }
-    obj.put("datapoints", dataPoints);
+    obj.add("datapoints", dataPoints);
   }
 
   /**
-   * get request body JSON.
+   * get request body JsonNode.
    *
    * @param request http request
-   * @return request JSON
-   * @throws JSONException JSONException
+   * @return request JsonNode
    */
-  public JSONObject getRequestBodyJson(HttpServletRequest request) throws JSONException {
+  public JsonObject getRequestBodyJson(HttpServletRequest request) {
     try {
       BufferedReader br = request.getReader();
       StringBuilder sb = new StringBuilder();
@@ -197,10 +203,12 @@ public class DatabaseConnectController {
       while ((line = br.readLine()) != null) {
         sb.append(line);
       }
-      return JSON.parseObject(sb.toString());
+
+      return GSON.fromJson(sb.toString(), JsonObject.class);
     } catch (IOException e) {
       logger.error("getRequestBodyJson failed", e);
     }
+
     return null;
   }
 
@@ -209,12 +217,10 @@ public class DatabaseConnectController {
    *
    * @param jsonObject JSON Object
    * @return type (string)
-   * @throws JSONException JSONException
    */
-  public String getJsonType(JSONObject jsonObject) throws JSONException {
-    JSONArray array = (JSONArray) jsonObject.get("targets"); // []
-    JSONObject object = (JSONObject) array.get(0); // {}
-    return (String) object.get("type");
+  public String getJsonType(JsonObject jsonObject) {
+    JsonArray array = jsonObject.get("targets").getAsJsonArray(); // []
+    JsonObject object = array.get(0).getAsJsonObject(); // {}
+    return object.get("type").getAsString();
   }
-
 }

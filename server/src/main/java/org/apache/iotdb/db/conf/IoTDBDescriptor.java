@@ -23,6 +23,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.time.ZoneId;
 import java.util.Properties;
@@ -118,9 +119,10 @@ public class IoTDBDescriptor {
     else if(!urlString.endsWith(".properties")) {
       urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
-    // If the url doesn't start with "file:" it's provided as a normal path.
+
+    // If the url doesn't start with "file:" or "classpath:", it's provided as a normal path.
     // So we need to add it to make it a real URL.
-    if(!urlString.startsWith("file:")) {
+    if(!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
       urlString = "file:" + urlString;
     }
     try {
@@ -537,6 +539,10 @@ public class IoTDBDescriptor {
     conf.setForceWalPeriodInMs(Long
         .parseLong(properties.getProperty("force_wal_period_in_ms",
             Long.toString(conf.getForceWalPeriodInMs()))));
+
+    conf.setEnableDiscardOutOfOrderData(Boolean.parseBoolean(
+        properties.getProperty("enable_discard_out_of_order_data",
+        Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
 
   }
 

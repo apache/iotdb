@@ -38,13 +38,9 @@ public class MergeManagerTest extends MergeTest {
     MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, 160 * 1024 * 1024L);
     assertTrue((System.currentTimeMillis() - startTime) < 1000);
     MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, 16 * 1024 * 1024L);
-    assertTrue((System.currentTimeMillis() - startTime) > 9000
-        && (System.currentTimeMillis() - startTime) < 10000);
-    MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, 16 * 1024 * 1024L);
-    System.out.println("run time:" + (System.currentTimeMillis() - startTime));
-    MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, 160 * 1024 * 1024L);
-    System.out.println("run time:" + (System.currentTimeMillis() - startTime));
+    assertTrue((System.currentTimeMillis() - startTime) > 9000);
   }
+
 
   @Test
   public void testGenMergeReport() {

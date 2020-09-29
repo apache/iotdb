@@ -159,9 +159,9 @@ IoTDB> show timeseries root.fit.d1.*
 
 ## How can I change IoTDB's Cli time display format?
 
-The default IoTDB's Cli time display format is human readable (e.g. ```1970-01-01T08:00:00.001```), if you want to display time in timestamp type or other readable format, add parameter ```-disableIS08601``` in start command:
+The default IoTDB's Cli time display format is human readable (e.g. ```1970-01-01T08:00:00.001```), if you want to display time in timestamp type or other readable format, add parameter ```-disableISO8601``` in start command:
 
 ```
-> $IOTDB_CLI_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
+> $IOTDB_CLI_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableISO8601
 ```
 
