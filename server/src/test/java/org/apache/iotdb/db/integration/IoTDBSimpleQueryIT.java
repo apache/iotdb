@@ -32,6 +32,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
@@ -597,6 +599,39 @@ public class IoTDBSimpleQueryIT {
 
     } catch (SQLException e) {
       fail();
+    }
+  }
+
+  @Test
+  public void testUseSameStatement() throws SQLException {
+    try (Connection connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+
+      statement.execute("insert into root.sg1.d0(timestamp,s0,s1) values(1,1,1)");
+      statement.execute("insert into root.sg1.d1(timestamp,s0,s1) values(1000,1000,1000)");
+
+      List<ResultSet> resultSetList = new ArrayList<>();
+
+      ResultSet r1 = statement.executeQuery("select * from root.sg1.d0 where time <= 1");
+      resultSetList.add(r1);
+
+      ResultSet r2 = statement.executeQuery("select * from root.sg1.d1 where s0 >= 100");
+      resultSetList.add(r2);
+
+      r1.next();
+      Assert.assertEquals(r1.getLong(1), 1);
+      Assert.assertEquals(r1.getLong(2), 1L);
+      Assert.assertEquals(r1.getLong(3), 1L);
+
+      r2.next();
+      Assert.assertEquals(r2.getLong(1), 1000L);
+      Assert.assertEquals(r2.getLong(2), 1000);
+      Assert.assertEquals(r2.getLong(3), 1000);
     }
   }
 }

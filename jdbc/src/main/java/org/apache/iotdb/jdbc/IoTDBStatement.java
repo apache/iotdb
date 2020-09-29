@@ -28,12 +28,17 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.thrift.TException;
+
+import java.nio.ByteBuffer;
 import java.sql.*;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class IoTDBStatement implements Statement {
 
@@ -320,14 +325,37 @@ public class IoTDBStatement implements Statement {
     if (execResp.queryDataSet == null) {
       this.resultSet = new IoTDBNonAlignJDBCResultSet(this, execResp.getColumns(),
           execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
-          sessionId, execResp.nonAlignQueryDataSet);
-    }
-    else {
+          sessionId, execResp.nonAlignQueryDataSet.deepCopy());
+    } else {
+      TSQueryDataSet tsQueryDataSet = execResp.getQueryDataSet();
+
+      //Because diffent resultSet share the same TTransport and buffer, if the former has not comsumed
+      //result timely, the latter will overlap the former byte buffer, thus problem will occur
+      deepCopyByteBuf(tsQueryDataSet);
+
       this.resultSet = new IoTDBJDBCResultSet(this, execResp.getColumns(),
           execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
-          sessionId, execResp.queryDataSet);
+          sessionId, tsQueryDataSet);
     }
     return resultSet;
+  }
+
+  private void deepCopyByteBuf(TSQueryDataSet tsQueryDataSet) {
+    final ByteBuffer time = ReadWriteIOUtils.clone(tsQueryDataSet.time);
+
+    final List<ByteBuffer> valueList = tsQueryDataSet.valueList
+            .stream()
+            .map(ReadWriteIOUtils::clone)
+            .collect(Collectors.toList());
+
+    final List<ByteBuffer> bitmapList = tsQueryDataSet.bitmapList
+            .stream()
+            .map(ReadWriteIOUtils::clone)
+            .collect(Collectors.toList());
+
+    tsQueryDataSet.setBitmapList(bitmapList);
+    tsQueryDataSet.setValueList(valueList);
+    tsQueryDataSet.setTime(time);
   }
 
   @Override
