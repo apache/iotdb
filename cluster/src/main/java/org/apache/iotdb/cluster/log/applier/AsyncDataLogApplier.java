@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,9 +31,7 @@ import java.util.function.Consumer;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -48,13 +45,15 @@ public class AsyncDataLogApplier implements LogApplier {
   private static final int CONCURRENT_CONSUMER_NUM = 64;
   private LogApplier embeddedApplier;
   private Map<PartialPath, DataLogConsumer> consumerMap;
-  private ExecutorService consumerPool = new ThreadPoolExecutor(CONCURRENT_CONSUMER_NUM,
-      Integer.MAX_VALUE, 0, TimeUnit.SECONDS, new SynchronousQueue<>(),
-      new ThreadFactoryBuilder().setNameFormat("ApplierThread%d").build());
+  private ExecutorService consumerPool;
+  private String name;
 
-  public AsyncDataLogApplier(LogApplier embeddedApplier) {
+  public AsyncDataLogApplier(LogApplier embeddedApplier, String name) {
     this.embeddedApplier = embeddedApplier;
     consumerMap = new ConcurrentHashMap<>();
+    consumerPool = new ThreadPoolExecutor(CONCURRENT_CONSUMER_NUM,
+        Integer.MAX_VALUE, 0, TimeUnit.SECONDS, new SynchronousQueue<>());
+    this.name = name;
   }
 
   @Override
@@ -69,7 +68,7 @@ public class AsyncDataLogApplier implements LogApplier {
         InsertPlan insertPlan = (InsertPlan) plan;
         PartialPath deviceId = insertPlan.getDeviceId();
         consumerMap.computeIfAbsent(IoTDB.metaManager.getStorageGroupPath(deviceId), d -> {
-          DataLogConsumer dataLogConsumer = new DataLogConsumer();
+          DataLogConsumer dataLogConsumer = new DataLogConsumer(name + "-" + d);
           consumerPool.submit(dataLogConsumer);
           return dataLogConsumer;
         }).accept(log);
@@ -89,6 +88,9 @@ public class AsyncDataLogApplier implements LogApplier {
   private boolean allConsumersEmpty() {
     for (DataLogConsumer consumer : consumerMap.values()) {
       if (!consumer.isEmpty()) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("Consumer not empty: {}", consumer);
+        }
         return false;
       }
     }
@@ -98,7 +100,7 @@ public class AsyncDataLogApplier implements LogApplier {
   private void applyInternal(Log log) {
     try {
       embeddedApplier.apply(log);
-    } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
+    } catch (Exception e) {
       log.setException(e);
     } finally {
       log.setApplied(true);
@@ -108,8 +110,13 @@ public class AsyncDataLogApplier implements LogApplier {
   private class DataLogConsumer implements Runnable, Consumer<Log> {
 
     private BlockingQueue<Log> logQueue = new LinkedBlockingQueue<>();
-    private long lastLogIndex;
-    private long lastAppliedLogIndex;
+    private volatile long lastLogIndex;
+    private volatile long lastAppliedLogIndex;
+    private String name;
+
+    public DataLogConsumer(String name) {
+      this.name = name;
+    }
 
     public boolean isEmpty() {
       return logQueue.isEmpty() && lastLogIndex == lastAppliedLogIndex;
@@ -117,14 +124,21 @@ public class AsyncDataLogApplier implements LogApplier {
 
     @Override
     public void run() {
+      Thread.currentThread().setName(name);
       while (!Thread.currentThread().isInterrupted()) {
         try {
           Log log = logQueue.take();
-          applyInternal(log);
-          lastAppliedLogIndex = log.getCurrLogIndex();
+          try {
+            applyInternal(log);
+          } finally {
+            lastAppliedLogIndex = log.getCurrLogIndex();
+          }
         } catch (InterruptedException e) {
           logger.info("DataLogConsumer exits");
           Thread.currentThread().interrupt();
+          return;
+        } catch (Exception e) {
+          logger.error("DataLogConsumer exits", e);
           return;
         }
       }
@@ -137,6 +151,16 @@ public class AsyncDataLogApplier implements LogApplier {
       } else {
         lastLogIndex = log.getCurrLogIndex();
       }
+    }
+
+    @Override
+    public String toString() {
+      return "DataLogConsumer{" +
+          "logQueue=" + logQueue.size() +
+          ", lastLogIndex=" + lastLogIndex +
+          ", lastAppliedLogIndex=" + lastAppliedLogIndex +
+          ", name='" + name + '\'' +
+          '}';
     }
   }
 }

@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.cluster.log;
 
+import com.google.common.collect.Comparators;
 import java.nio.ByteBuffer;
+import java.util.Comparator;
 import java.util.Objects;
 
 /**
@@ -26,7 +28,10 @@ import java.util.Objects;
  * logs in a cluster will form a log chain and abnormal operations can thus be distinguished and
  * removed.
  */
-public abstract class Log {
+public abstract class Log implements Comparable<Log> {
+
+  private static final Comparator<Log> COMPARATOR =
+      Comparator.comparingLong(Log::getCurrLogIndex).thenComparing(Log::getCurrLogTerm);
 
   protected static final int DEFAULT_BUFFER_SIZE = 4096;
   private long currLogIndex;
@@ -62,6 +67,25 @@ public abstract class Log {
     this.currLogTerm = currLogTerm;
   }
 
+  public synchronized boolean isApplied() {
+    return applied;
+  }
+
+  public void setApplied(boolean applied) {
+    synchronized (this) {
+      this.applied = applied;
+      this.notifyAll();
+    }
+  }
+
+  public Exception getException() {
+    return exception;
+  }
+
+  public void setException(Exception exception) {
+    this.exception = exception;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -80,22 +104,8 @@ public abstract class Log {
     return Objects.hash(currLogIndex, currLogTerm);
   }
 
-  public synchronized boolean isApplied() {
-    return applied;
-  }
-
-  public void setApplied(boolean applied) {
-    synchronized (this) {
-      this.applied = applied;
-      this.notifyAll();
-    }
-  }
-
-  public Exception getException() {
-    return exception;
-  }
-
-  public void setException(Exception exception) {
-    this.exception = exception;
+  @Override
+  public int compareTo(Log o) {
+    return COMPARATOR.compare(this, o);
   }
 }

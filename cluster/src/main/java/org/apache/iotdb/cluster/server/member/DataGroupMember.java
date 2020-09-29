@@ -163,7 +163,7 @@ public class DataGroupMember extends RaftMember {
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM, getMemberDir());
     LogApplier applier = new DataLogApplier(metaGroupMember, this);
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()) {
-      applier = new AsyncDataLogApplier(applier);
+      applier = new AsyncDataLogApplier(applier, name);
     }
     logManager = new FilePartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable(),
         allNodes.get(0), thisNode, this);

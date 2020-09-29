@@ -34,8 +34,8 @@ public class AsyncDataHeartbeatClientTest extends TestCase {
   public void test() throws IOException {
     FactoryAsync factoryAsync = new FactoryAsync(new Factory());
     AsyncClient asyncClient = factoryAsync.getAsyncClient(TestUtils.getNode(0), null);
-    assertEquals("AsyncDataHeartbeatClient{node=Node(ip:192.168.0.0, metaPort:9003, "
-            + "nodeIdentifier:0, dataPort:40010, clientPort:0),dataHeartbeatPort=40011}",
+    assertEquals(
+        "AsyncDataHeartbeatClient{node=Node(ip:192.168.0.0, metaPort:9003, nodeIdentifier:0, dataPort:40010, clientPort:0),dataHeartbeatPort=40011}",
         asyncClient.toString());
   }
 }

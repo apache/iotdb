@@ -63,8 +63,8 @@ public class SyncDataClientTest {
       assertEquals(client, newClient);
       assertTrue(client.getInputProtocol().getTransport().isOpen());
 
-      assertEquals("DataClient{node=Node(ip:localhost, metaPort:0, nodeIdentifier:0, "
-          + "dataPort:40010, clientPort:0)}", client.toString());
+      assertEquals("DataClient{node=ClusterNode{ ip='localhost', metaPort=0, nodeIdentifier=0,"
+          + " dataPort=40010, clientPort=0}}", client.toString());
 
       client = new SyncDataClient(new TBinaryProtocol(new TSocket(node.getIp(),
           node.getDataPort())));

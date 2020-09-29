@@ -135,6 +135,9 @@ public class RaftLogManagerTest {
 
   @Test
   public void testBlockedSnapshot() throws LogExecutionException, IOException {
+    int catchUpTimeoutMS = ClusterDescriptor.getInstance().getConfig().getCatchUpTimeoutMS();
+    ClusterDescriptor.getInstance().getConfig().setCatchUpTimeoutMS(200);
+
     CommittedEntryManager committedEntryManager =
         new CommittedEntryManager(
             ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
@@ -163,6 +166,7 @@ public class RaftLogManagerTest {
       assertEquals(new SimpleSnapshot(99, 99), instance.getSnapshot());
     } finally {
       instance.close();
+      ClusterDescriptor.getInstance().getConfig().setCatchUpTimeoutMS(catchUpTimeoutMS);
     }
   }
 

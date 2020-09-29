@@ -23,10 +23,11 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
+import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
@@ -45,15 +46,14 @@ public class AsyncDataLogApplierTest {
 
   private List<Log> logsToApply;
   private Set<Log> appliedLogs;
-  private static final String TEST_SG = "root.test";
 
   @Before
   public void setUp() throws Exception {
     logsToApply = new ArrayList<>();
-    appliedLogs = new HashSet<>();
+    appliedLogs = new ConcurrentSkipListSet<>();
     IoTDB.metaManager.init();
     for (int i = 0; i < 10; i++) {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(TEST_SG + i));
+      IoTDB.metaManager.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
     }
   }
 
@@ -81,15 +81,17 @@ public class AsyncDataLogApplierTest {
         }
       }
     };
-    AsyncDataLogApplier asyncDataLogApplier = new AsyncDataLogApplier(dummyApplier);
+    AsyncDataLogApplier asyncDataLogApplier = new AsyncDataLogApplier(dummyApplier, "test");
     for (int i = 0; i < 10; i++) {
-      PhysicalPlan plan = new InsertRowPlan(new PartialPath(TEST_SG + i), i, new String[0],
+      PhysicalPlan plan = new InsertRowPlan(new PartialPath(TestUtils.getTestSg(i)), i,
+          new String[0],
           new String[0]);
       PhysicalPlanLog log = new PhysicalPlanLog(plan);
       log.setCurrLogIndex(i);
       logsToApply.add(log);
     }
     Log finalLog = new EmptyContentLog();
+    finalLog.setCurrLogIndex(10);
     logsToApply.add(finalLog);
 
     for (Log log : logsToApply) {
@@ -102,5 +104,59 @@ public class AsyncDataLogApplierTest {
       }
     }
     assertEquals(11, appliedLogs.size());
+  }
+
+  @Test
+  public void testParallel() {
+    LogApplier dummyApplier = log -> {
+      if (log instanceof PhysicalPlanLog) {
+        PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
+        PhysicalPlan plan = physicalPlanLog.getPlan();
+        if (plan instanceof InsertRowPlan) {
+          appliedLogs.add(log);
+          log.setApplied(true);
+        }
+      } else {
+        appliedLogs.add(log);
+        log.setApplied(true);
+      }
+    };
+
+    AsyncDataLogApplier asyncDataLogApplier = new AsyncDataLogApplier(dummyApplier, "test");
+
+    for (int i = 0; i < 10; i++) {
+      int finalI = i;
+      new Thread(() -> {
+        List<Log> threadLogsToApply = new ArrayList<>();
+        for (int j = 0; j < 10; j++) {
+          PhysicalPlan plan = null;
+          try {
+            plan = new InsertRowPlan(new PartialPath(TestUtils.getTestSg(finalI)), j, new String[0],
+                new String[0]);
+          } catch (IllegalPathException e) {
+            // ignore
+          }
+          PhysicalPlanLog log = new PhysicalPlanLog(plan);
+          log.setCurrLogIndex(finalI * 11  + j);
+          threadLogsToApply.add(log);
+        }
+        Log finalLog = new EmptyContentLog();
+        finalLog.setCurrLogIndex(finalI * 11 + 10);
+        threadLogsToApply.add(finalLog);
+
+        for (Log log : threadLogsToApply) {
+          try {
+            asyncDataLogApplier.apply(log);
+          } catch (StorageGroupNotSetException e) {
+            // ignore
+          }
+        }
+      }).start();
+    }
+
+    while (appliedLogs.size() < 11 * 10) {
+
+    }
+    assertEquals(110, appliedLogs.size());
   }
 }
