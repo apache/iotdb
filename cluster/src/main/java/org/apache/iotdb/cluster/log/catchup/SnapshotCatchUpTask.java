@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.log.catchup;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
@@ -46,8 +45,9 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
 
   private static final Logger logger = LoggerFactory.getLogger(SnapshotCatchUpTask.class);
 
-  private ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-
+  // sending a snapshot may take longer than normal communications
+  private static final long SEND_SNAPSHOT_WAIT_MS = ClusterDescriptor.getInstance().getConfig()
+      .getCatchUpTimeoutMS();
   private Snapshot snapshot;
 
   SnapshotCatchUpTask(List<Log> logs, Snapshot snapshot, Node node, RaftMember raftMember) {
@@ -91,7 +91,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     synchronized (succeed) {
       client.sendSnapshot(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-      succeed.wait(config.getCatchUpTimeoutMS());
+      succeed.wait(SEND_SNAPSHOT_WAIT_MS);
     }
     return succeed.get();
   }
