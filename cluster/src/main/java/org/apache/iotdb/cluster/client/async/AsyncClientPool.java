@@ -47,9 +47,7 @@ public class AsyncClientPool {
   private AsyncClientFactory asyncClientFactory;
   private ScheduledExecutorService cleanErrorClientExecutorService;
   private static final int maxErrorCount = 3;
-  private IOException nodeDownException = new IOException(
-      "connect node failed, maybe the node is down");
-
+  private static final int probeNodeStatusPeriodSecond = 60;
 
   public AsyncClientPool(AsyncClientFactory asyncClientFactory) {
     this.asyncClientFactory = asyncClientFactory;
@@ -59,8 +57,8 @@ public class AsyncClientPool {
         new BasicThreadFactory.Builder().namingPattern("clean-error-client-%d").daemon(true)
             .build());
     this.cleanErrorClientExecutorService
-        .scheduleAtFixedRate(this::cleanErrorClients, 60,
-            60,
+        .scheduleAtFixedRate(this::cleanErrorClients, probeNodeStatusPeriodSecond,
+            probeNodeStatusPeriodSecond,
             TimeUnit.SECONDS);
   }
 
@@ -168,7 +166,7 @@ public class AsyncClientPool {
         nodeErrorClientCountMap.put(clusterNode, 1);
       }
     }
-    logger.debug("the node={}, error times={}", clusterNode,
+    logger.debug("the node={}, connect error times={}", clusterNode,
         nodeErrorClientCountMap.get(clusterNode));
   }
 
