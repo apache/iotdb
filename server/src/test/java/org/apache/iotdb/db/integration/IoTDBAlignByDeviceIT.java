@@ -556,15 +556,6 @@ public class IoTDBAlignByDeviceIT {
         }
         Assert.assertEquals(6, cnt);
       }
-
-      String[] retArray2 = new String[]{
-          "42,root.vehicle.d0,0,0,0,0,0,",
-          "22,root.vehicle.d0,0,0,0,0,0,",
-          "2,root.vehicle.d0,1,1,3,0,0,",
-          "42,root.vehicle.d1,0,null,null,null,null,",
-          "22,root.vehicle.d1,0,null,null,null,null,",
-          "2,root.vehicle.d1,0,null,null,null,null,",
-      };
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

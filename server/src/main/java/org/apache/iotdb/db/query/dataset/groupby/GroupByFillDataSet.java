@@ -133,7 +133,6 @@ public class GroupByFillDataSet extends QueryDataSet {
 
           if (!cacheIsEmpty(i) && canUseCacheData(rowRecord, tsDataType, i)) {
             rowRecord.getFields().set(i, Field.getField(previousValue[i], tsDataType));
-            continue;
           }
         }
       } else {
