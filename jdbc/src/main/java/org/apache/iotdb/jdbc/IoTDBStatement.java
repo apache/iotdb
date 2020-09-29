@@ -224,12 +224,12 @@ public class IoTDBStatement implements Statement {
       if (execResp.queryDataSet == null) {
         this.resultSet = new IoTDBNonAlignJDBCResultSet(this, execResp.getColumns(),
             execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
-            sessionId, execResp.nonAlignQueryDataSet);
+            sessionId, execResp.nonAlignQueryDataSet.deepCopy());
       }
       else {
         this.resultSet = new IoTDBJDBCResultSet(this, execResp.getColumns(),
             execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
-            sessionId, execResp.queryDataSet);
+            sessionId, execResp.queryDataSet.deepCopy());
       }
       return true;
     }
@@ -320,12 +320,12 @@ public class IoTDBStatement implements Statement {
     if (execResp.queryDataSet == null) {
       this.resultSet = new IoTDBNonAlignJDBCResultSet(this, execResp.getColumns(),
           execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
-          sessionId, execResp.nonAlignQueryDataSet);
+          sessionId, execResp.nonAlignQueryDataSet.deepCopy());
     }
     else {
       this.resultSet = new IoTDBJDBCResultSet(this, execResp.getColumns(),
           execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
-          sessionId, execResp.queryDataSet);
+          sessionId, execResp.queryDataSet.deepCopy());
     }
     return resultSet;
   }
