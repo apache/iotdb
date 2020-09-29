@@ -43,6 +43,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -69,6 +70,7 @@ import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -79,11 +81,15 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.monitor.MonitorConstants;
+import org.apache.iotdb.db.monitor.MonitorConstants.StatMeasurementConstants;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
@@ -91,6 +97,9 @@ import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -125,6 +134,8 @@ import org.slf4j.LoggerFactory;
 public class StorageGroupProcessor {
 
   private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static MManager mManager = IoTDB.metaManager;
 
   /**
    * All newly generated chunks after merge have version number 0, so we set merged Modification
@@ -256,6 +267,11 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
 
+  /**
+   * value of root.stats."root.sg".TOTAL_POINTS
+   */
+  private long monitorSeriesValue;
+
   public StorageGroupProcessor(String systemDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
     this.storageGroupName = storageGroupName;
@@ -366,6 +382,44 @@ public class StorageGroupProcessor {
           .putAll(endTimeMap);
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
+
+    if (config.isEnableStatMonitor() && !storageGroupName
+        .equals(MonitorConstants.STAT_STORAGE_GROUP_NAME)) {
+      // for storage group which is not global, only TOTAL_POINTS is registered now
+      String[] monitorSeries = Arrays.copyOf(MonitorConstants.STAT_STORAGE_GROUP_ARRAY, 4);
+      monitorSeries[2] = "\"" + storageGroupName + "\"";
+      monitorSeries[3] = StatMeasurementConstants.TOTAL_POINTS.getMeasurement();
+      PartialPath monitorSeriesPath = new PartialPath(monitorSeries);
+      try {
+        if (mManager.isPathExist(monitorSeriesPath)) {
+          TimeValuePair timeValuePair = LastQueryExecutor
+              .calculateLastPairForOneSeriesLocally(monitorSeriesPath, TSDataType.INT64,
+                  new QueryContext(
+                      QueryResourceManager.getInstance().assignQueryId(true)),
+                  Collections.singleton(monitorSeriesPath.getMeasurement()));
+          if (timeValuePair.getValue() != null) {
+            monitorSeriesValue = timeValuePair.getValue().getLong();
+          }
+        } else {
+          mManager.createTimeseries(monitorSeriesPath, TSDataType.valueOf(MonitorConstants.INT64),
+              TSEncoding.valueOf("TS_2DIFF"),
+              TSFileDescriptor.getInstance().getConfig().getCompressor(),
+              null);
+        }
+      } catch (StorageEngineException | IOException | QueryProcessException e) {
+        logger.error("Load last value from disk error.", e);
+      } catch (MetadataException e) {
+        logger.error("Create monitor time series error.", e);
+      }
+    }
+  }
+
+  public Long getMonitorSeriesValue() {
+    return monitorSeriesValue;
+  }
+
+  public void updateMonitorSeriesValue(int successPointsNum) {
+    this.monitorSeriesValue += successPointsNum;
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
@@ -744,11 +798,11 @@ public class StorageGroupProcessor {
    * inserted are in the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param sequence whether is sequence
-   * @param start start index of rows to be inserted in insertTabletPlan
-   * @param end end index of rows to be inserted in insertTabletPlan
-   * @param results result array
-   * @param timePartitionId time partition id
+   * @param sequence         whether is sequence
+   * @param start            start index of rows to be inserted in insertTabletPlan
+   * @param end              end index of rows to be inserted in insertTabletPlan
+   * @param results          result array
+   * @param timePartitionId  time partition id
    * @return false if any failure occurs when inserting the tablet, true otherwise
    */
   private boolean insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
@@ -903,9 +957,9 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId time partition range
+   * @param timeRangeId            time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param sequence whether is sequence or not
+   * @param sequence               whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -1360,10 +1414,10 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param deviceId      the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param startTime the startTime of delete range.
-   * @param endTime the endTime of delete range.
+   * @param startTime     the startTime of delete range.
+   * @param endTime       the endTime of delete range.
    */
   public void delete(PartialPath deviceId, String measurementId, long startTime, long endTime)
       throws IOException {
@@ -2166,9 +2220,9 @@ public class StorageGroupProcessor {
    * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
    * version number is the version number in the tsfile with a larger timestamp.
    *
-   * @param tsfileName origin tsfile name
+   * @param tsfileName  origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
-   * 1]
+   *                    1]
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
@@ -2232,8 +2286,8 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type load type
-   * @param tsFileResource tsfile resource to be loaded
+   * @param type            load type
+   * @param tsFileResource  tsfile resource to be loaded
    * @param filePartitionId the partition id of the new file
    * @return load the file successfully
    * @UsedBy sync module, load external tsfile module.

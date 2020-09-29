@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.List;
@@ -353,7 +352,7 @@ public class StorageEngine implements IService {
     try {
       storageGroupProcessor.insert(insertRowPlan);
       if (config.isEnableStatMonitor()) {
-        updateMonitorStatistics(insertRowPlan, storageGroupProcessor.getStorageGroupName());
+        updateMonitorStatistics(storageGroupProcessor, insertRowPlan);
       }
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
@@ -376,28 +375,19 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     storageGroupProcessor.insertTablet(insertTabletPlan);
     if (config.isEnableStatMonitor()) {
-      updateMonitorStatistics(insertTabletPlan, storageGroupProcessor.getStorageGroupName());
+      updateMonitorStatistics(storageGroupProcessor, insertTabletPlan);
     }
   }
 
-  private void updateMonitorStatistics(InsertPlan insertPlan, String storageGroupName) {
-    try {
-      StatMonitor monitor = StatMonitor.getInstance();
-      if (!storageGroupName.equals(MonitorConstants.STAT_STORAGE_GROUP_NAME)) {
-        if (monitor.getMonitorSeriesMap().get(storageGroupName) == null) {
-          monitor.registerStatStorageGroupInfo(
-              Collections.singletonList(new PartialPath(storageGroupName)));
-        }
-
-        int successPointsNum =
-            insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
-        // update to storage group statistics
-        monitor.updateStatStorageGroupValue(storageGroupName, successPointsNum);
-        // update to global statistics
-        monitor.updateStatGlobalValue(successPointsNum);
-      }
-    } catch (IllegalPathException e) {
-      logger.error(e.getMessage());
+  private void updateMonitorStatistics(StorageGroupProcessor processor, InsertPlan insertPlan) {
+    StatMonitor monitor = StatMonitor.getInstance();
+    if (!processor.getStorageGroupName().equals(MonitorConstants.STAT_STORAGE_GROUP_NAME)) {
+      int successPointsNum =
+          insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
+      // update to storage group statistics
+      processor.updateMonitorSeriesValue(successPointsNum);
+      // update to global statistics
+      monitor.updateStatGlobalValue(successPointsNum);
     }
   }
 
