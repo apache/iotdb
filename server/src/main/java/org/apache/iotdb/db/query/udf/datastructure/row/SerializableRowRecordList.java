@@ -36,8 +36,14 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class SerializableRowRecordList implements SerializableList {
 
-  static int calculateCapacity(TSDataType[] dataTypes, float memoryLimitInMB)
-      throws QueryProcessException {
+  public static SerializableRowRecordList newSerializableRowRecordList(TSDataType[] dataTypes,
+      long queryId, String dataId, int index) {
+    SerializationRecorder recorder = new SerializationRecorder(queryId, dataId, index);
+    return new SerializableRowRecordList(dataTypes, recorder);
+  }
+
+  static int calculateCapacity(TSDataType[] dataTypes, float memoryLimitInMB,
+      int byteArrayLengthForMemoryControl) throws QueryProcessException {
     final int MIN_OBJECT_HEADER_SIZE = 8;
     final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
 
@@ -61,7 +67,7 @@ public class SerializableRowRecordList implements SerializableList {
           break;
         case TEXT:
           rowLength += MIN_OBJECT_HEADER_SIZE + MIN_ARRAY_HEADER_SIZE
-              + INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
+              + byteArrayLengthForMemoryControl;
           break;
         default:
           throw new UnSupportedDataTypeException(dataType.toString());
@@ -73,12 +79,6 @@ public class SerializableRowRecordList implements SerializableList {
       throw new QueryProcessException("Memory is not enough for current query.");
     }
     return size;
-  }
-
-  public static SerializableRowRecordList newSerializableRowRecordList(TSDataType[] dataTypes,
-      long queryId, String dataId, int index) {
-    SerializationRecorder recorder = new SerializationRecorder(queryId, dataId, index);
-    return new SerializableRowRecordList(dataTypes, recorder);
   }
 
   private final TSDataType[] dataTypes;
@@ -122,7 +122,16 @@ public class SerializableRowRecordList implements SerializableList {
     int size = rowRecords.size();
     serializationRecorder.setSerializedElementSize(size);
     int serializedByteLength = 0;
-    for (RowRecord rowRecord : rowRecords) {
+    int nullCount = 0;
+    for (RowRecord record : rowRecords) {
+      if (record != null) {
+        break;
+      }
+      ++nullCount;
+    }
+    serializedByteLength += ReadWriteIOUtils.write(nullCount, outputStream);
+    for (int i = nullCount; i < size; ++i) {
+      RowRecord rowRecord = rowRecords.get(i);
       serializedByteLength += ReadWriteIOUtils.write(rowRecord.getTimestamp(), outputStream);
       serializedByteLength += writeFields(rowRecord, outputStream);
     }
@@ -132,7 +141,11 @@ public class SerializableRowRecordList implements SerializableList {
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     int serializedElementSize = serializationRecorder.getSerializedElementSize();
-    for (int i = 0; i < serializedElementSize; ++i) {
+    int nullCount = ReadWriteIOUtils.readInt(byteBuffer);
+    for (int i = 0; i < nullCount; ++i) {
+      put(null);
+    }
+    for (int i = nullCount; i < serializedElementSize; ++i) {
       long timestamp = ReadWriteIOUtils.readLong(byteBuffer);
       List<Field> fields = readFields(byteBuffer);
       put(new RowRecord(timestamp, fields));

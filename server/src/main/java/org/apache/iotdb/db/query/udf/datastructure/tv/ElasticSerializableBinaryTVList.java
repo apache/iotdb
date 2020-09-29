@@ -23,13 +23,14 @@ import static org.apache.iotdb.db.query.udf.datastructure.SerializableList.INITI
 
 import java.io.IOException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
 
-  protected static final String UNIQUE_ID_MAGIC_STRING = "__EXTENDED__";
+  protected static final int MEMORY_CHECK_THRESHOLD = 1000;
+
+  protected static final String UNIQUE_ID_MAGIC_STRING = "__BINARY__";
   protected static final String UNIQUE_ID_STRING_PATTERN = "%s" + UNIQUE_ID_MAGIC_STRING + "%d";
 
   protected int byteArrayLengthForMemoryControl;
@@ -37,7 +38,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
   protected long totalByteArrayLengthLimit;
   protected long totalByteArrayLength;
 
-  protected int internalTVListUniqueId;
+  protected int uniqueIdVersion;
 
   public ElasticSerializableBinaryTVList(long queryId, String uniqueId, float memoryLimitInMB,
       int cacheSize) throws QueryProcessException {
@@ -45,7 +46,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     byteArrayLengthForMemoryControl = INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
     totalByteArrayLengthLimit = 0;
     totalByteArrayLength = 0;
-    internalTVListUniqueId = 0;
+    uniqueIdVersion = 0;
   }
 
   @Override
@@ -66,8 +67,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
   }
 
   protected void checkMemoryUsage() throws IOException, QueryProcessException {
-    if (size % TSFileConfig.ARRAY_CAPACITY_THRESHOLD != 0
-        || totalByteArrayLength <= totalByteArrayLengthLimit) {
+    if (size % MEMORY_CHECK_THRESHOLD != 0 || totalByteArrayLength <= totalByteArrayLengthLimit) {
       return;
     }
 
@@ -131,6 +131,6 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
   protected String generateNewUniqueId() {
     int firstOccurrence = uniqueId.indexOf(UNIQUE_ID_MAGIC_STRING);
     return String.format(UNIQUE_ID_STRING_PATTERN, firstOccurrence == -1
-        ? uniqueId : uniqueId.substring(0, firstOccurrence), internalTVListUniqueId++);
+        ? uniqueId : uniqueId.substring(0, firstOccurrence), uniqueIdVersion++);
   }
 }

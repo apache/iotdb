@@ -116,7 +116,7 @@ public class InputLayer {
     }
 
     @Override
-    public boolean next() throws IOException {
+    public boolean next() throws IOException, QueryProcessException {
       if (hasCachedRowRecord) {
         return true;
       }
@@ -224,7 +224,7 @@ public class InputLayer {
     }
 
     @Override
-    public boolean next() throws IOException {
+    public boolean next() throws IOException, QueryProcessException {
       if (hasCachedRowRecord) {
         return true;
       }
@@ -317,7 +317,7 @@ public class InputLayer {
     }
 
     @Override
-    public boolean next() throws IOException {
+    public boolean next() throws IOException, QueryProcessException {
       if (0 < rowIndexes.size()) {
         return true;
       }
@@ -420,7 +420,7 @@ public class InputLayer {
     }
 
     @Override
-    public boolean next() throws IOException {
+    public boolean next() throws IOException, QueryProcessException {
       if (displayWindowEnd <= nextWindowTimeBegin) {
         return false;
       }

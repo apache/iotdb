@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Random;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -37,7 +38,7 @@ import org.junit.Test;
 public class ElasticSerializableRowRecordListTest extends SerializableListTest {
 
   private static final TSDataType[] DATA_TYPES = {TSDataType.INT32, TSDataType.INT64,
-      TSDataType.FLOAT, TSDataType.DOUBLE, TSDataType.BOOLEAN, TSDataType.TEXT};
+      TSDataType.FLOAT, TSDataType.DOUBLE, TSDataType.BOOLEAN, TSDataType.TEXT, TSDataType.TEXT};
 
   private ElasticSerializableRowRecordList rowRecordList;
 
@@ -98,7 +99,7 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
         }
         rowRecordList.put(rowRecord);
       }
-    } catch (IOException e) {
+    } catch (IOException | QueryProcessException e) {
       fail(e.toString());
     }
     assertEquals(ITERATION_TIMES, rowRecordList.size());
@@ -139,5 +140,85 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
     } catch (IOException e) {
       fail(e.toString());
     }
+  }
+
+  @Test
+  public void testMemoryControl() {
+    initESRowRecordList();
+
+    int byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 2;
+    int byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 8;
+    Random random = new Random();
+
+    try {
+      for (int i = 0; i < ITERATION_TIMES; ++i) {
+        rowRecordList.put(
+            generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+      }
+      rowRecordList.setEvictionUpperBound(rowRecordList.size());
+
+      byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
+      byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
+      for (int i = 0; i < ITERATION_TIMES; ++i) {
+        rowRecordList.put(
+            generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+      }
+      rowRecordList.setEvictionUpperBound(rowRecordList.size());
+
+      byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
+      byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
+      for (int i = 0; i < ITERATION_TIMES; ++i) {
+        rowRecordList.put(
+            generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+      }
+      rowRecordList.setEvictionUpperBound(rowRecordList.size());
+
+      for (int i = 0; i < 2 * ITERATION_TIMES; ++i) {
+        rowRecordList.put(
+            generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+        rowRecordList.setEvictionUpperBound(rowRecordList.size());
+      }
+
+      assertEquals(ITERATION_TIMES * 5, rowRecordList.size());
+    } catch (QueryProcessException | IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private RowRecord generateRowRecord(int time, int byteLength) {
+    String string = generateRandomString(byteLength);
+    RowRecord rowRecord = new RowRecord(time);
+    for (TSDataType dataType : DATA_TYPES) {
+      switch (dataType) {
+        case INT32:
+          rowRecord.addField(time, dataType);
+          break;
+        case INT64:
+          rowRecord.addField((long) time, dataType);
+          break;
+        case FLOAT:
+          rowRecord.addField((float) time, dataType);
+          break;
+        case DOUBLE:
+          rowRecord.addField((double) time, dataType);
+          break;
+        case BOOLEAN:
+          rowRecord.addField(time % 2 == 0, dataType);
+          break;
+        case TEXT:
+          rowRecord.addField(Binary.valueOf(string), dataType);
+          break;
+      }
+    }
+    return rowRecord;
+  }
+
+  private String generateRandomString(int length) {
+    StringBuilder stringBuilder = new StringBuilder();
+    for (int i = 0; i < length; ++i) {
+      stringBuilder.append('.');
+    }
+    return stringBuilder.toString();
   }
 }
