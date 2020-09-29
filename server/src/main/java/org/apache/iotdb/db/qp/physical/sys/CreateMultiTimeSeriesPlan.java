@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +43,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
   private List<TSDataType> dataTypes;
   private List<TSEncoding> encodings;
   private List<CompressionType> compressors;
-  private List<String> alias;
+  private List<String> alias = null;
   private List<Map<String, String>> props = null;
   private List<Map<String, String>> tags = null;
   private List<Map<String, String>> attributes = null;
@@ -160,8 +161,13 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
       stream.write(compressor.ordinal());
     }
 
-    for (String name : alias) {
-      putString(stream, name);
+    if (alias != null) {
+      stream.write(1);
+      for (String name : alias) {
+        putString(stream, name);
+      }
+    } else {
+      stream.write(0);
     }
 
     if (props != null) {
@@ -214,8 +220,13 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
       buffer.put((byte) compressor.ordinal());
     }
 
-    for (String name : alias) {
-      putString(buffer, name);
+    if (alias != null) {
+      buffer.put((byte) 1);
+      for (String name : alias) {
+        putString(buffer, name);
+      }
+    } else {
+      buffer.put((byte) 0);
     }
 
     if (props != null) {
@@ -249,33 +260,42 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     int totalSize = buffer.getInt();
+    paths = new ArrayList<>(totalSize);
     for (int i = 0; i < totalSize; i++) {
       paths.add(new PartialPath(readString(buffer)));
     }
+    dataTypes = new ArrayList<>(totalSize);
     for (int i = 0; i < totalSize; i++) {
       dataTypes.add(TSDataType.values()[buffer.get()]);
     }
+    encodings = new ArrayList<>(totalSize);
     for (int i = 0; i < totalSize; i++) {
       encodings.add(TSEncoding.values()[buffer.get()]);
     }
 
-    for (int i = 0; i < totalSize; i++) {
-      alias.add(readString(buffer));
+    if (buffer.get() == 1) {
+      alias = new ArrayList<>(totalSize);
+      for (int i = 0; i < totalSize; i++) {
+        alias.add(readString(buffer));
+      }
     }
 
     if (buffer.get() == 1) {
+      props = new ArrayList<>(totalSize);
       for (int i = 0; i < totalSize; i++) {
         props.add(ReadWriteIOUtils.readMap(buffer));
       }
     }
 
     if (buffer.get() == 1) {
+      tags = new ArrayList<>(totalSize);
       for (int i = 0; i < totalSize; i++) {
         tags.add(ReadWriteIOUtils.readMap(buffer));
       }
     }
 
     if (buffer.get() == 1) {
+      attributes = new ArrayList<>(totalSize);
       for (int i = 0; i < totalSize; i++) {
         attributes.add(ReadWriteIOUtils.readMap(buffer));
       }
