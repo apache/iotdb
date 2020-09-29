@@ -34,7 +34,9 @@ public class ClusterConfig {
   /**
    * each one is a "<IP | domain name>:<meta port>:<data port>:<client port></>" string tuple
    */
-  private List<String> seedNodeUrls = Arrays.asList("127.0.0.1:9003:40010:55560", "127.0.0.1:9005:40012:55561", "127.0.0.1:9007:40014:55562");
+  private List<String> seedNodeUrls = Arrays
+      .asList("127.0.0.1:9003:40010:55560", "127.0.0.1:9005:40012:55561",
+          "127.0.0.1:9007:40014:55562");
 
   @ClusterConsistent
   private boolean isRpcThriftCompressionEnabled = false;
@@ -58,9 +60,11 @@ public class ClusterConfig {
    */
   private long maxUnsnapshotLogSize = 1024 * 1024 * 128L;
 
-  private int readOperationTimeoutMS = 30 * 1000;
+  private int readOperationTimeoutMS = 30_1000;
 
-  private int writeOperationTimeoutMS = 30 * 1000;
+  private int writeOperationTimeoutMS = 30_1000;
+
+  private int catchUpTimeoutMS = 60_000;
 
   private boolean useBatchInLogCatchUp = true;
 
@@ -230,6 +234,14 @@ public class ClusterConfig {
 
   void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
+  }
+
+  public int getCatchUpTimeoutMS() {
+    return catchUpTimeoutMS;
+  }
+
+  public void setCatchUpTimeoutMS(int catchUpTimeoutMS) {
+    this.catchUpTimeoutMS = catchUpTimeoutMS;
   }
 
   public int getReadOperationTimeoutMS() {

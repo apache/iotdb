@@ -34,8 +34,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Notice: Because a client will be returned to a pool immediately after a successful request,
- * you should not cache it anywhere else or there may be conflicts.
+ * Notice: Because a client will be returned to a pool immediately after a successful request, you
+ * should not cache it anywhere else or there may be conflicts.
  */
 // the two classes does not share a common parent and Java does not allow multiple extension
 @SuppressWarnings("common-java:DuplicatedBlocks")
@@ -66,13 +66,15 @@ public class AsyncMetaClient extends AsyncClient {
     // return itself to the pool if the job is done
     if (pool != null) {
       pool.putClient(node, this);
+      pool.onComplete(node);
     }
   }
 
   @Override
-  public void onError(Exception e){
+  public void onError(Exception e) {
     super.onError(e);
     pool.recreateClient(node);
+    pool.onError(node);
   }
 
   public static class FactoryAsync extends AsyncClientFactory {

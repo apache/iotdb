@@ -43,10 +43,11 @@ import org.slf4j.LoggerFactory;
  */
 public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Boolean> {
 
-  // sending a snapshot may take longer than normal communications
-  private static final long SEND_SNAPSHOT_WAIT_MS = 5 * 60 * 1000L;
   private static final Logger logger = LoggerFactory.getLogger(SnapshotCatchUpTask.class);
 
+  // sending a snapshot may take longer than normal communications
+  private static final long SEND_SNAPSHOT_WAIT_MS = ClusterDescriptor.getInstance().getConfig()
+      .getCatchUpTimeoutMS();
   private Snapshot snapshot;
 
   SnapshotCatchUpTask(List<Log> logs, Snapshot snapshot, Node node, RaftMember raftMember) {

@@ -34,8 +34,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Notice: Because a client will be returned to a pool immediately after a successful request,
- * you should not cache it anywhere else or there may be conflicts.
+ * Notice: Because a client will be returned to a pool immediately after a successful request, you
+ * should not cache it anywhere else or there may be conflicts.
  */
 // the two classes does not share a common parent and Java does not allow multiple extension
 @SuppressWarnings("common-java:DuplicatedBlocks")
@@ -67,7 +67,9 @@ public class AsyncDataClient extends AsyncClient {
     // return itself to the pool if the job is done
     if (pool != null) {
       pool.putClient(node, this);
+      pool.onComplete(node);
     }
+
   }
 
   @Override
@@ -75,7 +77,9 @@ public class AsyncDataClient extends AsyncClient {
     super.onError(e);
     if (pool != null) {
       pool.recreateClient(node);
+      pool.onError(node);
     }
+
   }
 
   public static class FactoryAsync extends AsyncClientFactory {
@@ -83,7 +87,9 @@ public class AsyncDataClient extends AsyncClient {
     public FactoryAsync(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
       this.protocolFactory = protocolFactory;
     }
-    public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool) throws IOException {
+
+    public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
+        throws IOException {
       TAsyncClientManager manager = managers[clientCnt.incrementAndGet() % managers.length];
       manager = manager == null ? new TAsyncClientManager() : manager;
       return new AsyncDataClient(protocolFactory, manager, node, pool);
@@ -103,7 +109,8 @@ public class AsyncDataClient extends AsyncClient {
       }
     }
 
-    public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool) throws IOException {
+    public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
+        throws IOException {
       return new AsyncDataClient(protocolFactory, manager, node, pool);
     }
   }

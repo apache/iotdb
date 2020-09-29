@@ -24,6 +24,10 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -39,12 +43,23 @@ public class AsyncClientPool {
   private int maxConnectionForEachNode;
   private Map<ClusterNode, Deque<AsyncClient>> clientCaches = new ConcurrentHashMap<>();
   private Map<ClusterNode, Integer> nodeClientNumMap = new ConcurrentHashMap<>();
+  private Map<ClusterNode, Integer> nodeErrorClientCountMap = new ConcurrentHashMap<>();
   private AsyncClientFactory asyncClientFactory;
+  private ScheduledExecutorService cleanErrorClientExecutorService;
+  private static final int maxErrorCount = 3;
+  private static final int probeNodeStatusPeriodSecond = 60;
 
   public AsyncClientPool(AsyncClientFactory asyncClientFactory) {
     this.asyncClientFactory = asyncClientFactory;
     this.maxConnectionForEachNode =
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
+    this.cleanErrorClientExecutorService = new ScheduledThreadPoolExecutor(1,
+        new BasicThreadFactory.Builder().namingPattern("clean-error-client-%d").daemon(true)
+            .build());
+    this.cleanErrorClientExecutorService
+        .scheduleAtFixedRate(this::cleanErrorClients, probeNodeStatusPeriodSecond,
+            probeNodeStatusPeriodSecond,
+            TimeUnit.SECONDS);
   }
 
   /**
@@ -56,6 +71,10 @@ public class AsyncClientPool {
    */
   public AsyncClient getClient(Node node) throws IOException {
     ClusterNode clusterNode = new ClusterNode(node);
+    if (nodeErrorClientCountMap.containsKey(clusterNode)
+        && nodeErrorClientCountMap.get(clusterNode) > maxErrorCount) {
+      throw new IOException(String.format("connect node failed, maybe the node is down, %s", node));
+    }
     AsyncClient client;
     synchronized (this) {
       //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
@@ -77,9 +96,10 @@ public class AsyncClientPool {
   }
 
   /**
-   * Wait for a client to be returned for at most WAIT_CLIENT_TIMEOUT_MS milliseconds. If no
-   * client is returned beyond the timeout, a new client will be returned.
-   * WARNING: the caller must synchronize on the pool.
+   * Wait for a client to be returned for at most WAIT_CLIENT_TIMEOUT_MS milliseconds. If no client
+   * is returned beyond the timeout, a new client will be returned. WARNING: the caller must
+   * synchronize on the pool.
+   *
    * @param clientStack
    * @param node
    * @param nodeClientNum
@@ -87,7 +107,8 @@ public class AsyncClientPool {
    * @throws IOException
    */
   @SuppressWarnings({"squid:S2273"}) // synchronized outside
-  private AsyncClient waitForClient(Deque<AsyncClient> clientStack, ClusterNode node, int nodeClientNum)
+  private AsyncClient waitForClient(Deque<AsyncClient> clientStack, ClusterNode node,
+      int nodeClientNum)
       throws IOException {
     // wait for an available client
     long waitStart = System.currentTimeMillis();
@@ -129,16 +150,43 @@ public class AsyncClientPool {
     }
     synchronized (this) {
       //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-      Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+      Deque<AsyncClient> clientStack = clientCaches
+          .computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
       clientStack.push(client);
       this.notifyAll();
+    }
+  }
+
+  void onError(Node node) {
+    ClusterNode clusterNode = new ClusterNode(node);
+    synchronized (this) {
+      if (nodeErrorClientCountMap.containsKey(clusterNode)) {
+        nodeErrorClientCountMap.put(clusterNode, nodeErrorClientCountMap.get(clusterNode) + 1);
+      } else {
+        nodeErrorClientCountMap.put(clusterNode, 1);
+      }
+    }
+    logger.debug("the node={}, connect error times={}", clusterNode,
+        nodeErrorClientCountMap.get(clusterNode));
+  }
+
+  void onComplete(Node node) {
+    ClusterNode clusterNode = new ClusterNode(node);
+    nodeErrorClientCountMap.remove(clusterNode);
+  }
+
+  void cleanErrorClients() {
+    synchronized (this) {
+      nodeErrorClientCountMap.clear();
+      logger.debug("clean all error clients");
     }
   }
 
   void recreateClient(Node node) {
     ClusterNode clusterNode = new ClusterNode(node);
     synchronized (this) {
-      Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+      Deque<AsyncClient> clientStack = clientCaches
+          .computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
       try {
         AsyncClient asyncClient = asyncClientFactory.getAsyncClient(node, this);
         clientStack.push(asyncClient);

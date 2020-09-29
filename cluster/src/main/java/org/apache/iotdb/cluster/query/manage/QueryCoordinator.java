@@ -68,8 +68,9 @@ public class QueryCoordinator {
   }
 
   /**
-   * Reorder the given nodes based on their status, the nodes that are more suitable (have low
-   * delay or load) are placed first. This won't change the order of the origin list.
+   * Reorder the given nodes based on their status, the nodes that are more suitable (have low delay
+   * or load) are placed first. This won't change the order of the origin list.
+   *
    * @param nodes
    * @return
    */
@@ -96,6 +97,10 @@ public class QueryCoordinator {
         TNodeStatus status;
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncMetaClient asyncMetaClient = (AsyncMetaClient) metaGroupMember.getAsyncClient(node);
+          if (asyncMetaClient == null) {
+            nodeStatus.setLastResponseLatency(Long.MAX_VALUE);
+            return nodeStatus;
+          }
           startTime = System.nanoTime();
           status = SyncClientAdaptor.queryNodeStatus(asyncMetaClient);
           responseTime = System.nanoTime() - startTime;

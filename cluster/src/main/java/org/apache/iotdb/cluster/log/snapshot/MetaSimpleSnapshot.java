@@ -77,15 +77,15 @@ public class MetaSimpleSnapshot extends SimpleSnapshot {
     return storageGroupTTLMap;
   }
 
-  private Map<String, User> getUserMap() {
+  public Map<String, User> getUserMap() {
     return userMap;
   }
 
-  private Map<String, Role> getRoleMap() {
+  public Map<String, Role> getRoleMap() {
     return roleMap;
   }
 
-  private ByteBuffer getPartitionTableBuffer() {
+  public ByteBuffer getPartitionTableBuffer() {
     return partitionTableBuffer;
   }
 
@@ -112,7 +112,11 @@ public class MetaSimpleSnapshot extends SimpleSnapshot {
         dataOutputStream.write(entry.getValue().serialize().array());
       }
 
+      dataOutputStream.writeLong(lastLogIndex);
+      dataOutputStream.writeLong(lastLogTerm);
+
       dataOutputStream.write(partitionTableBuffer.array());
+
     } catch (IOException e) {
       // unreachable
     }
@@ -149,6 +153,9 @@ public class MetaSimpleSnapshot extends SimpleSnapshot {
       role.deserialize(buffer);
       roleMap.put(userName, role);
     }
+
+    setLastLogIndex(buffer.getLong());
+    setLastLogTerm(buffer.getLong());
 
     partitionTableBuffer = buffer;
   }
@@ -238,7 +245,8 @@ public class MetaSimpleSnapshot extends SimpleSnapshot {
           installSnapshotUsers(authorizer, snapshot);
           installSnapshotRoles(authorizer, snapshot);
         } catch (AuthException e) {
-          logger.error("{}: Cannot get authorizer instance, error is: ", metaGroupMember.getName(), e);
+          logger.error("{}: Cannot get authorizer instance, error is: ", metaGroupMember.getName(),
+              e);
         }
 
         // 4. accept partition table

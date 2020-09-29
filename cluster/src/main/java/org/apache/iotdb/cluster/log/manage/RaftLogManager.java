@@ -110,7 +110,8 @@ public abstract class RaftLogManager {
   private int maxNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig()
       .getMaxNumOfLogsInMem();
 
-  private static final int LOG_APPLIER_WAIT_TIME_MS = 10_000;
+  private static final int LOG_APPLIER_WAIT_TIME_MS = ClusterDescriptor.getInstance().getConfig()
+      .getCatchUpTimeoutMS();
   /**
    * Each time new logs are appended, this condition will be notified so logs that have larger
    * indices but arrived earlier can proceed.
@@ -546,7 +547,7 @@ public abstract class RaftLogManager {
         logger.warn("Committing logs that has already been committed: {} >= {}", commitLogIndex,
             firstLogIndex);
         entries.subList(0,
-                (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
+            (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
             .clear();
       }
       try {
@@ -897,6 +898,7 @@ public abstract class RaftLogManager {
    * Set a fence to prevent newer logs, which have larger indexes than `blockAppliedCommitIndex`,
    * from being applied, so the underlying state machine may remain unchanged for a while for
    * snapshots. New committed logs will be cached until `resetBlockAppliedCommitIndex()` is called.
+   *
    * @param blockAppliedCommitIndex
    */
   public void setBlockAppliedCommitIndex(long blockAppliedCommitIndex) {
