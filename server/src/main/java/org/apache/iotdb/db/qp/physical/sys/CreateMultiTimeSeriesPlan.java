@@ -51,7 +51,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
   /*
    ** record the result of creation of time series
    */
-  private Map<Integer, Boolean> results = new HashMap<>();
+  private Map<Integer, Exception> results = new HashMap<>();
   private List<Integer> indexes;
 
   public CreateMultiTimeSeriesPlan() {
@@ -131,11 +131,11 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     this.indexes = indexes;
   }
 
-  public Map<Integer, Boolean> getResults() {
+  public Map<Integer, Exception> getResults() {
     return results;
   }
 
-  public void setResults(Map<Integer, Boolean> results) {
+  public void setResults(Map<Integer, Exception> results) {
     this.results = results;
   }
 

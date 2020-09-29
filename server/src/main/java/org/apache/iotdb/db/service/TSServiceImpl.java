@@ -1607,9 +1607,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       boolean isAllSuccessful = true;
 
-      for (Map.Entry<Integer, Boolean> entry : createMultiTimeSeriesPlan.getResults().entrySet()) {
-        if (!entry.getValue()) {
-          isAllSuccessful = false;
+      if (createMultiTimeSeriesPlan.getResults().entrySet().size() > 0) {
+        isAllSuccessful = false;
+        for (Map.Entry<Integer, Exception> entry : createMultiTimeSeriesPlan.getResults().entrySet()) {
           statusList.set(entry.getKey(), RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR));
         }
       }

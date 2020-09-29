@@ -1030,7 +1030,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan) {
-    Map<Integer, Boolean> results = new HashMap<>(createMultiTimeSeriesPlan.getPaths().size());
+    Map<Integer, Exception> results = new HashMap<>(createMultiTimeSeriesPlan.getPaths().size());
     for (int i = 0; i < createMultiTimeSeriesPlan.getPaths().size(); i++) {
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(createMultiTimeSeriesPlan.getPaths().get(i),
         createMultiTimeSeriesPlan.getDataTypes().get(i), createMultiTimeSeriesPlan.getEncodings().get(i),
@@ -1040,14 +1040,12 @@ public class PlanExecutor implements IPlanExecutor {
         createMultiTimeSeriesPlan.getAttributes() == null ? null : createMultiTimeSeriesPlan.getAttributes().get(i),
         createMultiTimeSeriesPlan.getAlias() == null ? null : createMultiTimeSeriesPlan.getAlias().get(i));
 
-      boolean success = false;
       try {
-        success = createTimeSeries(plan);
+        createTimeSeries(plan);
       } catch (QueryProcessException e) {
         // do nothing
+        results.put(createMultiTimeSeriesPlan.getIndexes().get(i), e);
         logger.debug("meet error while processing create timeseries. ", e);
-      } finally {
-        results.put(createMultiTimeSeriesPlan.getIndexes().get(i), success);
       }
     }
     createMultiTimeSeriesPlan.setResults(results);
