@@ -75,11 +75,6 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
 
   @Override
   public Snapshot getSnapshot() {
-    try {
-      takeSnapshot();
-    } catch (IOException e) {
-      logger.error("take snapshot failed", e);
-    }
     MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot(storageGroupTTLMap, userMap, roleMap,
         metaGroupMember.getPartitionTable().serialize());
     snapshot.setLastLogIndex(commitIndex);

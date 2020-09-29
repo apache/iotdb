@@ -270,6 +270,9 @@ public class LogCatchUpTask implements Callable<Boolean> {
     synchronized (appendSucceed) {
       appendSucceed.set(false);
       AsyncClient client = raftMember.getAsyncClient(node);
+      if (client == null) {
+        return false;
+      }
       if (logger.isDebugEnabled()) {
         logger.debug("{}: Catching up {} with {} logs", raftMember.getName(), node, logList.size());
       }

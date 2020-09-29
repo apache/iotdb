@@ -1133,7 +1133,7 @@ public abstract class RaftMember {
   private TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header) {
     AsyncClient client = getAsyncClient(receiver);
     if (client == null) {
-      logger.error("{}: can not get client for node={}", name, receiver);
+      logger.debug("{}: can not get client for node={}", name, receiver);
       return StatusUtils.INTERNAL_ERROR;
     }
     return forwardPlanAsync(plan, receiver, header, client);

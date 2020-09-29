@@ -256,7 +256,10 @@ public class HeartbeatThread implements Runnable {
       long nextTerm = localMember.getTerm().incrementAndGet();
       localMember.setVoteFor(localMember.getThisNode());
       localMember.updateHardState(nextTerm, this.localMember.getVoteFor());
-      // the number of votes needed to become a leader
+
+      // the number of votes needed to become a leader,
+      // quorumNum should be equal to localMember.getAllNodes().size() / 2 + 1,
+      // but since it doesn’t need to vote for itself here, it directly decreases 1
       int quorumNum = localMember.getAllNodes().size() / 2;
       logger.info("{}: Election {} starts, quorum: {}", memberName, nextTerm, quorumNum);
       // set to true when the election has a result (rejected or succeeded)
@@ -265,7 +268,9 @@ public class HeartbeatThread implements Runnable {
       AtomicBoolean electionValid = new AtomicBoolean(false);
       // a decreasing vote counter
       AtomicInteger quorum = new AtomicInteger(quorumNum);
-      AtomicInteger failingVoteCounter = new AtomicInteger(quorumNum);
+
+      // NOTICE, failingVoteCounter should be equal to quorumNum + 1
+      AtomicInteger failingVoteCounter = new AtomicInteger(quorumNum + 1);
 
       electionRequest.setTerm(nextTerm);
       electionRequest.setElector(localMember.getThisNode());
