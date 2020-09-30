@@ -53,7 +53,7 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    if (hasCandidateResult()) {
+    if (hasFinalResult()) {
       return;
     }
 
