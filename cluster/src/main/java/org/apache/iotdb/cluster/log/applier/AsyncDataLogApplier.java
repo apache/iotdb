@@ -51,6 +51,10 @@ public class AsyncDataLogApplier implements LogApplier {
   private ExecutorService consumerPool;
   private String name;
 
+  // a plan that affects multiple sgs should wait until all consumers become empty to assure all
+  // previous logs are applied, such a plan will wait on this condition if it finds any
+  // consumers nonempty, and each time a consumer becomes empty, this will be notified so the
+  // waiting log can start another round of check
   private final Object consumerEmptyCondition = new Object();
 
   public AsyncDataLogApplier(LogApplier embeddedApplier, String name) {
@@ -62,7 +66,9 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   @Override
-  public void apply(Log log)  {
+  // synchronized: when a log is draining consumers, avoid other threads adding more logs so that
+  // the consumers will never be drained
+  public synchronized void apply(Log log)  {
     // we can only apply some kinds of plans in parallel, for other logs, we must wait until all
     // previous logs are applied, or the order of deletions and insertions may get wrong
     if (log instanceof PhysicalPlanLog) {
