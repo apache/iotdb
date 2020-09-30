@@ -1298,7 +1298,7 @@ public abstract class RaftMember {
   @SuppressWarnings("java:S2445")
   void commitLog(Log log) throws LogExecutionException {
     synchronized (logManager) {
-      logManager.commitTo(log.getCurrLogIndex(), false);
+      logManager.commitTo(log.getCurrLogIndex());
     }
     // when using async applier, the log here may not be applied. To return the execution
     // result, we must wait until the log is applied.
@@ -1306,7 +1306,7 @@ public abstract class RaftMember {
       while (!log.isApplied()) {
         // wait until the log is applied
         try {
-          log.wait();
+          log.wait(5);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           throw new LogExecutionException(e);

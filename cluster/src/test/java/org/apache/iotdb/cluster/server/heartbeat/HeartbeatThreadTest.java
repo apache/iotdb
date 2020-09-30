@@ -145,7 +145,7 @@ public class HeartbeatThreadTest {
     member.getTerm().set(10);
     List<Log> logs = TestUtils.prepareTestLogs(7);
     logManager.append(logs);
-    logManager.commitTo(6, false);
+    logManager.commitTo(6);
 
     respondToElection = false;
     testHeartbeat = false;

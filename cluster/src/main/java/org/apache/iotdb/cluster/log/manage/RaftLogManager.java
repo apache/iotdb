@@ -111,7 +111,7 @@ public abstract class RaftLogManager {
    */
   private int maxNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig()
       .getMaxNumOfLogsInMem();
-  
+
   /**
    * Each time new logs are appended, this condition will be notified so logs that have larger
    * indices but arrived earlier can proceed.
@@ -366,7 +366,7 @@ public abstract class RaftLogManager {
         append(entries.subList((int) (ci - offset), entries.size()));
       }
       try {
-        commitTo(Math.min(leaderCommit, newLastIndex), true);
+        commitTo(Math.min(leaderCommit, newLastIndex));
       } catch (LogExecutionException e) {
         // exceptions are ignored on follower side
       }
@@ -397,7 +397,7 @@ public abstract class RaftLogManager {
         append(entry);
       }
       try {
-        commitTo(Math.min(leaderCommit, newLastIndex), true);
+        commitTo(Math.min(leaderCommit, newLastIndex));
       } catch (LogExecutionException e) {
         // exceptions are ignored on follower side
       }
@@ -459,7 +459,7 @@ public abstract class RaftLogManager {
   public synchronized boolean maybeCommit(long leaderCommit, long term) {
     if (leaderCommit > commitIndex && matchTerm(term, leaderCommit)) {
       try {
-        commitTo(leaderCommit, true);
+        commitTo(leaderCommit);
       } catch (LogExecutionException e) {
         // exceptions are ignored on follower side
       }
@@ -535,7 +535,7 @@ public abstract class RaftLogManager {
    *
    * @param newCommitIndex request commitIndex
    */
-  public void commitTo(long newCommitIndex, boolean ignoreExecutionExceptions)
+  public void commitTo(long newCommitIndex)
       throws LogExecutionException {
     if (commitIndex >= newCommitIndex) {
       return;
@@ -571,13 +571,7 @@ public abstract class RaftLogManager {
         Log lastLog = entries.get(entries.size() - 1);
         getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
         commitIndex = lastLog.getCurrLogIndex();
-        logApplierExecutor.submit(() -> {
-          try {
-            applyEntries(entries, ignoreExecutionExceptions);
-          } catch (LogExecutionException e) {
-            logger.error("{}: execute apply entries error", name, e);
-          }
-        });
+        applyEntries(entries);
       } catch (TruncateCommittedEntryException e) {
         logger.error("{}: Unexpected error:", name, e);
       } catch (IOException e) {
@@ -606,12 +600,9 @@ public abstract class RaftLogManager {
   /**
    * Used by commitTo to apply newly committed entries
    *
-   * @param entries                  applying entries
-   * @param ignoreExecutionException when set to true, exceptions during applying the logs are
-   *                                 ignored, otherwise they are reported to the upper level
+   * @param entries applying entries
    */
-  void applyEntries(List<Log> entries, boolean ignoreExecutionException)
-      throws LogExecutionException {
+  void applyEntries(List<Log> entries) {
     for (Log entry : entries) {
       if (blockAppliedCommitIndex > 0 && entry.getCurrLogIndex() > blockAppliedCommitIndex) {
         blockedUnappliedLogList.add(entry);
@@ -620,11 +611,7 @@ public abstract class RaftLogManager {
       try {
         logApplier.apply(entry);
       } catch (Exception e) {
-        if (ignoreExecutionException) {
-          logger.error("{}: Cannot apply a log {}, ignored", name, entry, e);
-        } else {
-          throw new LogExecutionException(e);
-        }
+        entry.setException(e);
       }
     }
   }
@@ -835,11 +822,7 @@ public abstract class RaftLogManager {
     }
 
     List<Log> entries = new ArrayList<>(getCommittedEntryManager().getEntries(lo, hi));
-    try {
-      applyEntries(entries, true);
-    } catch (LogExecutionException e) {
-      logger.error("{}: apply all committed log failed", name, e);
-    }
+    applyEntries(entries);
   }
 
   public void checkAppliedLogIndex() {
@@ -854,17 +837,16 @@ public abstract class RaftLogManager {
       if (nextToCheckIndex > commitIndex || nextToCheckIndex > getCommittedEntryManager()
           .getLastIndex()) {
         // avoid spinning
-        Thread.sleep(1000);
+        Thread.sleep(5);
         return;
       }
       Log log = getCommittedEntryManager().getEntry(nextToCheckIndex);
       synchronized (log) {
         while (!log.isApplied()) {
           // wait until the log is applied
-          log.wait();
+          log.wait(5);
         }
       }
-
       synchronized (this) {
         // maxHaveAppliedCommitIndex may change if a snapshot is applied concurrently
         maxHaveAppliedCommitIndex = Math.max(maxHaveAppliedCommitIndex, nextToCheckIndex);
@@ -904,16 +886,11 @@ public abstract class RaftLogManager {
    * Apply the committed logs that were previously blocked by `blockAppliedCommitIndex` if any.
    */
   private void reapplyBlockedLogs() {
-    try {
-      if (!blockedUnappliedLogList.isEmpty()) {
-        applyEntries(blockedUnappliedLogList, false);
-        logger.info("{}: reapply {} number of logs", name, blockedUnappliedLogList.size());
-      }
-    } catch (LogExecutionException e) {
-      logger.error("{}: reapply blocked log list failed", name, e);
-    } finally {
-      blockedUnappliedLogList.clear();
+    if (!blockedUnappliedLogList.isEmpty()) {
+      applyEntries(blockedUnappliedLogList);
+      logger.info("{}: reapply {} number of logs", name, blockedUnappliedLogList.size());
     }
+    blockedUnappliedLogList.clear();
   }
 
   public String getName() {
