@@ -34,7 +34,7 @@ setuptools.setup(
     version="0.11.0",
     author=" Apache Software Foundation",
     author_email="dev@iotdb.apache.org",
-    description="Apache IoTDB (incubating) client API",
+    description="Apache IoTDB client API",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/apache/incubator-iotdb",

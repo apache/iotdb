@@ -38,11 +38,11 @@
   <Project rdf:about="http://iotdb.apache.org">
     <created>2020-07-11</created>
     <license rdf:resource="http://spdx.org/licenses/Apache-2.0" />
-    <name>Apache  IoTDB (incubating)</name>
+    <name>Apache IoTDB</name>
     <homepage rdf:resource="http://iotdb.apache.org" />
     <asfext:pmc rdf:resource="http://incubator.apache.org" />
-    <shortdesc>Apache IoTDB (incubating) is a database for managing time series data in Internet of Things</shortdesc>
-    <description>Apache IoTDB (incubating) (Database for Internet of Things) is an integrated data management engine designed for time series data. It provides users with services for data collection, storage and analysis. Due to its light-weight architecture, high performance and rich feature set together with its deep integration with Apache Hadoop, Spark and Flink. Apache IoTDB (incubating) can meet the requirements of massive data storage, high-speed data ingestion and complex data analysis in the IoT industrial fields.</description>
+    <shortdesc>Apache IoTDB is  an IoT native database with high performance for data management and analysis, on the edge and the cloud.</shortdesc>
+    <description>Apache IoTDB (Database for Internet of Things) is an integrated data management engine designed for time series data. It provides users with services for data collection, storage and analysis. Due to its light-weight architecture, high performance and rich feature set together with its deep integration with Apache Hadoop, Spark and Flink. Apache IoTDB can meet the requirements of massive data storage, high-speed data ingestion and complex data analysis in the IoT industrial fields.</description>
     <bug-database rdf:resource="https://issues.apache.org/jira/projects/IOTDB" />
     <mailing-list rdf:resource="https://iotdb.apache.org/Development/ContributeGuide.html" />
     <download-page rdf:resource="http://iotdb.apache.org/Download/" />
@@ -57,9 +57,9 @@
 
     <release>
       <Version>
-        <name>apache-iotdb-0.10.0-incubating</name>
-        <created>2020-06-28</created>
-        <revision>0.10.0</revision>
+        <name>apache-iotdb-0.10.1-incubating</name>
+        <created>2020-08-23</created>
+        <revision>0.10.1</revision>
       </Version>
     </release>
 
@@ -71,7 +71,7 @@
     </repository>
     <maintainer>
       <foaf:Person>
-        <foaf:name>IoTDB PPMC</foaf:name>
+        <foaf:name>IoTDB PMC</foaf:name>
           <foaf:mbox rdf:resource="mailto:dev@iotdb.apache.org"/>
       </foaf:Person>
     </maintainer>

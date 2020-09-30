@@ -86,6 +86,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountDevicesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountNodesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateSnapshotContext;
@@ -135,6 +136,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.NodeNameWithoutStarContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OffsetClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OrExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.OrderByTimeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PredicateContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrefixPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.PrivilegesContext;
@@ -227,6 +229,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     PrefixPathContext pathContext = ctx.prefixPath();
     PartialPath path = (pathContext != null ? parsePrefixPath(pathContext) : new PartialPath(SQLConstant.getSingleRootArray()));
     initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_DEVICES, path);
+  }
+
+  @Override
+  public void enterCountStorageGroup(CountStorageGroupContext ctx) {
+    super.enterCountStorageGroup(ctx);
+    PrefixPathContext pathContext = ctx.prefixPath();
+    PartialPath path = (pathContext != null ? parsePrefixPath(pathContext) : new PartialPath(SQLConstant.getSingleRootArray()));
+    initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_STORAGE_GROUP, path);
   }
 
   @Override
@@ -912,6 +922,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
     queryOp.setStartTime(startTime);
     queryOp.setEndTime(endTime);
+    if (startTime >= endTime) {
+      throw new SQLParserException("start time should be smaller than endTime in GroupBy");
+    }
   }
 
   @Override
@@ -1062,6 +1075,15 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       ((ShowTimeSeriesOperator) initializedOperator).setOffset(offset);
     } else {
       queryOp.setRowOffset(offset);
+    }
+  }
+
+  @Override
+  public void enterOrderByTimeClause(OrderByTimeClauseContext ctx) {
+    super.enterOrderByTimeClause(ctx);
+    queryOp.setColumn(ctx.TIME().getText());
+    if (ctx.DESC() != null) {
+      queryOp.setAscending(false);
     }
   }
 
