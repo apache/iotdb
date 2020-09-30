@@ -416,6 +416,7 @@ public class MetaGroupMember extends RaftMember {
 
         // update the partition table
         NodeAdditionResult result = partitionTable.addNode(newNode);
+        ((SlotPartitionTable) partitionTable).setLastLogIndex(logManager.getLastLogIndex());
         savePartitionTable();
 
         // update local data members
@@ -615,14 +616,24 @@ public class MetaGroupMember extends RaftMember {
    * Deserialize a partition table from the buffer, save it locally, add nodes from the partition
    * table and start DataClusterServer and ClientServer.
    */
-  public void acceptPartitionTable(ByteBuffer partitionTableBuffer) {
-    partitionTable = new SlotPartitionTable(thisNode);
-    partitionTable.deserialize(partitionTableBuffer);
+  public synchronized void acceptPartitionTable(ByteBuffer partitionTableBuffer) {
+    SlotPartitionTable newTable = new SlotPartitionTable(thisNode);
+    newTable.deserialize(partitionTableBuffer);
+    // avoid overwriting current partition table with a previous one
+    if (partitionTable != null) {
+      long currIndex = ((SlotPartitionTable) partitionTable).getLastLogIndex();
+      long incomingIndex = newTable.getLastLogIndex();
+      logger.info("Current partition table index {}, new partition table index {}", currIndex,
+          incomingIndex);
+      if (currIndex >= incomingIndex) {
+        return;
+      }
+    }
 
     savePartitionTable();
-    router = new ClusterPlanRouter(partitionTable);
+    router = new ClusterPlanRouter(newTable);
 
-    allNodes = new ArrayList<>(partitionTable.getAllNodes());
+    allNodes = new ArrayList<>(newTable.getAllNodes());
     initPeerMap();
     logger.info("Received cluster nodes from the leader: {}", allNodes);
     initIdNodeMap();
@@ -1137,15 +1148,8 @@ public class MetaGroupMember extends RaftMember {
             size, readCnt));
       }
 
-      partitionTable = new SlotPartitionTable(thisNode);
-      partitionTable.deserialize(ByteBuffer.wrap(tableBuffer));
-      allNodes = new ArrayList<>(partitionTable.getAllNodes());
-      initPeerMap();
-      for (Node node : allNodes) {
-        idNodeMap.put(node.getNodeIdentifier(), node);
-      }
-      router = new ClusterPlanRouter(partitionTable);
-      startSubServers();
+      ByteBuffer wrap = ByteBuffer.wrap(tableBuffer);
+      acceptPartitionTable(wrap);
 
       logger.info("Load {} nodes: {}", allNodes.size(), allNodes);
     } catch (IOException e) {
@@ -1530,7 +1534,8 @@ public class MetaGroupMember extends RaftMember {
       }
     }
 
-    return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus, errorCodePartitionGroups);
+    return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus,
+        errorCodePartitionGroups);
   }
 
   private TSStatus concludeFinalStatus(boolean noFailure, EndPoint endPoint,
@@ -1918,6 +1923,7 @@ public class MetaGroupMember extends RaftMember {
 
         // update the partition table
         NodeRemovalResult result = partitionTable.removeNode(oldNode);
+        ((SlotPartitionTable) partitionTable).setLastLogIndex(logManager.getLastLogIndex());
 
         // update DataGroupMembers, as the node is removed, the members of some groups are
         // changed and there will also be one less group

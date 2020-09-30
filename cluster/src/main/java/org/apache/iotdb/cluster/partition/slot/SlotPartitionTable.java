@@ -68,6 +68,9 @@ public class SlotPartitionTable implements PartitionTable {
 
   private List<PartitionGroup> globalGroups;
 
+  // last log index that modifies the partition table
+  private long lastLogIndex = -1;
+
   /**
    * only used for deserialize.
    *
@@ -322,6 +325,8 @@ public class SlotPartitionTable implements PartitionTable {
           dataOutputStream.writeInt(integerNodeEntry.getValue().getNodeIdentifier());
         }
       }
+
+      dataOutputStream.writeLong(lastLogIndex);
     } catch (IOException ignored) {
       // not reachable
     }
@@ -362,6 +367,7 @@ public class SlotPartitionTable implements PartitionTable {
       }
       previousNodeMap.put(node, prevHolders);
     }
+    lastLogIndex = buffer.getLong();
 
     nodeRing.addAll(nodeSlotMap.keySet());
     nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
@@ -489,5 +495,13 @@ public class SlotPartitionTable implements PartitionTable {
     for (Node n : getAllNodes()) {
       globalGroups.add(getHeaderGroup(n));
     }
+  }
+
+  public synchronized long getLastLogIndex() {
+    return lastLogIndex;
+  }
+
+  public synchronized void setLastLogIndex(long lastLogIndex) {
+    this.lastLogIndex = Math.max(this.lastLogIndex, lastLogIndex);
   }
 }
