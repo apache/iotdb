@@ -24,13 +24,11 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -44,25 +42,25 @@ import org.apache.iotdb.db.rescon.CachedStringPool;
 public class MNode implements Serializable {
 
   private static final long serialVersionUID = -770028375899514063L;
-
+  private static Map<String, String> cachedPathPool = CachedStringPool.getInstance()
+      .getCachedPool();
   /**
    * Name of the MNode
    */
   protected String name;
-
   protected MNode parent;
-
-  private static Map<String, String> cachedPathPool = CachedStringPool.getInstance().getCachedPool();
-
   /**
    * from root to this node, only be set when used once for InternalMNode
    */
   protected String fullPath;
 
-  transient Map<String, MNode> children = null;
-  private transient Map<String, MNode> aliasChildren = null;
+  // for double synchronize check
+  // use in Measurement Node so it's protected
+  protected transient volatile Map<String, MNode> children = null;
 
-  protected transient ReadWriteLock lock = null;
+  // for double synchronize check
+  private transient volatile Map<String, MNode> aliasChildren = null;
+
 
   /**
    * Constructor of MNode.
@@ -85,35 +83,25 @@ public class MNode implements Serializable {
    */
   public void addChild(String name, MNode child) {
     if (children == null) {
-      children = new LinkedHashMap<>();
-      if (lock == null) {
-        lock = new ReentrantReadWriteLock();
+      // double check, concurrent hash map is volatile
+      synchronized (this){
+        if(children == null){
+          children = new ConcurrentHashMap<>();
+        }
       }
     }
-    children.put(name, child);
+
+    children.putIfAbsent(name, child);
   }
 
   /**
    * delete a child
    */
   public void deleteChild(String name) throws DeleteFailedException {
-    if (children != null && children.containsKey(name)) {
+    if (children != null && children.remove(name) == null) {
       // acquire the write lock of its child node.
-      Lock writeLock;
-      MNode node = children.get(name);
       // if its child node is leaf node, we need to acquire the write lock of the current device node
-      if (node.children == null) {
-        writeLock = lock.writeLock();
-      } else {
-        // otherwise, we only need to acquire the write lock of its child node.
-        writeLock = node.lock.writeLock();
-      }
-      if (writeLock.tryLock()) {
-        children.remove(name);
-        writeLock.unlock();
-      } else {
-        throw new DeleteFailedException(getFullPath() + PATH_SEPARATOR + name);
-      }
+      throw new DeleteFailedException(getFullPath() + PATH_SEPARATOR + name);
     }
   }
 
@@ -124,12 +112,8 @@ public class MNode implements Serializable {
     if (aliasChildren == null) {
       return;
     }
-    if (lock.writeLock().tryLock()) {
-      aliasChildren.remove(alias);
-      lock.writeLock().unlock();
-    } else {
-      throw new DeleteFailedException(getFullPath() + PATH_SEPARATOR + alias);
-    }
+
+    aliasChildren.remove(alias);
   }
 
   /**
@@ -163,11 +147,13 @@ public class MNode implements Serializable {
   /**
    * add an alias
    */
-  public void addAlias(String alias, MNode child) {
+  public synchronized boolean addAlias(String alias, MNode child) {
     if (aliasChildren == null) {
-      aliasChildren = new LinkedHashMap<>();
+      aliasChildren = new ConcurrentHashMap<>();
     }
-    aliasChildren.put(alias, child);
+
+
+    return aliasChildren.computeIfAbsent(alias, (aliasName) -> child) == child;
   }
 
   /**
@@ -222,9 +208,13 @@ public class MNode implements Serializable {
 
   public Map<String, MNode> getChildren() {
     if (children == null) {
-      return new LinkedHashMap<>();
+      return Collections.emptyMap();
     }
     return children;
+  }
+
+  public void setChildren(Map<String, MNode> children) {
+    this.children = children;
   }
 
   public String getName() {
@@ -233,13 +223,6 @@ public class MNode implements Serializable {
 
   public void setName(String name) {
     this.name = name;
-  }
-
-  public void setChildren(Map<String, MNode> children) {
-    this.children = children;
-    if (children != null && lock == null) {
-      lock = new ReentrantReadWriteLock();
-    }
   }
 
   public void serializeTo(BufferedWriter bw) throws IOException {
@@ -260,22 +243,7 @@ public class MNode implements Serializable {
     }
   }
 
-  public void readLock() {
-    MNode node = this;
-    while (node != null) {
-      if (node.lock == null) {
-        node.lock = new ReentrantReadWriteLock();
-      }
-      node.lock.readLock().lock();
-      node = node.parent;
-    }
-  }
-
   public void readUnlock() {
-    MNode node = this;
-    while (node != null) {
-      node.lock.readLock().unlock();
-      node = node.parent;
-    }
+
   }
 }
