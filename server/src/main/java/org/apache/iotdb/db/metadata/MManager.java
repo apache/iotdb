@@ -1209,7 +1209,7 @@ public class MManager {
   public MNode getChild(MNode parent, String child) {
     return parent.getChild(child);
   }
-  
+
   /**
    * Get metadata in string
    */
