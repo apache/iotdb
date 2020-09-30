@@ -82,7 +82,6 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -760,7 +759,7 @@ public class CMManager extends MManager {
       List<PartialPath> paths,
       List<String> aggregations) throws MetadataException {
     // pull schemas remotely and cache them
-    ((CMManager) IoTDB.metaManager).pullTimeSeriesSchemas(paths, null);
+    pullTimeSeriesSchemas(paths, null);
 
     return getSeriesTypesByPathLocally(paths, aggregations);
   }
@@ -783,8 +782,7 @@ public class CMManager extends MManager {
     // added, e.g:
     // "root.*" will be translated into:
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap =
-        IoTDB.metaManager.determineStorageGroup(originPath);
+    Map<String, String> sgPathMap = determineStorageGroup(originPath);
     logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
     Set<PartialPath> ret = getMatchedDevices(sgPathMap);
     logger.debug("The devices of path {} are {}", originPath, ret);
@@ -813,7 +811,7 @@ public class CMManager extends MManager {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader();
-        List<PartialPath> allTimeseriesName = IoTDB.metaManager.getAllTimeseriesPath(pathUnderSG);
+        List<PartialPath> allTimeseriesName = getAllTimeseriesPath(pathUnderSG);
         logger.debug("{}: get matched paths of {} locally, result {}", metaGroupMember.getName(),
             partitionGroup,
             allTimeseriesName);
@@ -919,7 +917,7 @@ public class CMManager extends MManager {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader();
-        Set<PartialPath> allDevices = IoTDB.metaManager.getDevices(pathUnderSG);
+        Set<PartialPath> allDevices = getDevices(pathUnderSG);
         logger.debug("{}: get matched paths of {} locally, result {}", metaGroupMember.getName(),
             partitionGroup,
             allDevices);
@@ -1007,8 +1005,7 @@ public class CMManager extends MManager {
     // added, e.g:
     // "root.*" will be translated into:
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap =
-        IoTDB.metaManager.determineStorageGroup(originPath);
+    Map<String, String> sgPathMap = determineStorageGroup(originPath);
     logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
     List<PartialPath> ret = getMatchedPaths(sgPathMap);
     logger.debug("The paths of path {} are {}", originPath, ret);
@@ -1031,7 +1028,7 @@ public class CMManager extends MManager {
     for (PartialPath pathStr : originalPaths) {
       getAllPathsService.submit(() -> {
         try {
-          List<PartialPath> fullPathStrs = ((CMManager) IoTDB.metaManager).getMatchedPaths(pathStr);
+          List<PartialPath> fullPathStrs = getMatchedPaths(pathStr);
           if (fullPathStrs.isEmpty()) {
             nonExistPaths.add(pathStr);
             logger.error("Path {} is not found.", pathStr);
@@ -1062,7 +1059,7 @@ public class CMManager extends MManager {
   public List<String> getAllPaths(List<String> paths) throws MetadataException {
     List<String> ret = new ArrayList<>();
     for (String path : paths) {
-      IoTDB.metaManager.getAllTimeseriesPath(
+      getAllTimeseriesPath(
           new PartialPath(path)).stream().map(PartialPath::getFullPath).forEach(ret::add);
     }
     return ret;
@@ -1076,7 +1073,7 @@ public class CMManager extends MManager {
   public Set<String> getAllDevices(List<String> paths) throws MetadataException {
     Set<String> results = new HashSet<>();
     for (String path : paths) {
-      IoTDB.metaManager.getAllTimeseriesPath(
+      getAllTimeseriesPath(
           new PartialPath(path)).stream().map(PartialPath::getFullPath).forEach(results::add);
     }
     return results;
@@ -1091,13 +1088,13 @@ public class CMManager extends MManager {
    */
   public List<String> getNodeList(String path, int nodeLevel)
       throws MetadataException {
-    return IoTDB.metaManager.getNodesList(new PartialPath(path), nodeLevel).stream().map(PartialPath::getFullPath).collect(
+    return getNodesList(new PartialPath(path), nodeLevel).stream().map(PartialPath::getFullPath).collect(
         Collectors.toList());
   }
 
   public Set<String> getChildNodePathInNextLevel(String path)
       throws MetadataException {
-    return IoTDB.metaManager.getChildNodePathInNextLevel(new PartialPath(path));
+    return getChildNodePathInNextLevel(new PartialPath(path));
   }
 
   /**
@@ -1200,7 +1197,7 @@ public class CMManager extends MManager {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeaderWithConsistencyCheck();
     try {
-      List<ShowTimeSeriesResult> localResult = IoTDB.metaManager.showTimeseries(plan, context);
+      List<ShowTimeSeriesResult> localResult = super.showTimeseries(plan, context);
       resultSet.addAll(localResult);
       logger.debug("Fetched {} schemas of {} from {}", localResult.size(), plan.getPath(), group);
     } catch (MetadataException e) {
