@@ -29,7 +29,6 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -55,8 +54,7 @@ public class DataLogApplier extends BaseApplier {
   }
 
   @Override
-  public void apply(Log log)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+  public void apply(Log log) {
     logger.debug("DataMember [{}] start applying Log {}", dataGroupMember.getName(), log);
 
     try {
@@ -70,18 +68,15 @@ public class DataLogApplier extends BaseApplier {
         }
       } else if (log instanceof CloseFileLog) {
         CloseFileLog closeFileLog = ((CloseFileLog) log);
-        try {
-          StorageEngine.getInstance().closeProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
-              closeFileLog.getPartitionId(),
-              closeFileLog.isSeq(), false);
-        } catch (StorageGroupNotSetException | IllegalPathException e) {
-          logger.error("Cannot close {} file in {}, partitionId {}",
-              closeFileLog.isSeq() ? "seq" : "unseq",
-              closeFileLog.getStorageGroupName(), closeFileLog.getPartitionId());
-        }
+        StorageEngine.getInstance().closeProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
+            closeFileLog.getPartitionId(),
+            closeFileLog.isSeq(), false);
       } else {
         logger.error("Unsupported log: {}", log);
       }
+    } catch (Exception e) {
+      logger.debug("Exception occured when applying {}", log, e);
+      log.setException(e);
     } finally {
       log.setApplied(true);
     }

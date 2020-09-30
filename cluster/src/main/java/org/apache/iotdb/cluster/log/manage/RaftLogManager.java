@@ -863,14 +863,15 @@ public abstract class RaftLogManager {
           // wait until the log is applied
           log.wait();
         }
-        synchronized (this) {
-          // maxHaveAppliedCommitIndex may change if a snapshot is applied concurrently
-          maxHaveAppliedCommitIndex = Math.max(maxHaveAppliedCommitIndex, nextToCheckIndex);
-        }
-        logger.debug(
-            "{}: log={} is applied, nextToCheckIndex={}, commitIndex={}, maxHaveAppliedCommitIndex={}",
-            name, log, nextToCheckIndex, commitIndex, maxHaveAppliedCommitIndex);
       }
+
+      synchronized (this) {
+        // maxHaveAppliedCommitIndex may change if a snapshot is applied concurrently
+        maxHaveAppliedCommitIndex = Math.max(maxHaveAppliedCommitIndex, nextToCheckIndex);
+      }
+      logger.debug(
+          "{}: log={} is applied, nextToCheckIndex={}, commitIndex={}, maxHaveAppliedCommitIndex={}",
+          name, log, nextToCheckIndex, commitIndex, maxHaveAppliedCommitIndex);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.info("{}: do check applied log index is interrupt", name);

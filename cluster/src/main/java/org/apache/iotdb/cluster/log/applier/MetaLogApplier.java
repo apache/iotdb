@@ -45,8 +45,7 @@ public class MetaLogApplier extends BaseApplier {
   }
 
   @Override
-  public void apply(Log log)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+  public void apply(Log log) {
     try {
       logger.debug("MetaMember [{}] starts applying Log {}", metaGroupMember.getName(), log);
       if (log instanceof AddNodeLog) {
@@ -61,6 +60,9 @@ public class MetaLogApplier extends BaseApplier {
       } else {
         logger.error("Unsupported log: {} {}", log.getClass().getName(), log);
       }
+    } catch (StorageEngineException | StorageGroupNotSetException | QueryProcessException e) {
+      logger.debug("Exception occurred when executing {}", log, e);
+      log.setException(e);
     } finally {
       log.setApplied(true);
     }

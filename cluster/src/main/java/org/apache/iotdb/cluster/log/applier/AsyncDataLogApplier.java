@@ -31,10 +31,13 @@ import java.util.function.Consumer;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.server.Timer;
+import org.apache.iotdb.cluster.server.Timer.Statistic;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,26 +62,48 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   @Override
-  public void apply(Log log) throws StorageGroupNotSetException {
-    // we can only apply insertions in parallel, for other logs, we must wait until all previous
-    // logs are applied, or the order of deletions and insertions may get wrong
+  public void apply(Log log)  {
+    // we can only apply some kinds of plans in parallel, for other logs, we must wait until all
+    // previous logs are applied, or the order of deletions and insertions may get wrong
     if (log instanceof PhysicalPlanLog) {
       PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
       PhysicalPlan plan = physicalPlanLog.getPlan();
-      if (plan instanceof InsertPlan) {
-        // decide the consumer by deviceId
-        InsertPlan insertPlan = (InsertPlan) plan;
-        PartialPath deviceId = insertPlan.getDeviceId();
-        consumerMap.computeIfAbsent(IoTDB.metaManager.getStorageGroupPath(deviceId), d -> {
-          DataLogConsumer dataLogConsumer = new DataLogConsumer(name + "-" + d);
-          consumerPool.submit(dataLogConsumer);
-          return dataLogConsumer;
-        }).accept(log);
+      try {
+        PartialPath planSg = getPlanSg(plan);
+        if (planSg != null) {
+          // this plan only affects one sg, so we can run it with other plans in parallel
+          provideLogToConsumers(planSg, log);
+          return;
+        }
+      } catch (StorageGroupNotSetException e) {
+        logger.debug("Exception occurred when applying {}", log, e);
+        log.setException(e);
+        log.setApplied(true);
         return;
       }
     }
     drainConsumers();
     applyInternal(log);
+  }
+
+  private PartialPath getPlanSg(PhysicalPlan plan) throws StorageGroupNotSetException {
+    PartialPath sgPath = null;
+    if (plan instanceof InsertPlan) {
+      PartialPath deviceId = ((InsertPlan) plan).getDeviceId();
+      sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
+    } else if (plan instanceof CreateTimeSeriesPlan) {
+      PartialPath path = ((CreateTimeSeriesPlan) plan).getPath();
+      sgPath = IoTDB.metaManager.getStorageGroupPath(path);
+    }
+    return sgPath;
+  }
+
+  private void provideLogToConsumers(PartialPath sgPath, Log log) {
+    consumerMap.computeIfAbsent(sgPath, d -> {
+      DataLogConsumer dataLogConsumer = new DataLogConsumer(name + "-" + d);
+      consumerPool.submit(dataLogConsumer);
+      return dataLogConsumer;
+    }).accept(log);
   }
 
   private void drainConsumers() {
@@ -108,12 +133,13 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   private void applyInternal(Log log) {
-    try {
-      embeddedApplier.apply(log);
-    } catch (Exception e) {
-      log.setException(e);
-    } finally {
-      log.setApplied(true);
+    long applyStart;
+    if (Timer.ENABLE_INSTRUMENTING) {
+      applyStart = System.nanoTime();
+    }
+    embeddedApplier.apply(log);
+    if (Timer.ENABLE_INSTRUMENTING) {
+      Statistic.RAFT_SENDER_DATA_LOG_APPLY.addNanoFromStart(applyStart);
     }
   }
 
@@ -134,6 +160,10 @@ public class AsyncDataLogApplier implements LogApplier {
 
     @Override
     public void run() {
+      // appliers have a higher priority than normal threads (like client threads and low
+      // priority background threads), to assure fast ingestion, but a lower priority than
+      // heartbeat threads
+      Thread.currentThread().setPriority(8);
       Thread.currentThread().setName(name);
       while (!Thread.currentThread().isInterrupted()) {
         try {

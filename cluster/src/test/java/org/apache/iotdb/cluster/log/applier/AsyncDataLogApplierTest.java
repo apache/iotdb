@@ -64,7 +64,7 @@ public class AsyncDataLogApplierTest {
   }
 
   @Test
-  public void test() throws IllegalPathException, InterruptedException, StorageGroupNotSetException {
+  public void test() throws IllegalPathException, InterruptedException {
     LogApplier dummyApplier = log -> {
       if (log instanceof PhysicalPlanLog) {
         PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
@@ -145,11 +145,7 @@ public class AsyncDataLogApplierTest {
         threadLogsToApply.add(finalLog);
 
         for (Log log : threadLogsToApply) {
-          try {
-            asyncDataLogApplier.apply(log);
-          } catch (StorageGroupNotSetException e) {
-            // ignore
-          }
+          asyncDataLogApplier.apply(log);
         }
       }).start();
     }

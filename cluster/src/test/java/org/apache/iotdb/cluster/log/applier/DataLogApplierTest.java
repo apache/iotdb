@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log.applier;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -243,25 +244,17 @@ public class DataLogApplierTest extends IoTDBTest {
 
     // this series does not exists any where
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(5)));
-    try {
-      applier.apply(log);
-      fail("exception should be thrown");
-    } catch (QueryProcessException e) {
-      assertEquals(
+    applier.apply(log);
+    assertEquals(
         "org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.test5.s0] does not exist",
-        e.getMessage());
-    }
+        log.getException().getMessage());
 
     // this storage group is not even set
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(16)));
-    try {
-      applier.apply(log);
-      fail("exception should be thrown");
-    } catch (StorageGroupNotSetException e) {
-      assertEquals(
+    applier.apply(log);
+    assertEquals(
         "Storage group is not set for current seriesPath: [root.test16]",
-        e.getMessage());
-    }
+        log.getException().getMessage());
   }
 
   @Test
@@ -302,22 +295,16 @@ public class DataLogApplierTest extends IoTDBTest {
         Collections.singletonList(new PartialPath(TestUtils.getTestSg(0))));
     PhysicalPlanLog log = new PhysicalPlanLog(flushPlan);
 
-    try {
-      applier.apply(log);
-    } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
-      fail(e.getMessage());
-    }
+    applier.apply(log);
+    assertNull(log.getException());
 
     // non-existing sg
     flushPlan = new FlushPlan(null,
         Collections.singletonList(new PartialPath(TestUtils.getTestSg(20))));
     log = new PhysicalPlanLog(flushPlan);
-    try {
-      applier.apply(log);
-    } catch (QueryProcessException | StorageEngineException e) {
-      fail(e.getMessage());
-    } catch (StorageGroupNotSetException e) {
-      assertEquals("Storage group is not set for current seriesPath: [root.test20]", e.getMessage());
-    }
+
+    applier.apply(log);
+    assertEquals("Storage group is not set for current seriesPath: [root.test20]",
+        log.getException().getMessage());
   }
 }
