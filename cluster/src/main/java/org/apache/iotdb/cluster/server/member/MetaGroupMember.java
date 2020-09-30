@@ -629,6 +629,7 @@ public class MetaGroupMember extends RaftMember {
         return;
       }
     }
+    partitionTable = newTable;
 
     savePartitionTable();
     router = new ClusterPlanRouter(newTable);
