@@ -904,13 +904,17 @@ public abstract class RaftMember {
 
       log.setPlan(plan);
       logManager.append(log);
+      Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.addNanoFromStart(start);
 
+      if (Timer.ENABLE_INSTRUMENTING) {
+        start = System.nanoTime();
+      }
       sendLogRequest = buildSendLogRequest(log);
       sendLogRequest.setCreateTime(System.nanoTime());
       getLogDispatcher().offer(sendLogRequest);
+      Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.addNanoFromStart(start);
     }
-    Timer.Statistic.RAFT_SENDER_APPEND_AND_OFFER_LOG.addNanoFromStart(start);
-
+    
     try {
       AppendLogResult appendLogResult = waitAppendResult(sendLogRequest.getVoteCounter(),
           sendLogRequest.getLeaderShipStale(),

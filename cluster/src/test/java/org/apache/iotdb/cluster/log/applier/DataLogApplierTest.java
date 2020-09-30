@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -277,7 +276,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyCloseFile()
-      throws StorageEngineException, QueryProcessException, StorageGroupNotSetException, IllegalPathException {
+      throws org.apache.iotdb.db.exception.IoTDBException {
     StorageGroupProcessor storageGroupProcessor =
       StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     TestCase.assertFalse(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
