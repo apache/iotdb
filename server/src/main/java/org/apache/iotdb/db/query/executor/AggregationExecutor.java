@@ -128,7 +128,7 @@ public class AggregationExecutor {
       // construct AggregateResult
       AggregateResult aggregateResult = AggregateResultFactory
           .getAggrResultByName(aggregations.get(i), tsDataType);
-      if (aggregateResult.needAscReader()) {
+      if (aggregateResult.isAscending()) {
         ascAggregateResultList.add(aggregateResult);
         isAsc[i] = true;
       } else {
@@ -227,7 +227,7 @@ public class AggregationExecutor {
       if (!isCalculatedArray[i]) {
         AggregateResult aggregateResult = aggregateResultList.get(i);
         aggregateResult.updateResultFromStatistics(statistics);
-        if (aggregateResult.isCalculatedAggregationResult()) {
+        if (aggregateResult.hasFinalResult()) {
           isCalculatedArray[i] = true;
           newRemainingToCalculate--;
           if (newRemainingToCalculate == 0) {
@@ -262,7 +262,7 @@ public class AggregationExecutor {
           AggregateResult aggregateResult = aggregateResultList.get(i);
           aggregateResult.updateResultFromPageData(nextOverlappedPageData);
           nextOverlappedPageData.resetBatchData();
-          if (aggregateResult.isCalculatedAggregationResult()) {
+          if (aggregateResult.hasFinalResult()) {
             isCalculatedArray[i] = true;
             remainingToCalculate--;
             if (remainingToCalculate == 0) {

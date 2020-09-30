@@ -32,7 +32,7 @@ public class LastValueDescAggrResult extends LastValueAggrResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     Object lastVal = statistics.getLastValue();
@@ -42,7 +42,7 @@ public class LastValueDescAggrResult extends LastValueAggrResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     long time = Long.MIN_VALUE;
@@ -64,7 +64,7 @@ public class LastValueDescAggrResult extends LastValueAggrResult {
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     long time = Long.MIN_VALUE;
@@ -84,12 +84,12 @@ public class LastValueDescAggrResult extends LastValueAggrResult {
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
-    return hasResult();
+  public boolean hasFinalResult() {
+    return hasCandidateResult;
   }
 
   @Override
-  public boolean needAscReader() {
+  public boolean isAscending() {
     return false;
   }
 }

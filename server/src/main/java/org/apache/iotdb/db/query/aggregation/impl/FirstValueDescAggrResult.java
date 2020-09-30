@@ -62,7 +62,7 @@ public class FirstValueDescAggrResult extends FirstValueAggrResult {
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
+  public boolean hasFinalResult() {
     return false;
   }
 }

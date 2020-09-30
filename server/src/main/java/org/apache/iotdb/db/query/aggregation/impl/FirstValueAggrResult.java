@@ -48,12 +48,12 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasResult() ? getValue() : null;
+    return hasCandidateResult() ? getValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    if (hasResult()) {
+    if (hasCandidateResult()) {
       return;
     }
 
@@ -64,7 +64,7 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     if (dataInThisPage.hasCurrent()) {
@@ -75,7 +75,7 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     if (dataInThisPage.hasCurrent()
@@ -90,7 +90,7 @@ public class FirstValueAggrResult extends AggregateResult {
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
 
@@ -105,8 +105,8 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
-    return hasResult();
+  public boolean hasFinalResult() {
+    return hasCandidateResult;
   }
 
   @Override

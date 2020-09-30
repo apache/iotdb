@@ -27,7 +27,7 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     super.updateResultFromStatistics(statistics);
@@ -35,7 +35,7 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     if (dataInThisPage.hasCurrent()
@@ -48,7 +48,7 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     long time = -1;
@@ -66,12 +66,12 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
-    return hasResult();
+  public boolean hasFinalResult() {
+    return hasCandidateResult;
   }
 
   @Override
-  public boolean needAscReader() {
+  public boolean isAscending() {
     return false;
   }
 }
