@@ -383,39 +383,14 @@ public class StorageGroupProcessor {
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
 
-    if (config.isEnableStatMonitor() && !storageGroupName
-        .equals(MonitorConstants.STAT_STORAGE_GROUP_NAME)) {
-      // for storage group which is not global, only TOTAL_POINTS is registered now
-      String[] monitorSeries = Arrays.copyOf(MonitorConstants.STAT_STORAGE_GROUP_ARRAY, 4);
-      monitorSeries[2] = "\"" + storageGroupName + "\"";
-      monitorSeries[3] = StatMeasurementConstants.TOTAL_POINTS.getMeasurement();
-      PartialPath monitorSeriesPath = new PartialPath(monitorSeries);
-      try {
-        if (mManager.isPathExist(monitorSeriesPath)) {
-          TimeValuePair timeValuePair = LastQueryExecutor
-              .calculateLastPairForOneSeriesLocally(monitorSeriesPath, TSDataType.INT64,
-                  new QueryContext(
-                      QueryResourceManager.getInstance().assignQueryId(true)),
-                  Collections.singleton(monitorSeriesPath.getMeasurement()));
-          if (timeValuePair.getValue() != null) {
-            monitorSeriesValue = timeValuePair.getValue().getLong();
-          }
-        } else {
-          mManager.createTimeseries(monitorSeriesPath, TSDataType.valueOf(MonitorConstants.INT64),
-              TSEncoding.valueOf("TS_2DIFF"),
-              TSFileDescriptor.getInstance().getConfig().getCompressor(),
-              null);
-        }
-      } catch (StorageEngineException | IOException | QueryProcessException e) {
-        logger.error("Load last value from disk error.", e);
-      } catch (MetadataException e) {
-        logger.error("Create monitor time series error.", e);
-      }
-    }
   }
 
-  public Long getMonitorSeriesValue() {
+  public long getMonitorSeriesValue() {
     return monitorSeriesValue;
+  }
+
+  public void setMonitorSeriesValue(long monitorSeriesValue) {
+    this.monitorSeriesValue = monitorSeriesValue;
   }
 
   public void updateMonitorSeriesValue(int successPointsNum) {

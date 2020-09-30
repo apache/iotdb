@@ -26,7 +26,7 @@ import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
@@ -101,7 +101,7 @@ public class FlushManager implements FlushManagerMBean, IService {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
         try {
           StatMonitor.getInstance().saveStatValue(tsFileProcessor.getStorageGroupName());
-        } catch (IllegalPathException | StorageEngineException e) {
+        } catch (StorageEngineException | MetadataException e) {
           logger.error("Inserting monitor series data error.", e);
         }
       }
