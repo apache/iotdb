@@ -1205,13 +1205,11 @@ public class MManager {
     return device;
   }
 
-
   // concurrent warning: you should get parent read lock before calling this method
   public MNode getChild(MNode parent, String child) {
     return parent.getChild(child);
   }
-
-
+  
   /**
    * Get metadata in string
    */
