@@ -260,7 +260,8 @@ public class MTree implements Serializable {
     }
     String leafName = nodeNames[nodeNames.length - 1];
 
-    // synchronize check and add
+    // synchronize check and add, we need addChild and add Alias become atomic operation
+    // only write on mtree will be synchronized
     synchronized (this) {
       if (cur.hasChild(leafName)) {
         throw new PathAlreadyExistException(path.getFullPath());

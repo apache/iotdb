@@ -54,11 +54,11 @@ public class MNode implements Serializable {
    */
   protected String fullPath;
 
-  // for double synchronize check
+  // volatile for double synchronized check
   // use in Measurement Node so it's protected
   protected transient volatile Map<String, MNode> children = null;
 
-  // for double synchronize check
+  // volatile for double synchronized check
   private transient volatile Map<String, MNode> aliasChildren = null;
 
 
@@ -83,7 +83,7 @@ public class MNode implements Serializable {
    */
   public void addChild(String name, MNode child) {
     if (children == null) {
-      // double check, concurrent hash map is volatile
+      // double check, children is volatile
       synchronized (this){
         if(children == null){
           children = new ConcurrentHashMap<>();
@@ -147,9 +147,14 @@ public class MNode implements Serializable {
   /**
    * add an alias
    */
-  public synchronized boolean addAlias(String alias, MNode child) {
+  public boolean addAlias(String alias, MNode child) {
     if (aliasChildren == null) {
-      aliasChildren = new ConcurrentHashMap<>();
+      // double check, alias children volatile
+      synchronized (this){
+        if (aliasChildren == null) {
+          aliasChildren = new ConcurrentHashMap<>();
+        }
+      }
     }
 
 
