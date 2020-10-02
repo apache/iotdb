@@ -248,7 +248,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+D:\iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
 ​````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​````````````````````````
@@ -299,7 +299,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ​````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
@@ -333,8 +333,8 @@ For Linux or MacOs:
 
 An example on macOS:
 
-```$xslt
-/incubator-iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
+```console
+/iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
 ​````````````````````````
 Starting Printing the TsFile Sketch
 ​````````````````````````
