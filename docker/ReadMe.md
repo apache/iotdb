@@ -23,7 +23,7 @@
 
 docker build -t THE_DOCKER_IMAGE_NAME:THE_VERSION -f THE_DOCKER_FILE_NAME
 
-e.g.,
+E.g.,
 
 ```
 docker build -t my-iotdb:0.9.1 -f Dockerfile-0.9.1
