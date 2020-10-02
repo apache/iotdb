@@ -54,6 +54,7 @@ public class IoTDBRpcDataSet {
   public int fetchSize;
   public boolean emptyResultSet = false;
   public boolean hasCachedRecord = false;
+  public boolean lastReadWasNull;
 
 
   public byte[][] values; // used to cache the current row record value
@@ -284,9 +285,11 @@ public class IoTDBRpcDataSet {
     checkRecord();
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (!isNull(index, rowsIndex - 1)) {
+      lastReadWasNull = false;
       return BytesUtils.bytesToBool(values[index]);
     } else {
-      throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
+      lastReadWasNull = true;
+      return false;
     }
   }
 
@@ -298,9 +301,11 @@ public class IoTDBRpcDataSet {
     checkRecord();
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (!isNull(index, rowsIndex - 1)) {
+      lastReadWasNull = false;
       return BytesUtils.bytesToDouble(values[index]);
     } else {
-      throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
+      lastReadWasNull = true;
+      return 0;
     }
   }
 
@@ -312,9 +317,11 @@ public class IoTDBRpcDataSet {
     checkRecord();
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (!isNull(index, rowsIndex - 1)) {
+      lastReadWasNull = false;
       return BytesUtils.bytesToFloat(values[index]);
     } else {
-      throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
+      lastReadWasNull = true;
+      return 0;
     }
   }
 
@@ -326,9 +333,11 @@ public class IoTDBRpcDataSet {
     checkRecord();
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (!isNull(index, rowsIndex - 1)) {
+      lastReadWasNull = false;
       return BytesUtils.bytesToInt(values[index]);
     } else {
-      throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
+      lastReadWasNull = true;
+      return 0;
     }
   }
 
@@ -343,9 +352,11 @@ public class IoTDBRpcDataSet {
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (!isNull(index, rowsIndex - 1)) {
+      lastReadWasNull = false;
       return BytesUtils.bytesToLong(values[index]);
     } else {
-      throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
+      lastReadWasNull = true;
+      return 0;
     }
   }
 
@@ -384,8 +395,10 @@ public class IoTDBRpcDataSet {
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
     if (index < 0 || index >= values.length || isNull(index, rowsIndex - 1)) {
+      lastReadWasNull = true;
       return null;
     }
+    lastReadWasNull = false;
     return getString(index, columnTypeDeduplicatedList.get(index), values);
   }
 
