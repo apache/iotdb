@@ -489,6 +489,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
+   * ATTENTION: TEST ONLY, do not call
    * this function return all timeseries names in this file
    *
    * @return list of Paths
