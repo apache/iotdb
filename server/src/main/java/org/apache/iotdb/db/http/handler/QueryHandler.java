@@ -68,9 +68,9 @@ public class QueryHandler extends Handler{
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
     SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     for(Object o : timeSeries) {
-      fromOp.addPrefixTablePath(new PartialPath((String) o));
+      selectOp.addSelectPath(new PartialPath((String) o));
     }
-    selectOp.addSelectPath(new PartialPath(new String[]{""}));
+    fromOp.addPrefixTablePath(new PartialPath(new String[]{""}));
     Boolean isAggregated = (Boolean) jsonObject.get(HttpConstant.IS_AGGREGATED);
     QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
     queryOp.setSelectOperator(selectOp);
@@ -91,7 +91,6 @@ public class QueryHandler extends Handler{
     queryOp.setFilterOperator(filterOp);
 
     if(isAggregated) {
-      selectOp.getSuffixPaths().clear();
       JSONArray fills = (JSONArray) jsonObject.get(HttpConstant.FILLS);
       Boolean isPoint = (Boolean) jsonObject.get(HttpConstant.isPoint);
       JSONObject groupBy = (JSONObject) jsonObject.get(HttpConstant.GROUP_BY);
@@ -99,7 +98,6 @@ public class QueryHandler extends Handler{
       List<String> aggregationsList = new ArrayList<>();
       for(Object o: aggregations) {
         aggregationsList.add((String) o);
-        selectOp.addSelectPath(new PartialPath(new String[]{""}));
       }
       selectOp.setAggregations(aggregationsList);
       String step = null;

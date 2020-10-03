@@ -72,6 +72,9 @@ public class PartialPath extends Path implements Comparable<Path> {
    * @return new partial path
    */
   public PartialPath concatPath(PartialPath partialPath) {
+    if(nodes.length == 1 && nodes[0].equals("")) {
+      return partialPath;
+    }
     int len = nodes.length;
     String[] newNodes = Arrays.copyOf(nodes, nodes.length + partialPath.nodes.length);
     System.arraycopy(partialPath.nodes, 0, newNodes, len, partialPath.nodes.length);
