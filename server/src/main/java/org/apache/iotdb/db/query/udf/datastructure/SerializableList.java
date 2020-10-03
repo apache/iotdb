@@ -142,36 +142,32 @@ public interface SerializableList {
   }
 
   default void serialize() throws IOException {
-    synchronized (this) {
-      SerializationRecorder recorder = getSerializationRecorder();
-      if (recorder.isSerialized()) {
-        return;
-      }
-      PublicBAOS outputStream = new PublicBAOS();
-      serialize(outputStream);
-      ByteBuffer byteBuffer = ByteBuffer.allocate(outputStream.size());
-      byteBuffer.put(outputStream.getBuf(), 0, outputStream.size());
-      byteBuffer.flip();
-      recorder.getFileChannel().write(byteBuffer);
-      recorder.closeFile();
-      release();
-      recorder.markAsSerialized();
+    SerializationRecorder recorder = getSerializationRecorder();
+    if (recorder.isSerialized()) {
+      return;
     }
+    PublicBAOS outputStream = new PublicBAOS();
+    serialize(outputStream);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(outputStream.size());
+    byteBuffer.put(outputStream.getBuf(), 0, outputStream.size());
+    byteBuffer.flip();
+    recorder.getFileChannel().write(byteBuffer);
+    recorder.closeFile();
+    release();
+    recorder.markAsSerialized();
   }
 
   default void deserialize() throws IOException {
-    synchronized (this) {
-      SerializationRecorder recorder = getSerializationRecorder();
-      if (!recorder.isSerialized()) {
-        return;
-      }
-      init();
-      ByteBuffer byteBuffer = ByteBuffer.allocate(recorder.getSerializedByteLength());
-      recorder.getFileChannel().read(byteBuffer);
-      byteBuffer.flip();
-      deserialize(byteBuffer);
-      recorder.closeFile();
-      recorder.markAsNotSerialized();
+    SerializationRecorder recorder = getSerializationRecorder();
+    if (!recorder.isSerialized()) {
+      return;
     }
+    init();
+    ByteBuffer byteBuffer = ByteBuffer.allocate(recorder.getSerializedByteLength());
+    recorder.getFileChannel().read(byteBuffer);
+    byteBuffer.flip();
+    deserialize(byteBuffer);
+    recorder.closeFile();
+    recorder.markAsNotSerialized();
   }
 }
