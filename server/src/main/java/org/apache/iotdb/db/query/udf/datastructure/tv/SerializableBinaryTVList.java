@@ -26,31 +26,27 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.udf.datastructure.SerializableList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class SerializableBinaryTVList extends BatchData implements SerializableTVList {
+public class SerializableBinaryTVList extends SerializableTVList {
 
-  static int calculateCapacity(float memoryLimitInMB, int byteArrayLength) {
+  protected static int calculateCapacity(float memoryLimitInMB, int byteArrayLength) {
     float memoryLimitInB = memoryLimitInMB * MB / 2;
     return TSFileConfig.ARRAY_CAPACITY_THRESHOLD *
         (int) (memoryLimitInB / (TSFileConfig.ARRAY_CAPACITY_THRESHOLD *
             calculateSingleBinaryTVPairMemory(byteArrayLength)));
   }
 
-  static int calculateSingleBinaryTVPairMemory(int byteArrayLength) {
+  protected static int calculateSingleBinaryTVPairMemory(int byteArrayLength) {
     return ReadWriteIOUtils.LONG_LEN // time
         + SerializableList.MIN_OBJECT_HEADER_SIZE // value: header length of Binary
         + SerializableList.MIN_ARRAY_HEADER_SIZE // value: header length of values in Binary
         + byteArrayLength; // value: length of values array in Binary
   }
 
-  private final SerializationRecorder serializationRecorder;
-
-  public SerializableBinaryTVList(SerializationRecorder serializationRecorder) {
-    super(TSDataType.TEXT);
-    this.serializationRecorder = serializationRecorder;
+  protected SerializableBinaryTVList(SerializationRecorder serializationRecorder) {
+    super(TSDataType.TEXT, serializationRecorder);
   }
 
   @Override
@@ -74,7 +70,8 @@ public class SerializableBinaryTVList extends BatchData implements SerializableT
   }
 
   @Override
-  public SerializationRecorder getSerializationRecorder() {
-    return serializationRecorder;
+  public void release() {
+    timeRet = null;
+    binaryRet = null;
   }
 }

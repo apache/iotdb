@@ -71,13 +71,13 @@ public class BatchData implements Serializable {
   private int count;
 
 
-  private List<long[]> timeRet;
-  private List<boolean[]> booleanRet;
-  private List<int[]> intRet;
-  private List<long[]> longRet;
-  private List<float[]> floatRet;
-  private List<double[]> doubleRet;
-  private List<Binary[]> binaryRet;
+  protected List<long[]> timeRet;
+  protected List<boolean[]> booleanRet;
+  protected List<int[]> intRet;
+  protected List<long[]> longRet;
+  protected List<float[]> floatRet;
+  protected List<double[]> doubleRet;
+  protected List<Binary[]> binaryRet;
 
   public BatchData() {
     dataType = null;

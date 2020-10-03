@@ -33,6 +33,11 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class SerializableIntList implements SerializableList {
 
+  public static SerializableIntList newSerializableIntList(long queryId, String dataId, int index) {
+    SerializationRecorder recorder = new SerializationRecorder(queryId, dataId, index);
+    return new SerializableIntList(recorder);
+  }
+
   public static int calculateCapacity(float memoryLimitInMB) throws QueryProcessException {
     float memoryLimitInB = memoryLimitInMB * MB / 2;
     int size = ARRAY_CAPACITY_THRESHOLD *
@@ -43,30 +48,20 @@ public class SerializableIntList implements SerializableList {
     return size;
   }
 
-  static SerializableIntList newSerializableIntList(long queryId, String dataId, int index) {
-    SerializationRecorder recorder = new SerializationRecorder(queryId, dataId, index);
-    return new SerializableIntList(recorder);
-  }
-
   private static final int ARRAY_CAPACITY_THRESHOLD = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
 
   private final SerializationRecorder serializationRecorder;
 
   private int capacity = 16;
 
-  private final List<int[]> list;
+  private List<int[]> list;
   private int writeCurListIndex;
   private int writeCurArrayIndex;
   private int count;
 
   public SerializableIntList(SerializationRecorder serializationRecorder) {
     this.serializationRecorder = serializationRecorder;
-
-    list = new ArrayList<>();
-    list.add(new int[capacity]);
-    writeCurListIndex = 0;
-    writeCurArrayIndex = 0;
-    count = 0;
+    init();
   }
 
   public void put(int value) {
@@ -97,8 +92,14 @@ public class SerializableIntList implements SerializableList {
     return count;
   }
 
-  public void clear() {
-    list.clear();
+  @Override
+  public void release() {
+    list = null;
+  }
+
+  @Override
+  public void init() {
+    list = new ArrayList<>();
     list.add(new int[capacity]);
     writeCurListIndex = 0;
     writeCurArrayIndex = 0;

@@ -63,7 +63,6 @@ public class SerializableBinaryTVListTest extends SerializableTVListTest {
     } catch (IOException e) {
       fail();
     }
-    assertTrue(testList.isEmpty());
     try {
       testList.deserialize();
     } catch (IOException e) {

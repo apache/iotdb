@@ -42,7 +42,7 @@ public class SerializableRowRecordList implements SerializableList {
     return new SerializableRowRecordList(dataTypes, recorder);
   }
 
-  static int calculateCapacity(TSDataType[] dataTypes, float memoryLimitInMB,
+  protected static int calculateCapacity(TSDataType[] dataTypes, float memoryLimitInMB,
       int byteArrayLengthForMemoryControl) throws QueryProcessException {
     final int MIN_OBJECT_HEADER_SIZE = 8;
     final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
@@ -84,13 +84,13 @@ public class SerializableRowRecordList implements SerializableList {
   private final TSDataType[] dataTypes;
   private final SerializationRecorder serializationRecorder;
 
-  private final List<RowRecord> rowRecords;
+  private List<RowRecord> rowRecords;
 
   private SerializableRowRecordList(TSDataType[] dataTypes,
       SerializationRecorder serializationRecorder) {
     this.dataTypes = dataTypes;
     this.serializationRecorder = serializationRecorder;
-    rowRecords = new ArrayList<>();
+    init();
   }
 
   public boolean isEmpty() {
@@ -113,8 +113,14 @@ public class SerializableRowRecordList implements SerializableList {
     rowRecords.add(rowRecord);
   }
 
-  public void clear() {
-    rowRecords.clear();
+  @Override
+  public void release() {
+    rowRecords = null;
+  }
+
+  @Override
+  public void init() {
+    rowRecords = new ArrayList<>();
   }
 
   @Override

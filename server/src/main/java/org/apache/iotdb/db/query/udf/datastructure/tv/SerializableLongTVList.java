@@ -25,24 +25,20 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class SerializableLongTVList extends BatchData implements SerializableTVList {
+public class SerializableLongTVList extends SerializableTVList {
 
-  static int calculateCapacity(float memoryLimitInMB) {
+  protected static int calculateCapacity(float memoryLimitInMB) {
     float memoryLimitInB = memoryLimitInMB * MB / 2;
     return TSFileConfig.ARRAY_CAPACITY_THRESHOLD *
         (int) (memoryLimitInB / ((ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.LONG_LEN)
             * TSFileConfig.ARRAY_CAPACITY_THRESHOLD));
   }
 
-  private final SerializationRecorder serializationRecorder;
-
-  SerializableLongTVList(SerializationRecorder serializationRecorder) {
-    super(TSDataType.INT64);
-    this.serializationRecorder = serializationRecorder;
+  protected SerializableLongTVList(SerializationRecorder serializationRecorder) {
+    super(TSDataType.INT64, serializationRecorder);
   }
 
   @Override
@@ -66,7 +62,8 @@ public class SerializableLongTVList extends BatchData implements SerializableTVL
   }
 
   @Override
-  public SerializationRecorder getSerializationRecorder() {
-    return serializationRecorder;
+  public void release() {
+    timeRet = null;
+    longRet = null;
   }
 }

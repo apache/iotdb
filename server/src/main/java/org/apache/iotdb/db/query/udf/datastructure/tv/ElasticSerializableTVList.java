@@ -26,7 +26,6 @@ import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.datastructure.SerializableList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -54,7 +53,7 @@ public class ElasticSerializableTVList implements PointCollector {
   protected int cacheSize;
 
   protected LRUCache cache;
-  protected List<BatchData> tvLists;
+  protected List<SerializableTVList> tvLists;
   protected int size;
   protected int evictionUpperBound;
 
@@ -312,10 +311,10 @@ public class ElasticSerializableTVList implements PointCollector {
           if (lastIndex < evictionUpperBound / internalTVListCapacity) {
             tvLists.set(lastIndex, null);
           } else {
-            ((SerializableList) tvLists.get(lastIndex)).serialize();
+            tvLists.get(lastIndex).serialize();
           }
         }
-        ((SerializableList) tvLists.get(targetIndex)).deserialize();
+        tvLists.get(targetIndex).deserialize();
       }
       cache.addFirst(targetIndex);
       return tvLists.get(targetIndex);

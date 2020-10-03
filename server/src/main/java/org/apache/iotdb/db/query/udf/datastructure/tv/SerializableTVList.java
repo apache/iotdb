@@ -25,9 +25,30 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public interface SerializableTVList extends SerializableList {
+public abstract class SerializableTVList extends BatchData implements SerializableList {
 
-  static int calculateCapacity(TSDataType dataType, float memoryLimitInMB)
+  public static SerializableTVList newSerializableTVList(TSDataType dataType, long queryId,
+      String uniqueId, int index) {
+    SerializationRecorder recorder = new SerializationRecorder(queryId, uniqueId, index);
+    switch (dataType) {
+      case INT32:
+        return new SerializableIntTVList(recorder);
+      case INT64:
+        return new SerializableLongTVList(recorder);
+      case FLOAT:
+        return new SerializableFloatTVList(recorder);
+      case DOUBLE:
+        return new SerializableDoubleTVList(recorder);
+      case BOOLEAN:
+        return new SerializableBooleanTVList(recorder);
+      case TEXT:
+        return new SerializableBinaryTVList(recorder);
+      default:
+        throw new UnSupportedDataTypeException(dataType.toString());
+    }
+  }
+
+  protected static int calculateCapacity(TSDataType dataType, float memoryLimitInMB)
       throws QueryProcessException {
     int size;
     switch (dataType) {
@@ -60,28 +81,20 @@ public interface SerializableTVList extends SerializableList {
     return size;
   }
 
-  static BatchData newSerializableTVList(TSDataType dataType, long queryId, String uniqueId,
-      int index) {
-    SerializationRecorder recorder = new SerializationRecorder(queryId, uniqueId, index);
-    switch (dataType) {
-      case INT32:
-        return new SerializableIntTVList(recorder);
-      case INT64:
-        return new SerializableLongTVList(recorder);
-      case FLOAT:
-        return new SerializableFloatTVList(recorder);
-      case DOUBLE:
-        return new SerializableDoubleTVList(recorder);
-      case BOOLEAN:
-        return new SerializableBooleanTVList(recorder);
-      case TEXT:
-        return new SerializableBinaryTVList(recorder);
-      default:
-        throw new UnSupportedDataTypeException(dataType.toString());
-    }
+  protected final SerializationRecorder serializationRecorder;
+
+  public SerializableTVList(TSDataType type, SerializationRecorder serializationRecorder) {
+    super(type);
+    this.serializationRecorder = serializationRecorder;
   }
 
-  default void clear() {
-    ((BatchData) this).init(((BatchData) this).getDataType());
+  @Override
+  public SerializationRecorder getSerializationRecorder() {
+    return serializationRecorder;
+  }
+
+  @Override
+  public void init() {
+    init(getDataType());
   }
 }

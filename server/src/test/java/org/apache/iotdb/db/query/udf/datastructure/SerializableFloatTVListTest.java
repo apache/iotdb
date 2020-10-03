@@ -61,7 +61,6 @@ public class SerializableFloatTVListTest extends SerializableTVListTest {
     } catch (IOException e) {
       fail();
     }
-    assertTrue(testList.isEmpty());
     try {
       testList.deserialize();
     } catch (IOException e) {

@@ -37,9 +37,11 @@ public interface SerializableList {
 
   void deserialize(ByteBuffer byteBuffer);
 
-  SerializationRecorder getSerializationRecorder();
+  void release();
 
-  void clear();
+  void init();
+
+  SerializationRecorder getSerializationRecorder();
 
   class SerializationRecorder {
 
@@ -152,7 +154,7 @@ public interface SerializableList {
       byteBuffer.flip();
       recorder.getFileChannel().write(byteBuffer);
       recorder.closeFile();
-      clear();
+      release();
       recorder.markAsSerialized();
     }
   }
@@ -163,6 +165,7 @@ public interface SerializableList {
       if (!recorder.isSerialized()) {
         return;
       }
+      init();
       ByteBuffer byteBuffer = ByteBuffer.allocate(recorder.getSerializedByteLength());
       recorder.getFileChannel().read(byteBuffer);
       byteBuffer.flip();

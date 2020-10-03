@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.udf.datastructure;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -64,7 +63,6 @@ public class SerializableBooleanTVListTest extends SerializableTVListTest {
     } catch (IOException e) {
       fail();
     }
-    assertTrue(testList.isEmpty());
     try {
       testList.deserialize();
     } catch (IOException e) {

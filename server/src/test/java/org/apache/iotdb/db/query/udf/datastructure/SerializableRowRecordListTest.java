@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.udf.datastructure;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -64,7 +63,8 @@ public class SerializableRowRecordListTest extends SerializableListTest {
     serializeAndDeserializeOnce();
     serializeAndDeserializeOnce();
     originalList.clear();
-    testList.clear();
+    testList.release();
+    testList.init();
     for (int i = 0; i < ITERATION_TIMES; ++i) {
       generateData(i);
     }
@@ -106,7 +106,6 @@ public class SerializableRowRecordListTest extends SerializableListTest {
     } catch (IOException e) {
       fail();
     }
-    assertTrue(testList.isEmpty());
     try {
       testList.deserialize();
     } catch (IOException e) {
