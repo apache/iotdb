@@ -19,12 +19,15 @@
 package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -96,7 +99,7 @@ public class IoTDBSortedShowTimeseriesIT {
 
   @Test
   public void showTimeseriesOrderByHeatTest1() throws ClassNotFoundException {
-    String[] retArray1 = new String[]{
+    List<String> retArray1 = Arrays.asList(
         "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\""
             + "turbine this is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"100\",\"M_Alarm\":\"50\"}",
         "root.turbine.d0.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
@@ -121,7 +124,7 @@ public class IoTDBSortedShowTimeseriesIT {
             + "unit\":\"w\"},{\"H_Alarm\":\"9.9\",\"M_Alarm\":\"4.4\"}",
         "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,{\"description\":\"ln this is a test3\"},"
             + "{\"H_Alarm\":\"90\",\"M_Alarm\":\"50\"}"
-    };
+    );
 
     String[] retArray2 = new String[]{
         "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 "
@@ -169,10 +172,10 @@ public class IoTDBSortedShowTimeseriesIT {
             + "," + resultSet.getString("tags")
             + "," + resultSet.getString("attributes");
 
-        assertEquals(retArray1[count], ans);
+        assertTrue(retArray1.contains(ans));
         count++;
       }
-      assertEquals(retArray1.length, count);
+      assertEquals(retArray1.size(), count);
 
       hasResultSet = statement.execute("show LATEST timeseries");
       Assert.assertTrue(hasResultSet);
@@ -300,5 +303,4 @@ public class IoTDBSortedShowTimeseriesIT {
       e.printStackTrace();
     }
   }
-
 }
