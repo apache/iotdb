@@ -101,7 +101,6 @@ public class MManager {
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
   protected IoTDBConfig config;
-  // the lock for read/insert
   // the log file seriesPath
   private String logFilePath;
   private String mtreeSnapshotPath;
@@ -153,8 +152,6 @@ public class MManager {
         }
       }
     };
-
-    int remoteCacheSize = config.getmRemoteSchemaCacheSize();
 
     timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
         "timedCreateMTreeSnapshotThread"));
@@ -420,9 +417,13 @@ public class MManager {
    */
   public void createTimeseries(PartialPath path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) throws MetadataException {
-    createTimeseries(
-        new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null,
-            null));
+    try {
+      createTimeseries(
+          new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null));
+    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
+      // just log it, created by multiple thread
+      logger.info("Concurrent create timeseries failed, use other thread's result");
+    }
   }
 
   /**
