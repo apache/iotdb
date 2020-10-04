@@ -23,13 +23,15 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.MB;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.db.query.udf.datastructure.SerializableList;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class SerializableBinaryTVList extends SerializableTVList {
+
+  protected static final int MIN_OBJECT_HEADER_SIZE = 8;
+  protected static final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
 
   protected static int calculateCapacity(float memoryLimitInMB, int byteArrayLength) {
     float memoryLimitInB = memoryLimitInMB * MB / 2;
@@ -40,8 +42,8 @@ public class SerializableBinaryTVList extends SerializableTVList {
 
   protected static int calculateSingleBinaryTVPairMemory(int byteArrayLength) {
     return ReadWriteIOUtils.LONG_LEN // time
-        + SerializableList.MIN_OBJECT_HEADER_SIZE // value: header length of Binary
-        + SerializableList.MIN_ARRAY_HEADER_SIZE // value: header length of values in Binary
+        + MIN_OBJECT_HEADER_SIZE // value: header length of Binary
+        + MIN_ARRAY_HEADER_SIZE // value: header length of values in Binary
         + byteArrayLength; // value: length of values array in Binary
   }
 

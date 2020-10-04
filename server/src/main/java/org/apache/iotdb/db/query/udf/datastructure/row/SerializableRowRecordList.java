@@ -36,6 +36,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class SerializableRowRecordList implements SerializableList {
 
+  protected static final int MIN_OBJECT_HEADER_SIZE = 8;
+  protected static final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
+
   public static SerializableRowRecordList newSerializableRowRecordList(TSDataType[] dataTypes,
       long queryId, String dataId, int index) {
     SerializationRecorder recorder = new SerializationRecorder(queryId, dataId, index);
@@ -44,9 +47,6 @@ public class SerializableRowRecordList implements SerializableList {
 
   protected static int calculateCapacity(TSDataType[] dataTypes, float memoryLimitInMB,
       int byteArrayLengthForMemoryControl) throws QueryProcessException {
-    final int MIN_OBJECT_HEADER_SIZE = 8;
-    final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
-
     int rowLength = ReadWriteIOUtils.LONG_LEN; // timestamp
     for (TSDataType dataType : dataTypes) { // fields
       switch (dataType) {
