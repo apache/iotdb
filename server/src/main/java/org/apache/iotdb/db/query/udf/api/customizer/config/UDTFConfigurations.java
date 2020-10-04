@@ -59,5 +59,6 @@ public class UDTFConfigurations extends UDFConfigurations {
     if (accessStrategy == null) {
       throw new QueryProcessException("Access strategy is not set.");
     }
+    accessStrategy.check();
   }
 }

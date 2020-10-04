@@ -44,7 +44,7 @@ public class IoTDBUDFWindowQueryIT {
   public static final String ACCESS_STRATEGY_KEY = "access";
   public static final String ACCESS_STRATEGY_ONE_BY_ONE = "one-by-one";
   public static final String ACCESS_STRATEGY_TUMBLING = "tumbling";
-  public static final String ACCESS_STRATEGY_SLIDING = "access";
+  public static final String ACCESS_STRATEGY_SLIDING = "sliding";
 
   public static final String WINDOW_SIZE_KEY = "windowSize";
 
@@ -126,83 +126,187 @@ public class IoTDBUDFWindowQueryIT {
 
   @Test
   public void testTumblingWindow1() {
-    final int WINDOW_SIZE = (int) (0.1 * ITERATION_TIMES);
-    String sql = String
-        .format("select counter(s1, \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
-            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_TUMBLING, WINDOW_SIZE_KEY, WINDOW_SIZE);
-
-    try (Statement statement = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root").createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sql);
-      int count = 0;
-      assertEquals(2, resultSet.getMetaData().getColumnCount());
-      while (resultSet.next()) {
-        assertEquals(count < ITERATION_TIMES / WINDOW_SIZE
-                ? WINDOW_SIZE
-                : ITERATION_TIMES - (ITERATION_TIMES / WINDOW_SIZE) * WINDOW_SIZE,
-            (int) (Double.parseDouble(resultSet.getString(2))));
-        ++count;
-      }
-      assertEquals(ITERATION_TIMES / WINDOW_SIZE + (ITERATION_TIMES % WINDOW_SIZE == 0 ? 0 : 1),
-          count);
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
+    testTumblingWindow((int) (0.1 * ITERATION_TIMES));
   }
 
   @Test
   public void testTumblingWindow2() {
-    final int WINDOW_SIZE = (int) (0.333 * ITERATION_TIMES);
-    String sql = String
-        .format("select counter(s1, \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
-            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_TUMBLING, WINDOW_SIZE_KEY, WINDOW_SIZE);
-
-    try (Statement statement = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
-            "root", "root").createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sql);
-      int count = 0;
-      assertEquals(2, resultSet.getMetaData().getColumnCount());
-      while (resultSet.next()) {
-        assertEquals(count < ITERATION_TIMES / WINDOW_SIZE
-                ? WINDOW_SIZE
-                : ITERATION_TIMES - (ITERATION_TIMES / WINDOW_SIZE) * WINDOW_SIZE,
-            (int) (Double.parseDouble(resultSet.getString(2))));
-        ++count;
-      }
-      assertEquals(ITERATION_TIMES / WINDOW_SIZE + (ITERATION_TIMES % WINDOW_SIZE == 0 ? 0 : 1),
-          count);
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
+    testTumblingWindow((int) (0.033 * ITERATION_TIMES));
   }
 
   @Test
   public void testTumblingWindow3() {
-    final int WINDOW_SIZE = (int) (0.33 * ITERATION_TIMES);
+    testTumblingWindow((int) (0.333 * ITERATION_TIMES));
+  }
+
+  @Test
+  public void testTumblingWindow4() {
+    testTumblingWindow((int) (1.5 * ITERATION_TIMES));
+  }
+
+  @Test
+  public void testTumblingWindow5() {
+    testTumblingWindow(ITERATION_TIMES);
+  }
+
+  @Test
+  public void testTumblingWindow6() {
+    testTumblingWindow(3 * ITERATION_TIMES);
+  }
+
+  @Test
+  public void testTumblingWindow7() {
+    testTumblingWindow(0);
+  }
+
+  @Test
+  public void testTumblingWindow8() {
+    testTumblingWindow(-ITERATION_TIMES);
+  }
+
+  private void testTumblingWindow(int windowSize) {
     String sql = String
         .format("select accumulator(s1, \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
-            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_TUMBLING, WINDOW_SIZE_KEY, WINDOW_SIZE);
+            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_TUMBLING, WINDOW_SIZE_KEY, windowSize);
 
     try (Statement statement = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
             "root", "root").createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
-      int count = 0;
       assertEquals(2, resultSet.getMetaData().getColumnCount());
+
+      int count = 0;
       while (resultSet.next()) {
-        int expectedWindowSize = (count < ITERATION_TIMES / WINDOW_SIZE)
-            ? WINDOW_SIZE : ITERATION_TIMES - (ITERATION_TIMES / WINDOW_SIZE) * WINDOW_SIZE;
+        int expectedWindowSize = (count < ITERATION_TIMES / windowSize)
+            ? windowSize : ITERATION_TIMES - (ITERATION_TIMES / windowSize) * windowSize;
+
         int expectedAccumulation = 0;
-        for (int i = count * WINDOW_SIZE; i < count * WINDOW_SIZE + expectedWindowSize; ++i) {
+        for (int i = count * windowSize; i < count * windowSize + expectedWindowSize; ++i) {
           expectedAccumulation += i;
         }
+
         assertEquals(expectedAccumulation, (int) (Double.parseDouble(resultSet.getString(2))));
         ++count;
       }
     } catch (SQLException throwable) {
-      fail(throwable.getMessage());
+      if (0 < windowSize || !throwable.getMessage().contains(String.valueOf(windowSize))) {
+        fail(throwable.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testSlidingWindow1() {
+    testSlidingWindow((int) (0.33 * ITERATION_TIMES), (int) (0.33 * ITERATION_TIMES),
+        (int) (0.33 * ITERATION_TIMES), (int) (0.33 * ITERATION_TIMES));
+  }
+
+  @Test
+  public void testSlidingWindow2() {
+    testSlidingWindow((int) (0.033 * ITERATION_TIMES), (int) (2 * 0.033 * ITERATION_TIMES),
+        ITERATION_TIMES / 2, ITERATION_TIMES);
+  }
+
+  @Test
+  public void testSlidingWindow3() {
+    testSlidingWindow((int) (2 * 0.033 * ITERATION_TIMES), (int) (0.033 * ITERATION_TIMES),
+        ITERATION_TIMES / 2, ITERATION_TIMES);
+  }
+
+  @Test
+  public void testSlidingWindow4() {
+    testSlidingWindow((int) (0.033 * ITERATION_TIMES), (int) (0.033 * ITERATION_TIMES),
+        ITERATION_TIMES / 2, ITERATION_TIMES);
+  }
+
+  @Test
+  public void testSlidingWindow5() {
+    testSlidingWindow(ITERATION_TIMES, ITERATION_TIMES, 0, ITERATION_TIMES);
+  }
+
+  @Test
+  public void testSlidingWindow6() {
+    testSlidingWindow((int) (1.01 * ITERATION_TIMES), (int) (0.01 * ITERATION_TIMES), 0,
+        ITERATION_TIMES / 2);
+  }
+
+  @Test
+  public void testSlidingWindow7() {
+    testSlidingWindow((int) (0.01 * ITERATION_TIMES), (int) (1.01 * ITERATION_TIMES), 0,
+        ITERATION_TIMES / 2);
+  }
+
+  @Test
+  public void testSlidingWindow8() {
+    testSlidingWindow((int) (1.01 * ITERATION_TIMES), (int) (1.01 * ITERATION_TIMES), 0,
+        ITERATION_TIMES / 2);
+  }
+
+  @Test
+  public void testSlidingWindow9() {
+    testSlidingWindow((int) (0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES),
+        ITERATION_TIMES / 2, 0);
+  }
+
+  @Test
+  public void testSlidingWindow10() {
+    testSlidingWindow((int) (-0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES), 0,
+        ITERATION_TIMES / 2);
+  }
+
+  @Test
+  public void testSlidingWindow11() {
+    testSlidingWindow((int) (0.01 * ITERATION_TIMES), (int) (-0.05 * ITERATION_TIMES), 0,
+        ITERATION_TIMES / 2);
+  }
+
+  @Test
+  public void testSlidingWindow12() {
+    testSlidingWindow((int) (0.01 * ITERATION_TIMES), 0, 0, ITERATION_TIMES / 2);
+  }
+
+  @Test
+  public void testSlidingWindow13() {
+    testSlidingWindow(0, (int) (0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
+  }
+
+  private void testSlidingWindow(int timeInterval, int slidingStep, int displayWindowBegin,
+      int displayWindowEnd) {
+    String sql = String.format(
+        "select accumulator(s1, \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
+        ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_SLIDING,
+        TIME_INTERVAL_KEY, timeInterval,
+        SLIDING_STEP_KEY, slidingStep,
+        DISPLAY_WINDOW_BEGIN_KEY, displayWindowBegin,
+        DISPLAY_WINDOW_END_KEY, displayWindowEnd
+    );
+
+    try (Statement statement = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
+
+      int count = 0;
+      while (resultSet.next()) {
+        int begin = displayWindowBegin + count * slidingStep;
+        int expectedWindowSize = begin + timeInterval < displayWindowEnd
+            ? timeInterval : displayWindowEnd - begin;
+
+        int expectedAccumulation = 0;
+        for (int i = displayWindowBegin + count * slidingStep;
+            i < displayWindowBegin + count * slidingStep + expectedWindowSize;
+            ++i) {
+          expectedAccumulation += i;
+        }
+
+        assertEquals(expectedAccumulation, (int) (Double.parseDouble(resultSet.getString(2))));
+        ++count;
+      }
+    } catch (SQLException throwable) {
+      if (slidingStep > 0 && timeInterval > 0 && displayWindowEnd >= displayWindowBegin) {
+        fail(throwable.getMessage());
+      }
     }
   }
 }

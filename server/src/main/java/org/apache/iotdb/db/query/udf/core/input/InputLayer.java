@@ -428,7 +428,7 @@ public class InputLayer {
         return true;
       }
 
-      long nextWindowTimeEnd = nextWindowTimeBegin + timeInterval;
+      long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
       while (rowRecordList.getRowRecord(rowRecordList.size() - 1).getTimestamp() < nextWindowTimeEnd
           && queryDataSet.hasNextWithoutConstraint()) {
         rowRecordList.put(queryDataSet.nextWithoutConstraint());
