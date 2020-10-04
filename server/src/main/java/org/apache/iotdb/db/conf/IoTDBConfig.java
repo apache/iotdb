@@ -264,15 +264,26 @@ public class IoTDBConfig {
   private TsFileManagementStrategy tsFileManagementStrategy = TsFileManagementStrategy.NORMAL_STRATEGY;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. The max file num of each level. When file
+   * Work when tsfile_manage_strategy is level_strategy. The max seq file num of each level. When file
    * num exceeds this, the files in one level will merge to one.
    */
-  private int maxFileNumInEachLevel = 100;
+  private int maxFileNumInEachLevel = 10;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. The max num of level.
+   * Work when tsfile_manage_strategy is level_strategy. The max num of seq level.
    */
-  private int maxLevelNum = 2;
+  private int maxLevelNum = 4;
+
+  /**
+   * Work when tsfile_manage_strategy is level_strategy. The max unseq file num of each level. When file
+   * num exceeds this, the files in one level will merge to one.
+   */
+  private int maxUnseqFileNumInEachLevel = 10;
+
+  /**
+   * Work when tsfile_manage_strategy is level_strategy. The max num of unseq level.
+   */
+  private int maxUnseqLevelNum = 2;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -1291,6 +1302,22 @@ public class IoTDBConfig {
 
   public void setMaxLevelNum(int maxLevelNum) {
     this.maxLevelNum = maxLevelNum;
+  }
+
+  public int getMaxUnseqFileNumInEachLevel() {
+    return maxUnseqFileNumInEachLevel;
+  }
+
+  public void setMaxUnseqFileNumInEachLevel(int maxUnseqFileNumInEachLevel) {
+    this.maxUnseqFileNumInEachLevel = maxUnseqFileNumInEachLevel;
+  }
+
+  public int getMaxUnseqLevelNum() {
+    return maxUnseqLevelNum;
+  }
+
+  public void setMaxUnseqLevelNum(int maxUnseqLevelNum) {
+    this.maxUnseqLevelNum = maxUnseqLevelNum;
   }
 
   public int getMergeChunkSubThreadNum() {
