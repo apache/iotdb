@@ -287,6 +287,14 @@ public class IoTDBDescriptor {
           .getProperty("max_file_num_in_each_level",
               Integer.toString(conf.getMaxFileNumInEachLevel()))));
 
+      conf.setMaxUnseqLevelNum(Integer.parseInt(properties
+          .getProperty("max_unseq_level_num",
+              Integer.toString(conf.getMaxUnseqLevelNum()))));
+
+      conf.setMaxUnseqFileNumInEachLevel(Integer.parseInt(properties
+          .getProperty("max_unseq_file_num_in_each_level",
+              Integer.toString(conf.getMaxUnseqFileNumInEachLevel()))));
+
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
               Boolean.toString(conf.isSyncEnable()))));
@@ -357,6 +365,8 @@ public class IoTDBDescriptor {
           Boolean.toString(conf.isForceFullMerge()))));
       conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
           "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
+      conf.setMergeThroughputMbPerSec(Integer.parseInt(properties.getProperty(
+          "merge_throughput_mb_per_sec", Integer.toString(conf.getMergeThroughputMbPerSec()))));
 
       conf.setEnablePartialInsert(
           Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
