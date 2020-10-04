@@ -33,6 +33,7 @@ public class RawQueryPointTransformer extends Transformer {
     this.layerPointReader = layerPointReader;
   }
 
+  @Override
   protected boolean cacheValue() throws QueryProcessException, IOException {
     if (!layerPointReader.next()) {
       return false;
