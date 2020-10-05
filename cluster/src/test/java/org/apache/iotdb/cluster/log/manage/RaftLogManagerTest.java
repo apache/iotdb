@@ -1245,10 +1245,10 @@ public class RaftLogManagerTest {
     RaftLogManager raftLogManager = new TestRaftLogManager(committedEntryManager,
         syncLogDequeSerializer, logApplier);
 
-    int maxNumberOfLogs = 100;
+    int minNumberOfLogs = 100;
     List<Log> testLogs1;
 
-    raftLogManager.setMinNumOfLogsInMem(maxNumberOfLogs);
+    raftLogManager.setMinNumOfLogsInMem(minNumberOfLogs);
     testLogs1 = TestUtils.prepareNodeLogs(130);
     raftLogManager.append(testLogs1);
     try {
@@ -1260,17 +1260,17 @@ public class RaftLogManagerTest {
     assertEquals(130, committedEntryManager.getTotalSize());
     assertEquals(130, syncLogDequeSerializer.getLogSizeDeque().size());
 
-    // the maxHaveAppliedCommitIndex is smaller than 130-maxNumberOfLogs
-    long remainNumber = 130 - maxNumberOfLogs - 20;
+    // the maxHaveAppliedCommitIndex is smaller than 130-minNumberOfLogs
+    long remainNumber = 130 - 20;
     raftLogManager.setMaxHaveAppliedCommitIndex(20);
     raftLogManager.checkDeleteLog();
-    assertEquals(maxNumberOfLogs + remainNumber, committedEntryManager.getTotalSize());
-    assertEquals(maxNumberOfLogs + remainNumber, syncLogDequeSerializer.getLogSizeDeque().size());
+    assertEquals(remainNumber, committedEntryManager.getTotalSize());
+    assertEquals(remainNumber, syncLogDequeSerializer.getLogSizeDeque().size());
 
     raftLogManager.setMaxHaveAppliedCommitIndex(100);
     raftLogManager.checkDeleteLog();
-    assertEquals(maxNumberOfLogs, committedEntryManager.getTotalSize());
-    assertEquals(maxNumberOfLogs, syncLogDequeSerializer.getLogSizeDeque().size());
+    assertEquals(minNumberOfLogs, committedEntryManager.getTotalSize());
+    assertEquals(minNumberOfLogs, syncLogDequeSerializer.getLogSizeDeque().size());
 
     raftLogManager.close();
 
@@ -1278,8 +1278,8 @@ public class RaftLogManagerTest {
     syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     try {
       List<Log> logs = syncLogDequeSerializer.recoverLog();
-      assertEquals(maxNumberOfLogs, logs.size());
-      for (int i = 0; i < maxNumberOfLogs; i++) {
+      assertEquals(minNumberOfLogs, logs.size());
+      for (int i = 0; i < minNumberOfLogs; i++) {
         assertEquals(testLogs1.get(i + 30), logs.get(i));
       }
     } finally {
