@@ -1445,9 +1445,9 @@ public class StorageGroupProcessor {
       String deviceId = p.getDevice();
       if (tsFileResource.containsDevice(deviceId) &&
           ((deletion.getEndTime() < tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE) &&
-              tsFileResource.getStartTime(deviceId) < deletion.getEndTime()) ||
+              tsFileResource.getEndTime(deviceId) < deletion.getEndTime()) ||
           (deletion.getStartTime() < tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE) &&
-              deletion.getStartTime() < tsFileResource.getStartTime(deviceId)))) {
+                  tsFileResource.getStartTime(deviceId) < deletion.getStartTime()))) {
         return false;
       }
     }
