@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
@@ -30,7 +28,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.rescon.CachedStringPool;
@@ -44,23 +41,28 @@ public class MNode implements Serializable {
   private static final long serialVersionUID = -770028375899514063L;
   private static Map<String, String> cachedPathPool = CachedStringPool.getInstance()
       .getCachedPool();
+
   /**
    * Name of the MNode
    */
   protected String name;
   protected MNode parent;
+
   /**
    * from root to this node, only be set when used once for InternalMNode
    */
   protected String fullPath;
 
-  // volatile for double synchronized check
-  // use in Measurement Node so it's protected
+  /**
+   * volatile for double synchronized check
+   * use in Measurement Node so it's protected
+   */
   protected transient volatile Map<String, MNode> children = null;
 
-  // volatile for double synchronized check
+  /**
+   * volatile for double synchronized check
+   */
   private transient volatile Map<String, MNode> aliasChildren = null;
-
 
   /**
    * Constructor of MNode.
@@ -84,8 +86,8 @@ public class MNode implements Serializable {
   public void addChild(String name, MNode child) {
     if (children == null) {
       // double check, children is volatile
-      synchronized (this){
-        if(children == null){
+      synchronized (this) {
+        if (children == null) {
           children = new ConcurrentHashMap<>();
         }
       }
@@ -97,23 +99,19 @@ public class MNode implements Serializable {
   /**
    * delete a child
    */
-  public void deleteChild(String name) throws DeleteFailedException {
-    if (children != null && children.remove(name) == null) {
-      // acquire the write lock of its child node.
-      // if its child node is leaf node, we need to acquire the write lock of the current device node
-      throw new DeleteFailedException(getFullPath() + PATH_SEPARATOR + name);
+  public void deleteChild(String name) {
+    if (children != null) {
+      children.remove(name);
     }
   }
 
   /**
    * delete the alias of a child
    */
-  public void deleteAliasChild(String alias) throws DeleteFailedException {
-    if (aliasChildren == null) {
-      return;
+  public void deleteAliasChild(String alias) {
+    if (aliasChildren != null) {
+      aliasChildren.remove(alias);
     }
-
-    aliasChildren.remove(alias);
   }
 
   /**
@@ -150,13 +148,12 @@ public class MNode implements Serializable {
   public boolean addAlias(String alias, MNode child) {
     if (aliasChildren == null) {
       // double check, alias children volatile
-      synchronized (this){
+      synchronized (this) {
         if (aliasChildren == null) {
           aliasChildren = new ConcurrentHashMap<>();
         }
       }
     }
-
 
     return aliasChildren.computeIfAbsent(alias, (aliasName) -> child) == child;
   }
@@ -246,9 +243,5 @@ public class MNode implements Serializable {
     for (Entry<String, MNode> entry : children.entrySet()) {
       entry.getValue().serializeTo(bw);
     }
-  }
-
-  public void readUnlock() {
-
   }
 }
