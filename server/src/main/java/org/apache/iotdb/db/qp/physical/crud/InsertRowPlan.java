@@ -469,4 +469,19 @@ public class InsertRowPlan extends InsertPlan {
     failedValues = null;
     return this;
   }
+
+  @Override
+  public void recoverFromFailure() {
+    if (failedMeasurements == null) {
+      return;
+    }
+
+    for (int i = 0; i < failedMeasurements.size(); i++) {
+      int index = failedIndices.get(i);
+      values[index] = failedValues.get(i);
+    }
+    super.recoverFromFailure();
+
+    failedValues = null;
+  }
 }

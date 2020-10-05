@@ -582,4 +582,18 @@ public class InsertTabletPlan extends InsertPlan {
     return result;
   }
 
+  @Override
+  public void recoverFromFailure() {
+    if (failedMeasurements == null) {
+      return;
+    }
+
+    for (int i = 0; i < failedMeasurements.size(); i++) {
+      int index = failedIndices.get(i);
+      columns[index] = failedColumns.get(i);
+    }
+    super.recoverFromFailure();
+
+    failedColumns = null;
+  }
 }
