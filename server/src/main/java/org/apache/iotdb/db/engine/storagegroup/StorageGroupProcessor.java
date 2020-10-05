@@ -1439,18 +1439,27 @@ public class StorageGroupProcessor {
     }
   }
 
+  private boolean canSkipDelete(TsFileResource tsFileResource, Deletion deletion)
+      throws MetadataException {
+    for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath())) {
+      String deviceId = p.getDevice();
+      if (tsFileResource.containsDevice(deviceId) &&
+          ((deletion.getEndTime() < tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE) &&
+              tsFileResource.getStartTime(deviceId) < deletion.getEndTime()) ||
+          (deletion.getStartTime() < tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE) &&
+              deletion.getStartTime() < tsFileResource.getStartTime(deviceId)))) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
       List<ModificationFile> updatedModFiles)
           throws IOException, MetadataException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath())) {
-        String deviceId = p.getDevice();
-        if (!tsFileResource.containsDevice(deviceId) ||
-                deletion.getEndTime() < tsFileResource.getStartTime(deviceId) ||
-                deletion.getStartTime() > tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE)) {
-          continue;
-        }
+      if (canSkipDelete(tsFileResource, deletion)) {
+        continue;
       }
 
       long partitionId = tsFileResource.getTimePartition();
