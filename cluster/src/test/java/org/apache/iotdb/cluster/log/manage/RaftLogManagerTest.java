@@ -1349,9 +1349,9 @@ public class RaftLogManagerTest {
     RaftLogManager raftLogManager = new TestRaftLogManager(committedEntryManager,
         syncLogDequeSerializer, logApplier);
 
-    int maxNumberOfLogs = 100;
+    int minNumberOfLogs = 100;
     List<Log> testLogs1;
-    raftLogManager.setMinNumOfLogsInMem(maxNumberOfLogs);
+    raftLogManager.setMinNumOfLogsInMem(minNumberOfLogs);
     testLogs1 = TestUtils.prepareNodeLogs(130);
     raftLogManager.append(testLogs1);
 
@@ -1362,7 +1362,7 @@ public class RaftLogManagerTest {
     }
     // wait log is applied
     long startTime = System.currentTimeMillis();
-    for (int i = 0; i < testLogs1.size() - 1 - 30; i++) {
+    for (int i = 0; i < testLogs1.size() - 30; i++) {
       while (!testLogs1.get(i).isApplied()) {
         if ((System.currentTimeMillis() - startTime) > 60_000) {
           System.out.println("apply log time out");
@@ -1383,8 +1383,8 @@ public class RaftLogManagerTest {
     assertEquals(raftLogManager.getCommitLogIndex(), raftLogManager.getMaxHaveAppliedCommitIndex());
 
     raftLogManager.checkDeleteLog();
-    assertEquals(maxNumberOfLogs, committedEntryManager.getTotalSize());
-    assertEquals(maxNumberOfLogs, syncLogDequeSerializer.getLogSizeDeque().size());
+    assertEquals(minNumberOfLogs, committedEntryManager.getTotalSize());
+    assertEquals(minNumberOfLogs, syncLogDequeSerializer.getLogSizeDeque().size());
 
     for (int i = testLogs1.size() - 30; i < testLogs1.size(); i++) {
       try {

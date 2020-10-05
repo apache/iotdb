@@ -692,6 +692,7 @@ public abstract class RaftLogManager {
 
   @TestOnly
   public void setMaxHaveAppliedCommitIndex(long maxHaveAppliedCommitIndex) {
+    this.checkLogApplierExecutorService.shutdown();
     this.maxHaveAppliedCommitIndex = maxHaveAppliedCommitIndex;
   }
 
