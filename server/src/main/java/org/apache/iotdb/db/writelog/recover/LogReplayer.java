@@ -165,21 +165,14 @@ public class LogReplayer {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
+    //set measurementMNodes, WAL already serializes the real data type, so no need to infer type
+    plan.setMeasurementMNodes(mNodes);
+    //mark failed plan manually
+    checkDataTypeAndMarkFailed(mNodes, plan);
     if (plan instanceof InsertRowPlan) {
-      InsertRowPlan tPlan = (InsertRowPlan) plan;
-      //only infer type when users pass a String value
-      //WAL already serializes the real data type, so no need to infer type
-      tPlan.setMeasurementMNodes(mNodes);
-      ((InsertRowPlan) plan).setNeedInferType(false);
-      tPlan.transferType();
-      //mark failed plan manually 
-      checkDataTypeAndMarkFailed(mNodes, tPlan);
-      recoverMemTable.insert(tPlan);
+      recoverMemTable.insert((InsertRowPlan) plan);
     } else {
-      InsertTabletPlan tPlan = (InsertTabletPlan) plan;
-      tPlan.setMeasurementMNodes(mNodes);
-      checkDataTypeAndMarkFailed(mNodes, tPlan);
-      recoverMemTable.insertTablet(tPlan, 0, tPlan.getRowCount());
+      recoverMemTable.insertTablet((InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
     }
   }
 
