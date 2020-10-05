@@ -68,7 +68,7 @@ Here is a graph about the TsFile structure.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/82010604-299ac300-96a5-11ea-996d-013c0017f669.png">
 
-This TsFile contains two devices: d1, d2. Each device contains three measurements: s1, s2. 4 timeseries in total. Each timeseries contains 2 Chunks.
+This TsFile contains two devices: d1, d2. Each device contains two measurements: s1, s2. 4 timeseries in total. Each timeseries contains 2 Chunks.
 
 There are three parts of metadata
 
