@@ -39,6 +39,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -291,6 +292,9 @@ public class MetaGroupMember extends RaftMember {
     dataHeartbeatServer = new DataHeartbeatServer(thisNode, dataClusterServer);
     clientServer = new ClientServer(this);
     startUpStatus = getNewStartUpStatus();
+
+    // try loading the partition table if there was a previous cluster
+    loadPartitionTable();
   }
 
   /**
@@ -329,9 +333,14 @@ public class MetaGroupMember extends RaftMember {
       return;
     }
     addSeedNodes();
-    super.start();
     QueryCoordinator.getINSTANCE().setMetaGroupMember(this);
     StorageEngine.getInstance().setFileFlushPolicy(new ClusterFileFlushPolicy(this));
+    super.start();
+  }
+
+  @Override
+  void startBackGroundThreads() {
+    super.startBackGroundThreads();
     reportThread = Executors.newSingleThreadScheduledExecutor(n -> new Thread(n,
         "NodeReportThread"));
     hardLinkCleanerThread = Executors.newSingleThreadScheduledExecutor(n -> new Thread(n,
@@ -391,6 +400,11 @@ public class MetaGroupMember extends RaftMember {
    * seedUrl should be like "{hostName}:{metaPort}:{dataPort}" Ignore bad-formatted seedUrls.
    */
   protected void addSeedNodes() {
+    if (allNodes.size() > 1) {
+      // a local partition table was loaded and allNodes were updated, there is no need to add
+      // nodes from seedUrls
+      return;
+    }
     List<String> seedUrls = config.getSeedNodeUrls();
     // initialize allNodes
     for (String seedUrl : seedUrls) {
@@ -432,8 +446,6 @@ public class MetaGroupMember extends RaftMember {
   public void buildCluster() throws ConfigInconsistentException, StartUpCheckFailureException {
     // see if the seed nodes have consistent configurations
     checkSeedNodesStatus();
-    // try loading the partition table if there was a previous cluster
-    loadPartitionTable();
     // just establish the heartbeat thread and it will do the remaining
     threadTaskInit();
     if (allNodes.size() == 1) {
@@ -545,7 +557,7 @@ public class MetaGroupMember extends RaftMember {
     } else if (resp.getRespNum() == Response.RESPONSE_AGREE) {
       logger.info("Node {} admitted this node into the cluster", node);
       ByteBuffer partitionTableBuffer = resp.partitionTableBytes;
-      acceptPartitionTable(partitionTableBuffer);
+      acceptPartitionTable(partitionTableBuffer, true);
       getDataClusterServer().pullSnapshots();
       return true;
     } else if (resp.getRespNum() == Response.RESPONSE_IDENTIFIER_CONFLICT) {
@@ -601,7 +613,7 @@ public class MetaGroupMember extends RaftMember {
           // if the leader has sent the partition table then accept it
           if (partitionTable == null) {
             ByteBuffer byteBuffer = request.partitionTableBytes;
-            acceptPartitionTable(byteBuffer);
+            acceptPartitionTable(byteBuffer, true);
           }
         }
       } else {
@@ -616,7 +628,8 @@ public class MetaGroupMember extends RaftMember {
    * Deserialize a partition table from the buffer, save it locally, add nodes from the partition
    * table and start DataClusterServer and ClientServer.
    */
-  public synchronized void acceptPartitionTable(ByteBuffer partitionTableBuffer) {
+  public synchronized void acceptPartitionTable(ByteBuffer partitionTableBuffer,
+      boolean needSerialization) {
     SlotPartitionTable newTable = new SlotPartitionTable(thisNode);
     newTable.deserialize(partitionTableBuffer);
     // avoid overwriting current partition table with a previous one
@@ -631,23 +644,26 @@ public class MetaGroupMember extends RaftMember {
     }
     partitionTable = newTable;
 
-    savePartitionTable();
+    if (needSerialization) {
+      // if the partition table is read locally, there is no need to serialize it again
+      savePartitionTable();
+    }
+
     router = new ClusterPlanRouter(newTable);
 
-    allNodes = new ArrayList<>(newTable.getAllNodes());
+    updateNodeList(newTable.getAllNodes());
+
+    startSubServers();
+  }
+
+  private void updateNodeList(Collection<Node> nodes) {
+    allNodes = new ArrayList<>(nodes);
     initPeerMap();
     logger.info("Received cluster nodes from the leader: {}", allNodes);
     initIdNodeMap();
     for (Node n : allNodes) {
       idNodeMap.put(n.getNodeIdentifier(), n);
     }
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      logger.error("check consistency failed when accept partition table: {}", e.getMessage());
-    }
-
-    startSubServers();
   }
 
   /**
@@ -1150,7 +1166,7 @@ public class MetaGroupMember extends RaftMember {
       }
 
       ByteBuffer wrap = ByteBuffer.wrap(tableBuffer);
-      acceptPartitionTable(wrap);
+      acceptPartitionTable(wrap, false);
 
       logger.info("Load {} nodes: {}", allNodes.size(), allNodes);
     } catch (IOException e) {

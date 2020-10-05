@@ -250,7 +250,7 @@ public class MetaSimpleSnapshot extends SimpleSnapshot {
         }
 
         // 4. accept partition table
-        metaGroupMember.acceptPartitionTable(snapshot.getPartitionTableBuffer());
+        metaGroupMember.acceptPartitionTable(snapshot.getPartitionTableBuffer(), true);
 
         synchronized (metaGroupMember.getLogManager()) {
           metaGroupMember.getLogManager().applySnapshot(snapshot);

@@ -264,6 +264,11 @@ public abstract class RaftMember {
       return;
     }
 
+    startBackGroundThreads();
+    logger.info("{} started", name);
+  }
+
+  void startBackGroundThreads() {
     heartBeatService =
         Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
             name + "-HeartbeatThread@" + System.currentTimeMillis()));
@@ -283,8 +288,6 @@ public abstract class RaftMember {
     commitLogPool = Executors
         .newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat(getName() +
             "-CommitLog%d").build());
-
-    logger.info("{} started", name);
   }
 
   public String getName() {
