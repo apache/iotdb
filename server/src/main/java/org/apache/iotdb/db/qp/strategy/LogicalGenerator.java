@@ -1299,7 +1299,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     List<SqlBaseParser.SuffixPathOrConstantContext> suffixPathOrConstants = ctx.suffixPathOrConstant();
     for (SqlBaseParser.SuffixPathOrConstantContext suffixPathOrConstant : suffixPathOrConstants) {
-      if(suffixPathOrConstant.suffixPath() != null){
+      if (suffixPathOrConstant.suffixPath() != null) {
         PartialPath path = parseSuffixPath(suffixPathOrConstant.suffixPath());
         selectOp.addSelectPath(path);
       } else {
