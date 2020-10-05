@@ -1444,10 +1444,10 @@ public class StorageGroupProcessor {
     for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath())) {
       String deviceId = p.getDevice();
       if (tsFileResource.containsDevice(deviceId) &&
-          ((deletion.getEndTime() < tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE) &&
-              tsFileResource.getStartTime(deviceId) < deletion.getEndTime()) ||
-          (deletion.getStartTime() < tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE) &&
-                  tsFileResource.getStartTime(deviceId) < deletion.getStartTime()))) {
+          (deletion.getStartTime() <= tsFileResource.getStartTime(deviceId)
+              && tsFileResource.getStartTime(deviceId) <= deletion.getEndTime())
+          || (deletion.getStartTime() >= tsFileResource.getStartTime(deviceId)
+          && deletion.getStartTime() <= tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE))) {
         return false;
       }
     }
