@@ -525,6 +525,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    */
   public void buildDataGroupMembers(PartitionTable partitionTable) {
     setPartitionTable(partitionTable);
+    // TODO-Cluster: if there are unchanged members, do not stop and restart them
     // clear previous members if the partition table is reloaded
     for (DataGroupMember value : headerGroupMap.values()) {
       value.stop();

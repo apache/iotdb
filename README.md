@@ -235,12 +235,12 @@ In order to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <P
 
 ```
 IoTDB> SHOW TIMESERIES
-+-------------------------------+---------------+--------+--------+
-|                     Timeseries|  Storage Group|DataType|Encoding|
-+-------------------------------+---------------+--------+--------+
-|       root.ln.wf01.wt01.status|        root.ln| BOOLEAN|   PLAIN|
-|  root.ln.wf01.wt01.temperature|        root.ln|   FLOAT|     RLE|
-+-------------------------------+---------------+--------+--------+
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
+|  root.ln.wf01.wt01.temperature|  null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
 Total timeseries number = 2
 ```
 
@@ -248,11 +248,11 @@ Total timeseries number = 2
 
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
-+------------------------------+--------------+--------+--------+
-|                    Timeseries| Storage Group|DataType|Encoding|
-+------------------------------+--------------+--------+--------+
-|      root.ln.wf01.wt01.status|       root.ln| BOOLEAN|   PLAIN|
-+------------------------------+--------------+--------+--------+
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
 Total timeseries number = 1
 ```
 
@@ -297,7 +297,7 @@ or
 IoTDB> exit
 ```
 
-For more information about the commands supported by IoTDB SQL, please see [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.10.0/chap5/sec1).
+For more information about the commands supported by IoTDB SQL, please see [SQL Reference](http://iotdb.apache.org/UserGuide/Master/Operation%20Manual/SQL%20Reference.html).
 
 ### Stop IoTDB
 

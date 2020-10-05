@@ -130,6 +130,7 @@ public class ClusterMain {
           config.getSeedNodeUrls().size(), quorum);
       throw new StartupException(metaServer.getMember().getName(), message);
     }
+    // assert not duplicated nodes
     Set<Node> seedNodes = new HashSet<>();
     for (String url : config.getSeedNodeUrls()) {
       Node node = ClusterUtils.parseNode(url);
@@ -140,6 +141,7 @@ public class ClusterMain {
       }
       seedNodes.add(node);
     }
+    // assert this node is in NodeList
     Node localNode = new Node();
     localNode.setIp(config.getClusterRpcIp()).setMetaPort(config.getInternalMetaPort())
         .setDataPort(config.getInternalDataPort()).setClientPort(config.getClusterRpcPort());
@@ -222,28 +224,36 @@ public class ClusterMain {
     // try sending the request to each seed node
     for (String url : config.getSeedNodeUrls()) {
       Node node = ClusterUtils.parseNode(url);
+      if (node == null) {
+        continue;
+      }
       AsyncMetaClient client = new AsyncMetaClient(factory, new TAsyncClientManager(), node, null);
+      Long response = null;
       try {
         logger.info("Start removing node {} with the help of node {}", nodeToRemove, node);
-        Long response = SyncClientAdaptor.removeNode(client, nodeToRemove);
-        if (response != null) {
-          if (response == Response.RESPONSE_AGREE) {
-            logger.info("Node {} is successfully removed", nodeToRemove);
-            return;
-          } else if (response == Response.RESPONSE_CLUSTER_TOO_SMALL) {
-            logger.error("Cluster size is too small, cannot remove any node");
-            return;
-          } else if (response == Response.RESPONSE_REJECT) {
-            logger.error("Node {} is not found in the cluster, please check", nodeToRemove);
-            return;
-          }
-        }
+        response = SyncClientAdaptor.removeNode(client, nodeToRemove);
       } catch (TException e) {
         logger.warn("Cannot send remove node request through {}, try next node", node);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Cannot send remove node request through {}, try next node", node);
       }
+      if (response != null) {
+        handleNodeRemovalResp(response, nodeToRemove);
+        return;
+      }
+    }
+  }
+
+  private static void handleNodeRemovalResp(Long response, Node nodeToRemove) {
+    if (response == Response.RESPONSE_AGREE) {
+      logger.info("Node {} is successfully removed", nodeToRemove);
+    } else if (response == Response.RESPONSE_CLUSTER_TOO_SMALL) {
+      logger.error("Cluster size is too small, cannot remove any node");
+    } else if (response == Response.RESPONSE_REJECT) {
+      logger.error("Node {} is not found in the cluster, please check", nodeToRemove);
+    } else {
+      logger.error("Unexpected response {}", response);
     }
   }
 
@@ -259,7 +269,7 @@ public class ClusterMain {
   private static void preStartCustomize() {
     // customize data distribution
     // The given example tries to divide storage groups like "root.sg_0", "root.sg_1"... into k
-    // nodes evenly, and use hash for other groups
+    // nodes evenly, and use default strategy for other groups
     SlotPartitionTable.setSlotStrategy(new SlotStrategy() {
       SlotStrategy defaultStrategy = new SlotStrategy.DefaultStrategy();
       int k = 3;

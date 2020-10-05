@@ -235,12 +235,12 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCO
 
 ```
 IoTDB> SHOW TIMESERIES
-+-------------------------------+---------------+--------+--------+
-|                     Timeseries|  Storage Group|DataType|Encoding|
-+-------------------------------+---------------+--------+--------+
-|       root.ln.wf01.wt01.status|        root.ln| BOOLEAN|   PLAIN|
-|  root.ln.wf01.wt01.temperature|        root.ln|   FLOAT|     RLE|
-+-------------------------------+---------------+--------+--------+
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
+|  root.ln.wf01.wt01.temperature|  null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
 Total timeseries number = 2
 ```
 
@@ -248,11 +248,11 @@ Total timeseries number = 2
 
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
-+------------------------------+--------------+--------+--------+
-|                    Timeseries| Storage Group|DataType|Encoding|
-+------------------------------+--------------+--------+--------+
-|      root.ln.wf01.wt01.status|       root.ln| BOOLEAN|   PLAIN|
-+------------------------------+--------------+--------+--------+
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
 Total timeseries number = 1
 ```
 
@@ -298,7 +298,7 @@ or
 IoTDB> exit
 ```
 
-有关IoTDB SQL支持的命令的更多信息，请参见[Chapter 5: IoTDB SQL文档](http://iotdb.apache.org/zh/UserGuide/Master/Operation%20Manual/SQL%20Reference.html)。
+有关IoTDB SQL支持的命令的更多信息，请参见[SQL 参考文档](http://iotdb.apache.org/zh/UserGuide/Master/Operation%20Manual/SQL%20Reference.html)。
 
 ### 停止 IoTDB
 
