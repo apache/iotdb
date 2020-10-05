@@ -163,6 +163,7 @@ public class RaftLogManagerTest {
       }
       blocked = false;
       // applier is unblocked, BlockAppliedCommitIndex should be soon reached
+      ClusterDescriptor.getInstance().getConfig().setCatchUpTimeoutMS(60_000);
       instance.takeSnapshot();
       assertEquals(new SimpleSnapshot(99, 99), instance.getSnapshot());
     } finally {
