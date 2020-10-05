@@ -64,6 +64,7 @@ import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.LocalQueryExecutor;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
@@ -671,7 +672,9 @@ public class MetaGroupMemberTest extends MemberTest {
     }
 
     // 4. prepare the partition table
-    PartitionTable partitionTable = TestUtils.getPartitionTable(3);
+    SlotPartitionTable partitionTable = (SlotPartitionTable) TestUtils.getPartitionTable(3);
+    partitionTable.setLastLogIndex(0);
+
     ByteBuffer beforePartitionTableBuffer = partitionTable.serialize();
     // 5. serialize
     MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot(storageGroupTTL, userMap, roleMap,
