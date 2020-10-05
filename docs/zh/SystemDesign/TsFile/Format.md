@@ -127,14 +127,14 @@ PageHeader 结构
 
  |             成员               | 描述 | DoubleStatistics | FloatStatistics | IntegerStatistics | LongStatistics | BinaryStatistics | BooleanStatistics |
  | :----------------------------------: | :--------------: | :----: | :----: | :----: | :----: | :----: | :----: |
- | count  | number of time-value points | long | long | long | long | long | long | 
- | startTime | start time | long | long | long | long | long | long | 
- | endTime | end time | long | long | long | long | long | long | 
- | minValue | min value | double | float | int | long | - | - |
- | maxValue | max value | double | float | int | long | - | - |
- | firstValue | first value | double | float | int | long | Binary | boolean|
- | lastValue | last value | double | float | int | long | Binary | boolean|
- | sumValue | sum value | double | double | double | double | - | - |
+ | count  | 数据点个数 | long | long | long | long | long | long | 
+ | startTime | 开始时间 | long | long | long | long | long | long | 
+ | endTime | 结束时间 | long | long | long | long | long | long | 
+ | minValue | 最小值 | double | float | int | long | - | - |
+ | maxValue | 最大值 | double | float | int | long | - | - |
+ | firstValue | 第一个值 | double | float | int | long | Binary | boolean|
+ | lastValue | 最后一个值 | double | float | int | long | Binary | boolean|
+ | sumValue | 和 | double | double | double | double | - | - |
  
 ##### ChunkGroupFooter
 
