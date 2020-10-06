@@ -37,7 +37,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 | ------------- | ------------- | ------------ | -------- |
 | `2.4.3`       | `2.11.8`      | `1.8`        | `0.10.0` |
 
-> 注意：有关如何下载和使用TsFile的更多信息，请参见以下链接：https://github.com/apache/incubator-iotdb/tree/master/tsfile
+> 注意：有关如何下载和使用TsFile的更多信息，请参见以下链接：https://github.com/apache/iotdb/tree/master/tsfile
 
 ## 3. 快速开始
 
@@ -51,7 +51,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 
 - \<spark-shell-path\>是您的spark-shell的真实路径。
 - 多个jar包用逗号分隔，没有任何空格。
-- 有关如何获取TsFile的信息，请参见https://github.com/apache/incubator-iotdb/tree/master/tsfile。
+- 有关如何获取TsFile的信息，请参见https://github.com/apache/iotdb/tree/master/tsfile。
 
 ### 分布式模式
 
@@ -65,7 +65,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 
 - \<spark-shell-path\>是您的spark-shell的真实路径。
 - 多个jar包用逗号分隔，没有任何空格。
-- 有关如何获取TsFile的信息，请参见https://github.com/apache/incubator-iotdb/tree/master/tsfile。
+- 有关如何获取TsFile的信息，请参见https://github.com/apache/iotdb/tree/master/tsfile。
 
 ## 4. 数据类型对应
 

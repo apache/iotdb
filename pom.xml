@@ -39,16 +39,16 @@
         </license>
     </licenses>
     <scm>
-        <connection>scm:git:ssh://git@github.com/apache/incubator-iotdb.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com/apache/incubator-iotdb.git</developerConnection>
-        <url>ssh://git@github.com:apache/incubator-iotdb.git</url>
+        <connection>scm:git:ssh://git@github.com/apache/iotdb.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/apache/iotdb.git</developerConnection>
+        <url>ssh://git@github.com:apache/iotdb.git</url>
         <tag>rel/0.10</tag>
     </scm>
     <!-- Only configure the site distribution as the rest is handled by the apache parent -->
     <distributionManagement>
         <site>
             <id>apache.website</id>
-            <url>scm:git:https://gitbox.apache.org/repos/asf/incubator-iotdb-website.git</url>
+            <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url>
         </site>
     </distributionManagement>
     <issueManagement>
@@ -1244,7 +1244,7 @@
             </build>
         </profile>
         <!-- upload code coverage report to coveralls.io-->
-        <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/incubator-iotdb.
+        <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/iotdb.
              use `mvn post-integration-test -Pcode-coverage -DrepoToken=TOKEN`-->
         <!-- enable site-->
         <!-- use `mvn package -P site -pl site` to compile the site module only -->
