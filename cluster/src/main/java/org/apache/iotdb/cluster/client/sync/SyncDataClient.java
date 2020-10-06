@@ -70,7 +70,10 @@ public class SyncDataClient extends Client {
     if (pool != null) {
       pool.putClient(node, this);
     } else {
-      getInputProtocol().getTransport().close();
+      TProtocol inputProtocol = getInputProtocol();
+      if (inputProtocol != null) {
+        inputProtocol.getTransport().close();
+      }
     }
   }
 

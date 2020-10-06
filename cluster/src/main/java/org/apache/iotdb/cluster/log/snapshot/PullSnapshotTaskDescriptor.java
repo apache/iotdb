@@ -24,6 +24,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -98,5 +99,24 @@ public class PullSnapshotTaskDescriptor {
     }
 
     requireReadOnly = dataInputStream.readBoolean();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PullSnapshotTaskDescriptor that = (PullSnapshotTaskDescriptor) o;
+    return requireReadOnly == that.requireReadOnly &&
+        Objects.equals(previousHolders, that.previousHolders) &&
+        Objects.equals(slots, that.slots);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(previousHolders, slots, requireReadOnly);
   }
 }

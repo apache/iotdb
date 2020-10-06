@@ -169,7 +169,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
         nodeIndex = (nodeIndex + 1) % descriptor.getPreviousHolders().size();
         finished = pullSnapshot(nodeIndex);
         if (!finished) {
-          Thread.sleep(ClusterConstant.PULL_SNAPSHOT_RETRY_INTERVAL);
+          Thread.sleep(ClusterDescriptor.getInstance().getConfig().getPullSnapshotRetryIntervalMs());
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -191,7 +191,6 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
       // the task is resumed from disk, do not persist it again
       return;
     }
-
 
     while (true) {
       String saveName = System.currentTimeMillis() + "_" + random.nextLong() + TASK_SUFFIX;
@@ -217,5 +216,9 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
     } catch (IOException e) {
       logger.warn("Cannot remove pull snapshot task file {}", snapshotSave, e);
     }
+  }
+
+  public File getSnapshotSave() {
+    return snapshotSave;
   }
 }

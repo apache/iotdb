@@ -125,6 +125,8 @@ public class ClusterConfig {
 
   private long joinClusterTimeOutMs = 5000L;
 
+  public int pullSnapshotRetryIntervalMs = 5 * 1000;
+
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
@@ -356,5 +358,13 @@ public class ClusterConfig {
 
   public void setJoinClusterTimeOutMs(long joinClusterTimeOutMs) {
     this.joinClusterTimeOutMs = joinClusterTimeOutMs;
+  }
+
+  public int getPullSnapshotRetryIntervalMs() {
+    return pullSnapshotRetryIntervalMs;
+  }
+
+  public void setPullSnapshotRetryIntervalMs(int pullSnapshotRetryIntervalMs) {
+    this.pullSnapshotRetryIntervalMs = pullSnapshotRetryIntervalMs;
   }
 }

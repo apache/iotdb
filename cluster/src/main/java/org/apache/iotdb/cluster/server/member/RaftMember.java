@@ -1022,6 +1022,10 @@ public abstract class RaftMember {
     }
   }
 
+  public boolean isReadOnly() {
+    return readOnly;
+  }
+
   public void initPeerMap() {
     peerMap = new ConcurrentHashMap<>();
     for (Node entry : allNodes) {

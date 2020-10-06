@@ -30,137 +30,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.common.EnvironmentUtils;
-import org.apache.iotdb.cluster.common.TestDataGroupMember;
-import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
-import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.transport.TTransport;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
-public class FileSnapshotTest {
-
-  private DataGroupMember dataGroupMember;
-  private final int failureFrequency = 10;
-  private int failureCnt;
-  private boolean addNetFailure = false;
-
-  @Before
-  public void setUp() throws MetadataException, StartupException {
-    dataGroupMember = new TestDataGroupMember() {
-      @Override
-      public AsyncClient getAsyncClient(Node node) {
-        return new AsyncDataClient(null, null, null) {
-          @Override
-          public void readFile(String filePath, long offset, int length,
-              AsyncMethodCallback<ByteBuffer> resultHandler) {
-            new Thread(() -> {
-              if (addNetFailure && (failureCnt ++) % failureFrequency == 0) {
-                // insert 1 failure in every 10 requests
-                resultHandler.onError(new Exception("Faked network failure"));
-                return;
-              }
-              try {
-                resultHandler.onComplete(IOUtils.readFile(filePath, offset, length));
-              } catch (IOException e) {
-                resultHandler.onError(e);
-              }
-            }).start();
-          }
-        };
-      }
-
-      @Override
-      public Client getSyncClient(Node node) {
-        return new SyncDataClient(new TBinaryProtocol(new TTransport() {
-          @Override
-          public boolean isOpen() {
-            return false;
-          }
-
-          @Override
-          public void open() {
-
-          }
-
-          @Override
-          public void close() {
-
-          }
-
-          @Override
-          public int read(byte[] bytes, int i, int i1) {
-            return 0;
-          }
-
-          @Override
-          public void write(byte[] bytes, int i, int i1) {
-
-          }
-        })) {
-          @Override
-          public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
-            if (addNetFailure && (failureCnt ++) % failureFrequency == 0) {
-              // simulate failures
-              throw new TException("Faked network failure");
-            }
-            try {
-              return IOUtils.readFile(filePath, offset, length);
-            } catch (IOException e) {
-              throw new TException(e);
-            }
-          }
-        };
-      }
-    };
-    // do nothing
-    MetaGroupMember metaGroupMember = new TestMetaGroupMember() {
-      @Override
-      public void syncLeaderWithConsistencyCheck() {
-        // do nothing
-      }
-    };
-    dataGroupMember.setMetaGroupMember(metaGroupMember);
-    EnvironmentUtils.envSetUp();
-    for (int i = 0; i < 10; i++) {
-      IoTDB.metaManager.setStorageGroup(new PartialPath(TestUtils.getTestSg(i)));
-    }
-    addNetFailure = false;
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-  }
+public class FileSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testSerialize()
