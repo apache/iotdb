@@ -67,7 +67,8 @@ public abstract class Log implements Comparable<Log> {
     this.currLogTerm = currLogTerm;
   }
 
-  public synchronized boolean isApplied() {
+  @SuppressWarnings("java:S2886") // synchronized outside
+  public boolean isApplied() {
     return applied;
   }
 

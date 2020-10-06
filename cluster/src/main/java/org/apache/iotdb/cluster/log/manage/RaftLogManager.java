@@ -76,6 +76,7 @@ public abstract class RaftLogManager {
    * used for asyncLogApplier
    */
   private volatile long maxHaveAppliedCommitIndex;
+  private final Object changeApplyCommitIndexCond = new Object();
 
   /**
    * The committed log whose index is larger than blockAppliedCommitIndex will be blocked. if
@@ -487,8 +488,10 @@ public abstract class RaftLogManager {
       this.commitIndex = snapshot.getLastLogIndex();
     }
 
-    if (this.maxHaveAppliedCommitIndex < snapshot.getLastLogIndex()) {
-      this.maxHaveAppliedCommitIndex = snapshot.getLastLogIndex();
+    synchronized (changeApplyCommitIndexCond) {
+      if (this.maxHaveAppliedCommitIndex < snapshot.getLastLogIndex()) {
+        this.maxHaveAppliedCommitIndex = snapshot.getLastLogIndex();
+      }
     }
   }
 
@@ -848,7 +851,7 @@ public abstract class RaftLogManager {
           log.wait(5);
         }
       }
-      synchronized (this) {
+      synchronized (changeApplyCommitIndexCond) {
         // maxHaveAppliedCommitIndex may change if a snapshot is applied concurrently
         maxHaveAppliedCommitIndex = Math.max(maxHaveAppliedCommitIndex, nextToCheckIndex);
       }
