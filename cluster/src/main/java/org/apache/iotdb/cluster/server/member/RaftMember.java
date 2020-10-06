@@ -903,10 +903,15 @@ public abstract class RaftMember {
       start = System.nanoTime();
     }
     synchronized (logManager) {
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_V2.addNanoFromStart(start);
+
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-
       log.setPlan(plan);
+
+      if (Timer.ENABLE_INSTRUMENTING) {
+        start = System.nanoTime();
+      }
       logManager.append(log);
       Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.addNanoFromStart(start);
 
