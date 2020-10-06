@@ -33,7 +33,6 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.Timer.Statistic;
-import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -46,7 +45,7 @@ import org.slf4j.LoggerFactory;
 public class AsyncDataLogApplier implements LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncDataLogApplier.class);
-  private static final int CONCURRENT_CONSUMER_NUM = 64;
+  private static final int CONCURRENT_CONSUMER_NUM = Runtime.getRuntime().availableProcessors();
   private LogApplier embeddedApplier;
   private Map<PartialPath, DataLogConsumer> consumerMap;
   private ExecutorService consumerPool;
