@@ -74,6 +74,7 @@ import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.Timer;
+import org.apache.iotdb.cluster.server.Timer.Statistic;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.utils.ClientUtils;
@@ -915,7 +916,7 @@ public abstract class RaftMember {
       sendLogRequest = buildSendLogRequest(log);
       sendLogRequest.setCreateTime(System.nanoTime());
       getLogDispatcher().offer(sendLogRequest);
-      Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.addNanoFromStart(start);
+      Statistic.RAFT_SENDER_OFFER_LOG.addNanoFromStart(start);
     }
     
     try {
