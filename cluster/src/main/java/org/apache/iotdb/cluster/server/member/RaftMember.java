@@ -924,7 +924,7 @@ public abstract class RaftMember {
       if (Timer.ENABLE_INSTRUMENTING) {
         start = System.nanoTime();
       }
-      sendLogRequest.setCreateTime(System.nanoTime());
+      log.setCreateTime(System.nanoTime());
       getLogDispatcher().offer(sendLogRequest);
       Statistic.RAFT_SENDER_OFFER_LOG.addNanoFromStart(start);
     }
@@ -934,7 +934,7 @@ public abstract class RaftMember {
           sendLogRequest.getLeaderShipStale(),
           sendLogRequest.getNewLeaderTerm());
       Timer.Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT
-          .addNanoFromStart(sendLogRequest.getCreateTime());
+          .addNanoFromStart(sendLogRequest.getLog().getCreateTime());
       switch (appendLogResult) {
         case OK:
           logger.debug("{}: log {} is accepted", name, log);

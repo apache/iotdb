@@ -107,6 +107,9 @@ public class Timer {
     RAFT_SENDER_COMMIT_WAIT_LOG_APPLY_V2(
         RAFT_MEMBER_SENDER, "wait until log is applied", TIME_SCALE,
         RaftMember.USE_LOG_DISPATCHER, RAFT_SENDER_COMMIT_LOG_V2),
+    RAFT_SENDER_IN_APPLY_QUEUE(
+        RAFT_MEMBER_SENDER, "in apply queue", TIME_SCALE, true,
+        RAFT_SENDER_COMMIT_WAIT_LOG_APPLY_V2),
     RAFT_SENDER_DATA_LOG_APPLY(
         RAFT_MEMBER_SENDER, "apply data log", TIME_SCALE, true,
         RAFT_SENDER_COMMIT_WAIT_LOG_APPLY_V2),

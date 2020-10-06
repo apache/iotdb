@@ -107,7 +107,6 @@ public class LogDispatcher {
     private AtomicLong newLeaderTerm;
     private AppendEntryRequest appendEntryRequest;
     private long enqueueTime;
-    private long createTime;
 
     public SendLogRequest(Log log, AtomicInteger voteCounter,
         AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm,
@@ -141,14 +140,6 @@ public class LogDispatcher {
 
     public void setEnqueueTime(long enqueueTime) {
       this.enqueueTime = enqueueTime;
-    }
-
-    public long getCreateTime() {
-      return createTime;
-    }
-
-    public void setCreateTime(long createTime) {
-      this.createTime = createTime;
     }
 
     public AtomicBoolean getLeaderShipStale() {
@@ -295,7 +286,7 @@ public class LogDispatcher {
     private void sendLogs(List<SendLogRequest> currBatch) throws TException {
       List<ByteBuffer> logList = new ArrayList<>();
       for (SendLogRequest request : currBatch) {
-        Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.addNanoFromStart(request.getCreateTime());
+        Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.addNanoFromStart(request.getLog().getCreateTime());
         logList.add(request.getAppendEntryRequest().entry);
       }
 
@@ -306,17 +297,17 @@ public class LogDispatcher {
         appendEntriesSync(logList, appendEntriesReques, currBatch);
       }
       for (SendLogRequest batch : currBatch) {
-        Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.addNanoFromStart(batch.getCreateTime());
+        Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.addNanoFromStart(batch.getLog().getCreateTime());
       }
     }
 
     private void sendLog(SendLogRequest logRequest) {
-      Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.addNanoFromStart(logRequest.getCreateTime());
+      Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.addNanoFromStart(logRequest.getLog().getCreateTime());
       member.sendLogToFollower(logRequest.getLog(), logRequest.getVoteCounter(), receiver,
           logRequest.getLeaderShipStale(), logRequest.getNewLeaderTerm(),
           logRequest.getAppendEntryRequest());
       Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END
-          .addNanoFromStart(logRequest.getCreateTime());
+          .addNanoFromStart(logRequest.getLog().getCreateTime());
     }
 
     class AppendEntriesHandler implements AsyncMethodCallback<Long> {

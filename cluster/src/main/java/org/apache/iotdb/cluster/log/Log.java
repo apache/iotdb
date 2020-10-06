@@ -42,6 +42,9 @@ public abstract class Log implements Comparable<Log> {
   @SuppressWarnings("java:S3077")
   private volatile Exception exception;
 
+  private long createTime;
+  private long enqueueTime;
+
   public abstract ByteBuffer serialize();
 
   public abstract void deserialize(ByteBuffer buffer);
@@ -108,5 +111,21 @@ public abstract class Log implements Comparable<Log> {
   @Override
   public int compareTo(Log o) {
     return COMPARATOR.compare(this, o);
+  }
+
+  public long getCreateTime() {
+    return createTime;
+  }
+
+  public void setCreateTime(long createTime) {
+    this.createTime = createTime;
+  }
+
+  public long getEnqueueTime() {
+    return enqueueTime;
+  }
+
+  public void setEnqueueTime(long enqueueTime) {
+    this.enqueueTime = enqueueTime;
   }
 }

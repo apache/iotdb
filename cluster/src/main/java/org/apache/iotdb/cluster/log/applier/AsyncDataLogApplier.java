@@ -105,6 +105,9 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   private void provideLogToConsumers(PartialPath sgPath, Log log) {
+    if (Timer.ENABLE_INSTRUMENTING) {
+      log.setEnqueueTime(System.nanoTime());
+    }
     consumerMap.computeIfAbsent(sgPath, d -> {
       DataLogConsumer dataLogConsumer = new DataLogConsumer(name + "-" + d);
       consumerPool.submit(dataLogConsumer);
@@ -174,6 +177,7 @@ public class AsyncDataLogApplier implements LogApplier {
       while (!Thread.currentThread().isInterrupted()) {
         try {
           Log log = logQueue.take();
+          Statistic.RAFT_SENDER_IN_APPLY_QUEUE.addNanoFromStart(log.getEnqueueTime());
           try {
             applyInternal(log);
           } finally {
