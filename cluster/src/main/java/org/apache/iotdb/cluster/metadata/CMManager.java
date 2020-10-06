@@ -42,7 +42,8 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
@@ -1124,11 +1125,17 @@ public class CMManager extends MManager {
     return child;
   }
 
+  public List<ShowTimeSeriesResult> showLocalTimeseries(ShowTimeSeriesPlan plan,
+      QueryContext context) throws MetadataException {
+    return super.showTimeseries(plan, context);
+  }
+
   @Override
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
     ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
-    ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
+    ExecutorService pool = new ThreadPoolExecutor(THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0,
+        TimeUnit.SECONDS, new LinkedBlockingDeque<>());
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
 
     int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();

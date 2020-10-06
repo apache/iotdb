@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
@@ -87,6 +88,10 @@ public class LocalQueryExecutor {
     this.readerFactory = new ClusterReaderFactory(dataGroupMember.getMetaGroupMember());
     this.name = dataGroupMember.getName();
     this.queryManager = dataGroupMember.getQueryManager();
+  }
+  
+  private CMManager getCMManager() {
+    return ((CMManager) IoTDB.metaManager);
   }
 
   /**
@@ -216,7 +221,7 @@ public class LocalQueryExecutor {
     List<String> prefixPaths = request.getPrefixPaths();
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
     for (String prefixPath : prefixPaths) {
-      IoTDB.metaManager.collectTimeseriesSchema(prefixPath, timeseriesSchemas);
+      getCMManager().collectTimeseriesSchema(prefixPath, timeseriesSchemas);
     }
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Collected {} schemas for {} and other {} paths", name,
@@ -257,7 +262,7 @@ public class LocalQueryExecutor {
     List<String> prefixPaths = request.getPrefixPaths();
     List<MeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String prefixPath : prefixPaths) {
-      IoTDB.metaManager.collectSeries(new PartialPath(prefixPath), measurementSchemas);
+      getCMManager().collectSeries(new PartialPath(prefixPath), measurementSchemas);
     }
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Collected {} schemas for {} and other {} paths", name,
@@ -329,7 +334,7 @@ public class LocalQueryExecutor {
 
     ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
     List<ShowTimeSeriesResult> allTimeseriesSchema;
-    allTimeseriesSchema = IoTDB.metaManager.showTimeseries(plan, new QueryContext());
+    allTimeseriesSchema = getCMManager().showLocalTimeseries(plan, new QueryContext());
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
@@ -438,7 +443,7 @@ public class LocalQueryExecutor {
     List<String> result = new ArrayList<>();
     for (String seriesPath : timeseriesList) {
       try {
-        List<PartialPath> path = IoTDB.metaManager.getAllTimeseriesPath(new PartialPath(seriesPath));
+        List<PartialPath> path = getCMManager().getAllTimeseriesPath(new PartialPath(seriesPath));
         if (path.size() != 1) {
           throw new MetadataException(
               String.format("Timeseries number of the name [%s] is not 1.", seriesPath));
@@ -630,9 +635,9 @@ public class LocalQueryExecutor {
     int count = 0;
     for (String s : pathsToQuery) {
       if (level == -1) {
-        count += IoTDB.metaManager.getAllTimeseriesCount(new PartialPath(s));
+        count += getCMManager().getAllTimeseriesCount(new PartialPath(s));
       } else {
-        count += IoTDB.metaManager.getNodesCountInGivenLevel(new PartialPath(s), level);
+        count += getCMManager().getNodesCountInGivenLevel(new PartialPath(s), level);
       }
     }
     return count;
