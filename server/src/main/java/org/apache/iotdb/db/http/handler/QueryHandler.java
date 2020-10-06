@@ -57,8 +57,20 @@ public class QueryHandler extends Handler{
       IOException, InterruptedException, SQLException {
     checkLogin();
     JSONObject jsonObject = (JSONObject) json;
-    Long from = (Long) jsonObject.get(HttpConstant.FROM);
-    Long to = (Long) jsonObject.get(HttpConstant.TO);
+    Long from;
+    Long to;
+    if(jsonObject.get(HttpConstant.FROM) instanceof Long) {
+      from = (Long) jsonObject.get(HttpConstant.FROM);
+    } else {
+      from = ((Integer) jsonObject.get(HttpConstant.FROM)).longValue();
+    }
+
+    if(jsonObject.get(HttpConstant.TO) instanceof Long) {
+      to = (Long) jsonObject.get(HttpConstant.TO);
+    } else {
+      to = ((Integer) jsonObject.get(HttpConstant.TO)).longValue();
+    }
+
     JSONArray timeSeries = (JSONArray) jsonObject.get(HttpConstant.TIME_SERIES);
     if(timeSeries == null) {
       JSONObject result = new JSONObject();
@@ -150,14 +162,26 @@ public class QueryHandler extends Handler{
     }
     JSONArray result = new JSONArray();
     QueryDataSet dataSet = executor.processQuery(plan, new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
+    List<PartialPath> paths = plan.getPaths();
+    for(PartialPath path : paths) {
+      JSONObject column = new JSONObject();
+      JSONArray values = new JSONArray();
+      column.put(HttpConstant.TIME_SERIES, path.toString());
+      column.put(HttpConstant.VALUES, values);
+      result.add(column);
+    }
+
     while(dataSet.hasNext()) {
-      JSONObject datapoint = new JSONObject();
       RowRecord rowRecord = dataSet.next();
-      for(Field field : rowRecord.getFields()) {
+      List<Field> fields = rowRecord.getFields();
+      for(int i = 0; i < fields.size(); i ++ ) {
+        JSONObject column = (JSONObject) result.get(i);
+        JSONArray values = (JSONArray) column.get(HttpConstant.VALUES);
+        JSONObject datapoint = new JSONObject();
         datapoint.put(HttpConstant.TIMESTAMP, rowRecord.getTimestamp());
-        datapoint.put(HttpConstant.VALUE,field.getObjectValue(field.getDataType()));
+        datapoint.put(HttpConstant.VALUE,fields.get(i).getObjectValue(fields.get(i).getDataType()));
+        values.add(datapoint);
       }
-      result.add(datapoint);
     }
     return result;
   }

@@ -118,7 +118,14 @@ public class HttpRouterTest extends HttpPrepData{
     prepareData();
     JSONObject query = queryJsonExample();
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
-    Assert.assertEquals("[{\"value\":1.0,\"timestamp\":1},{\"value\":2.0,\"timestamp\":2},{\"value\":3.0,\"timestamp\":3},{\"value\":4.0,\"timestamp\":4},{\"value\":5.0,\"timestamp\":5}]"
+    Assert.assertEquals("[{\"timeSeries\":\"root.test.m0\"" +
+                    ",\"values\":[{\"value\":1,\"timestamp\":2},{\"value\":1,\"timestamp\":3},{\"value\":1,\"timestamp\":4},{\"value\":1,\"timestamp\":5},{\"value\":1,\"timestamp\":6}," +
+                    "{\"value\":1,\"timestamp\":7},{\"value\":1,\"timestamp\":8},{\"value\":1,\"timestamp\":9},{\"value\":1,\"timestamp\":10},{\"value\":1,\"timestamp\":11},{\"value\":1,\"timestamp\":12}," +
+                    "{\"value\":1,\"timestamp\":13},{\"value\":1,\"timestamp\":14},{\"value\":1,\"timestamp\":15},{\"value\":1,\"timestamp\":16},{\"value\":1,\"timestamp\":17},{\"value\":1,\"timestamp\":18}," +
+                    "{\"value\":1,\"timestamp\":19},{\"value\":0,\"timestamp\":20}]},{\"timeSeries\":\"root.test.m9\",\"values\":[{\"value\":1,\"timestamp\":2},{\"value\":1,\"timestamp\":3},{\"value\":1,\"timestamp\":4},{\"value\":1,\"timestamp\":5}," +
+                    "{\"value\":1,\"timestamp\":6},{\"value\":1,\"timestamp\":7},{\"value\":1,\"timestamp\":8},{\"value\":1,\"timestamp\":9},{\"value\":1,\"timestamp\":10},{\"value\":1,\"timestamp\":11},{\"value\":1,\"timestamp\":12}," +
+                    "{\"value\":1,\"timestamp\":13},{\"value\":1,\"timestamp\":14},{\"value\":1,\"timestamp\":15},{\"value\":1,\"timestamp\":16},{\"value\":1,\"timestamp\":17},{\"value\":1,\"timestamp\":18},{\"value\":1,\"timestamp\":19}," +
+                    "{\"value\":0,\"timestamp\":20}]}]"
         , router.route(HttpMethod.POST, HttpConstant.ROUTING_QUERY, query).toString());
   }
 
