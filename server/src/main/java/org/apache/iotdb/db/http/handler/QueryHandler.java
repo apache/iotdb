@@ -163,6 +163,11 @@ public class QueryHandler extends Handler{
     JSONArray result = new JSONArray();
     QueryDataSet dataSet = executor.processQuery(plan, new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
     List<PartialPath> paths = plan.getPaths();
+    JSONObject timeColumn = new JSONObject();
+    timeColumn.put(HttpConstant.TIMESTAMP, HttpConstant.TIMESTAMP);
+    JSONArray timeValues = new JSONArray();
+    timeColumn.put(HttpConstant.VALUES, timeValues);
+    result.add(timeColumn);
     for(PartialPath path : paths) {
       JSONObject column = new JSONObject();
       JSONArray values = new JSONArray();
@@ -173,14 +178,14 @@ public class QueryHandler extends Handler{
 
     while(dataSet.hasNext()) {
       RowRecord rowRecord = dataSet.next();
+      JSONObject timeCol = (JSONObject) result.get(0);
+      JSONArray timeVal = (JSONArray) timeCol.get(HttpConstant.VALUES);
+      timeVal.add(rowRecord.getTimestamp());
       List<Field> fields = rowRecord.getFields();
       for(int i = 0; i < fields.size(); i ++ ) {
-        JSONObject column = (JSONObject) result.get(i);
+        JSONObject column = (JSONObject) result.get(i + 1);
         JSONArray values = (JSONArray) column.get(HttpConstant.VALUES);
-        JSONObject datapoint = new JSONObject();
-        datapoint.put(HttpConstant.TIMESTAMP, rowRecord.getTimestamp());
-        datapoint.put(HttpConstant.VALUE,fields.get(i).getObjectValue(fields.get(i).getDataType()));
-        values.add(datapoint);
+        values.add(fields.get(i).getObjectValue(fields.get(i).getDataType()));
       }
     }
     return result;

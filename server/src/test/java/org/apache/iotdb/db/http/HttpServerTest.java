@@ -165,14 +165,9 @@ public class HttpServerTest extends HttpPrepData {
     JSONObject query = queryJsonExample();
     Response response = client.target(QUERY_URI)
         .request(MediaType.APPLICATION_JSON).post(Entity.entity(query, MediaType.APPLICATION_JSON));
-    Assert.assertEquals("[{\"timeSeries\":\"root.test.m0\"" +
-                    ",\"values\":[{\"value\":1,\"timestamp\":2},{\"value\":1,\"timestamp\":3},{\"value\":1,\"timestamp\":4},{\"value\":1,\"timestamp\":5},{\"value\":1,\"timestamp\":6}," +
-                    "{\"value\":1,\"timestamp\":7},{\"value\":1,\"timestamp\":8},{\"value\":1,\"timestamp\":9},{\"value\":1,\"timestamp\":10},{\"value\":1,\"timestamp\":11},{\"value\":1,\"timestamp\":12}," +
-                    "{\"value\":1,\"timestamp\":13},{\"value\":1,\"timestamp\":14},{\"value\":1,\"timestamp\":15},{\"value\":1,\"timestamp\":16},{\"value\":1,\"timestamp\":17},{\"value\":1,\"timestamp\":18}," +
-                    "{\"value\":1,\"timestamp\":19},{\"value\":0,\"timestamp\":20}]},{\"timeSeries\":\"root.test.m9\",\"values\":[{\"value\":1,\"timestamp\":2},{\"value\":1,\"timestamp\":3},{\"value\":1,\"timestamp\":4},{\"value\":1,\"timestamp\":5}," +
-                    "{\"value\":1,\"timestamp\":6},{\"value\":1,\"timestamp\":7},{\"value\":1,\"timestamp\":8},{\"value\":1,\"timestamp\":9},{\"value\":1,\"timestamp\":10},{\"value\":1,\"timestamp\":11},{\"value\":1,\"timestamp\":12}," +
-                    "{\"value\":1,\"timestamp\":13},{\"value\":1,\"timestamp\":14},{\"value\":1,\"timestamp\":15},{\"value\":1,\"timestamp\":16},{\"value\":1,\"timestamp\":17},{\"value\":1,\"timestamp\":18},{\"value\":1,\"timestamp\":19}," +
-                    "{\"value\":0,\"timestamp\":20}]}]"
+    Assert.assertEquals("[{\"values\":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],\"timestamp\":\"timestamp\"}," +
+                    "{\"timeSeries\":\"root.test.m0\",\"values\":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0]}," +
+                    "{\"timeSeries\":\"root.test.m9\",\"values\":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0]}]"
         , response.readEntity(String.class));
   }
 
