@@ -208,7 +208,7 @@ public class CatchUpTaskTest {
     receivedLogs.clear();
 
     sender.getLogManager().append(logList);
-    sender.getLogManager().commitTo(9, false);
+    sender.getLogManager().commitTo(9);
     sender.getLogManager().setMaxHaveAppliedCommitIndex(sender.getLogManager().getCommitLogIndex());
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
@@ -233,7 +233,7 @@ public class CatchUpTaskTest {
       }
     }
     sender.getLogManager().append(logList);
-    sender.getLogManager().commitTo(9, false);
+    sender.getLogManager().commitTo(9);
     sender.getLogManager().setMaxHaveAppliedCommitIndex(sender.getLogManager().getCommitLogIndex());
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
@@ -264,7 +264,7 @@ public class CatchUpTaskTest {
         }
       }
       sender.getLogManager().append(logList);
-      sender.getLogManager().commitTo(9, false);
+      sender.getLogManager().commitTo(9);
       sender.getLogManager().setMaxHaveAppliedCommitIndex(sender.getLogManager().getCommitLogIndex());
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
@@ -291,7 +291,7 @@ public class CatchUpTaskTest {
       logList.add(log);
     }
     sender.getLogManager().append(logList);
-    sender.getLogManager().commitTo(9, false);
+    sender.getLogManager().commitTo(9);
     sender.getLogManager().setMaxHaveAppliedCommitIndex(sender.getLogManager().getCommitLogIndex());
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
@@ -316,7 +316,7 @@ public class CatchUpTaskTest {
       logList.add(log);
     }
     sender.getLogManager().append(logList);
-    sender.getLogManager().commitTo(9, false);
+    sender.getLogManager().commitTo(9);
     sender.getLogManager().setMaxHaveAppliedCommitIndex(sender.getLogManager().getCommitLogIndex());
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);

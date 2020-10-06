@@ -117,7 +117,7 @@ public class AsyncDataLogApplier implements LogApplier {
       while (!allConsumersEmpty()) {
         // wait until all consumers empty
         try {
-          consumerEmptyCondition.wait();
+          consumerEmptyCondition.wait(5);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           return;
