@@ -921,9 +921,6 @@ public abstract class RaftMember {
       sendLogRequest = buildSendLogRequest(log);
       Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.addNanoFromStart(start);
 
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
       sendLogRequest.setCreateTime(System.nanoTime());
       getLogDispatcher().offer(sendLogRequest);
       Statistic.RAFT_SENDER_OFFER_LOG.addNanoFromStart(start);
@@ -962,7 +959,13 @@ public abstract class RaftMember {
     AtomicInteger voteCounter = new AtomicInteger(allNodes.size() / 2);
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(term.get());
+
+    long start;
+    if (Timer.ENABLE_INSTRUMENTING) {
+      start = System.nanoTime();
+    }
     AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(log);
+    Statistic.RAFT_SENDER_BUILD_APPEND_REQUEST.addNanoFromStart(start);
 
     return new SendLogRequest(log, voteCounter, leaderShipStale, newLeaderTerm, appendEntryRequest);
   }
