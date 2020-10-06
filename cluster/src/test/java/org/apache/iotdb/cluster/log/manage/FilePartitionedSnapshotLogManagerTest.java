@@ -63,7 +63,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
     try {
       List<Log> logs = TestUtils.prepareTestLogs(10);
       manager.append(logs);
-      manager.commitTo(10, false);
+      manager.commitTo(10);
       manager.setMaxHaveAppliedCommitIndex(manager.getCommitLogIndex());
 
       Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds = new HashMap<>();

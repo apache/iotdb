@@ -131,7 +131,7 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
     dataLogManager = new TestLogManager(2);
     List<Log> logs = TestUtils.prepareTestLogs(14);
     dataLogManager.append(logs);
-    dataLogManager.commitTo(13, false);
+    dataLogManager.commitTo(13);
   }
 
   @Override
