@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.Timer.Statistic;
+import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -75,10 +76,10 @@ public class AsyncDataLogApplier implements LogApplier {
       PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
       PhysicalPlan plan = physicalPlanLog.getPlan();
       try {
-        PartialPath planSg = getPlanSg(plan);
-        if (planSg != null) {
+        PartialPath planKey = getPlanKey(plan);
+        if (planKey != null) {
           // this plan only affects one sg, so we can run it with other plans in parallel
-          provideLogToConsumers(planSg, log);
+          provideLogToConsumers(planKey, log);
           return;
         }
       } catch (StorageGroupNotSetException e) {
@@ -92,7 +93,22 @@ public class AsyncDataLogApplier implements LogApplier {
     applyInternal(log);
   }
 
-  private PartialPath getPlanSg(PhysicalPlan plan) throws StorageGroupNotSetException {
+  private PartialPath getPlanKey(PhysicalPlan plan) throws StorageGroupNotSetException {
+    return getPlanDevice(plan);
+  }
+
+  private PartialPath getPlanDevice(PhysicalPlan plan) {
+    PartialPath sgPath = null;
+    if (plan instanceof InsertPlan) {
+      sgPath = ((InsertPlan) plan).getDeviceId();
+    } else if (plan instanceof CreateTimeSeriesPlan) {
+      PartialPath path = ((CreateTimeSeriesPlan) plan).getPath();
+      sgPath = path.getDevicePath();
+    }
+    return sgPath;
+  }
+
+  private PartialPath getPlanSG(PhysicalPlan plan) throws StorageGroupNotSetException {
     PartialPath sgPath = null;
     if (plan instanceof InsertPlan) {
       PartialPath deviceId = ((InsertPlan) plan).getDeviceId();
@@ -104,11 +120,11 @@ public class AsyncDataLogApplier implements LogApplier {
     return sgPath;
   }
 
-  private void provideLogToConsumers(PartialPath sgPath, Log log) {
+  private void provideLogToConsumers(PartialPath planKey, Log log) {
     if (Timer.ENABLE_INSTRUMENTING) {
       log.setEnqueueTime(System.nanoTime());
     }
-    consumerMap.computeIfAbsent(sgPath, d -> {
+    consumerMap.computeIfAbsent(planKey, d -> {
       DataLogConsumer dataLogConsumer = new DataLogConsumer(name + "-" + d);
       consumerPool.submit(dataLogConsumer);
       return dataLogConsumer;
