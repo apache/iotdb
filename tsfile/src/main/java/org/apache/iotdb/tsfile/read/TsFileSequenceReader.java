@@ -24,12 +24,12 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -423,7 +423,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   private List<String> getAllDevices(MetadataIndexNode metadataIndexNode) throws IOException {
-    Set<String> deviceSet = new TreeSet<>();
+    Set<String> deviceSet = new HashSet<>();
     int metadataIndexListSize = metadataIndexNode.getChildren().size();
     for (int i = 0; i < metadataIndexListSize; i++) {
       MetadataIndexEntry metadataIndex = metadataIndexNode.getChildren().get(i);

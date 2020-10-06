@@ -124,7 +124,7 @@ public class ImportCsvTestIT extends AbstractScript {
       "````````````````````````````````````````````````",
       "Start to import data from: test.csv",
       "",
-      "Import from: test.csv   0%",
+      "Import from: test.csv",
       "Import from: test.csv 100%"
     };
     String dir = getCliPath();
@@ -143,7 +143,7 @@ public class ImportCsvTestIT extends AbstractScript {
             "------------------------------------------",
             "Start to import data from: test.csv",
             "",
-            "Import from: test.csv   0%",
+            "Import from: test.csv",
             "Import from: test.csv 100%"
     };
     String dir = getCliPath();

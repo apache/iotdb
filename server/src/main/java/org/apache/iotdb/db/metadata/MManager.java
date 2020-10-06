@@ -93,7 +93,7 @@ import org.slf4j.LoggerFactory;
 public class MManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
-  private static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
+  public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
   /**
    * A thread will check whether the MTree is modified lately each such interval. Unit: second
@@ -197,8 +197,6 @@ public class MManager {
 
   /**
    * we should not use this function in other place, but only in IoTDB class
-   *
-   * @return
    */
   public static MManager getInstance() {
     return MManagerHolder.INSTANCE;
@@ -366,7 +364,7 @@ public class MManager {
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP:
         List<PartialPath> storageGroups = new ArrayList<>();
-        for(int i = 1; i <= args.length; i++) {
+        for (int i = 1; i <= args.length; i++) {
           storageGroups.add(new PartialPath(args[i]));
         }
         deleteStorageGroups(storageGroups);
@@ -467,9 +465,9 @@ public class MManager {
   /**
    * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
    *
-   * @param path       the timeseries path
-   * @param dataType   the dateType {@code DataType} of the timeseries
-   * @param encoding   the encoding function {@code Encoding} of the timeseries
+   * @param path the timeseries path
+   * @param dataType the dateType {@code DataType} of the timeseries
+   * @param encoding the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    * @return whether the measurement occurs for the first time in this storage group (if true, the
    * measurement should be registered to the StorageEngine too)
@@ -580,7 +578,8 @@ public class MManager {
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      Pair<PartialPath, MeasurementMNode> pair = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
+      Pair<PartialPath, MeasurementMNode> pair = mtree
+          .deleteTimeseriesAndReturnEmptyStorageGroup(path);
       removeFromTagInvertedIndex(pair.right);
       PartialPath storageGroupPath = pair.left;
 
@@ -723,25 +722,24 @@ public class MManager {
     }
   }
 
-  public MeasurementSchema[] getSchemas(PartialPath deviceId, String[] measurements)
+  public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
     lock.readLock().lock();
     try {
       MNode deviceNode = getNodeByPath(deviceId);
-      MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurements.length];
-      for (int i = 0; i < measurementSchemas.length; i++) {
+      MeasurementMNode[] mNodes = new MeasurementMNode[measurements.length];
+      for (int i = 0; i < mNodes.length; i++) {
         if (!deviceNode.hasChild(measurements[i])) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            measurementSchemas[i] = null;
+            mNodes[i] = null;
           } else {
             throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
           }
         } else {
-          measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]))
-              .getSchema();
+          mNodes[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]));
         }
       }
-      return measurementSchemas;
+      return mNodes;
     } finally {
       lock.readLock().unlock();
     }
@@ -751,7 +749,7 @@ public class MManager {
    * Get all devices under given prefixPath.
    *
    * @param prefixPath a prefix of a full path. if the wildcard is not at the tail, then each
-   *                   wildcard can only match one level, otherwise it can match to the tail.
+   * wildcard can only match one level, otherwise it can match to the tail.
    * @return A HashSet instance which stores devices paths with given prefixPath.
    */
   public Set<PartialPath> getDevices(PartialPath prefixPath) throws MetadataException {
@@ -767,16 +765,18 @@ public class MManager {
    * Get all nodes from the given level
    *
    * @param prefixPath can be a prefix of a full path. Can not be a full path. can not have
-   *                   wildcard. But, the level of the prefixPath can be smaller than the given
-   *                   level, e.g., prefixPath = root.a while the given level is 5
-   * @param nodeLevel  the level can not be smaller than the level of the prefixPath
+   * wildcard. But, the level of the prefixPath can be smaller than the given level, e.g.,
+   * prefixPath = root.a while the given level is 5
+   * @param nodeLevel the level can not be smaller than the level of the prefixPath
    * @return A List instance which stores all node at given level
    */
-  public List<PartialPath> getNodesList(PartialPath prefixPath, int nodeLevel) throws MetadataException {
+  public List<PartialPath> getNodesList(PartialPath prefixPath, int nodeLevel)
+      throws MetadataException {
     return getNodesList(prefixPath, nodeLevel, null);
   }
 
-  public List<PartialPath> getNodesList(PartialPath prefixPath, int nodeLevel, StorageGroupFilter filter)
+  public List<PartialPath> getNodesList(PartialPath prefixPath, int nodeLevel,
+      StorageGroupFilter filter)
       throws MetadataException {
     lock.readLock().lock();
     try {
@@ -818,7 +818,7 @@ public class MManager {
    * Get all storage group under given prefixPath.
    *
    * @param prefixPath a prefix of a full path. if the wildcard is not at the tail, then each
-   *                   wildcard can only match one level, otherwise it can match to the tail.
+   * wildcard can only match one level, otherwise it can match to the tail.
    * @return A ArrayList instance which stores storage group paths with given prefixPath.
    */
   public List<PartialPath> getStorageGroupPaths(PartialPath prefixPath) throws MetadataException {
@@ -847,7 +847,7 @@ public class MManager {
    * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
    *
    * @param prefixPath can be a prefix or a full path. if the wildcard is not at the tail, then each
-   *                   wildcard can only match one level, otherwise it can match to the tail.
+   * wildcard can only match one level, otherwise it can match to the tail.
    */
   public List<PartialPath> getAllTimeseriesPath(PartialPath prefixPath) throws MetadataException {
     lock.readLock().lock();
@@ -859,10 +859,10 @@ public class MManager {
   }
 
   /**
-   * Similar to method getAllTimeseriesPath(), but return Path with alias
-   * alias.
+   * Similar to method getAllTimeseriesPath(), but return Path with alias alias.
    */
-  public List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath) throws MetadataException {
+  public List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath)
+      throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesPathWithAlias(prefixPath);
@@ -911,7 +911,7 @@ public class MManager {
    * To calculate the count of nodes in the given level for given prefix path.
    *
    * @param prefixPath a prefix path or a full path, can not contain '*'
-   * @param level      the level can not be smaller than the level of the prefixPath
+   * @param level the level can not be smaller than the level of the prefixPath
    */
   public int getNodesCountInGivenLevel(PartialPath prefixPath, int level) throws MetadataException {
     lock.readLock().lock();
@@ -978,14 +978,13 @@ public class MManager {
             }
           }
           try {
-            Pair<Map<String, String>, Map<String, String>> pair =
+            Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
                 tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
-            pair.left.putAll(pair.right);
             MeasurementSchema measurementSchema = leaf.getSchema();
             res.add(new ShowTimeSeriesResult(leaf.getFullPath(), leaf.getAlias(),
-                getStorageGroupPath(leaf.getPartialPath()).getFullPath(), measurementSchema.getType().toString(),
-                measurementSchema.getEncodingType().toString(),
-                measurementSchema.getCompressor().toString(), pair.left));
+                getStorageGroupPath(leaf.getPartialPath()).getFullPath(), measurementSchema.getType(),
+                measurementSchema.getEncodingType(),
+                measurementSchema.getCompressor(), tagAndAttributePair.left, tagAndAttributePair.right));
             if (limit != 0) {
               count++;
             }
@@ -1046,21 +1045,18 @@ public class MManager {
       for (Pair<PartialPath, String[]> ansString : ans) {
         long tagFileOffset = Long.parseLong(ansString.right[5]);
         try {
-          if (tagFileOffset < 0) {
-            // no tags/attributes
-            res.add(new ShowTimeSeriesResult(ansString.left.getFullPath(), ansString.right[0], ansString.right[1], ansString.right[2],
-                ansString.right[3], ansString.right[4], Collections.emptyMap()));
-          } else {
-            // has tags/attributes
-            Pair<Map<String, String>, Map<String, String>> pair =
-                tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
-            pair.left.putAll(pair.right);
-            res.add(new ShowTimeSeriesResult(ansString.left.getFullPath(), ansString.right[0], ansString.right[1], ansString.right[2],
-                ansString.right[3], ansString.right[4], pair.left));
+          Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
+              new Pair<>(Collections.emptyMap(),Collections.emptyMap());
+          if (tagFileOffset >= 0) {
+            tagAndAttributePair = tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
           }
+          res.add(new ShowTimeSeriesResult(ansString.left.getFullPath(), ansString.right[0], ansString.right[1],
+              TSDataType.valueOf(ansString.right[2]), TSEncoding.valueOf(ansString.right[3]),
+              CompressionType.valueOf(ansString.right[4]), tagAndAttributePair.left, tagAndAttributePair.right));
         } catch (IOException e) {
           throw new MetadataException(
-              "Something went wrong while deserialize tag info of " + ansString.left.getFullPath(), e);
+              "Something went wrong while deserialize tag info of " + ansString.left.getFullPath(),
+              e);
         }
       }
       return res;
@@ -1131,13 +1127,12 @@ public class MManager {
   }
 
   /**
-   * E.g., root.sg is storage group
-   * given [root, sg], return the MNode of root.sg
-   * given [root, sg, device], return the MNode of root.sg
-   * Get storage group node by path. If storage group is not set, StorageGroupNotSetException will
-   * be thrown
+   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
+   * device], return the MNode of root.sg Get storage group node by path. If storage group is not
+   * set, StorageGroupNotSetException will be thrown
    */
-  public StorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path) throws MetadataException {
+  public StorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
+      throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getStorageGroupNodeByStorageGroupPath(path);
@@ -1317,7 +1312,7 @@ public class MManager {
    * Check whether the given path contains a storage group change or set the new offset of a
    * timeseries
    *
-   * @param path   timeseries
+   * @param path timeseries
    * @param offset offset in the tag file
    */
   public void changeOffset(PartialPath path, long offset) throws MetadataException {
@@ -1347,14 +1342,15 @@ public class MManager {
    * upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
    *
-   * @param alias         newly added alias
-   * @param tagsMap       newly added tags map
+   * @param alias newly added alias
+   * @param tagsMap newly added tags map
    * @param attributesMap newly added attributes map
-   * @param fullPath      timeseries
+   * @param fullPath timeseries
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void upsertTagsAndAttributes(String alias, Map<String, String> tagsMap,
-      Map<String, String> attributesMap, PartialPath fullPath) throws MetadataException, IOException {
+      Map<String, String> attributesMap, PartialPath fullPath)
+      throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
@@ -1454,7 +1450,7 @@ public class MManager {
    * add new attributes key-value for the timeseries
    *
    * @param attributesMap newly added attributes map
-   * @param fullPath      timeseries
+   * @param fullPath timeseries
    */
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
@@ -1496,7 +1492,7 @@ public class MManager {
   /**
    * add new tags key-value for the timeseries
    *
-   * @param tagsMap  newly added tags map
+   * @param tagsMap newly added tags map
    * @param fullPath timeseries
    */
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
@@ -1549,7 +1545,7 @@ public class MManager {
   /**
    * drop tags or attributes of the timeseries
    *
-   * @param keySet   tags key or attributes key
+   * @param keySet tags key or attributes key
    * @param fullPath timeseries path
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1700,8 +1696,8 @@ public class MManager {
   /**
    * rename the tag or attribute's key of the timeseries
    *
-   * @param oldKey   old key of tag or attribute
-   * @param newKey   new key of tag or attribute
+   * @param oldKey old key of tag or attribute
+   * @param newKey new key of tag or attribute
    * @param fullPath timeseries
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1835,9 +1831,6 @@ public class MManager {
 
   /**
    * Collect the timeseries schemas under "startingPath".
-   *
-   * @param startingPath
-   * @param measurementSchemas
    */
   public void collectSeries(PartialPath startingPath, List<MeasurementSchema> measurementSchemas) {
     MNode mNode;
@@ -1979,23 +1972,25 @@ public class MManager {
 
   /**
    * get schema for device. Attention!!!  Only support insertPlan
-   *
-   * @throws MetadataException
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(PartialPath deviceId,
-      String[] measurementList, InsertPlan plan) throws MetadataException {
-    MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
+  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
+      throws MetadataException {
 
-    MNode deviceNode;
+    PartialPath deviceId = plan.getDeviceId();
+    String[] measurementList = plan.getMeasurements();
+    MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
+
+
     // 1. get device node
-    deviceNode = getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+    MNode deviceMNode = getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+
 
     // 2. get schema of each measurement
     for (int i = 0; i < measurementList.length; i++) {
       try {
         // if do not has measurement
-        if (!deviceNode.hasChild(measurementList[i])) {
+        if (!deviceMNode.hasChild(measurementList[i])) {
           // could not create it
           if (!config.isAutoCreateSchemaEnabled()) {
             throw new MetadataException(String.format(
@@ -2008,7 +2003,7 @@ public class MManager {
           internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
         }
 
-        MeasurementMNode measurementNode = (MeasurementMNode) getChild(deviceNode,
+        MeasurementMNode measurementMNode = (MeasurementMNode) getChild(deviceMNode,
             measurementList[i]);
 
         // check type is match
@@ -2018,19 +2013,19 @@ public class MManager {
             // only when InsertRowPlan's values is object[], we should check type
             insertDataType = getTypeInLoc(plan, i);
           } else {
-            insertDataType = measurementNode.getSchema().getType();
+            insertDataType = measurementMNode.getSchema().getType();
           }
         } else if (plan instanceof InsertTabletPlan) {
           insertDataType = getTypeInLoc(plan, i);
         }
 
-        if (measurementNode.getSchema().getType() != insertDataType) {
+        if (measurementMNode.getSchema().getType() != insertDataType) {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-              measurementList[i], insertDataType, measurementNode.getSchema().getType());
+              measurementList[i], insertDataType, measurementMNode.getSchema().getType());
           if (!config.isEnablePartialInsert()) {
             throw new MetadataException(String.format(
                 "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
-                measurementList[i], insertDataType, measurementNode.getSchema().getType()));
+                measurementList[i], insertDataType, measurementMNode.getSchema().getType()));
           } else {
             // mark failed measurement
             plan.markFailedMeasurementInsertion(i);
@@ -2038,10 +2033,11 @@ public class MManager {
           }
         }
 
-        schemas[i] = measurementNode.getSchema();
-        if (schemas[i] != null) {
-          measurementList[i] = schemas[i].getMeasurementId();
-        }
+        measurementMNodes[i] = measurementMNode;
+
+        // set measurementName instead of alias
+        measurementList[i] = measurementMNode.getName();
+
       } catch (MetadataException e) {
         logger.warn("meet error when check {}.{}, message: {}", deviceId, measurementList[i],
             e.getMessage());
@@ -2054,16 +2050,15 @@ public class MManager {
       }
     }
 
-    plan.setDeviceMNode(deviceNode);
-
-    return schemas;
+    return deviceMNode;
   }
 
 
   /**
    * create timeseries with ignore PathAlreadyExistException
    */
-  private void internalCreateTimeseries(PartialPath path, TSDataType dataType) throws MetadataException {
+  private void internalCreateTimeseries(PartialPath path, TSDataType dataType)
+      throws MetadataException {
     try {
       createTimeseries(
           path,
@@ -2105,8 +2100,6 @@ public class MManager {
 
   /**
    * get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan
-   *
-   * @throws MetadataException
    */
   private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
     TSDataType dataType;
@@ -2123,18 +2116,4 @@ public class MManager {
     return dataType;
   }
 
-  /**
-   * when insert, we lock device node for not create deleted time series after insert, we should
-   * call this function to unlock the device node
-   *
-   * @param deviceId
-   */
-  public void unlockDeviceReadLock(PartialPath deviceId) {
-    try {
-      MNode mNode = getDeviceNode(deviceId);
-      mNode.readUnlock();
-    } catch (MetadataException e) {
-      // ignore the exception
-    }
-  }
 }

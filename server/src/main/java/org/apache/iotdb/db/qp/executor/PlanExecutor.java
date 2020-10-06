@@ -119,13 +119,13 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -560,13 +560,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan showTimeSeriesPlan,
       QueryContext context) throws MetadataException {
-    List<ShowTimeSeriesResult> timeseriesList = showTimeseries(showTimeSeriesPlan, context);
-    return QueryUtils.getQueryDataSet(timeseriesList, showTimeSeriesPlan, context);
-  }
-
-  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
-      throws MetadataException {
-    return IoTDB.metaManager.showTimeseries(plan, context);
+    return new ShowTimeseriesDataSet(showTimeSeriesPlan, context);
   }
 
   protected List<StorageGroupMNode> getAllStorageGroupNodes() {
@@ -861,18 +855,18 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
+  private MNode getSeriesSchemas(InsertPlan insertPlan)
       throws MetadataException {
-    return mManager
-        .getSeriesSchemasAndReadLockDevice(insertPlan.getDeviceId(), insertPlan.getMeasurements(),
-            insertPlan);
+    return mManager.getSeriesSchemasAndReadLockDevice(insertPlan);
   }
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
+    MNode deviceNode = null;
     try {
-      MeasurementSchema[] schemas = getSeriesSchemas(insertRowPlan);
-      insertRowPlan.setSchemasAndTransferType(schemas);
+      insertRowPlan.setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+      deviceNode = getSeriesSchemas(insertRowPlan);
+      insertRowPlan.transferType();
       StorageEngine.getInstance().insert(insertRowPlan);
       if (insertRowPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
@@ -881,15 +875,18 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockDeviceReadLock(insertRowPlan.getDeviceId());
+      if (deviceNode != null) {
+        deviceNode.readUnlock();
+      }
     }
   }
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
+    MNode deviceMNode = null;
     try {
-      MeasurementSchema[] schemas = getSeriesSchemas(insertTabletPlan);
-      insertTabletPlan.setSchemas(schemas);
+      insertTabletPlan.setMeasurementMNodes(new MeasurementMNode[insertTabletPlan.getMeasurements().length]);
+      deviceMNode = getSeriesSchemas(insertTabletPlan);
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
@@ -898,7 +895,9 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockDeviceReadLock(insertTabletPlan.getDeviceId());
+      if (deviceMNode != null) {
+        deviceMNode.readUnlock();
+      }
     }
   }
 

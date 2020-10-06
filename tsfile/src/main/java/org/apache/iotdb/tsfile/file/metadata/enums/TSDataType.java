@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 public enum TSDataType {
   BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT;
@@ -29,14 +28,42 @@ public enum TSDataType {
   /**
    * give an integer to return a data type.
    *
-   * @param i -param to judge enum type
+   * @param type -param to judge enum type
    * @return -enum type
    */
-  public static TSDataType deserialize(short i) {
-    if (i >= 6) {
-      throw new IllegalArgumentException("Invalid input: " + i);
+  public static TSDataType deserialize(short type) {
+    if (type >= 6) {
+      throw new IllegalArgumentException("Invalid input: " + type);
     }
-    switch (i) {
+    switch (type) {
+      case 0:
+        return BOOLEAN;
+      case 1:
+        return INT32;
+      case 2:
+        return INT64;
+      case 3:
+        return FLOAT;
+      case 4:
+        return DOUBLE;
+      case 5:
+        return TEXT;
+      default:
+        return TEXT;
+    }
+  }
+
+  /**
+   * give an byte to return a data type.
+   *
+   * @param type byte number
+   * @return data type
+   */
+  public static TSDataType byteToEnum(byte type) {
+    if (type >= 6) {
+      throw new IllegalArgumentException("Invalid input: " + type);
+    }
+    switch (type) {
       case 0:
         return BOOLEAN;
       case 1:
@@ -94,20 +121,25 @@ public enum TSDataType {
     }
   }
 
-  public int getDataTypeSize() {
+  /**
+   * @return byte number
+   */
+  public byte enumToByte() {
     switch (this) {
       case BOOLEAN:
-        return 1;
+        return 0;
       case INT32:
-      case FLOAT:
-        // For text: return the size of reference here
-      case TEXT:
-        return 4;
+        return 1;
       case INT64:
+        return 2;
+      case FLOAT:
+        return 3;
       case DOUBLE:
-        return 8;
+        return 4;
+      case TEXT:
+        return 5;
       default:
-        throw new UnSupportedDataTypeException(this.toString());
+        return -1;
     }
   }
 }
