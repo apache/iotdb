@@ -21,5 +21,5 @@ var ghpages = require('gh-pages');
 
 ghpages.publish('docs/.vuepress/dist', {
   branch: 'asf-site',
-  repo: 'https://gitbox.apache.org/repos/asf/incubator-iotdb-website.git'
+  repo: 'https://gitbox.apache.org/repos/asf/iotdb-website.git'
 });
