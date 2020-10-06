@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
@@ -75,6 +76,7 @@ public class Session {
   private SessionConnection metaSessionConnection;
   private Map<String, EndPoint> deviceIdToEndpoint;
   private Map<EndPoint, SessionConnection> endPointToSessionConnection;
+  private AtomicReference<IoTDBConnectionException> tmp = new AtomicReference<>();
 
 
   public Session(String host, int rpcPort) {
@@ -153,12 +155,7 @@ public class Session {
     try {
       metaSessionConnection.setStorageGroup(storageGroup);
     } catch (RedirectException e) {
-      if (Config.DEFAULT_CACHE_LEADER_MODE) {
-        logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
-        endPointToSessionConnection
-            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
-        metaSessionConnection = endPointToSessionConnection.get(e.getEndPoint());
-      }
+      handleMetaRedirection(storageGroup, e);
     }
   }
 
@@ -167,12 +164,7 @@ public class Session {
     try {
       metaSessionConnection.deleteStorageGroups(Collections.singletonList(storageGroup));
     } catch (RedirectException e) {
-      if (Config.DEFAULT_CACHE_LEADER_MODE) {
-        logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
-        endPointToSessionConnection
-            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
-        metaSessionConnection = endPointToSessionConnection.get(e.getEndPoint());
-      }
+      handleMetaRedirection(storageGroup, e);
     }
   }
 
@@ -181,12 +173,7 @@ public class Session {
     try {
       metaSessionConnection.deleteStorageGroups(storageGroups);
     } catch (RedirectException e) {
-      if (Config.DEFAULT_CACHE_LEADER_MODE) {
-        logger.debug(e.getMessage());
-        endPointToSessionConnection
-            .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
-        metaSessionConnection = endPointToSessionConnection.get(e.getEndPoint());
-      }
+      handleMetaRedirection(storageGroups.toString(), e);
     }
   }
 
@@ -362,13 +349,43 @@ public class Session {
     }
   }
 
+  private void handleMetaRedirection(String storageGroup, RedirectException e)
+      throws IoTDBConnectionException {
+    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+      logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
+      SessionConnection connection = endPointToSessionConnection
+          .computeIfAbsent(e.getEndPoint(), k -> {
+            try {
+              return new SessionConnection(this, e.getEndPoint());
+            } catch (IoTDBConnectionException ex) {
+              tmp.set(ex);
+              return null;
+            }
+          });
+      if (connection == null) {
+        throw new IoTDBConnectionException(tmp.get());
+      }
+      metaSessionConnection = connection;
+    }
+  }
+
   private void handleRedirection(String deviceId, RedirectException e)
       throws IoTDBConnectionException {
     if (Config.DEFAULT_CACHE_LEADER_MODE) {
       logger.debug("DeviceId[{}]:{}", deviceId, e.getMessage());
       deviceIdToEndpoint.put(deviceId, e.getEndPoint());
-      endPointToSessionConnection
-          .putIfAbsent(e.getEndPoint(), new SessionConnection(this, e.getEndPoint()));
+      SessionConnection connection = endPointToSessionConnection
+          .computeIfAbsent(e.getEndPoint(), k -> {
+            try {
+              return new SessionConnection(this, e.getEndPoint());
+            } catch (IoTDBConnectionException ex) {
+              tmp.set(ex);
+              return null;
+            }
+          });
+      if (connection == null) {
+        throw new IoTDBConnectionException(tmp.get());
+      }
     }
   }
 
@@ -583,9 +600,7 @@ public class Session {
         defaultSessionConnection.insertTablet(request);
       }
     } catch (RedirectException e) {
-      if (Config.DEFAULT_CACHE_LEADER_MODE) {
-        handleRedirection(tablet.deviceId, e);
-      }
+      handleRedirection(tablet.deviceId, e);
     }
   }
 
