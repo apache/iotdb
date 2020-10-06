@@ -77,6 +77,7 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("java:S1135") // ignore todos
 public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
+  public static final int PULL_FILE_RETRY_INTERVAL_MS = 5000;
   private Collection<TimeseriesSchema> timeseriesSchemas;
   private List<RemoteTsFileResource> dataFiles;
 
@@ -439,7 +440,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
         try {
           Files.delete(dest.toPath());
-          Thread.sleep(5000);
+          Thread.sleep(PULL_FILE_RETRY_INTERVAL_MS);
         } catch (IOException e) {
           logger.warn("Cannot delete file when pulling {} from {} failed", remotePath, node);
         } catch (InterruptedException ex) {

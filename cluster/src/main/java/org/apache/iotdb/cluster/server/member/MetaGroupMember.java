@@ -389,7 +389,7 @@ public class MetaGroupMember extends RaftMember {
    * Start DataClusterServer and ClientServer so this node will be able to respond to other nodes
    * and clients.
    */
-  private void initSubServers() throws TTransportException, StartupException {
+  protected void initSubServers() throws TTransportException, StartupException {
     getDataClusterServer().start();
     getDataHeartbeatServer().start();
     clientServer.start();
@@ -756,7 +756,7 @@ public class MetaGroupMember extends RaftMember {
    * Start the DataClusterServer and ClientServer so this node can serve other nodes and clients.
    * Also build DataGroupMembers using the partition table.
    */
-  private synchronized void startSubServers() {
+  protected synchronized void startSubServers() {
     logger.info("Starting sub-servers...");
     synchronized (partitionTable) {
       try {
