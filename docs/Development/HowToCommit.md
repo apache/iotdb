@@ -31,7 +31,7 @@ After submitting the pr, after passing the Travis-CI test and Sonar code quality
 
 ## PR guide
 
-You can easily submit [Pull Request (PR)](https://help.github.com/articles/about-pull-requests/) on Github, the following will use this website project [apache/iotdb](https://github.com/apache/iotdb) as an example (if it is another project, please replace the project name incubator-iotdb)
+You can easily submit [Pull Request (PR)](https://help.github.com/articles/about-pull-requests/) on Github, the following will use this website project [apache/iotdb](https://github.com/apache/iotdb) as an example (if it is another project, please replace the project name iotdb)
 
 ### Fork repository
 
