@@ -25,12 +25,12 @@ Now a Dockerfile has been written at docker/src/main/Dockerfile.
 
 1. You can build a docker image by: 
 ```
-$ docker build -t iotdb:base git://github.com/apache/incubator-iotdb#master:docker
+$ docker build -t iotdb:base git://github.com/apache/iotdb#master:docker
 ```
 Or:
 ```
-$ git clone https://github.com/apache/incubator-iotdb
-$ cd incubator-iotdb
+$ git clone https://github.com/apache/iotdb
+$ cd iotdb
 $ cd docker
 $ docker build -t iotdb:base .
 ```
@@ -84,6 +84,6 @@ $ start-cli.sh -h localhost -p 6667 -u root -pw root
             <version>0.10.0</version>
         </dependency>
 ```
-Some examples about how to use IoTDB with IoTDB-JDBC can be found at: https://github.com/apache/incubator-iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb
+Some examples about how to use IoTDB with IoTDB-JDBC can be found at: https://github.com/apache/iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb
 
 6. Now enjoy it!

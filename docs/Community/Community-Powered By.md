@@ -31,7 +31,7 @@ A common practice you can take is to create software identifiers (Maven coordina
 ### Companies and Organizations
 To add yourself to the list, please email dev@iotdb.apache.org with your organization name, URL, a list of IoTDB components you are using, and a short description of your use case.
 
-You can also leave the info on [Github](https://github.com/apache/incubator-iotdb/issues/748).
+You can also leave the info on [Github](https://github.com/apache/iotdb/issues/748).
 
 - School of Software (Tsinghua University), and National Engineering Laboratery for Big Data Software  that initially launched IoTDB  
   - We have both graduate students and a team of professional software engineers working on the stack
