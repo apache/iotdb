@@ -42,7 +42,7 @@ public class SystemInfo {
   private long totalSgMemCost;
   private long arrayPoolMemCost;
   private long mTreeMemCost = config.getAllocateMemoryForMTree();
-  private boolean rejected = false;
+  private volatile boolean rejected = false;
 
   private Map<StorageGroupInfo, Long> reportedSgMemCostMap = new HashMap<>();
 
@@ -100,7 +100,7 @@ public class SystemInfo {
     reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
 
     long newSgReportThreshold = calculateNewSgReportThreshold(storageGroupInfo);
-    //storageGroupInfo.setStorageGroupReportThreshold(newSgReportThreshold);
+    storageGroupInfo.setStorageGroupReportThreshold(newSgReportThreshold);
     if (getTotalMemCost() >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       logger.info("The total storage group mem costs are too large, call for flushing. "
           + "Current sg cost is {}, array pool cost is {}", totalSgMemCost, arrayPoolMemCost);
@@ -151,11 +151,11 @@ public class SystemInfo {
       forceFlush();
     }
     if (getTotalMemCost() < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
-      logger.info("OOB array released, change system to normal status. "
+      logger.debug("OOB array released, change system to normal status. "
           + "Current total array cost {}.", arrayPoolMemCost);
     }
     else {
-      logger.info("OOB array released, but system is still in reject status. "
+      logger.debug("OOB array released, but system is still in reject status. "
           + "Current array cost {}.", arrayPoolMemCost);
     }
   }
@@ -196,6 +196,9 @@ public class SystemInfo {
    */
   public void flush() {
 
+    if (FlushManager.getInstance().getNumberOfWorkingTasks() > 0) {
+      return;
+    }
     // If invoke flush by replaying logs, do not flush now!
     if (reportedSgMemCostMap.size() == 0) {
       return;
@@ -214,6 +217,9 @@ public class SystemInfo {
   }
 
   public void forceFlush() {
+    if (FlushManager.getInstance().getNumberOfWorkingTasks() > 0) {
+      return;
+    }
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
     for (TsFileProcessor processor : processors) {
       if (processor != null) {
@@ -263,7 +269,7 @@ public class SystemInfo {
   }
 
   public long getTotalMemCost() {
-    return totalSgMemCost + arrayPoolMemCost + mTreeMemCost;
+    return totalSgMemCost + arrayPoolMemCost;
   }
 
   public void close() {
