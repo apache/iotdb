@@ -161,12 +161,16 @@ public class TsFileProcessor {
    */
   public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
+    long startTime = System.currentTimeMillis();
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(100);
         logger.debug("System rejected, waiting for memory releasing... "
             + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
             .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
+        if (System.currentTimeMillis() - startTime > 6000) {
+          throw new WriteProcessException("System rejected over 6000ms");
+        }
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
         Thread.currentThread().interrupt();
@@ -208,12 +212,16 @@ public class TsFileProcessor {
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
 
+    long startTime = System.currentTimeMillis();
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(100);
         logger.debug("System rejected, waiting for memory releasing... "
             + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
             .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
+        if (System.currentTimeMillis() - startTime > 12000) {
+          throw new WriteProcessException("System rejected over 12000ms");
+        }
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
         Thread.currentThread().interrupt();
@@ -871,6 +879,12 @@ public class TsFileProcessor {
 
   public boolean isSequence() {
     return sequence;
+  }
+
+  public void startClose() {
+    storageGroupInfo.getStorageGroupProcessor().asyncCloseOneTsFileProcessor(sequence, this);
+    logger.info("Async close tsfile: {}",
+        getTsFileResource().getTsFile().getAbsolutePath());
   }
 
   public void setFlush() {
