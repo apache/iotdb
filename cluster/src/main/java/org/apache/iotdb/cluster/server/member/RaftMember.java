@@ -921,6 +921,9 @@ public abstract class RaftMember {
       sendLogRequest = buildSendLogRequest(log);
       Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.addNanoFromStart(start);
 
+      if (Timer.ENABLE_INSTRUMENTING) {
+        start = System.nanoTime();
+      }
       sendLogRequest.setCreateTime(System.nanoTime());
       getLogDispatcher().offer(sendLogRequest);
       Statistic.RAFT_SENDER_OFFER_LOG.addNanoFromStart(start);
