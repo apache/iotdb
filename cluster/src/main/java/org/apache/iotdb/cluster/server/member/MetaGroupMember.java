@@ -1032,7 +1032,7 @@ public class MetaGroupMember extends RaftMember {
 
     AtomicLong newLeaderTerm = new AtomicLong(term.get());
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
-    AppendEntryRequest request = buildAppendEntryRequest(log);
+    AppendEntryRequest request = buildAppendEntryRequest(log, true);
 
     // ask for votes from each node
     int[] groupRemainings = askGroupVotes(nodeRing, request, leaderShipStale, log, newLeaderTerm);

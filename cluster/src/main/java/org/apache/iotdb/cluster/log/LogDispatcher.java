@@ -198,6 +198,8 @@ public class LogDispatcher {
       try {
         while (!Thread.interrupted()) {
           SendLogRequest poll = logBlockingDeque.take();
+          // do serialization here to avoid taking LogManager for too long
+          poll.getAppendEntryRequest().setEntry(poll.getLog().serialize());
           currBatch.add(poll);
           logBlockingDeque.drainTo(currBatch);
           if (logger.isDebugEnabled()) {

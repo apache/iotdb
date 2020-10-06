@@ -964,7 +964,7 @@ public abstract class RaftMember {
     if (Timer.ENABLE_INSTRUMENTING) {
       start = System.nanoTime();
     }
-    AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(log);
+    AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(log, false);
     Statistic.RAFT_SENDER_BUILD_APPEND_REQUEST.addNanoFromStart(start);
 
     return new SendLogRequest(log, voteCounter, leaderShipStale, newLeaderTerm, appendEntryRequest);
@@ -1360,10 +1360,12 @@ public abstract class RaftMember {
     return tsStatus;
   }
 
-  AppendEntryRequest buildAppendEntryRequest(Log log) {
+  AppendEntryRequest buildAppendEntryRequest(Log log, boolean serializeNow) {
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
-    request.setEntry(log.serialize());
+    if (serializeNow) {
+      request.setEntry(log.serialize());
+    }
     request.setLeader(getThisNode());
     // don't need lock because even if it's larger than the commitIndex when appending this log to
     // logManager, the follower can handle the larger commitIndex with no effect
@@ -1527,7 +1529,7 @@ public abstract class RaftMember {
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(term.get());
 
-    AppendEntryRequest request = buildAppendEntryRequest(log);
+    AppendEntryRequest request = buildAppendEntryRequest(log, true);
 
     try {
       if (allNodes.size() > 2) {
