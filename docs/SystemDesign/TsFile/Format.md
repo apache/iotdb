@@ -124,6 +124,19 @@ PageHeader Structure
 | compressedSize |       int        | Data size after compressing(if use SNAPPY) |
 |   statistics    |       Statistics        | Statistics values |
 
+Here is the detailed information for `statistics`:
+
+ |             Member               | Description | DoubleStatistics | FloatStatistics | IntegerStatistics | LongStatistics | BinaryStatistics | BooleanStatistics |
+ | :----------------------------------: | :--------------: | :----: | :----: | :----: | :----: | :----: | :----: |
+ | count  | number of time-value points | long | long | long | long | long | long | 
+ | startTime | start time | long | long | long | long | long | long | 
+ | endTime | end time | long | long | long | long | long | long | 
+ | minValue | min value | double | float | int | long | - | - |
+ | maxValue | max value | double | float | int | long | - | - |
+ | firstValue | first value | double | float | int | long | Binary | boolean|
+ | lastValue | last value | double | float | int | long | Binary | boolean|
+ | sumValue | sum value | double | double | double | double | - | - |
+ 
 ##### ChunkGroupFooter
 
 |             Member             |  Type  | Description |
@@ -145,8 +158,6 @@ The first part of metadata is `ChunkMetadata`
 |                tsDataType                |  TSDataType   | Data type |
 |   statistics    |       Statistics        | Statistic values |
 
-As for the five statistics (min, max, first, last and sum), `ChunkMetadata` of Binary and Boolean type only has two values: first and last.
-
 ##### 1.2.3.2 TimeseriesMetadata
 
 The second part of metadata is `TimeseriesMetadata`.
@@ -158,8 +169,6 @@ The second part of metadata is `TimeseriesMetadata`.
 | startOffsetOfChunkMetadataList |  long  | Start offset of ChunkMetadata list |
 |  chunkMetaDataListDataSize  |  int  | ChunkMetadata list size |
 |   statistics    |       Statistics        | Statistic values |
-
-As for the five statistics (min, max, first, last and sum), `TimeseriesMetadata` of Binary and Boolean type only has two values: first and last.
 
 ##### 1.2.3.3 TsFileMetaData
 

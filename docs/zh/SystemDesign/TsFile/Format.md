@@ -123,6 +123,19 @@ PageHeader 结构
 | compressedSize |       int        | SNAPPY压缩后数据大小 |
 |   statistics    |       Statistics        | 统计量 |
 
+这里是`statistics`的详细信息：
+
+ |             成员               | 描述 | DoubleStatistics | FloatStatistics | IntegerStatistics | LongStatistics | BinaryStatistics | BooleanStatistics |
+ | :----------------------------------: | :--------------: | :----: | :----: | :----: | :----: | :----: | :----: |
+ | count  | 数据点个数 | long | long | long | long | long | long | 
+ | startTime | 开始时间 | long | long | long | long | long | long | 
+ | endTime | 结束时间 | long | long | long | long | long | long | 
+ | minValue | 最小值 | double | float | int | long | - | - |
+ | maxValue | 最大值 | double | float | int | long | - | - |
+ | firstValue | 第一个值 | double | float | int | long | Binary | boolean|
+ | lastValue | 最后一个值 | double | float | int | long | Binary | boolean|
+ | sumValue | 和 | double | double | double | double | - | - |
+ 
 ##### ChunkGroupFooter
 
 |                成员                |  类型  | 解释 |
@@ -144,8 +157,6 @@ PageHeader 结构
 |                tsDataType                |  TSDataType   | 数据类型 |
 |   statistics    |       Statistics        | 统计量 |
 
-其中，对于五个统计值(min、max、first、last、sum)，Binary 和 Boolean 类型的 `ChunkMetadata` 只有 first 和 last 两个值。
-
 ##### 1.2.3.2 TimeseriesMetadata
 
 第二部分的元数据是 `TimeseriesMetadata`。
@@ -157,8 +168,6 @@ PageHeader 结构
 | startOffsetOfChunkMetadataList |  long  | 文件中 ChunkMetadata 列表开始的偏移量 |
 |  chunkMetaDataListDataSize  |  int  | ChunkMetadata 列表的大小 |
 |   statistics    |       Statistics        | 统计量 |
-
-其中，对于五个统计值(min、max、first、last、sum)，Binary 和 Boolean 类型的 `TimeseriesMetadata` 只有 first 和 last 两个值。
 
 ##### 1.2.3.3 TsFileMetaData
 
