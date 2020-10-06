@@ -405,7 +405,7 @@ public class DataGroupMemberTest extends MemberTest {
   @Test
   public void testApplySnapshot()
       throws StorageEngineException, IOException, WriteProcessException, SnapshotInstallationException, QueryProcessException, IllegalPathException {
-    System.out.println("Start testStartElection()");
+    System.out.println("Start testApplySnapshot()");
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
@@ -432,8 +432,17 @@ public class DataGroupMemberTest extends MemberTest {
     snapshot.addFile(tsFileResource, TestUtils.getNode(0));
 
     // create a local resource1
-    StorageGroupProcessor processor = StorageEngine.getInstance()
-        .getProcessor(new PartialPath(TestUtils.getTestSg(0)));
+    StorageGroupProcessor processor;
+    while (true) {
+      try {
+        processor = StorageEngine.getInstance()
+            .getProcessor(new PartialPath(TestUtils.getTestSg(0)));
+        break;
+      } catch (StorageEngineException e) {
+        // ignore
+      }
+    }
+
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setTime(0);
