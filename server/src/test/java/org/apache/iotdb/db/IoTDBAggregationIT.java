@@ -559,6 +559,13 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(1, cnt);
       }
 
+      statement.execute("SELECT s2 FROM root.vehicle.d0 WHERE time >= 1000 AND time <= 2000");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          System.out.println(resultSet.getFloat("s2"));
+        }
+      }
+
       hasResultSet = statement.execute("SELECT sum(s0), avg(s2), avg(s0), sum(s2)" +
           "FROM root.vehicle.d0 WHERE time >= 1000 AND time <= 2000");
       Assert.assertTrue(hasResultSet);
