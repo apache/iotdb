@@ -65,8 +65,8 @@ public class Timer {
     RAFT_SENDER_APPEND_LOG(
         RAFT_MEMBER_SENDER, "locally append log", TIME_SCALE, !RaftMember.USE_LOG_DISPATCHER,
         DATA_GROUP_MEMBER_LOCAL_EXECUTION),
-    RAFT_SENDER_COMPETE_LOG_MANAGER_V2(
-        RAFT_MEMBER_SENDER, "compete for log manager", TIME_SCALE,
+    RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2(
+        RAFT_MEMBER_SENDER, "compete for log manager before append", TIME_SCALE,
         RaftMember.USE_LOG_DISPATCHER, DATA_GROUP_MEMBER_LOCAL_EXECUTION),
     RAFT_SENDER_APPEND_LOG_V2(
         RAFT_MEMBER_SENDER, "locally append log", TIME_SCALE,
@@ -90,15 +90,26 @@ public class Timer {
         RAFT_MEMBER_SENDER, "send log", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
     RAFT_SENDER_VOTE_COUNTER(
         RAFT_MEMBER_SENDER, "wait for votes", TIME_SCALE, true,
-        RaftMember.USE_LOG_DISPATCHER ? DATA_GROUP_MEMBER_LOCAL_EXECUTION : RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+        RaftMember.USE_LOG_DISPATCHER ? DATA_GROUP_MEMBER_LOCAL_EXECUTION
+            : RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
     RAFT_SENDER_COMMIT_LOG(
         RAFT_MEMBER_SENDER, "locally commit log", TIME_SCALE, !RaftMember.USE_LOG_DISPATCHER,
         DATA_GROUP_MEMBER_LOCAL_EXECUTION),
     RAFT_SENDER_COMMIT_LOG_V2(
         RAFT_MEMBER_SENDER, "locally commit log(using dispatcher)", TIME_SCALE,
         RaftMember.USE_LOG_DISPATCHER, DATA_GROUP_MEMBER_LOCAL_EXECUTION),
+    RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT_V2(
+        RAFT_MEMBER_SENDER, "compete for log manager before commit", TIME_SCALE,
+        RaftMember.USE_LOG_DISPATCHER, RAFT_SENDER_COMMIT_LOG_V2),
+    RAFT_SENDER_COMMIT_LOG_IN_MANAGER_V2(
+        RAFT_MEMBER_SENDER, "commit log in log manager", TIME_SCALE,
+        RaftMember.USE_LOG_DISPATCHER, RAFT_SENDER_COMMIT_LOG_V2),
+    RAFT_SENDER_COMMIT_WAIT_LOG_APPLY_V2(
+        RAFT_MEMBER_SENDER, "wait until log is applied", TIME_SCALE,
+        RaftMember.USE_LOG_DISPATCHER, RAFT_SENDER_COMMIT_LOG_V2),
     RAFT_SENDER_DATA_LOG_APPLY(
-        RAFT_MEMBER_SENDER, "apply data log", TIME_SCALE, true, RAFT_SENDER_COMMIT_LOG_V2),
+        RAFT_MEMBER_SENDER, "apply data log", TIME_SCALE, true,
+        RAFT_SENDER_COMMIT_WAIT_LOG_APPLY_V2),
     RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT(
         RAFT_MEMBER_SENDER, "log from create to accept", TIME_SCALE,
         RaftMember.USE_LOG_DISPATCHER, DATA_GROUP_MEMBER_LOCAL_EXECUTION),
@@ -113,9 +124,11 @@ public class Timer {
         RAFT_MEMBER_RECEIVER, "index diff", 1.0, true, ROOT),
     // log dispatcher
     LOG_DISPATCHER_LOG_IN_QUEUE(
-        LOG_DISPATCHER, "in queue", TIME_SCALE, true, META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
+        LOG_DISPATCHER, "in queue", TIME_SCALE, true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP),
     LOG_DISPATCHER_FROM_CREATE_TO_END(
-        LOG_DISPATCHER, "from create to end", TIME_SCALE, true, META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP);
+        LOG_DISPATCHER, "from create to end", TIME_SCALE, true,
+        META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP);
 
     String className;
     String blockName;
@@ -151,6 +164,7 @@ public class Timer {
     /**
      * This method equals `add(System.nanoTime() - start)`. We wrap `System.nanoTime()` in this
      * method to avoid unnecessary calls when instrumenting is disabled.
+     *
      * @param start
      */
     public void addNanoFromStart(long start) {

@@ -903,7 +903,7 @@ public abstract class RaftMember {
       start = System.nanoTime();
     }
     synchronized (logManager) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_V2.addNanoFromStart(start);
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.addNanoFromStart(start);
 
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
@@ -1321,11 +1321,24 @@ public abstract class RaftMember {
 
   @SuppressWarnings("java:S2445")
   void commitLog(Log log) throws LogExecutionException {
+    long start;
+    if (Timer.ENABLE_INSTRUMENTING) {
+      start = System.nanoTime();
+    }
     synchronized (logManager) {
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT_V2.addNanoFromStart(start);
+
+      if (Timer.ENABLE_INSTRUMENTING) {
+        start = System.nanoTime();
+      }
       logManager.commitTo(log.getCurrLogIndex());
     }
+    Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER_V2.addNanoFromStart(start);
     // when using async applier, the log here may not be applied. To return the execution
     // result, we must wait until the log is applied.
+    if (Timer.ENABLE_INSTRUMENTING) {
+      start = System.nanoTime();
+    }
     synchronized (log) {
       while (!log.isApplied()) {
         // wait until the log is applied
@@ -1337,6 +1350,7 @@ public abstract class RaftMember {
         }
       }
     }
+    Statistic.RAFT_SENDER_COMMIT_WAIT_LOG_APPLY_V2.addNanoFromStart(start);
     if (log.getException() != null) {
       throw new LogExecutionException(log.getException());
     }
