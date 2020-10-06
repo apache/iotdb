@@ -112,13 +112,8 @@ public class MTree implements Serializable {
    * @param props      props
    * @param alias      alias of measurement
    */
-  MeasurementMNode createTimeseries(
-      PartialPath path,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressor,
-      Map<String, String> props,
-      String alias)
+  MeasurementMNode createTimeseries(PartialPath path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props, String alias)
       throws MetadataException {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
@@ -240,9 +235,11 @@ public class MTree implements Serializable {
     }
   }
 
-  private void checkStorageGroup(String storageGroup) throws IllegalPathException{
-    if(!IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(storageGroup).matches()) {
-      throw new IllegalPathException(String.format("The storage group name can only be characters, numbers and underscores. %s", storageGroup));
+  private void checkStorageGroup(String storageGroup) throws IllegalPathException {
+    if (!IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(storageGroup).matches()) {
+      throw new IllegalPathException(String
+          .format("The storage group name can only be characters, numbers and underscores. %s",
+              storageGroup));
     }
   }
 
@@ -385,12 +382,12 @@ public class MTree implements Serializable {
   }
 
   /**
-   * E.g., root.sg is storage group
-   * given [root, sg], return the MNode of root.sg
-   * given [root, sg, device], throw exception
-   * Get storage group node, if the give path is not a storage group, throw exception
+   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
+   * device], throw exception Get storage group node, if the give path is not a storage group, throw
+   * exception
    */
-  StorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path) throws MetadataException {
+  StorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
+      throws MetadataException {
     MNode node = getNodeByPath(path);
     if (node instanceof StorageGroupMNode) {
       return (StorageGroupMNode) node;
@@ -400,10 +397,9 @@ public class MTree implements Serializable {
   }
 
   /**
-   * E.g., root.sg is storage group
-   * given [root, sg], return the MNode of root.sg
-   * given [root, sg, device], return the MNode of root.sg
-   * Get storage group node, the give path don't need to be storage group path.
+   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
+   * device], return the MNode of root.sg Get storage group node, the give path don't need to be
+   * storage group path.
    */
   StorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
@@ -808,7 +804,8 @@ public class MTree implements Serializable {
     findPath(root, nodes, 1, allMatchedNodes, false, true, queryContext);
 
     Stream<Pair<PartialPath, String[]>> sortedStream = allMatchedNodes.stream().sorted(
-        Comparator.comparingLong((Pair<PartialPath, String[]> p) -> Long.parseLong(p.right[6])).reversed()
+        Comparator.comparingLong((Pair<PartialPath, String[]> p) -> Long.parseLong(p.right[6]))
+            .reversed()
             .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
 
     // no limit
@@ -825,7 +822,8 @@ public class MTree implements Serializable {
    *
    * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
    */
-  List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan) throws MetadataException {
+  List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
+      throws MetadataException {
     List<Pair<PartialPath, String[]>> res;
     String[] nodes = plan.getPath().getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
@@ -858,7 +856,8 @@ public class MTree implements Serializable {
    *                             dataType, encoding, compression, offset, lastTimeStamp]
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void findPath(MNode node, String[] nodes, int idx, List<Pair<PartialPath, String[]>> timeseriesSchemaList,
+  private void findPath(MNode node, String[] nodes, int idx,
+      List<Pair<PartialPath, String[]>> timeseriesSchemaList,
       boolean hasLimit, boolean needLast, QueryContext queryContext) throws MetadataException {
     if (node instanceof MeasurementMNode && nodes.length <= idx) {
       if (hasLimit) {
