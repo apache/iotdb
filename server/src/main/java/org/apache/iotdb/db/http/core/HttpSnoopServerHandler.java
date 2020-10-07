@@ -18,34 +18,28 @@
  */
 package org.apache.iotdb.db.http.core;
 
-import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
-import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
-
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaderValues;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpUtil;
+import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
 import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.http.router.Router;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
+import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
+
 public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> {
 
   private FullHttpRequest request;
 
-  private Router router = new Router();
+  private final Router router = new Router();
 
   private static final Logger logger = LoggerFactory.getLogger(HttpSnoopServerHandler.class);
 
@@ -59,15 +53,15 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
     HttpResponseStatus status;
     if (msg instanceof HttpRequest) {
       this.request = (FullHttpRequest) msg;
-      JSON result;
+      JsonElement result;
       try {
         result = router.route(request.method(), request.uri(),
-            JSON.parse(request.content().toString(CharsetUtil.UTF_8)));
+                JsonParser.parseString(request.content().toString(CharsetUtil.UTF_8)));
         status = OK;
       } catch (Exception e) {
-        result = new JSONObject();
-        ((JSONObject) result).put(HttpConstant.ERROR_CLASS, e.getClass());
-        ((JSONObject) result).put(HttpConstant.ERROR, e.getMessage());
+        result = new JsonObject();
+        result.getAsJsonObject().addProperty(HttpConstant.ERROR_CLASS, e.getClass().toString());
+        result.getAsJsonObject().addProperty(HttpConstant.ERROR, e.getMessage());
         status = INTERNAL_SERVER_ERROR;
       }
 
@@ -75,7 +69,7 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
     }
   }
 
-  private void writeResponse(ChannelHandlerContext ctx, JSON json,
+  private void writeResponse(ChannelHandlerContext ctx, JsonElement json,
       HttpResponseStatus status) {
 
     // Decide whether to close the connection or not.

@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.http.handler;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -41,14 +42,13 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
 
 public class GetTimeSeriesHandler extends Handler {
-  public JSON handle(Object json)
+  public JsonElement handle(JsonArray json)
       throws AuthException, MetadataException, TException, StorageEngineException,
       QueryFilterOptimizationException, IOException, InterruptedException, SQLException, QueryProcessException {
     checkLogin();
-    JSONArray jsonArray = (JSONArray) json;
-    JSONArray result = new JSONArray();
-    for(Object object : jsonArray) {
-      String path = (String) object;
+    JsonArray result = new JsonArray();
+    for(JsonElement object : json) {
+      String path = object.getAsString();
       PartialPath partialPath = new PartialPath(path);
       ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(partialPath);
       plan.setHasLimit(true);
@@ -58,7 +58,7 @@ public class GetTimeSeriesHandler extends Handler {
       long queryID = QueryResourceManager.getInstance().assignQueryId(false);
       QueryDataSet dataSet = executor.processQuery(plan, new QueryContext(queryID));
       while(dataSet.hasNext()) {
-        JSONArray row = new JSONArray();
+        JsonArray row = new JsonArray();
         RowRecord rowRecord = dataSet.next();
         List<Field> fields = rowRecord.getFields();
         for(Field field : fields) {

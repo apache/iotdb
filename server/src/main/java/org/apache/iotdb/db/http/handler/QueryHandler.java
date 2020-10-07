@@ -18,9 +18,8 @@
  */
 package org.apache.iotdb.db.http.handler;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.*;
+
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.*;
@@ -51,41 +50,37 @@ import org.apache.thrift.TException;
 
 public class QueryHandler extends Handler{
 
-  public JSON handle(Object json)
+  public JsonElement handle(JsonObject json)
       throws QueryProcessException, MetadataException, AuthException,
       TException, StorageEngineException, QueryFilterOptimizationException,
       IOException, InterruptedException, SQLException {
     checkLogin();
-    JSONObject jsonObject = (JSONObject) json;
-    Long from;
-    Long to;
-    if(jsonObject.get(HttpConstant.FROM) instanceof Long) {
-      from = (Long) jsonObject.get(HttpConstant.FROM);
-    } else {
-      from = ((Integer) jsonObject.get(HttpConstant.FROM)).longValue();
-    }
+    long from;
+    long to;
+    from = json.get(HttpConstant.FROM).getAsLong();
+    to = json.get(HttpConstant.TO).getAsLong();
 
-    if(jsonObject.get(HttpConstant.TO) instanceof Long) {
-      to = (Long) jsonObject.get(HttpConstant.TO);
-    } else {
-      to = ((Integer) jsonObject.get(HttpConstant.TO)).longValue();
-    }
-
-    JSONArray timeSeries = (JSONArray) jsonObject.get(HttpConstant.TIME_SERIES);
+    JsonArray timeSeries = json.getAsJsonArray(HttpConstant.TIME_SERIES);
     if(timeSeries == null) {
-      JSONObject result = new JSONObject();
-      result.put("result", "Has no timeSeries");
+      JsonObject result = new JsonObject();
+      result.addProperty("result", "Has no timeSeries");
       return result;
     }
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
     SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    for(Object o : timeSeries) {
-      selectOp.addSelectPath(new PartialPath((String) o));
+    for(JsonElement o : timeSeries) {
+      selectOp.addSelectPath(new PartialPath(o.getAsString()));
     }
-    Boolean isAggregated;
+    boolean isAggregated;
     fromOp.addPrefixTablePath(new PartialPath(new String[]{""}));
-    if(jsonObject.get(HttpConstant.IS_AGGREGATED) != null) {
-     isAggregated = (Boolean) jsonObject.get(HttpConstant.IS_AGGREGATED);
+    if(json.get(HttpConstant.IS_AGGREGATED) != null) {
+      isAggregated = json.get(HttpConstant.IS_AGGREGATED).getAsBoolean();
+      JsonArray aggregations = json.getAsJsonArray(HttpConstant.AGGREGATIONS);
+      List<String> aggregationsList = new ArrayList<>();
+      for(JsonElement o: aggregations) {
+        aggregationsList.add(o.getAsString());
+      }
+      selectOp.setAggregations(aggregationsList);
     } else {
       isAggregated = false;
     }
@@ -101,22 +96,16 @@ public class QueryHandler extends Handler{
     pathSet.add(SQLConstant.TIME_PATH);
     filterOp.setIsSingle(true);
     filterOp.setPathSet(pathSet);
-    BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO, SQLConstant.TIME_PATH, from.toString());
-    BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHAN, SQLConstant.TIME_PATH, to.toString());
+    BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO, SQLConstant.TIME_PATH, Long.toString(from));
+    BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHAN, SQLConstant.TIME_PATH, Long.toString(to));
     filterOp.addChildOperator(left);
     filterOp.addChildOperator(right);
     queryOp.setFilterOperator(filterOp);
 
     if(isAggregated) {
-      JSONArray fills = (JSONArray) jsonObject.get(HttpConstant.FILLS);
-      Boolean isPoint = (Boolean) jsonObject.get(HttpConstant.isPoint);
-      JSONObject groupBy = (JSONObject) jsonObject.get(HttpConstant.GROUP_BY);
-      JSONArray aggregations = (JSONArray) jsonObject.get(HttpConstant.AGGREGATIONS);
-      List<String> aggregationsList = new ArrayList<>();
-      for(Object o: aggregations) {
-        aggregationsList.add((String) o);
-      }
-      selectOp.setAggregations(aggregationsList);
+      JsonArray fills = json.getAsJsonArray(HttpConstant.FILLS);
+      boolean isPoint = json.get(HttpConstant.isPoint).getAsBoolean();
+      JsonObject groupBy = json.getAsJsonObject(HttpConstant.GROUP_BY);
       String step = null;
       if (groupBy != null) {
         //set start and end time
@@ -126,14 +115,14 @@ public class QueryHandler extends Handler{
 
         // set unit and sliding step
         if (isPoint) {
-          Integer points = (Integer) groupBy.get(HttpConstant.SAMPLING_POINTS);
+          int points = groupBy.get(HttpConstant.SAMPLING_POINTS).getAsInt();
           long unit = Math.abs(to - from) / points;
           queryOp.setUnit(unit);
           queryOp.setSlidingStep(unit);
         } else {
-          String unit = (String) groupBy.get(HttpConstant.SAMPLING_INTERVAL);
+          String unit = groupBy.get(HttpConstant.SAMPLING_INTERVAL).getAsString();
           queryOp.setUnit(parseDuration(unit));
-          step = (String) groupBy.get(HttpConstant.STEP);
+          step = groupBy.get(HttpConstant.STEP).getAsString();
           if (step != null && !step.equals("")) {
             queryOp.setSlidingStep(parseDuration(step));
           } else {
@@ -143,16 +132,16 @@ public class QueryHandler extends Handler{
         if(fills != null && (step == null || step.equals(""))) {
           queryOp.setFill(true);
           Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
-          for (Object o : fills) {
-            JSONObject fill = (JSONObject) o;
-            long duration = parseDuration((String) fill.get(HttpConstant.DURATION));
+          for (JsonElement o : fills) {
+            JsonObject fill = o.getAsJsonObject();
+            long duration = parseDuration(fill.get(HttpConstant.DURATION).getAsString());
             PreviousFill previousFill;
-            if (fill.get(HttpConstant.PREVIOUS).equals(HttpConstant.PREVIOUS_UNTIL_LAST)) {
+            if (fill.get(HttpConstant.PREVIOUS).getAsString().equals(HttpConstant.PREVIOUS_UNTIL_LAST)) {
               previousFill = new PreviousFill(duration, true);
             } else {
               previousFill = new PreviousFill(duration);
             }
-            fillTypes.put(TSDataType.valueOf((String) fill.get(HttpConstant.DATATYPE)), previousFill);
+            fillTypes.put(TSDataType.valueOf(fill.get(HttpConstant.DATATYPE).getAsString()), previousFill);
           }
           queryOp.setFillTypes(fillTypes);
         }
@@ -165,32 +154,53 @@ public class QueryHandler extends Handler{
     if(!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
       throw new AuthException(String.format("%s can't be queried by %s", plan.getPaths(), username));
     }
-    JSONArray result = new JSONArray();
+    JsonArray result = new JsonArray();
     QueryDataSet dataSet = executor.processQuery(plan, new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
     List<PartialPath> paths = plan.getPaths();
-    JSONObject timeColumn = new JSONObject();
-    timeColumn.put(HttpConstant.TIMESTAMP, HttpConstant.TIMESTAMP);
-    JSONArray timeValues = new JSONArray();
-    timeColumn.put(HttpConstant.VALUES, timeValues);
+    JsonObject timeColumn = new JsonObject();
+    timeColumn.addProperty(HttpConstant.TIMESTAMP, HttpConstant.TIMESTAMP);
+    JsonArray timeValues = new JsonArray();
+    timeColumn.add(HttpConstant.VALUES, timeValues);
     result.add(timeColumn);
     for(PartialPath path : paths) {
-      JSONObject column = new JSONObject();
-      JSONArray values = new JSONArray();
-      column.put(HttpConstant.TIME_SERIES, path.toString());
-      column.put(HttpConstant.VALUES, values);
+      JsonObject column = new JsonObject();
+      JsonArray values = new JsonArray();
+      column.addProperty(HttpConstant.TIME_SERIES, path.toString());
+      column.add(HttpConstant.VALUES, values);
       result.add(column);
     }
 
     while(dataSet.hasNext()) {
       RowRecord rowRecord = dataSet.next();
-      JSONObject timeCol = (JSONObject) result.get(0);
-      JSONArray timeVal = (JSONArray) timeCol.get(HttpConstant.VALUES);
+      JsonObject timeCol = result.get(0).getAsJsonObject();
+      JsonArray timeVal = timeCol.getAsJsonArray(HttpConstant.VALUES);
       timeVal.add(rowRecord.getTimestamp());
       List<Field> fields = rowRecord.getFields();
       for(int i = 0; i < fields.size(); i ++ ) {
-        JSONObject column = (JSONObject) result.get(i + 1);
-        JSONArray values = (JSONArray) column.get(HttpConstant.VALUES);
-        values.add(fields.get(i).getObjectValue(fields.get(i).getDataType()));
+        JsonObject column = result.get(i + 1).getAsJsonObject();
+        JsonArray values = column.getAsJsonArray(HttpConstant.VALUES);
+        switch(fields.get(i).getDataType()) {
+          case TEXT:
+            values.add(fields.get(i).getBinaryV().toString());
+            break;
+          case FLOAT:
+            values.add(fields.get(i).getFloatV());
+            break;
+          case INT32:
+            values.add(fields.get(i).getIntV());
+            break;
+          case INT64:
+            values.add(fields.get(i).getLongV());
+            break;
+          case BOOLEAN:
+            values.add(fields.get(i).getBoolV());
+            break;
+          case DOUBLE:
+            values.add(fields.get(i).getDoubleV());
+            break;
+          default:
+            throw new QueryProcessException("didn't support this datatype");
+        }
       }
     }
     return result;

@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.http.router;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.*;
+import com.librato.metrics.client.Json;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import java.io.IOException;
@@ -54,7 +54,7 @@ public class Router {
    * @param json request JSON Object
    * @return JSON object, may be a JSONArray or JSONObject
    */
-  public JSON route(HttpMethod method, String uri, Object json)
+  public JsonElement route(HttpMethod method, String uri, JsonElement json)
       throws AuthException, MetadataException, QueryProcessException
       , StorageEngineException, UnsupportedHttpMethod, SQLException, InterruptedException, QueryFilterOptimizationException, IOException, TException {
     QueryStringDecoder decoder = new QueryStringDecoder(uri);
@@ -68,38 +68,38 @@ public class Router {
         return timeSeriesHandler.handle(method, json);
       case HttpConstant.ROUTING_USER_LOGIN:
         if (UsersHandler.userLogin(decoder.parameters())) {
-          JSONObject result = new JSONObject();
-          result.put(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
+          JsonObject result = new JsonObject();
+          result.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
           return result;
         } else {
           throw new AuthException(String.format("%s can't log in", UsersHandler.getUsername()));
         }
       case HttpConstant.ROUTING_USER_LOGOUT:
         if (UsersHandler.userLogout(decoder.parameters())) {
-          JSONObject result = new JSONObject();
-          result.put(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
+          JsonObject result = new JsonObject();
+          result.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
           return result;
         } else {
           throw new AuthException(String.format("%s can't log out", UsersHandler.getUsername()));
         }
       case HttpConstant.ROUTING_QUERY:
         QueryHandler queryHandler = new QueryHandler();
-        return queryHandler.handle(json);
+        return queryHandler.handle(json.getAsJsonObject());
       case HttpConstant.ROUTING_INSERT:
         InsertHandler insertHandler = new InsertHandler();
-        return insertHandler.handle(json);
+        return insertHandler.handle(json.getAsJsonArray());
       case HttpConstant.ROUTING_STORAGE_GROUPS_DELETE:
         DeleteStorageGroupsHandler deleteStorageGroupsHandler = new DeleteStorageGroupsHandler();
-        return deleteStorageGroupsHandler.handle(json);
+        return deleteStorageGroupsHandler.handle(json.getAsJsonArray());
       case HttpConstant.ROUTING_TIME_SERIES_DELETE:
         DeleteTimeSeriesHandler deleteTimeSeriesHandler = new DeleteTimeSeriesHandler();
-        return deleteTimeSeriesHandler.handle(json);
+        return deleteTimeSeriesHandler.handle(json.getAsJsonArray());
       case HttpConstant.ROUTING_GET_TIME_SERIES:
         GetTimeSeriesHandler getTimeSeriesHandler = new GetTimeSeriesHandler();
-        return getTimeSeriesHandler.handle(json);
+        return getTimeSeriesHandler.handle(json.getAsJsonArray());
       case "":
-        JSONObject result = new JSONObject();
-        result.put(HttpConstant.RESULT, "Hello, IoTDB");
+        JsonObject result = new JsonObject();
+        result.addProperty(HttpConstant.RESULT, "Hello, IoTDB");
         return result;
       default:
         throw new UnsupportedHttpMethod(String.format("%s can't be found" , uri));

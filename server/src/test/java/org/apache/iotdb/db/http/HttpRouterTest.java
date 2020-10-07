@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.http;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import io.netty.handler.codec.http.HttpMethod;
 import java.io.IOException;
 import java.util.List;
@@ -50,7 +50,7 @@ public class HttpRouterTest extends HttpPrepData{
   @Test
   public void setStorageGroupsByRouter() throws Exception{
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
-    JSONArray jsonArray = postStorageGroupsJsonExample();
+    JsonArray jsonArray = postStorageGroupsJsonExample();
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, HttpConstant.ROUTING_STORAGE_GROUPS, jsonArray).toString());
     Assert.assertEquals("[root.ln, root.sg]",mmanager.getAllStorageGroupPaths().toString());
   }
@@ -67,7 +67,7 @@ public class HttpRouterTest extends HttpPrepData{
   public void deleteStorageGroupsByRouter()
       throws Exception {
     prepareData();
-    JSONArray jsonArray = deleteStorageGroupsJsonExample();
+    JsonArray jsonArray = deleteStorageGroupsJsonExample();
     Assert.assertEquals("[root.test]", mmanager.getAllStorageGroupPaths().toString());
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
     router.route(HttpMethod.POST, HttpConstant.ROUTING_STORAGE_GROUPS_DELETE, jsonArray);
@@ -76,7 +76,7 @@ public class HttpRouterTest extends HttpPrepData{
 
   @Test
   public void createTimeSeriesByRouter() throws Exception{
-    JSONArray jsonArray = createTimeSeriesJsonExample();
+    JsonArray jsonArray = createTimeSeriesJsonExample();
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, HttpConstant.ROUTING_TIME_SERIES, jsonArray).toString());
     List<PartialPath> paths = mmanager.getAllTimeseriesPathWithAlias(new PartialPath("root.sg.*"));
@@ -87,7 +87,7 @@ public class HttpRouterTest extends HttpPrepData{
   @Test
   public void deleteTimeSeriesByRouter() throws Exception{
     prepareData();
-    JSONArray timeSeries = deleteTimeSeriesJsonExample();
+    JsonArray timeSeries = deleteTimeSeriesJsonExample();
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, HttpConstant.ROUTING_TIME_SERIES_DELETE, timeSeries).toString());
     checkDataAfterDeletingTimeSeries();
@@ -97,18 +97,16 @@ public class HttpRouterTest extends HttpPrepData{
   public void getTimeSeriesByRouter() throws Exception{
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
     buildMetaDataForGetTimeSeries();
-    JSONArray jsonArray = new JSONArray();
+    JsonArray jsonArray = new JsonArray();
     jsonArray.add("root.laptop.*");
-    Assert.assertEquals("[[\"root.laptop.d1.s1\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\"]"
-            + ",[\"root.laptop.d1.1_2\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\"]"
-            + ",[\"root.laptop.d1.\\\"1.2.3\\\"\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\"]]",
+    Assert.assertEquals("[[\"root.laptop.d1.s1\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"],[\"root.laptop.d1.1_2\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"],[\"root.laptop.d1.\\\"1.2.3\\\"\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"]]",
         router.route(HttpMethod.POST, HttpConstant.ROUTING_GET_TIME_SERIES, jsonArray).toString());
   }
 
   @Test
   public void insertByRouter() throws Exception{
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
-    JSONArray inserts = insertJsonExample(1);
+    JsonArray inserts = insertJsonExample(1);
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, HttpConstant.ROUTING_INSERT, inserts).toString());
     checkDataAfterInserting(1);
   }
@@ -116,9 +114,9 @@ public class HttpRouterTest extends HttpPrepData{
   @Test
   public void queryByRouter() throws Exception{
     prepareData();
-    JSONObject query = queryJsonExample();
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
-    Assert.assertEquals("[{\"values\":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],\"timestamp\":\"timestamp\"}," +
+    JsonObject query = queryJsonExample();
+    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, LOGIN_URI, null).toString());
+    Assert.assertEquals("[{\"timestamp\":\"timestamp\",\"values\":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}," +
                     "{\"timeSeries\":\"root.test.m0\",\"values\":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0]}," +
                     "{\"timeSeries\":\"root.test.m9\",\"values\":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0]}]"
         , router.route(HttpMethod.POST, HttpConstant.ROUTING_QUERY, query).toString());

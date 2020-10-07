@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.http.handler;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -35,13 +36,12 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 
 public class DeleteStorageGroupsHandler extends Handler{
-  public JSON handle(Object json)
+  public JsonElement handle(JsonArray json)
       throws IllegalPathException, AuthException,
       QueryProcessException, StorageEngineException, StorageGroupNotSetException {
-    JSONArray jsonArray = (JSONArray) json;
     List<PartialPath> storageGroups = new ArrayList<>();
-    for(Object object : jsonArray) {
-      String storageGroup = (String) object;
+    for(JsonElement object : json) {
+      String storageGroup = object.getAsString();
       storageGroups.add(new PartialPath(storageGroup));
     }
     DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(storageGroups);
@@ -51,8 +51,8 @@ public class DeleteStorageGroupsHandler extends Handler{
     if(!executor.processNonQuery(plan)) {
       throw new QueryProcessException(String.format("%s can't be deleted successfully", storageGroups));
     }
-    JSONObject jsonObject = new JSONObject();
-    jsonObject.put(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
+    JsonObject jsonObject = new JsonObject();
+    jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
     return jsonObject;
   }
 }

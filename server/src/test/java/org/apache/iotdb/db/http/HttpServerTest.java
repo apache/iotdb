@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.http;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -84,7 +84,7 @@ public class HttpServerTest extends HttpPrepData {
   @Test
   public void setStorageGroupsByHttp() {
     login();
-    JSONArray jsonArray = postStorageGroupsJsonExample();
+    JsonArray jsonArray = postStorageGroupsJsonExample();
     Response response1 = client.target(STORAGE_GROUPS_URI)
         .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray, MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response1.readEntity(String.class));
@@ -105,7 +105,7 @@ public class HttpServerTest extends HttpPrepData {
   public void deleteStorageGroupsByHttp() throws Exception{
     login();
     prepareData();
-    JSONArray jsonArray = deleteStorageGroupsJsonExample();
+    JsonArray jsonArray = deleteStorageGroupsJsonExample();
     Response response = client.target(STORAGE_GROUPS_DELETE_URI)
         .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray, MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
@@ -115,7 +115,7 @@ public class HttpServerTest extends HttpPrepData {
   @Test
   public void createTimeSeriesByHttp() throws Exception {
     login();
-    JSONArray jsonArray = createTimeSeriesJsonExample();
+    JsonArray jsonArray = createTimeSeriesJsonExample();
     Response response = client.target(TIME_SERIES_URI)
         .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray, MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
@@ -128,7 +128,7 @@ public class HttpServerTest extends HttpPrepData {
   public void getTimeSeriesByHttp() throws Exception {
     login();
     buildMetaDataForGetTimeSeries();
-    JSONArray jsonArray = new JSONArray();
+    JsonArray jsonArray = new JsonArray();
     jsonArray.add("root.laptop.*");
     Response response = client.target(GET_TIME_SERIES_URI)
         .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray, MediaType.APPLICATION_JSON));
@@ -141,7 +141,7 @@ public class HttpServerTest extends HttpPrepData {
   public void deleteTimeSeriesByHttp() throws Exception {
     login();
     prepareData();
-    JSONArray timeSeries = deleteTimeSeriesJsonExample();
+    JsonArray timeSeries = deleteTimeSeriesJsonExample();
     Response response = client.target(TIME_SERIES_DELETE_URI)
         .request(MediaType.APPLICATION_JSON).post(Entity.entity(timeSeries, MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
@@ -151,7 +151,7 @@ public class HttpServerTest extends HttpPrepData {
   @Test
   public void insertByHttp() throws Exception {
     login();
-    JSONArray inserts = insertJsonExample(1);
+    JsonArray inserts = insertJsonExample(1);
     Response response = client.target(INSERT_URI)
         .request(MediaType.APPLICATION_JSON).post(Entity.entity(inserts, MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
@@ -162,7 +162,7 @@ public class HttpServerTest extends HttpPrepData {
   public void queryByHttp() throws Exception {
     login();
     prepareData();
-    JSONObject query = queryJsonExample();
+    JsonObject query = queryJsonExample();
     Response response = client.target(QUERY_URI)
         .request(MediaType.APPLICATION_JSON).post(Entity.entity(query, MediaType.APPLICATION_JSON));
     Assert.assertEquals("[{\"values\":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],\"timestamp\":\"timestamp\"}," +
@@ -178,7 +178,7 @@ public class HttpServerTest extends HttpPrepData {
     for(int i = 0; i < 10; i++) {
       int finalI = i;
       service.submit(() -> {
-        JSONArray inserts = insertJsonExample(finalI);
+        JsonArray inserts = insertJsonExample(finalI);
         Response response = client.target(INSERT_URI)
             .request(MediaType.APPLICATION_JSON).post(Entity.entity(inserts, MediaType.APPLICATION_JSON));
         Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));

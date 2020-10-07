@@ -18,15 +18,8 @@
  */
 package org.apache.iotdb.db.http;
 
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
-import static org.junit.Assert.assertEquals;
-
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -35,8 +28,6 @@ import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.http.router.Router;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.executor.QueryRouter;
@@ -51,11 +42,19 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.junit.Assert;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
+import static org.junit.Assert.assertEquals;
+
 // prepare data for http test
 
 public abstract class HttpPrepData {
 
-  private String processorName = "root.test";
+  private final String processorName = "root.test";
   protected static String[] measurements = new String[10];
   static {
     for (int i = 0; i < 10; i++) {
@@ -63,7 +62,6 @@ public abstract class HttpPrepData {
     }
   }
 
-  private MNode deviceMNode;
   protected TSDataType dataType = TSDataType.DOUBLE;
   protected TSEncoding encoding = TSEncoding.PLAIN;
   protected static MManager mmanager = IoTDB.metaManager;
@@ -73,11 +71,8 @@ public abstract class HttpPrepData {
   static final String LOGIN_URI = "/user/login?username=root&password=root";
 
   protected void prepareData() throws MetadataException, StorageEngineException {
-    String test = "test";
-    deviceMNode = new MNode(null, test);
     IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
-      deviceMNode.addChild(measurements[i], new MeasurementMNode(null, null, null, null));
       IoTDB.metaManager.createTimeseries(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]), dataType,
           encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     }
@@ -93,55 +88,54 @@ public abstract class HttpPrepData {
   private void insertToStorageEngine(TSRecord record)
       throws StorageEngineException, IllegalPathException {
     InsertRowPlan insertRowPlan = new InsertRowPlan(record);
-    insertRowPlan.setDeviceMNode(deviceMNode);
     StorageEngine.getInstance().insert(insertRowPlan);
   }
 
-  JSONArray postStorageGroupsJsonExample() {
-    JSONArray jsonArray = new JSONArray();
+  JsonArray postStorageGroupsJsonExample() {
+    JsonArray jsonArray = new JsonArray();
     jsonArray.add("root.ln");
     jsonArray.add("root.sg");
     return jsonArray;
   }
 
-  JSONArray deleteStorageGroupsJsonExample() {
-    JSONArray jsonArray = new JSONArray();
+  JsonArray deleteStorageGroupsJsonExample() {
+    JsonArray jsonArray = new JsonArray();
     jsonArray.add(processorName);
     return jsonArray;
   }
 
-  JSONArray createTimeSeriesJsonExample() {
-    JSONArray jsonArray = new JSONArray();
-    JSONObject timeSeries1 = new JSONObject();
+  JsonArray createTimeSeriesJsonExample() {
+    JsonArray jsonArray = new JsonArray();
+    JsonObject timeSeries1 = new JsonObject();
 
-    timeSeries1.put("timeSeries", "root.sg.d1.s1");
-    timeSeries1.put("alias", "temperature");
-    timeSeries1.put("dataType", "DOUBLE");
-    timeSeries1.put("encoding", "PLAIN");
+    timeSeries1.addProperty("timeSeries", "root.sg.d1.s1");
+    timeSeries1.addProperty("alias", "temperature");
+    timeSeries1.addProperty("dataType", "DOUBLE");
+    timeSeries1.addProperty("encoding", "PLAIN");
 
-    JSONArray props = new JSONArray();
-    JSONObject keyValue = new JSONObject();
-    keyValue.put("key", "hello");
-    keyValue.put("value", "world");
+    JsonArray props = new JsonArray();
+    JsonObject keyValue = new JsonObject();
+    keyValue.addProperty("key", "hello");
+    keyValue.addProperty("value", "world");
     props.add(keyValue);
 
     // same props
-    timeSeries1.put("properties", props);
-    timeSeries1.put("tags", props);
-    timeSeries1.put("attributes", props);
+    timeSeries1.add("properties", props);
+    timeSeries1.add("tags", props);
+    timeSeries1.add("attributes", props);
 
-    JSONObject timeSeries2 = new JSONObject();
-    timeSeries2.put("timeSeries", "root.sg.d1.s2");
-    timeSeries2.put("dataType", "DOUBLE");
-    timeSeries2.put("encoding", "PLAIN");
+    JsonObject timeSeries2 = new JsonObject();
+    timeSeries2.addProperty("timeSeries", "root.sg.d1.s2");
+    timeSeries2.addProperty("dataType", "DOUBLE");
+    timeSeries2.addProperty("encoding", "PLAIN");
 
     jsonArray.add(timeSeries1);
     jsonArray.add(timeSeries2);
     return jsonArray;
   }
 
-  JSONArray deleteTimeSeriesJsonExample() {
-    JSONArray timeSeries = new JSONArray();
+  JsonArray deleteTimeSeriesJsonExample() {
+    JsonArray timeSeries = new JsonArray();
     for (String measurement : measurements) {
       timeSeries.add(processorName + TsFileConstant.PATH_SEPARATOR + measurement);
     }
@@ -181,23 +175,23 @@ public abstract class HttpPrepData {
         TSFileDescriptor.getInstance().getConfig().getCompressor(), new HashMap<>());
   }
 
-  JSONArray insertJsonExample(int i) {
-    JSONArray inserts = new JSONArray();
+  JsonArray insertJsonExample(int i) {
+    JsonArray inserts = new JsonArray();
     for(int j = 0; j < 6; j++) {
-      JSONObject row = new JSONObject();
-      row.put(HttpConstant.IS_NEED_INFER_TYPE, false);
-      row.put(HttpConstant.DEVICE_ID, "root.ln.wf01.wt0" + i);
-      JSONArray measurements = new JSONArray();
+      JsonObject row = new JsonObject();
+      row.addProperty(HttpConstant.IS_NEED_INFER_TYPE, false);
+      row.addProperty(HttpConstant.DEVICE_ID, "root.ln.wf01.wt0" + i);
+      JsonArray measurements = new JsonArray();
       measurements.add("temperature");
       measurements.add("status");
       measurements.add("hardware");
-      row.put(HttpConstant.MEASUREMENTS, measurements);
-      row.put(HttpConstant.TIMESTAMP, j);
-      JSONArray values = new JSONArray();
+      row.add(HttpConstant.MEASUREMENTS, measurements);
+      row.addProperty(HttpConstant.TIMESTAMP, j);
+      JsonArray values = new JsonArray();
       values.add(j);
       values.add(true);
       values.add(j);
-      row.put(HttpConstant.VALUES, values);
+      row.add(HttpConstant.VALUES, values);
       inserts.add(row);
     }
     return inserts;
@@ -209,9 +203,9 @@ public abstract class HttpPrepData {
     pathList.add(new PartialPath("root.ln.wf01.wt0" + i + ".status"));
     pathList.add(new PartialPath("root.ln.wf01.wt0" + i + ".hardware"));
     List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.INT32);
+    dataTypes.add(TSDataType.DOUBLE);
     dataTypes.add(TSDataType.BOOLEAN);
-    dataTypes.add(TSDataType.INT32);
+    dataTypes.add(TSDataType.DOUBLE);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
@@ -225,35 +219,35 @@ public abstract class HttpPrepData {
     Assert.assertEquals(6, count);
   }
 
-  JSONObject queryJsonExample() {
-    JSONObject query = new JSONObject();
+  JsonObject queryJsonExample() {
+    JsonObject query = new JsonObject();
 
     //add timeSeries
-    JSONArray timeSeries = new JSONArray();
+    JsonArray timeSeries = new JsonArray();
     timeSeries.add(processorName + TsFileConstant.PATH_SEPARATOR + measurements[0]);
     timeSeries.add(processorName + TsFileConstant.PATH_SEPARATOR + measurements[9]);
-    query.put(HttpConstant.TIME_SERIES, timeSeries);
+    query.add(HttpConstant.TIME_SERIES, timeSeries);
 
     //set isAggregated
-    query.put(HttpConstant.IS_AGGREGATED, true);
+    query.addProperty(HttpConstant.IS_AGGREGATED, true);
 
     // add functions
-    JSONArray aggregations = new JSONArray();
+    JsonArray aggregations = new JsonArray();
     aggregations.add("COUNT");
     aggregations.add("COUNT");
-    query.put(HttpConstant.AGGREGATIONS, aggregations);
+    query.add(HttpConstant.AGGREGATIONS, aggregations);
 
     //set time filter
-    query.put(HttpConstant.FROM, 1L);
-    query.put(HttpConstant.TO, 20L);
+    query.addProperty(HttpConstant.FROM, 1L);
+    query.addProperty(HttpConstant.TO, 20L);
 
     //Sets the number of partition
-    query.put(HttpConstant.isPoint, true);
+    query.addProperty(HttpConstant.isPoint, true);
 
     //set Group by
-    JSONObject groupBy = new JSONObject();
-    groupBy.put(HttpConstant.SAMPLING_POINTS, 19);
-    query.put(HttpConstant.GROUP_BY, groupBy);
+    JsonObject groupBy = new JsonObject();
+    groupBy.addProperty(HttpConstant.SAMPLING_POINTS, 19);
+    query.add(HttpConstant.GROUP_BY, groupBy);
     return query;
   }
 

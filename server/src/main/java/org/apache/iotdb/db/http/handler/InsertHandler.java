@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.db.http.handler;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.*;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.auth.AuthException;
@@ -34,48 +32,51 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class InsertHandler extends Handler{
-  public JSON handle(Object json)
+  public JsonElement handle(JsonArray json)
       throws IllegalPathException, QueryProcessException,
       StorageEngineException, StorageGroupNotSetException, AuthException {
     checkLogin();
-    JSONArray array = (JSONArray) json;
-    for (Object o : array) {
-      JSONObject object = (JSONObject) o;
-      String deviceID = (String) object.get(HttpConstant.DEVICE_ID);
-      JSONArray measurements = (JSONArray) object.get(HttpConstant.MEASUREMENTS);
-      long timestamps = (Integer) object.get(HttpConstant.TIMESTAMP);
-      JSONArray values  = (JSONArray) object.get(HttpConstant.VALUES);
-      Boolean isNeedInferType = (Boolean) object.get(HttpConstant.IS_NEED_INFER_TYPE);
+    for (JsonElement o : json) {
+      JsonObject object = o.getAsJsonObject();
+      String deviceID = object.get(HttpConstant.DEVICE_ID).getAsString();
+      JsonArray measurements = (JsonArray) object.get(HttpConstant.MEASUREMENTS);
+      long timestamps = object.get(HttpConstant.TIMESTAMP).getAsLong();
+      JsonArray values  = (JsonArray) object.get(HttpConstant.VALUES);
+      boolean isNeedInferType = object.get(HttpConstant.IS_NEED_INFER_TYPE).getAsBoolean();
       if (!insertByRow(deviceID, timestamps, getListString(measurements), values, isNeedInferType)) {
           throw new QueryProcessException(
               String.format("%s can't be inserted successfully", deviceID));
         }
     }
-    JSONObject jsonObject = new JSONObject();
-    jsonObject.put(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
+    JsonObject jsonObject = new JsonObject();
+    jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
     return jsonObject;
   }
 
   private boolean insertByRow(String deviceId, long time, List<String> measurements,
-      List<Object> values, boolean isNeedInferType)
+      JsonArray values, boolean isNeedInferType)
       throws IllegalPathException, QueryProcessException, StorageEngineException, StorageGroupNotSetException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setDeviceId(new PartialPath(deviceId));
     plan.setTime(time);
     plan.setMeasurements(measurements.toArray(new String[0]));
     plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
+    List<Object> valueList = new ArrayList<>();
     if(isNeedInferType) {
       plan.setNeedInferType(true);
     } else {
       TSDataType[] dataTypes = new TSDataType[measurements.size()];
       for(int i = 0; i < measurements.size(); i++) {
-        if(values.get(i) instanceof Integer) {
-          dataTypes[i] = TSDataType.INT32;
-        } else if(values.get(i) instanceof String) {
+        JsonPrimitive value = values.get(i).getAsJsonPrimitive();
+        if(value.isNumber()) {
+          Number number = value.getAsNumber();
+          valueList.add(number.doubleValue());
+          dataTypes[i] = TSDataType.DOUBLE;
+        } else if(value.isString()) {
+          valueList.add(value.getAsString());
           dataTypes[i] = TSDataType.TEXT;
-        } else if(values.get(i) instanceof Float) {
-          dataTypes[i] = TSDataType.FLOAT;
-        } else if(values.get(i) instanceof Boolean) {
+        } else if(value.isBoolean()) {
+          valueList.add(value.getAsBoolean());
           dataTypes[i] = TSDataType.BOOLEAN;
         } else {
           throw new QueryProcessException("Unsupported json data type:" + dataTypes[i]);
@@ -84,17 +85,17 @@ public class InsertHandler extends Handler{
       plan.setDataTypes(dataTypes);
       plan.setNeedInferType(false);
     }
-    plan.setValues(values.toArray(new Object[0]));
+    plan.setValues(valueList.toArray(new Object[0]));
     return executor.processNonQuery(plan);
   }
 
   /**
    * transform JsonArray to List<String>
    */
-  private List<String> getListString(JSONArray jsonArray) {
+  private List<String> getListString(JsonArray jsonArray) {
     List<String> list = new ArrayList<>();
-    for (Object o : jsonArray) {
-      list.add((String) o);
+    for (JsonElement o : jsonArray) {
+      list.add(o.getAsString());
     }
     return list;
   }

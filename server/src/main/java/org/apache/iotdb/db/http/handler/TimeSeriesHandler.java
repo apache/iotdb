@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.http.handler;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import io.netty.handler.codec.http.HttpMethod;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,25 +39,32 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class TimeSeriesHandler extends Handler {
-  public JSON handle(HttpMethod httpMethod, Object json)
+  public JsonElement handle(HttpMethod httpMethod, JsonElement json)
       throws AuthException, MetadataException, QueryProcessException,
       StorageEngineException, UnsupportedHttpMethod {
     checkLogin();
     if (HttpMethod.POST.equals(httpMethod)) {
-      JSONArray jsonArray = (JSONArray) json;
+      JsonArray jsonArray = json.getAsJsonArray();
       for(Object object : jsonArray) {
-        JSONObject jsonObject = (JSONObject) object;
-        String path = (String) jsonObject.get(HttpConstant.TIME_SERIES);
-        String dataType = (String) jsonObject.get(HttpConstant.DATATYPE);
-        String encoding = (String) jsonObject.get(HttpConstant.ENCODING);
-        String alias = (String) jsonObject.get(HttpConstant.ALIAS);
-        String compression = (String) jsonObject.get(HttpConstant.COMPRESSION);
-        JSONArray properties = (JSONArray) jsonObject.get(HttpConstant.PROPERTIES);
-        JSONArray tags = (JSONArray) jsonObject.get(HttpConstant.TAGS);
-        JSONArray attributes = (JSONArray) jsonObject.get(HttpConstant.ATTRIBUTES);
+        JsonObject jsonObject = (JsonObject) object;
+        String path = jsonObject.get(HttpConstant.TIME_SERIES).getAsString();
+        String dataType = jsonObject.get(HttpConstant.DATATYPE).getAsString();
+        String encoding = jsonObject.get(HttpConstant.ENCODING).getAsString();
+        String alias = null;
+        if(jsonObject.get(HttpConstant.ALIAS) != null) {
+          alias = jsonObject.get(HttpConstant.ALIAS).getAsString();
+        }
+        CompressionType compression;
+        if(jsonObject.get(HttpConstant.COMPRESSION) == null) {
+          compression = TSFileDescriptor.getInstance().getConfig().getCompressor();
+        } else {
+          compression = CompressionType.valueOf(jsonObject.get(HttpConstant.COMPRESSION).getAsString().toUpperCase());
+        }
+        JsonArray properties = jsonObject.getAsJsonArray(HttpConstant.PROPERTIES);
+        JsonArray tags = jsonObject.getAsJsonArray(HttpConstant.TAGS);
+        JsonArray attributes = jsonObject.getAsJsonArray(HttpConstant.ATTRIBUTES);
         CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(path),
-            TSDataType.valueOf(dataType.toUpperCase()), TSEncoding.valueOf(encoding.toUpperCase()),
-            compression == null? TSFileDescriptor.getInstance().getConfig().getCompressor() : CompressionType.valueOf(compression.toUpperCase()),
+            TSDataType.valueOf(dataType.toUpperCase()), TSEncoding.valueOf(encoding.toUpperCase()), compression,
             jsonArrayToMap(properties), jsonArrayToMap(tags), jsonArrayToMap(attributes), alias);
         if(!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
           throw new AuthException(String.format("%s can't be created by %s", path, username));
@@ -66,22 +73,22 @@ public class TimeSeriesHandler extends Handler {
           throw new QueryProcessException(String.format("%s can't be created successfully", path));
         }
       }
-      JSONObject result = new JSONObject();
-      result.put(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
+      JsonObject result = new JsonObject();
+      result.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
       return result;
     }  else {
       throw new UnsupportedHttpMethod(httpMethod.toString());
     }
   }
 
-  private Map<String, String> jsonArrayToMap(JSONArray array) {
+  private Map<String, String> jsonArrayToMap(JsonArray array) {
     if(array == null) {
       return null;
     }
     Map<String, String> map = new HashMap<>();
-    for(Object object : array) {
-      JSONObject json = (JSONObject) object;
-      map.put((String)json.get(HttpConstant.KEY), (String)json.get(HttpConstant.VALUE));
+    for(JsonElement object : array) {
+      JsonObject json = object.getAsJsonObject();
+      map.put(json.getAsJsonPrimitive(HttpConstant.KEY).getAsString(), json.getAsJsonPrimitive(HttpConstant.VALUE).getAsString());
     }
     return map;
   }
