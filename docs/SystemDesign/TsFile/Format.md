@@ -66,7 +66,7 @@
 
 Here is a graph about the TsFile structure.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/82010604-299ac300-96a5-11ea-996d-013c0017f669.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">
 
 This TsFile contains two devices: d1, d2. Each device contains two measurements: s1, s2. 4 timeseries in total. Each timeseries contains 2 Chunks.
 
@@ -577,4 +577,4 @@ You can also use `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` to 
 
 #### v0.10 / 000002
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/82010604-299ac300-96a5-11ea-996d-013c0017f669.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">
