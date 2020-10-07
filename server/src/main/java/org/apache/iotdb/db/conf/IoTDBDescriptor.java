@@ -181,6 +181,11 @@ public class IoTDBDescriptor {
       conf.setMetricsPort(Integer.parseInt(properties.getProperty("metrics_port",
           Integer.toString(conf.getMetricsPort()))));
 
+      conf.setEnableHTTPService(Boolean.parseBoolean(properties
+              .getProperty("enable_http_service", Boolean.toString(conf.isEnableMetricService()))));
+
+      conf.setHTTPPort(Integer.parseInt(properties.getProperty("http_port", Integer.toString(conf.getHTTPPort()))));
+
       conf.setQueryCacheSizeInMetric(Integer
           .parseInt(properties.getProperty("query_cache_size_in_metric",
               Integer.toString(conf.getQueryCacheSizeInMetric()))
