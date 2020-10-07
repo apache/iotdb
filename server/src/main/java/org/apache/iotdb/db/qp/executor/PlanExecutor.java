@@ -70,11 +70,9 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -829,18 +827,12 @@ public class PlanExecutor implements IPlanExecutor {
                     chunkMetadata.getMeasurementUid()));
           }
           if (!node.hasChild(chunkMetadata.getMeasurementUid())) {
-            try {
-              mManager.createTimeseries(
-                  series,
-                  schema.getType(),
-                  schema.getEncodingType(),
-                  schema.getCompressor(),
-                  Collections.emptyMap());
-            }
-            catch (PathAlreadyExistException | AliasAlreadyExistException e) {
-              // just log it, created by multiple thread
-              logger.info("Concurrent create timeseries failed, use other thread's result");
-            }
+            mManager.createTimeseries(
+                series,
+                schema.getType(),
+                schema.getEncodingType(),
+                schema.getCompressor(),
+                Collections.emptyMap());
           } else if (!(node
               .getChild(chunkMetadata.getMeasurementUid()) instanceof MeasurementMNode)) {
             throw new QueryProcessException(
