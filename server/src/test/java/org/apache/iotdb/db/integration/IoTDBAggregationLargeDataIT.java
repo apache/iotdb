@@ -433,9 +433,9 @@ public class IoTDBAggregationLargeDataIT {
           "select min_time(s0),min_time(s1),min_time(s2),min_time(s3),min_time(s4)" +
               " from root.vehicle.d0 where s1 >= 0");
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      try {
+
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +
               resultSet.getString(min_time(d0s0)) + "," +
@@ -447,16 +447,13 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
 
       hasResultSet = statement.execute("select max_time(s0),max_time(s1),max_time(s2),"
           + "max_time(s3),max_time(s4) from root.vehicle.d0 " +
           "where s1 < 50000 and s1 != 100");
       Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
@@ -468,8 +465,6 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(2, cnt);
-      } finally {
-        resultSet.close();
       }
 
       // keep the correctness of `order by time desc`
@@ -477,9 +472,8 @@ public class IoTDBAggregationLargeDataIT {
           "select min_time(s0),min_time(s1),min_time(s2),min_time(s3),min_time(s4)" +
               " from root.vehicle.d0 where s1 >= 0 order by time desc");
       Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
       cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +
               resultSet.getString(min_time(d0s0)) + "," +
@@ -491,16 +485,13 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
 
       hasResultSet = statement.execute("select max_time(s0),max_time(s1),max_time(s2),"
           + "max_time(s3),max_time(s4) from root.vehicle.d0 " +
           "where s1 < 50000 and s1 != 100 order by time desc");
       Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
@@ -512,8 +503,6 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(2, cnt);
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -535,9 +524,8 @@ public class IoTDBAggregationLargeDataIT {
           "where s1 < 50000 and s1 != 100");
 
       if (hasResultSet) {
-        ResultSet resultSet = statement.getResultSet();
         int cnt = 0;
-        try {
+        try (ResultSet resultSet = statement.getResultSet()) {
           while (resultSet.next()) {
             String ans =
                 resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_value(d0s0))
@@ -549,8 +537,6 @@ public class IoTDBAggregationLargeDataIT {
             cnt++;
           }
           Assert.assertEquals(1, cnt);
-        } finally {
-          resultSet.close();
         }
       }
 
@@ -559,9 +545,8 @@ public class IoTDBAggregationLargeDataIT {
           "where s1 < 50000 and s1 != 100 order by time desc");
 
       if (hasResultSet) {
-        ResultSet resultSet = statement.getResultSet();
         int cnt = 0;
-        try {
+        try (ResultSet resultSet = statement.getResultSet()) {
           while (resultSet.next()) {
             String ans =
                 resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_value(d0s0))
@@ -573,8 +558,6 @@ public class IoTDBAggregationLargeDataIT {
             cnt++;
           }
           Assert.assertEquals(1, cnt);
-        } finally {
-          resultSet.close();
         }
       }
     } catch (Exception e) {
@@ -598,9 +581,8 @@ public class IoTDBAggregationLargeDataIT {
           "where s1 < 50000 and s1 != 100");
 
       if (hasResultSet) {
-        ResultSet resultSet = statement.getResultSet();
         int cnt = 0;
-        try {
+        try (ResultSet resultSet = statement.getResultSet()) {
           while (resultSet.next()) {
             String ans =
                 resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
@@ -612,8 +594,6 @@ public class IoTDBAggregationLargeDataIT {
             cnt++;
           }
           Assert.assertEquals(1, cnt);
-        } finally {
-          resultSet.close();
         }
       }
 
@@ -622,9 +602,8 @@ public class IoTDBAggregationLargeDataIT {
           "where s1 < 50000 and s1 != 100 order by time desc");
 
       if (hasResultSet) {
-        ResultSet resultSet = statement.getResultSet();
         int cnt = 0;
-        try {
+        try (ResultSet resultSet = statement.getResultSet()) {
           while (resultSet.next()) {
             String ans =
                 resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
@@ -636,8 +615,6 @@ public class IoTDBAggregationLargeDataIT {
             cnt++;
           }
           Assert.assertEquals(1, cnt);
-        } finally {
-          resultSet.close();
         }
       }
     } catch (Exception e) {
@@ -659,9 +636,8 @@ public class IoTDBAggregationLargeDataIT {
       boolean hasResultSet = statement.execute("select sum(s0),count(s0),avg(s0),avg(s1),"
           + "avg(s2) from root.vehicle.d0 where s1 >= 0 or s2 < 10");
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0)) + "," +
@@ -674,8 +650,6 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -696,9 +670,8 @@ public class IoTDBAggregationLargeDataIT {
       boolean hasResultSet = statement
           .execute("select sum(s0),sum(s1),sum(s2) from root.vehicle.d0 where s1 >= 0 or s2 < 10");
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0))
               + "," + resultSet.getString(sum(d0s1)) + "," + Math
@@ -707,16 +680,13 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
 
       hasResultSet = statement.execute("select sum(s0),sum(s1),sum(s2) from root.vehicle.d0"
           + " where s1 >= 0 or s2 < 10 order by time desc ");
       Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
       cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0))
               + "," + resultSet.getString(sum(d0s1)) + "," + Math
@@ -725,8 +695,6 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -748,9 +716,8 @@ public class IoTDBAggregationLargeDataIT {
           .execute("select first_value(s0),first_value(s1),first_value(s2),first_value(s3),"
               + "first_value(s4) from root.vehicle.d0 where s1 >= 0 or s2 < 10");
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first_value(d0s0))
@@ -762,8 +729,6 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
 
       // keep the correctness of `order by time desc`
@@ -771,9 +736,8 @@ public class IoTDBAggregationLargeDataIT {
           .execute("select first_value(s0),first_value(s1),first_value(s2),first_value(s3),"
               + "first_value(s4) from root.vehicle.d0 where s1 >= 0 or s2 < 10 order by time desc");
       Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
       cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first_value(d0s0))
@@ -785,8 +749,6 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -807,9 +769,8 @@ public class IoTDBAggregationLargeDataIT {
       boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),"
           + "count(s4) from root.vehicle.d0 where s1 >= 0 or s2 < 10");
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
               + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
@@ -818,8 +779,6 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -840,9 +799,8 @@ public class IoTDBAggregationLargeDataIT {
       boolean hasResultSet = statement.execute("select min_time(s0),min_time(s1),min_time(s2),"
           + "min_time(s3),min_time(s4) from root.vehicle.d0 where s1 >= 0");
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +
               resultSet.getString(min_time(d0s0)) + "," +
@@ -854,8 +812,6 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -877,9 +833,8 @@ public class IoTDBAggregationLargeDataIT {
           + "max_time(s3),max_time(s4) from root.vehicle.d0 " +
           "where s1 < 50000 and s1 != 100");
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
@@ -891,17 +846,14 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
 
       hasResultSet = statement.execute("select max_time(s0),max_time(s1),max_time(s2),"
           + "max_time(s3),max_time(s4) from root.vehicle.d0 " +
           "where s1 < 50000 and s1 != 100 order by time desc");
       Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
       cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
@@ -913,8 +865,6 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -936,9 +886,8 @@ public class IoTDBAggregationLargeDataIT {
           + "min_value(s3),min_value(s4) from root.vehicle.d0 " +
           "where s1 < 50000 and s1 != 100");
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_value(d0s0))
@@ -950,8 +899,6 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -972,9 +919,8 @@ public class IoTDBAggregationLargeDataIT {
       boolean hasResultSet = statement.execute("select max_value(s0),max_value(s1),max_value(s2),"
           + "max_value(s3),max_value(s4) from root.vehicle.d0 where s1 < 50000 and s1 != 100");
       Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
-      try {
+      try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
@@ -986,8 +932,6 @@ public class IoTDBAggregationLargeDataIT {
           cnt++;
         }
         Assert.assertEquals(1, cnt);
-      } finally {
-        resultSet.close();
       }
     } catch (Exception e) {
       e.printStackTrace();
