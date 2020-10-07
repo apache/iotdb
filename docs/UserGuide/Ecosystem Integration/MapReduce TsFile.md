@@ -49,7 +49,7 @@ With this connector, you can
 |-------------  | ------------ |------------ |
 | `2.7.3`       | `1.8`        | `0.10.0`|
 
-> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
+> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
 
 ## Data Type Correspondence
 
@@ -149,7 +149,7 @@ Then, the `mapper` and `reducer` class is how you deal with the `MapWritable` pr
   }
 ```
 
-> Note: For the complete code, please see the following link: https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSFMRReadExample.java
+> Note: For the complete code, please see the following link: https://github.com/apache/iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSFMRReadExample.java
 
 
 ### Write Example: write the average into Tsfile
@@ -209,4 +209,4 @@ Then, the `mapper` and `reducer` class is how you deal with the `MapWritable` pr
         }
     }
 ```
-> Note: For the complete code, please see the following link: https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSMRWriteExample.java
+> Note: For the complete code, please see the following link: https://github.com/apache/iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSMRWriteExample.java

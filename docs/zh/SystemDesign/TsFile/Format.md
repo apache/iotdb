@@ -65,9 +65,9 @@
 
 下图是关于TsFile的结构图。
 
-![TsFile Breakdown](https://user-images.githubusercontent.com/19167280/82113144-29262900-9786-11ea-83c6-1c45b6c1f3a5.png)
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/82010604-299ac300-96a5-11ea-996d-013c0017f669.png">
 
-此文件包括两个设备 d1、d2，每个设备包含三个测点 s1、s2、s3，共 6 个时间序列，d1为蓝色，d2为紫色。每个时间序列包含两个 Chunk。
+此文件包括两个设备 d1、d2，每个设备包含两个测点 s1、s2，共 4 个时间序列。每个时间序列包含两个 Chunk。
 
 元数据分为三部分
 
@@ -123,6 +123,19 @@ PageHeader 结构
 | compressedSize |       int        | SNAPPY压缩后数据大小 |
 |   statistics    |       Statistics        | 统计量 |
 
+这里是`statistics`的详细信息：
+
+ |             成员               | 描述 | DoubleStatistics | FloatStatistics | IntegerStatistics | LongStatistics | BinaryStatistics | BooleanStatistics |
+ | :----------------------------------: | :--------------: | :----: | :----: | :----: | :----: | :----: | :----: |
+ | count  | 数据点个数 | long | long | long | long | long | long | 
+ | startTime | 开始时间 | long | long | long | long | long | long | 
+ | endTime | 结束时间 | long | long | long | long | long | long | 
+ | minValue | 最小值 | double | float | int | long | - | - |
+ | maxValue | 最大值 | double | float | int | long | - | - |
+ | firstValue | 第一个值 | double | float | int | long | Binary | boolean|
+ | lastValue | 最后一个值 | double | float | int | long | Binary | boolean|
+ | sumValue | 和 | double | double | double | double | - | - |
+ 
 ##### ChunkGroupFooter
 
 |                成员                |  类型  | 解释 |
@@ -144,8 +157,6 @@ PageHeader 结构
 |                tsDataType                |  TSDataType   | 数据类型 |
 |   statistics    |       Statistics        | 统计量 |
 
-其中，对于五个统计值(min、max、first、last、sum)，Binary 和 Boolean 类型的 `ChunkMetadata` 只有 first 和 last 两个值。
-
 ##### 1.2.3.2 TimeseriesMetadata
 
 第二部分的元数据是 `TimeseriesMetadata`。
@@ -157,8 +168,6 @@ PageHeader 结构
 | startOffsetOfChunkMetadataList |  long  | 文件中 ChunkMetadata 列表开始的偏移量 |
 |  chunkMetaDataListDataSize  |  int  | ChunkMetadata 列表的大小 |
 |   statistics    |       Statistics        | 统计量 |
-
-其中，对于五个统计值(min、max、first、last、sum)，Binary 和 Boolean 类型的 `TimeseriesMetadata` 只有 first 和 last 两个值。
 
 ##### 1.2.3.3 TsFileMetaData
 
@@ -331,8 +340,8 @@ Linux or MacOs:
 
 在mac系统中的示例:
 
-```$xslt
-/incubator-iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
+```console
+/iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
 ​````````````````````````
 Starting Printing the TsFile Sketch
 ​````````````````````````

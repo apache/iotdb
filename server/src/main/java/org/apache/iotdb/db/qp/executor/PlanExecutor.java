@@ -149,7 +149,6 @@ import org.slf4j.LoggerFactory;
 
 public class PlanExecutor implements IPlanExecutor {
 
-  // logger
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
 
   // for data query
@@ -916,6 +915,13 @@ public class PlanExecutor implements IPlanExecutor {
           .setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
       getSeriesSchemas(insertRowPlan);
       insertRowPlan.transferType();
+
+      //check insert plan
+      if (insertRowPlan.getValues().length == 0) {
+        logger.warn("Can't insert row with only time/timestamp");
+        return;
+      }
+
       StorageEngine.getInstance().insert(insertRowPlan);
       if (insertRowPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
