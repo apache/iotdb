@@ -35,6 +35,8 @@ public abstract class QueryPlan extends PhysicalPlan {
   private int rowLimit = 0;
   private int rowOffset = 0;
 
+  private boolean ascending = true;
+
   private Map<String, Integer> pathToIndex = new HashMap<>();
 
   public QueryPlan() {
@@ -97,5 +99,13 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public Map<String, Integer> getPathToIndex() {
     return pathToIndex;
+  }
+
+  public boolean isAscending() {
+    return ascending;
+  }
+
+  public void setAscending(boolean ascending) {
+    this.ascending = ascending;
   }
 }

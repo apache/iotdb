@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -30,6 +32,7 @@ import java.sql.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.iotdb.db.metadata.MManager.TIME_SERIES_TREE_HEADER;
 import static org.junit.Assert.fail;
 
 /**
@@ -48,6 +51,7 @@ public class IoTDBMetadataFetchIT {
         Statement statement = connection.createStatement()) {
 
       String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.ln.wf01.wt01",
+          "SET STORAGE GROUP TO root.ln1.wf01.wt01", "SET STORAGE GROUP TO root.ln2.wf01.wt01",
           "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
           "CREATE TIMESERIES root.ln.wf01.wt01.status.s1 WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
           "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
@@ -89,20 +93,20 @@ public class IoTDBMetadataFetchIT {
           "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
       };
       String[] standards = new String[]{
-          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n",
 
-          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,\n",
 
-          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,\n",
 
-          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
-              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
+          "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.status.s1,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,\n"
+              + "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,\n",
 
           ""
       };
@@ -138,8 +142,10 @@ public class IoTDBMetadataFetchIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[]{"show storage group"};
-      String[] standards = new String[]{"root.ln.wf01.wt01,\n"};
+      String[] sqls = new String[]{"show storage group", "show storage group root.ln.wf01",
+          "show storage group root.ln.wf01.wt01.status"};
+      String[] standards = new String[]{"root.ln.wf01.wt01,\n" + "root.ln1.wf01.wt01,\n" + "root.ln2.wf01.wt01,\n", 
+                                        "root.ln.wf01.wt01,\n", ""};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -157,7 +163,7 @@ public class IoTDBMetadataFetchIT {
               }
             }
           }
-          Assert.assertEquals(builder.toString(), standard);
+          Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
           logger.error("showStorageGroupTest() failed", e);
           fail(e.getMessage());
@@ -198,7 +204,7 @@ public class IoTDBMetadataFetchIT {
         if (hasResultSet) {
           try (ResultSet resultSet = statement.getResultSet()) {
             resultSet.next();
-            Assert.assertEquals(resultSet.getString(1), IoTDBConstant.VERSION);
+            Assert.assertEquals(IoTDBConstant.VERSION, resultSet.getString(1));
           }
         }
       } catch (Exception e) {
@@ -208,13 +214,13 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  public void showDevices() throws SQLException, ClassNotFoundException {
+  public void showDevicesTest() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[]{"show devices root.ln"};
-      String[] standards = new String[]{"root.ln.wf01.wt01,\n" + "root.ln.wf01.wt01.status,\n"};
+      String[] sqls = new String[]{"show devices root.ln", "show devices root.ln.wf01.wt01.temperature"};
+      String[] standards = new String[]{"root.ln.wf01.wt01,\n" + "root.ln.wf01.wt01.status,\n", ""};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -232,9 +238,9 @@ public class IoTDBMetadataFetchIT {
               }
             }
           }
-          Assert.assertEquals(builder.toString(), standard);
+          Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
-          logger.error("showDevices() failed", e);
+          logger.error("showDevicesTest() failed", e);
           fail(e.getMessage());
         }
       }
@@ -266,7 +272,7 @@ public class IoTDBMetadataFetchIT {
               }
             }
           }
-          Assert.assertEquals(builder.toString(), standard);
+          Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
           logger.error("showChildPaths() failed", e);
           fail(e.getMessage());
@@ -315,8 +321,8 @@ public class IoTDBMetadataFetchIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[]{"COUNT DEVICES root.ln", "COUNT DEVICES"};
-      String[] standards = new String[]{"2,\n", "2,\n"};
+      String[] sqls = new String[]{"COUNT DEVICES root.ln", "COUNT DEVICES", "COUNT DEVICES root.ln.wf01.wt01.temperature"};
+      String[] standards = new String[]{"2,\n", "2,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -344,13 +350,14 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  public void showCountTimeSeriesGroupBy() throws SQLException, ClassNotFoundException {
+  public void showCountStorageGroup() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[]{"COUNT TIMESERIES root group by level=1"};
-      String[] standards = new String[]{"root.ln,3,\n"};
+      String[] sqls = new String[]{"count storage group root.ln", "count storage group",
+          "count storage group root.ln.wf01.wt01.status"};
+      String[] standards = new String[]{"1,\n", "3,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -368,7 +375,41 @@ public class IoTDBMetadataFetchIT {
               }
             }
           }
-          Assert.assertEquals(builder.toString(), standard);
+          Assert.assertEquals(standard, builder.toString());
+        } catch (SQLException e) {
+          logger.error("showCountStorageGroup() failed", e);
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void showCountTimeSeriesGroupBy() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String[] sqls = new String[]{"COUNT TIMESERIES root group by level=1"};
+      String[] standards = new String[]{"root.ln,3,\n" + "root.ln1,0,\n" + "root.ln2,0,\n"};
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        String standard = standards[n];
+        StringBuilder builder = new StringBuilder();
+        try {
+          boolean hasResultSet = statement.execute(sql);
+          if (hasResultSet) {
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+              while (resultSet.next()) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                  builder.append(resultSet.getString(i)).append(",");
+                }
+                builder.append("\n");
+              }
+            }
+          }
+          Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
           logger.error("showCountTimeSeriesGroupBy() failed", e);
           fail(e.getMessage());
@@ -384,7 +425,7 @@ public class IoTDBMetadataFetchIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       String[] sqls = new String[]{"COUNT NODES root level=1"};
-      String[] standards = new String[]{"1,\n"};
+      String[] standards = new String[]{"3,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -402,7 +443,7 @@ public class IoTDBMetadataFetchIT {
               }
             }
           }
-          Assert.assertEquals(builder.toString(), standard);
+          Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
           logger.error("showCountNodes() failed", e);
           fail(e.getMessage());
@@ -422,6 +463,11 @@ public class IoTDBMetadataFetchIT {
             + "\n"
             + "{\n"
             + "\t\"root\":{\n"
+            + "\t\t\"ln2\":{\n"
+            + "\t\t\t\"wf01\":{\n"
+            + "\t\t\t\t\"wt01\":{}\n"
+            + "\t\t\t}\n"
+            + "\t\t},\n"
             + "\t\t\"ln\":{\n"
             + "\t\t\t\"wf01\":{\n"
             + "\t\t\t\t\"wt01\":{\n"
@@ -442,10 +488,23 @@ public class IoTDBMetadataFetchIT {
             + "\t\t\t\t\t}\n"
             + "\t\t\t\t}\n"
             + "\t\t\t}\n"
+            + "\t\t},\n"
+            + "\t\t\"ln1\":{\n"
+            + "\t\t\t\"wf01\":{\n"
+            + "\t\t\t\t\"wt01\":{}\n"
+            + "\t\t\t}\n"
             + "\t\t}\n"
             + "\t}\n"
             + "}";
 
-    Assert.assertEquals(standard, metadataInJson);
+    //TODO Remove the constant json String.
+    // Do not depends on the sequence of property in json string if you do not
+    // explictly mark the sequence, when we use jackson, the json result may change again
+    String rawJsonString = metadataInJson.substring(TIME_SERIES_TREE_HEADER.length());
+    Gson gson = new Gson();
+    JsonObject actual = gson.fromJson(rawJsonString, JsonObject.class);
+    JsonObject expected = gson.fromJson(standard.substring(TIME_SERIES_TREE_HEADER.length()), JsonObject.class);
+
+    Assert.assertEquals(expected, actual);
   }
 }

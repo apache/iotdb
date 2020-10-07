@@ -46,7 +46,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.Planner;
@@ -82,7 +81,6 @@ public class TTLTest {
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
   private long prevPartitionInterval;
 
-  private MNode deviceMNode = null;
 
   @Before
   public void setUp()
@@ -91,8 +89,6 @@ public class TTLTest {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
     createSchemas();
-    deviceMNode = new MNode(null, sg1);
-    deviceMNode.addChild(s1, new MeasurementMNode(null, null, null, null));
   }
 
   @After
@@ -104,7 +100,6 @@ public class TTLTest {
 
   private void insertToStorageGroupProcessor(InsertRowPlan insertPlan)
       throws WriteProcessException {
-    insertPlan.setDeviceMNode(deviceMNode);
     storageGroupProcessor.insert(insertPlan);
   }
 
@@ -149,8 +144,9 @@ public class TTLTest {
     plan.setMeasurements(new String[]{"s1"});
     plan.setDataTypes(new TSDataType[]{TSDataType.INT64});
     plan.setValues(new Object[]{1L});
-    plan.setSchemasAndTransferType(
-        new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
+    plan.setMeasurementMNodes(new MeasurementMNode[]{new MeasurementMNode(null, null,
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)});
+    plan.transferType();
 
     // ok without ttl
     insertToStorageGroupProcessor(plan);
@@ -177,8 +173,9 @@ public class TTLTest {
     plan.setMeasurements(new String[]{"s1"});
     plan.setDataTypes(new TSDataType[]{TSDataType.INT64});
     plan.setValues(new Object[]{1L});
-    plan.setSchemasAndTransferType(
-        new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
+    plan.setMeasurementMNodes(new MeasurementMNode[]{new MeasurementMNode(null, null,
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)});
+    plan.transferType();
 
     long initTime = System.currentTimeMillis();
     // sequence data
@@ -225,7 +222,7 @@ public class TTLTest {
     Set<String> allSensors = new HashSet<>();
     allSensors.add(s1);
     IBatchReader reader = new SeriesRawDataBatchReader(path, allSensors, TSDataType.INT64,
-        EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource, null, null, null);
+        EnvironmentUtils.TEST_QUERY_CONTEXT, dataSource, null, null, null, true);
 
     int cnt = 0;
     while (reader.hasNextBatch()) {
