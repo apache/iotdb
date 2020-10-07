@@ -82,8 +82,13 @@ public class QueryHandler extends Handler{
     for(Object o : timeSeries) {
       selectOp.addSelectPath(new PartialPath((String) o));
     }
+    Boolean isAggregated;
     fromOp.addPrefixTablePath(new PartialPath(new String[]{""}));
-    Boolean isAggregated = (Boolean) jsonObject.get(HttpConstant.IS_AGGREGATED);
+    if(jsonObject.get(HttpConstant.IS_AGGREGATED) != null) {
+     isAggregated = (Boolean) jsonObject.get(HttpConstant.IS_AGGREGATED);
+    } else {
+      isAggregated = false;
+    }
     QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
     queryOp.setSelectOperator(selectOp);
     queryOp.setFromOperator(fromOp);
