@@ -44,6 +44,8 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.StableEntryManager;
+import org.apache.iotdb.cluster.server.Timer;
+import org.apache.iotdb.cluster.server.Timer.Statistic;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -543,10 +545,16 @@ public abstract class RaftLogManager {
     if (commitIndex >= newCommitIndex) {
       return;
     }
+    long start;
+    if (Timer.ENABLE_INSTRUMENTING) {
+      start = System.nanoTime();
+    }
     long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
     long hi = newCommitIndex + 1;
     List<Log> entries = new ArrayList<>(getUnCommittedEntryManager()
         .getEntries(lo, hi));
+    Statistic.RAFT_SENDER_COMMIT_GET_LOGS.addNanoFromStart(start);
+
     if (!entries.isEmpty()) {
       long commitLogIndex = getCommitLogIndex();
       long firstLogIndex = entries.get(0).getCurrLogIndex();
@@ -563,9 +571,17 @@ public abstract class RaftLogManager {
         if (currentSize + deltaSize > maxNumOfLogsInMem) {
           int sizeToReserveForNew = maxNumOfLogsInMem - deltaSize;
           int sizeToReserveForConfig = minNumOfLogsInMem;
+          if (Timer.ENABLE_INSTRUMENTING) {
+            start = System.nanoTime();
+          }
           synchronized (this) {
             innerDeleteLog(Math.min(sizeToReserveForConfig, sizeToReserveForNew));
           }
+          Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.addNanoFromStart(start);
+        }
+
+        if (Timer.ENABLE_INSTRUMENTING) {
+          start = System.nanoTime();
         }
         getCommittedEntryManager().append(entries);
         if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
@@ -573,8 +589,14 @@ public abstract class RaftLogManager {
         }
         Log lastLog = entries.get(entries.size() - 1);
         getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
+        Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.addNanoFromStart(start);
+
         commitIndex = lastLog.getCurrLogIndex();
+        if (Timer.ENABLE_INSTRUMENTING) {
+          start = System.nanoTime();
+        }
         applyEntries(entries);
+        Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.addNanoFromStart(start);
       } catch (TruncateCommittedEntryException e) {
         logger.error("{}: Unexpected error:", name, e);
       } catch (IOException e) {
