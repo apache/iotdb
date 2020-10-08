@@ -139,7 +139,7 @@ public class MTree implements Serializable {
         if (childrenSize == 0) {
           nodeStack.push(node);
         } else {
-          Map<String, MNode> childrenMap = new ConcurrentHashMap<>();
+          ConcurrentHashMap<String, MNode> childrenMap = new ConcurrentHashMap<>();
           for (int i = 0; i < childrenSize; i++) {
             MNode child = nodeStack.removeFirst();
             child.setParent(node);

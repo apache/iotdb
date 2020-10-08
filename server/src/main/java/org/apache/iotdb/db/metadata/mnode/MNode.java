@@ -57,12 +57,12 @@ public class MNode implements Serializable {
    * volatile for double synchronized check
    * use in Measurement Node so it's protected
    */
-  protected transient volatile Map<String, MNode> children = null;
+  protected transient volatile ConcurrentHashMap<String, MNode> children = null;
 
   /**
    * volatile for double synchronized check
    */
-  private transient volatile Map<String, MNode> aliasChildren = null;
+  private transient volatile ConcurrentHashMap<String, MNode> aliasChildren = null;
 
   /**
    * Constructor of MNode.
@@ -81,9 +81,15 @@ public class MNode implements Serializable {
   }
 
   /**
-   * node key, name or alias
+   * add a child to current mnode
+   * @param name child's name
+   * @param child child's node
    */
   public void addChild(String name, MNode child) {
+    /* use cpu time to exchange memory
+     * measurementNode's children should be null to save memory
+     * add child method will only be called when writing MTree, which is not a frequent operation
+     */
     if (children == null) {
       // double check, children is volatile
       synchronized (this) {
@@ -215,7 +221,7 @@ public class MNode implements Serializable {
     return children;
   }
 
-  public void setChildren(Map<String, MNode> children) {
+  public void setChildren(ConcurrentHashMap<String, MNode> children) {
     this.children = children;
   }
 
