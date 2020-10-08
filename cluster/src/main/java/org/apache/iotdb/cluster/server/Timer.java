@@ -119,6 +119,9 @@ public class Timer {
     RAFT_SENDER_COMMIT_TO_CONSUMER_LOGS(
         RAFT_MEMBER_SENDER, "provide log to consumer", TIME_SCALE,
         RaftMember.USE_LOG_DISPATCHER, RAFT_SENDER_COMMIT_APPLY_LOGS),
+    RAFT_SENDER_COMMIT_EXCLUSIVE_LOGS(
+        RAFT_MEMBER_SENDER, "apply logs that cannot run in parallel", TIME_SCALE,
+        RaftMember.USE_LOG_DISPATCHER, RAFT_SENDER_COMMIT_APPLY_LOGS),
     RAFT_SENDER_COMMIT_WAIT_LOG_APPLY_V2(
         RAFT_MEMBER_SENDER, "wait until log is applied", TIME_SCALE,
         RaftMember.USE_LOG_DISPATCHER, RAFT_SENDER_COMMIT_LOG_V2),

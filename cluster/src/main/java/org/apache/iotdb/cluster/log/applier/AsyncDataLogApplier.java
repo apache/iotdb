@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import java.sql.Time;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -95,8 +96,13 @@ public class AsyncDataLogApplier implements LogApplier {
     }
     // TODO-Cluster: change to debug
     logger.info("{}: {} is waiting for consumers to drain", name, log);
+    long start;
+    if (Timer.ENABLE_INSTRUMENTING) {
+      start = System.nanoTime();
+    }
     drainConsumers();
     applyInternal(log);
+    Statistic.RAFT_SENDER_COMMIT_EXCLUSIVE_LOGS.addNanoFromStart(start);
   }
 
   private PartialPath getPlanKey(PhysicalPlan plan) throws StorageGroupNotSetException {
@@ -224,12 +230,13 @@ public class AsyncDataLogApplier implements LogApplier {
     @Override
     public void accept(Log log) {
       try {
-        logQueue.put(log);
         lastLogIndex = log.getCurrLogIndex();
+        logQueue.put(log);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         log.setException(e);
         log.setApplied(true);
+        lastAppliedLogIndex = log.getCurrLogIndex();
       }
     }
 
