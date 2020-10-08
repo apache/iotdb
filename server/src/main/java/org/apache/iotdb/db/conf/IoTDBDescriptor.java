@@ -275,6 +275,10 @@ public class IoTDBDescriptor {
           .getProperty("merge_chunk_point_number",
               Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
 
+      conf.setMergePagePointNumberThreshold(Integer.parseInt(properties
+          .getProperty("merge_page_point_number",
+              Integer.toString(conf.getMergePagePointNumberThreshold()))));
+
       conf.setTsFileManagementStrategy(TsFileManagementStrategy.valueOf(properties
           .getProperty("tsfile_manage_strategy",
               conf.getTsFileManagementStrategy().toString())));

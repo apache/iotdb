@@ -261,13 +261,19 @@ public class IoTDBConfig {
   private int mergeChunkPointNumberThreshold = 100000;
 
   /**
+   * Work when tsfile_manage_strategy is level_strategy. When page point number of file reaches
+   * this, use append merge instead of deserialize merge.
+   */
+  private int mergePagePointNumberThreshold = 1000;
+
+  /**
    * TsFile manage strategy, define use which hot compaction strategy
    */
   private TsFileManagementStrategy tsFileManagementStrategy = TsFileManagementStrategy.NORMAL_STRATEGY;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. The max seq file num of each level. When file
-   * num exceeds this, the files in one level will merge to one.
+   * Work when tsfile_manage_strategy is level_strategy. The max seq file num of each level. When
+   * file num exceeds this, the files in one level will merge to one.
    */
   private int maxFileNumInEachLevel = 10;
 
@@ -277,8 +283,8 @@ public class IoTDBConfig {
   private int maxLevelNum = 4;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. The max unseq file num of each level. When file
-   * num exceeds this, the files in one level will merge to one.
+   * Work when tsfile_manage_strategy is level_strategy. The max unseq file num of each level. When
+   * file num exceeds this, the files in one level will merge to one.
    */
   private int maxUnseqFileNumInEachLevel = 10;
 
@@ -617,8 +623,9 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms
-   * Notice: if this property is changed, previous created storage group which are not set TTL will also be affected.
+   * default TTL for storage groups that are not set TTL by statements, in ms Notice: if this
+   * property is changed, previous created storage group which are not set TTL will also be
+   * affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -1282,6 +1289,14 @@ public class IoTDBConfig {
 
   public void setMergeChunkPointNumberThreshold(int mergeChunkPointNumberThreshold) {
     this.mergeChunkPointNumberThreshold = mergeChunkPointNumberThreshold;
+  }
+
+  public int getMergePagePointNumberThreshold() {
+    return mergePagePointNumberThreshold;
+  }
+
+  public void setMergePagePointNumberThreshold(int mergePagePointNumberThreshold) {
+    this.mergePagePointNumberThreshold = mergePagePointNumberThreshold;
   }
 
   public MergeFileStrategy getMergeFileStrategy() {
