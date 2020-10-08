@@ -55,14 +55,16 @@ public class MNode implements Serializable {
   protected String fullPath;
 
   /**
-   * volatile for double synchronized check
    * use in Measurement Node so it's protected
+   * suppress warnings reason: volatile for double synchronized check
    */
+  @SuppressWarnings("squid:S3077")
   protected transient volatile ConcurrentMap<String, MNode> children = null;
 
   /**
-   * volatile for double synchronized check
+   * suppress warnings reason: volatile for double synchronized check
    */
+  @SuppressWarnings("squid:S3077")
   private transient volatile ConcurrentMap<String, MNode> aliasChildren = null;
 
   /**
