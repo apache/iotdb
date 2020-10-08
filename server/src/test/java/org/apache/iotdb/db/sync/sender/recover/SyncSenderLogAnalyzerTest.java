@@ -18,26 +18,16 @@
  */
 package org.apache.iotdb.db.sync.sender.recover;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Random;
-import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.conf.SyncSenderConfig;
 import org.apache.iotdb.db.sync.conf.SyncSenderDescriptor;
@@ -51,6 +41,15 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
+
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class SyncSenderLogAnalyzerTest {
 
@@ -83,13 +82,12 @@ public class SyncSenderLogAnalyzerTest {
     Map<String, Map<Long, Set<File>>> allFileList = new HashMap<>();
 
     for (int i = 0; i < 3; i++) {
-      MManager.getInstance().setStorageGroup(getSgName(i));
+      IoTDB.metaManager.setStorageGroup(new PartialPath(getSgName(i)));
     }
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
-        allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
-            .computeIfAbsent(0L, k -> new HashSet<>());
+        allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>()).computeIfAbsent(0L, k -> new HashSet<>());
         String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName = FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
             + File.separator + getSgName(i) + File.separator + "0" + File.separator + rand;

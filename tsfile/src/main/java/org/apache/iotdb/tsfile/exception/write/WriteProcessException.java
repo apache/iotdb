@@ -25,7 +25,6 @@ public class WriteProcessException extends Exception {
 
   private static final long serialVersionUID = -2664638061585302767L;
 
-
   public WriteProcessException(String message, Throwable cause) {
     super(message, cause);
   }

@@ -20,19 +20,14 @@ package org.apache.iotdb.flink;
 import com.google.common.collect.Lists;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
-import org.apache.iotdb.db.service.IoTDB;
 
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
 public class FlinkIoTDBSink {
     public static void main(String[] args) throws Exception {
-        // launch the local iotDB server at default port: 6667
-        IoTDB.main(args);
-
-        Thread.sleep(3000);
-
         // run the flink job on local mini cluster
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -61,15 +56,15 @@ public class FlinkIoTDBSink {
 
     private static class SensorSource implements SourceFunction<Map<String,String>> {
         boolean running = true;
-
+        Random random = new SecureRandom();
         @Override
         public void run(SourceContext context) throws Exception {
-            Random random = new Random();
             while (running) {
                 Map<String,String> tuple = new HashMap();
                 tuple.put("device", "root.sg.d1");
                 tuple.put("timestamp", String.valueOf(System.currentTimeMillis()));
                 tuple.put("measurements", "s1");
+                tuple.put("types", "DOUBLE");
                 tuple.put("values", String.valueOf(random.nextDouble()));
 
                 context.collect(tuple);

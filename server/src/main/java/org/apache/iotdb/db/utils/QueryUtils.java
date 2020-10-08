@@ -25,7 +25,8 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 public class QueryUtils {
 
@@ -35,50 +36,52 @@ public class QueryUtils {
 
   /**
    * modifyChunkMetaData iterates the chunkMetaData and applies all available modifications on it to
-   * generate a ModifiedChunkMetadata.
-   * <br/>
-   * the caller should guarantee that chunkMetaData and modifications refer to the same time series
-   * paths.
+   * generate a ModifiedChunkMetadata. <br/> the caller should guarantee that chunkMetaData and
+   * modifications refer to the same time series paths.
+   *
    * @param chunkMetaData the original chunkMetaData.
    * @param modifications all possible modifications.
    */
-  public static void modifyChunkMetaData(List<ChunkMetaData> chunkMetaData,
-                                         List<Modification> modifications) {
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public static void modifyChunkMetaData(List<ChunkMetadata> chunkMetaData,
+      List<Modification> modifications) {
     int modIndex = 0;
-
     for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
-      ChunkMetaData metaData = chunkMetaData.get(metaIndex);
-      for (int j = modIndex; j < modifications.size(); j++) {
-        // iterate each modification to find the max deletion time
-        Modification modification = modifications.get(j);
+      ChunkMetadata metaData = chunkMetaData.get(metaIndex);
+      for (Modification modification : modifications) {
         if (modification.getVersionNum() > metaData.getVersion()) {
-          // this modification is after the Chunk, try modifying the chunk
-          // if this modification succeeds, update modIndex so in the next loop the previous
-          // modifications will not be examined
-          modIndex = doModifyChunkMetaData(modification, metaData)? j : modIndex;
-        } else {
-          // skip old modifications for next metadata
-          modIndex++;
+          doModifyChunkMetaData(modification, metaData);
         }
       }
     }
     // remove chunks that are completely deleted
-    chunkMetaData.removeIf(metaData -> metaData.getDeletedAt() >= metaData.getEndTime());
+    chunkMetaData.removeIf(metaData -> {
+      if (metaData.getDeleteIntervalList() != null) {
+        for (TimeRange range : metaData.getDeleteIntervalList()) {
+          if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
+            return true;
+          } else {
+            if (range.overlaps(new TimeRange(metaData.getStartTime(), metaData.getEndTime()))) {
+              metaData.setModified(true);
+            }
+            return false;
+          }
+        }
+      }
+      return false;
+    });
   }
 
-  private static boolean doModifyChunkMetaData(Modification modification, ChunkMetaData metaData) {
+  private static void doModifyChunkMetaData(Modification modification, ChunkMetadata metaData) {
     if (modification instanceof Deletion) {
       Deletion deletion = (Deletion) modification;
-      if (metaData.getDeletedAt() < deletion.getTimestamp()) {
-        metaData.setDeletedAt(deletion.getTimestamp());
-        return true;
-      }
+      metaData.insertIntoSortedDeletions(deletion.getStartTime(), deletion.getEndTime());
     }
-    return false;
   }
 
   // remove files that do not satisfy the filter
-  public static void filterQueryDataSource(QueryDataSource queryDataSource, TsFileFilter fileFilter) {
+  public static void filterQueryDataSource(QueryDataSource queryDataSource,
+      TsFileFilter fileFilter) {
     if (fileFilter == null) {
       return;
     }

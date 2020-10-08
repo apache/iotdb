@@ -41,8 +41,11 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
@@ -61,6 +64,7 @@ public class FileLoaderTest {
   @Before
   public void setUp()
       throws IOException, InterruptedException, StartupException, DiskSpaceInsufficientException, MetadataException {
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     dataDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile())
@@ -69,21 +73,21 @@ public class FileLoaderTest {
   }
 
   private void initMetadata() throws MetadataException {
-    MManager mmanager = MManager.getInstance();
+    MManager mmanager = IoTDB.metaManager;
     mmanager.init();
-    mmanager.clear();
-    mmanager.setStorageGroup("root.sg0");
-    mmanager.setStorageGroup("root.sg1");
-    mmanager.setStorageGroup("root.sg2");
+    mmanager.setStorageGroup(new PartialPath("root.sg0"));
+    mmanager.setStorageGroup(new PartialPath("root.sg1"));
+    mmanager.setStorageGroup(new PartialPath("root.sg2"));
   }
 
   @After
   public void tearDown() throws InterruptedException, IOException, StorageEngineException {
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void loadNewTsfiles() throws IOException, StorageEngineException {
+  public void loadNewTsfiles() throws IOException, StorageEngineException, IllegalPathException, InterruptedException {
     fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
     Map<String, List<File>> allFileList = new HashMap<>();
     Map<String, Set<String>> correctSequenceLoadedFileMap = new HashMap<>();
@@ -98,8 +102,8 @@ public class FileLoaderTest {
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
             getSnapshotFolder() + File.separator + SG_NAME + i + File.separator
-                + (time + i * 100 + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
-                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
+                + (time + i * 100 + j) + IoTDBConstant.FILE_NAME_SEPARATOR + rand
+                + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
         File syncFile = new File(fileName);
         File dataFile = new File(
             syncFile.getParentFile().getParentFile().getParentFile().getParentFile()
@@ -122,14 +126,14 @@ public class FileLoaderTest {
           LOGGER.error("Can not create new file {}", syncFile.getPath());
         }
         TsFileResource tsFileResource = new TsFileResource(syncFile);
-        tsFileResource.getStartTimeMap().put(String.valueOf(i), (long) j * 10);
-        tsFileResource.getEndTimeMap().put(String.valueOf(i), (long) j * 10 + 5);
+        tsFileResource.putStartTime(String.valueOf(i), (long) j * 10);
+        tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
         tsFileResource.serialize();
       }
     }
 
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       assertTrue(processor.getSequenceFileTreeSet().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
@@ -154,16 +158,18 @@ public class FileLoaderTest {
       }
     } catch (InterruptedException e) {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
+      Thread.currentThread().interrupt();
+      throw e;
     }
 
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
     Map<String, Set<String>> sequenceLoadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       sequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
       assertEquals(10, processor.getSequenceFileTreeSet().size());
       for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
-        sequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
+        sequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
@@ -177,7 +183,7 @@ public class FileLoaderTest {
 
   @Test
   public void loadDeletedFileName()
-      throws IOException, StorageEngineException, InterruptedException {
+      throws IOException, StorageEngineException, InterruptedException, IllegalPathException {
     fileLoader = FileLoader.createFileLoader(getReceiverFolderFile());
     Map<String, List<File>> allFileList = new HashMap<>();
     Map<String, Set<String>> correctLoadedFileMap = new HashMap<>();
@@ -192,8 +198,8 @@ public class FileLoaderTest {
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
             getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + (time + i * 100
-                + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
-                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
+                + j) + IoTDBConstant.FILE_NAME_SEPARATOR + rand
+                + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
 
         File syncFile = new File(fileName);
         File dataFile = new File(
@@ -217,14 +223,14 @@ public class FileLoaderTest {
           LOGGER.error("Can not create new file {}", syncFile.getPath());
         }
         TsFileResource tsFileResource = new TsFileResource(syncFile);
-        tsFileResource.getStartTimeMap().put(String.valueOf(i), (long) j * 10);
-        tsFileResource.getEndTimeMap().put(String.valueOf(i), (long) j * 10 + 5);
+        tsFileResource.putStartTime(String.valueOf(i), (long) j * 10);
+        tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
         tsFileResource.serialize();
       }
     }
 
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       assertTrue(processor.getSequenceFileTreeSet().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
@@ -249,16 +255,18 @@ public class FileLoaderTest {
       }
     } catch (InterruptedException e) {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
+      Thread.currentThread().interrupt();
+      throw e;
     }
 
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
     Map<String, Set<String>> loadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
       assertEquals(25, processor.getSequenceFileTreeSet().size());
       for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
-        loadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
+        loadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
@@ -302,14 +310,16 @@ public class FileLoaderTest {
       }
     } catch (InterruptedException e) {
       LOGGER.error("Fail to wait for loading new tsfiles", e);
+      Thread.currentThread().interrupt();
+      throw e;
     }
 
     loadedFileMap.clear();
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
+      StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
       for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
-        loadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
+        loadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }

@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.bitpacking.LongPacker;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
@@ -123,6 +124,6 @@ public class LongRleEncoder extends RleEncoder<Long> {
     }
     // try to caculate max value
     int groupNum = (values.size() / 8 + 1) / 63 + 1;
-    return (long)8 + groupNum * 5 + values.size() * 8;
+    return (long) 8 + groupNum * 5 + values.size() * 8;
   }
 }

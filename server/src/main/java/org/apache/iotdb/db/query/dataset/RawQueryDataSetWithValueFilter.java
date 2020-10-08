@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
@@ -34,6 +34,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
   private List<IReaderByTimestamp> seriesReaderByTimestampList;
   private boolean hasCachedRowRecord;
   private RowRecord cachedRowRecord;
+  private List<Boolean> cached;
 
   /**
    * constructor of EngineDataSetWithValueFilter.
@@ -42,12 +43,16 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
    * @param dataTypes     time series data type
    * @param timeGenerator EngineTimeGenerator object
    * @param readers       readers in List(IReaderByTimeStamp) structure
+   * @param ascending     specifies how the data should be sorted,'True' means read in ascending
+   *                      time order, and 'false' means read in descending time order
    */
-  public RawQueryDataSetWithValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      TimeGenerator timeGenerator, List<IReaderByTimestamp> readers) {
-    super(paths, dataTypes);
+  public RawQueryDataSetWithValueFilter(List<PartialPath> paths, List<TSDataType> dataTypes,
+      TimeGenerator timeGenerator, List<IReaderByTimestamp> readers, List<Boolean> cached,
+      boolean ascending) {
+    super(new ArrayList<>(paths), dataTypes, ascending);
     this.timeGenerator = timeGenerator;
     this.seriesReaderByTimestampList = readers;
+    this.cached = cached;
   }
 
   @Override
@@ -77,9 +82,17 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
       boolean hasField = false;
       long timestamp = timeGenerator.next();
       RowRecord rowRecord = new RowRecord(timestamp);
+
       for (int i = 0; i < seriesReaderByTimestampList.size(); i++) {
-        IReaderByTimestamp reader = seriesReaderByTimestampList.get(i);
-        Object value = reader.getValueInTimestamp(timestamp);
+        Object value;
+        // get value from readers in time generator
+        if (cached.get(i)) {
+          value = timeGenerator.getValue(paths.get(i), timestamp);
+        } else {
+          // get value from series reader without filter
+          IReaderByTimestamp reader = seriesReaderByTimestampList.get(i);
+          value = reader.getValueInTimestamp(timestamp);
+        }
         if (value == null) {
           rowRecord.addField(null);
         } else {

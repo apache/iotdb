@@ -28,8 +28,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
 import org.junit.Test;
+
+import org.apache.iotdb.tsfile.encoding.bitpacking.LongPacker;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 public class LongPackerTest {
 

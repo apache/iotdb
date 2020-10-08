@@ -24,33 +24,34 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class SetStorageGroupPlan extends PhysicalPlan {
-  private Path path;
+  private PartialPath path;
 
   public SetStorageGroupPlan() {
     super(false, Operator.OperatorType.SET_STORAGE_GROUP);
   }
 
-  public SetStorageGroupPlan(Path path) {
+  public SetStorageGroupPlan(PartialPath path) {
     super(false, Operator.OperatorType.SET_STORAGE_GROUP);
     this.path = path;
   }
   
-  public Path getPath() {
+  public PartialPath getPath() {
     return path;
   }
 
-  public void setPath(Path path) {
+  public void setPath(PartialPath path) {
     this.path = path;
   }
   
   @Override
-  public List<Path> getPaths() {
-    List<Path> ret = new ArrayList<>();
+  public List<PartialPath> getPaths() {
+    List<PartialPath> ret = new ArrayList<>();
     if (path != null) {
       ret.add(path);
     }
@@ -58,7 +59,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeTo(DataOutputStream stream) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     stream.write((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
     byte[] fullPathBytes = path.getFullPath().getBytes();
     stream.writeInt(fullPathBytes.length);
@@ -66,11 +67,11 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserializeFrom(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     int length = buffer.getInt();
     byte[] fullPathBytes = new byte[length];
     buffer.get(fullPathBytes);
-    path = new Path(new String(fullPathBytes));
+    path = new PartialPath(new String(fullPathBytes));
   }
 
   @Override

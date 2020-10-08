@@ -21,15 +21,11 @@ package org.apache.iotdb.hadoop.tsfile;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.DataOutputBuffer;
-import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
-import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.*;
 
 /**
@@ -47,18 +43,11 @@ public class TSFInputSplitTest {
   public void setUp() throws Exception {
     // For the test data
     Path path = new Path("input");
-    int numOfRowGroupMetaDate = 1;
-    List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList = new ArrayList<>();
-    chunkGroupInfoList
-            .add(new TSFInputSplit.ChunkGroupInfo("d1", new String[] {"sensor_0", "sensor_1"},1, 10));
-    chunkGroupInfoList
-            .add(new TSFInputSplit.ChunkGroupInfo("d1", new String[] {"sensor_0", "sensor_1"},11, 20));
-    chunkGroupInfoList
-            .add(new TSFInputSplit.ChunkGroupInfo("d2", new String[] {"sensor_0", "sensor_1"},21, 30));
-    long length = 100;
+
     String[] hosts = {"192.168.1.1", "192.168.1.0", "localhost"};
 
-    wInputSplit = new TSFInputSplit(path, hosts, 30, chunkGroupInfoList);
+    long length = 100;
+    wInputSplit = new TSFInputSplit(path, hosts, 30, length);
     rInputSplit = new TSFInputSplit();
   }
 
@@ -74,10 +63,8 @@ public class TSFInputSplitTest {
       dataOutputBuffer.close();
       // assert
       assertEquals(wInputSplit.getPath(), rInputSplit.getPath());
-      assertThat(wInputSplit.getChunkGroupInfoList(), is(rInputSplit.getChunkGroupInfoList()));
-
+      assertEquals(wInputSplit.getStart(), rInputSplit.getStart());
       assertEquals(wInputSplit.getLength(), rInputSplit.getLength());
-      assertArrayEquals(wInputSplit.getLocations(), rInputSplit.getLocations());
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

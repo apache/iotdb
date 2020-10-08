@@ -34,4 +34,5 @@ public interface VersionController {
    * @return the current version number.
    */
   long currVersion();
+
 }

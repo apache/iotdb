@@ -18,11 +18,16 @@
  */
 package org.apache.iotdb.db.auth.entity;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.db.utils.AuthUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
 
 /**
  * This class contains all information of a User.
@@ -49,7 +54,7 @@ public class User {
   /**
    * construct function for User.
    *
-   * @param name -user name
+   * @param name     -user name
    * @param password -user password
    */
   public User(String name, String password) {
@@ -114,7 +119,7 @@ public class User {
   /**
    * set the privilege.
    *
-   * @param path -path
+   * @param path       -path
    * @param privileges -set of integer to determine privilege
    */
   public void setPrivileges(String path, Set<Integer> privileges) {
@@ -152,11 +157,10 @@ public class User {
 
   private boolean contentEquals(User user) {
     return Objects.equals(name, user.name)
-            && Objects.equals(password, user.password)
-            && Objects.equals(privilegeList, user.privilegeList)
-            && Objects.equals(roleList, user.roleList);
+        && Objects.equals(password, user.password)
+        && Objects.equals(privilegeList, user.privilegeList)
+        && Objects.equals(roleList, user.roleList);
   }
-
 
   @Override
   public int hashCode() {
@@ -169,5 +173,40 @@ public class User {
 
   public void setUseWaterMark(boolean useWaterMark) {
     this.useWaterMark = useWaterMark;
+  }
+
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+    SerializeUtils.serialize(name, dataOutputStream);
+    SerializeUtils.serialize(password, dataOutputStream);
+
+    try {
+      dataOutputStream.writeInt(privilegeList.size());
+      for (PathPrivilege pathPrivilege : privilegeList) {
+        dataOutputStream.write(pathPrivilege.serialize().array());
+      }
+      dataOutputStream.writeBoolean(useWaterMark);
+    } catch (IOException e) {
+      // unreachable
+    }
+    SerializeUtils.serializeStringList(roleList, dataOutputStream);
+
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    name = SerializeUtils.deserializeString(buffer);
+    password = SerializeUtils.deserializeString(buffer);
+    int privilegeListSize = buffer.getInt();
+    privilegeList = new ArrayList<>(privilegeListSize);
+    for (int i = 0; i < privilegeListSize; i++) {
+      PathPrivilege pathPrivilege = new PathPrivilege();
+      pathPrivilege.deserialize(buffer);
+      privilegeList.add(pathPrivilege);
+    }
+    useWaterMark = buffer.get() == 1;
+    roleList = SerializeUtils.deserializeStringList(buffer);
   }
 }

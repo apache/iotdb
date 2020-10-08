@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
-import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
@@ -26,7 +25,6 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.NodeType;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 import org.apache.iotdb.tsfile.read.reader.FakedBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -43,17 +41,13 @@ public class NodeTest {
 
   @Test
   public void testLeafNode() throws IOException {
+    int index = 0;
     long[] timestamps = new long[]{1, 2, 3, 4, 5, 6, 7};
     IBatchReader batchReader = new FakedBatchReader(timestamps);
     Node leafNode = new LeafNode(batchReader);
-
-    Assert.assertTrue(leafNode.hasNextTimeColumn());
-    TimeColumn timeColumn = leafNode.nextTimeColumn();
-    for (long timestamp : timestamps) {
-      Assert.assertEquals(timestamp, timeColumn.currentTime());
-      timeColumn.next();
+    while (leafNode.hasNext()) {
+      Assert.assertEquals(timestamps[index++], leafNode.next());
     }
-    Assert.assertFalse(leafNode.hasNextTimeColumn());
   }
 
   @Test
@@ -74,13 +68,9 @@ public class NodeTest {
     int index = 0;
     Node orNode = new OrNode(new LeafNode(new FakedBatchReader(left)),
         new LeafNode(new FakedBatchReader(right)));
-    while (orNode.hasNextTimeColumn()) {
-      TimeColumn timeSeries = orNode.nextTimeColumn();
-      while (timeSeries.hasCurrent()) {
-        long value = timeSeries.currentTime();
-        timeSeries.next();
-        Assert.assertEquals(ret[index++], value);
-      }
+    while (orNode.hasNext()) {
+      long value = orNode.next();
+      Assert.assertEquals(ret[index++], value);
     }
     Assert.assertEquals(ret.length, index);
   }
@@ -98,13 +88,9 @@ public class NodeTest {
     int index = 0;
     Node andNode = new AndNode(new LeafNode(new FakedBatchReader(left)),
         new LeafNode(new FakedBatchReader(right)));
-    while (andNode.hasNextTimeColumn()) {
-      TimeColumn timeSeries = andNode.nextTimeColumn();
-      while (timeSeries.hasCurrent()) {
-        long value = timeSeries.currentTime();
-        timeSeries.next();
-        Assert.assertEquals(ret[index++], value);
-      }
+    while (andNode.hasNext()) {
+      long value = andNode.next();
+      Assert.assertEquals(ret[index++], value);
     }
     Assert.assertEquals(ret.length, index);
   }

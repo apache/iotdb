@@ -21,7 +21,7 @@ package org.apache.iotdb.spark.db
 
 import java.sql.{Statement, _}
 
-import org.apache.iotdb.jdbc.IoTDBQueryResultSet
+import org.apache.iotdb.jdbc.IoTDBJDBCResultSet
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
 
@@ -59,7 +59,7 @@ object Converter {
       val resultSet: ResultSet = sqlStatement.getResultSet
       val resultSetMetaData: ResultSetMetaData = resultSet.getMetaData
 
-      val printTimestamp = !resultSet.asInstanceOf[IoTDBQueryResultSet].isIgnoreTimeStamp
+      val printTimestamp = !resultSet.asInstanceOf[IoTDBJDBCResultSet].isIgnoreTimeStamp
       if (printTimestamp) {
         fields += StructField(SQLConstant.TIMESTAMP_STR, LongType, nullable = false)
       }

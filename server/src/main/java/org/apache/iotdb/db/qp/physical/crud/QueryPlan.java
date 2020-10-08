@@ -21,20 +21,23 @@ package org.apache.iotdb.db.qp.physical.crud;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
-  private List<Path> paths = null;
+  protected List<PartialPath> paths = null;
   private List<TSDataType> dataTypes = null;
-  private Map<Path, TSDataType> dataTypeMapping = new HashMap<>();
   private boolean alignByTime = true; // for disable align sql
 
   private int rowLimit = 0;
   private int rowOffset = 0;
+
+  private boolean ascending = true;
+
+  private Map<String, Integer> pathToIndex = new HashMap<>();
 
   public QueryPlan() {
     super(true);
@@ -46,11 +49,11 @@ public abstract class QueryPlan extends PhysicalPlan {
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return paths;
   }
 
-  public void setPaths(List<Path> paths) {
+  public void setPaths(List<PartialPath> paths) {
     this.paths = paths;
   }
 
@@ -90,12 +93,19 @@ public abstract class QueryPlan extends PhysicalPlan {
     alignByTime = align;
   }
 
-  public Map<Path, TSDataType> getDataTypeMapping() {
-    return dataTypeMapping;
+  public void addPathToIndex(String columnName, Integer index) {
+    pathToIndex.put(columnName, index);
   }
 
-  public void addTypeMapping(Path path, TSDataType dataType) {
-    dataTypeMapping.put(path, dataType);
+  public Map<String, Integer> getPathToIndex() {
+    return pathToIndex;
   }
 
+  public boolean isAscending() {
+    return ascending;
+  }
+
+  public void setAscending(boolean ascending) {
+    this.ascending = ascending;
+  }
 }

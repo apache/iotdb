@@ -22,8 +22,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.slf4j.Logger;
@@ -59,7 +59,7 @@ public class ManageDynamicParameters implements ManageDynamicParametersMBean, IS
         CONFIG.getTsFileSizeThreshold(), CompressionRatio.getInstance().getRatio(),
         IoTDBConfigDynamicAdapter.getInstance().getTotalStorageGroup(),
         IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries(),
-        MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups());
+        IoTDB.metaManager.getMaximalSeriesNumberAmongStorageGroups());
   }
 
   @Override

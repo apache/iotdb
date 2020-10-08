@@ -18,23 +18,29 @@
  */
 package org.apache.iotdb.db.query.executor;
 
+import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator.markFilterdPaths;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.series.DescSeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -46,56 +52,56 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
  */
 public class RawDataQueryExecutor {
 
-  protected List<Path> deduplicatedPaths;
-  protected List<TSDataType> deduplicatedDataTypes;
-  protected IExpression optimizedExpression;
+  private RawDataQueryPlan queryPlan;
 
   public RawDataQueryExecutor(RawDataQueryPlan queryPlan) {
-    this.deduplicatedPaths = queryPlan.getDeduplicatedPaths();
-    this.deduplicatedDataTypes = queryPlan.getDeduplicatedDataTypes();
-    this.optimizedExpression = queryPlan.getExpression();
+    this.queryPlan = queryPlan;
   }
 
   /**
    * without filter or with global time filter.
    */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
 
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     try {
-      return new RawQueryDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
-          readersOfSelectedSeries);
+      return new RawQueryDataSetWithoutValueFilter(queryPlan.getDeduplicatedPaths(),
+          queryPlan.getDeduplicatedDataTypes(), readersOfSelectedSeries, queryPlan.isAscending());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      throw new StorageEngineException(e.getMessage());
+    } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }
   }
 
-  public QueryDataSet executeNonAlign(QueryContext context) throws StorageEngineException {
+  public QueryDataSet executeNonAlign(QueryContext context)
+      throws StorageEngineException, QueryProcessException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
-    return new NonAlignEngineDataSet(deduplicatedPaths, deduplicatedDataTypes,
+    return new NonAlignEngineDataSet(queryPlan.getDeduplicatedPaths(), queryPlan.getDeduplicatedDataTypes(),
         readersOfSelectedSeries);
   }
 
   protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
     Filter timeFilter = null;
-    if (optimizedExpression != null) {
-      timeFilter = ((GlobalTimeExpression) optimizedExpression).getFilter();
+    if (queryPlan.getExpression() != null) {
+      timeFilter = ((GlobalTimeExpression) queryPlan.getExpression()).getFilter();
     }
 
     List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
-    for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      Path path = deduplicatedPaths.get(i);
-      TSDataType dataType = deduplicatedDataTypes.get(i);
+    for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
+      PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
+      TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
 
       QueryDataSource queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSource(path, context, timeFilter);
       timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
-      ManagedSeriesReader reader = new SeriesRawDataBatchReader(path, dataType, context,
-          queryDataSource, timeFilter, null, null);
+      ManagedSeriesReader reader = new SeriesRawDataBatchReader(path,
+          queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
+          queryDataSource, timeFilter, null, null, queryPlan.isAscending());
       readersOfSelectedSeries.add(reader);
     }
     return readersOfSelectedSeries;
@@ -107,32 +113,42 @@ public class RawDataQueryExecutor {
    * @return QueryDataSet object
    * @throws StorageEngineException StorageEngineException
    */
-  public QueryDataSet executeWithValueFilter(QueryContext context) throws StorageEngineException {
+  public QueryDataSet executeWithValueFilter(QueryContext context)
+      throws StorageEngineException, QueryProcessException {
 
     TimeGenerator timestampGenerator = getTimeGenerator(
-        optimizedExpression, context);
+        queryPlan.getExpression(), context, queryPlan);
+    List<Boolean> cached = markFilterdPaths(queryPlan.getExpression(),
+        new ArrayList<>(queryPlan.getDeduplicatedPaths()), timestampGenerator.hasOrNode());
 
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
-    for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      Path path = deduplicatedPaths.get(i);
+    for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
+      if (cached.get(i)) {
+        readersOfSelectedSeries.add(null);
+        continue;
+      }
+      PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
       IReaderByTimestamp seriesReaderByTimestamp = getReaderByTimestamp(path,
-          deduplicatedDataTypes.get(i), context);
+          queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+          queryPlan.getDeduplicatedDataTypes().get(i), context);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
-    return new RawQueryDataSetWithValueFilter(deduplicatedPaths, deduplicatedDataTypes,
-        timestampGenerator, readersOfSelectedSeries);
+    return new RawQueryDataSetWithValueFilter(queryPlan.getDeduplicatedPaths(),
+        queryPlan.getDeduplicatedDataTypes(),
+        timestampGenerator, readersOfSelectedSeries, cached, queryPlan.isAscending());
   }
 
-  protected IReaderByTimestamp getReaderByTimestamp(Path path, TSDataType dataType,
-      QueryContext context)
-      throws StorageEngineException {
-    return new SeriesReaderByTimestamp(path,
-        dataType, context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
+  protected IReaderByTimestamp getReaderByTimestamp(PartialPath path, Set<String> allSensors,
+      TSDataType dataType, QueryContext context)
+      throws StorageEngineException, QueryProcessException {
+    return queryPlan.isAscending() ? new SeriesReaderByTimestamp(path, allSensors, dataType, context,
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null) :
+        new DescSeriesReaderByTimestamp(path, allSensors, dataType, context,
+            QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
   }
 
   protected TimeGenerator getTimeGenerator(IExpression expression,
-      QueryContext context) throws StorageEngineException {
-    return new ServerTimeGenerator(expression, context);
+      QueryContext context, RawDataQueryPlan queryPlan) throws StorageEngineException {
+    return new ServerTimeGenerator(expression, context, queryPlan);
   }
 }

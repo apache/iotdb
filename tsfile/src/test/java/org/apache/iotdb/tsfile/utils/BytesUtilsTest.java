@@ -28,8 +28,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.junit.Test;
+
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 
 public class BytesUtilsTest {
 

@@ -52,6 +52,6 @@ public class Config {
 
   public static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
 
-  static boolean rpcThriftCompressionEnable = false;
+  public static boolean rpcThriftCompressionEnable = false;
 
 }

@@ -81,20 +81,22 @@ public class IoTDBAggregationIT {
   private final String d0s3 = "root.vehicle.d0.s3";
   private String insertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)"
       + " VALUES(%d,%d,%d,%f,%s,%s)";
+  private long prevPartitionInterval;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.envSetUp();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
+    EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
   }
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   //add test for part of points in page don't satisfy filter
@@ -470,38 +472,54 @@ public class IoTDBAggregationIT {
       try {
         statement.execute("SELECT avg(s3)" +
             "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
-        ResultSet resultSet = statement.getResultSet();
-        resultSet.next();
-        fail();
+        try (ResultSet resultSet = statement.getResultSet()) {
+          resultSet.next();
+          fail();
+        }
       } catch (Exception e) {
         Assert.assertEquals("500: Unsupported data type in aggregation AVG : TEXT", e.getMessage());
       }
       try {
         statement.execute("SELECT sum(s3)" +
             "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
-        ResultSet resultSet = statement.getResultSet();
-        resultSet.next();
-        fail();
+        try (ResultSet resultSet = statement.getResultSet()) {
+          resultSet.next();
+          fail();
+        }
       } catch (Exception e) {
         Assert.assertEquals("500: Unsupported data type in aggregation SUM : TEXT", e.getMessage());
       }
       try {
         statement.execute("SELECT avg(s4)" +
             "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
-        ResultSet resultSet = statement.getResultSet();
-        resultSet.next();
-        fail();
+        try (ResultSet resultSet = statement.getResultSet()) {
+          resultSet.next();
+          fail();
+        }
       } catch (Exception e) {
-        Assert.assertEquals("500: Unsupported data type in aggregation AVG : BOOLEAN", e.getMessage());
+        Assert.assertEquals("500: Unsupported data type in aggregation AVG : BOOLEAN",
+            e.getMessage());
       }
       try {
         statement.execute("SELECT sum(s4)" +
             "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000");
-        ResultSet resultSet = statement.getResultSet();
-        resultSet.next();
-        fail();
+        try (ResultSet resultSet = statement.getResultSet()) {
+          resultSet.next();
+          fail();
+        }
       } catch (Exception e) {
-        Assert.assertEquals("500: Unsupported data type in aggregation SUM : BOOLEAN", e.getMessage());
+        Assert.assertEquals("500: Unsupported data type in aggregation SUM : BOOLEAN",
+            e.getMessage());
+      }
+      try {
+        statement.execute("SELECT avg(status) FROM root.ln.wf01.wt01");
+        try (ResultSet resultSet = statement.getResultSet()) {
+          resultSet.next();
+          fail();
+        }
+      } catch (Exception e) {
+        Assert.assertEquals("500: Boolean statistics does not support: avg",
+            e.getMessage());
       }
     } catch (Exception e) {
       e.printStackTrace();

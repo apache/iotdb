@@ -20,6 +20,10 @@
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
@@ -27,14 +31,12 @@ import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Each subclass of TSEncodingBuilder responds a enumerate value in {@linkplain TSEncoding
  * TSEncoding}, which stores several configuration related to responding encoding type to generate
- * {@linkplain Encoder Encoder} instance.<br>Each TSEncoding has a responding TSEncodingBuilder. The
- * design referring to visit pattern provides same outer interface for different TSEncodings and
+ * {@linkplain Encoder Encoder} instance.<br> Each TSEncoding has a responding TSEncodingBuilder.
+ * The design referring to visit pattern provides same outer interface for different TSEncodings and
  * gets rid of the duplicate switch-case code.
  */
 public abstract class TSEncodingBuilder {
@@ -52,7 +54,7 @@ public abstract class TSEncodingBuilder {
    * @param type - given encoding type
    * @return - responding TSEncodingBuilder
    */
-  public static TSEncodingBuilder getConverter(TSEncoding type) {
+  public static TSEncodingBuilder getEncodingBuilder(TSEncoding type) {
     switch (type) {
       case PLAIN:
         return new PLAIN();
@@ -70,8 +72,8 @@ public abstract class TSEncodingBuilder {
   }
 
   /**
-   * return a thread safe series's encoder with different types and parameters according to its measurement id
-   * and data type.
+   * return a thread safe series's encoder with different types and parameters according to its
+   * measurement id and data type.
    *
    * @param type - given data type
    * @return - return a {@linkplain Encoder Encoder}
@@ -194,8 +196,8 @@ public abstract class TSEncodingBuilder {
 
     @Override
     /**
-     * TS_2DIFF could specify <b>max_point_number</b> in given JSON Object, which means the maximum
-     * decimal digits for float or double data.
+     * TS_2DIFF could specify <b>max_point_number</b> in given JSON Object, which
+     * means the maximum decimal digits for float or double data.
      */
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set

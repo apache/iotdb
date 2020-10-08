@@ -29,7 +29,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * This class is a decoder for decoding the byte array that encoded by {@code
- * RegularDataEncoder}. RegularDataDecoder only supports integer and long values.<br>.
+ * RegularDataEncoder}. RegularDataDecoder only supports integer and long
+ * values.<br>
+ * .
  *
  * @see RegularDataEncoder
  */
@@ -107,7 +109,8 @@ public abstract class RegularDataDecoder extends Decoder {
     }
 
     /**
-     * load the data with bitmap (when bitmap denote the element with false, load next element)
+     * load the data with bitmap (when bitmap denote the element with false, load
+     * next element)
      *
      * @param buffer
      * @return long value
@@ -220,7 +223,8 @@ public abstract class RegularDataDecoder extends Decoder {
     }
 
     /**
-     * load the data with bitmap (when bitmap denote the element with false, load next element)
+     * load the data with bitmap (when bitmap denote the element with false, load
+     * next element)
      *
      * @param buffer
      * @return long value

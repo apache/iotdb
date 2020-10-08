@@ -87,15 +87,14 @@ public class SingleFileLogReader implements ILogReader {
             + "file: "
             + "%d Calculated: %d.", idx, checkSum, checkSummer.getValue()));
       }
-    } catch (IOException e) {
+
+      batchLogReader = new BatchLogReader(ByteBuffer.wrap(buffer));
+      fileCorrupted = fileCorrupted || batchLogReader.isFileCorrupted();
+    } catch (Exception e) {
       logger.error("Cannot read more PhysicalPlans from {} because", filepath, e);
       fileCorrupted = true;
       return false;
     }
-
-    batchLogReader = new BatchLogReader(ByteBuffer.wrap(buffer));
-    fileCorrupted = fileCorrupted || batchLogReader.isFileCorrupted();
-
     return true;
   }
 

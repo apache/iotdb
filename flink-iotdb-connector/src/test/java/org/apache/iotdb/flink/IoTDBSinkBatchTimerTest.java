@@ -18,57 +18,61 @@
 
 package org.apache.iotdb.flink;
 
-import com.google.common.collect.Lists;
-import org.apache.iotdb.session.Session;
-import org.junit.Before;
-import org.junit.Test;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 
+import com.google.common.collect.Lists;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
+import org.apache.iotdb.session.pool.SessionPool;
+import org.junit.Before;
+import org.junit.Test;
 
 public class IoTDBSinkBatchTimerTest {
 
-    private IoTDBSink ioTDBSink;
-    private Session session;
+  private IoTDBSink ioTDBSink;
+  private SessionPool pool;
 
-    @Before
-    public void setUp() throws Exception {
-        IoTDBOptions options = new IoTDBOptions();
-        options.setTimeseriesOptionList(Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
-        ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema());
-        ioTDBSink.withBatchSize(3);
-        ioTDBSink.withFlushIntervalMs(1000);
-        ioTDBSink.initScheduler();
+  @Before
+  public void setUp() throws Exception {
+    IoTDBOptions options = new IoTDBOptions();
+    options.setTimeseriesOptionList(
+        Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
+    ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema());
+    ioTDBSink.withBatchSize(3);
+    ioTDBSink.withFlushIntervalMs(1000);
+    ioTDBSink.initScheduler();
 
-        session = mock(Session.class);
-        ioTDBSink.setSession(session);
-    }
+    pool = mock(SessionPool.class);
+    ioTDBSink.setSessionPool(pool);
+  }
 
-    @Test
-    public void testBatchInsert() throws Exception {
-        Map<String,String> tuple = new HashMap();
-        tuple.put("device", "root.sg.D01");
-        tuple.put("timestamp", "1581861293000");
-        tuple.put("measurements", "temperature");
-        tuple.put("values", "36.5");
-        ioTDBSink.invoke(tuple, null);
+  @Test
+  public void testBatchInsert() throws Exception {
+    Map<String, String> tuple = new HashMap();
+    tuple.put("device", "root.sg.D01");
+    tuple.put("timestamp", "1581861293000");
+    tuple.put("measurements", "temperature");
+    tuple.put("types", "DOUBLE");
+    tuple.put("values", "36.5");
+    ioTDBSink.invoke(tuple, null);
 
-        Thread.sleep(2500);
+    Thread.sleep(2500);
 
-        verify(session).insertInBatch(any(List.class), any(List.class), any(List.class), any(List.class));
+    verify(pool).insertRecords(any(List.class), any(List.class), any(List.class), any(List.class),
+        any(List.class));
 
-        Thread.sleep(1000);
+    Thread.sleep(1000);
 
-        verifyZeroInteractions(session);
-    }
+    verifyZeroInteractions(pool);
+  }
 
-    @Test
-    public void close() throws Exception {
-        ioTDBSink.close();
-        verify(session).close();
-    }
+  @Test
+  public void close() throws Exception {
+    ioTDBSink.close();
+    verify(pool).close();
+  }
 }

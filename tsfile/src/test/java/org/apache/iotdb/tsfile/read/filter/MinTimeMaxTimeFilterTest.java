@@ -24,6 +24,8 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+
 public class MinTimeMaxTimeFilterTest {
 
   long minTime = 100;
@@ -177,7 +179,7 @@ public class MinTimeMaxTimeFilterTest {
     Filter orFilter = FilterFactory.or(TimeFilter.gt(10L), TimeFilter.lt(50));
     Assert.assertTrue(orFilter.satisfyStartEndTime(minTime, maxTime));
     Assert.assertTrue(orFilter.containStartEndTime(minTime, maxTime));
-}
+  }
 
   @Test
   public void testNotEq() {

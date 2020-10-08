@@ -20,8 +20,8 @@ package org.apache.iotdb.tsfile.utils;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.util.List;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +34,8 @@ import org.slf4j.LoggerFactory;
  */
 public class BytesUtils {
 
-  private BytesUtils(){}
+  private BytesUtils() {
+  }
 
   private static final Logger LOG = LoggerFactory.getLogger(BytesUtils.class);
 
@@ -86,8 +87,7 @@ public class BytesUtils {
       try {
         result[temp] = setByteN(result[temp], pos + width - 1 - i, getIntN(srcNum, i));
       } catch (Exception e) {
-        LOG.error(
-            "tsfile-common BytesUtils: cannot convert an integer {} to a byte array, "
+        LOG.error("tsfile-common BytesUtils: cannot convert an integer {} to a byte array, "
                 + "pos {}, width {}",
             srcNum, pos, width, e);
       }
@@ -135,8 +135,20 @@ public class BytesUtils {
    * @return integer
    */
   public static int bytesToInt(byte[] bytes) {
-    return bytes[3] & 0xFF | (bytes[2] & 0xFF) << 8 | (bytes[1] & 0xFF) << 16
-        | (bytes[0] & 0xFF) << 24;
+    //compatible to long
+
+    int length = bytes.length;
+    long r = 0;
+    for (int i = 0; i < length; i++) {
+      r += ((bytes[length - 1 - i] & 0xFF) << (i * 8));
+    }
+
+    if (r > Integer.MAX_VALUE) {
+      throw new RuntimeException("Row count is larger than Integer.MAX_VALUE");
+    }
+
+    return (int) r;
+
   }
 
   /**
@@ -190,7 +202,7 @@ public class BytesUtils {
     byte[] b = new byte[4];
     int l = Float.floatToIntBits(x);
     for (int i = 3; i >= 0; i--) {
-      b[i] = (byte)l;
+      b[i] = (byte) l;
       l = l >> 8;
     }
     return b;
@@ -209,7 +221,7 @@ public class BytesUtils {
     }
     int l = Float.floatToIntBits(x);
     for (int i = 3 + offset; i >= offset; i--) {
-      desc[i] = (byte)l;
+      desc[i] = (byte) l;
       l = l >> 8;
     }
   }
@@ -269,7 +281,7 @@ public class BytesUtils {
     byte[] bytes = new byte[8];
     long value = Double.doubleToLongBits(data);
     for (int i = 7; i >= 0; i--) {
-      bytes[i] = (byte)value;
+      bytes[i] = (byte) value;
       value = value >> 8;
     }
     return bytes;
@@ -289,7 +301,7 @@ public class BytesUtils {
 
     long value = Double.doubleToLongBits(d);
     for (int i = 7; i >= 0; i--) {
-      bytes[offset + i] = (byte)value;
+      bytes[offset + i] = (byte) value;
       value = value >> 8;
     }
   }
@@ -485,7 +497,8 @@ public class BytesUtils {
       } catch (Exception e) {
         LOG.error(
             "tsfile-common BytesUtils: cannot convert a long {} to a byte array, pos {}, width {}",
-            srcNum, pos, width, e);
+            srcNum, pos,
+            width, e);
       }
 
     }
@@ -498,10 +511,7 @@ public class BytesUtils {
    * @return long
    */
   public static long bytesToLong(byte[] byteNum) {
-    if (byteNum.length != 8) {
-      throw new IllegalArgumentException("Invalid input: byteNum.length != 8");
-    }
-    return bytesToLong(byteNum, 8);
+    return bytesToLong(byteNum, byteNum.length);
   }
 
   /**
@@ -833,7 +843,7 @@ public class BytesUtils {
     int temp = number;
     byte[] b = new byte[2];
     for (int i = b.length - 1; i >= 0; i--) {
-      b[i] = (byte)temp;
+      b[i] = (byte) temp;
       temp = temp >> 8;
     }
 

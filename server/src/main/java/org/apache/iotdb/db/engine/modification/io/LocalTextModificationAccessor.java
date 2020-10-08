@@ -19,19 +19,19 @@
 
 package org.apache.iotdb.db.engine.modification.io;
 
-import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * LocalTextModificationAccessor uses a file on local file system to store the modifications
@@ -124,28 +124,36 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   private static String encodeDeletion(Deletion del) {
     return del.getType().toString() + SEPARATOR + del.getPathString()
         + SEPARATOR + del.getVersionNum() + SEPARATOR
-        + del.getTimestamp();
+        + del.getStartTime() + SEPARATOR + del.getEndTime();
   }
 
   private static Deletion decodeDeletion(String[] fields) throws IOException {
-    if (fields.length != 4) {
+    if (fields.length != 5 && fields.length != 4) {
       throw new IOException("Incorrect deletion fields number: " + fields.length);
     }
 
     String path = fields[1];
     long versionNum;
-    long timestamp;
+    long startTimestamp = Long.MIN_VALUE;
+    long endTimestamp;
     try {
       versionNum = Long.parseLong(fields[2]);
     } catch (NumberFormatException e) {
       throw new IOException("Invalid version number: " + fields[2]);
     }
+
     try {
-      timestamp = Long.parseLong(fields[3]);
-    } catch (NumberFormatException e) {
-      throw new IOException("Invalid timestamp: " + fields[3]);
+      if (fields.length == 4) {
+        endTimestamp = Long.parseLong(fields[3]);
+
+      } else {
+        startTimestamp = Long.parseLong(fields[3]);
+        endTimestamp = Long.parseLong(fields[4]);
+      }
+      return new Deletion(new PartialPath(path), versionNum, startTimestamp, endTimestamp);
+    } catch (NumberFormatException | IllegalPathException e) {
+      throw new IOException("Invalid timestamp: " + e.getMessage());
     }
 
-    return new Deletion(new Path(path), versionNum, timestamp);
   }
 }

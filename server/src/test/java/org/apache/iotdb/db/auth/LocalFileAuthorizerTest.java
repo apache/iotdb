@@ -26,7 +26,7 @@ import static org.junit.Assert.fail;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -49,7 +49,7 @@ public class LocalFileAuthorizerTest {
   @Test
   public void testAuthorizer() throws AuthException {
 
-    IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+    IAuthorizer authorizer = BasicAuthorizer.getInstance();
     /*
      * login
      */
@@ -276,7 +276,7 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testListUser() throws AuthException {
-    IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+    IAuthorizer authorizer = BasicAuthorizer.getInstance();
     List<String> userList = authorizer.listAllUsers();
     assertEquals(1, userList.size());
     assertEquals(IoTDBConstant.ADMIN_NAME, userList.get(0));
@@ -307,7 +307,7 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testListRole() throws AuthException {
-    IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+    IAuthorizer authorizer = BasicAuthorizer.getInstance();
     List<String> roleList = authorizer.listAllRoles();
     assertEquals(0, roleList.size());
 

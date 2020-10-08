@@ -29,8 +29,8 @@ import java.io.IOException;
 import java.util.Arrays;
 
 /**
- * The class implement is same as {@link org.apache.iotdb.hadoop.tsfile.TSFInputFormat}
- * and is customized for Hive to implements JobConfigurable interface.
+ * The class implement is same as {@link org.apache.iotdb.hadoop.tsfile.TSFInputFormat} and is
+ * customized for Hive to implements JobConfigurable interface.
  */
 public class TSFHiveInputFormat extends FileInputFormat<NullWritable, MapWritable> {
 
@@ -39,13 +39,16 @@ public class TSFHiveInputFormat extends FileInputFormat<NullWritable, MapWritabl
 
 
   @Override
-  public RecordReader<NullWritable, MapWritable> getRecordReader(InputSplit split, JobConf job, Reporter reporter) throws IOException {
+  public RecordReader<NullWritable, MapWritable> getRecordReader(InputSplit split, JobConf job,
+      Reporter reporter) throws IOException {
     return new TSFHiveRecordReader(split, job);
   }
 
   @Override
   public InputSplit[] getSplits(JobConf job, int numSplits) throws IOException {
-    return TSFInputFormat.getTSFInputSplit(job, Arrays.asList(super.listStatus(job)), logger).toArray(new InputSplit[0]);
+    job.setBoolean(INPUT_DIR_RECURSIVE, true);
+    return TSFInputFormat.getTSFInputSplit(job, Arrays.asList(super.listStatus(job)), logger)
+        .toArray(new InputSplit[0]);
   }
 
 }

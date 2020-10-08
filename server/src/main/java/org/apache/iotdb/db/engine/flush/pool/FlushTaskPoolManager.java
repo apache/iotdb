@@ -60,10 +60,7 @@ public class FlushTaskPoolManager extends AbstractPoolManager {
 
   @Override
   public void stop() {
-    if (pool != null) {
-      close();
-      pool = null;
-    }
+    super.stop();
     LOGGER.info("Flush task manager stopped");
   }
 

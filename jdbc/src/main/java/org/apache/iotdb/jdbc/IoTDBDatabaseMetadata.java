@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.jdbc;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.RowIdLifetime;
+import java.sql.SQLException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
@@ -35,6 +39,10 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   private static final Logger logger = LoggerFactory
           .getLogger(IoTDBDatabaseMetadata.class);
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  //when running the program in IDE, we can not get the version info using getImplementationVersion()
+  private static final String DATABASE_VERSION =
+      IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion() != null
+          ? IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion() : "UNKNOWN";
   private long sessionId;
 
   IoTDBDatabaseMetadata(IoTDBConnection connection, TSIService.Iface client, long sessionId) {
@@ -171,7 +179,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getDatabaseProductVersion() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+   return DATABASE_VERSION;
   }
 
   @Override
@@ -181,7 +189,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public int getDriverMajorVersion() {
-    return 0;
+    return 1;
   }
 
   @Override
@@ -191,12 +199,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getDriverName() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return org.apache.iotdb.jdbc.IoTDBDriver.class.getName();
   }
 
   @Override
   public String getDriverVersion() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return DATABASE_VERSION;
   }
 
   @Override
@@ -489,7 +497,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getUserName() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return client.toString();
   }
 
   @Override
@@ -981,7 +989,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
                 + "when getting all timeseries info. please check server status");
       }
     }
-    return null;
+    return "";
   }
 
   /*

@@ -18,11 +18,15 @@
  */
 package org.apache.iotdb.db.auth.entity;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.db.utils.SerializeUtils;
 
 /**
  * This class represents a privilege on a specific seriesPath. If the privilege is seriesPath-free,
@@ -46,7 +50,11 @@ public class PathPrivilege {
    * Sort PathPrivilege by referenceCnt in descent order.
    */
   public static final Comparator<PathPrivilege> REFERENCE_DESCENT_SORTER = (o1, o2) -> -Integer.
-          compare(o1.referenceCnt.get(), o2.referenceCnt.get());
+      compare(o1.referenceCnt.get(), o2.referenceCnt.get());
+
+  public PathPrivilege() {
+
+  }
 
   public PathPrivilege(String path) {
     this.path = path;
@@ -102,5 +110,21 @@ public class PathPrivilege {
       builder.append(" ").append(PrivilegeType.values()[privilegeId]);
     }
     return builder.toString();
+  }
+
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+    SerializeUtils.serialize(privileges, dataOutputStream);
+    SerializeUtils.serialize(path, dataOutputStream);
+
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    privileges = new HashSet<>();
+    SerializeUtils.deserialize(privileges, buffer);
+    path = SerializeUtils.deserializeString(buffer);
   }
 }

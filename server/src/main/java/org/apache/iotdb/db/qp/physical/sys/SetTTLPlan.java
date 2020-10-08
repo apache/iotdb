@@ -20,38 +20,68 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class SetTTLPlan extends PhysicalPlan {
 
-  private String storageGroup;
+  private PartialPath storageGroup;
   private long dataTTL;
 
-  public SetTTLPlan(String storageGroup, long dataTTL) {
+  public SetTTLPlan() {
+    super(false, OperatorType.TTL);
+  }
+
+  public SetTTLPlan(PartialPath storageGroup, long dataTTL) {
     // set TTL
     super(false, OperatorType.TTL);
     this.storageGroup = storageGroup;
     this.dataTTL = dataTTL;
   }
 
-  public SetTTLPlan(String storageGroup) {
+  public SetTTLPlan(PartialPath storageGroup) {
     // unset TTL
     this(storageGroup, Long.MAX_VALUE);
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return null;
   }
 
-  public String getStorageGroup() {
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    int type = PhysicalPlanType.TTL.ordinal();
+    stream.writeByte((byte) type);
+    stream.writeLong(dataTTL);
+    putString(stream, storageGroup.getFullPath());
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    int type = PhysicalPlanType.TTL.ordinal();
+    buffer.put((byte) type);
+    buffer.putLong(dataTTL);
+    putString(buffer, storageGroup.getFullPath());
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+    this.dataTTL = buffer.getLong();
+    this.storageGroup = new PartialPath(readString(buffer));
+  }
+
+  public PartialPath getStorageGroup() {
     return storageGroup;
   }
 
-  public void setStorageGroup(String storageGroup) {
+  public void setStorageGroup(PartialPath storageGroup) {
     this.storageGroup = storageGroup;
   }
 

@@ -20,7 +20,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.10.0-SNAPSHOT</version>
+        <version>0.11.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>flink-iotdb-connector</artifactId>
@@ -28,7 +28,6 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <compile.version>1.8</compile.version>
-        <flink.version>1.10.0</flink.version>
         <scala.binary.version>2.11</scala.binary.version>
     </properties>
     <dependencies>

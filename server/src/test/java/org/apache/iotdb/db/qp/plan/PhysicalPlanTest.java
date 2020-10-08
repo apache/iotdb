@@ -18,35 +18,22 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
-import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.query.fill.LinearFill;
-import org.apache.iotdb.db.query.fill.PreviousFill;
+import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.query.executor.fill.LinearFill;
+import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -64,27 +51,37 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+
+import static org.junit.Assert.*;
+
 public class PhysicalPlanTest {
 
   private Planner processor = new Planner();
 
   @Before
-  public void before() throws QueryProcessException, MetadataException {
-    MManager.getInstance().init();
-    MManager.getInstance().setStorageGroup("root.vehicle");
-    MManager.getInstance().createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().createTimeseries("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().createTimeseries("root.vehicle.d3.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().createTimeseries("root.vehicle.d4.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
+  public void before() throws MetadataException {
+    IoTDB.metaManager.init();
+    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.metaManager
+        .createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager
+        .createTimeseries(new PartialPath("root.vehicle.d2.s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager
+        .createTimeseries(new PartialPath("root.vehicle.d3.s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager
+        .createTimeseries(new PartialPath("root.vehicle.d4.s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
   }
 
   @After
   public void clean() throws IOException {
-    MManager.getInstance().clear();
+    IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
   }
 
@@ -93,12 +90,25 @@ public class PhysicalPlanTest {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=INT32,encoding=RLE";
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
+    assertEquals(
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY",
+        plan.toString());
   }
 
   @Test
   public void testMetadata2() throws QueryProcessException {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
+    Planner processor = new Planner();
+    CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY",
+        plan.toString());
+  }
+
+  @Test
+  public void testMetadata3() throws QueryProcessException {
+    String metadata = "create timeseries root.vehicle.d1.s2(温度) with datatype=int32,encoding=rle, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    System.out.println(metadata.length());
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
@@ -136,7 +146,7 @@ public class PhysicalPlanTest {
     if (!plan.isQuery()) {
       fail();
     }
-    GroupByPlan mergePlan = (GroupByPlan) plan;
+    GroupByTimePlan mergePlan = (GroupByTimePlan) plan;
     assertEquals(3L, mergePlan.getInterval());
     assertEquals(3L, mergePlan.getSlidingStep());
     assertEquals(8L, mergePlan.getStartTime());
@@ -152,7 +162,7 @@ public class PhysicalPlanTest {
     if (!plan.isQuery()) {
       fail();
     }
-    GroupByPlan mergePlan = (GroupByPlan) plan;
+    GroupByTimePlan mergePlan = (GroupByTimePlan) plan;
     assertEquals(111, mergePlan.getInterval());
   }
 
@@ -165,7 +175,7 @@ public class PhysicalPlanTest {
     if (!plan.isQuery()) {
       fail();
     }
-    GroupByPlan mergePlan = (GroupByPlan) plan;
+    GroupByTimePlan mergePlan = (GroupByTimePlan) plan;
     assertEquals(3 * 60 * 60 * 1000, mergePlan.getInterval());
     assertEquals(24 * 60 * 60 * 1000, mergePlan.getSlidingStep());
     assertEquals(1496379612000L, mergePlan.getStartTime());
@@ -212,6 +222,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear, 5m], boolean[previous])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
+      fail();
     } catch (Exception e) {
       assertTrue(true);
     }
@@ -222,8 +233,172 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 5000 Fill(int32[linear], boolean[previous])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
+      fail();
     } catch (Exception e) {
       assertEquals("Only \"=\" can be used in fill function", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testGroupByFill1() {
+    String sqlStr =
+            "select last_value(s1) " + " from root.vehicle.d1 "
+                    + "group by([8,737), 3ms) fill(int32[previous])";
+    try {
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+      if (!plan.isQuery()) {
+        fail();
+      }
+      if (!(plan instanceof GroupByTimeFillPlan)) {
+        fail();
+      }
+      GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) plan;
+      assertEquals(3L, groupByFillPlan.getInterval());
+      assertEquals(3L, groupByFillPlan.getSlidingStep());
+      assertEquals(8L, groupByFillPlan.getStartTime());
+      assertEquals(737L, groupByFillPlan.getEndTime());
+      assertEquals(1, groupByFillPlan.getFillType().size());
+      assertTrue(groupByFillPlan.getFillType().containsKey(TSDataType.INT32));
+      assertTrue(groupByFillPlan.getFillType().get(TSDataType.INT32) instanceof PreviousFill);
+      PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(TSDataType.INT32);
+      assertFalse(previousFill.isUntilLast());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testGroupByFill2() {
+    String sqlStr =
+            "select last_value(s1) " + " from root.vehicle.d1 "
+                    + "group by([8,737), 3ms) fill(ALL[previousuntillast])";
+    try {
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+      if (!plan.isQuery()) {
+        fail();
+      }
+      if (!(plan instanceof GroupByTimeFillPlan)) {
+        fail();
+      }
+      GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) plan;
+      assertEquals(3L, groupByFillPlan.getInterval());
+      assertEquals(3L, groupByFillPlan.getSlidingStep());
+      assertEquals(8L, groupByFillPlan.getStartTime());
+      assertEquals(737L, groupByFillPlan.getEndTime());
+      assertEquals(TSDataType.values().length, groupByFillPlan.getFillType().size());
+      for (TSDataType tsDataType : TSDataType.values()) {
+        assertTrue(groupByFillPlan.getFillType().containsKey(tsDataType));
+        assertTrue(groupByFillPlan.getFillType().get(tsDataType) instanceof PreviousFill);
+        PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(tsDataType);
+        assertTrue(previousFill.isUntilLast());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testGroupByFill3() {
+    String sqlStr =
+            "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
+                    + "group by([8,737), 3ms) fill(int32[previousuntillast], int64[previous])";
+    try {
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+      if (!plan.isQuery()) {
+        fail();
+      }
+      if (!(plan instanceof GroupByTimeFillPlan)) {
+        fail();
+      }
+      GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) plan;
+      assertEquals(3L, groupByFillPlan.getInterval());
+      assertEquals(3L, groupByFillPlan.getSlidingStep());
+      assertEquals(8L, groupByFillPlan.getStartTime());
+      assertEquals(737L, groupByFillPlan.getEndTime());
+      assertEquals(2, groupByFillPlan.getDeduplicatedPaths().size());
+      assertEquals(2, groupByFillPlan.getFillType().size());
+
+      assertTrue(groupByFillPlan.getFillType().containsKey(TSDataType.INT32));
+      assertTrue(groupByFillPlan.getFillType().get(TSDataType.INT32) instanceof PreviousFill);
+      PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(TSDataType.INT32);
+      assertTrue(previousFill.isUntilLast());
+
+      assertTrue(groupByFillPlan.getFillType().containsKey(TSDataType.INT64));
+      assertTrue(groupByFillPlan.getFillType().get(TSDataType.INT64) instanceof PreviousFill);
+      previousFill = (PreviousFill) groupByFillPlan.getFillType().get(TSDataType.INT64);
+      assertFalse(previousFill.isUntilLast());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testGroupByFill4() {
+    String sqlStr =
+            "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
+                    + "group by([8,737), 3ms) fill(int32[linear])";
+    try {
+      processor.parseSQLToPhysicalPlan(sqlStr);
+      fail();
+    } catch (SQLParserException e) {
+      assertEquals("group by fill doesn't support linear fill", e.getMessage());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testGroupByFill5() {
+    String sqlStr =
+            "select last_value(d1.s1), count(d2.s1)" + " from root.vehicle "
+                    + "group by([8,737), 3ms) fill(int32[previous])";
+    try {
+      processor.parseSQLToPhysicalPlan(sqlStr);
+      fail();
+    } catch (QueryProcessException e) {
+      assertEquals("Group By Fill only support last_value function", e.getMessage());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testGroupByFill6() {
+    String sqlStr =
+            "select count(s1)" + "from root.vehicle.d1 "
+                    + "group by([8,737), 3ms, 5ms) fill(int32[previous])";
+    try {
+      processor.parseSQLToPhysicalPlan(sqlStr);
+      fail();
+    } catch (ParseCancellationException e) {
+      assertTrue(e.getMessage().contains("mismatched input 'fill'"));
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testGroupByFill7() {
+    String sqlStr =
+        "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
+            + "group by([8,737), 3ms) fill(int32[previousuntillast,10ms], int64[previous,10ms])";
+    try {
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+      if (!plan.isQuery()) {
+        fail();
+      }
+      if (!(plan instanceof GroupByTimeFillPlan)) {
+        fail();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
     }
   }
 
@@ -255,23 +430,23 @@ public class PhysicalPlanTest {
     IExpression expect = new GlobalTimeExpression(
         FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L)));
     expect = BinaryExpression.or(expect,
-        new SingleSeriesExpression(new Path("root.vehicle.d1.s1"), ValueFilter.lt(10.0)));
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.lt(10.0)));
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
   @Test
-  public void testQuery4() throws QueryProcessException {
+  public void testQuery4() throws QueryProcessException, IllegalPathException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100 and s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
 
     IExpression expect = BinaryExpression.and(
-        new SingleSeriesExpression(new Path("root.vehicle.d1.s1"), ValueFilter.lt(10.0)),
+        new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"), ValueFilter.lt(10.0)),
         new GlobalTimeExpression(FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L))));
 
     assertEquals(expect.toString(), queryFilter.toString());
 
-    Path path = new Path("root.vehicle.d1.s1");
+    PartialPath path = new PartialPath("root.vehicle.d1.s1");
     assertEquals(path, plan.getPaths().get(0));
   }
 
@@ -280,7 +455,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20 or s1 < 10";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         FilterFactory.or(ValueFilter.gt(20.0), ValueFilter.lt(10.0)));
     assertEquals(expect.toString(), queryFilter.toString());
 
@@ -319,11 +494,22 @@ public class PhysicalPlanTest {
   }
 
   @Test
+  public void testOffsetLimit() throws QueryProcessException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1,root.vehicle.d2 WHERE time < 10 "
+        + "offset 10 limit 100 soffset 1 slimit 1";
+    QueryPlan plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals(100, plan.getRowLimit());
+    assertEquals(10, plan.getRowOffset());
+    // NOTE that the parameters of the SLIMIT clause is not stored in the physicalPlan,
+    // because the SLIMIT clause takes effect before the physicalPlan is finally generated.
+  }
+
+  @Test
   public void testQueryFloat1() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20.5e3";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(20.5e3));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -333,7 +519,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20.5E-3";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(20.5e-3));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -343,7 +529,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.5";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(2.5));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -353,7 +539,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.5";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(2.5));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -363,7 +549,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.5";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(-2.5));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -373,7 +559,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.5E-1";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(-2.5e-1));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -383,7 +569,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.5E2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(2.5e+2));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -393,7 +579,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > .2e2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(0.2e+2));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -403,7 +589,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > .2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(0.2));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -413,7 +599,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(2.0));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -423,7 +609,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 2.";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(2.0));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -433,7 +619,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -2.";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(-2.0));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -443,7 +629,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -.2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(-0.2));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -453,7 +639,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > -.2e2";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.gt(-20.0));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -467,7 +653,7 @@ public class PhysicalPlanTest {
     values.add(25.0f);
     values.add(30.0f);
     values.add(40.0f);
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.in(values, false));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -481,14 +667,14 @@ public class PhysicalPlanTest {
     values.add(25.0f);
     values.add(30.0f);
     values.add(40.0f);
-    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    IExpression expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.in(values, true));
     assertEquals(expect.toString(), queryFilter.toString());
 
     sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE not(s1 not in (25, 30, 40))";
     plan = processor.parseSQLToPhysicalPlan(sqlStr);
     queryFilter = ((RawDataQueryPlan) plan).getExpression();
-    expect = new SingleSeriesExpression(new Path("root.vehicle.d1.s1"),
+    expect = new SingleSeriesExpression(new Path("root.vehicle.d1", "s1"),
         ValueFilter.in(values, false));
     assertEquals(expect.toString(), queryFilter.toString());
   }
@@ -538,28 +724,28 @@ public class PhysicalPlanTest {
   @Test
   public void testLoadFiles() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
-    String metadata = String.format("load %s", filePath);
+    String metadata = String.format("load \"%s\"", filePath);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format(
-        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=2, operatorType=LOAD_FILES}",
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, operatorType=LOAD_FILES}",
         filePath), plan.toString());
 
-    metadata = String.format("load %s true", filePath);
+    metadata = String.format("load \"%s\" true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format(
-        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=2, operatorType=LOAD_FILES}",
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, operatorType=LOAD_FILES}",
         filePath), plan.toString());
 
-    metadata = String.format("load %s false", filePath);
+    metadata = String.format("load \"%s\" false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format(
-        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=2, operatorType=LOAD_FILES}",
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=1, operatorType=LOAD_FILES}",
         filePath), plan.toString());
 
-    metadata = String.format("load %s true 3", filePath);
+    metadata = String.format("load \"%s\" true 3", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format(
@@ -570,7 +756,7 @@ public class PhysicalPlanTest {
   @Test
   public void testRemoveFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
-    String metadata = String.format("remove %s", filePath);
+    String metadata = String.format("remove \"%s\"", filePath);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format(
@@ -582,7 +768,7 @@ public class PhysicalPlanTest {
   public void testMoveFile() throws QueryProcessException {
     String filePath = "data" + File.separator + "213213441243-1-2.tsfile";
     String targetDir = "user" + File.separator + "backup";
-    String metadata = String.format("move %s %s", filePath, targetDir);
+    String metadata = String.format("move \"%s\" \"%s\"", filePath, targetDir);
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -598,28 +784,28 @@ public class PhysicalPlanTest {
     RawDataQueryPlan plan = (RawDataQueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     Assert.assertEquals(1, plan.getDeduplicatedPaths().size());
     Assert.assertEquals(1, plan.getDeduplicatedDataTypes().size());
-    Assert.assertEquals(new Path("root.vehicle.d1.s1"), plan.getDeduplicatedPaths().get(0));
+    Assert.assertEquals(new Path("root.vehicle.d1", "s1"), plan.getDeduplicatedPaths().get(0));
 
     sqlStr = "select count(*) from root.vehicle.d1,root.vehicle.d1,root.vehicle.d1";
     plan = (RawDataQueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     Assert.assertEquals(1, plan.getDeduplicatedPaths().size());
     Assert.assertEquals(1, plan.getDeduplicatedDataTypes().size());
-    Assert.assertEquals(new Path("root.vehicle.d1.s1"), plan.getDeduplicatedPaths().get(0));
+    Assert.assertEquals(new Path("root.vehicle.d1", "s1"), plan.getDeduplicatedPaths().get(0));
   }
 
   @Test
   public void testLastPlanPaths() throws QueryProcessException {
     String sqlStr1 = "SELECT last s1 FROM root.vehicle.d1";
-    String sqlStr2 = "SELECT last s1 FROM root.vehicle.d1, root.vehicle.d2 disable align";
+    String sqlStr2 = "SELECT last s1 FROM root.vehicle.d1, root.vehicle.d2";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr2);
-    Path path1 = new Path("root.vehicle.d1.s1");
-    Path path2 = new Path("root.vehicle.d2.s1");
+    Path path1 = new Path("root.vehicle.d1", "s1");
+    Path path2 = new Path("root.vehicle.d2", "s1");
     assertEquals(1, plan1.getPaths().size());
-    assertEquals(path1.toString(), plan1.getPaths().get(0).toString());
+    assertEquals(path1.toString(), plan1.getPaths().get(0).getFullPath());
     assertEquals(2, plan2.getPaths().size());
-    assertEquals(path1.toString(), plan2.getPaths().get(0).toString());
-    assertEquals(path2.toString(), plan2.getPaths().get(1).toString());
+    assertEquals(path1.toString(), plan2.getPaths().get(0).getFullPath());
+    assertEquals(path2.toString(), plan2.getPaths().get(1).getFullPath());
   }
 
   @Test
@@ -638,5 +824,57 @@ public class PhysicalPlanTest {
     for (TSDataType dt : ((LastQueryPlan) plan2).getDataTypes()) {
       assertEquals(TSDataType.FLOAT, dt);
     }
+  }
+
+  @Test
+  public void testDelete1() throws QueryProcessException, IllegalPathException {
+    PartialPath path = new PartialPath("root.vehicle.d1.s1");
+    List<PartialPath> pathList = new ArrayList<>(Collections.singletonList(path));
+    String sqlStr = "delete FROM root.vehicle.d1.s1 WHERE time < 5000";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals(OperatorType.DELETE, plan.getOperatorType());
+    assertEquals(pathList, plan.getPaths());
+  }
+
+  @Test
+  public void testDelete2() throws QueryProcessException, IllegalPathException {
+    PartialPath path1 = new PartialPath("root.vehicle.d1.s1");
+    PartialPath path2 = new PartialPath("root.vehicle.d1.s2");
+    List<PartialPath> pathList = new ArrayList<>(Arrays.asList(path1, path2));
+    String sqlStr = "delete FROM root.vehicle.d1.s1,root.vehicle.d1.s2 WHERE time < 5000";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals(OperatorType.DELETE, plan.getOperatorType());
+    assertEquals(pathList, plan.getPaths());
+  }
+
+  @Test
+  public void testDelete3() throws QueryProcessException, IllegalPathException {
+    PartialPath path1 = new PartialPath("root.vehicle.d1.s1");
+    PartialPath path2 = new PartialPath("root.vehicle.d2.s3");
+    List<PartialPath> pathList = new ArrayList<>(Arrays.asList(path1, path2));
+    String sqlStr = "delete FROM root.vehicle.d1.s1,root.vehicle.d2.s3 WHERE time < 5000";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals(OperatorType.DELETE, plan.getOperatorType());
+    assertEquals(pathList, plan.getPaths());
+  }
+
+  @Test
+  public void testSpecialCharacters() throws QueryProcessException {
+    String sqlStr1 = "create timeseries root.3e-3.-1.1/2.SNAPPY.RLE.81+12.+2.s/io.in[jack] with "
+        + "datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)"
+        + " attributes(attr1=v1, attr2=v2)";
+    PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
+    Assert.assertEquals(OperatorType.CREATE_TIMESERIES, plan1.getOperatorType());
+  }
+
+  @Test
+  public void testTimeRangeDelete() throws QueryProcessException, IllegalPathException {
+    String sqlStr1 = "DELETE FROM root.vehicle.d1 where time >= 1 and time <= 2";
+
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr1);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals(plan.getPaths(), Collections.singletonList(new PartialPath("root.vehicle.d1")));
+    Assert.assertEquals(((DeletePlan) plan).getDeleteStartTime(), 1);
+    Assert.assertEquals(((DeletePlan) plan).getDeleteEndTime(), 2);
   }
 }

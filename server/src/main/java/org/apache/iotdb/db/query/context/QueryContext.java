@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
 /**
  * QueryContext contains the shared information with in a query.
@@ -93,7 +93,7 @@ public class QueryContext {
     this.queryTimeLowerBound = queryTimeLowerBound;
   }
 
-  public boolean chunkNotSatisfy(ChunkMetaData chunkMetaData) {
+  public boolean chunkNotSatisfy(ChunkMetadata chunkMetaData) {
     return chunkMetaData.getEndTime() < queryTimeLowerBound;
   }
 }

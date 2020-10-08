@@ -26,10 +26,9 @@ import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -76,39 +75,39 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void write(RowBatch rowBatch) throws WriteProcessException, IOException {
-    List<MeasurementSchema> measurements = rowBatch.measurements;
-    for (int i = 0; i < measurements.size(); i++) {
-      String measurementId = measurements.get(i).getMeasurementId();
-      TSDataType dataType = measurements.get(i).getType();
+  public void write(Tablet tablet) throws WriteProcessException, IOException {
+    List<MeasurementSchema> timeseries = tablet.getSchemas();
+    for (int i = 0; i < timeseries.size(); i++) {
+      String measurementId = timeseries.get(i).getMeasurementId();
+      TSDataType dataType = timeseries.get(i).getType();
       if (!chunkWriters.containsKey(measurementId)) {
         throw new NoMeasurementException("measurement id" + measurementId + " not found!");
       }
-      writeByDataType(rowBatch, measurementId, dataType, i);
+      writeByDataType(tablet, measurementId, dataType, i);
     }
   }
 
   private void writeByDataType(
-          RowBatch rowBatch, String measurementId, TSDataType dataType, int index) throws IOException {
-    int batchSize = rowBatch.batchSize;
+          Tablet tablet, String measurementId, TSDataType dataType, int index) throws IOException {
+    int batchSize = tablet.rowSize;
     switch (dataType) {
       case INT32:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (int[]) rowBatch.values[index], batchSize);
+        chunkWriters.get(measurementId).write(tablet.timestamps, (int[]) tablet.values[index], batchSize);
         break;
       case INT64:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (long[]) rowBatch.values[index], batchSize);
+        chunkWriters.get(measurementId).write(tablet.timestamps, (long[]) tablet.values[index], batchSize);
         break;
       case FLOAT:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (float[]) rowBatch.values[index], batchSize);
+        chunkWriters.get(measurementId).write(tablet.timestamps, (float[]) tablet.values[index], batchSize);
         break;
       case DOUBLE:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (double[]) rowBatch.values[index], batchSize);
+        chunkWriters.get(measurementId).write(tablet.timestamps, (double[]) tablet.values[index], batchSize);
         break;
       case BOOLEAN:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (boolean[]) rowBatch.values[index], batchSize);
+        chunkWriters.get(measurementId).write(tablet.timestamps, (boolean[]) tablet.values[index], batchSize);
         break;
       case TEXT:
-        chunkWriters.get(measurementId).write(rowBatch.timestamps, (Binary[]) rowBatch.values[index], batchSize);
+        chunkWriters.get(measurementId).write(tablet.timestamps, (Binary[]) tablet.values[index], batchSize);
         break;
       default:
         throw new UnSupportedDataTypeException(

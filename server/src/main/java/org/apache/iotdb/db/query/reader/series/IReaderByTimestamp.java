@@ -34,10 +34,13 @@ public interface IReaderByTimestamp {
    * of correctness with any other way of calling. For example, DO NOT call this method twice with
    * the same timestamp.
    */
-  default Object getValueInTimestamp(long timestamp) throws IOException {
-    Object[] values = getValuesInTimestamps(new long[]{timestamp});
-    return values[0];
-  }
+  Object getValueInTimestamp(long timestamp) throws IOException;
 
-  Object[] getValuesInTimestamps(long[] timestamps) throws IOException;
+  /**
+   * Returns whether there is no more data in reader.
+   * <p>True means no more data. False means you can still get more data</p>
+   */
+  default boolean readerIsEmpty() throws IOException {
+    return false;
+  }
 }

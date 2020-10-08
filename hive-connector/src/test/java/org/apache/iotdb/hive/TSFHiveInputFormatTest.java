@@ -32,24 +32,15 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
-import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
 
 public class TSFHiveInputFormatTest {
 
-  private String deviceId;
   private TSFInputSplit inputSplit;
   private TSFHiveInputFormat inputFormat;
   private JobConf job;
-  private long length;
-  private long startOffset;
-  private long endOffset;
-  private String[] measurementIds;
   private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
 
   @Before
@@ -62,18 +53,7 @@ public class TSFHiveInputFormatTest {
     job.set(FileInputFormat.INPUT_DIR, jobPath);
     Path path = new Path(jobPath);
     String[] hosts = {"127.0.0.1"};
-    List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList = new ArrayList<>();
-    deviceId = "device_1";
-    measurementIds = new String[10];
-    for (int i = 0; i < measurementIds.length; i++) {
-      measurementIds[i] = "sensor_" + (i + 1);
-    }
-    startOffset = 12L;
-    endOffset = 3727688L;
-    length = endOffset - startOffset;
-    TSFInputSplit.ChunkGroupInfo chunkGroupInfo = new TSFInputSplit.ChunkGroupInfo(deviceId, measurementIds, startOffset, endOffset);
-    chunkGroupInfoList.add(chunkGroupInfo);
-    inputSplit = new TSFInputSplit(path, hosts, length, chunkGroupInfoList);
+    inputSplit = new TSFInputSplit(path, hosts, 0, 3727688L);
 
   }
 
@@ -100,13 +80,6 @@ public class TSFHiveInputFormatTest {
       assertEquals(1, inputSplits.length);
       assertTrue(inputSplits[0] instanceof TSFInputSplit);
       TSFInputSplit inputSplit = (TSFInputSplit) inputSplits[0];
-      TSFInputSplit.ChunkGroupInfo chunkGroupInfo = inputSplit.getChunkGroupInfoList().get(0);
-      assertEquals(deviceId, chunkGroupInfo.getDeviceId());
-      assertEquals(startOffset, chunkGroupInfo.getStartOffset());
-      assertEquals(endOffset, chunkGroupInfo.getEndOffset());
-      assertEquals(length, inputSplit.getLength());
-      assertEquals(1, inputSplit.getChunkGroupInfoList().size());
-      assertEquals(Arrays.stream(measurementIds).collect(toSet()), Arrays.stream(chunkGroupInfo.getMeasurementIds()).collect(toSet()));
     } catch (IOException e) {
       e.printStackTrace();
       fail();

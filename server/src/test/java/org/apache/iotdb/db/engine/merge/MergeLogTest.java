@@ -28,6 +28,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
@@ -58,6 +59,7 @@ public class MergeLogTest extends MergeTest {
 
   @Test
   public void testMergeLog() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
     MergeTask mergeTask =
         new MergeTask(new MergeResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
             tempSGDir.getPath(), this::testCallBack, "test", false, 1, MERGE_TEST_SG);
@@ -68,8 +70,7 @@ public class MergeLogTest extends MergeTest {
       File mergeLog) {
     int lineCnt = 0;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(mergeLog))) {
-      String line;
-      while ((line = bufferedReader.readLine()) != null) {
+      while (bufferedReader.readLine() != null) {
         lineCnt ++;
       }
     } catch (IOException e) {

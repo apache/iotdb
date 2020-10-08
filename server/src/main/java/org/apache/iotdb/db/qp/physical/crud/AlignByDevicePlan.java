@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -29,14 +29,20 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 public class AlignByDevicePlan extends QueryPlan {
 
   private List<String> measurements; // to record result measurement columns, e.g. temperature, status, speed
-  private Map<String, Set<String>> deviceToMeasurementsMap; // e.g. root.ln.d1 -> temperature
+  private Map<String, String> measurementAliasMap; // select s1, s2 as speed from root, then s2 -> speed
   // to check data type consistency for the same name sensor of different devices
-  private Map<String, TSDataType> measurementDataTypeMap;
+  private List<PartialPath> devices;
+  // to record the datatype of the column in the result set
+  private Map<String, TSDataType> columnDataTypeMap;
   private Map<String, IExpression> deviceToFilterMap;
   // to record different kinds of measurement
   private Map<String, MeasurementType> measurementTypeMap;
 
-  private GroupByPlan groupByPlan;
+  // to record the real type of the measurement
+  private Map<String, TSDataType> measurementDataTypeMap;
+
+  private GroupByTimePlan groupByTimePlan;
+
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
 
@@ -52,22 +58,30 @@ public class AlignByDevicePlan extends QueryPlan {
     return measurements;
   }
 
-  public void setDeviceToMeasurementsMap(
-      Map<String, Set<String>> deviceToMeasurementsMap) {
-    this.deviceToMeasurementsMap = deviceToMeasurementsMap;
+  public void setMeasurementAliasMap(
+      Map<String, String> measurementAliasMap) {
+    this.measurementAliasMap = measurementAliasMap;
   }
 
-  public Map<String, Set<String>> getDeviceToMeasurementsMap() {
-    return deviceToMeasurementsMap;
+  public Map<String, String> getMeasurementAliasMap() {
+    return measurementAliasMap;
   }
 
-  public void setMeasurementDataTypeMap(
-      Map<String, TSDataType> measurementDataTypeMap) {
-    this.measurementDataTypeMap = measurementDataTypeMap;
+  public void setDevices(List<PartialPath> devices) {
+    this.devices = devices;
   }
 
-  public Map<String, TSDataType> getMeasurementDataTypeMap() {
-    return measurementDataTypeMap;
+  public List<PartialPath> getDevices() {
+    return devices;
+  }
+
+  public void setColumnDataTypeMap(
+      Map<String, TSDataType> columnDataTypeMap) {
+    this.columnDataTypeMap = columnDataTypeMap;
+  }
+
+  public Map<String, TSDataType> getColumnDataTypeMap() {
+    return columnDataTypeMap;
   }
 
   public Map<String, IExpression> getDeviceToFilterMap() {
@@ -87,13 +101,22 @@ public class AlignByDevicePlan extends QueryPlan {
     this.measurementTypeMap = measurementTypeMap;
   }
 
-  public GroupByPlan getGroupByPlan() {
-    return groupByPlan;
+  public Map<String, TSDataType> getMeasurementDataTypeMap() {
+    return measurementDataTypeMap;
   }
 
-  public void setGroupByPlan(GroupByPlan groupByPlan) {
-    this.groupByPlan = groupByPlan;
-    this.setOperatorType(OperatorType.GROUPBY);
+  public void setMeasurementDataTypeMap(Map<String, TSDataType> measurementDataTypeMap) {
+    this.measurementDataTypeMap = measurementDataTypeMap;
+  }
+
+
+  public GroupByTimePlan getGroupByTimePlan() {
+    return groupByTimePlan;
+  }
+
+  public void setGroupByTimePlan(GroupByTimePlan groupByTimePlan) {
+    this.groupByTimePlan = groupByTimePlan;
+    this.setOperatorType(OperatorType.GROUPBYTIME);
   }
 
   public FillQueryPlan getFillQueryPlan() {

@@ -41,6 +41,9 @@ import org.apache.spark.sql.execution.datasources.{FileFormat, OutputWriterFacto
 import org.apache.spark.sql.sources.{DataSourceRegister, Filter}
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
+import scala.collection.JavaConversions._
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
@@ -115,8 +118,16 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       }
 
       if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
-        val deviceNames = tsFileMetaData.getDeviceMap.keySet()
-        val measurementNames = tsFileMetaData.getMeasurementSchema.keySet()
+        val deviceNames = reader.getAllDevices()
+        
+        val measurementNames = new java.util.HashSet[String]()
+
+        requiredSchema.foreach((field: StructField) => {
+          if (field.name != QueryConstant.RESERVED_TIME
+            && field.name != NarrowConverter.DEVICE_NAME) {
+            measurementNames += field.name
+          }
+        })
 
         // construct queryExpression based on queriedSchema and filters
         val queryExpressions = NarrowConverter.toQueryExpression(dataSchema, deviceNames,
@@ -194,7 +205,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       }
       else {
         // get queriedSchema from requiredSchema
-        var queriedSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData)
+        var queriedSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData, reader)
 
         // construct queryExpression based on queriedSchema and filters
         val queryExpression = WideConverter.toQueryExpression(queriedSchema, filters)
@@ -229,7 +240,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
               if (field.name == QueryConstant.RESERVED_TIME) {
                 rowBuffer(index) = curRecord.getTimestamp
               } else {
-                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(field.name))
+                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(field.name, true))
                 var curField: Field = null
                 if (pos != -1) {
                   curField = fields.get(pos)

@@ -38,14 +38,15 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,13 +55,13 @@ import org.slf4j.LoggerFactory;
 public class IoTDBConnection implements Connection {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
-  private static final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2;
+  private static final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
   private TSIService.Iface client = null;
   private long sessionId = -1;
   private IoTDBConnectionParams params;
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
-  private TSocket transport;
+  private TTransport transport;
   private ZoneId zoneId;
   private boolean autoCommit;
 
@@ -404,7 +405,8 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openTransport() throws TTransportException {
-    transport = new TSocket(params.getHost(), params.getPort(), Config.connectionTimeoutInMs);
+    transport = new TFastFramedTransport(new TSocket(params.getHost(), params.getPort(),
+        Config.connectionTimeoutInMs));
     if (!transport.isOpen()) {
       transport.open();
     }
@@ -480,6 +482,7 @@ public class IoTDBConnection implements Connection {
           Thread.sleep(Config.RETRY_INTERVAL);
         } catch (InterruptedException e1) {
           logger.error("reconnect is interrupted.", e1);
+          Thread.currentThread().interrupt();
         }
       }
     }
@@ -490,14 +493,7 @@ public class IoTDBConnection implements Connection {
     if (zoneId != null) {
       return zoneId.toString();
     }
-
-    TSGetTimeZoneResp resp = getClient().getTimeZone(sessionId);
-    try {
-      RpcUtils.verifySuccess(resp.getStatus());
-    } catch (StatementExecutionException e) {
-      throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-    }
-    return resp.getTimeZone();
+    return ZoneId.systemDefault().getId();
   }
 
   public void setTimeZone(String zoneId) throws TException, IoTDBSQLException {

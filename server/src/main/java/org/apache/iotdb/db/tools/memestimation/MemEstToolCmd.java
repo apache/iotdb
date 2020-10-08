@@ -20,15 +20,16 @@ package org.apache.iotdb.db.tools.memestimation;
 
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.service.IoTDB;
 
 @Command(name = "calmem", description = "calculate minimum memory required for writing based on the number of storage groups and timeseries")
-public class MemEstToolCmd implements Runnable {
+public class MemEstToolCmd extends WrappedRunnable {
 
   @Option(title = "storage group number", name = {"-sg",
       "--storagegroup"}, description = "Storage group number")
@@ -43,7 +44,7 @@ public class MemEstToolCmd implements Runnable {
   private String maxTsNumString = "0";
 
   @Override
-  public void run() {
+  public void runMayThrow() {
     // backup origin config parameters
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     long memTableSize = config.getMemtableSizeThreshold();
@@ -70,7 +71,7 @@ public class MemEstToolCmd implements Runnable {
       config.setTsFileSizeThreshold(tsFileSize);
       IoTDBConfigDynamicAdapter.getInstance().reset();
       IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
-      MManager.getInstance().clear();
+      IoTDB.metaManager.clear();
 
       long sgCnt = 1;
       long tsCnt = 0;
@@ -86,7 +87,7 @@ public class MemEstToolCmd implements Runnable {
             maxTsNumValid = Math.min(tsCnt, maxTsNum);
             maxTsNumValid = Math.max(maxTsNumValid, tsCnt / sgNum + 1);
           }
-          MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(maxTsNumValid);
+          IoTDB.metaManager.setMaxSeriesNumberAmongStorageGroup(maxTsNumValid);
         }
 
       } catch (ConfigAdjusterException e) {

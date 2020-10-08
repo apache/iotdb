@@ -18,42 +18,61 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import java.util.ArrayList;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
 
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected long queryId;
-  private long interval;
-  private long slidingStep;
+  protected long interval;
+  protected long slidingStep;
   // total query [startTime, endTime)
-  private long startTime;
-  private long endTime;
+  protected long startTime;
+  protected long endTime;
 
   // current interval [curStartTime, curEndTime)
   protected long curStartTime;
   protected long curEndTime;
-  private int usedIndex;
   protected boolean hasCachedTimeInterval;
+
+  protected boolean leftCRightO;
+
+  public GroupByEngineDataSet() {
+  }
 
   /**
    * groupBy query.
    */
-  public GroupByEngineDataSet(QueryContext context, GroupByPlan groupByPlan) {
-    super(groupByPlan.getDeduplicatedPaths(), groupByPlan.getDeduplicatedDataTypes());
+  public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
+    super(new ArrayList<>(groupByTimePlan.getDeduplicatedPaths()),
+        groupByTimePlan.getDeduplicatedDataTypes(), groupByTimePlan.isAscending());
     this.queryId = context.getQueryId();
-    this.interval = groupByPlan.getInterval();
-    this.slidingStep = groupByPlan.getSlidingStep();
-    this.startTime = groupByPlan.getStartTime();
-    this.endTime = groupByPlan.getEndTime();
+    this.interval = groupByTimePlan.getInterval();
+    this.slidingStep = groupByTimePlan.getSlidingStep();
+    this.startTime = groupByTimePlan.getStartTime();
+    this.endTime = groupByTimePlan.getEndTime();
+    this.leftCRightO = groupByTimePlan.isLeftCRightO();
+    this.ascending = groupByTimePlan.isAscending();
 
-    // init group by time partition
-    this.usedIndex = 0;
-    this.hasCachedTimeInterval = false;
-    this.curEndTime = -1;
+    // find the startTime of the first aggregation interval
+    if (ascending) {
+      curStartTime = startTime;
+    } else {
+      long queryRange = endTime - startTime;
+      // calculate the total interval number
+      long intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
+      curStartTime = slidingStep * (intervalNum - 1) + startTime;
+    }
+    curEndTime = Math.min(curStartTime + interval, endTime);
+    this.hasCachedTimeInterval = true;
   }
 
   @Override
@@ -63,16 +82,30 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       return true;
     }
 
-    curStartTime = usedIndex * slidingStep + startTime;
-    usedIndex++;
-    //This is an open interval , [0-100)
-    if (curStartTime < endTime) {
-      hasCachedTimeInterval = true;
-      curEndTime = Math.min(curStartTime + interval, endTime);
-      return true;
+    // check if the next interval out of range
+    if (ascending) {
+      curStartTime += slidingStep;
+      //This is an open interval , [0-100)
+      if (curStartTime >= endTime) {
+        return false;
+      }
     } else {
-      return false;
+      curStartTime -= slidingStep;
+      if (curStartTime < startTime) {
+        return false;
+      }
     }
+
+    hasCachedTimeInterval = true;
+    curEndTime = Math.min(curStartTime + interval, endTime);
+    return true;
+  }
+
+  @Override
+  protected abstract RowRecord nextWithoutConstraint() throws IOException;
+
+  public long getStartTime() {
+    return startTime;
   }
 
   @TestOnly
@@ -80,4 +113,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     hasCachedTimeInterval = false;
     return new Pair<>(curStartTime, curEndTime);
   }
+
+  public abstract Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException;
 }

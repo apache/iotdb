@@ -67,4 +67,12 @@ public class RowRecord {
   public List<Field> getFields() {
     return fields;
   }
+
+  public void setFields(List<Field> fields) {
+    this.fields = fields;
+  }
+
+  public void setField(int index, Field field) {
+    this.fields.set(index, field);
+  }
 }

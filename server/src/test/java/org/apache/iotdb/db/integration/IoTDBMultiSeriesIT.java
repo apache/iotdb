@@ -27,6 +27,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -49,6 +50,7 @@ public class IoTDBMultiSeriesIT {
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
   private static int groupSizeInByte;
+  private static long prevPartitionInterval;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -66,7 +68,9 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.setPageSizeInByte(1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1000);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(100);
+    TSFileDescriptor.getInstance().getConfig().setCompressor("LZ4");
 
     EnvironmentUtils.envSetUp();
 
@@ -79,10 +83,10 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
-
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
+    TSFileDescriptor.getInstance().getConfig().setCompressor("SNAPPY");
   }
 
   private static void insertData()
@@ -266,15 +270,13 @@ public class IoTDBMultiSeriesIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(
-                  TestConstant.d0s0)
-                  + "," + resultSet.getString(
-                  TestConstant.d0s1) + "," + resultSet
-                  .getString(TestConstant.d0s2) + ","
-                  + resultSet.getString(TestConstant.d0s3) + "," + resultSet.getString(
-                  TestConstant.d0s4)
-                  + ","
-                  + resultSet.getString(TestConstant.d0s5);
+              resultSet.getString(TestConstant.TIMESTAMP_STR)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s2)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s3)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s4)
+                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s5);
           cnt++;
         }
         assertEquals(23400, cnt);
@@ -303,7 +305,7 @@ public class IoTDBMultiSeriesIT {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet
-                  .getString(TestConstant.d0s0);
+                  .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0);
           // System.out.println("===" + ans);
           cnt++;
         }
@@ -334,7 +336,7 @@ public class IoTDBMultiSeriesIT {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet
-                  .getString(TestConstant.d0s0);
+                  .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0);
           // System.out.println(ans);
           cnt++;
         }
@@ -363,9 +365,9 @@ public class IoTDBMultiSeriesIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
-          long time = Long.valueOf(resultSet.getString(
+          long time = Long.parseLong(resultSet.getString(
               TestConstant.TIMESTAMP_STR));
-          String value = resultSet.getString(TestConstant.d0s1);
+          String value = resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1);
           if (time > 200900) {
             assertEquals("7777", value);
           }
@@ -413,7 +415,7 @@ public class IoTDBMultiSeriesIT {
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
       assertEquals(
-          "401: Statement format is not right: Filter has some time series don't correspond to any known time series",
+          "411: Meet error in query process: Filter has some time series don't correspond to any known time series",
           e.getMessage());
     }
   }
@@ -431,7 +433,7 @@ public class IoTDBMultiSeriesIT {
     } catch (SQLException e) {
       e.printStackTrace();
       assertEquals(
-          "401: Statement format is not right: org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.vehicle.d0.s10] does not exist",
+          "411: Meet error in query process: org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());
     }
   }

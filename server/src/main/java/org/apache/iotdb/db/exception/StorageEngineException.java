@@ -32,6 +32,10 @@ public class StorageEngineException extends IoTDBException {
     super(message, TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode());
   }
 
+  public StorageEngineException(String message, Throwable cause) {
+    super(message, cause, TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode());
+  }
+
   public StorageEngineException(String message, int errorCode) {
     super(message, errorCode);
   }

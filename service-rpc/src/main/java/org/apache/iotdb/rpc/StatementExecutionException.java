@@ -18,7 +18,16 @@
  */
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 public class StatementExecutionException extends Exception{
+
+  private int statusCode;
+
+  public StatementExecutionException(TSStatus status) {
+    super(String.format("%d: %s", status.code, status.message));
+    this.statusCode = status.code;
+  }
 
   public StatementExecutionException(String reason) {
     super(reason);
@@ -30,5 +39,9 @@ public class StatementExecutionException extends Exception{
 
   public StatementExecutionException(String message, Throwable cause) {
     super(message, cause);
+  }
+
+  public int getStatusCode() {
+    return statusCode;
   }
 }

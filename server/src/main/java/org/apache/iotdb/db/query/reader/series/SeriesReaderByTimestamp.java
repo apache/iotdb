@@ -18,53 +18,50 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import java.io.IOException;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import java.io.IOException;
 
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
-  private SeriesReader seriesReader;
-  private BatchData batchData;
-  private long currentTime = Long.MIN_VALUE;
+  protected SeriesReader seriesReader;
+  protected BatchData batchData;
 
-  public SeriesReaderByTimestamp(Path seriesPath, TSDataType dataType, QueryContext context,
-      QueryDataSource dataSource, TsFileFilter fileFilter) {
-    seriesReader = new SeriesReader(seriesPath, dataType, context,
-        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter);
+  public SeriesReaderByTimestamp() {
   }
 
-  public SeriesReaderByTimestamp(SeriesReader seriesReader) {
-    this.seriesReader = seriesReader;
+  public SeriesReaderByTimestamp(PartialPath seriesPath, Set<String> allSensors,
+      TSDataType dataType, QueryContext context, QueryDataSource dataSource,
+      TsFileFilter fileFilter) {
+    seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
+        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter, true);
+  }
+
+
+  @Override
+  public Object getValueInTimestamp(long timestamp) throws IOException {
+    seriesReader.setTimeFilter(timestamp);
+    if ((batchData == null || (batchData.getTimeByIndex(batchData.length() - 1) < timestamp))
+        && !hasNext(timestamp)) {
+      return null;
+    }
+
+    return batchData.getValueInTimestamp(timestamp);
   }
 
   @Override
-  public Object[] getValuesInTimestamps(long[] timestamps) throws IOException {
-    Object[] result = new Object[timestamps.length];
-
-    for (int i = 0; i < timestamps.length; i++) {
-      if (timestamps[i] < currentTime) {
-        throw new IOException("time must be increasing when use ReaderByTimestamp");
-      }
-      currentTime = timestamps[i];
-      seriesReader.setTimeFilter(currentTime);
-      if ((batchData == null || batchData.getMaxTimestamp() < currentTime)
-          && !hasNext(currentTime)) {
-        result[i] = null;
-        continue;
-      }
-      result[i] = batchData.getValueInTimestamp(currentTime);
-    }
-    return result;
+  public boolean readerIsEmpty() throws IOException {
+    return seriesReader.isEmpty() && isEmpty(batchData);
   }
 
-  private boolean hasNext(long timestamp) throws IOException {
+  protected boolean hasNext(long timestamp) throws IOException {
 
     /*
      * consume pages firstly
@@ -76,6 +73,27 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     /*
      * consume chunk secondly
      */
+    if (readChunkData(timestamp)) {
+      return true;
+    }
+
+    /*
+     * consume file thirdly
+     */
+    while (seriesReader.hasNextFile()) {
+      Statistics statistics = seriesReader.currentFileStatistics();
+      if (!satisfyTimeFilter(statistics)) {
+        seriesReader.skipCurrentFile();
+        continue;
+      }
+      if (readChunkData(timestamp)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean readChunkData(long timestamp) throws IOException {
     while (seriesReader.hasNextChunk()) {
       Statistics statistics = seriesReader.currentChunkStatistics();
       if (!satisfyTimeFilter(statistics)) {

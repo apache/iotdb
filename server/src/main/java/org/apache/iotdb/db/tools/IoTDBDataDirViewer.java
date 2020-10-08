@@ -24,6 +24,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -60,7 +61,7 @@ public class IoTDBDataDirViewer {
                   + "under the data directory " + dirFile.getName());
         }
         List<File> fileList = Arrays.asList(seqAndUnseqDirs);
-        fileList.sort(((o1, o2) -> o1.getName().compareTo(o2.getName())));
+        fileList.sort((Comparator.comparing(File::getName)));
         if (!seqAndUnseqDirs[0].getName().equals("sequence") || !seqAndUnseqDirs[1].getName()
             .equals("unsequence")) {
           throw new IOException(
@@ -88,7 +89,7 @@ public class IoTDBDataDirViewer {
               + "the sequence/unsequence directory " + seqOrUnseqDir.getName());
     }
     List<File> fileList = Arrays.asList(storageGroupDirs);
-    fileList.sort(((o1, o2) -> o1.getName().compareTo(o2.getName())));
+    fileList.sort((Comparator.comparing(File::getName)));
     for (File storageGroup : storageGroupDirs) {
       printlnBoth(pw, "|  |--" + storageGroup.getName());
       printFilesInStorageGroupDir(storageGroup, pw);
@@ -100,13 +101,29 @@ public class IoTDBDataDirViewer {
     File[] files = storageGroup.listFiles();
     if (files == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be tsfiles under "
+          "Irregular data dir structure.There should be timeInterval directories under "
               + "the storage group directory " + storageGroup.getName());
     }
     List<File> fileList = Arrays.asList(files);
-    fileList.sort(((o1, o2) -> o1.getName().compareTo(o2.getName())));
+    fileList.sort((Comparator.comparing(File::getName)));
     for (File file : files) {
       printlnBoth(pw, "|  |  |--" + file.getName());
+      printFilesInTimeInterval(file, pw);
+    }
+  }
+
+  private static void printFilesInTimeInterval(File timeInterval, PrintWriter pw)
+      throws IOException {
+    File[] files = timeInterval.listFiles();
+    if (files == null) {
+      throw new IOException(
+          "Irregular data dir structure.There should be tsfiles under "
+              + "the timeInterval directories directory " + timeInterval.getName());
+    }
+    List<File> fileList = Arrays.asList(files);
+    fileList.sort((Comparator.comparing(File::getName)));
+    for (File file : files) {
+      printlnBoth(pw, "|  |  |  |--" + file.getName());
 
       // To print the content if it is a tsfile.resource
       if (file.getName().endsWith(".tsfile.resource")) {
@@ -115,19 +132,20 @@ public class IoTDBDataDirViewer {
     }
   }
 
-  private static void printResource(String filename, PrintWriter pw) throws IOException {
+  private static void printResource(String filename, PrintWriter pw)
+      throws IOException {
     filename = filename.substring(0, filename.length() - 9);
     TsFileResource resource = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filename));
     resource.deserialize();
     // sort device strings
-    SortedSet<String> keys = new TreeSet<>(resource.getStartTimeMap().keySet());
+    SortedSet<String> keys = new TreeSet<>(resource.getDeviceToIndexMap().keySet());
     for (String device : keys) {
       printlnBoth(pw,
-          String.format("|  |  |  |--device %s, start time %d (%s), end time %d (%s)", device,
-              resource.getStartTimeMap().get(device), DatetimeUtils
-                  .convertMillsecondToZonedDateTime(resource.getStartTimeMap().get(device)),
-              resource.getEndTimeMap().get(device), DatetimeUtils
-                  .convertMillsecondToZonedDateTime(resource.getEndTimeMap().get(device))));
+          String.format("|  |  |  |  |--device %s, start time %d (%s), end time %d (%s)", device,
+              resource.getStartTime(device), DatetimeUtils
+                  .convertMillsecondToZonedDateTime(resource.getStartTime(device)),
+              resource.getEndTime(device), DatetimeUtils
+                  .convertMillsecondToZonedDateTime(resource.getEndTime(device))));
     }
   }
 

@@ -36,7 +36,7 @@ public class KafkaConsumerThread implements Runnable {
   private static boolean createTimeSeries = true;
   private String createStorageGroupSqlTemplate = "SET STORAGE GROUP TO %s";
   private String createTimeseriesSqlTemplate = "CREATE TIMESERIES %s WITH DATATYPE=TEXT, ENCODING=PLAIN";
-  private String insertDataSqlTemplate = "INSERT INTO root.vehicle.device(timestamp,%s) VALUES (%s,'%s')";
+  private String insertDataSqlTemplate = "INSERT INTO root.vehicle.deviceid(timestamp,%s) VALUES (%s,'%s')";
   private static final Logger logger = LoggerFactory.getLogger(KafkaConsumerThread.class);
 
   public KafkaConsumerThread(KafkaStream<String, String> stream) {

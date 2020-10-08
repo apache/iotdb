@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -45,7 +44,8 @@ public class ChunkHeader {
   private int serializedSize;
 
   public ChunkHeader(String measurementID, int dataSize, TSDataType dataType,
-      CompressionType compressionType, TSEncoding encoding, int numOfPages) {
+      CompressionType compressionType,
+      TSEncoding encoding, int numOfPages) {
     this(measurementID, dataSize, getSerializedSize(measurementID), dataType, compressionType,
         encoding, numOfPages);
   }
@@ -62,14 +62,14 @@ public class ChunkHeader {
   }
 
   public static int getSerializedSize(String measurementID) {
-    return Byte.BYTES   // marker
-        + Integer.BYTES   // measurementID length
+    return Byte.BYTES // marker
+        + Integer.BYTES // measurementID length
         + measurementID.getBytes(TSFileConfig.STRING_CHARSET).length // measurementID
-        + Integer.BYTES  // dataSize
+        + Integer.BYTES // dataSize
         + TSDataType.getSerializedSize() // dataType
         + CompressionType.getSerializedSize() // compressionType
         + TSEncoding.getSerializedSize() // encodingType
-        + Integer.BYTES;  // numOfPages
+        + Integer.BYTES; // numOfPages
   }
 
   /**
@@ -202,5 +202,10 @@ public class ChunkHeader {
         + dataType + ", compressionType=" + compressionType + ", encodingType=" + encodingType
         + ", numOfPages="
         + numOfPages + ", serializedSize=" + serializedSize + '}';
+  }
+
+  public void mergeChunkHeader(ChunkHeader chunkHeader) {
+    this.dataSize += chunkHeader.getDataSize();
+    this.numOfPages += chunkHeader.getNumOfPages();
   }
 }

@@ -48,13 +48,11 @@ public class IoTDBAutoCreateSchemaIT {
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    conf.setAutoCreateSchemaEnabled(true);
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    conf.setAutoCreateSchemaEnabled(false);
   }
 
   /**

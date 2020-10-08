@@ -27,6 +27,7 @@ import java.util.List;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -46,7 +47,7 @@ public abstract class TVList {
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
    */
-  private long timeOffset = Long.MIN_VALUE;
+  private List<TimeRange> deletionList;
   private long version;
 
   protected long pivotTime;
@@ -202,16 +203,17 @@ public abstract class TVList {
     PrimitiveArrayPool.getInstance().release(timestamps.remove(timestamps.size() - 1));
   }
 
-  public void delete(long upperBound) {
+  public int delete(long lowerBound, long upperBound) {
     int newSize = 0;
     minTime = Long.MAX_VALUE;
     for (int i = 0; i < size; i++) {
       long time = getTime(i);
-      if (time > upperBound) {
+      if (time < lowerBound || time > upperBound) {
         set(i, newSize++);
         minTime = time < minTime ? time : minTime;
       }
     }
+    int deletedNumber = size - newSize;
     size = newSize;
     // release primitive arrays that are empty
     int newArrayNum = newSize / ARRAY_SIZE;
@@ -222,6 +224,7 @@ public abstract class TVList {
       releaseLastTimeArray();
       releaseLastValueArray();
     }
+    return deletedNumber;
   }
 
   protected void cloneAs(TVList cloneList) {
@@ -235,7 +238,6 @@ public abstract class TVList {
 
   public void clear() {
     size = 0;
-    timeOffset = Long.MIN_VALUE;
     sorted = true;
     minTime = Long.MIN_VALUE;
     clearTime();
@@ -243,6 +245,9 @@ public abstract class TVList {
 
     clearValue();
     clearSortedValue();
+    if (deletionList != null) {
+      deletionList.clear();
+    }
   }
 
   protected void clearTime() {
@@ -342,12 +347,8 @@ public abstract class TVList {
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
    */
-  public long getTimeOffset() {
-    return timeOffset;
-  }
-
-  public void setTimeOffset(long timeOffset) {
-    this.timeOffset = timeOffset;
+  public void setDeletionList(List<TimeRange> list) {
+    this.deletionList = list;
   }
 
   protected int compare(int idx1, int idx2) {
@@ -500,6 +501,7 @@ public abstract class TVList {
     private int cur;
     private Integer floatPrecision;
     private TSEncoding encoding;
+    private int deleteCursor = 0;
 
     public Ite() {
     }
@@ -517,7 +519,7 @@ public abstract class TVList {
 
       while (cur < size) {
         long time = getTime(cur);
-        if (time < getTimeOffset() || (cur + 1 < size() && (time == getTime(cur + 1)))) {
+        if (isPointDeleted(time) || (cur + 1 < size() && (time == getTime(cur + 1)))) {
           cur++;
           continue;
         }
@@ -527,6 +529,19 @@ public abstract class TVList {
         return true;
       }
       return hasCachedPair;
+    }
+
+    private boolean isPointDeleted(long timestamp) {
+      while (deletionList != null && deleteCursor < deletionList.size()) {
+        if (deletionList.get(deleteCursor).contains(timestamp)) {
+          return true;
+        } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
+          deleteCursor++;
+        } else {
+          return false;
+        }
+      }
+      return false;
     }
 
     @Override

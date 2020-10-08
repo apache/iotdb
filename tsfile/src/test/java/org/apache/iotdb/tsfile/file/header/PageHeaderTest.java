@@ -23,17 +23,17 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.file.Paths;
 
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
-import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
+import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
 
 public class PageHeaderTest {
   public static final int UNCOMPRESSED_SIZE = 123456;

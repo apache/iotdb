@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.util.Map;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 
-public class StorageGroupMNode extends InternalMNode {
+public class StorageGroupMNode extends MNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
@@ -31,17 +32,9 @@ public class StorageGroupMNode extends InternalMNode {
    */
   private long dataTTL;
 
-  /**
-   * Map for the schema in this storage group
-   */
-  private Map<String, MeasurementSchema> schemaMap;
-
-  public StorageGroupMNode(MNode parent, String name, String fullPath, long dataTTL,
-      Map<String, MeasurementSchema> schemaMap) {
+  public StorageGroupMNode(MNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
-    this.schemaMap = schemaMap;
-    this.fullPath = fullPath;
   }
 
   public long getDataTTL() {
@@ -52,8 +45,19 @@ public class StorageGroupMNode extends InternalMNode {
     this.dataTTL = dataTTL;
   }
 
-  public Map<String, MeasurementSchema> getSchemaMap() {
-    return schemaMap;
+  @Override
+  public void serializeTo(BufferedWriter bw) throws IOException {
+    serializeChildren(bw);
+
+    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE));
+    s.append(",").append(name).append(",");
+    s.append(dataTTL).append(",");
+    s.append(children == null ? "0" : children.size());
+    bw.write(s.toString());
+    bw.newLine();
   }
 
+  public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
+    return new StorageGroupMNode(null, nodeInfo[1], Long.valueOf(nodeInfo[2]));
+  }
 }

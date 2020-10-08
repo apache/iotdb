@@ -70,9 +70,9 @@ public class TimeGeneratorTest {
         .and(TimeFilter.gtEq(1480562618000L), TimeFilter.ltEq(1480562618100L));
 
     IExpression IExpression = BinaryExpression.or(
-        BinaryExpression.and(new SingleSeriesExpression(new Path("d1.s1"), filter),
-            new SingleSeriesExpression(new Path("d1.s4"), filter2)),
-        new SingleSeriesExpression(new Path("d1.s1"), filter3));
+        BinaryExpression.and(new SingleSeriesExpression(new Path("d1", "s1"), filter),
+            new SingleSeriesExpression(new Path("d1", "s4"), filter2)),
+        new SingleSeriesExpression(new Path("d1", "s1"), filter3));
 
     TsFileTimeGenerator timestampGenerator = new TsFileTimeGenerator(IExpression, chunkLoader,
         metadataQuerierByFile);

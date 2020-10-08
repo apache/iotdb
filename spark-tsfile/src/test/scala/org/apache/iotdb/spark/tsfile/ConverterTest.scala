@@ -89,7 +89,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     val reader: TsFileSequenceReader = new TsFileSequenceReader(in)
     val tsFileMetaData = reader.readFileMetadata
 
-    val series = WideConverter.getSeries(tsFileMetaData)
+    val series = WideConverter.getSeries(tsFileMetaData, reader)
 
     Assert.assertEquals(6, series.size())
     Assert.assertEquals("[device_1.sensor_3,INT32]", series.get(0).toString)
@@ -181,7 +181,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     requiredFields.add(StructField("device_1.sensor_2", IntegerType, true))
     val requiredSchema = StructType(requiredFields)
 
-    val filteredSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData)
+    val filteredSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData, reader)
 
     Assert.assertEquals(3, filteredSchema.size)
     val fields = filteredSchema.fields
@@ -201,7 +201,7 @@ class ConverterTest extends FunSuite with BeforeAndAfterAll {
     requiredFields.add(StructField(QueryConstant.RESERVED_TIME, LongType, false))
     val requiredSchema = StructType(requiredFields)
 
-    val filteredSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData)
+    val filteredSchema = WideConverter.prepSchema(requiredSchema, tsFileMetaData, reader)
 
     Assert.assertEquals(6, filteredSchema.size)
     val fields = filteredSchema.fields

@@ -33,40 +33,34 @@ public class ByTimestampReaderAdapter implements IReaderByTimestamp {
   // only cache the first point that >= timestamp
   private boolean hasCached;
   private TimeValuePair pair;
-  private long currentTime = Long.MIN_VALUE;
 
   public ByTimestampReaderAdapter(IPointReader pointReader) {
     this.pointReader = pointReader;
   }
 
   @Override
-  public Object[] getValuesInTimestamps(long[] timestamps) throws IOException {
-    Object[] result = new Object[timestamps.length];
-
-    for (int i = 0; i < timestamps.length; i++) {
-      if (timestamps[i] < currentTime) {
-        throw new IOException("time must be increasing when use ReaderByTimestamp");
-      }
-      currentTime = timestamps[i];
-      //search cache
-      if (hasCached && pair.getTimestamp() >= currentTime) {
-        if (pair.getTimestamp() == currentTime) {
-          hasCached = false;
-          result[i] = pair.getValue().getValue();
-        }
-        continue;
-      }
-      // search reader
-      while (pointReader.hasNextTimeValuePair()) {
-        pair = pointReader.nextTimeValuePair();
-        if (pair.getTimestamp() == currentTime) {
-          result[i] = pair.getValue().getValue();
-        } else if (pair.getTimestamp() > currentTime) {
-          hasCached = true;
-          result[i] = null;
-        }
+  public Object getValueInTimestamp(long timestamp) throws IOException {
+    if (hasCached) {
+      if (pair.getTimestamp() < timestamp) {
+        hasCached = false;
+      } else if (pair.getTimestamp() == timestamp) {
+        hasCached = false;
+        return pair.getValue().getValue();
+      } else {
+        return null;
       }
     }
-    return result;
+
+    while (pointReader.hasNextTimeValuePair()) {
+      pair = pointReader.nextTimeValuePair();
+      if (pair.getTimestamp() == timestamp) {
+        return pair.getValue().getValue();
+      } else if (pair.getTimestamp() > timestamp) {
+        hasCached = true;
+        return null;
+      }
+    }
+
+    return null;
   }
 }

@@ -18,14 +18,22 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class DataAuthPlan extends PhysicalPlan {
 
-  private final List<String> users;
+  private List<String> users;
+
+  public DataAuthPlan(OperatorType operatorType) {
+    super(false, operatorType);
+  }
 
   public DataAuthPlan(OperatorType operatorType, List<String> users) {
     super(false, operatorType);
@@ -37,7 +45,50 @@ public class DataAuthPlan extends PhysicalPlan {
   }
 
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return null;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    int type = this.getPlanType(super.getOperatorType());
+    stream.writeByte((byte) type);
+    stream.writeInt(users.size());
+
+    for (String user : users) {
+      putString(stream, user);
+    }
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    int type = this.getPlanType(super.getOperatorType());
+    buffer.put((byte) type);
+    buffer.putInt(users.size());
+
+    for (String user : users) {
+      putString(buffer, user);
+    }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    int userSize = buffer.getInt();
+    this.users = new ArrayList<>(userSize);
+    for (int i = 0; i < userSize; i++) {
+      users.add(readString(buffer));
+    }
+  }
+
+  private int getPlanType(OperatorType operatorType) {
+    int type;
+    if (operatorType == OperatorType.GRANT_WATERMARK_EMBEDDING) {
+      type = PhysicalPlanType.GRANT_WATERMARK_EMBEDDING.ordinal();
+    } else if (operatorType == OperatorType.REVOKE_WATERMARK_EMBEDDING) {
+      type = PhysicalPlanType.REVOKE_WATERMARK_EMBEDDING.ordinal();
+    } else {
+      throw new IllegalArgumentException("Unknown operator: " + operatorType.toString());
+    }
+    return type;
   }
 }

@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -45,6 +46,11 @@ public class AvgAggrResult extends AggregateResult {
   }
 
   @Override
+  protected boolean hasResult() {
+    return cnt > 0;
+  }
+
+  @Override
   public Double getResult() {
     if (cnt > 0) {
       setDoubleValue(avg);
@@ -55,6 +61,12 @@ public class AvgAggrResult extends AggregateResult {
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
     long preCnt = cnt;
+    if (statistics.getType().equals(TSDataType.BOOLEAN)) {
+      throw new StatisticsClassException("Boolean statistics does not support: avg");
+    }
+    if (statistics.getType().equals(TSDataType.TEXT)) {
+      throw new StatisticsClassException("Binary statistics does not support: avg");
+    }
     cnt += statistics.getCount();
     avg = avg * ((double) preCnt / cnt) + ((double) statistics.getCount() / cnt)
         * statistics.getSumValue() / statistics.getCount();
@@ -62,13 +74,14 @@ public class AvgAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
-    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
+    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
+      throws IOException {
     while (dataInThisPage.hasCurrent()) {
-      if (dataInThisPage.currentTime() >= bound) {
+      if (dataInThisPage.currentTime() >= maxBound || dataInThisPage.currentTime() < minBound) {
         break;
       }
       updateAvg(seriesDataType, dataInThisPage.currentValue());
@@ -120,6 +133,10 @@ public class AvgAggrResult extends AggregateResult {
   @Override
   public void merge(AggregateResult another) {
     AvgAggrResult anotherAvg = (AvgAggrResult) another;
+    if (anotherAvg.cnt == 0) {
+      // avoid two empty results producing an NaN
+      return;
+    }
     avg = avg * ((double) cnt / (cnt + anotherAvg.cnt)) +
         anotherAvg.avg * ((double) anotherAvg.cnt / (cnt + anotherAvg.cnt));
     cnt += anotherAvg.cnt;

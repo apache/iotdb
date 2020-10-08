@@ -18,19 +18,20 @@
  */
 package org.apache.iotdb.db.engine.querycontext;
 
-import java.io.IOException;
-import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
+import java.io.IOException;
+import java.util.Map;
 
 public class ReadOnlyMemChunk {
 
@@ -39,11 +40,10 @@ public class ReadOnlyMemChunk {
   private TSEncoding encoding;
 
   private long version;
-  Map<String, String> props;
 
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
 
-  private ChunkMetaData cachedMetaData;
+  private ChunkMetadata cachedMetaData;
 
   private TVList chunkData;
 
@@ -56,8 +56,7 @@ public class ReadOnlyMemChunk {
     this.dataType = dataType;
     this.encoding = encoding;
     this.version = version;
-    this.props = props;
-    if (props.containsKey(Encoder.MAX_POINT_NUMBER)) {
+    if (props != null && props.containsKey(Encoder.MAX_POINT_NUMBER)) {
       this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
     }
     tvList.sort();
@@ -68,7 +67,7 @@ public class ReadOnlyMemChunk {
 
   private void initChunkMeta() throws IOException, QueryProcessException {
     Statistics statsByType = Statistics.getStatsByType(dataType);
-    ChunkMetaData metaData = new ChunkMetaData(measurementUid, dataType, 0, statsByType);
+    ChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
       IPointReader iterator = chunkData.getIterator(floatPrecision, encoding);
       while (iterator.hasNextTimeValuePair()) {
@@ -111,7 +110,7 @@ public class ReadOnlyMemChunk {
     return !chunkPointReader.hasNextTimeValuePair();
   }
 
-  public ChunkMetaData getChunkMetaData() {
+  public ChunkMetadata getChunkMetaData() {
     return cachedMetaData;
   }
 
@@ -121,5 +120,9 @@ public class ReadOnlyMemChunk {
 
   public long getVersion() {
     return version;
+  }
+
+  public String getMeasurementUid() {
+    return measurementUid;
   }
 }

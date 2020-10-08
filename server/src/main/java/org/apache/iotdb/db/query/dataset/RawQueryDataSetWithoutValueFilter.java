@@ -19,13 +19,26 @@
 
 package org.apache.iotdb.db.query.dataset;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.TreeSet;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.*;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.ExceptionBatchData;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.common.SignalBatchData;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -33,17 +46,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.TreeSet;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-
 public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
 
-  private static class ReadTask implements Runnable {
+  private static class ReadTask extends WrappedRunnable {
 
     private final ManagedSeriesReader reader;
     private final String pathName;
@@ -57,7 +62,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     }
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       try {
         synchronized (reader) {
           // if the task is submitted, there must be free space in the queue
@@ -95,14 +100,24 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
         Thread.currentThread().interrupt();
         reader.setHasRemaining(false);
       } catch (IOException e) {
-        LOGGER.error(String
-            .format("Something gets wrong while reading from the series reader %s: ", pathName), e);
-        reader.setHasRemaining(false);
+        putExceptionBatchData(e, String
+            .format("Something gets wrong while reading from the series reader %s: ", pathName));
       } catch (Exception e) {
-        LOGGER.error("Something gets wrong: ", e);
-        reader.setHasRemaining(false);
+        putExceptionBatchData(e, "Something gets wrong: ");
       }
     }
+
+    private void putExceptionBatchData(Exception e, String logMessage) {
+      try {
+        LOGGER.error(logMessage, e);
+        reader.setHasRemaining(false);
+        blockingQueue.put(new ExceptionBatchData(e));
+      } catch (InterruptedException ex) {
+        LOGGER.error("Interrupted while putting ExceptionBatchData into the blocking queue: ", ex);
+        Thread.currentThread().interrupt();
+      }
+    }
+
   }
 
   private List<ManagedSeriesReader> seriesReaderList;
@@ -140,9 +155,10 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
    * @param dataTypes time series data type
    * @param readers   readers in List(IPointReader) structure
    */
-  public RawQueryDataSetWithoutValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      List<ManagedSeriesReader> readers) throws InterruptedException {
-    super(paths, dataTypes);
+  public RawQueryDataSetWithoutValueFilter(List<PartialPath> paths, List<TSDataType> dataTypes,
+      List<ManagedSeriesReader> readers, boolean ascending)
+      throws IOException, InterruptedException {
+    super(new ArrayList<>(paths), dataTypes, ascending);
     this.seriesReaderList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
     for (int i = 0; i < seriesReaderList.size(); i++) {
@@ -153,8 +169,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     init();
   }
 
-  private void init() throws InterruptedException {
-    timeHeap = new TreeSet<>();
+  private void init() throws IOException, InterruptedException {
+    timeHeap = new TreeSet<>(
+        super.ascending ? Long::compareTo : Collections.reverseOrder());
     for (int i = 0; i < seriesReaderList.size(); i++) {
       ManagedSeriesReader reader = seriesReaderList.get(i);
       reader.setHasRemaining(true);
@@ -177,6 +194,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
    * for RPC in RawData query between client and server fill time buffer, value buffers and bitmap
    * buffers
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
       throws IOException, InterruptedException {
     int seriesNum = seriesReaderList.size();
@@ -339,14 +357,22 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     return tsQueryDataSet;
   }
 
-  private void fillCache(int seriesIndex) throws InterruptedException {
+  private void fillCache(int seriesIndex) throws IOException, InterruptedException {
     BatchData batchData = blockingQueueArray[seriesIndex].take();
     // no more batch data in this time series queue
     if (batchData instanceof SignalBatchData) {
       noMoreDataInQueueArray[seriesIndex] = true;
-    }
-    // there are more batch data in this time series queue
-    else {
+    } else if (batchData instanceof ExceptionBatchData) {
+      // exception happened in producer thread
+      ExceptionBatchData exceptionBatchData = (ExceptionBatchData) batchData;
+      LOGGER.error("exception happened in producer thread", exceptionBatchData.getException());
+      if (exceptionBatchData.getException() instanceof IOException) {
+        throw (IOException) exceptionBatchData.getException();
+      } else if (exceptionBatchData.getException() instanceof RuntimeException) {
+        throw (RuntimeException) exceptionBatchData.getException();
+      }
+
+    } else {   // there are more batch data in this time series queue
       cachedBatchDataArray[seriesIndex] = batchData;
 
       synchronized (seriesReaderList.get(seriesIndex)) {
@@ -386,8 +412,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
   /**
    * for spark/hadoop/hive integration and test
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  protected RowRecord nextWithoutConstraint() {
+  protected RowRecord nextWithoutConstraint() throws IOException {
     int seriesNum = seriesReaderList.size();
 
     long minTime = timeHeap.pollFirst();
@@ -414,6 +441,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
           } catch (InterruptedException e) {
             LOGGER.error("Interrupted while taking from the blocking queue: ", e);
             Thread.currentThread().interrupt();
+          } catch (IOException e) {
+            LOGGER.error("Got IOException", e);
+            throw e;
           }
         }
 

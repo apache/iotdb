@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.tsfile.write;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.LoggerContext;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
@@ -27,26 +25,31 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.Scanner;
 
-import com.alibaba.fastjson.JSONObject;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.RecordUtils;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import com.google.gson.JsonObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.utils.RecordUtils;
+
 /**
- * This is used for performance test, no asserting. User could change {@code ROW_COUNT} for larger data test.
+ * This is used for performance test, no asserting. User could change
+ * {@code ROW_COUNT} for larger data test.
  */
 public class PerfTest {
 
@@ -57,7 +60,7 @@ public class PerfTest {
   static public String outputDataFile;
   static public String errorOutputDataFile;
   static public Schema schema;
-  static public Random r = new Random();
+  static public Random rm = new Random();
 
   static private void generateSampleInputDataFile() throws IOException {
     File file = new File(inputDataFile);
@@ -68,39 +71,39 @@ public class PerfTest {
 
     long startTime = System.currentTimeMillis();
     startTime = startTime - startTime % 1000;
-    Random rm = new Random();
-    for (int i = 0; i < ROW_COUNT; i++) {
-      String string4 = ",s4," + (char) (97 + i % 26);
-      // write d1
-      String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2) + string4;
-      if (rm.nextInt(1000) < 100) {
-        // LOG.info("write null to d1:" + (startTime + i));
-        d1 = "d1," + (startTime + i) + ",s1,,s2," + (i * 10 + 2) + string4;
-      }
-      if (i % 5 == 0) {
-        d1 += ",s3," + (i * 10 + 3);
-      }
-      fw.write(d1 + "\r\n");
+    try {
+      for (int i = 0; i < ROW_COUNT; i++) {
+        String string4 = ",s4," + (char) (97 + i % 26);
+        // write d1
+        String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2) + string4;
+        if (rm.nextInt(1000) < 100) {
+          // LOG.info("write null to d1:" + (startTime + i));
+          d1 = "d1," + (startTime + i) + ",s1,,s2," + (i * 10 + 2) + string4;
+        }
+        if (i % 5 == 0) {
+          d1 += ",s3," + (i * 10 + 3);
+        }
+        fw.write(d1 + "\r\n");
 
-      // write d2
-      String d2 = "d2," + (startTime + i) + ",s2," + (i * 10 + 2) + ",s3," + (i * 10 + 3) + string4;
-      if (rm.nextInt(1000) < 100) {
-        // LOG.info("write null to d2:" + (startTime + i));
-        d2 = "d2," + (startTime + i) + ",s2,,s3," + (i * 10 + 3) + string4;
+        // write d2
+        String d2 = "d2," + (startTime + i) + ",s2," + (i * 10 + 2) + ",s3," + (i * 10 + 3) + string4;
+        if (rm.nextInt(1000) < 100) {
+          // LOG.info("write null to d2:" + (startTime + i));
+          d2 = "d2," + (startTime + i) + ",s2,,s3," + (i * 10 + 3) + string4;
+        }
+        if (i % 5 == 0) {
+          d2 += ",s1," + (i * 10 + 1);
+        }
+        fw.write(d2 + "\r\n");
       }
-      if (i % 5 == 0) {
-        d2 += ",s1," + (i * 10 + 1);
-      }
-      fw.write(d2 + "\r\n");
+      // write error
+      String d = "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10 + 3);
+      fw.write(d + "\r\n");
+      d = "d2," + (startTime + ROW_COUNT + 1) + ",2,s-1," + (ROW_COUNT * 10 + 2);
+      fw.write(d + "\r\n");
+    } finally {
+      fw.close();
     }
-    // write error
-    String d =
-        "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10
-            + 3);
-    fw.write(d + "\r\n");
-    d = "d2," + (startTime + ROW_COUNT + 1) + ",2,s-1," + (ROW_COUNT * 10 + 2);
-    fw.write(d + "\r\n");
-    fw.close();
   }
 
   static private void write() throws IOException, InterruptedException, WriteProcessException {
@@ -137,8 +140,7 @@ public class PerfTest {
     }
   }
 
-  static private void writeToFile(Schema schema)
-      throws InterruptedException, IOException, WriteProcessException {
+  static private void writeToFile(Schema schema) throws InterruptedException, IOException, WriteProcessException {
     Scanner in = getDataFile(inputDataFile);
     assert in != null;
     while (in.hasNextLine()) {
@@ -152,17 +154,25 @@ public class PerfTest {
   private static Schema generateTestData() {
     Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    schema.registerMeasurement(new MeasurementSchema("s1", TSDataType.INT64,
-        TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerMeasurement(new MeasurementSchema("s2", TSDataType.INT64,
-        TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerMeasurement(new MeasurementSchema("s3", TSDataType.INT64,
-        TSEncoding.valueOf(conf.getValueEncoder())));
-    schema.registerMeasurement(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
-    JSONObject s4 = new JSONObject();
-    s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
-    s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
-    s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
+    schema.registerTimeseries(new Path("d1", "s1"),
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1", "s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1", "s3"),
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d1", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(new Path("d2", "s1"),
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d2", "s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d2", "s3"),
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(new Path("d2", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+
+    JsonObject s4 = new JsonObject();
+    s4.addProperty(JsonFormatConstant.MEASUREMENT_UID, "s4");
+    s4.addProperty(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
+    s4.addProperty(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
     return schema;
   }
 

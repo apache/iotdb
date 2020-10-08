@@ -26,13 +26,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
-import org.apache.iotdb.tsfile.encoding.encoder.IntRleEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.RleEncoder;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import org.apache.iotdb.tsfile.encoding.common.EndianType;
+import org.apache.iotdb.tsfile.encoding.decoder.IntRleDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.RleDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.IntRleEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.RleEncoder;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 public class IntRleDecoderTest {
 

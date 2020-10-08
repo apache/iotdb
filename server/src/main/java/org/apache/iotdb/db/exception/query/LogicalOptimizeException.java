@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.exception.query;
 
+import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -35,5 +36,9 @@ public class LogicalOptimizeException extends LogicalOperatorException {
   public LogicalOptimizeException(String filterOperator, int tokenInt) {
     super(String.format("Unknown token in [%s]: [%s], [%s].", filterOperator, tokenInt,
         SQLConstant.tokenNames.get(tokenInt)), TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
+  }
+
+  public LogicalOptimizeException(IoTDBException e) {
+    super(e);
   }
 }

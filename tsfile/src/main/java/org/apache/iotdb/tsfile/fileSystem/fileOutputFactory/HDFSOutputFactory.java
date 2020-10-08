@@ -21,9 +21,11 @@ package org.apache.iotdb.tsfile.fileSystem.fileOutputFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 public class HDFSOutputFactory implements FileOutputFactory {
 

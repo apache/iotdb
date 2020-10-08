@@ -28,5 +28,4 @@ public interface FlushManagerMBean {
   public int getNumberOfWorkingSubTasks();
 
   public int getNumberOfPendingSubTasks();
-
 }

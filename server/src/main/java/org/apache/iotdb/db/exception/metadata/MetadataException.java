@@ -23,7 +23,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 /**
  * If query metadata constructs schema but passes illegal parameters to EncodingConvertor or
- * DataTypeConvertor,this exception will be threw.
+ * DataTypeConverter,this exception will be threw.
  */
 public class MetadataException extends IoTDBException {
 
@@ -34,8 +34,7 @@ public class MetadataException extends IoTDBException {
   }
 
   public MetadataException(Throwable cause, int errorCode) {
-    super(cause, TSStatusCode.METADATA_ERROR.getStatusCode());
-    this.errorCode = errorCode;
+    super(cause, errorCode);
   }
 
   public MetadataException(String msg) {

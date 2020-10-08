@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -64,6 +65,26 @@ public class LogicalGeneratorTest {
       assertEquals(now, zonedDateTime.toInstant().toEpochMilli());
     }
 
+  }
+
+  @Test
+  public void testParseTimeFormatNowPrecision() throws LogicalOperatorException {
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("ms");
+    long now_ms = generator.parseTimeFormat(SQLConstant.NOW_FUNC);
+    String ms_str = String.valueOf(now_ms);
+
+    IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("us");
+    long now_us = generator.parseTimeFormat(SQLConstant.NOW_FUNC);
+    String us_str = String.valueOf(now_us);
+
+    IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("ns");
+    long now_ns = generator.parseTimeFormat(SQLConstant.NOW_FUNC);
+    String ns_str = String.valueOf(now_ns);
+
+    assertEquals(ms_str.length() + 3, (us_str).length());
+    assertEquals(us_str.length() + 3, (ns_str).length());
+    IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision(timePrecision);
   }
 
   @Test(expected = SQLParserException.class)

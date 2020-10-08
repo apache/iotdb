@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.Role;
@@ -166,5 +167,22 @@ public abstract class BasicRoleManager implements IRoleManager {
     List<String> rtlist = accessor.listAllRoles();
     rtlist.sort(null);
     return rtlist;
+  }
+
+  @Override
+  public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
+    synchronized (this) {
+      reset();
+      roleMap = roles;
+
+      for (Entry<String, Role> entry : roleMap.entrySet()) {
+        Role role = entry.getValue();
+        try {
+          accessor.saveRole(role);
+        } catch (IOException e) {
+          throw new AuthException(e);
+        }
+      }
+    }
   }
 }

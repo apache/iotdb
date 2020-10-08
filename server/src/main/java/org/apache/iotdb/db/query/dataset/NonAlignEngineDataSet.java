@@ -19,22 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
-import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
-import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
-import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -43,10 +27,26 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
+import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NonAlignEngineDataSet extends QueryDataSet {
 
-  private class ReadTask implements Runnable {
+  private class ReadTask extends WrappedRunnable {
 
     private final ManagedSeriesReader reader;
     private BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue;
@@ -63,8 +63,9 @@ public class NonAlignEngineDataSet extends QueryDataSet {
       this.index = index;
     }
 
+    @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
     @Override
-    public void run() {
+    public void runMayThrow() {
       PublicBAOS timeBAOS = new PublicBAOS();
       PublicBAOS valueBAOS = new PublicBAOS();
       try {
@@ -250,9 +251,9 @@ public class NonAlignEngineDataSet extends QueryDataSet {
    * @param dataTypes time series data type
    * @param readers   readers in List(IPointReader) structure
    */
-  public NonAlignEngineDataSet(List<Path> paths, List<TSDataType> dataTypes,
+  public NonAlignEngineDataSet(List<PartialPath> paths, List<TSDataType> dataTypes,
       List<ManagedSeriesReader> readers) {
-    super(paths, dataTypes);
+    super(new ArrayList<>(paths), dataTypes);
     this.seriesReaderWithoutValueFilterList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
     noMoreDataInQueueArray = new boolean[readers.size()];

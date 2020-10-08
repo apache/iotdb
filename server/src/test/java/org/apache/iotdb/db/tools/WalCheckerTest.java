@@ -30,8 +30,11 @@ import java.nio.ByteBuffer;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.SystemCheckException;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.writelog.io.LogWriter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Test;
 
 public class WalCheckerTest {
@@ -62,7 +65,7 @@ public class WalCheckerTest {
   }
 
   @Test
-  public void testNormalCheck() throws IOException, SystemCheckException {
+  public void testNormalCheck() throws IOException, SystemCheckException, IllegalPathException {
     File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
     tempRoot.mkdir();
 
@@ -73,12 +76,13 @@ public class WalCheckerTest {
         LogWriter logWriter = new LogWriter(subDir.getPath() + File.separator
             + WAL_FILE_NAME);
 
-        ByteBuffer binaryPlans = ByteBuffer.allocate(64*1024);
+        ByteBuffer binaryPlans = ByteBuffer.allocate(64 * 1024);
         String deviceId = "device1";
         String[] measurements = new String[]{"s1", "s2", "s3"};
+        TSDataType[] types = new TSDataType[]{TSDataType.INT64, TSDataType.INT64, TSDataType.INT64};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
-          new InsertPlan(deviceId, j, measurements, values).serializeTo(binaryPlans);
+          new InsertRowPlan(new PartialPath(deviceId), j, measurements, types, values).serialize(binaryPlans);
         }
         binaryPlans.flip();
         logWriter.write(binaryPlans);
@@ -95,7 +99,7 @@ public class WalCheckerTest {
   }
 
   @Test
-  public void testAbnormalCheck() throws IOException, SystemCheckException {
+  public void testAbnormalCheck() throws IOException, SystemCheckException, IllegalPathException {
     File tempRoot = new File(TestConstant.BASE_OUTPUT_PATH.concat("root"));
     tempRoot.mkdir();
 
@@ -106,12 +110,13 @@ public class WalCheckerTest {
         LogWriter logWriter = new LogWriter(subDir.getPath() + File.separator
             + WAL_FILE_NAME);
 
-        ByteBuffer binaryPlans = ByteBuffer.allocate(64*1024);
+        ByteBuffer binaryPlans = ByteBuffer.allocate(64 * 1024);
         String deviceId = "device1";
         String[] measurements = new String[]{"s1", "s2", "s3"};
+        TSDataType[] types = new TSDataType[]{TSDataType.INT64, TSDataType.INT64, TSDataType.INT64};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
-          new InsertPlan(deviceId, j, measurements, values).serializeTo(binaryPlans);
+          new InsertRowPlan(new PartialPath(deviceId), j, measurements, types, values).serialize(binaryPlans);
         }
         if (i > 2) {
           binaryPlans.put("not a wal".getBytes());
@@ -141,8 +146,11 @@ public class WalCheckerTest {
         subDir.mkdir();
 
         FileOutputStream fileOutputStream = new FileOutputStream(new File(subDir, WAL_FILE_NAME));
-        fileOutputStream.write(i);
-        fileOutputStream.close();
+        try {
+          fileOutputStream.write(i);
+        } finally {
+          fileOutputStream.close();
+        }
       }
 
       WalChecker checker = new WalChecker(tempRoot.getAbsolutePath());

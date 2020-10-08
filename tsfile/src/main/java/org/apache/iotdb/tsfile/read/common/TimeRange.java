@@ -18,10 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
+
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
@@ -30,7 +28,8 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 /**
  * interval [min,max] of long data type
  *
- * Reference: http://www.java2s.com/Code/Java/Collections-Data-Structure/Anumericalinterval.htm
+ * Reference:
+ * http://www.java2s.com/Code/Java/Collections-Data-Structure/Anumericalinterval.htm
  */
 public class TimeRange implements Comparable<TimeRange> {
 
@@ -101,6 +100,9 @@ public class TimeRange implements Comparable<TimeRange> {
     return this.min <= min && this.max >= max;
   }
 
+  public boolean contains(long time) {
+    return this.min <= time && time <= this.max;
+  }
 
   /**
    * Set a closed interval [min,max].
@@ -130,7 +132,6 @@ public class TimeRange implements Comparable<TimeRange> {
     return max;
   }
 
-
   /**
    * Here are some examples.
    *
@@ -146,8 +147,10 @@ public class TimeRange implements Comparable<TimeRange> {
    *
    * [1,3) intersects with (2,5].
    *
+   * Note: this method treats [1,3] and [4,5] as two "intersected" interval
+   * even if they are not truly intersected.
    * @param r the given time range
-   * @return true if the current time range intersects with the given time range r
+   * @return true if the current time range "intersects" with the given time range r
    */
   public boolean intersects(TimeRange r) {
     if ((!leftClose || !r.rightClose) && (r.max < min)) {
@@ -158,12 +161,60 @@ public class TimeRange implements Comparable<TimeRange> {
       return false;
     } else if (leftClose && r.rightClose && r.max <= min - 2) {
       // e.g.,[1,3] does not intersect with [5,6].
+      // take care of overflow. e.g., Long.MIN_VALUE
       return false;
     } else if ((!rightClose || !r.leftClose) && (r.min > max)) {
       return false;
     } else if (!rightClose && !r.leftClose && r.min >= max) {
       return false;
     } else if (rightClose && r.leftClose && r.min >= max + 2) {
+      // take care of overflow. e.g., Long.MAX_VALUE
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TimeRange that = (TimeRange) o;
+    return (this.min == that.min && this.max == that.max);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(min, max);
+  }
+
+  /**
+   * Check if two TimeRanges overlap
+   * @param rhs the given time range
+   * @return true if the current time range overlaps with the given time range rhs
+   */
+  public boolean overlaps(TimeRange rhs) {
+    if ((!this.leftClose || !rhs.rightClose) && (rhs.max <= this.min)) {
+      // e.g., rhs:[1,3] does not overlap with this:(3,5].
+      return false;
+    } else if (!this.leftClose && !rhs.rightClose && rhs.max <= this.min + 1) {
+      // e.g., rhs:[1,4) does not overlap with this:(3,5]
+      return false;
+    } else if (this.leftClose && rhs.rightClose && rhs.max < this.min) {
+      // e.g., rhs:[1,4] does not overlap with this:[5,6]
+      return false;
+    } else if ((!this.rightClose || !rhs.leftClose) && (rhs.min >= this.max)) {
+      // e.g., this:[1,5) does not overlap with rhs:[5,6]
+      return false;
+    } else if (!this.rightClose && !rhs.leftClose && rhs.min + 1 >= this.max) {
+      // e.g., this:[1,5) does not overlap with rhs:(4,6]
+      return false;
+    } else if (this.rightClose && rhs.leftClose && rhs.min > this.max) {
+      // e.g., this:[1,5] does not overlap with rhs:[6,8]
       return false;
     } else {
       return true;
@@ -215,7 +266,7 @@ public class TimeRange implements Comparable<TimeRange> {
    * @return the union of time ranges
    */
   public static List<TimeRange> sortAndMerge(List<TimeRange> unionCandidates) {
-    //sort the time ranges in ascending order of the start time
+    // sort the time ranges in ascending order of the start time
     Collections.sort(unionCandidates);
 
     ArrayList<TimeRange> unionResult = new ArrayList<>();
@@ -243,14 +294,16 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   /**
-   * Get the remaining time ranges in the current ranges but not in timeRangesPrev.
+   * Get the remaining time ranges in the current ranges but not in
+   * timeRangesPrev.
    *
-   * NOTE the primitive timeRange is always a closed interval [min,max] and only in this function
-   * are leftClose and rightClose changed.
+   * NOTE the primitive timeRange is always a closed interval [min,max] and only
+   * in this function are leftClose and rightClose changed.
    *
    * @param timeRangesPrev time ranges union in ascending order of the start time
    * @return the remaining time ranges
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public List<TimeRange> getRemains(List<TimeRange> timeRangesPrev) {
     List<TimeRange> remains = new ArrayList<>();
 
@@ -275,8 +328,7 @@ public class TimeRange implements Comparable<TimeRange> {
             // return the final result because timeRangesPrev is sorted
             return remains;
           } else if (prev.min == this.min) {
-            // Note prev.max < this.max
-            // e.g., this=[1,10], prev=[1,4]
+            // Note prev.max < this.max e.g., this=[1,10], prev=[1,4]
             min = prev.max;
             leftClose = false;
           } else {
