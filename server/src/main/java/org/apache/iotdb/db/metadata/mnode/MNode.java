@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -57,12 +58,12 @@ public class MNode implements Serializable {
    * volatile for double synchronized check
    * use in Measurement Node so it's protected
    */
-  protected transient volatile ConcurrentHashMap<String, MNode> children = null;
+  protected transient volatile ConcurrentMap<String, MNode> children = null;
 
   /**
    * volatile for double synchronized check
    */
-  private transient volatile ConcurrentHashMap<String, MNode> aliasChildren = null;
+  private transient volatile ConcurrentMap<String, MNode> aliasChildren = null;
 
   /**
    * Constructor of MNode.
@@ -221,7 +222,7 @@ public class MNode implements Serializable {
     return children;
   }
 
-  public void setChildren(ConcurrentHashMap<String, MNode> children) {
+  public void setChildren(ConcurrentMap<String, MNode> children) {
     this.children = children;
   }
 
