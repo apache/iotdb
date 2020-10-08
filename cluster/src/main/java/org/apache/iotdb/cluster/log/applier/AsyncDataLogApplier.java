@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import java.sql.Time;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -31,9 +30,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.Timer.Statistic;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -70,30 +71,28 @@ public class AsyncDataLogApplier implements LogApplier {
   // synchronized: when a log is draining consumers, avoid other threads adding more logs so that
   // the consumers will never be drained
   public synchronized void apply(Log log)  {
-    // we can only apply some kinds of plans in parallel, for other logs, we must wait until all
-    // previous logs are applied, or the order of deletions and insertions may get wrong
-    if (log instanceof PhysicalPlanLog) {
-      PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
-      PhysicalPlan plan = physicalPlanLog.getPlan();
-      try {
-        PartialPath planKey = getPlanKey(plan);
-        if (planKey != null) {
-          // this plan only affects one sg, so we can run it with other plans in parallel
-          long start;
-          if (Timer.ENABLE_INSTRUMENTING) {
-            start = System.nanoTime();
-          }
-          provideLogToConsumers(planKey, log);
-          Statistic.RAFT_SENDER_COMMIT_TO_CONSUMER_LOGS.addNanoFromStart(start);
-          return;
-        }
-      } catch (StorageGroupNotSetException e) {
-        logger.debug("Exception occurred when applying {}", log, e);
-        log.setException(e);
-        log.setApplied(true);
-        return;
-      }
+
+    PartialPath logKey;
+    try {
+      logKey = getLogKey(log);
+    } catch (StorageGroupNotSetException e) {
+      logger.debug("Exception occurred when applying {}", log, e);
+      log.setException(e);
+      log.setApplied(true);
+      return;
     }
+
+    if (logKey != null) {
+      // this plan only affects one sg, so we can run it with other plans in parallel
+      long start;
+      if (Timer.ENABLE_INSTRUMENTING) {
+        start = System.nanoTime();
+      }
+      provideLogToConsumers(logKey, log);
+      Statistic.RAFT_SENDER_COMMIT_TO_CONSUMER_LOGS.addNanoFromStart(start);
+      return;
+    }
+
     // TODO-Cluster: change to debug
     logger.info("{}: {} is waiting for consumers to drain", name, log);
     long start;
@@ -105,8 +104,29 @@ public class AsyncDataLogApplier implements LogApplier {
     Statistic.RAFT_SENDER_COMMIT_EXCLUSIVE_LOGS.addNanoFromStart(start);
   }
 
+  private PartialPath getLogKey(Log log) throws StorageGroupNotSetException {
+    // we can only apply some kinds of plans in parallel, for other logs, we must wait until all
+    // previous logs are applied, or the order of deletions and insertions may get wrong
+    if (log instanceof PhysicalPlanLog) {
+      PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
+      PhysicalPlan plan = physicalPlanLog.getPlan();
+      // this plan only affects one sg, so we can run it with other plans in parallel
+      return getPlanKey(plan);
+    } else if (log instanceof CloseFileLog) {
+      CloseFileLog closeFileLog = (CloseFileLog) log;
+      PartialPath partialPath = null;
+      try {
+        partialPath = new PartialPath(closeFileLog.getStorageGroupName());
+      } catch (IllegalPathException e) {
+        // unreachable
+      }
+      return partialPath;
+    }
+    return null;
+  }
+
   private PartialPath getPlanKey(PhysicalPlan plan) throws StorageGroupNotSetException {
-    return getPlanDevice(plan);
+    return getPlanSG(plan);
   }
 
   private PartialPath getPlanDevice(PhysicalPlan plan) {
