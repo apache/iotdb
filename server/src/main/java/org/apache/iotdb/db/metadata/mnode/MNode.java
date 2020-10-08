@@ -161,7 +161,7 @@ public class MNode implements Serializable {
       }
     }
 
-    return aliasChildren.computeIfAbsent(alias, (aliasName) -> child) == child;
+    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
   }
 
   /**

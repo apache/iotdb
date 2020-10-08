@@ -1709,12 +1709,7 @@ public class MManager {
           }
           TSDataType dataType = getTypeInLoc(plan, i);
           // create it, may concurrent created by multiple thread
-          try {
-            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
-          } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
-            // just log it, created by multiple thread
-            logger.info("Concurrent create timeseries failed, use other thread's result");
-          }
+          internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
         }
 
         MeasurementMNode measurementMNode = (MeasurementMNode) getChild(deviceMNode,
@@ -1779,9 +1774,9 @@ public class MManager {
           getDefaultEncoding(dataType),
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
-    } catch (PathAlreadyExistException e) {
+    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
       if (logger.isDebugEnabled()) {
-        logger.debug("Ignore PathAlreadyExistException when Concurrent inserting"
+        logger.debug("Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
             + " a non-exist time series {}", path);
       }
     }

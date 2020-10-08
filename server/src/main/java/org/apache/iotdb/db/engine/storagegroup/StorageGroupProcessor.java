@@ -154,11 +154,6 @@ public class StorageGroupProcessor {
    */
   private final Object closeStorageGroupCondition = new Object();
   /**
-   * hotCompactionMergeWorking is used to wait for last hot compaction to be done.
-   */
-  private volatile boolean hotCompactionMergeWorking = false;
-
-  /**
    * avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a query is executed.
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
@@ -170,7 +165,10 @@ public class StorageGroupProcessor {
    * time partition id in the storage group -> tsFileProcessor for this time partition
    */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
-
+  /**
+   * hotCompactionMergeWorking is used to wait for last hot compaction to be done.
+   */
+  private volatile boolean hotCompactionMergeWorking = false;
   // upgrading sequence TsFile resource list
   private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
 
@@ -730,12 +728,10 @@ public class StorageGroupProcessor {
       }
 
       // do not forget last part
-      if (before < loc) {
-        if (isSequence || !IoTDBDescriptor.getInstance().getConfig()
-            .isEnableDiscardOutOfOrderData()) {
-          noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
-              results, beforeTimePartition) && noFailure;
-        }
+      if (before < loc && (isSequence || !IoTDBDescriptor.getInstance().getConfig()
+          .isEnableDiscardOutOfOrderData())) {
+        noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
+            results, beforeTimePartition) && noFailure;
       }
       long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
           insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
@@ -2490,34 +2486,6 @@ public class StorageGroupProcessor {
     return partitionFileVersions.containsAll(tsFileResource.getHistoricalVersions());
   }
 
-  private enum LoadTsFileType {
-    LOAD_SEQUENCE, LOAD_UNSEQUENCE
-  }
-
-  @FunctionalInterface
-  public interface CloseTsFileCallBack {
-
-    void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
-  }
-
-  @FunctionalInterface
-  public interface UpdateEndTimeCallBack {
-
-    boolean call(TsFileProcessor caller);
-  }
-
-  @FunctionalInterface
-  public interface UpgradeTsFileResourceCallBack {
-
-    void call(TsFileResource caller);
-  }
-
-  @FunctionalInterface
-  public interface CloseHotCompactionMergeCallBack {
-
-    void call();
-  }
-
   /**
    * remove all partitions that satisfy a filter.
    */
@@ -2570,6 +2538,34 @@ public class StorageGroupProcessor {
 
   public boolean isHotCompactionMergeWorking() {
     return hotCompactionMergeWorking;
+  }
+
+  private enum LoadTsFileType {
+    LOAD_SEQUENCE, LOAD_UNSEQUENCE
+  }
+
+  @FunctionalInterface
+  public interface CloseTsFileCallBack {
+
+    void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
+  }
+
+  @FunctionalInterface
+  public interface UpdateEndTimeCallBack {
+
+    boolean call(TsFileProcessor caller);
+  }
+
+  @FunctionalInterface
+  public interface UpgradeTsFileResourceCallBack {
+
+    void call(TsFileResource caller);
+  }
+
+  @FunctionalInterface
+  public interface CloseHotCompactionMergeCallBack {
+
+    void call();
   }
 
   @FunctionalInterface
