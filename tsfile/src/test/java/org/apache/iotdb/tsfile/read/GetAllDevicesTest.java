@@ -69,20 +69,22 @@ public class GetAllDevicesTest {
 
   public void testGetAllDevices(int deviceNum, int measurementNum) throws IOException {
     FileGenerator.generateFile(10000, deviceNum, measurementNum);
-    TsFileSequenceReader fileReader = new TsFileSequenceReader(FILE_PATH);
-    ReadOnlyTsFile tsFile = new ReadOnlyTsFile(fileReader);
-
-    // test
-    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
-    List<String> devices = reader.getAllDevices();
-    Assert.assertEquals(deviceNum, devices.size());
-    for (int i = 0; i < deviceNum; i++) {
-      Assert.assertTrue(devices.contains("d" + i));
+    try (TsFileSequenceReader fileReader = new TsFileSequenceReader(FILE_PATH)) {
+      ReadOnlyTsFile tsFile = new ReadOnlyTsFile(fileReader);
+  
+      // test
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
+        List<String> devices = reader.getAllDevices();
+        Assert.assertEquals(deviceNum, devices.size());
+        for (int i = 0; i < deviceNum; i++) {
+          Assert.assertTrue(devices.contains("d" + i));
+        }
+      }
+  
+      // after
+      tsFile.close();
+      FileGenerator.after();
     }
-
-    // after
-    tsFile.close();
-    FileGenerator.after();
   }
 
 }
