@@ -121,7 +121,6 @@ import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
@@ -145,8 +144,12 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PlanExecutor implements IPlanExecutor {
+
+  private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
 
   // for data query
   protected IQueryRouter queryRouter;
@@ -918,6 +921,13 @@ public class PlanExecutor implements IPlanExecutor {
       insertRowPlan.setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
       deviceNode = getSeriesSchemas(insertRowPlan);
       insertRowPlan.transferType();
+
+      //check insert plan
+      if (insertRowPlan.getValues().length == 0) {
+        logger.warn("Can't insert row with only time/timestamp");
+        return;
+      }
+
       StorageEngine.getInstance().insert(insertRowPlan);
       if (insertRowPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(

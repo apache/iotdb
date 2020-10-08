@@ -339,12 +339,12 @@ comparisonOperator
     ;
 
 insertColumnSpec
-    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)* RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)+ RR_BRACKET
     ;
 
 insertValuesSpec
-    : LR_BRACKET dateFormat (COMMA constant)* RR_BRACKET
-    | LR_BRACKET INT (COMMA constant)* RR_BRACKET
+    : LR_BRACKET dateFormat (COMMA constant)+ RR_BRACKET
+    | LR_BRACKET INT (COMMA constant)+ RR_BRACKET
     ;
 
 setCol
