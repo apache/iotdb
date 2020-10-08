@@ -19,21 +19,21 @@
 
 -->
 
-# 1. work process
+# Work process
 
 ## Main link
 
-IoTDB official website：https://iotdb.apache.org/
+IoTDB official website：[https://iotdb.apache.org/](https://iotdb.apache.org/)
 
-Code library：https://github.com/apache/iotdb/tree/master
+Code library：[https://github.com/apache/iotdb/tree/master](https://github.com/apache/iotdb/tree/master)
 
-Get started quickly：http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html
+Get started quickly：[http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html](http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html)
 
 ## Subscribe to mailing list
 
 The mailing list is where the Apache project conducts technical discussions and communication with users. Follow the mailing list to receive mail.
 
-Mailing list address：dev@iotdb.apache.org
+Mailing list address：[dev@iotdb.apache.org](mailto:dev@iotdb.apache.org)
 
 Follow method: Send an email to dev-subscribe@iotdb.apache.org with the email you want to receive the email, the subject content is not limited, after receiving the reply, send a confirmation email to the confirmation address again (the confirmation address is longer, it is recommended  gmail mailbox).
 
@@ -49,7 +49,7 @@ Other mailing list:
 
 ## New features, bug feedback, improvements, and more
 
-All features or bugs that you want IoTDB to do can be raised on Jira：https://issues.apache.org/jira/projects/IOTDB/issues
+All features or bugs that you want IoTDB to do can be raised on [Jira] (https://issues.apache.org/jira/projects/IOTDB/issues)
 
 You can choose issue types: bug, improvement, new feature, etc.  New issues will be automatically synchronized to the mailing list (notifications@), and subsequent discussions can be left on jira or on the mailing list.  When the issue is resolved, close the issue.
 
@@ -75,11 +75,11 @@ The content of all IoTDB official websites is in the docs of the project root di
 Correspondence between versions and branches on the official website:
 
 * In progress -> master
-* major_version.x -> rel/major_version （如 0.9.x -> rel/0.9）
+* major_version.x -> rel/major_version (Eg. 0.9.x -> rel/0.9)
 
 Precautions:
 
-* Images in Markdown can be uploaded to https://github.com/thulab/iotdb/issues/543 for url
+* Images in Markdown can be uploaded to [https://github.com/thulab/iotdb/issues/543](https://github.com/thulab/iotdb/issues/543) for url
 
 ## Contributing code
 
@@ -95,7 +95,7 @@ You can go to jira to pick up the existing issue or create your own issue and ge
 * Make changes based on other people's reviews and continue to update until merged
 * close jira issue
 
-## 2. IoTDB debugging method
+# IoTDB debugging method
 
 Recommended Use Intellij idea. ```mvn clean package -DskipTests``` After putting ```antlr/target/generated-sources/antlr4``` and ```thrift/target/generated-sources/thrift``` marked as ```Source Root```。 
 

@@ -21,21 +21,21 @@
 
 # How to vote for a release
 
-For non-Chinese users, please read https://cwiki.apache.org/confluence/display/IOTDB/Validating+a+staged+Release
+For non-Chinese users, please read [How to vote for a release](https://cwiki.apache.org/confluence/display/IOTDB/Validating+a+staged+Release)
 
-## Download everything under voting version / rc
+## Download everything under voting version/rc
 
-https://dist.apache.org/repos/dist/dev/iotdb/
+[https://dist.apache.org/repos/dist/dev/iotdb/](https://dist.apache.org/repos/dist/dev/iotdb/)
 
 ## Import the public key of the release manager
 
-https://dist.apache.org/repos/dist/dev/iotdb/KEYS
+[https://dist.apache.org/repos/dist/dev/iotdb/KEYS](https://dist.apache.org/repos/dist/dev/iotdb/KEYS)
 
 At the bottom is the public key of the Release Manager (RM)
 
 Install gpg2
 
-### the first method
+### The first method
 
 ```
 The beginning of the public key is this
@@ -53,7 +53,7 @@ Download the public key
 gpg2 --receive-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 (or 28662AC6)
 
 or (Designation keyserver) 
-gpg2 --keyserver p80.pool.sks-keyservers.net --recv-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 (或 28662AC6)
+gpg2 --keyserver p80.pool.sks-keyservers.net --recv-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 (or 28662AC6)
 ```
 
 ### The second method
@@ -180,7 +180,7 @@ xxx
 ```
 
 
-## small tools
+## Small tools
 
 * Print out lines containing certain characters (just look at the top output, you don't need to look at the bottom file)
 

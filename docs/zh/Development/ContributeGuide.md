@@ -19,32 +19,35 @@
 
 -->
 
-# 一、工作流程
+# 工作流程
 
 ## 主要链接
 
-IoTDB 官网：https://iotdb.apache.org/
+IoTDB 官网：[https://iotdb.apache.org/](https://iotdb.apache.org/)
 
-代码库：https://github.com/apache/iotdb/tree/master
+代码库：[https://github.com/apache/iotdb/tree/master](https://github.com/apache/iotdb/tree/master)
 
-快速上手：http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html
+快速上手：[http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html](http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html)
 
-Jira 任务管理：https://issues.apache.org/jira/projects/IOTDB/issues
+Jira 任务管理：[https://issues.apache.org/jira/projects/IOTDB/issues](https://issues.apache.org/jira/projects/IOTDB/issues)
 
-Wiki 文档管理：https://cwiki.apache.org/confluence/display/IOTDB/Home
+Wiki 文档管理：[https://cwiki.apache.org/confluence/display/IOTDB/Home](https://cwiki.apache.org/confluence/display/IOTDB/Home)
 
 ## 订阅邮件列表
 
 邮件列表是 Apache 项目进行技术讨论和用户沟通的地方，订阅邮件列表就可以收到邮件了。
 
-邮件列表地址：dev@iotdb.apache.org
+邮件列表地址：[dev@iotdb.apache.org](mailto:dev@iotdb.apache.org)
 
-订阅方法：用想接收邮件的邮箱向 dev-subscribe@iotdb.apache.org 发一封邮件，主题内容不限，收到回复后，再次向确认地址发一封确认邮件（确认地址比较长，推荐qq邮箱）。
+订阅方法：用想接收邮件的邮箱向 [dev-subscribe@iotdb.apache.org](mailto:dev-subscribe@iotdb.apache.org) 发一封邮件，主题内容不限，收到回复后，再次向确认地址发一封确认邮件（确认地址比较长，推荐qq邮箱）。
 
 其他邮件列表:
+
 * notifications@iotdb.apache.org (用于接收JIRA通知.)
   * 如果你只想接收个别感兴趣的JIRA通知，你不需要订阅这个列表。你只需要在JIRA issue页面上点击"开始关注这个issue" 或者在这个issue上做评论就行了。
+
 * commits@iotdb.apache.org (任何代码改动都会通知到此处。该邮件列表邮件数量十分多，请注意。)
+
 * reviews@iotdb.apache.org (任何代码审阅意见都会通知到此处。该邮件列表邮件数量十分多，请注意。)
 
 ## 新功能、Bug 反馈、改进等
@@ -95,7 +98,7 @@ IoTDB 所有官网上的内容都在项目根目录的 docs 中：
 * 根据其他人的审阅意见进行修改，继续更新，直到合并
 * 关闭 jira issue
 
-# 二、IoTDB 调试方式
+# IoTDB 调试方式
 
 ## 导入代码
 

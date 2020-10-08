@@ -45,7 +45,7 @@ var config = {
         repo: 'https://github.com/apache/iotdb.git',
     
         // github 地址的链接名
-        repoLabel: 'gitHub',
+        repoLabel: 'GitHub',
 		
 		logo: '/img/logo.png',
 		
@@ -99,10 +99,10 @@ var config = {
 				  {
 					text: 'Development',
 					items: [
-					  { text: 'How to vote', link: '/Development/VoteRelease'},
+					  { text: 'How to Vote', link: '/Development/VoteRelease'},
 					  { text: 'How to Commit', link: '/Development/HowToCommit'},
 					  { text: 'Become a Committer', link: '/Development/Committer'},
-					  { text: 'ContributeGuide', link: '/Development/ContributeGuide'},
+					  { text: 'Contribute Guide', link: '/Development/ContributeGuide'},
 					  { text: 'Changelist of TsFile', link: '/Development/format-changelist'},
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
 					]

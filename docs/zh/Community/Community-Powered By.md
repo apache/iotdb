@@ -38,7 +38,7 @@
 在产品描述中明确指出Apache IoTDB也是可以的，例如"该大数据产品是Apache IoTDB的一个子产品"。
 
 ### 相关贡献或应用的公司和组织
-要将自己添加到列表中，请给dev@iotdb.apache.org发送电子邮件，其中包含您的组织名称，URL，正在使用的IoTDB组件列表以及用例的简短描述。
+要将自己添加到列表中，请给[dev@iotdb.apache.org](mailto:dev@iotdb.apache.org)发送电子邮件，其中包含您的组织名称，URL，正在使用的IoTDB组件列表以及用例的简短描述。
 你也可以在[Github](https://github.com/apache/iotdb/issues/748) 留言。
 
 

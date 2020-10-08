@@ -23,19 +23,19 @@
 
 As an Apache project, we are using mailing list, JIRA, and Github Issues to obtain the feedback of users. We also have a Twitter account.
 
-* Mailing list: dev@iotdb.apache.org.
+* Mailing list: [dev@iotdb.apache.org](mailto:dev@iotdb.apache.org).
 
     * The mailing list is used for both user feedback and developer discussion.
-    * Follow method: Send an email to dev-subscribe@iotdb.apache.org with the email you want to 
+    * Follow method: Send an email to [dev-subscribe@iotdb.apache.org](mailto:dev-subscribe@iotdb.apache.org) with the email you want to 
     receive the email, the subject content is not limited, after receiving the reply, send a 
     confirmation email to the confirmation address again (the confirmation address is longer, 
     it is recommended  gmail mailbox).
 
-* JIRA issue: https://issues.apache.org/jira/projects/IOTDB/issues
+* JIRA issue: [https://issues.apache.org/jira/projects/IOTDB/issues](https://issues.apache.org/jira/projects/IOTDB/issues)
 
-* Github issue: https://github.com/apache/iotdb/issues
+* Github issue: [https://github.com/apache/iotdb/issues](https://github.com/apache/iotdb/issues)
 
-* Twitter: https://twitter.com/apacheiotdb
+* Twitter: [https://twitter.com/apacheiotdb](https://twitter.com/apacheiotdb)
 
 * We look forward to you sharing the experience of using IoTDB: [Survey](https://github.com/apache/iotdb/issues/748)
 

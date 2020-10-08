@@ -23,17 +23,17 @@
 
 作为Apache项目，我们使用邮件列表、JIRA和Github的issue模块来获取用户反馈。
 
-* 邮件列表: dev@iotdb.apache.org.
+* 邮件列表: [dev@iotdb.apache.org](mailto:dev@iotdb.apache.org).
 
     * 该列表同时用于用户反馈和开发者交流.
-    * 订阅方法：用想接收邮件的邮箱向 dev-subscribe@iotdb.apache.org 发一封邮件，主题内容不限，收到回复后，
+    * 订阅方法：用想接收邮件的邮箱向 [dev-subscribe@iotdb.apache.org](mailto:dev-subscribe@iotdb.apache.org)发一封邮件，主题内容不限，收到回复后，
     再次向确认地址发一封确认邮件（确认地址比较长，推荐qq邮箱）。
 
-* JIRA issue: https://issues.apache.org/jira/projects/IOTDB/issues
+* JIRA issue: [https://issues.apache.org/jira/projects/IOTDB/issues](https://issues.apache.org/jira/projects/IOTDB/issues)
 
-* Github issue: https://github.com/apache/iotdb/issues
+* Github issue: [https://github.com/apache/iotdb/issues](https://github.com/apache/iotdb/issues)
 
-* Twitter: https://twitter.com/apacheiotdb
+* Twitter: [https://twitter.com/apacheiotdb](https://twitter.com/apacheiotdb)
 
 * 我们非常期待您分享您使用IoTDB的经验: [调研问卷](https://github.com/apache/iotdb/issues/748)
 
