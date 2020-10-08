@@ -18,16 +18,25 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.fail;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import java.sql.*;
-
-import static org.junit.Assert.fail;
 
 public class IoTDBDisableAlignIT {
 
@@ -102,12 +111,12 @@ public class IoTDBDisableAlignIT {
     EnvironmentUtils.envSetUp();
     insertData();
   }
-  
+
   @AfterClass
   public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
-  
+
   private static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
@@ -121,7 +130,7 @@ public class IoTDBDisableAlignIT {
       e.printStackTrace();
     }
   }
-  
+
   @Test
   public void selectTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
@@ -148,32 +157,27 @@ public class IoTDBDisableAlignIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals(
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
             "Timeroot.vehicle.d0.s0,root.vehicle.d0.s0,"
-            + "Timeroot.vehicle.d0.s1,root.vehicle.d0.s1,"
-            + "Timeroot.vehicle.d0.s2,root.vehicle.d0.s2,"
-            + "Timeroot.vehicle.d0.s3,root.vehicle.d0.s3,"
-            + "Timeroot.vehicle.d0.s4,root.vehicle.d0.s4,"
-            + "Timeroot.vehicle.d1.s0,root.vehicle.d1.s0,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(7));
+                + "Timeroot.vehicle.d0.s1,root.vehicle.d0.s1,"
+                + "Timeroot.vehicle.d0.s2,root.vehicle.d0.s2,"
+                + "Timeroot.vehicle.d0.s3,root.vehicle.d0.s3,"
+                + "Timeroot.vehicle.d0.s4,root.vehicle.d0.s4,"
+                + "Timeroot.vehicle.d1.s0,root.vehicle.d1.s0,",
+            new int[]{Types.INTEGER, Types.BIGINT, Types.FLOAT, Types.VARCHAR, Types.BOOLEAN,
+                Types.INTEGER});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(11, cnt);
@@ -183,7 +187,7 @@ public class IoTDBDisableAlignIT {
       fail(e.getMessage());
     }
   }
-  
+
   @Test
   public void selectWithDuplicatedPathsTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
@@ -210,25 +214,23 @@ public class IoTDBDisableAlignIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Timeroot.vehicle.d0.s0,root.vehicle.d0.s0,"
-            + "Timeroot.vehicle.d0.s0,root.vehicle.d0.s0,"
-            + "Timeroot.vehicle.d0.s1,root.vehicle.d0.s1,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Timeroot.vehicle.d0.s0,root.vehicle.d0.s0,"
+                + "Timeroot.vehicle.d0.s0,root.vehicle.d0.s0,"
+                + "Timeroot.vehicle.d0.s1,root.vehicle.d0.s1,",
+            new int[]{Types.INTEGER, Types.INTEGER, Types.BIGINT});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(11, cnt);
@@ -238,7 +240,7 @@ public class IoTDBDisableAlignIT {
       fail(e.getMessage());
     }
   }
-  
+
   @Test
   public void selectLimitTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
@@ -264,32 +266,27 @@ public class IoTDBDisableAlignIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals(
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
             "Timeroot.vehicle.d0.s0,root.vehicle.d0.s0,"
-            + "Timeroot.vehicle.d1.s0,root.vehicle.d1.s0,"
-            + "Timeroot.vehicle.d0.s1,root.vehicle.d0.s1,"
-            + "Timeroot.vehicle.d0.s2,root.vehicle.d0.s2,"
-            + "Timeroot.vehicle.d0.s3,root.vehicle.d0.s3,"
-            + "Timeroot.vehicle.d0.s4,root.vehicle.d0.s4,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(7));
+                + "Timeroot.vehicle.d1.s0,root.vehicle.d1.s0,"
+                + "Timeroot.vehicle.d0.s1,root.vehicle.d0.s1,"
+                + "Timeroot.vehicle.d0.s2,root.vehicle.d0.s2,"
+                + "Timeroot.vehicle.d0.s3,root.vehicle.d0.s3,"
+                + "Timeroot.vehicle.d0.s4,root.vehicle.d0.s4,",
+            new int[]{Types.INTEGER, Types.INTEGER, Types.BIGINT, Types.FLOAT, Types.VARCHAR,
+                Types.BOOLEAN});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(10, cnt);
@@ -302,20 +299,6 @@ public class IoTDBDisableAlignIT {
 
   @Test
   public void selectSlimitTest() throws ClassNotFoundException {
-    String[] retArray = new String[]{
-        "1,1101,2,2.22,",
-        "2,40000,3,3.33,",
-        "50,50000,4,4.44,",
-        "100,199,102,10.0,",
-        "101,199,105,11.11,",
-        "102,180,1000,1000.11,",
-        "103,199,null,null,",
-        "104,190,null,null,",
-        "105,199,null,null,",
-        "1000,55555,null,null,",
-        "946684800000,100,null,null,",
-    };
-
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -326,24 +309,10 @@ public class IoTDBDisableAlignIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals(
-            "Timeroot.vehicle.d0.s1,root.vehicle.d0.s1,"
-            + "Timeroot.vehicle.d0.s2,root.vehicle.d0.s2,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(3));
+        Assert.assertEquals(4, resultSetMetaData.getColumnCount());
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
-          }
-          Assert.assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
         Assert.assertEquals(11, cnt);
@@ -353,7 +322,7 @@ public class IoTDBDisableAlignIT {
       fail(e.getMessage());
     }
   }
-  
+
   @Test
   public void errorCaseTest1() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -398,4 +367,27 @@ public class IoTDBDisableAlignIT {
     }
   }
 
+  private List<Integer> checkHeader(ResultSetMetaData resultSetMetaData,
+      String expectedHeaderStrings, int[] expectedTypes) throws SQLException {
+    String[] expectedHeaders = expectedHeaderStrings.split(",");
+    Map<String, Integer> expectedHeaderToTypeIndexMap = new HashMap<>();
+    Map<String, Integer> expectedHeaderToColumnIndexMap = new HashMap<>();
+    for (int i = 0; i < expectedHeaders.length; ++i) {
+      if (i % 2 != 0) {
+        expectedHeaderToTypeIndexMap.put(expectedHeaders[i], i / 2);
+      }
+      expectedHeaderToColumnIndexMap.put(expectedHeaders[i], i);
+    }
+
+    List<Integer> actualIndexToExpectedIndexList = new ArrayList<>();
+    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+      String columnName = resultSetMetaData.getColumnName(i);
+      Integer typeIndex = expectedHeaderToTypeIndexMap.get(columnName);
+      if (typeIndex != null) {
+        Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(1 + i / 2));
+      }
+      actualIndexToExpectedIndexList.add(expectedHeaderToColumnIndexMap.get(columnName));
+    }
+    return actualIndexToExpectedIndexList;
+  }
 }

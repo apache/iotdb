@@ -290,6 +290,7 @@ public class TsFileProcessor {
    * it's inappropriate to judge whether to flush the memtable according to the average memtable
    * size. We need to adjust it according to the number of timeseries in a specific storage group.
    */
+  @SuppressWarnings("squid:S2184") //Suppress math operands cast warning
   private long getMemtableSizeThresholdBasedOnSeriesNum() {
     if (!config.isEnableParameterAdapter()) {
       return config.getMemtableSizeThreshold();

@@ -145,6 +145,8 @@ public class IoTDBConfig {
 
   private volatile boolean readOnly = false;
 
+  private boolean enableDiscardOutOfOrderData = false;
+
   /**
    * When a certain amount of write ahead logs is reached, they will be flushed to the disk. It is
    * possible to lose at most flush_wal_threshold operations.
@@ -310,6 +312,11 @@ public class IoTDBConfig {
    * Memory allocated for chunk cache in read process
    */
   private long allocateMemoryForChunkCache = allocateMemoryForRead / 10;
+
+  /**
+   * Whether to enable Last cache
+   */
+  private boolean lastCacheEnable = true;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -876,6 +883,14 @@ public class IoTDBConfig {
     this.enableWal = enableWal;
   }
 
+  public boolean isEnableDiscardOutOfOrderData() {
+    return enableDiscardOutOfOrderData ;
+  }
+
+  public void setEnableDiscardOutOfOrderData(boolean enableDiscardOutOfOrderData ) {
+    this.enableDiscardOutOfOrderData  =  enableDiscardOutOfOrderData ;
+  }
+
   public int getFlushWalThreshold() {
     return flushWalThreshold;
   }
@@ -1390,6 +1405,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForChunkCache(long allocateMemoryForChunkCache) {
     this.allocateMemoryForChunkCache = allocateMemoryForChunkCache;
+  }
+
+  public boolean isLastCacheEnabled() {
+    return lastCacheEnable;
+  }
+
+  public void setEnableLastCache(boolean lastCacheEnable) {
+    this.lastCacheEnable = lastCacheEnable;
   }
 
   public boolean isEnableWatermark() {

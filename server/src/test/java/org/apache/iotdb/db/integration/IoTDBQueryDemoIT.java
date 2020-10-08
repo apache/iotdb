@@ -27,6 +27,10 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -160,29 +164,24 @@ public class IoTDBQueryDemoIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals(
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
             "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
                 + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                + "root.sgcc.wf03.wt01.temperature,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+                + "root.sgcc.wf03.wt01.temperature,",
+            new int[]{Types.TIMESTAMP, Types.BOOLEAN, Types.FLOAT, Types.VARCHAR, Types.BOOLEAN,
+                Types.BOOLEAN, Types.FLOAT,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(10, cnt);
@@ -215,29 +214,24 @@ public class IoTDBQueryDemoIT {
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals(
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
             "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
                 + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                + "root.sgcc.wf03.wt01.temperature,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+                + "root.sgcc.wf03.wt01.temperature,",
+            new int[]{Types.TIMESTAMP, Types.BOOLEAN, Types.FLOAT, Types.VARCHAR, Types.BOOLEAN,
+                Types.BOOLEAN, Types.FLOAT,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(5, cnt);
@@ -250,29 +244,24 @@ public class IoTDBQueryDemoIT {
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals(
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
             "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
                 + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                + "root.sgcc.wf03.wt01.temperature,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+                + "root.sgcc.wf03.wt01.temperature,",
+            new int[]{Types.TIMESTAMP, Types.BOOLEAN, Types.FLOAT, Types.VARCHAR, Types.BOOLEAN,
+                Types.BOOLEAN, Types.FLOAT,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(5, cnt);
@@ -301,33 +290,29 @@ public class IoTDBQueryDemoIT {
       // test 1: fetchSize < limitNumber
       statement.setFetchSize(4);
       Assert.assertEquals(4, statement.getFetchSize());
-      boolean hasResultSet = statement.execute("select * from root where time in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
+      boolean hasResultSet = statement.execute(
+          "select * from root where time in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals(
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
             "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
                 + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                + "root.sgcc.wf03.wt01.temperature,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+                + "root.sgcc.wf03.wt01.temperature,",
+            new int[]{Types.TIMESTAMP, Types.BOOLEAN, Types.FLOAT, Types.VARCHAR, Types.BOOLEAN,
+                Types.BOOLEAN, Types.FLOAT,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(5, cnt);
@@ -340,33 +325,29 @@ public class IoTDBQueryDemoIT {
           "1509466080000,false,22.58,v1,false,false,22.58,",
           "1509466140000,false,20.98,v1,false,false,20.98,",
       };
-      hasResultSet = statement.execute("select * from root where time not in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
+      hasResultSet = statement.execute(
+          "select * from root where time not in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals(
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
             "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
                 + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                + "root.sgcc.wf03.wt01.temperature,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+                + "root.sgcc.wf03.wt01.temperature,",
+            new int[]{Types.TIMESTAMP, Types.BOOLEAN, Types.FLOAT, Types.VARCHAR, Types.BOOLEAN,
+                Types.BOOLEAN, Types.FLOAT,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(5, cnt);
@@ -377,33 +358,29 @@ public class IoTDBQueryDemoIT {
           "1509465960000,false,20.71,v1,false,false,20.71,",
           "1509466080000,false,22.58,v1,false,false,22.58,",
       };
-      hasResultSet = statement.execute("select * from root where ln.wf01.wt01.temperature in (20.18, 20.71, 22.58)");
+      hasResultSet = statement
+          .execute("select * from root where ln.wf01.wt01.temperature in (20.18, 20.71, 22.58)");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals(
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
             "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
                 + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                + "root.sgcc.wf03.wt01.temperature,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
+                + "root.sgcc.wf03.wt01.temperature,",
+            new int[]{Types.TIMESTAMP, Types.BOOLEAN, Types.FLOAT, Types.VARCHAR, Types.BOOLEAN,
+                Types.BOOLEAN, Types.FLOAT,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(3, cnt);
@@ -414,5 +391,21 @@ public class IoTDBQueryDemoIT {
     }
   }
 
+  private List<Integer> checkHeader(ResultSetMetaData resultSetMetaData,
+      String expectedHeaderStrings, int[] expectedTypes) throws SQLException {
+    String[] expectedHeaders = expectedHeaderStrings.split(",");
+    Map<String, Integer> expectedHeaderToTypeIndexMap = new HashMap<>();
+    for (int i = 0; i < expectedHeaders.length; ++i) {
+      expectedHeaderToTypeIndexMap.put(expectedHeaders[i], i);
+    }
 
+    List<Integer> actualIndexToExpectedIndexList = new ArrayList<>();
+    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+      Integer typeIndex = expectedHeaderToTypeIndexMap.get(resultSetMetaData.getColumnName(i));
+      Assert.assertNotNull(typeIndex);
+      Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
+      actualIndexToExpectedIndexList.add(typeIndex);
+    }
+    return actualIndexToExpectedIndexList;
+  }
 }

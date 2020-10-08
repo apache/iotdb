@@ -51,7 +51,7 @@ TsFile的Hadoop连接器实现了对Hadoop读取外部Tsfile类型的文件格�
 |-------------  | ------------ |------------ |
 | `2.7.3`       | `1.8`        | `0.10.0`|
 
->注意：关于如何下载和使用Tsfile, 请参考以下链接: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
+>注意：关于如何下载和使用Tsfile, 请参考以下链接: https://github.com/apache/iotdb/tree/master/tsfile.
 
 ## 数据类型对应关系
 
@@ -154,7 +154,7 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
   }
 ```
 
-> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/hadoop/tsfile/TSFMRReadExample.java
+> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/hadoop/tsfile/TSFMRReadExample.java
 
 
 ### 写示例: 计算平均数并写入Tsfile中
@@ -215,4 +215,4 @@ TSFInputFormat将tsfile中的数据以多个`MapWritable`记录的形式返回�
         }
     }
 ```
-> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/hadoop/tsfile/TSMRWriteExample.java
+> 注意: 完整的代码示例可以在如下链接中找到：https://github.com/apache/iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb/hadoop/tsfile/TSMRWriteExample.java
