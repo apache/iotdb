@@ -24,7 +24,6 @@ import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 import com.google.common.util.concurrent.RateLimiter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -34,10 +33,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -56,12 +55,14 @@ import org.slf4j.LoggerFactory;
 public class HotCompactionUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(HotCompactionUtils.class);
+  private static final int mergePagePointNum = IoTDBDescriptor.getInstance().getConfig()
+      .getMergePagePointNumberThreshold();
 
   private HotCompactionUtils() {
     throw new IllegalStateException("Utility class");
   }
 
-  private static Pair<ChunkMetadata, Chunk> readSeqChunk(
+  private static Pair<ChunkMetadata, Chunk> readByAppendMerge(
       Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap) throws IOException {
     ChunkMetadata newChunkMetadata = null;
     Chunk newChunk = null;
@@ -81,7 +82,7 @@ public class HotCompactionUtils {
     return new Pair<>(newChunkMetadata, newChunk);
   }
 
-  private static long readUnseqChunk(
+  private static long readByDeserializeMerge(
       Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap, long maxVersion,
       Map<Long, TimeValuePair> timeValuePairMap)
       throws IOException {
@@ -103,6 +104,54 @@ public class HotCompactionUtils {
         }
       }
     }
+    return maxVersion;
+  }
+
+  private static long writeByAppendMerge(long maxVersion, String device,
+      RateLimiter compactionRateLimiter,
+      Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadatasMap,
+      TsFileResource targetResource, RestorableTsFileIOWriter writer) throws IOException {
+    Pair<ChunkMetadata, Chunk> chunkPair = readByAppendMerge(readerChunkMetadatasMap);
+    ChunkMetadata newChunkMetadata = chunkPair.left;
+    Chunk newChunk = chunkPair.right;
+    if (newChunkMetadata != null && newChunk != null) {
+      maxVersion = Math.max(newChunkMetadata.getVersion(), maxVersion);
+      // wait for limit write
+      MergeManager.mergeRateLimiterAcquire(compactionRateLimiter,
+          newChunk.getHeader().getDataSize() + newChunk.getData().position());
+      writer.writeChunk(newChunk, newChunkMetadata);
+      targetResource.updateStartTime(device, newChunkMetadata.getStartTime());
+      targetResource.updateEndTime(device, newChunkMetadata.getEndTime());
+    }
+    return maxVersion;
+  }
+
+  private static long writeByDeserializeMerge(long maxVersion, String device,
+      RateLimiter compactionRateLimiter,
+      Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
+      TsFileResource targetResource, RestorableTsFileIOWriter writer) throws IOException {
+    Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
+    maxVersion = readByDeserializeMerge(entry.getValue(), maxVersion, timeValuePairMap);
+    Iterator<List<ChunkMetadata>> chunkMetadataListIterator = entry.getValue().values()
+        .iterator();
+    if (!chunkMetadataListIterator.hasNext()) {
+      return maxVersion;
+    }
+    List<ChunkMetadata> chunkMetadataList = chunkMetadataListIterator.next();
+    if (chunkMetadataList.size() <= 0) {
+      return maxVersion;
+    }
+    IChunkWriter chunkWriter = new ChunkWriterImpl(
+        new MeasurementSchema(entry.getKey(), chunkMetadataList.get(0).getDataType()));
+    for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
+      writeTVPair(timeValuePair, chunkWriter);
+      targetResource.updateStartTime(device, timeValuePair.getTimestamp());
+      targetResource.updateEndTime(device, timeValuePair.getTimestamp());
+    }
+    // wait for limit write
+    MergeManager
+        .mergeRateLimiterAcquire(compactionRateLimiter, chunkWriter.getCurrentChunkSize());
+    chunkWriter.writeToFileWriter(writer);
     return maxVersion;
   }
 
@@ -177,51 +226,38 @@ public class HotCompactionUtils {
         long maxVersion = Long.MIN_VALUE;
         for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry : measurementChunkMetadataMap
             .entrySet()) {
-          Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
-          maxVersion = readUnseqChunk(entry.getValue(), maxVersion, timeValuePairMap);
-          Iterator<List<ChunkMetadata>> chunkMetadataListIterator = entry.getValue().values()
-              .iterator();
-          if (!chunkMetadataListIterator.hasNext()) {
-            continue;
+          maxVersion = writeByDeserializeMerge(maxVersion, device, compactionRateLimiter, entry,
+              targetResource, writer);
+        }
+        writer.endChunkGroup();
+        writer.writeVersion(maxVersion);
+        if (hotCompactionLogger != null) {
+          hotCompactionLogger.logDevice(device, writer.getPos());
+        }
+      } else {
+        long maxVersion = Long.MIN_VALUE;
+        for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry : measurementChunkMetadataMap
+            .entrySet()) {
+          Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadatasMap = entry.getValue();
+          boolean isPageEnoughLarge = true;
+          for (List<ChunkMetadata> chunkMetadatas : readerChunkMetadatasMap.values()) {
+            for (ChunkMetadata chunkMetadata : chunkMetadatas) {
+              if (chunkMetadata.getNumOfPoints() < mergePagePointNum) {
+                isPageEnoughLarge = false;
+                break;
+              }
+            }
           }
-          List<ChunkMetadata> chunkMetadataList = chunkMetadataListIterator.next();
-          if (chunkMetadataList.size() <= 0) {
-            continue;
-          }
-          IChunkWriter chunkWriter = new ChunkWriterImpl(
-              new MeasurementSchema(entry.getKey(), chunkMetadataList.get(0).getDataType()));
-          for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
-            writeTVPair(timeValuePair, chunkWriter);
-            targetResource.updateStartTime(device, timeValuePair.getTimestamp());
-            targetResource.updateEndTime(device, timeValuePair.getTimestamp());
-          }
-          // wait for limit write
-          MergeManager
-              .mergeRateLimiterAcquire(compactionRateLimiter, chunkWriter.getCurrentChunkSize());
-          chunkWriter.writeToFileWriter(writer);
-          if (hotCompactionLogger != null) {
-            hotCompactionLogger.logDevice(device, writer.getPos());
+          if (isPageEnoughLarge) {
+            maxVersion = writeByAppendMerge(maxVersion, device, compactionRateLimiter,
+                readerChunkMetadatasMap, targetResource, writer);
+          } else {
+            maxVersion = writeByDeserializeMerge(maxVersion, device, compactionRateLimiter, entry,
+                targetResource, writer);
           }
         }
         writer.endChunkGroup();
         writer.writeVersion(maxVersion);
-      } else {
-        for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry : measurementChunkMetadataMap
-            .entrySet()) {
-          Pair<ChunkMetadata, Chunk> chunkPair = readSeqChunk(
-              entry.getValue());
-          ChunkMetadata newChunkMetadata = chunkPair.left;
-          Chunk newChunk = chunkPair.right;
-          if (newChunkMetadata != null && newChunk != null) {
-            // wait for limit write
-            MergeManager.mergeRateLimiterAcquire(compactionRateLimiter,
-                newChunk.getHeader().getDataSize() + newChunk.getData().position());
-            writer.writeChunk(newChunk, newChunkMetadata);
-            targetResource.updateStartTime(device, newChunkMetadata.getStartTime());
-            targetResource.updateEndTime(device, newChunkMetadata.getEndTime());
-          }
-        }
-        writer.endChunkGroup();
         if (hotCompactionLogger != null) {
           hotCompactionLogger.logDevice(device, writer.getPos());
         }
