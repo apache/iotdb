@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import java.sql.Time;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -104,14 +102,14 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   private PartialPath getPlanDevice(PhysicalPlan plan) {
-    PartialPath sgPath = null;
+    PartialPath planKey = null;
     if (plan instanceof InsertPlan) {
-      sgPath = ((InsertPlan) plan).getDeviceId();
+      planKey = ((InsertPlan) plan).getDeviceId();
     } else if (plan instanceof CreateTimeSeriesPlan) {
       PartialPath path = ((CreateTimeSeriesPlan) plan).getPath();
-      sgPath = path.getDevicePath();
+      planKey = path.getDevicePath();
     }
-    return sgPath;
+    return planKey;
   }
 
   private PartialPath getPlanSG(PhysicalPlan plan) throws StorageGroupNotSetException {
@@ -225,11 +223,11 @@ public class AsyncDataLogApplier implements LogApplier {
     public void accept(Log log) {
       try {
         logQueue.put(log);
+        lastLogIndex = log.getCurrLogIndex();
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         log.setException(e);
         log.setApplied(true);
-        lastLogIndex = log.getCurrLogIndex();
       }
     }
 
