@@ -964,11 +964,9 @@ public class MManager {
    * get device node, if the storage group is not set, create it when autoCreateSchema is true <p>
    * (we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
-   * <p>!!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method.
-   *
    * @param path path
    */
-  public MNode getDeviceNodeWithAutoCreateAndReadLock(
+  public MNode getDeviceNodeWithAutoCreate(
       PartialPath path, boolean autoCreateSchema, int sgLevel) throws MetadataException {
     MNode node = null;
     boolean shouldSetStorageGroup;
@@ -1005,8 +1003,8 @@ public class MManager {
   /**
    * !!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method.
    */
-  public MNode getDeviceNodeWithAutoCreateAndReadLock(PartialPath path) throws MetadataException {
-    return getDeviceNodeWithAutoCreateAndReadLock(
+  public MNode getDeviceNodeWithAutoCreate(PartialPath path) throws MetadataException {
+    return getDeviceNodeWithAutoCreate(
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
 
@@ -1028,20 +1026,14 @@ public class MManager {
    * @return deviceId
    */
   public String getDeviceId(PartialPath path) {
-    MNode deviceNode = null;
     String device = null;
     try {
-      deviceNode = getDeviceNode(path);
+      MNode deviceNode = getDeviceNode(path);
       device = deviceNode.getFullPath();
     } catch (MetadataException | NullPointerException e) {
       // Cannot get deviceId from MManager, return the input deviceId
     }
     return device;
-  }
-
-  // concurrent warning: you should get parent read lock before calling this method
-  public MNode getChild(MNode parent, String child) {
-    return parent.getChild(child);
   }
 
   /**
@@ -1694,7 +1686,7 @@ public class MManager {
     MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device node
-    MNode deviceMNode = getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+    MNode deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
 
     // 2. get schema of each measurement
     for (int i = 0; i < measurementList.length; i++) {
@@ -1712,8 +1704,7 @@ public class MManager {
           internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
         }
 
-        MeasurementMNode measurementMNode = (MeasurementMNode) getChild(deviceMNode,
-            measurementList[i]);
+        MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
 
         // check type is match
         TSDataType insertDataType = null;

@@ -811,7 +811,7 @@ public class PlanExecutor implements IPlanExecutor {
       String device = chunkGroupMetadata.getDevice();
       MNode node = null;
       node = mManager
-          .getDeviceNodeWithAutoCreateAndReadLock(new PartialPath(device), true, sgLevel);
+          .getDeviceNodeWithAutoCreate(new PartialPath(device), true, sgLevel);
       for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
         PartialPath series = new PartialPath(
             chunkGroupMetadata.getDevice() + TsFileConstant.PATH_SEPARATOR + chunkMetadata

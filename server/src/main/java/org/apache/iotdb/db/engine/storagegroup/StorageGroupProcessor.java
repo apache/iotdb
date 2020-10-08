@@ -1479,9 +1479,9 @@ public class StorageGroupProcessor {
       long endTime) throws WriteProcessException {
     try {
       MManager manager = MManager.getInstance();
-      MNode node = manager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      MNode node = manager.getDeviceNodeWithAutoCreate(deviceId);
 
-      MNode measurementNode = manager.getChild(node, measurementId);
+      MNode measurementNode = node.getChild(measurementId);
       if (measurementNode != null) {
         TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
         if (lastPair != null && startTime <= lastPair.getTimestamp()
