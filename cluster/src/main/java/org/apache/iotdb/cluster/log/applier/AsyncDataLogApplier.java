@@ -93,6 +93,8 @@ public class AsyncDataLogApplier implements LogApplier {
         return;
       }
     }
+    // TODO-Cluster: change to debug
+    logger.info("{}: {} is waiting for consumers to drain", name, log);
     drainConsumers();
     applyInternal(log);
   }
