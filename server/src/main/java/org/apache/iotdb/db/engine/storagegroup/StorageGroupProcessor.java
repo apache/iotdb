@@ -1363,7 +1363,6 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-<<<<<<< HEAD
    * @param path the timeseries path of the to be deleted.
    * @param startTime the startTime of delete range.
    * @param endTime the endTime of delete range.
@@ -1380,7 +1379,8 @@ public class StorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(path)) {
+      List<PartialPath> fullPaths = IoTDB.metaManager.getAllTimeseriesPath(path);
+      for (PartialPath p : fullPaths) {
         PartialPath deviceId = p.getDevicePath();
         String measurementId = p.getMeasurement();
         Long lastUpdateTime = null;
@@ -1408,8 +1408,8 @@ public class StorageGroupProcessor {
         updatedModFiles.add(mergingModification);
       }
 
-      deleteDataInFiles(tsFileManagement.getTsFileList(true), deletion, updatedModFiles);
-      deleteDataInFiles(tsFileManagement.getTsFileList(false), deletion, updatedModFiles);
+      deleteDataInFiles(tsFileManagement.getTsFileList(true), deletion, fullPaths, updatedModFiles);
+      deleteDataInFiles(tsFileManagement.getTsFileList(false), deletion, fullPaths, updatedModFiles);
 
     } catch (Exception e) {
       // roll back
@@ -1444,15 +1444,13 @@ public class StorageGroupProcessor {
     }
   }
 
-  private boolean canSkipDelete(TsFileResource tsFileResource, Deletion deletion)
-      throws MetadataException {
-    for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath())) {
-      String deviceId = p.getDevice();
+  private boolean canSkipDelete(TsFileResource tsFileResource, List<PartialPath> fullPaths,
+       long deleteStart, long deleteEnd) {
+    for (PartialPath path : fullPaths) {
+      String deviceId = path.getDevice();
       if (tsFileResource.containsDevice(deviceId) &&
-          (deletion.getStartTime() <= tsFileResource.getStartTime(deviceId)
-              && tsFileResource.getStartTime(deviceId) <= deletion.getEndTime())
-          || (deletion.getStartTime() >= tsFileResource.getStartTime(deviceId)
-          && deletion.getStartTime() <= tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE))) {
+              (deleteEnd >= tsFileResource.getStartTime(deviceId) &&
+                      deleteStart <= tsFileResource.getEndTime(deviceId))) {
         return false;
       }
     }
@@ -1460,10 +1458,11 @@ public class StorageGroupProcessor {
   }
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
-      List<ModificationFile> updatedModFiles)
+      List<PartialPath> fullPaths, List<ModificationFile> updatedModFiles)
           throws IOException, MetadataException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      if (canSkipDelete(tsFileResource, deletion)) {
+      if (canSkipDelete(tsFileResource, fullPaths, deletion.getStartTime(),
+              deletion.getEndTime())) {
         continue;
       }
 
@@ -1478,7 +1477,7 @@ public class StorageGroupProcessor {
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
         TsFileProcessor tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
-        tsfileProcessor.deleteDataInMemory(deletion);
+        tsfileProcessor.deleteDataInMemory(deletion, fullPaths);
       }
 
       // add a record in case of rollback
@@ -1488,6 +1487,9 @@ public class StorageGroupProcessor {
 
   private void tryToDeleteLastCache(PartialPath deviceId, String measurementId, long startTime,
       long endTime) throws WriteProcessException {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+      return;
+    }
     try {
       MManager manager = MManager.getInstance();
       MNode node = manager.getDeviceNodeWithAutoCreate(deviceId);

@@ -694,13 +694,9 @@ public class MManager {
     return mtree.getAllStorageGroupPaths();
   }
 
-  public List<PartialPath> searchAllRelatedStorageGroups(PartialPath path) throws MetadataException {
-    lock.readLock().lock();
-    try {
+  public List<PartialPath> searchAllRelatedStorageGroups(PartialPath path)
+      throws MetadataException {
       return mtree.searchAllRelatedStorageGroups(path);
-    } finally {
-      lock.readLock().unlock();
-    }
   }
 
   /**

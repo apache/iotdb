@@ -59,8 +59,7 @@ public class PartialPath extends Path implements Comparable<Path> {
    * @param partialNodes nodes of a time series path
    */
   public PartialPath(String[] partialNodes) {
-    this.nodes = partialNodes;
-    this.fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
+    nodes = partialNodes;
   }
 
   /**

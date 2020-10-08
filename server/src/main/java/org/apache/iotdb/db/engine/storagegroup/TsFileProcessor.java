@@ -229,7 +229,8 @@ public class TsFileProcessor {
    * <p>
    * Delete data in both working MemTable and flushing MemTables.
    */
-  public void deleteDataInMemory(Deletion deletion) throws MetadataException {
+  public void deleteDataInMemory(Deletion deletion, List<PartialPath> fullPaths)
+          throws MetadataException {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
       logger
@@ -237,7 +238,7 @@ public class TsFileProcessor {
     }
     try {
       if (workMemTable != null) {
-        for (PartialPath p : IoTDB.metaManager.getAllTimeseriesPath(deletion.getPath())) {
+        for (PartialPath p : fullPaths) {
           workMemTable.delete(p.getDevice(), p.getMeasurement(), deletion.getStartTime(),
               deletion.getEndTime());
         }
