@@ -38,6 +38,7 @@ import java.sql.Statement;
 import static org.junit.Assert.assertTrue;
 
 public class ImportCsvTestIT extends AbstractScript {
+  private final String CSV_FILE = "target/test.csv";
 
   private static String[] sqls = new String[]{
           "SET STORAGE GROUP TO root.fit.d1",
@@ -86,7 +87,7 @@ public class ImportCsvTestIT extends AbstractScript {
     } else {
       testOnUnix();
     }
-    File file = new File("test.csv");
+    File file = new File(CSV_FILE);
     if (file.exists()) {
       file.delete();
     }
@@ -100,7 +101,7 @@ public class ImportCsvTestIT extends AbstractScript {
       "3,900,'IoTDB',1000,1100,1200"};
     BufferedWriter writer;
     try {
-      writer = new BufferedWriter(new FileWriter("test.csv"));
+      writer = new BufferedWriter(new FileWriter(CSV_FILE));
       writer.write("");
       for (String s : csvText) {
         writer.write(s);
@@ -123,14 +124,14 @@ public class ImportCsvTestIT extends AbstractScript {
       "````````````````````````````````````````````````",
       "Start to import data from: test.csv",
       "",
-      "Import from: test.csv   0%",
+      "Import from: test.csv",
       "Import from: test.csv 100%"
     };
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
         dir + File.separator + "tools" + File.separator + "import-csv.bat",
         "-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-f",
-       "test.csv");
+       CSV_FILE);
     testOutput(builder, output);
   }
 
@@ -142,14 +143,14 @@ public class ImportCsvTestIT extends AbstractScript {
             "------------------------------------------",
             "Start to import data from: test.csv",
             "",
-            "Import from: test.csv   0%",
+            "Import from: test.csv",
             "Import from: test.csv 100%"
     };
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("sh",
         dir + File.separator + "tools" + File.separator + "import-csv.sh",
         "-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-f",
-        "test.csv");
+        CSV_FILE);
     testOutput(builder, output);
   }
 }

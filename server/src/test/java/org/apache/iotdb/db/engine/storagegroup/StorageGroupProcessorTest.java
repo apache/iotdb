@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -68,7 +68,6 @@ public class StorageGroupProcessorTest {
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
   private AtomicLong mergeLock;
-  private MNode deviceMNode = null;
 
   @Before
   public void setUp() throws Exception {
@@ -79,8 +78,6 @@ public class StorageGroupProcessorTest {
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     processor = new DummySGP(systemDir, storageGroup);
     MergeManager.getINSTANCE().start();
-    deviceMNode = new MNode(null, deviceId);
-    deviceMNode.addChild(measurementId, new MeasurementMNode(null, null, null, null));
   }
 
   @After
@@ -97,7 +94,6 @@ public class StorageGroupProcessorTest {
   private void insertToStorageGroupProcessor(TSRecord record)
       throws WriteProcessException, IllegalPathException {
     InsertRowPlan insertRowPlan = new InsertRowPlan(record);
-    insertRowPlan.setDeviceMNode(deviceMNode);
     processor.insert(insertRowPlan);
   }
 
@@ -182,17 +178,17 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementSchema[] schemas = new MeasurementSchema[2];
-    schemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
-    schemas[1] = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
 
-    MNode deviceMNode = new MNode(null, deviceId);
-    deviceMNode.addChild("s0", new MeasurementMNode(null, null, null, null));
-    deviceMNode.addChild("s1", new MeasurementMNode(null, null, null, null));
+    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    measurementMNodes[0] = new MeasurementMNode(null, "s0",
+        new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+    measurementMNodes[1] = new MeasurementMNode(null, "s1",
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+
 
     InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements,
         dataTypes);
-    insertTabletPlan1.setSchemas(schemas);
+    insertTabletPlan1.setMeasurementMNodes(measurementMNodes);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];
@@ -207,14 +203,13 @@ public class StorageGroupProcessorTest {
     insertTabletPlan1.setTimes(times);
     insertTabletPlan1.setColumns(columns);
     insertTabletPlan1.setRowCount(times.length);
-    insertTabletPlan1.setDeviceMNode(deviceMNode);
 
     processor.insertTablet(insertTabletPlan1);
     processor.asyncCloseAllWorkingTsFileProcessors();
 
     InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements,
         dataTypes);
-    insertTabletPlan2.setSchemas(schemas);
+    insertTabletPlan2.setMeasurementMNodes(measurementMNodes);
 
     for (int r = 50; r < 149; r++) {
       times[r - 50] = r;
@@ -224,7 +219,6 @@ public class StorageGroupProcessorTest {
     insertTabletPlan2.setTimes(times);
     insertTabletPlan2.setColumns(columns);
     insertTabletPlan2.setRowCount(times.length);
-    insertTabletPlan2.setDeviceMNode(deviceMNode);
 
     processor.insertTablet(insertTabletPlan2);
     processor.asyncCloseAllWorkingTsFileProcessors();
@@ -272,6 +266,288 @@ public class StorageGroupProcessorTest {
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
+  }
+
+  @Test
+  public void testEnableDiscardOutOfOrderDataForInsertRowPlan()
+      throws WriteProcessException, QueryProcessException, IllegalPathException, IOException {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    boolean defaultValue = config.isEnableDiscardOutOfOrderData();
+    config.setEnableDiscardOutOfOrderData(true);
+
+    for (int j = 21; j <= 30; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      insertToStorageGroupProcessor(record);
+      processor.asyncCloseAllWorkingTsFileProcessors();
+    }
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    for (int j = 10; j >= 1; j--) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      insertToStorageGroupProcessor(record);
+      processor.asyncCloseAllWorkingTsFileProcessors();
+    }
+
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+      tsfileProcessor.syncFlush();
+    }
+
+    QueryDataSource queryDataSource = processor.query(new PartialPath(deviceId), measurementId, context,
+        null, null);
+    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+    for (TsFileResource resource : queryDataSource.getUnseqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+
+    config.setEnableDiscardOutOfOrderData(defaultValue);
+  }
+
+  @Test
+  public void testEnableDiscardOutOfOrderDataForInsertTablet1()
+      throws QueryProcessException, IllegalPathException, IOException {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
+    long defaultTimePartition = config.getPartitionInterval();
+    boolean defaultEnablePartition = config.isEnablePartition();
+    config.setEnableDiscardOutOfOrderData(true);
+    config.setEnablePartition(true);
+    config.setPartitionInterval(100);
+
+    String[] measurements = new String[2];
+    measurements[0] = "s0";
+    measurements[1] = "s1";
+    List<Integer> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32.ordinal());
+    dataTypes.add(TSDataType.INT64.ordinal());
+
+    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    measurementMNodes[0] = new MeasurementMNode(null, "s0",
+        new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+    measurementMNodes[1] = new MeasurementMNode(null, "s1",
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+
+    InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements,
+        dataTypes);
+
+    long[] times = new long[100];
+    Object[] columns = new Object[2];
+    columns[0] = new int[100];
+    columns[1] = new long[100];
+
+    for (int r = 0; r < 100; r++) {
+      times[r] = r;
+      ((int[]) columns[0])[r] = 1;
+      ((long[]) columns[1])[r] = 1;
+    }
+    insertTabletPlan1.setTimes(times);
+    insertTabletPlan1.setColumns(columns);
+    insertTabletPlan1.setRowCount(times.length);
+    insertTabletPlan1.setMeasurementMNodes(measurementMNodes);
+
+    processor.insertTablet(insertTabletPlan1);
+    processor.asyncCloseAllWorkingTsFileProcessors();
+
+    InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements,
+        dataTypes);
+
+    for (int r = 149; r >= 50; r--) {
+      times[r - 50] = r;
+      ((int[]) columns[0])[r - 50] = 1;
+      ((long[]) columns[1])[r - 50] = 1;
+    }
+    insertTabletPlan2.setTimes(times);
+    insertTabletPlan2.setColumns(columns);
+    insertTabletPlan2.setRowCount(times.length);
+    insertTabletPlan2.setMeasurementMNodes(measurementMNodes);
+
+    processor.insertTablet(insertTabletPlan2);
+    processor.asyncCloseAllWorkingTsFileProcessors();
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+      tsfileProcessor.syncFlush();
+    }
+
+    QueryDataSource queryDataSource = processor.query(new PartialPath(deviceId), measurementId, context,
+        null, null);
+
+    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+
+    config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
+    config.setPartitionInterval(defaultTimePartition);
+    config.setEnablePartition(defaultEnablePartition);
+  }
+
+  @Test
+  public void testEnableDiscardOutOfOrderDataForInsertTablet2()
+      throws QueryProcessException, IllegalPathException, IOException {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
+    long defaultTimePartition = config.getPartitionInterval();
+    boolean defaultEnablePartition = config.isEnablePartition();
+    config.setEnableDiscardOutOfOrderData(true);
+    config.setEnablePartition(true);
+    config.setPartitionInterval(1200);
+
+    String[] measurements = new String[2];
+    measurements[0] = "s0";
+    measurements[1] = "s1";
+    List<Integer> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32.ordinal());
+    dataTypes.add(TSDataType.INT64.ordinal());
+
+    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    measurementMNodes[0] = new MeasurementMNode(null, "s0",
+        new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+    measurementMNodes[1] = new MeasurementMNode(null, "s1",
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+
+    InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements,
+        dataTypes);
+
+    long[] times = new long[1200];
+    Object[] columns = new Object[2];
+    columns[0] = new int[1200];
+    columns[1] = new long[1200];
+
+    for (int r = 0; r < 1200; r++) {
+      times[r] = r;
+      ((int[]) columns[0])[r] = 1;
+      ((long[]) columns[1])[r] = 1;
+    }
+    insertTabletPlan1.setTimes(times);
+    insertTabletPlan1.setColumns(columns);
+    insertTabletPlan1.setRowCount(times.length);
+    insertTabletPlan1.setMeasurementMNodes(measurementMNodes);
+
+    processor.insertTablet(insertTabletPlan1);
+    processor.asyncCloseAllWorkingTsFileProcessors();
+
+    InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements,
+        dataTypes);
+
+    for (int r = 1249; r >= 50; r--) {
+      times[r - 50] = r;
+      ((int[]) columns[0])[r - 50] = 1;
+      ((long[]) columns[1])[r - 50] = 1;
+    }
+    insertTabletPlan2.setTimes(times);
+    insertTabletPlan2.setColumns(columns);
+    insertTabletPlan2.setRowCount(times.length);
+    insertTabletPlan2.setMeasurementMNodes(measurementMNodes);
+
+    processor.insertTablet(insertTabletPlan2);
+    processor.asyncCloseAllWorkingTsFileProcessors();
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+      tsfileProcessor.syncFlush();
+    }
+
+    QueryDataSource queryDataSource = processor.query(new PartialPath(deviceId), measurementId, context,
+        null, null);
+
+    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+
+    config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
+    config.setPartitionInterval(defaultTimePartition);
+    config.setEnablePartition(defaultEnablePartition);
+  }
+
+  @Test
+  public void testEnableDiscardOutOfOrderDataForInsertTablet3()
+      throws QueryProcessException, IllegalPathException, IOException {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
+    long defaultTimePartition = config.getPartitionInterval();
+    boolean defaultEnablePartition = config.isEnablePartition();
+    config.setEnableDiscardOutOfOrderData(true);
+    config.setEnablePartition(true);
+    config.setPartitionInterval(1000);
+
+    String[] measurements = new String[2];
+    measurements[0] = "s0";
+    measurements[1] = "s1";
+    List<Integer> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32.ordinal());
+    dataTypes.add(TSDataType.INT64.ordinal());
+
+    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    measurementMNodes[0] = new MeasurementMNode(null, "s0",
+        new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
+    measurementMNodes[1] = new MeasurementMNode(null, "s1",
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null);
+
+    InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements,
+        dataTypes);
+
+    long[] times = new long[1200];
+    Object[] columns = new Object[2];
+    columns[0] = new int[1200];
+    columns[1] = new long[1200];
+
+    for (int r = 0; r < 1200; r++) {
+      times[r] = r;
+      ((int[]) columns[0])[r] = 1;
+      ((long[]) columns[1])[r] = 1;
+    }
+    insertTabletPlan1.setTimes(times);
+    insertTabletPlan1.setColumns(columns);
+    insertTabletPlan1.setRowCount(times.length);
+    insertTabletPlan1.setMeasurementMNodes(measurementMNodes);
+
+    processor.insertTablet(insertTabletPlan1);
+    processor.asyncCloseAllWorkingTsFileProcessors();
+
+    InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan(new PartialPath("root.vehicle.d0"), measurements,
+        dataTypes);
+
+    for (int r = 1249; r >= 50; r--) {
+      times[r - 50] = r;
+      ((int[]) columns[0])[r - 50] = 1;
+      ((long[]) columns[1])[r - 50] = 1;
+    }
+    insertTabletPlan2.setTimes(times);
+    insertTabletPlan2.setColumns(columns);
+    insertTabletPlan2.setRowCount(times.length);
+    insertTabletPlan2.setMeasurementMNodes(measurementMNodes);
+
+    processor.insertTablet(insertTabletPlan2);
+    processor.asyncCloseAllWorkingTsFileProcessors();
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+      tsfileProcessor.syncFlush();
+    }
+
+    QueryDataSource queryDataSource = processor.query(new PartialPath(deviceId), measurementId, context,
+        null, null);
+
+    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    for (TsFileResource resource : queryDataSource.getSeqResources()) {
+      Assert.assertTrue(resource.isClosed());
+    }
+
+    config.setEnableDiscardOutOfOrderData(defaultEnableDiscard);
+    config.setPartitionInterval(defaultTimePartition);
+    config.setEnablePartition(defaultEnablePartition);
   }
 
   @Test

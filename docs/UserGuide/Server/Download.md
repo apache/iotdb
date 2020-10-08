@@ -24,8 +24,8 @@
 IoTDB provides you three installation methods, you can refer to the following suggestions, choose one of them:
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
-* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Comming Soon...)
-* Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/blob/master/docker/Dockerfile
+* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
+* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker/Dockerfile
 
 ## Prerequisites
 
@@ -44,24 +44,24 @@ You can download the binary file from:
 
 ## Installation from source code
 
-You can get the released source code from https://iotdb.apache.org/Download/, or from the git repository https://github.com/apache/incubator-iotdb/tree/master
+You can get the released source code from https://iotdb.apache.org/Download/, or from the git repository https://github.com/apache/iotdb/tree/master
 You can download the source code from:
 
 ```
-git clone https://github.com/apache/incubator-iotdb.git
+git clone https://github.com/apache/iotdb.git
 ```
 
-Under the root path of incubator-iotdb:
+Under the root path of iotdb:
 
 ```
 > mvn clean package -DskipTests
 ```
 
-Then the binary version (including both server and client) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
+Then the binary version (including both server and client) can be found at **distribution/target/apache-iotdb-{project.version}-bin.zip**
 
 > NOTE: Directories "thrift/target/generated-sources/thrift" and "antlr/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in IDE.
 
-If you would like to build the IoTDB server, you can run the following command under the root path of incubator-iotdb:
+If you would like to build the IoTDB server, you can run the following command under the root path of iotdb:
 
 ```
 > mvn clean package -pl server -am -DskipTests

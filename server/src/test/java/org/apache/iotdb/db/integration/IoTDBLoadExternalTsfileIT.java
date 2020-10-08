@@ -18,6 +18,21 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+
+import java.io.File;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -33,13 +48,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.*;
 
 public class IoTDBLoadExternalTsfileIT {
 
@@ -394,25 +402,28 @@ public class IoTDBLoadExternalTsfileIT {
         statement.execute(String.format("move \"%s\" \"%s\"", resource.getTsFilePath(), tmpDir));
       }
 
+      Set<String> expectedSet = new HashSet<>(Arrays.asList("root.vehicle.d0.s0,root.vehicle,INT32",
+          "root.vehicle.d0.s1,root.vehicle,TEXT",
+          "root.vehicle.d1.s2,root.vehicle,FLOAT",
+          "root.vehicle.d1.s3,root.vehicle,BOOLEAN",
+          "root.test.d0.s0,root.test,INT32",
+          "root.test.d0.s1,root.test,TEXT",
+          "root.test.d1.g0.s0,root.test,INT32"));
+
       boolean hasResultSet = statement.execute("SHOW timeseries");
       Assert.assertTrue(hasResultSet);
-      StringBuilder timeseriesPath = new StringBuilder();
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
-          timeseriesPath.append(
-              resultSet.getString(1) + "," + resultSet.getString(3) + "," + resultSet.getString(4));
-          timeseriesPath.append(' ');
+          Assert.assertTrue(expectedSet.contains(
+              resultSet.getString(1) + "," + resultSet.getString(3) + "," + resultSet
+                  .getString(4)));
         }
       }
-      Assert.assertEquals(
-          "root.vehicle.d0.s0,root.vehicle,INT32 root.vehicle.d0.s1,root.vehicle,TEXT root.vehicle.d1.s2,root.vehicle,FLOAT root.vehicle.d1.s3,root.vehicle,BOOLEAN root.test.d0.s0,root.test,INT32 root.test.d0.s1,root.test,TEXT root.test.d1.g0.s0,root.test,INT32 ",
-          timeseriesPath.toString());
 
       // remove metadata
       for (String sql : deleteSqls) {
         statement.execute(sql);
       }
-
 
       // test not load metadata automatically, it will occur errors.
       boolean hasError = false;

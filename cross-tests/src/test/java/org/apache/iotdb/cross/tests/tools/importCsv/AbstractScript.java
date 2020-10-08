@@ -44,9 +44,12 @@ public abstract class AbstractScript {
     r.close();
     p.destroy();
 
-    for (int i = 0; i < output.length; i++) {
-      assertTrue(actualOutput.get(i).startsWith(output[i]));
+    System.out.println("actualOutput:");
+    for (String out : actualOutput) {
+      System.out.println(out);
     }
+
+    assertTrue(actualOutput.get(actualOutput.size() - 1).startsWith(output[output.length - 1]));
   }
 
   protected String getCliPath() {
