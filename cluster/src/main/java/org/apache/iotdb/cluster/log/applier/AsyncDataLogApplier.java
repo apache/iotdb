@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import java.sql.Time;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -78,7 +80,12 @@ public class AsyncDataLogApplier implements LogApplier {
         PartialPath planKey = getPlanKey(plan);
         if (planKey != null) {
           // this plan only affects one sg, so we can run it with other plans in parallel
+          long start;
+          if (Timer.ENABLE_INSTRUMENTING) {
+            start = System.nanoTime();
+          }
           provideLogToConsumers(planKey, log);
+          Statistic.RAFT_SENDER_COMMIT_TO_CONSUMER_LOGS.addNanoFromStart(start);
           return;
         }
       } catch (StorageGroupNotSetException e) {
@@ -169,7 +176,7 @@ public class AsyncDataLogApplier implements LogApplier {
 
   private class DataLogConsumer implements Runnable, Consumer<Log> {
 
-    private BlockingQueue<Log> logQueue = new LinkedBlockingQueue<>();
+    private BlockingQueue<Log> logQueue = new ArrayBlockingQueue<>(4096);
     private volatile long lastLogIndex;
     private volatile long lastAppliedLogIndex;
     private String name;
@@ -216,9 +223,12 @@ public class AsyncDataLogApplier implements LogApplier {
 
     @Override
     public void accept(Log log) {
-      if (!logQueue.offer(log)) {
-        logger.error("Cannot insert log into queue");
-      } else {
+      try {
+        logQueue.put(log);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        log.setException(e);
+        log.setApplied(true);
         lastLogIndex = log.getCurrLogIndex();
       }
     }
