@@ -52,7 +52,7 @@ public class IoTDBConfigCheck {
   // If user delete folder "data", system.properties can reset.
   private static final String PROPERTIES_FILE_NAME = "system.properties";
   private static final String SCHEMA_DIR = config.getSchemaDir();
-  private static final String WAL_DIR = config.getWalFolder();
+  private static final String WAL_DIR = config.getWalDir();
 
   private File propertiesFile;
   private File tmpPropertiesFile;

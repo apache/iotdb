@@ -38,7 +38,6 @@ import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.Before;
@@ -113,7 +112,7 @@ public class WriteLogNodeTest {
     logNode.close();
 
     File walFile = new File(
-        config.getWalFolder() + File.separator + identifier + File.separator + "wal1");
+        config.getWalDir() + File.separator + identifier + File.separator + "wal1");
     assertTrue(walFile.exists());
 
     ILogReader reader = logNode.getLogReader();
@@ -180,7 +179,7 @@ public class WriteLogNodeTest {
     logNode.write(bwInsertPlan);
 
     File walFile = new File(
-        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal1");
+        config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
     assertTrue(!walFile.exists());
 
     logNode.write(deletePlan);
@@ -209,7 +208,7 @@ public class WriteLogNodeTest {
     logNode.forceSync();
 
     File walFile = new File(
-        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal1");
+        config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
     assertTrue(walFile.exists());
 
     assertTrue(new File(logNode.getLogDirectory()).exists());

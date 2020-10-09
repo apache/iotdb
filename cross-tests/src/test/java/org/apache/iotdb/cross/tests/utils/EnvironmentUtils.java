@@ -164,7 +164,7 @@ public class EnvironmentUtils {
     // delete system info
     cleanDir(config.getSystemDir());
     // delete wal
-    cleanDir(config.getWalFolder());
+    cleanDir(config.getWalDir());
     // delete query
     cleanDir(config.getQueryDir());
     // delete data files
@@ -256,7 +256,7 @@ public class EnvironmentUtils {
     // create storage group
     createDir(config.getSystemDir());
     // create wal
-    createDir(config.getWalFolder());
+    createDir(config.getWalDir());
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
