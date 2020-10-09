@@ -249,9 +249,11 @@ public class HotCompactionUtils {
             }
           }
           if (isPageEnoughLarge) {
+            logger.info("{} [Hot Compaction] page enough large, use append merge", storageGroup);
             maxVersion = writeByAppendMerge(maxVersion, device, compactionRateLimiter,
                 readerChunkMetadatasMap, targetResource, writer);
           } else {
+            logger.info("{} [Hot Compaction] page enough large, use deserialize merge", storageGroup);
             maxVersion = writeByDeserializeMerge(maxVersion, device, compactionRateLimiter, entry,
                 targetResource, writer);
           }
