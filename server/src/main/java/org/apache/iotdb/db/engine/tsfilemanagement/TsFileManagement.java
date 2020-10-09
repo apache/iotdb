@@ -191,8 +191,13 @@ public abstract class TsFileManagement {
     logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
         fullMerge);
 
-    if (seqMergeList.isEmpty() || unSeqMergeList.isEmpty()) {
-      logger.info("{} no files to be merged", storageGroupName);
+    if (seqMergeList.isEmpty()) {
+      logger.info("{} no seq files to be merged", storageGroupName);
+      return;
+    }
+
+    if (unSeqMergeList.isEmpty()) {
+      logger.info("{} no unseq files to be merged", storageGroupName);
       return;
     }
 
