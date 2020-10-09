@@ -23,6 +23,12 @@ singleStatement
     : statement EOF
     ;
 
+/*
+ * According to The Definitive ANTLR 4 Reference, 11. Altering the Parse with Semantic Predicates, Altering the Parse with Semantic Predicates.
+ * "It s a good idea to avoid embedding predicates in the parser when possible for efficiency and clarity reasons."
+ * So if unnecessary, don't use embedding predicates.
+ */
+
 statement
     : CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
