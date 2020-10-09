@@ -1169,10 +1169,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterAttributeClauses(AttributeClausesContext ctx) {
     super.enterAttributeClauses(ctx);
-    String dataType = ctx.dataType().getChild(0).getText().toUpperCase();
-    createTimeSeriesOperator.setDataType(TSDataType.valueOf(dataType));
+    final String dataType = ctx.dataType().getChild(0).getText().toUpperCase();
+    final TSDataType tsDataType = TSDataType.valueOf(dataType);
+    createTimeSeriesOperator.setDataType(tsDataType);
 
-    TSEncoding encoding = TSEncoding.PLAIN;
+    final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
+    TSEncoding encoding = ioTDBDescriptor.getDefualtEncodingByType(tsDataType);
     if (Objects.nonNull(ctx.encoding())) {
       String encodingString = ctx.encoding().getChild(0).getText().toUpperCase();
       encoding = TSEncoding.valueOf(encodingString);

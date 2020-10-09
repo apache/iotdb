@@ -446,6 +446,8 @@ public class IoTDBMultiSeriesIT {
          Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.name WITH DATATYPE=TEXT");
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.age WITH DATATYPE=INT32, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.salary WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.score WITH DATATYPE=FLOAT");
 
       ResultSet nameRs = statement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt01.name");
       nameRs.next();
@@ -455,6 +457,13 @@ public class IoTDBMultiSeriesIT {
       ageRs.next();
       Assert.assertTrue(TSEncoding.RLE.name().equalsIgnoreCase(ageRs.getString(5)));
 
+      ResultSet salaryRs = statement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt01.salary");
+      salaryRs.next();
+      Assert.assertTrue(TSEncoding.RLE.name().equalsIgnoreCase(salaryRs.getString(5)));
+
+      ResultSet scoreRs = statement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt01.score");
+      scoreRs.next();
+      Assert.assertTrue(TSEncoding.GORILLA.name().equalsIgnoreCase(scoreRs.getString(5)));
     }
   }
 }
