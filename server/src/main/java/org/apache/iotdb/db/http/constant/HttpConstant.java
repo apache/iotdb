@@ -70,12 +70,11 @@ public class HttpConstant {
   public static final String MEASUREMENTS = "measurements";
   public static final String TIMESTAMP = "timestamp";
   public static final String VALUES = "values";
-  public static final String RANGE = "range";
   public static final String FROM = "from";
   public static final String SELECT = "select";
-  public static final String START = "start";
   public static final String END = "end";
   public static final String ERROR = "error";
   public static final String ERROR_CLASS = "errorClass";
   public static final String IS_NEED_INFER_TYPE = "isNeedInferType";
+  public static final String NAME = "name";
 }

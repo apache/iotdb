@@ -158,14 +158,14 @@ public class QueryHandler extends Handler{
     QueryDataSet dataSet = executor.processQuery(plan, new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
     List<PartialPath> paths = plan.getPaths();
     JsonObject timeColumn = new JsonObject();
-    timeColumn.addProperty(HttpConstant.TIMESTAMP, HttpConstant.TIMESTAMP);
+    timeColumn.addProperty(HttpConstant.NAME, HttpConstant.TIMESTAMP);
     JsonArray timeValues = new JsonArray();
     timeColumn.add(HttpConstant.VALUES, timeValues);
     result.add(timeColumn);
     for(PartialPath path : paths) {
       JsonObject column = new JsonObject();
       JsonArray values = new JsonArray();
-      column.addProperty(HttpConstant.TIME_SERIES, path.toString());
+      column.addProperty(HttpConstant.NAME, path.toString());
       column.add(HttpConstant.VALUES, values);
       result.add(column);
     }
