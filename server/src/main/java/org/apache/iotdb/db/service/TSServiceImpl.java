@@ -1610,7 +1610,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (createMultiTimeSeriesPlan.getResults().entrySet().size() > 0) {
         isAllSuccessful = false;
         for (Map.Entry<Integer, Exception> entry : createMultiTimeSeriesPlan.getResults().entrySet()) {
-          statusList.set(entry.getKey(), RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR));
+          statusList.set(entry.getKey(),
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, entry.getValue().getMessage()));
         }
       }
 
