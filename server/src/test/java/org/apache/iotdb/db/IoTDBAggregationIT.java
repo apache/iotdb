@@ -566,20 +566,6 @@ public class IoTDBAggregationIT {
         }
       }
 
-      statement.execute("SELECT sum(s2) FROM root.vehicle.d0 WHERE time >= 1000 AND time <= 2000");
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          System.out.println("sum(s2)=" + resultSet.getString(sum(d0s2)));
-        }
-      }
-
-      statement.execute("SELECT avg(s2) FROM root.vehicle.d0 WHERE time >= 1000 AND time <= 2000");
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          System.out.println("avg(s2)=" + resultSet.getString(avg(d0s2)));
-        }
-      }
-
       hasResultSet = statement.execute("SELECT sum(s0), avg(s2), avg(s0), sum(s2)" +
           "FROM root.vehicle.d0 WHERE time >= 1000 AND time <= 2000");
       Assert.assertTrue(hasResultSet);
