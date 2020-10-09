@@ -207,6 +207,9 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
               Boolean.toString(conf.isMetaDataCacheEnable()))));
 
+      conf.setEnableLastCache(Boolean.parseBoolean(properties.getProperty("enable_last_cache",
+              Boolean.toString(conf.isLastCacheEnabled()))));
+
       initMemoryAllocate(properties);
 
       loadWALProps(properties);

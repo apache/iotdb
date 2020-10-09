@@ -25,11 +25,11 @@ For non-Chinese users, please read https://cwiki.apache.org/confluence/display/I
 
 ## 下载投票的 版本/rc 下的所有内容
 
-https://dist.apache.org/repos/dist/dev/incubator/iotdb/
+https://dist.apache.org/repos/dist/dev/iotdb/
 
 ## 导入发布经理的公钥
 
-https://dist.apache.org/repos/dist/dev/incubator/iotdb/KEYS
+https://dist.apache.org/repos/dist/dev/iotdb/KEYS
 
 最下边有 Release Manager (RM) 的公钥
 

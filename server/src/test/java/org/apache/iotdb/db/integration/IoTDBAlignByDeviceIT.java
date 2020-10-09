@@ -24,8 +24,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -161,26 +166,22 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,s0,s1,s2,s3,s4,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(7));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s0,s1,s2,s3,s4",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.BIGINT, Types.FLOAT,
+                Types.VARCHAR, Types.BOOLEAN});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(19, cnt);
@@ -220,24 +221,21 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,s0,s0,s1,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(5));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s0,s0,s1",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.BIGINT});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(14, cnt);
@@ -273,24 +271,21 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,s0,s0,s1,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(5));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s0,s0,s1",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.BIGINT});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(10, cnt);
@@ -330,23 +325,21 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,s0,s1,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s0,s1",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.BIGINT,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(14, cnt);
@@ -380,26 +373,22 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,s0,s1,s2,s3,s4,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(7));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s0,s1,s2,s3,s4",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.BIGINT, Types.FLOAT,
+                Types.VARCHAR, Types.BOOLEAN});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(6, cnt);
@@ -428,26 +417,22 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Device,count(s0),count(s1),count(s2),count(s3),count(s4),",
-            header.toString());
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(6));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Device,count(s0),count(s1),count(s2),count(s3),count(s4)",
+            new int[]{Types.VARCHAR, Types.BIGINT, Types.BIGINT, Types.BIGINT, Types.BIGINT,
+                Types.BIGINT,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(2, cnt);
@@ -479,27 +464,22 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,count(s0),count(s1),count(s2),count(s3),count(s4),",
-            header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(7));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,count(s0),count(s1),count(s2),count(s3),count(s4)",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.BIGINT, Types.BIGINT, Types.BIGINT,
+                Types.BIGINT, Types.BIGINT,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(6, cnt);
@@ -527,26 +507,22 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,s0,s1,s2,s3,s4,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(7));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s0,s1,s2,s3,s4",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.BIGINT, Types.FLOAT,
+                Types.VARCHAR, Types.BOOLEAN,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(2, cnt);
@@ -617,22 +593,20 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Device,count(s0),",
-            header.toString());
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(2));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Device,count(s0)", new int[]{Types.VARCHAR, Types.BIGINT});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(3, cnt);
@@ -665,30 +639,22 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,s0,s0,s1,s0,s1,s2,s3,s4,",
-            header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(7));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(8));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(9));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(10));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s0,s0,s1,s0,s1,s2,s3,s4",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.BIGINT,
+                Types.INTEGER, Types.BIGINT, Types.FLOAT, Types.VARCHAR, Types.BOOLEAN,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(5, cnt);
@@ -733,28 +699,22 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,s0,s1,s2,s3,s4,'11',", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(7));
-        // constant column
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s0,s1,s2,s3,s4,'11'",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.BIGINT, Types.FLOAT,
+                Types.VARCHAR, Types.BOOLEAN, /* constant column */ Types.VARCHAR});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(19, cnt);
@@ -799,28 +759,22 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,s0,s1,s2,s3,s4,s5,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(7));
-        // non exist column
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s0,s1,s2,s3,s4,s5",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.BIGINT, Types.FLOAT,
+                Types.VARCHAR, Types.BOOLEAN, /* non exist column */ Types.VARCHAR});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(19, cnt);
@@ -864,31 +818,23 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,s0,s1,'11',s2,'22',s3,s4,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
-        // constant column
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(6));
-        // constant column
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(7));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(9));
-
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s0,s1,'11',s2,'22',s3,s4",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.BIGINT,
+                /* constant column */ Types.VARCHAR, Types.FLOAT,
+                /* constant column */ Types.VARCHAR, Types.VARCHAR, Types.BOOLEAN,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(17, cnt);
@@ -933,33 +879,24 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,s0,s1,'11',s2,'22',s5,s3,s4,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(4));
-        // constant column
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(5));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(6));
-        // constant column
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(7));
-        // non exist column
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(9));
-        Assert.assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(10));
-
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s0,s1,'11',s2,'22',s5,s3,s4",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.BIGINT,
+                /* constant column */ Types.VARCHAR, Types.FLOAT, /* constant column */
+                Types.VARCHAR, /* non exist column */ Types.VARCHAR, Types.VARCHAR,
+                Types.BOOLEAN,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(19, cnt);
@@ -1004,37 +941,25 @@ public class IoTDBAlignByDeviceIT {
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        StringBuilder header = new StringBuilder();
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          header.append(resultSetMetaData.getColumnName(i)).append(",");
-        }
-        Assert.assertEquals("Time,Device,s5,s0,s5,'11',s2,'11','22',s5,s3,s0,", header.toString());
-        Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(3));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
-        // non exist column
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(5));
-        // constant column
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(6));
-        Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(7));
-        // constant column
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(8));
-        // constant column
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(9));
-        // non exist column
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(10));
-        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(11));
-        Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(12));
-
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s5,s0,s5,'11',s2,'11','22',s5,s3,s0",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.INTEGER,
+                /* non exist column */ Types.VARCHAR, /* constant column */ Types.VARCHAR,
+                Types.FLOAT, /* constant column */ Types.VARCHAR,
+                /* constant column */ Types.VARCHAR, /* non exist column */ Types.VARCHAR,
+                Types.VARCHAR, Types.INTEGER,});
 
         int cnt = 0;
         while (resultSet.next()) {
-          StringBuilder builder = new StringBuilder();
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i)).append(",");
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(19, cnt);
@@ -1043,5 +968,23 @@ public class IoTDBAlignByDeviceIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  private List<Integer> checkHeader(ResultSetMetaData resultSetMetaData,
+      String expectedHeaderStrings, int[] expectedTypes) throws SQLException {
+    String[] expectedHeaders = expectedHeaderStrings.split(",");
+    Map<String, Integer> expectedHeaderToTypeIndexMap = new HashMap<>();
+    for (int i = 0; i < expectedHeaders.length; ++i) {
+      expectedHeaderToTypeIndexMap.put(expectedHeaders[i], i);
+    }
+
+    List<Integer> actualIndexToExpectedIndexList = new ArrayList<>();
+    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+      Integer typeIndex = expectedHeaderToTypeIndexMap.get(resultSetMetaData.getColumnName(i));
+      Assert.assertNotNull(typeIndex);
+      Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
+      actualIndexToExpectedIndexList.add(typeIndex);
+    }
+    return actualIndexToExpectedIndexList;
   }
 }

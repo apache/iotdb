@@ -81,4 +81,4 @@ The example is to show how to write and read a TsFile File.
   This class is to show the structure of a TsFile.
 
 ### Notice 
-  For detail, please refer to https://github.com/apache/incubator-iotdb/blob/master/tsfile/README.md.
+  For detail, please refer to https://github.com/apache/iotdb/blob/master/tsfile/README.md.

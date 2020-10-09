@@ -37,7 +37,7 @@ IOTDB为用户提供cli/Shell工具用于启动客户端和服务端程序。下
 > \$IOTDB\_HOME表示IoTDB的安装目录所在路径。
 
 ## Cli / Shell安装
-在incubator-iotdb的根目录下执行
+在iotdb的根目录下执行
 
 ```
 > mvn clean package -pl cli -am -DskipTests
