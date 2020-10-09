@@ -34,9 +34,4 @@ public class ClearCachePlan extends PhysicalPlan {
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }
-
-  @Override
-  public List<String> getPathsStrings() {
-    return Collections.emptyList();
-  }
 }

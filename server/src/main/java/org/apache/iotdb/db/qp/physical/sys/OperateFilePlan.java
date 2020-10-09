@@ -51,11 +51,6 @@ public class OperateFilePlan extends PhysicalPlan {
   }
 
   @Override
-  public List<String> getPathsStrings() {
-    return Collections.emptyList();
-  }
-
-  @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
   }

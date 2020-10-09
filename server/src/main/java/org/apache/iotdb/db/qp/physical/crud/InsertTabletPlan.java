@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -134,22 +133,6 @@ public class InsertTabletPlan extends InsertPlan {
       ret.add(fullPath);
     }
     paths = ret;
-    return ret;
-  }
-
-  @Override
-  public List<String> getPathsStrings() {
-    if (paths != null) {
-      List<String> ret = new ArrayList<>();
-      for (PartialPath path : paths) {
-        ret.add(path.getFullPath());
-      }
-      return ret;
-    }
-    List<String> ret = new ArrayList<>();
-    for (String m : measurements) {
-      ret.add(deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + m);
-    }
     return ret;
   }
 

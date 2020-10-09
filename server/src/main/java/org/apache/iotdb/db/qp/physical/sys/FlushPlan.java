@@ -103,16 +103,6 @@ public class FlushPlan extends PhysicalPlan {
     return ret;
   }
 
-  @Override
-  public List<String> getPathsStrings() {
-    List<String> ret = new ArrayList<>();
-    for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupPartitionIds
-        .entrySet()) {
-      ret.add(entry.getKey().getFullPath());
-    }
-    return ret;
-  }
-
   public Map<PartialPath, List<Pair<Long, Boolean>>> getStorageGroupPartitionIds() {
     return storageGroupPartitionIds;
   }

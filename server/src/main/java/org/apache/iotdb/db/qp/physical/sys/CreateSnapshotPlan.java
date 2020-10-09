@@ -36,8 +36,4 @@ public class CreateSnapshotPlan extends PhysicalPlan {
     return Collections.emptyList();
   }
 
-  @Override
-  public List<String> getPathsStrings() {
-    return Collections.emptyList();
-  }
 }

@@ -40,11 +40,6 @@ public class ShowPlan extends PhysicalPlan {
     return Collections.emptyList();
   }
 
-  @Override
-  public List<String> getPathsStrings() {
-    return Collections.emptyList();
-  }
-
   public ShowContentType getShowContentType() {
     return showContentType;
   }

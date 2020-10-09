@@ -117,11 +117,6 @@ public class LoadConfigurationPlan extends PhysicalPlan {
   }
 
   @Override
-  public List<String> getPathsStrings() {
-    return Collections.emptyList();
-  }
-
-  @Override
   public String toString() {
     return getOperatorType().toString();
   }

@@ -391,14 +391,18 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void closeProcessor(PartialPath storageGroupPath, boolean isSeq, boolean isSync) {
+  public void closeStorageGroupProcessor(PartialPath storageGroupPath, boolean isSeq, boolean isSync) {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor == null) {
       return;
     }
 
-    logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupPath,
-        isSeq);
+    if (logger.isInfoEnabled()) {
+      logger.info("{} closing sg processor is called for closing {}, seq = {}",
+          isSync ? "sync" : "async", storageGroupPath,
+          isSeq);
+    }
+
     processor.writeLock();
     try {
       if (isSeq) {
@@ -434,7 +438,7 @@ public class StorageEngine implements IService {
    * @param isSync           close tsfile synchronously or asynchronously
    * @throws StorageGroupNotSetException
    */
-  public void closeProcessor(PartialPath storageGroupPath, long partitionId, boolean isSeq,
+  public void closeStorageGroupProcessor(PartialPath storageGroupPath, long partitionId, boolean isSeq,
       boolean isSync)
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);

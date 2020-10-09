@@ -121,7 +121,6 @@ import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
@@ -318,11 +317,11 @@ public class PlanExecutor implements IPlanExecutor {
       // normal flush
       if (entry.getValue() == null) {
         if (plan.isSeq() == null) {
-          StorageEngine.getInstance().closeProcessor(storageGroupName, true, plan.isSync());
-          StorageEngine.getInstance().closeProcessor(storageGroupName, false, plan.isSync());
+          StorageEngine.getInstance().closeStorageGroupProcessor(storageGroupName, true, plan.isSync());
+          StorageEngine.getInstance().closeStorageGroupProcessor(storageGroupName, false, plan.isSync());
         } else {
           StorageEngine.getInstance()
-              .closeProcessor(storageGroupName, plan.isSeq(), plan.isSync());
+              .closeStorageGroupProcessor(storageGroupName, plan.isSeq(), plan.isSync());
         }
       }
       // partition specified flush, for snapshot flush plan
@@ -330,7 +329,7 @@ public class PlanExecutor implements IPlanExecutor {
         List<Pair<Long, Boolean>> partitionIdSequencePairs = entry.getValue();
         for (Pair<Long, Boolean> pair : partitionIdSequencePairs) {
           StorageEngine.getInstance()
-              .closeProcessor(storageGroupName, pair.left, pair.right, true);
+              .closeStorageGroupProcessor(storageGroupName, pair.left, pair.right, true);
         }
       }
     }
