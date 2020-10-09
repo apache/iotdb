@@ -18,6 +18,18 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -322,22 +334,22 @@ public class IoTDBSimpleQueryIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      String[] exps = new String[]{"root.sg1.d0.s2", "root.sg1.d0.s3"};
+      List<String> exps = Arrays
+          .asList("root.sg1.d0.s1", "root.sg1.d0.s2", "root.sg1.d0.s3", "root.sg1.d0.s4");
 
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s2) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s3) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s4) VALUES (5, 5)");
 
-
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show timeseries limit 2 offset 1")) {
         while (resultSet.next()) {
-          Assert.assertEquals(exps[count++], resultSet.getString(1));
+          Assert.assertTrue(exps.contains(resultSet.getString(1)));
+          ++count;
         }
       }
-
-      Assert.assertEquals(exps.length, count);
+      Assert.assertEquals(2, count);
     }
   }
 

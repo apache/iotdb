@@ -147,8 +147,9 @@ public class MeasurementMNode extends MNode {
    * deserialize MeasuremetMNode from string array
    *
    * @param nodeInfo node information array. For example: "2,s0,speed,2,2,1,year:2020;month:jan;,-1,0"
-   * representing: [0] nodeType [1] name [2] alias [3] TSDataType.ordinal() [4] TSEncoding.ordinal()
-   * [5] CompressionType.ordinal() [6] props [7] offset [8] children size
+   *                 representing: [0] nodeType [1] name [2] alias [3] TSDataType.ordinal() [4]
+   *                 TSEncoding.ordinal() [5] CompressionType.ordinal() [6] props [7] offset [8]
+   *                 children size
    */
   public static MeasurementMNode deserializeFrom(String[] nodeInfo) {
     String name = nodeInfo[1];
@@ -159,12 +160,10 @@ public class MeasurementMNode extends MNode {
         props.put(propInfo.split(":")[0], propInfo.split(":")[1]);
       }
     }
-    MeasurementSchema schema = new MeasurementSchema(name,
-        TSDataType.deserialize(Short.valueOf(nodeInfo[3])),
-        TSEncoding.deserialize(Short.valueOf(nodeInfo[4])),
-        CompressionType.deserialize(Short.valueOf(nodeInfo[5])), props);
+    MeasurementSchema schema = new MeasurementSchema(name, Byte.parseByte(nodeInfo[3]),
+        Byte.parseByte(nodeInfo[4]), Byte.parseByte(nodeInfo[5]), props);
     MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
-    node.setOffset(Long.valueOf(nodeInfo[7]));
+    node.setOffset(Long.parseLong(nodeInfo[7]));
 
     return node;
   }

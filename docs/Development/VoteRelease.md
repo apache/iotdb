@@ -25,11 +25,11 @@ For non-Chinese users, please read https://cwiki.apache.org/confluence/display/I
 
 ## Download everything under voting version / rc
 
-https://dist.apache.org/repos/dist/dev/incubator/iotdb/
+https://dist.apache.org/repos/dist/dev/iotdb/
 
 ## Import the public key of the release manager
 
-https://dist.apache.org/repos/dist/dev/incubator/iotdb/KEYS
+https://dist.apache.org/repos/dist/dev/iotdb/KEYS
 
 At the bottom is the public key of the Release Manager (RM)
 

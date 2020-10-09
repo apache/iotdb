@@ -31,7 +31,7 @@ There are two ways to use TsFile in your own project.
 	* Compile the source codes and build to jars
 	
 		```
-		git clone https://github.com/apache/incubator-iotdb.git
+		git clone https://github.com/apache/iotdb.git
 		cd tsfile/
 		mvn clean package -Dmaven.test.skip=true
 		```
@@ -44,7 +44,7 @@ There are two ways to use TsFile in your own project.
   * Get the source codes
 
   	```
-  	git clone https://github.com/apache/incubator-iotdb.git
+  	git clone https://github.com/apache/iotdb.git
   	```
   * Compile the source codes and deploy 
   	
