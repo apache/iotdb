@@ -66,7 +66,7 @@
 
 Here is a graph about the TsFile structure.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/82010604-299ac300-96a5-11ea-996d-013c0017f669.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">
 
 This TsFile contains two devices: d1, d2. Each device contains two measurements: s1, s2. 4 timeseries in total. Each timeseries contains 2 Chunks.
 
@@ -124,6 +124,19 @@ PageHeader Structure
 | compressedSize |       int        | Data size after compressing(if use SNAPPY) |
 |   statistics    |       Statistics        | Statistics values |
 
+Here is the detailed information for `statistics`:
+
+ |             Member               | Description | DoubleStatistics | FloatStatistics | IntegerStatistics | LongStatistics | BinaryStatistics | BooleanStatistics |
+ | :----------------------------------: | :--------------: | :----: | :----: | :----: | :----: | :----: | :----: |
+ | count  | number of time-value points | long | long | long | long | long | long | 
+ | startTime | start time | long | long | long | long | long | long | 
+ | endTime | end time | long | long | long | long | long | long | 
+ | minValue | min value | double | float | int | long | - | - |
+ | maxValue | max value | double | float | int | long | - | - |
+ | firstValue | first value | double | float | int | long | Binary | boolean|
+ | lastValue | last value | double | float | int | long | Binary | boolean|
+ | sumValue | sum value | double | double | double | double | - | - |
+ 
 ##### ChunkGroupFooter
 
 |             Member             |  Type  | Description |
@@ -145,8 +158,6 @@ The first part of metadata is `ChunkMetadata`
 |                tsDataType                |  TSDataType   | Data type |
 |   statistics    |       Statistics        | Statistic values |
 
-As for the five statistics (min, max, first, last and sum), `ChunkMetadata` of Binary and Boolean type only has two values: first and last.
-
 ##### 1.2.3.2 TimeseriesMetadata
 
 The second part of metadata is `TimeseriesMetadata`.
@@ -158,8 +169,6 @@ The second part of metadata is `TimeseriesMetadata`.
 | startOffsetOfChunkMetadataList |  long  | Start offset of ChunkMetadata list |
 |  chunkMetaDataListDataSize  |  int  | ChunkMetadata list size |
 |   statistics    |       Statistics        | Statistic values |
-
-As for the five statistics (min, max, first, last and sum), `TimeseriesMetadata` of Binary and Boolean type only has two values: first and last.
 
 ##### 1.2.3.3 TsFileMetaData
 
@@ -568,4 +577,4 @@ You can also use `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` to 
 
 #### v0.10 / 000002
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/82010604-299ac300-96a5-11ea-996d-013c0017f669.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">

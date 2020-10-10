@@ -144,8 +144,13 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PlanExecutor implements IPlanExecutor {
+
+  // logger
+  private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
 
   // for data query
   protected IQueryRouter queryRouter;
@@ -818,40 +823,34 @@ public class PlanExecutor implements IPlanExecutor {
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       String device = chunkGroupMetadata.getDevice();
       MNode node = null;
-      try {
-        node = IoTDB.metaManager.getDeviceNodeWithAutoCreateAndReadLock(new PartialPath(device),
-            true, sgLevel);
-        for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
-          PartialPath series = new PartialPath(
-              chunkGroupMetadata.getDevice() + TsFileConstant.PATH_SEPARATOR + chunkMetadata
-                  .getMeasurementUid());
-          if (!registeredSeries.contains(series)) {
-            registeredSeries.add(series);
-            MeasurementSchema schema = knownSchemas
-                .get(new Path(series.getDevice(), series.getMeasurement()));
-            if (schema == null) {
-              throw new MetadataException(
-                  String.format(
-                      "Can not get the schema of measurement [%s]",
-                      chunkMetadata.getMeasurementUid()));
-            }
-            if (!node.hasChild(chunkMetadata.getMeasurementUid())) {
-              IoTDB.metaManager.createTimeseries(
-                  series,
-                  schema.getType(),
-                  schema.getEncodingType(),
-                  schema.getCompressor(),
-                  Collections.emptyMap());
-            } else if (!(node
-                .getChild(chunkMetadata.getMeasurementUid()) instanceof MeasurementMNode)) {
-              throw new QueryProcessException(
-                  String.format("Current Path is not leaf node. %s", series));
-            }
+      node = IoTDB.metaManager
+          .getDeviceNodeWithAutoCreate(new PartialPath(device), true, sgLevel);
+      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+        PartialPath series = new PartialPath(
+            chunkGroupMetadata.getDevice() + TsFileConstant.PATH_SEPARATOR + chunkMetadata
+                .getMeasurementUid());
+        if (!registeredSeries.contains(series)) {
+          registeredSeries.add(series);
+          MeasurementSchema schema = knownSchemas
+              .get(new Path(series.getDevice(), series.getMeasurement()));
+          if (schema == null) {
+            throw new MetadataException(
+                String.format(
+                    "Can not get the schema of measurement [%s]",
+                    chunkMetadata.getMeasurementUid()));
           }
-        }
-      } finally {
-        if (node != null) {
-          node.readUnlock();
+          if (!node.hasChild(chunkMetadata.getMeasurementUid())) {
+            IoTDB.metaManager.createTimeseries(
+                series,
+                schema.getType(),
+                schema.getEncodingType(),
+                schema.getCompressor(),
+                Collections.emptyMap());
+          } else if (!(node
+              .getChild(chunkMetadata.getMeasurementUid()) instanceof MeasurementMNode)) {
+            throw new QueryProcessException(
+                String.format("Current Path is not leaf node. %s", series));
+          }
         }
       }
     }
@@ -926,11 +925,18 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
-    MNode deviceNode = null;
     try {
-      insertRowPlan.setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
-      deviceNode = getSeriesSchemas(insertRowPlan);
+      insertRowPlan
+          .setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+      getSeriesSchemas(insertRowPlan);
       insertRowPlan.transferType();
+
+      //check insert plan
+      if (insertRowPlan.getValues().length == 0) {
+        logger.warn("Can't insert row with only time/timestamp");
+        return;
+      }
+
       StorageEngine.getInstance().insert(insertRowPlan);
       if (insertRowPlan.getFailedMeasurements() != null) {
         // check if all path not exist exceptions
@@ -956,19 +962,15 @@ public class PlanExecutor implements IPlanExecutor {
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
-    } finally {
-      if (deviceNode != null) {
-        deviceNode.readUnlock();
-      }
     }
   }
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
-    MNode deviceMNode = null;
     try {
-      insertTabletPlan.setMeasurementMNodes(new MeasurementMNode[insertTabletPlan.getMeasurements().length]);
-      deviceMNode = getSeriesSchemas(insertTabletPlan);
+      insertTabletPlan
+          .setMeasurementMNodes(new MeasurementMNode[insertTabletPlan.getMeasurements().length]);
+      getSeriesSchemas(insertTabletPlan);
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
@@ -976,10 +978,6 @@ public class PlanExecutor implements IPlanExecutor {
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
-    } finally {
-      if (deviceMNode != null) {
-        deviceMNode.readUnlock();
-      }
     }
   }
 
@@ -1199,7 +1197,8 @@ public class PlanExecutor implements IPlanExecutor {
 
     // check if current user is granted list_role privilege
     boolean hasListRolePrivilege = AuthorityChecker
-        .check(plan.getLoginUserName(), Collections.emptyList(), plan.getOperatorType(), plan.getLoginUserName());
+        .check(plan.getLoginUserName(), Collections.emptyList(), plan.getOperatorType(),
+            plan.getLoginUserName());
     if (!hasListRolePrivilege) {
       return dataSet;
     }
@@ -1225,7 +1224,8 @@ public class PlanExecutor implements IPlanExecutor {
 
     // check if current user is granted list_user privilege
     boolean hasListUserPrivilege = AuthorityChecker
-        .check(plan.getLoginUserName(), Collections.singletonList((plan.getNodeName())), plan.getOperatorType(), plan.getLoginUserName());
+        .check(plan.getLoginUserName(), Collections.singletonList((plan.getNodeName())),
+            plan.getOperatorType(), plan.getLoginUserName());
     if (!hasListUserPrivilege) {
       return dataSet;
     }
