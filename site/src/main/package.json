@@ -23,7 +23,7 @@
   "author": "Apache IoTDB",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/apache/incubator-iotdb"
+    "url": "https://github.com/apache/iotdb"
   },
   "homepage": "https://iotdb.apache.org",
   "directories": {},

@@ -1640,7 +1640,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (BatchInsertionException e) {
       return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
     } catch (QueryProcessException e) {
-      logger.debug("meet error while processing non-query. ", e);
+      logger.error("meet error while processing non-query. ", e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (Exception e) {
       logger.error(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
