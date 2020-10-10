@@ -33,7 +33,7 @@ public class MergeManagerTest extends MergeTest {
 
   @Test
   public void testRateLimiter() {
-    RateLimiter compactionRateLimiter = MergeManager.getINSTANCE().getMergeRateLimiter();
+    RateLimiter compactionRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
     long startTime = System.currentTimeMillis();
     MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, 160 * 1024 * 1024L);
     assertTrue((System.currentTimeMillis() - startTime) <= 1000);

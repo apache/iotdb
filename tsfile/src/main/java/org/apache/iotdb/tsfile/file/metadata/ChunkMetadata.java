@@ -260,6 +260,9 @@ public class ChunkMetadata implements Accountable {
     this.ramSize = size;
   }
 
+  /**
+   * must use calculate ram size first
+   */
   @Override
   public long getRamSize() {
     return ramSize;

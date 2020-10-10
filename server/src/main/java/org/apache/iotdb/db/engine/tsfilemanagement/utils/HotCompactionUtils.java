@@ -62,7 +62,7 @@ public class HotCompactionUtils {
     throw new IllegalStateException("Utility class");
   }
 
-  private static Pair<ChunkMetadata, Chunk> readByAppendMerge(
+  private static Pair<ChunkMetadata, Chunk> readByAppendMerge(RateLimiter compactionReadRateLimiter,
       Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap) throws IOException {
     ChunkMetadata newChunkMetadata = null;
     Chunk newChunk = null;
@@ -70,6 +70,8 @@ public class HotCompactionUtils {
         .entrySet()) {
       for (ChunkMetadata chunkMetadata : entry.getValue()) {
         Chunk chunk = entry.getKey().readMemChunk(chunkMetadata);
+        MergeManager
+            .mergeRateLimiterAcquire(compactionReadRateLimiter, chunk.getData().position());
         if (newChunkMetadata == null) {
           newChunkMetadata = chunkMetadata;
           newChunk = chunk;
@@ -82,7 +84,7 @@ public class HotCompactionUtils {
     return new Pair<>(newChunkMetadata, newChunk);
   }
 
-  private static long readByDeserializeMerge(
+  private static long readByDeserializeMerge(RateLimiter compactionReadRateLimiter,
       Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap, long maxVersion,
       Map<Long, TimeValuePair> timeValuePairMap)
       throws IOException {
@@ -94,30 +96,35 @@ public class HotCompactionUtils {
         maxVersion = Math.max(chunkMetadata.getVersion(), maxVersion);
         IChunkReader chunkReader = new ChunkReaderByTimestamp(
             reader.readMemChunk(chunkMetadata));
+        long chunkSize = 0;
         while (chunkReader.hasNextSatisfiedPage()) {
           IPointReader iPointReader = new BatchDataIterator(
               chunkReader.nextPageData());
           while (iPointReader.hasNextTimeValuePair()) {
             TimeValuePair timeValuePair = iPointReader.nextTimeValuePair();
+            chunkSize += timeValuePair.getSize();
             timeValuePairMap.put(timeValuePair.getTimestamp(), timeValuePair);
           }
         }
+        MergeManager
+            .mergeRateLimiterAcquire(compactionReadRateLimiter, chunkSize);
       }
     }
     return maxVersion;
   }
 
   private static long writeByAppendMerge(long maxVersion, String device,
-      RateLimiter compactionRateLimiter,
+      RateLimiter compactionWriteRateLimiter, RateLimiter compactionReadRateLimiter,
       Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadatasMap,
       TsFileResource targetResource, RestorableTsFileIOWriter writer) throws IOException {
-    Pair<ChunkMetadata, Chunk> chunkPair = readByAppendMerge(readerChunkMetadatasMap);
+    Pair<ChunkMetadata, Chunk> chunkPair = readByAppendMerge(compactionReadRateLimiter,
+        readerChunkMetadatasMap);
     ChunkMetadata newChunkMetadata = chunkPair.left;
     Chunk newChunk = chunkPair.right;
     if (newChunkMetadata != null && newChunk != null) {
       maxVersion = Math.max(newChunkMetadata.getVersion(), maxVersion);
       // wait for limit write
-      MergeManager.mergeRateLimiterAcquire(compactionRateLimiter,
+      MergeManager.mergeRateLimiterAcquire(compactionWriteRateLimiter,
           newChunk.getHeader().getDataSize() + newChunk.getData().position());
       writer.writeChunk(newChunk, newChunkMetadata);
       targetResource.updateStartTime(device, newChunkMetadata.getStartTime());
@@ -127,11 +134,12 @@ public class HotCompactionUtils {
   }
 
   private static long writeByDeserializeMerge(long maxVersion, String device,
-      RateLimiter compactionRateLimiter,
+      RateLimiter compactionRateLimiter, RateLimiter compactionReadRateLimiter,
       Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
       TsFileResource targetResource, RestorableTsFileIOWriter writer) throws IOException {
     Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
-    maxVersion = readByDeserializeMerge(entry.getValue(), maxVersion, timeValuePairMap);
+    maxVersion = readByDeserializeMerge(compactionReadRateLimiter, entry.getValue(), maxVersion,
+        timeValuePairMap);
     Iterator<List<ChunkMetadata>> chunkMetadataListIterator = entry.getValue().values()
         .iterator();
     if (!chunkMetadataListIterator.hasNext()) {
@@ -185,7 +193,8 @@ public class HotCompactionUtils {
       Set<String> devices, boolean sequence) throws IOException {
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
-    RateLimiter compactionRateLimiter = MergeManager.getINSTANCE().getMergeRateLimiter();
+    RateLimiter compactionWriteRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
+    RateLimiter compactionReadRateLimiter = MergeManager.getINSTANCE().getMergeReadRateLimiter();
     Set<String> tsFileDevicesMap = getTsFileDevicesSet(tsFileResources, tsFileSequenceReaderMap,
         storageGroup);
     for (String device : tsFileDevicesMap) {
@@ -200,8 +209,10 @@ public class HotCompactionUtils {
             tsFileSequenceReaderMap, storageGroup);
         Map<String, List<ChunkMetadata>> chunkMetadataMap = reader
             .readChunkMetadataInDevice(device);
+        long chunkMetadataSize = 0;
         for (Entry<String, List<ChunkMetadata>> entry : chunkMetadataMap.entrySet()) {
           for (ChunkMetadata chunkMetadata : entry.getValue()) {
+            chunkMetadataSize += chunkMetadata.getStatistics().calculateRamSize();
             Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap;
             String measurementUid = chunkMetadata.getMeasurementUid();
             if (measurementChunkMetadataMap.containsKey(measurementUid)) {
@@ -221,12 +232,17 @@ public class HotCompactionUtils {
                 .put(chunkMetadata.getMeasurementUid(), readerChunkMetadataMap);
           }
         }
+        // wait for limit read
+        MergeManager
+            .mergeRateLimiterAcquire(compactionReadRateLimiter, chunkMetadataSize);
       }
       if (!sequence) {
         long maxVersion = Long.MIN_VALUE;
         for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry : measurementChunkMetadataMap
             .entrySet()) {
-          maxVersion = writeByDeserializeMerge(maxVersion, device, compactionRateLimiter, entry,
+          maxVersion = writeByDeserializeMerge(maxVersion, device, compactionWriteRateLimiter,
+              compactionReadRateLimiter,
+              entry,
               targetResource, writer);
         }
         writer.endChunkGroup();
@@ -250,11 +266,15 @@ public class HotCompactionUtils {
           }
           if (isPageEnoughLarge) {
             logger.info("{} [Hot Compaction] page enough large, use append merge", storageGroup);
-            maxVersion = writeByAppendMerge(maxVersion, device, compactionRateLimiter,
+            maxVersion = writeByAppendMerge(maxVersion, device, compactionWriteRateLimiter,
+                compactionReadRateLimiter,
                 readerChunkMetadatasMap, targetResource, writer);
           } else {
-            logger.info("{} [Hot Compaction] page enough large, use deserialize merge", storageGroup);
-            maxVersion = writeByDeserializeMerge(maxVersion, device, compactionRateLimiter, entry,
+            logger
+                .info("{} [Hot Compaction] page enough large, use deserialize merge", storageGroup);
+            maxVersion = writeByDeserializeMerge(maxVersion, device, compactionWriteRateLimiter,
+                compactionReadRateLimiter,
+                entry,
                 targetResource, writer);
           }
         }
