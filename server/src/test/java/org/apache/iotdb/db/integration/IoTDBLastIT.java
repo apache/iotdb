@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.db.integration;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -29,8 +37,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.sql.*;
 
 public class IoTDBLastIT {
 
@@ -97,8 +103,8 @@ public class IoTDBLastIT {
 
   @Test
   public void lastDescTimeTest() throws Exception {
-    String[] retArray =
-        new String[]{
+    Set<String> retSet =
+        new HashSet<>(Arrays.asList(
             "500,root.ln.wf01.wt01.status,false",
             "500,root.ln.wf01.wt01.temperature,22.1",
             "500,root.ln.wf01.wt01.id,5",
@@ -108,7 +114,7 @@ public class IoTDBLastIT {
             "300,root.ln.wf01.wt03.status,true",
             "300,root.ln.wf01.wt03.temperature,23.1",
             "300,root.ln.wf01.wt03.id,8"
-        };
+        ));
 
     try (Connection connection =
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -122,9 +128,10 @@ public class IoTDBLastIT {
         String ans = resultSet.getString(TIMESTAMP_STR) + ","
             + resultSet.getString(TIMESEIRES_STR) + ","
             + resultSet.getString(VALUE_STR);
-        Assert.assertEquals(retArray[cnt], ans);
+        Assert.assertTrue(retSet.contains(ans));
         cnt++;
       }
+      Assert.assertEquals(retSet.size(), cnt);
     }
   }
 

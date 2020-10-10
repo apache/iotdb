@@ -34,7 +34,7 @@
     <distributionManagement>
         <site>
             <id>apache.website</id>
-            <url>scm:git:https://gitbox.apache.org/repos/asf/incubator-iotdb-website.git</url>
+            <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url>
         </site>
     </distributionManagement>
     <build>
@@ -201,7 +201,7 @@
                             <goal>wget</goal>
                         </goals>
                         <configuration>
-                            <url>https://github.com/apache/incubator-iotdb/archive/rel/0.10.zip</url>
+                            <url>https://github.com/apache/iotdb/archive/rel/0.10.zip</url>
                             <outputDirectory>${project.build.directory}/download</outputDirectory>
                             <outputFileName>0.10.x.zip</outputFileName>
                         </configuration>
@@ -213,7 +213,7 @@
                             <goal>wget</goal>
                         </goals>
                         <configuration>
-                            <url>https://github.com/apache/incubator-iotdb/archive/rel/0.9.zip</url>
+                            <url>https://github.com/apache/iotdb/archive/rel/0.9.zip</url>
                             <outputDirectory>${project.build.directory}/download</outputDirectory>
                             <outputFileName>0.9.x.zip</outputFileName>
                         </configuration>
@@ -225,7 +225,7 @@
                             <goal>wget</goal>
                         </goals>
                         <configuration>
-                            <url>https://github.com/apache/incubator-iotdb/archive/rel/0.8.zip</url>
+                            <url>https://github.com/apache/iotdb/archive/rel/0.8.zip</url>
                             <outputDirectory>${project.build.directory}/download</outputDirectory>
                             <outputFileName>0.8.x.zip</outputFileName>
                         </configuration>
@@ -247,7 +247,7 @@
                         <phase>generate-sources</phase>
                         <configuration>
                             <fileset>
-                                <directory>${project.build.directory}/download/0.10.x.zip/incubator-iotdb-rel-0.10/docs/UserGuide</directory>
+                                <directory>${project.build.directory}/download/0.10.x.zip/iotdb-rel-0.10/docs/UserGuide</directory>
                                 <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.10.x</outputDirectory>
                             </fileset>
                         </configuration>
@@ -260,7 +260,7 @@
                         <phase>generate-sources</phase>
                         <configuration>
                             <fileset>
-                                <directory>${project.build.directory}/download/0.10.x.zip/incubator-iotdb-rel-0.10/docs/zh/UserGuide</directory>
+                                <directory>${project.build.directory}/download/0.10.x.zip/iotdb-rel-0.10/docs/zh/UserGuide</directory>
                                 <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.10.x</outputDirectory>
                             </fileset>
                         </configuration>
@@ -273,7 +273,7 @@
                         <phase>generate-sources</phase>
                         <configuration>
                             <fileset>
-                                <directory>${project.build.directory}/download/0.9.x.zip/incubator-iotdb-rel-0.9/docs/UserGuide</directory>
+                                <directory>${project.build.directory}/download/0.9.x.zip/iotdb-rel-0.9/docs/UserGuide</directory>
                                 <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.9.x</outputDirectory>
                             </fileset>
                         </configuration>
@@ -286,7 +286,7 @@
                         <phase>generate-sources</phase>
                         <configuration>
                             <fileset>
-                                <directory>${project.build.directory}/download/0.9.x.zip/incubator-iotdb-rel-0.9/docs/zh/UserGuide</directory>
+                                <directory>${project.build.directory}/download/0.9.x.zip/iotdb-rel-0.9/docs/zh/UserGuide</directory>
                                 <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.9.x</outputDirectory>
                             </fileset>
                         </configuration>
@@ -299,7 +299,7 @@
                         <phase>generate-sources</phase>
                         <configuration>
                             <fileset>
-                                <directory>${project.build.directory}/download/0.8.x.zip/incubator-iotdb-rel-0.8/docs/UserGuide</directory>
+                                <directory>${project.build.directory}/download/0.8.x.zip/iotdb-rel-0.8/docs/UserGuide</directory>
                                 <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.8.x</outputDirectory>
                             </fileset>
                         </configuration>
@@ -312,7 +312,7 @@
                         <phase>generate-sources</phase>
                         <configuration>
                             <fileset>
-                                <directory>${project.build.directory}/download/0.8.x.zip/incubator-iotdb-rel-0.8/docs/zh/UserGuide</directory>
+                                <directory>${project.build.directory}/download/0.8.x.zip/iotdb-rel-0.8/docs/zh/UserGuide</directory>
                                 <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.8.x</outputDirectory>
                             </fileset>
                         </configuration>
