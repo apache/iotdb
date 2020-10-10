@@ -23,7 +23,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.time.ZoneId;
 import java.util.Properties;
@@ -369,8 +368,10 @@ public class IoTDBDescriptor {
           Boolean.toString(conf.isForceFullMerge()))));
       conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
           "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
-      conf.setMergeThroughputMbPerSec(Integer.parseInt(properties.getProperty(
-          "merge_throughput_mb_per_sec", Integer.toString(conf.getMergeThroughputMbPerSec()))));
+      conf.setMergeWriteThroughputMbPerSec(Integer.parseInt(properties.getProperty(
+          "merge_write_throughput_mb_per_sec", Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
+      conf.setMergeReadThroughputMbPerSec(Integer.parseInt(properties.getProperty(
+          "merge_read_throughput_mb_per_sec", Integer.toString(conf.getMergeReadThroughputMbPerSec()))));
 
       conf.setEnablePartialInsert(
           Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
