@@ -159,7 +159,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
      * files into the IoTDB instance.
      */
     private static final String REMOTE_FILE_TEMP_DIR =
-        IoTDBDescriptor.getInstance().getConfig().getBaseDir() + File.separator + "remote";
+        IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "remote";
 
     private static final Logger logger = LoggerFactory.getLogger(Installer.class);
     private DataGroupMember dataGroupMember;

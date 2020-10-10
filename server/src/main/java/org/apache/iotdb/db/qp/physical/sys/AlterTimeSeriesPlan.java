@@ -107,11 +107,6 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public List<String> getPathsStrings() {
-    return Collections.singletonList(path.getFullPath());
-  }
-
-  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeByte((byte) PhysicalPlanType.ALTER_TIMESERIES.ordinal());
     byte[] bytes = path.getFullPath().getBytes();

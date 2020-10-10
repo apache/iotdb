@@ -206,7 +206,7 @@ public class HotCompactionUtils {
           if (newChunkMetadata != null && newChunk != null) {
             // wait for limit write
             MergeManager.mergeRateLimiterAcquire(compactionRateLimiter,
-                newChunk.getHeader().getDataSize() + newChunk.getData().position());
+                (long)newChunk.getHeader().getDataSize() + newChunk.getData().position());
             writer.writeChunk(newChunk, newChunkMetadata);
             targetResource.updateStartTime(deviceId, newChunkMetadata.getStartTime());
             targetResource.updateEndTime(deviceId, newChunkMetadata.getEndTime());

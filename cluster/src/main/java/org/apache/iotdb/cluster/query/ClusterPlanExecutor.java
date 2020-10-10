@@ -505,23 +505,17 @@ public class ClusterPlanExecutor extends PlanExecutor {
     MNode node = null;
     boolean allSeriesExists = true;
     try {
-      node = IoTDB.metaManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      node = IoTDB.metaManager.getDeviceNodeWithAutoCreate(deviceId);
     } catch (PathNotExistException e) {
       allSeriesExists = false;
     }
 
-    try {
-      if (node != null) {
-        for (String measurement : measurementList) {
-          if (!node.hasChild(measurement)) {
-            allSeriesExists = false;
-            break;
-          }
+    if (node != null) {
+      for (String measurement : measurementList) {
+        if (!node.hasChild(measurement)) {
+          allSeriesExists = false;
+          break;
         }
-      }
-    } finally {
-      if (node != null) {
-        node.readUnlock();
       }
     }
     return allSeriesExists;

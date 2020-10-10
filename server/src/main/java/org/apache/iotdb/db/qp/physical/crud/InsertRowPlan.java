@@ -222,15 +222,6 @@ public class InsertRowPlan extends InsertPlan {
     return ret;
   }
 
-  @Override
-  public List<String> getPathsStrings() {
-    List<String> ret = new ArrayList<>();
-    for (String m : measurements) {
-      ret.add(deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + m);
-    }
-    return ret;
-  }
-
   public Object[] getValues() {
     return this.values;
   }

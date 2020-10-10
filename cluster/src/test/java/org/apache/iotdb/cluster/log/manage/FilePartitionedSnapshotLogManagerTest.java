@@ -74,7 +74,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
         for (int j = 0; j < 4; j++) {
           // closed files
           prepareData(i, j * 10, 10);
-          StorageEngine.getInstance().closeProcessor(sg, true, true);
+          StorageEngine.getInstance().closeStorageGroupProcessor(sg, true, true);
         }
         // un closed files
         prepareData(i, 40, 10);
@@ -88,8 +88,9 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
       PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();
       for (int i = 1; i < 4; i++) {
         FileSnapshot fileSnapshot =
-            (FileSnapshot) snapshot.getSnapshot(SlotPartitionTable.getSlotStrategy().calculateSlotByTime(
-                TestUtils.getTestSg(i), 0, ClusterConstant.SLOT_NUM));
+            (FileSnapshot) snapshot
+                .getSnapshot(SlotPartitionTable.getSlotStrategy().calculateSlotByTime(
+                    TestUtils.getTestSg(i), 0, ClusterConstant.SLOT_NUM));
         assertEquals(10, fileSnapshot.getTimeseriesSchemas().size());
         assertEquals(5, fileSnapshot.getDataFiles().size());
       }

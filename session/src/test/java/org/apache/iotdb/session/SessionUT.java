@@ -20,7 +20,6 @@ package org.apache.iotdb.session;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
@@ -163,13 +162,16 @@ public class SessionUT {
         int i = 0;
         while (dataSet.hasNext()) {
             RowRecord record = dataSet.next();
-            System.out.println(record.toString());
-            assertEquals(i, record.getFields().get(0).getLongV());
-            assertTrue(record.getFields().get(1).isNull());
-            assertTrue(record.getFields().get(2).isNull());
-            assertTrue(record.getFields().get(3).isNull());
+            int nullCount = 0;
+            for (int j = 0; j < 4; ++j) {
+                if (record.getFields().get(j).isNull()) {
+                    ++nullCount;
+                } else {
+                    assertEquals(i, record.getFields().get(j).getLongV());
+                }
+            }
+            assertEquals(3, nullCount);
             i++;
         }
     }
-
 }

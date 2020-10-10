@@ -119,7 +119,6 @@ public class SerializationTest {
           ByteBuffer buffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
           FlushPlan planB = (FlushPlan) PhysicalPlan.Factory.create(buffer);
           assertEquals(plan.getPaths(), planB.getPaths());
-          assertEquals(plan.getPathsStrings(), planB.getPathsStrings());
           assertEquals(plan.getStorageGroupPartitionIds(), planB.getStorageGroupPartitionIds());
           assertEquals(plan.isSeq(), planB.isSeq());
           assertEquals(plan.isSync(), planB.isSync());
@@ -130,7 +129,6 @@ public class SerializationTest {
         buffer.flip();
         FlushPlan planB = (FlushPlan) PhysicalPlan.Factory.create(buffer);
         assertEquals(plan.getPaths(), planB.getPaths());
-        assertEquals(plan.getPathsStrings(), planB.getPathsStrings());
         assertEquals(plan.getStorageGroupPartitionIds(), planB.getStorageGroupPartitionIds());
         assertEquals(plan.isSeq(), planB.isSeq());
         assertEquals(plan.isSync(), planB.isSync());

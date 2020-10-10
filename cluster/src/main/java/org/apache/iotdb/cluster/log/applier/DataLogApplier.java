@@ -68,9 +68,10 @@ public class DataLogApplier extends BaseApplier {
         }
       } else if (log instanceof CloseFileLog) {
         CloseFileLog closeFileLog = ((CloseFileLog) log);
-        StorageEngine.getInstance().closeProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
-            closeFileLog.getPartitionId(),
-            closeFileLog.isSeq(), false);
+        StorageEngine.getInstance()
+            .closeStorageGroupProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
+                closeFileLog.getPartitionId(),
+                closeFileLog.isSeq(), false);
       } else {
         logger.error("Unsupported log: {}", log);
       }

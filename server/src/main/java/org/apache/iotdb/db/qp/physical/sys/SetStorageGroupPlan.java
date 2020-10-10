@@ -56,11 +56,6 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   }
 
   @Override
-  public List<String> getPathsStrings() {
-    return path != null ? Collections.singletonList(path.getFullPath()) : Collections.emptyList();
-  }
-
-  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.write((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
     byte[] fullPathBytes = path.getFullPath().getBytes();

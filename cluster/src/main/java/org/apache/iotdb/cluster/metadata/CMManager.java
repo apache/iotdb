@@ -302,13 +302,11 @@ public class CMManager extends MManager {
   public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
     MNode deviceNode = getDeviceNode(plan.getDeviceId());
-    deviceNode.readLock();
+
     int nonExistSchemaIndex = getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
     if (nonExistSchemaIndex == -1) {
       plan.setMeasurementMNodes(measurementMNodes);
       return deviceNode;
-    } else {
-      deviceNode.readUnlock();
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
@@ -1117,12 +1115,12 @@ public class CMManager extends MManager {
 
   @Override
   protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
-    MeasurementMNode child;
-    child = (MeasurementMNode) getChild(deviceMNode, measurement);
+    MNode child;
+    child = deviceMNode.getChild(measurement);
     if (child == null) {
       child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurement));
     }
-    return child;
+    return child != null ? (MeasurementMNode) child : null;
   }
 
   public List<ShowTimeSeriesResult> showLocalTimeseries(ShowTimeSeriesPlan plan,

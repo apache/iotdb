@@ -42,11 +42,6 @@ public class DeletePartitionPlan extends PhysicalPlan {
     return Collections.emptyList();
   }
 
-  @Override
-  public List<String> getPathsStrings() {
-    return Collections.emptyList();
-  }
-
   public PartialPath getStorageGroupName() {
     return storageGroupName;
   }

@@ -46,11 +46,6 @@ public class LoadDataPlan extends PhysicalPlan {
         : Collections.emptyList();
   }
 
-  @Override
-  public List<String> getPathsStrings() {
-    return measureType != null ? Collections.singletonList(measureType) : Collections.emptyList();
-  }
-
   public String getInputFilePath() {
     return inputFilePath;
   }

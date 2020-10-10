@@ -48,7 +48,7 @@ public class StoppedMemberManager {
 
   private static final Logger logger = LoggerFactory.getLogger(StoppedMemberManager.class);
   private String stoppedMembersFileName =
-      IoTDBDescriptor.getInstance().getConfig().getBaseDir() + File.separator + "removedMembers";
+      IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "removedMembers";
 
   private static final String REMOVED = "0";
   private static final String RESUMED = "1";

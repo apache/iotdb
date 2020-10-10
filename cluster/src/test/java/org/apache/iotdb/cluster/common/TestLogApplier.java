@@ -43,16 +43,17 @@ public class TestLogApplier implements LogApplier {
       } else if (log instanceof CloseFileLog) {
         CloseFileLog closeFileLog = ((CloseFileLog) log);
         try {
-          StorageEngine.getInstance().closeProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
-              closeFileLog.getPartitionId(),
-              closeFileLog.isSeq(), false);
+          StorageEngine.getInstance()
+              .closeStorageGroupProcessor(new PartialPath(closeFileLog.getStorageGroupName()),
+                  closeFileLog.getPartitionId(),
+                  closeFileLog.isSeq(), false);
         } catch (StorageGroupNotSetException | IllegalPathException e) {
           throw new QueryProcessException(e);
         }
       }
     } catch (Exception e) {
       log.setException(e);
-    }finally {
+    } finally {
       log.setApplied(true);
     }
 

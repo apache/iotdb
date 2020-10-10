@@ -253,12 +253,6 @@ public class AuthorPlan extends PhysicalPlan {
   }
 
   @Override
-  public List<String> getPathsStrings() {
-    return nodeName != null ? Collections.singletonList(nodeName.getFullPath())
-        : Collections.emptyList();
-  }
-
-  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

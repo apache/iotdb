@@ -158,12 +158,12 @@ public class MetaGroupMember extends RaftMember {
    * the file that contains the identifier of this node
    */
   static final String NODE_IDENTIFIER_FILE_NAME =
-      IoTDBDescriptor.getInstance().getConfig().getBaseDir() + File.separator + "node_identifier";
+      IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "node_identifier";
   /**
    * the file that contains the serialized partition table
    */
   static final String PARTITION_FILE_NAME =
-      IoTDBDescriptor.getInstance().getConfig().getBaseDir() + File.separator + "partitions";
+      IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "partitions";
   /**
    * in case of data loss, some file changes would be made to a temporary file first
    */

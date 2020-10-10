@@ -561,7 +561,7 @@ public class DataGroupMember extends RaftMember {
    * @return the path of the directory that is provided exclusively for the member.
    */
   private String getMemberDir() {
-    return IoTDBDescriptor.getInstance().getConfig().getBaseDir() + File.separator +
+    return IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator +
         "raft" + File.separator + getHeader().nodeIdentifier + File.separator;
   }
 

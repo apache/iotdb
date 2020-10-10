@@ -82,8 +82,6 @@ public abstract class PhysicalPlan {
 
   public abstract List<PartialPath> getPaths();
 
-  public abstract List<String> getPathsStrings();
-
   public void setPaths(List<PartialPath> paths) {
 
   }

@@ -174,36 +174,36 @@ public class IoTDBConfig {
   private int walBufferSize = 16 * 1024 * 1024;
 
   /**
-   * system base dir, stores all system metadata and wal
+   * default base dir, stores all IoTDB runtime files
    */
-  private String baseDir = "data";
+  private static final String DEFAULT_BASE_DIR = "data";
 
   /**
    * System directory, including version file for each storage group and metadata
    */
-  private String systemDir = baseDir + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
+  private String systemDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
   /**
    * Schema directory, including storage set of values.
    */
-  private String schemaDir = baseDir + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME
+  private String schemaDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME
       + File.separator + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
   /**
    * Sync directory, including the lock file, uuid file, device owner map
    */
-  private String syncDir = baseDir + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME
+  private String syncDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME
       + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /**
    * Performance tracing directory, stores performance tracing files
    */
-  private String tracingDir = baseDir + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
+  private String tracingDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
 
   /**
    * Query directory, stores temporary files of query
    */
-  private String queryDir = baseDir + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
+  private String queryDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
   /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
@@ -218,7 +218,7 @@ public class IoTDBConfig {
   /**
    * Wal directory.
    */
-  private String walFolder = baseDir + File.separator + "wal";
+  private String walDir = DEFAULT_BASE_DIR + File.separator + "wal";
 
   /**
    * Maximum MemTable number in MemTable pool.
@@ -298,6 +298,11 @@ public class IoTDBConfig {
    * Memory allocated for chunk cache in read process
    */
   private long allocateMemoryForChunkCache = allocateMemoryForRead / 10;
+
+  /**
+   * Whether to enable Last cache
+   */
+  private boolean lastCacheEnable = true;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -736,12 +741,11 @@ public class IoTDBConfig {
    * if the folders are relative paths, add IOTDB_HOME as the path prefix
    */
   private void formulateFolders() {
-    baseDir = addHomeDir(baseDir);
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
-    walFolder = addHomeDir(walFolder);
     tracingDir = addHomeDir(tracingDir);
+    walDir = addHomeDir(walDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -938,12 +942,12 @@ public class IoTDBConfig {
     this.queryDir = queryDir;
   }
 
-  public String getWalFolder() {
-    return walFolder;
+  public String getWalDir() {
+    return walDir;
   }
 
-  void setWalFolder(String walFolder) {
-    this.walFolder = walFolder;
+  void setWalDir(String walDir) {
+    this.walDir = walDir;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -1072,14 +1076,6 @@ public class IoTDBConfig {
 
   void setLanguageVersion(String languageVersion) {
     this.languageVersion = languageVersion;
-  }
-
-  public String getBaseDir() {
-    return baseDir;
-  }
-
-  void setBaseDir(String baseDir) {
-    this.baseDir = baseDir;
   }
 
   public String getIpWhiteList() {
@@ -1380,6 +1376,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForChunkCache(long allocateMemoryForChunkCache) {
     this.allocateMemoryForChunkCache = allocateMemoryForChunkCache;
+  }
+
+  public boolean isLastCacheEnabled() {
+    return lastCacheEnable;
+  }
+
+  public void setEnableLastCache(boolean lastCacheEnable) {
+    this.lastCacheEnable = lastCacheEnable;
   }
 
   public boolean isEnableWatermark() {

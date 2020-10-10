@@ -18,18 +18,8 @@
  */
 package org.apache.iotdb.db.tools.memestimation;
 
-import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
-import io.airlift.airline.Cli;
 import io.airlift.airline.Help;
-import io.airlift.airline.ParseArgumentsMissingException;
-import io.airlift.airline.ParseArgumentsUnexpectedException;
-import io.airlift.airline.ParseCommandMissingException;
-import io.airlift.airline.ParseCommandUnrecognizedException;
-import io.airlift.airline.ParseOptionConversionException;
-import io.airlift.airline.ParseOptionMissingException;
-import io.airlift.airline.ParseOptionMissingValueException;
-
 import java.io.IOException;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
@@ -45,7 +35,13 @@ public class MemEstTool {
         MemEstToolCmd.class
     );
     int status = CommonUtils.runCli(commands, args, "memory-tool", "Estimate memory for writing");
-    FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(IoTDBDescriptor.getInstance().getConfig().getBaseDir()));
+
+    FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(IoTDBDescriptor.getInstance().getConfig().getSystemDir()));
+    FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(IoTDBDescriptor.getInstance().getConfig().getWalDir()));
+    for(int i=0; i < IoTDBDescriptor.getInstance().getConfig().getDataDirs().length; i++){
+      FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(IoTDBDescriptor.getInstance().getConfig().getDataDirs()[i]));
+    }
+
     System.exit(status);
   }
 }
