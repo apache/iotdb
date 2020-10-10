@@ -96,12 +96,12 @@ public class SeriesReader {
    */
   private VersionPageReader firstPageReader;
   private final List<VersionPageReader> seqPageReaders = new LinkedList<>();
-  private PriorityQueue<VersionPageReader> unseqPageReaders;
+  private final PriorityQueue<VersionPageReader> unseqPageReaders;
 
   /*
    * point cache
    */
-  private PriorityMergeReader mergeReader;
+  private final PriorityMergeReader mergeReader;
 
   /*
    * result cache
@@ -464,8 +464,20 @@ public class SeriesReader {
       unpackOneChunkMetaData(firstChunkMetadata);
       firstChunkMetadata = null;
     }
-    if (init && firstPageReader == null && !unseqPageReaders.isEmpty()) {
-      firstPageReader = unseqPageReaders.poll();
+    if (init && firstPageReader == null && (!seqPageReaders.isEmpty() || !unseqPageReaders.isEmpty())) {
+      // TODO think over desc
+      if (!seqPageReaders.isEmpty() && !unseqPageReaders.isEmpty()) {
+        if (seqPageReaders.get(0).getStatistics().getStartTime() < unseqPageReaders.peek()
+            .getStatistics().getStartTime()) {
+          firstPageReader = seqPageReaders.remove(0);
+        } else {
+          firstPageReader = unseqPageReaders.poll();
+        }
+      } else if (!seqPageReaders.isEmpty()) {
+        firstPageReader = seqPageReaders.remove(0);
+      } else {
+        firstPageReader = unseqPageReaders.poll();
+      }
     }
   }
 
@@ -474,6 +486,7 @@ public class SeriesReader {
     FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter).forEach(
         pageReader -> {
           if (chunkMetaData.isSeq()) {
+            // TODO think over desc: addFirst for desc; addLast for asc
             seqPageReaders.add(new VersionPageReader(chunkMetaData.getVersion(), pageReader, true));
           } else {
             unseqPageReaders
@@ -666,6 +679,7 @@ public class SeriesReader {
     /*
      * init firstPageReader
      */
+    // TODO
     if (firstPageReader == null) {
       if (!seqPageReaders.isEmpty() && !unseqPageReaders.isEmpty()) {
         if (seqPageReaders.get(0).getStatistics().getStartTime() < unseqPageReaders.peek()
