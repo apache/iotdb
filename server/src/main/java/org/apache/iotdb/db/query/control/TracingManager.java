@@ -33,7 +33,6 @@ public class TracingManager {
 
   private static final Logger logger = LoggerFactory.getLogger(TracingManager.class);
   private static final String QUERY_ID = "Query Id: ";
-  private static final String NEW_LINE_QUERY_ID = "\nQuery Id: ";
   private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS";
   private BufferedWriter writer;
 
@@ -65,10 +64,10 @@ public class TracingManager {
     StringBuilder builder = new StringBuilder();
     builder.append(QUERY_ID).append(queryId)
         .append(" - Query Statement: ").append(statement)
-        .append(NEW_LINE_QUERY_ID).append(queryId)
+        .append("\n" + QUERY_ID).append(queryId)
         .append(" - Start time: ")
         .append(new SimpleDateFormat(DATE_FORMAT).format(System.currentTimeMillis()))
-        .append(NEW_LINE_QUERY_ID).append(queryId)
+        .append("\n" + QUERY_ID).append(queryId)
         .append(" - Number of series paths: ").append(pathsNum)
         .append("\n");
     writer.write(builder.toString());
@@ -79,7 +78,7 @@ public class TracingManager {
     StringBuilder builder = new StringBuilder();
     builder.append(QUERY_ID).append(queryId)
         .append(" - Query Statement: ").append(statement)
-        .append(NEW_LINE_QUERY_ID).append(queryId)
+        .append("\n" + QUERY_ID).append(queryId)
         .append(" - Start time: ")
         .append(new SimpleDateFormat(DATE_FORMAT).format(System.currentTimeMillis()))
         .append("\n");
@@ -98,9 +97,9 @@ public class TracingManager {
     // add query id as prefix of each info
     StringBuilder builder = new StringBuilder(QUERY_ID).append(queryId)
         .append(" - Number of tsfiles: ").append(seqFileNum + unseqFileNum)
-        .append(NEW_LINE_QUERY_ID).append(queryId)
+        .append("\n" + QUERY_ID).append(queryId)
         .append(" - Number of sequence files: ").append(seqFileNum)
-        .append(NEW_LINE_QUERY_ID).append(queryId)
+        .append("\n" + QUERY_ID).append(queryId)
         .append(" - Number of unsequence files: ").append(unseqFileNum)
         .append("\n");
     writer.write(builder.toString());
@@ -110,7 +109,7 @@ public class TracingManager {
       throws IOException {
     StringBuilder builder = new StringBuilder(QUERY_ID).append(queryId)
         .append(" - Number of chunks: ").append(totalChunkNum)
-        .append(NEW_LINE_QUERY_ID).append(queryId)
+        .append("\n" + QUERY_ID).append(queryId)
         .append(" - Average size of chunks: ").append(totalChunkSize / totalChunkNum)
         .append("\n");
     writer.write(builder.toString());
