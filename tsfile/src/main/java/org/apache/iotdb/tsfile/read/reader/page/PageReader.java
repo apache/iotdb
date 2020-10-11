@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PageReader implements IPageReader {
 
@@ -108,6 +109,9 @@ public class PageReader implements IPageReader {
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
 
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending);
+    if (Objects.nonNull(filter) && !filter.satisfy(pageHeader.getStatistics())) {
+      return pageData;
+    }
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);

@@ -264,10 +264,18 @@ public class SeriesReader {
        */
       if (!cachedChunkMetadata.isEmpty()) {
         firstChunkMetadata = cachedChunkMetadata.poll();
-        unpackAllOverlappedTsFilesToTimeSeriesMetadata(
-            orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()));
-        unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
-            orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), false);
+        if (Objects.nonNull(valueFilter)) {
+          while (Objects.nonNull(firstChunkMetadata) && !valueFilter.satisfy(firstChunkMetadata.getStatistics())) {
+            firstChunkMetadata = cachedChunkMetadata.poll();
+          }
+        }
+
+        if (Objects.nonNull(firstChunkMetadata)) {
+          unpackAllOverlappedTsFilesToTimeSeriesMetadata(
+                  orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()));
+          unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
+                  orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), false);
+        }
       }
     }
 
@@ -293,6 +301,11 @@ public class SeriesReader {
 
     if (init && firstChunkMetadata == null && !cachedChunkMetadata.isEmpty()) {
       firstChunkMetadata = cachedChunkMetadata.poll();
+      if (Objects.nonNull(valueFilter)) {
+        while (Objects.nonNull(firstChunkMetadata) && !valueFilter.satisfy(firstChunkMetadata.getStatistics())) {
+          firstChunkMetadata = cachedChunkMetadata.poll();
+        }
+      }
     }
   }
 
