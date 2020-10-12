@@ -132,6 +132,7 @@ import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 /**
  * Thrift RPC implementation at server side.
  */
@@ -570,18 +571,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
       }
 
-      // get deduplicated path num
-      int deduplicatedPathNum = -1;
-      if (physicalPlan instanceof AlignByDevicePlan) {
-        deduplicatedPathNum = ((AlignByDevicePlan) physicalPlan).getMeasurements().size();
-      } else if (physicalPlan instanceof LastQueryPlan) {
-        deduplicatedPathNum = 0;
-      } else if (physicalPlan instanceof RawDataQueryPlan) {
-        deduplicatedPathNum = ((RawDataQueryPlan) physicalPlan).getDeduplicatedPaths().size();
-      }
-
-      return internalExecuteQueryStatement("",
-          generateQueryId(true, req.fetchSize, deduplicatedPathNum), physicalPlan, req.fetchSize,
+      return internalExecuteQueryStatement("", req.statementId, physicalPlan, req.fetchSize,
           sessionIdUsernameMap.get(req.getSessionId()));
 
     } catch (ParseCancellationException e) {
