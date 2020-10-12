@@ -23,6 +23,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.time.ZoneId;
 import java.util.Properties;
@@ -33,6 +34,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -118,9 +120,10 @@ public class IoTDBDescriptor {
     else if (!urlString.endsWith(".properties")) {
       urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
-    // If the url doesn't start with "file:" it's provided as a normal path.
+
+    // If the url doesn't start with "file:" or "classpath:", it's provided as a normal path.
     // So we need to add it to make it a real URL.
-    if (!urlString.startsWith("file:")) {
+    if(!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
       urlString = "file:" + urlString;
     }
     try {
@@ -204,6 +207,9 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
               Boolean.toString(conf.isMetaDataCacheEnable()))));
 
+      conf.setEnableLastCache(Boolean.parseBoolean(properties.getProperty("enable_last_cache",
+              Boolean.toString(conf.isLastCacheEnabled()))));
+
       initMemoryAllocate(properties);
 
       loadWALProps(properties);
@@ -270,17 +276,17 @@ public class IoTDBDescriptor {
           .getProperty("merge_chunk_point_number",
               Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
 
-      conf.setMaxMergeChunkNumInTsFile(Integer.parseInt(properties
-          .getProperty("max_merge_chunk_num_in_tsfile",
-              Integer.toString(conf.getMaxMergeChunkNumInTsFile()))));
+      conf.setTsFileManagementStrategy(TsFileManagementStrategy.valueOf(properties
+          .getProperty("tsfile_manage_strategy",
+              conf.getTsFileManagementStrategy().toString())));
 
-      conf.setEnableVm(Boolean.parseBoolean(properties
-          .getProperty("enable_vm",
-              Boolean.toString(conf.isEnableVm()))));
+      conf.setMaxLevelNum(Integer.parseInt(properties
+          .getProperty("max_level_num",
+              Integer.toString(conf.getMaxLevelNum()))));
 
-      conf.setMaxVmNum(Integer.parseInt(properties
-          .getProperty("max_vm_num",
-              Integer.toString(conf.getMaxVmNum()))));
+      conf.setMaxFileNumInEachLevel(Integer.parseInt(properties
+          .getProperty("max_file_num_in_each_level",
+              Integer.toString(conf.getMaxFileNumInEachLevel()))));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
@@ -537,6 +543,10 @@ public class IoTDBDescriptor {
     conf.setForceWalPeriodInMs(Long
         .parseLong(properties.getProperty("force_wal_period_in_ms",
             Long.toString(conf.getForceWalPeriodInMs()))));
+
+    conf.setEnableDiscardOutOfOrderData(Boolean.parseBoolean(
+        properties.getProperty("enable_discard_out_of_order_data",
+        Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
 
   }
 

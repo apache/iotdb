@@ -60,6 +60,7 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
@@ -130,6 +131,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 /**
  * Thrift RPC implementation at server side.
@@ -613,6 +615,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       statementId2QueryId.computeIfAbsent(statementId, k -> new HashSet<>()).add(queryId);
 
+      if (plan instanceof AuthorPlan) {
+        ((AuthorPlan) plan).setLoginUserName(username);
+      }
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()
@@ -702,6 +707,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.COUNT_NODES;
       case COUNT_TIMESERIES:
         return StaticResps.COUNT_TIMESERIES;
+      case COUNT_DEVICES:
+        return StaticResps.COUNT_DEVICES;
+      case COUNT_STORAGE_GROUP:
+        return StaticResps.COUNT_STORAGE_GROUP;
       case MERGE_STATUS:
         return StaticResps.MERGE_STATUS_RESP;
       default:
@@ -1606,7 +1615,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (BatchInsertionException e) {
       return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
     } catch (QueryProcessException e) {
-      logger.debug("meet error while processing non-query. ", e);
+      logger.error("meet error while processing non-query. ", e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);

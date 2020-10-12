@@ -130,7 +130,7 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Haonan Hou',
-          role: 'Committer',
+          role: 'PPMC, Committer',
           id: 'haonan',
           date: '2020/01/30'
         },
@@ -172,7 +172,7 @@
         {
           avatar: 'https://avatars1.githubusercontent.com/u/22488084?s=400&u=2ef5ad52a7c4241bf88fb5e45682948b307a7d90&v=4',
           name: 'Jincheng Sun',
-          role: 'Committer',
+          role: 'PPMC, Committer',
           id: 'jincheng',
           date: '2020/01/21'
         },
@@ -193,7 +193,7 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Dawei Liu',
-          role: 'Committer',
+          role: 'PPMC, Committer',
           id: 'liudw',
           date: '2020/03/01'
         },

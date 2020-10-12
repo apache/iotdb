@@ -89,9 +89,6 @@
             <destName>NOTICE</destName>
         </file>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/DISCLAIMER</source>
-        </file>
-        <file>
             <source>${maven.multiModuleProjectDirectory}/RELEASE_NOTES.md</source>
         </file>
         <file>

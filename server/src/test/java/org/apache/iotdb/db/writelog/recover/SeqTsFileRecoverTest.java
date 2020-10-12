@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -94,7 +93,6 @@ public class SeqTsFileRecoverTest {
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);
     tsF = SystemFileFactory.INSTANCE.getFile(logNodePrefix, "1-1-1.tsfile");
     tsF.getParentFile().mkdirs();
 
@@ -165,7 +163,6 @@ public class SeqTsFileRecoverTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setEnableVm(true);
     FileUtils.deleteDirectory(tsF.getParentFile());
     resource.close();
     node.delete();
@@ -174,14 +171,14 @@ public class SeqTsFileRecoverTest {
   @Test
   public void testNonLastRecovery() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
-        resource, false, false, Collections.singletonList(new ArrayList<>()));
+        resource, false, false);
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    RestorableTsFileIOWriter writer = performer.recover().left;
+    RestorableTsFileIOWriter writer = performer.recover();
     assertFalse(writer.canWrite());
     writer.close();
 
     assertEquals(2, resource.getStartTime("root.sg.device99"));
-    assertEquals(100,  resource.getEndTime("root.sg.device99"));
+    assertEquals(100, resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
       assertEquals(0, resource.getStartTime("root.sg.device" + i));
       assertEquals(19, resource.getEndTime("root.sg.device" + i));
@@ -224,9 +221,9 @@ public class SeqTsFileRecoverTest {
   @Test
   public void testLastRecovery() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
-        resource, false, true, Collections.singletonList(new ArrayList<>()));
+        resource, false, true);
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    RestorableTsFileIOWriter writer = performer.recover().left;
+    RestorableTsFileIOWriter writer = performer.recover();
 
     writer.makeMetadataVisible();
     assertEquals(11, writer.getMetadatasForQuery().size());

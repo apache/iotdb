@@ -43,10 +43,13 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
    * @param dataTypes     time series data type
    * @param timeGenerator EngineTimeGenerator object
    * @param readers       readers in List(IReaderByTimeStamp) structure
+   * @param ascending     specifies how the data should be sorted,'True' means read in ascending
+   *                      time order, and 'false' means read in descending time order
    */
   public RawQueryDataSetWithValueFilter(List<PartialPath> paths, List<TSDataType> dataTypes,
-      TimeGenerator timeGenerator, List<IReaderByTimestamp> readers, List<Boolean> cached) {
-    super(new ArrayList<>(paths), dataTypes);
+      TimeGenerator timeGenerator, List<IReaderByTimestamp> readers, List<Boolean> cached,
+      boolean ascending) {
+    super(new ArrayList<>(paths), dataTypes, ascending);
     this.timeGenerator = timeGenerator;
     this.seriesReaderByTimestampList = readers;
     this.cached = cached;

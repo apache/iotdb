@@ -29,10 +29,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -423,30 +423,31 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   private List<String> getAllDevices(MetadataIndexNode metadataIndexNode) throws IOException {
-    Set<String> deviceSet = new TreeSet<>();
+    List<String> deviceList = new ArrayList<>();
     int metadataIndexListSize = metadataIndexNode.getChildren().size();
-    for (int i = 0; i < metadataIndexListSize; i++) {
-      MetadataIndexEntry metadataIndex = metadataIndexNode.getChildren().get(i);
-      switch (metadataIndexNode.getNodeType()) {
-        case LEAF_MEASUREMENT:
-        case INTERNAL_MEASUREMENT:
-          for (MetadataIndexEntry index : metadataIndexNode.getChildren()) {
-            deviceSet.add(index.getName());
-          }
-          break;
-        case LEAF_DEVICE:
-        case INTERNAL_DEVICE:
-          long endOffset = metadataIndexNode.getEndOffset();
-          if (i != metadataIndexListSize - 1) {
-            endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
-          }
-          ByteBuffer buffer = readData(metadataIndex.getOffset(), endOffset);
-          MetadataIndexNode node = MetadataIndexNode.deserializeFrom(buffer);
-          deviceSet.addAll(getAllDevices(node));
-          break;
+    if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT)) {
+      for (MetadataIndexEntry index : metadataIndexNode.getChildren()) {
+        deviceList.add(index.getName());
+      }
+    } else {
+      for (int i = 0; i < metadataIndexListSize; i++) {
+        long endOffset = metadataIndexNode.getEndOffset();
+        if (i != metadataIndexListSize - 1) {
+          endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
+        }
+        ByteBuffer buffer = readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
+        MetadataIndexNode node = MetadataIndexNode.deserializeFrom(buffer);
+        if (node.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+          // if node in next level is LEAF_DEVICE, put all devices in node entry into the set
+          deviceList.addAll(node.getChildren().stream().map(MetadataIndexEntry::getName).collect(
+              Collectors.toList()));
+        } else {
+          // keep traversing
+          deviceList.addAll(getAllDevices(node));
+        }
       }
     }
-    return new ArrayList<>(deviceSet);
+    return deviceList;
   }
 
   /**

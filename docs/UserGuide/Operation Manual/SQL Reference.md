@@ -434,6 +434,19 @@ Note: Now, only last_value aggregation function is supported in group by fill.
 Note: Linear fill is not supported in group by fill.
 ```
 
+* Order by time Statement
+
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause> (FILL <GROUPBYFillClause>)? orderByTimeClause?
+orderByTimeClause: order by time (asc | desc)?
+
+Eg: SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([20, 100), 5m) FILL (float[PREVIOUS]) order by time desc
+Eg: SELECT * from root order by time desc
+Eg: SELECT * from root order by time desc align by device 
+Eg: SELECT * from root order by time desc disable align
+Eg: SELECT last * from root order by time desc
+```
+
 * Limit Statement
 
 ```
@@ -619,7 +632,7 @@ For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result 
 As statement assigns an alias to time seires queried in SELECT statement
 
 ```
-You can use as statement in all query type.
+You can use as statement in all queries, but some rules are restricted about wildcard.
 
 1. Raw data query
 select s1 as speed, s2 as temperature from root.sg.d1
@@ -639,7 +652,7 @@ select s1 as speed, s2 as temperature from root.sg.d1 align by device
 
 select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg.d2 align by device
 
-5. Last query
+5. Last Record query
 select last s1 as speed, s2 from root.sg.d1
 
 Rules：

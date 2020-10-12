@@ -23,10 +23,8 @@ public class TsFileConstant {
   public static final String TSFILE_SUFFIX = ".tsfile";
   public static final String TSFILE_HOME = "TSFILE_HOME";
   public static final String TSFILE_CONF = "TSFILE_CONF";
-  public static final String VM_SUFFIX = ".vm";
   public static final String PATH_ROOT = "root";
   public static final String TMP_SUFFIX = "tmp";
-  public static final String FLUSH_SUFFIX = ".flush";
   public static final String PATH_SEPARATOR = ".";
   public static final char PATH_SEPARATOR_CHAR = '.';
   public static final String PATH_SEPARATER_NO_REGEX = "\\.";

@@ -79,6 +79,8 @@ statement
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
+    | COUNT DEVICES prefixPath? #countDevices
+    | COUNT STORAGE GROUP prefixPath? #countStorageGroup
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
     | {hasSingleQuoteString = true;} LOAD stringLiteral autoCreateSchema?#loadFiles
@@ -219,11 +221,12 @@ fromClause
 
 specialClause
     : specialLimit
-    | groupByTimeClause specialLimit?
-    | groupByFillClause specialLimit?
+    | orderByTimeClause specialLimit?
+    | groupByTimeClause orderByTimeClause? specialLimit?
+    | groupByFillClause orderByTimeClause? specialLimit?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
-    | groupByLevelClause specialLimit?
+    | groupByLevelClause orderByTimeClause? specialLimit?
     ;
 
 specialLimit
@@ -231,6 +234,11 @@ specialLimit
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
     ;
+
+orderByTimeClause
+    : ORDER BY TIME (DESC | ASC)?
+    ;
+
 
 limitClause
     : LIMIT INT offsetClause?
@@ -331,12 +339,12 @@ comparisonOperator
     ;
 
 insertColumnSpec
-    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)* RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)+ RR_BRACKET
     ;
 
 insertValuesSpec
-    : LR_BRACKET dateFormat (COMMA constant)* RR_BRACKET
-    | LR_BRACKET INT (COMMA constant)* RR_BRACKET
+    : LR_BRACKET dateFormat (COMMA constant)+ RR_BRACKET
+    | LR_BRACKET INT (COMMA constant)+ RR_BRACKET
     ;
 
 setCol
@@ -699,6 +707,10 @@ FROM
 
 TO
     : T O
+    ;
+
+ORDER
+    : O R D E R
     ;
 
 BY
@@ -1159,6 +1171,12 @@ SCHEMA
     : S C H E M A
     ;
 
+DESC
+    : D E S C
+    ;
+ASC
+    : A S C
+    ;
 //============================
 // End of the keywords list
 //============================

@@ -59,8 +59,12 @@ public class UpgradeUtils {
   public static boolean isNeedUpgrade(TsFileResource tsFileResource) {
     tsFileResource.readLock();
     //case the TsFile's length is equal to 0, the TsFile does not need to be upgraded
-    if (tsFileResource.getTsFile().length() == 0) {
-      return false;
+    try {
+      if (tsFileResource.getTsFile().length() == 0) {
+        return false;
+      }
+    } finally {
+      tsFileResource.readUnlock();
     }
     try (TsFileSequenceReader tsFileSequenceReader = new TsFileSequenceReader(
         tsFileResource.getTsFile().getAbsolutePath())) {

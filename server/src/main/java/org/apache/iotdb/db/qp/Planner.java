@@ -37,7 +37,18 @@ import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
+import org.apache.iotdb.tsfile.read.common.Path;
+import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
+import java.util.HashSet;
+import java.util.List;
 
 /**
  * provide a integration method for other user.
@@ -69,7 +80,6 @@ public class Planner {
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
   }
-
 
   /**
    * given an unoptimized logical operator tree and return a optimized result.

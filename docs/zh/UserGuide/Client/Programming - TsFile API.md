@@ -32,7 +32,7 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
 	* 编译源码生成 jar 包
 	
 		```
-		git clone https://github.com/apache/incubator-iotdb.git
+		git clone https://github.com/apache/iotdb.git
 		cd tsfile/
 		mvn clean package -Dmaven.test.skip=true
 		```
@@ -45,7 +45,7 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
   * 下载源码
 
   	```
-  	git clone https://github.com/apache/incubator-iotdb.git
+  	git clone https://github.com/apache/iotdb.git
   	```
   * 编译源码和部署到本地仓库
   	
@@ -175,7 +175,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     ```
     在上面的例子中，数据文件将存储在 HDFS 中，而不是本地文件系统中。如果你想在本地文件系统中存储数据文件，你可以使用`conf.setTSFileStorageFs("LOCAL")`，这也是默认的配置。
     
-    您还可以通过`config.setHdfsIp(...)`和`config.setHdfsPort(...)`来配置 HDFS 的 IP 和端口。默认的 IP是`localhost`，默认的端口是`9000`.
+    您还可以通过`config.setHdfsIp(...)`和`config.setHdfsPort(...)`来配置 HDFS 的 IP 和端口。默认的 IP是`localhost`，默认的`RPC`端口是`9000`.
     
     **参数:**
     
