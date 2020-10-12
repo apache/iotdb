@@ -353,8 +353,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         case "ALL_COLUMNS":
           resp.setColumnsList(
               getPaths(new PartialPath(req.getColumnPath())).stream().map(PartialPath::getFullPath)
-                  .collect(
-                      Collectors.toList()));
+                  .collect(Collectors.toList()));
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         default:

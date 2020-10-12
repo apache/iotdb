@@ -1098,8 +1098,7 @@ public class CMManager extends MManager {
   public List<String> getNodeList(String path, int nodeLevel)
       throws MetadataException {
     return getNodesList(new PartialPath(path), nodeLevel).stream().map(PartialPath::getFullPath)
-        .collect(
-            Collectors.toList());
+        .collect(Collectors.toList());
   }
 
   public Set<String> getChildNodePathInNextLevel(String path)

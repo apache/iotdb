@@ -1740,8 +1740,7 @@ public class MManager {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
               measurementList[i], insertDataType, measurementMNode.getSchema().getType());
           DataTypeMismatchException mismatchException = new DataTypeMismatchException(
-              measurementList[i],
-              insertDataType, measurementMNode.getSchema().getType());
+              measurementList[i], insertDataType, measurementMNode.getSchema().getType());
           if (!config.isEnablePartialInsert()) {
             throw mismatchException;
           } else {

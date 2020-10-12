@@ -359,8 +359,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
           AsyncDataClient client = metaGroupMember
               .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           paths = SyncClientAdaptor
-              .getNodeList(client, group.getHeader(), schemaPattern.getFullPath(),
-                  level);
+              .getNodeList(client, group.getHeader(), schemaPattern.getFullPath(), level);
         } else {
           SyncDataClient syncDataClient = metaGroupMember
               .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
