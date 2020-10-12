@@ -1450,7 +1450,7 @@ public class StorageGroupProcessor {
       String deviceId = path.getDevice();
       if (tsFileResource.containsDevice(deviceId) &&
               (deleteEnd >= tsFileResource.getStartTime(deviceId) &&
-                      deleteStart <= tsFileResource.getEndTime(deviceId))) {
+               deleteStart <= tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE))) {
         return false;
       }
     }
