@@ -36,6 +36,7 @@ import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.io.ILogWriter;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.db.writelog.io.MultiFileLogReader;
+import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,23 +48,23 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public static final String WAL_FILE_NAME = "wal";
   private static final Logger logger = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
 
-  private String identifier;
+  String identifier;
 
-  private String logDirectory;
+  String logDirectory;
 
   private ILogWriter currentFileWriter;
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private ByteBuffer logBuffer = ByteBuffer
+  ByteBuffer logBuffer = ByteBuffer
       .allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
 
-  private ReadWriteLock lock = new ReentrantReadWriteLock();
+  ReadWriteLock lock = new ReentrantReadWriteLock();
 
   private long fileId = 0;
   private long lastFlushedId = 0;
 
-  private int bufferedLogNum = 0;
+  int bufferedLogNum = 0;
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -75,7 +76,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     this.logDirectory =
         DirectoryManager.getInstance().getWALFolder() + File.separator + this.identifier;
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
-      logger.info("create the WAL folder {}." + logDirectory);
+      logger.info("create the WAL folder {}.", logDirectory);
     }
   }
 
@@ -96,7 +97,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
-  private void putLog(PhysicalPlan plan) {
+  void putLog(PhysicalPlan plan) {
     logBuffer.mark();
     try {
       plan.serialize(logBuffer);
@@ -183,7 +184,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     File[] logFiles = SystemFileFactory.INSTANCE.getFile(logDirectory).listFiles();
     Arrays.sort(logFiles,
         Comparator.comparingInt(f -> Integer.parseInt(f.getName().replace(WAL_FILE_NAME, ""))));
-    return new MultiFileLogReader(logFiles);
+    return new MultiFileLogReader(logFiles, SingleFileLogReader::new);
   }
 
   private void discard(File logFile) {
@@ -214,7 +215,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
-  private void sync() {
+  void sync() {
     lock.writeLock().lock();
     try {
       if (bufferedLogNum == 0) {
@@ -235,14 +236,14 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
-  private ILogWriter getCurrentFileWriter() {
+  ILogWriter getCurrentFileWriter() {
     if (currentFileWriter == null) {
       nextFileWriter();
     }
     return currentFileWriter;
   }
 
-  private void nextFileWriter() {
+  void nextFileWriter() {
     fileId++;
     File newFile = SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + fileId);
     if (newFile.getParentFile().mkdirs()) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -26,9 +27,15 @@ import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -39,9 +46,12 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class InsertTabletPlan extends InsertPlan {
 
+  private static final Logger logger = LoggerFactory.getLogger(InsertTabletPlan.class);
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   private long[] times; // times should be sorted. It is done in the session API.
@@ -137,9 +147,7 @@ public class InsertTabletPlan extends InsertPlan {
     stream.writeInt(end - start);
 
     if (timeBuffer == null) {
-      for (int i = start; i < end; i++) {
-        stream.writeLong(times[i]);
-      }
+      serializeTimes(stream);
     } else {
       stream.write(timeBuffer.array());
       timeBuffer = null;
@@ -174,12 +182,45 @@ public class InsertTabletPlan extends InsertPlan {
       }
     }
 
+    serializeTimeValue(buffer);
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer, PhysicalPlan base, int baseIndex) {
+    int type = PhysicalPlanType.BATCHINSERT.ordinal();
+    buffer.put((byte) type);
+    buffer.putInt(baseIndex);
+
+    buffer
+        .putInt(this.getMeasurements().length - (this.getFailedMeasurements() == null ? 0 :
+            this.getFailedMeasurements().size()));
+
+    serializeTimeValue(buffer);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer, PhysicalPlan base) {
+    InsertTabletPlan baseInsertTabletPlan = (InsertTabletPlan) base;
+
+    this.deviceId = baseInsertTabletPlan.deviceId;
+
+    this.measurements = baseInsertTabletPlan.getMeasurements();
+
+    this.dataTypes = baseInsertTabletPlan.dataTypes;
+
+    int rows = buffer.getInt();
+    rowCount = rows;
+    this.times = new long[rows];
+    deserializeTimes(buffer, rows);
+
+    columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, this.measurements.length, rows);
+  }
+
+  public void serializeTimeValue(ByteBuffer buffer) {
     buffer.putInt(end - start);
 
     if (timeBuffer == null) {
-      for (int i = start; i < end; i++) {
-        buffer.putLong(times[i]);
-      }
+      serializeTimes(buffer);
     } else {
       buffer.put(timeBuffer.array());
       timeBuffer = null;
@@ -191,6 +232,41 @@ public class InsertTabletPlan extends InsertPlan {
       buffer.put(valueBuffer.array());
       valueBuffer = null;
     }
+  }
+
+  private void serializeTimes(ByteBuffer buffer) {
+    byte[] bytes = serializeTimesToArray();
+    buffer.putInt(bytes.length);
+    buffer.put(bytes);
+  }
+
+  private void serializeTimes(DataOutputStream stream) throws IOException {
+    byte[] bytes = serializeTimesToArray();
+    stream.writeInt(bytes.length);
+    stream.write(bytes);
+  }
+
+  private byte[] serializeTimesToArray() {
+    Encoder timeEncoder = getTimeEncoder();
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+    for (int i = start; i < end; i++) {
+      timeEncoder.encode(times[i], byteArrayOutputStream);
+    }
+    try {
+      timeEncoder.flush(byteArrayOutputStream);
+    } catch (IOException e) {
+      logger.error("Cannot encode time of {}", this);
+    }
+    return byteArrayOutputStream.toByteArray();
+  }
+
+  public Encoder getTimeEncoder() {
+    TSEncoding timeEncoding = TSEncoding
+        .valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+    TSDataType timeType = TSDataType
+        .valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
+    return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
   }
 
   private void serializeValues(DataOutputStream outputStream) throws IOException {
@@ -328,9 +404,27 @@ public class InsertTabletPlan extends InsertPlan {
     int rows = buffer.getInt();
     rowCount = rows;
     this.times = new long[rows];
-    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
+    deserializeTimes(buffer, rows);
 
     columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, measurementSize, rows);
+  }
+
+  private void deserializeTimes(ByteBuffer buffer, int number) {
+    Decoder defaultTimeDecoder = Decoder.getDecoderByType(
+        TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+        TSDataType.INT64);
+    int timeSize = buffer.getInt();
+    byte[] bytes = new byte[timeSize];
+    buffer.get(bytes);
+
+    int i = 0;
+    try {
+      while (defaultTimeDecoder.hasNext(buffer) && i < number) {
+        times[i++] = defaultTimeDecoder.readLong(buffer);
+      }
+    } catch (IOException e) {
+      logger.error("Cannot decode time of {}", this);
+    }
   }
 
   public void setDataTypes(List<Integer> dataTypes) {

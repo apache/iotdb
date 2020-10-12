@@ -22,7 +22,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Queue;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -130,6 +132,26 @@ public abstract class PhysicalPlan {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
+  /**
+   * Serialize the plan into the given buffer. This is provided for WAL, so fields that can be
+   * recovered will not be serialized.
+   *
+   * @param buffer
+   */
+  public void serialize(ByteBuffer buffer, PhysicalPlan base, int baseIndex) {
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
+  }
+
+  /**
+   * Deserialize the plan from the given buffer. This is provided for WAL, and must be used with
+   * serializeToWAL.
+   *
+   * @param buffer
+   */
+  public void deserialize(ByteBuffer buffer, PhysicalPlan base) throws IllegalPathException {
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
+  }
+
   protected void putString(ByteBuffer buffer, String value) {
     if (value == null) {
       buffer.putInt(NULL_VALUE_LEN);
@@ -174,6 +196,11 @@ public abstract class PhysicalPlan {
         throw new IOException("unrecognized log type " + typeNum);
       }
       PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
+      return create(type, buffer);
+    }
+
+    public static PhysicalPlan create(PhysicalPlanType type, ByteBuffer buffer)
+        throws IllegalPathException, IOException {
       PhysicalPlan plan;
       // TODO-Cluster: support more plans
       switch (type) {
@@ -274,6 +301,53 @@ public abstract class PhysicalPlan {
       }
       return plan;
     }
+
+    public static PhysicalPlan create(ByteBuffer buffer,
+        Queue<PhysicalPlan> planWindow) throws IOException,
+        IllegalPathException {
+      int typeNum = buffer.get();
+      if (typeNum >= PhysicalPlanType.values().length) {
+        throw new IOException("unrecognized log type " + typeNum);
+      }
+      PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
+      PhysicalPlan plan;
+      int index;
+      switch (type) {
+        case INSERT:
+          plan = new InsertRowPlan();
+          index = buffer.getInt();
+          if (index < 0) {
+            plan.deserialize(buffer);
+          } else {
+            InsertRowPlan baseInsertRowPlan = (InsertRowPlan) getPlan(planWindow, index);
+            plan.deserialize(buffer, baseInsertRowPlan);
+          }
+          break;
+        case BATCHINSERT:
+          plan = new InsertTabletPlan();
+          index = buffer.getInt();
+          if (index < 0) {
+            plan.deserialize(buffer);
+          } else {
+            InsertTabletPlan baseInsertTabletPlan = (InsertTabletPlan) getPlan(planWindow, index);
+            plan.deserialize(buffer, baseInsertTabletPlan);
+          }
+          break;
+        default:
+          plan = create(type, buffer);
+      }
+      return plan;
+    }
+
+    private static PhysicalPlan getPlan(Queue<PhysicalPlan> planWindow, int index) {
+      Iterator<PhysicalPlan> iterator = planWindow.iterator();
+      PhysicalPlan physicalPlan = null;
+      while (iterator.hasNext() && index >= 0) {
+        physicalPlan = iterator.next();
+        index --;
+      }
+      return physicalPlan;
+    }
   }
 
   public enum PhysicalPlanType {
@@ -282,5 +356,40 @@ public abstract class PhysicalPlan {
     DELETE_STORAGE_GROUP, SHOW_TIMESERIES, DELETE_TIMESERIES, LOAD_CONFIGURATION
   }
 
+  protected void putDiffTime(long time, long base, ByteBuffer buffer) {
+    long timeDiff = time - base;
+    TimeDiffType diffType = TimeDiffType.fromDiff(timeDiff);
+    buffer.put((byte) diffType.ordinal());
+    switch (diffType) {
+      case INT:
+        buffer.put((byte) TimeDiffType.INT.ordinal());
+        break;
+      case BYTE:
+        buffer.put((byte) timeDiff);
+        break;
+      case SHORT:
+        buffer.putShort((short) timeDiff);
+        break;
+      case LONG:
+      default:
+        // NOTICE HERE
+        buffer.putLong(time);
+    }
+  }
 
+  public enum TimeDiffType {
+    BYTE, SHORT, INT, LONG;
+
+    public static TimeDiffType fromDiff(long timeDiff) {
+      if (Byte.MIN_VALUE <= timeDiff && timeDiff <= Byte.MAX_VALUE) {
+        return BYTE;
+      } else if (Short.MIN_VALUE <= timeDiff && timeDiff <= Short.MAX_VALUE) {
+        return SHORT;
+      } else if (Integer.MIN_VALUE <= timeDiff && timeDiff <= Integer.MAX_VALUE) {
+        return INT;
+      } else {
+        return LONG;
+      }
+    }
+  }
 }

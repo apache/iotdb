@@ -34,6 +34,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -71,8 +72,10 @@ public class InsertRowPlan extends InsertPlan {
     this.measurements = measurementList;
     this.dataTypes = new TSDataType[measurements.length];
     // We need to create an Object[] for the data type casting, because we can not set Float, Long to String[i]
-    this.values = new Object[measurements.length];
-    System.arraycopy(insertValues, 0, values, 0, measurements.length);
+    if (insertValues != null) {
+      this.values = new Object[measurements.length];
+      System.arraycopy(insertValues, 0, values, 0, measurements.length);
+    }
     isNeedInferType = true;
   }
 
@@ -285,7 +288,7 @@ public class InsertRowPlan extends InsertPlan {
     }
   }
 
-  private void putValues(ByteBuffer buffer) throws QueryProcessException {
+  public void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
@@ -405,6 +408,49 @@ public class InsertRowPlan extends InsertPlan {
       fillValues(buffer);
     } catch (QueryProcessException e) {
       e.printStackTrace();
+    }
+
+    isNeedInferType = buffer.get() == 1;
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer, PhysicalPlan base, int baseIndex) {
+    InsertRowPlan baseInsertRowPlan = (InsertRowPlan) base;
+    int type = PhysicalPlanType.INSERT.ordinal();
+    buffer.put((byte) type);
+    buffer.putInt(baseIndex);
+
+    putDiffTime(this.getTime(), baseInsertRowPlan.getTime(), buffer);
+
+    buffer
+        .putInt(this.getMeasurements().length - (this.getFailedMeasurements() == null ? 0 :
+            this.getFailedMeasurements().size()));
+
+    try {
+      this.putValues(buffer);
+    } catch (QueryProcessException e) {
+      logger.error("Cannot put values of {} into logBuffer", this, e);
+    }
+
+    // the types are not inferred before the plan is serialized
+    buffer.put((byte) (this.isNeedInferType() ? 1 : 0));
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer, PhysicalPlan base) {
+    InsertRowPlan baseInsertRowPlan = (InsertRowPlan) base;
+
+    this.time = buffer.getLong();
+    this.deviceId = baseInsertRowPlan.deviceId;
+
+    this.measurements = baseInsertRowPlan.measurements;
+
+    this.dataTypes = new TSDataType[measurements.length];
+    this.values = new Object[measurements.length];
+    try {
+      fillValues(buffer);
+    } catch (QueryProcessException e) {
+      logger.error("Cannot fill values of {} from logBuffer", this, e);
     }
 
     isNeedInferType = buffer.get() == 1;
