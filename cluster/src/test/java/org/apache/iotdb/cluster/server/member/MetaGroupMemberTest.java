@@ -743,6 +743,7 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testGetReaderByTimestamp()
       throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException, IllegalPathException {
     System.out.println("Start testGetReaderByTimestamp()");
+    RaftServer.setReadOperationTimeoutMS(10000);
     mockDataClusterServer = true;
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setNeedInferType(true);
