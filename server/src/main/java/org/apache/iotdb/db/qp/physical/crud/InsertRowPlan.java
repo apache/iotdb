@@ -421,10 +421,6 @@ public class InsertRowPlan extends InsertPlan {
 
     putDiffTime(this.getTime(), baseInsertRowPlan.getTime(), buffer);
 
-    buffer
-        .putInt(this.getMeasurements().length - (this.getFailedMeasurements() == null ? 0 :
-            this.getFailedMeasurements().size()));
-
     try {
       this.putValues(buffer);
     } catch (QueryProcessException e) {

@@ -190,10 +190,6 @@ public class InsertTabletPlan extends InsertPlan {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     buffer.put((byte) type);
 
-    buffer
-        .putInt(this.getMeasurements().length - (this.getFailedMeasurements() == null ? 0 :
-            this.getFailedMeasurements().size()));
-
     serializeTimeValue(buffer);
   }
 
