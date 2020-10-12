@@ -25,11 +25,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -179,17 +181,16 @@ public class MergeResource {
     // copy from TsFileResource so queries are not affected
     List<Modification> modifications = modificationCache.computeIfAbsent(tsFileResource,
         resource -> new LinkedList<>(resource.getModFile().getModifications()));
-    List<Modification> pathModifications = new ArrayList<>();
+    Set<Modification> pathModifications = new HashSet<>();
     Iterator<Modification> modificationIterator = modifications.iterator();
     // each path is visited only once in a merge, so the modifications can be removed after visiting
     while (modificationIterator.hasNext()) {
       Modification modification = modificationIterator.next();
       if (modification.getPath().matchFullPath(path)) {
         pathModifications.add(modification);
-        modificationIterator.remove();
       }
     }
-    return pathModifications;
+    return new ArrayList<>(pathModifications);
   }
 
   /**
