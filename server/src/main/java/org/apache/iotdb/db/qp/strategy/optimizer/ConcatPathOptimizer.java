@@ -88,7 +88,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if (operator instanceof QueryOperator) {
       if (!((QueryOperator) operator).isAlignByDevice() || ((QueryOperator) operator)
           .isLastQuery()) {
-        concatSelect(prefixPaths, select); // concat and remove star
+        concatSelect(prefixPaths, select, maxDeduplicatedPathNum); // concat and remove star
 
         if (((QueryOperator) operator).hasSlimit()) {
           int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
