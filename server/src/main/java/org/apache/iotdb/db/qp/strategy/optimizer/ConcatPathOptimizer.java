@@ -287,7 +287,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     HashSet<PartialPath> pathSet = new HashSet<>();
     try {
       for (PartialPath path : paths) {
-        List<PartialPath> all = removeWildcard(path);
+        List<PartialPath> all = removeWildcard(path, 0);
         for (PartialPath subPath : all) {
           if (!pathSet.contains(subPath)) {
             pathSet.add(subPath);
@@ -307,7 +307,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<String> newAggregations = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       try {
-        List<PartialPath> actualPaths = removeWildcard(paths.get(i));
+        List<PartialPath> actualPaths = removeWildcard(paths.get(i), 0);
         if (paths.get(i).getTsAlias() != null) {
           if (actualPaths.size() == 1) {
             actualPaths.get(0).setTsAlias(paths.get(i).getTsAlias());

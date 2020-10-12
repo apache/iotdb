@@ -184,14 +184,14 @@ public class MTreeTest {
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
 
       List<PartialPath> result2 = root
-          .getAllTimeseriesPathWithAlias(new PartialPath("root.a.*.s0"));
+          .getAllTimeseriesPathWithAlias(new PartialPath("root.a.*.s0"), 0);
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.s0", result2.get(0).getFullPath());
       assertNull(result2.get(0).getMeasurementAlias());
       assertEquals("root.a.d1.s0", result2.get(1).getFullPath());
       assertNull(result2.get(1).getMeasurementAlias());
 
-      result2 = root.getAllTimeseriesPathWithAlias(new PartialPath("root.a.*.temperature"));
+      result2 = root.getAllTimeseriesPathWithAlias(new PartialPath("root.a.*.temperature"), 0);
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.temperature", result2.get(0).getFullPathWithAlias());
       assertEquals("root.a.d1.temperature", result2.get(1).getFullPathWithAlias());
@@ -461,7 +461,7 @@ public class MTreeTest {
     assertEquals(2, root.getDevices(new PartialPath("root")).size());
     assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root")));
     assertEquals(2, root.getAllTimeseriesPath(new PartialPath("root")).size());
-    assertEquals(2, root.getAllTimeseriesPathWithAlias(new PartialPath("root")).size());
+    assertEquals(2, root.getAllTimeseriesPathWithAlias(new PartialPath("root"), 0).size());
   }
 
   @Test
