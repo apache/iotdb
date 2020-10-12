@@ -98,7 +98,7 @@ public class MetricsSource implements Source {
 
   @Override
   public String sourceName() {
-    return this.SOURCE_NAME;
+    return MetricsSource.SOURCE_NAME;
   }
 
 }

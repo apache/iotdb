@@ -163,7 +163,7 @@ public class Measurement implements MeasurementMBean, IService {
             new Measurement.DisplayRunnable(), 20, displayIntervalInMs, TimeUnit.MILLISECONDS);
       }
     } catch (Exception e) {
-      logger.error("Find error when start performance statistic thread, because {}", e);
+      logger.error("Find error when start performance statistic thread, ", e);
     } finally {
       stateChangeLock.unlock();
     }
@@ -181,7 +181,7 @@ public class Measurement implements MeasurementMBean, IService {
             new Measurement.DisplayRunnable(), 20, displayIntervalInMs, TimeUnit.MILLISECONDS);
       }
     } catch (Exception e) {
-      logger.error("Find error when start performance statistic thread, because {}", e);
+      logger.error("Find error when start performance statistic thread, ", e);
     } finally {
       stateChangeLock.unlock();
     }
@@ -199,7 +199,7 @@ public class Measurement implements MeasurementMBean, IService {
     try {
       displayFuture = cancelFuture(displayFuture);
     } catch (Exception e) {
-      logger.error("Find error when stop display thread, because {}", e);
+      logger.error("Find error when stop display thread, ", e);
     } finally {
       stateChangeLock.unlock();
     }
@@ -213,7 +213,7 @@ public class Measurement implements MeasurementMBean, IService {
       displayFuture = cancelFuture(displayFuture);
       consumeFuture = cancelFuture(consumeFuture);
     } catch (Exception e) {
-      logger.error("Find error when stop display and consuming threads, because {}", e);
+      logger.error("Find error when stop display and consuming threads, ", e);
     } finally {
       stateChangeLock.unlock();
     }

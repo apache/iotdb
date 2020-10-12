@@ -23,12 +23,11 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
 import org.apache.thrift.transport.TTransportException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 
 public class IoTDBDataSource implements DataSource {
 
-    private static final String PASSWORD = "password";
+    private static final String PWD_STR = "password";
     private String url;
     private String user;
     private String password;
@@ -43,7 +42,7 @@ public class IoTDBDataSource implements DataSource {
         this.url = url;
         this.properties = new Properties();
         properties.setProperty("user",user);
-        properties.setProperty(PASSWORD,password);
+        properties.setProperty(PWD_STR,password);
         if(port!=0) {
             this.port = port;
         }
@@ -64,7 +63,7 @@ public class IoTDBDataSource implements DataSource {
 
     public void setPassword(String password) {
         this.password = password;
-        properties.setProperty(PASSWORD,password);
+        properties.setProperty(PWD_STR,password);
     }
 
     public Integer getPort() {
@@ -98,7 +97,7 @@ public class IoTDBDataSource implements DataSource {
        try {
            Properties newProp = new Properties();
            newProp.setProperty("user",username);
-           newProp.setProperty(PASSWORD,password);
+           newProp.setProperty(PWD_STR,password);
            return new IoTDBConnection(url, newProp);
        }
        catch (Exception e){

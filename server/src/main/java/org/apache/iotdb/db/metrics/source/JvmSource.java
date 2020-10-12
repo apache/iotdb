@@ -42,7 +42,7 @@ public class JvmSource implements Source {
 
   @Override
   public String sourceName() {
-    return this.SOURCE_NAME;
+    return JvmSource.SOURCE_NAME;
   }
 
 

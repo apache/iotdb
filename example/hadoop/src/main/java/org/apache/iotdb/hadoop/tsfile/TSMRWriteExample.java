@@ -39,8 +39,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 
 /**
  * One example for writing TsFile with MapReduce.
