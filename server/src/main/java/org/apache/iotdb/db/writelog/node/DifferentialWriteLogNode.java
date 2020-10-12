@@ -41,7 +41,7 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
 
   private static final Logger logger = LoggerFactory.getLogger(DifferentialWriteLogNode.class);
   // TODO: make WINDOW_LENGTH a config
-  public static final int WINDOW_LENGTH = 100;
+  public static final int WINDOW_LENGTH = 2000;
   private Queue<PhysicalPlan> planWindow;
 
   /**

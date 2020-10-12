@@ -154,10 +154,12 @@ public class CommonUtils {
       InsertRowPlan insertRowPlan = (InsertRowPlan) plan;
       plan = new InsertRowPlan(insertRowPlan.getDeviceId(),
           insertRowPlan.getTime(), insertRowPlan.getMeasurements(), null);
+      ((InsertRowPlan) plan).setDataTypes(insertRowPlan.getDataTypes());
     } else if (plan instanceof InsertTabletPlan) {
       InsertTabletPlan insertTabletPlan = (InsertTabletPlan) plan;
       plan = new InsertTabletPlan(insertTabletPlan.getDeviceId(),
           insertTabletPlan.getMeasurements());
+      ((InsertTabletPlan) plan).setDataTypes(insertTabletPlan.getDataTypes());
     }
     planWindow.add(plan);
   }
