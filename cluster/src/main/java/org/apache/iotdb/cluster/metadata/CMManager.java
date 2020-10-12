@@ -1188,7 +1188,8 @@ public class CMManager extends MManager {
   }
 
   private void showTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet, QueryContext context) throws CheckConsistencyException {
+      Set<ShowTimeSeriesResult> resultSet, QueryContext context)
+      throws CheckConsistencyException, MetadataException {
     if (group.contains(metaGroupMember.getThisNode())) {
       showLocalTimeseries(group, plan, resultSet, context);
     } else {
@@ -1197,7 +1198,8 @@ public class CMManager extends MManager {
   }
 
   private void showLocalTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet, QueryContext context) throws CheckConsistencyException {
+      Set<ShowTimeSeriesResult> resultSet, QueryContext context)
+      throws CheckConsistencyException, MetadataException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeaderWithConsistencyCheck();
@@ -1208,6 +1210,7 @@ public class CMManager extends MManager {
     } catch (MetadataException e) {
       logger
           .error("Cannot execute show timeseries plan  {} from {} locally.", plan, group);
+      throw e;
     }
   }
 
@@ -1217,7 +1220,6 @@ public class CMManager extends MManager {
     for (Node node : group) {
       try {
         resultBinary = showRemoteTimeseries(node, group, plan);
-
         if (resultBinary != null) {
           break;
         }
