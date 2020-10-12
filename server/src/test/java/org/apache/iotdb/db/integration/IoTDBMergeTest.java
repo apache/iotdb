@@ -294,7 +294,7 @@ public class IoTDBMergeTest {
       }
       // it is uncertain whether the sub tasks are created at this time point, and we are only
       // sure that the main task is created
-      assertEquals(1, cnt);
+      assertEquals(2, cnt);
     }
   }
 }

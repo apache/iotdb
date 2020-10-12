@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
@@ -313,7 +314,8 @@ public class StorageGroupProcessor {
       }
       RecoverMergeTask recoverMergeTask = new RecoverMergeTask(
           new ArrayList<>(tsFileManagement.getTsFileList(true)),
-          tsFileManagement.getTsFileList(false), storageGroupSysDir.getPath(), tsFileManagement::mergeEndAction,
+          tsFileManagement.getTsFileList(false), storageGroupSysDir.getPath(),
+          tsFileManagement::mergeEndAction,
           taskName,
           IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), storageGroupName);
       logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
@@ -737,11 +739,11 @@ public class StorageGroupProcessor {
    * inserted are in the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param sequence         whether is sequence
-   * @param start            start index of rows to be inserted in insertTabletPlan
-   * @param end              end index of rows to be inserted in insertTabletPlan
-   * @param results          result array
-   * @param timePartitionId  time partition id
+   * @param sequence whether is sequence
+   * @param start start index of rows to be inserted in insertTabletPlan
+   * @param end end index of rows to be inserted in insertTabletPlan
+   * @param results result array
+   * @param timePartitionId time partition id
    * @return false if any failure occurs when inserting the tablet, true otherwise
    */
   private boolean insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
@@ -887,9 +889,9 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId            time partition range
+   * @param timeRangeId time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param sequence               whether is sequence or not
+   * @param sequence whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -1345,10 +1347,10 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId      the deviceId of the timeseries to be deleted.
+   * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param startTime     the startTime of delete range.
-   * @param endTime       the endTime of delete range.
+   * @param startTime the startTime of delete range.
+   * @param endTime the endTime of delete range.
    */
   public void delete(PartialPath deviceId, String measurementId, long startTime, long endTime)
       throws IOException {
@@ -1559,7 +1561,7 @@ public class StorageGroupProcessor {
             .submitTask(
                 tsFileManagement.new HotCompactionMergeTask(this::closeHotCompactionMergeCallBack,
                     tsFileProcessor.getTimeRangeId()));
-      } catch (IOException e) {
+      } catch (IOException | RejectedExecutionException e) {
         this.closeHotCompactionMergeCallBack();
         logger.error("{} hot compaction submit task failed", storageGroupName);
       }
@@ -1654,7 +1656,7 @@ public class StorageGroupProcessor {
     writeLock();
     try {
       this.tsFileManagement.merge(fullMerge, tsFileManagement.getTsFileList(true),
-          tsFileManagement.getTsFileList(false),dataTTL);
+          tsFileManagement.getTsFileList(false), dataTTL);
     } finally {
       writeUnlock();
     }
@@ -1953,9 +1955,9 @@ public class StorageGroupProcessor {
    * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
    * version number is the version number in the tsfile with a larger timestamp.
    *
-   * @param tsfileName  origin tsfile name
+   * @param tsfileName origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
-   *                    1]
+   * 1]
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
@@ -2019,8 +2021,8 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type            load type
-   * @param tsFileResource  tsfile resource to be loaded
+   * @param type load type
+   * @param tsFileResource tsfile resource to be loaded
    * @param filePartitionId the partition id of the new file
    * @return load the file successfully
    * @UsedBy sync module, load external tsfile module.
@@ -2323,7 +2325,7 @@ public class StorageGroupProcessor {
       }
     }
   }
-  
+
   private enum LoadTsFileType {
     LOAD_SEQUENCE, LOAD_UNSEQUENCE
   }
