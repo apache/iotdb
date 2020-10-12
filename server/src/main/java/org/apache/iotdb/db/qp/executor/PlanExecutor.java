@@ -149,8 +149,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PlanExecutor implements IPlanExecutor {
-  private final static Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
-
   // logger
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
 
