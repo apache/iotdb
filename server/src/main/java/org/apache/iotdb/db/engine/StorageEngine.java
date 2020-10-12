@@ -303,24 +303,17 @@ public class StorageEngine implements IService {
       StorageGroupProcessor processor;
       processor = processorMap.get(storageGroupPath);
       if (processor == null) {
-        // if finish recover
-        if (isAllSgReady.get()) {
-          synchronized (storageGroupMNode) {
-            processor = processorMap.get(storageGroupPath);
-            if (processor == null) {
-              logger.info("construct a processor instance, the storage group is {}, Thread is {}",
-                  storageGroupPath, Thread.currentThread().getId());
-              processor = new StorageGroupProcessor(systemDir, storageGroupPath.getFullPath(),
-                  fileFlushPolicy);
-              processor.setDataTTL(storageGroupMNode.getDataTTL());
-              processorMap.put(storageGroupPath, processor);
-            }
+        waitAllSgReady(storageGroupPath);
+        synchronized (storageGroupMNode) {
+          processor = processorMap.get(storageGroupPath);
+          if (processor == null) {
+            logger.info("construct a processor instance, the storage group is {}, Thread is {}",
+                storageGroupPath, Thread.currentThread().getId());
+            processor = new StorageGroupProcessor(systemDir, storageGroupPath.getFullPath(),
+                fileFlushPolicy);
+            processor.setDataTTL(storageGroupMNode.getDataTTL());
+            processorMap.put(storageGroupPath, processor);
           }
-        } else {
-          // not finished recover, refuse the request
-          throw new StorageEngineException(
-              "the sg " + storageGroupPath + " may not ready now, please wait and retry later",
-              TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
       return processor;
@@ -329,6 +322,31 @@ public class StorageEngine implements IService {
     }
   }
 
+  private void waitAllSgReady(PartialPath storageGroupPath) throws StorageEngineException {
+    if (isAllSgReady.get()) {
+      return;
+    }
+
+    long waitStart = System.currentTimeMillis();
+    long waited = 0L;
+    final long MAX_WAIT = 5000L;
+    while (!isAllSgReady.get() && waited < MAX_WAIT) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new StorageEngineException(e);
+      }
+      waited = System.currentTimeMillis() - waitStart;
+    }
+
+    if (!isAllSgReady.get()) {
+      // not finished recover, refuse the request
+      throw new StorageEngineException(
+          "the sg " + storageGroupPath + " may not ready now, please wait and retry later",
+          TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
+    }
+  }
 
   /**
    * This function is just for unit test.
