@@ -29,6 +29,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * Manage all indexers
+ */
 public class FileIndexerManager {
   private String indexerFilePath;
   private Map<PartialPath, FileTimeIndexer> seqIndexers;

@@ -21,43 +21,40 @@ package org.apache.iotdb.db.timeIndex;
 import org.apache.iotdb.db.metadata.PartialPath;
 
 /**
- * Time Index, like deviceIndex: [(deviceId, startTime, endTime, TsFilePath)] to accelerate query
+ * time index entry, contains path, startTime, endTime
  */
-public class TimeIndex {
-  private PartialPath[] paths;
-  private long[] startTimes;
-  private long[] endTimes;
-  private String tsFilePath;
+public class TimeIndexEntry {
+  private PartialPath path;
+  private long startTime;
+  private long endTime;
 
-  public PartialPath[] getPaths() {
-    return paths;
+  public PartialPath getPath() {
+    return path;
   }
 
-  public void setPaths(PartialPath[] paths) {
-    this.paths = paths;
+  public void setPath(PartialPath path) {
+    this.path = path;
   }
 
-  public long[] getStartTimes() {
-    return startTimes;
+  public long getStartTime() {
+    return startTime;
   }
 
-  public void setStartTimes(long[] startTimes) {
-    this.startTimes = startTimes;
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
   }
 
-  public long[] getEndTimes() {
-    return endTimes;
+  public long getEndTime() {
+    return endTime;
   }
 
-  public void setEndTimes(long[] endTimes) {
-    this.endTimes = endTimes;
+  public void setEndTime(long endTime) {
+    this.endTime = endTime;
   }
 
-  public String getTsFilePath() {
-    return tsFilePath;
-  }
-
-  public void setTsFilePath(String tsFilePath) {
-    this.tsFilePath = tsFilePath;
+  public void setAllElem(PartialPath path, long startTime, long endTime) {
+    this.path = path;
+    this.startTime = startTime;
+    this.endTime = endTime;
   }
 }
