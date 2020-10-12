@@ -69,13 +69,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
@@ -543,6 +537,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
+  @Override
   public TSExecuteStatementResp executeRawDataQuery(TSRawDataQueryReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
@@ -1532,14 +1527,35 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             req.getPaths().size(), req.getPaths().get(0));
       }
       List<TSStatus> statusList = new ArrayList<>(req.paths.size());
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan();
+      CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan = new CreateMultiTimeSeriesPlan();
+
+      List<PartialPath> paths = new ArrayList<>(req.paths.size());
+      List<TSDataType> dataTypes = new ArrayList<>(req.paths.size());
+      List<TSEncoding> encodings = new ArrayList<>(req.paths.size());
+      List<CompressionType> compressors = new ArrayList<>(req.paths.size());
+      List<String> alias = null;
+      if (req.measurementAliasList != null) {
+        alias = new ArrayList<>(req.paths.size());
+      }
+      List<Map<String, String>> props = null;
+      if (req.propsList != null) {
+        props = new ArrayList<>(req.paths.size());
+      }
+      List<Map<String, String>> tags = null;
+      if (req.tagsList != null) {
+        tags = new ArrayList<>(req.paths.size());
+      }
+      List<Map<String, String>> attributes = null;
+      if (req.attributesList != null) {
+        attributes = new ArrayList<>(req.paths.size());
+      }
+
+      // record the result of creation of time series
+      List<Integer> indexes = new ArrayList<>(req.paths.size());
+
       for (int i = 0; i < req.paths.size(); i++) {
-        CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(req.getPaths().get(i)),
-            TSDataType.values()[req.dataTypes.get(i)], TSEncoding.values()[req.encodings.get(i)],
-            CompressionType.values()[req.compressors.get(i)],
-            req.propsList == null ? null : req.propsList.get(i),
-            req.tagsList == null ? null : req.tagsList.get(i),
-            req.attributesList == null ? null : req.attributesList.get(i),
-            req.measurementAliasList == null ? null : req.measurementAliasList.get(i));
+        plan.setPath(new PartialPath(req.paths.get(i)));
 
         TSStatus status = checkPathValidity(req.paths.get(i));
         if (status != null) {
@@ -1555,14 +1571,46 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           continue;
         }
 
-        statusList.add(executeNonQueryPlan(plan));
+        paths.add(new PartialPath(req.paths.get(i)));
+        dataTypes.add(TSDataType.values()[req.dataTypes.get(i)]);
+        encodings.add(TSEncoding.values()[req.encodings.get(i)]);
+        compressors.add(CompressionType.values()[req.compressors.get(i)]);
+        if (alias != null) {
+          alias.add(req.measurementAliasList.get(i));
+        }
+        if (props != null) {
+          props.add(req.propsList.get(i));
+        }
+        if (tags != null) {
+          tags.add(req.tagsList.get(i));
+        }
+        if (attributes != null) {
+          attributes.add(req.attributesList.get(i));
+        }
+
+        indexes.add(i);
+        statusList.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
       }
 
+      createMultiTimeSeriesPlan.setPaths(paths);
+      createMultiTimeSeriesPlan.setDataTypes(dataTypes);
+      createMultiTimeSeriesPlan.setEncodings(encodings);
+      createMultiTimeSeriesPlan.setCompressors(compressors);
+      createMultiTimeSeriesPlan.setAlias(alias);
+      createMultiTimeSeriesPlan.setProps(props);
+      createMultiTimeSeriesPlan.setTags(tags);
+      createMultiTimeSeriesPlan.setAttributes(attributes);
+      createMultiTimeSeriesPlan.setIndexes(indexes);
+
+      executeNonQuery(createMultiTimeSeriesPlan);
+
       boolean isAllSuccessful = true;
-      for (TSStatus tsStatus : statusList) {
-        if (tsStatus.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          isAllSuccessful = false;
-          break;
+
+      if (createMultiTimeSeriesPlan.getResults().entrySet().size() > 0) {
+        isAllSuccessful = false;
+        for (Map.Entry<Integer, Exception> entry : createMultiTimeSeriesPlan.getResults().entrySet()) {
+          statusList.set(entry.getKey(),
+            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, entry.getValue().getMessage()));
         }
       }
 
