@@ -498,9 +498,6 @@ public class TsFileResource {
   }
 
   public void close() throws IOException {
-    //TODO update index
-
-
     closed = true;
     if (modFile != null) {
       modFile.close();

@@ -54,6 +54,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
+import org.apache.iotdb.db.timeIndex.FileIndexEntries;
 import org.apache.iotdb.db.timeIndex.FileIndexerManager;
 import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -659,8 +660,7 @@ public class TsFileProcessor {
         } else {
           fileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(storageGroupName);
         }
-        fileTimeIndexer.addIndexForPaths(tsFileResource.deviceToIndex, tsFileResource.startTimes,
-            tsFileResource.endTimes, tsFileResource.getTsFilePath());
+        fileTimeIndexer.addIndexForPaths(FileIndexEntries.convertFromTsFileResource(tsFileResource));
       } catch (IllegalPathException e) {
         logger.error("Failed to endFile {} for storage group {}, err:{}", tsFileResource.getTsFile(),
             tsFileResource.getStorageGroupName(), e.getMessage());

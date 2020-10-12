@@ -18,14 +18,12 @@
  */
 package org.apache.iotdb.db.timeIndex.device;
 
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.timeIndex.FileIndexEntries;
 import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
-import org.apache.iotdb.db.timeIndex.UpdateIndexsParam;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
-import java.util.Map;
 
 public class LoadAllDeviceTimeIndexer implements FileTimeIndexer {
 
@@ -49,42 +47,17 @@ public class LoadAllDeviceTimeIndexer implements FileTimeIndexer {
   }
 
   @Override
-  public boolean addIndexForPath(PartialPath path, long startTime, long endTime, String tsFilePath) {
+  public boolean addIndexForPaths(FileIndexEntries fileIndexEntries) {
     return false;
   }
 
   @Override
-  public boolean addIndexForPath(String path, long startTime, long endTime, String tsFilePath) {
+  public boolean deleteIndexForPaths(FileIndexEntries fileIndexEntries) {
     return false;
   }
 
   @Override
-  public boolean addIndexForPaths(Map<String, Integer> paths, long[] startTimes, long[] endTimes, String tsFilePath) {
-    return false;
-  }
-
-  @Override
-  public boolean deleteIndexForPath(PartialPath path, long startTime, long endTime, String tsFilePath) {
-    return false;
-  }
-
-  @Override
-  public boolean deleteIndexForPath(String path, long startTime, long endTime, String tsFilePath) {
-    return false;
-  }
-
-  @Override
-  public boolean deleteIndexForPaths(Map<String, Integer> paths, long[] startTimes, long[] endTimes, String tsFilePath) {
-    return false;
-  }
-
-  @Override
-  public boolean updateIndexForPaths(UpdateIndexsParam updateIndexsParam) {
-    return false;
-  }
-
-  @Override
-  public List<TsFileResource> filterByPath(PartialPath path, Filter timeFilter) {
+  public List<FileIndexEntries> filterByPath(PartialPath path, Filter timeFilter) {
     return null;
   }
 }
