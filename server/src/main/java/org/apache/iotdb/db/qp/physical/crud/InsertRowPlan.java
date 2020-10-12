@@ -414,11 +414,10 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer, PhysicalPlan base, int baseIndex) {
+  public void serialize(ByteBuffer buffer, PhysicalPlan base) {
     InsertRowPlan baseInsertRowPlan = (InsertRowPlan) base;
     int type = PhysicalPlanType.INSERT.ordinal();
     buffer.put((byte) type);
-    buffer.putInt(baseIndex);
 
     putDiffTime(this.getTime(), baseInsertRowPlan.getTime(), buffer);
 

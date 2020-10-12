@@ -186,10 +186,9 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer, PhysicalPlan base, int baseIndex) {
+  public void serialize(ByteBuffer buffer, PhysicalPlan base) {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     buffer.put((byte) type);
-    buffer.putInt(baseIndex);
 
     buffer
         .putInt(this.getMeasurements().length - (this.getFailedMeasurements() == null ? 0 :
@@ -416,11 +415,12 @@ public class InsertTabletPlan extends InsertPlan {
     int timeSize = buffer.getInt();
     byte[] bytes = new byte[timeSize];
     buffer.get(bytes);
+    ByteBuffer tBuffer = ByteBuffer.wrap(bytes);
 
     int i = 0;
     try {
-      while (defaultTimeDecoder.hasNext(buffer) && i < number) {
-        times[i++] = defaultTimeDecoder.readLong(buffer);
+      while (defaultTimeDecoder.hasNext(tBuffer) && i < number) {
+        times[i++] = defaultTimeDecoder.readLong(tBuffer);
       }
     } catch (IOException e) {
       logger.error("Cannot decode time of {}", this);

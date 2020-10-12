@@ -138,7 +138,7 @@ public abstract class PhysicalPlan {
    *
    * @param buffer
    */
-  public void serialize(ByteBuffer buffer, PhysicalPlan base, int baseIndex) {
+  public void serialize(ByteBuffer buffer, PhysicalPlan base) {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
@@ -305,31 +305,29 @@ public abstract class PhysicalPlan {
     public static PhysicalPlan create(ByteBuffer buffer,
         Queue<PhysicalPlan> planWindow) throws IOException,
         IllegalPathException {
+      int baseIndex = buffer.getInt();
       int typeNum = buffer.get();
       if (typeNum >= PhysicalPlanType.values().length) {
         throw new IOException("unrecognized log type " + typeNum);
       }
       PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
       PhysicalPlan plan;
-      int index;
       switch (type) {
         case INSERT:
           plan = new InsertRowPlan();
-          index = buffer.getInt();
-          if (index < 0) {
+          if (baseIndex < 0) {
             plan.deserialize(buffer);
           } else {
-            InsertRowPlan baseInsertRowPlan = (InsertRowPlan) getPlan(planWindow, index);
+            InsertRowPlan baseInsertRowPlan = (InsertRowPlan) getPlan(planWindow, baseIndex);
             plan.deserialize(buffer, baseInsertRowPlan);
           }
           break;
         case BATCHINSERT:
           plan = new InsertTabletPlan();
-          index = buffer.getInt();
-          if (index < 0) {
+          if (baseIndex < 0) {
             plan.deserialize(buffer);
           } else {
-            InsertTabletPlan baseInsertTabletPlan = (InsertTabletPlan) getPlan(planWindow, index);
+            InsertTabletPlan baseInsertTabletPlan = (InsertTabletPlan) getPlan(planWindow, baseIndex);
             plan.deserialize(buffer, baseInsertTabletPlan);
           }
           break;

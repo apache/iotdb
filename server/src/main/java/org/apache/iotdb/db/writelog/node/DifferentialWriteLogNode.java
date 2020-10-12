@@ -78,7 +78,7 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
 
   private void serialize(PhysicalPlan plan, Pair<PhysicalPlan, Integer> similarPlanIndex) {
     if (similarPlanIndex == null) {
-      plan.serialize(logBuffer);
+      serializeNonDifferentially(plan);
     } else {
       serializeDifferentially(plan, similarPlanIndex);
     }
@@ -100,7 +100,8 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
   }
 
   private void serializeDifferentially(InsertPlan plan, InsertPlan base, int index) {
-    plan.serialize(logBuffer, base, index);
+    logBuffer.putInt(index);
+    plan.serialize(logBuffer, base);
   }
 
   private Pair<PhysicalPlan, Integer> findSimilarPlan(PhysicalPlan plan) {
