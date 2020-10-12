@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.auth.AuthException;
@@ -48,7 +49,7 @@ import org.slf4j.LoggerFactory;
 /**
  * MetaSimpleSnapshot also records all storage groups.
  */
-public class MetaSimpleSnapshot extends SimpleSnapshot {
+public class MetaSimpleSnapshot extends Snapshot {
 
   private Map<PartialPath, Long> storageGroupTTLMap;
   private Map<String, User> userMap;
@@ -161,32 +162,8 @@ public class MetaSimpleSnapshot extends SimpleSnapshot {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) o;
-    return Objects.equals(storageGroupTTLMap, snapshot.getStorageGroupTTLMap()) &&
-        Objects.equals(userMap, snapshot.getUserMap()) &&
-        Objects.equals(roleMap, snapshot.getRoleMap()) &&
-        Objects.equals(partitionTableBuffer, snapshot.getPartitionTableBuffer());
-  }
-
-  @Override
   public SnapshotInstaller getDefaultInstaller(RaftMember member) {
     return new Installer((MetaGroupMember) member);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects
-        .hash(super.hashCode(), storageGroupTTLMap, userMap, roleMap, partitionTableBuffer);
   }
 
   public static class Installer implements SnapshotInstaller<MetaSimpleSnapshot> {
@@ -273,5 +250,25 @@ public class MetaSimpleSnapshot extends SimpleSnapshot {
         logger.error("{}:replace roles failed", metaGroupMember.getName(), e);
       }
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    MetaSimpleSnapshot that = (MetaSimpleSnapshot) o;
+    return Objects.equals(storageGroupTTLMap, that.storageGroupTTLMap) &&
+        Objects.equals(userMap, that.userMap) &&
+        Objects.equals(roleMap, that.roleMap) &&
+        Objects.equals(partitionTableBuffer, that.partitionTableBuffer);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(storageGroupTTLMap, userMap, roleMap, partitionTableBuffer);
   }
 }

@@ -43,9 +43,6 @@ public class SimpleSnapshot extends Snapshot {
   private static final Logger logger = LoggerFactory.getLogger(SimpleSnapshot.class);
   private List<Log> snapshot = new ArrayList<>();
 
-  SimpleSnapshot() {
-  }
-
   public SimpleSnapshot(long lastIndex, long lastTerm) {
     this.lastLogIndex = lastIndex;
     this.lastLogTerm = lastTerm;

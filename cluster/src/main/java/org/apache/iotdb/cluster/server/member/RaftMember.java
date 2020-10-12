@@ -958,7 +958,7 @@ public abstract class RaftMember {
     return StatusUtils.TIME_OUT;
   }
 
-  private SendLogRequest buildSendLogRequest(Log log) {
+  public SendLogRequest buildSendLogRequest(Log log) {
     AtomicInteger voteCounter = new AtomicInteger(allNodes.size() / 2);
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(term.get());

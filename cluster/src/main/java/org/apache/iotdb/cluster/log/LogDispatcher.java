@@ -27,6 +27,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -41,6 +42,7 @@ import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -69,6 +71,12 @@ public class LogDispatcher {
         nodeLogQueues.add(createQueueAndBindingThread(node));
       }
     }
+  }
+
+  @TestOnly
+  public void close() throws InterruptedException {
+    executorService.shutdownNow();
+    executorService.awaitTermination(10, TimeUnit.SECONDS);
   }
 
   public void offer(SendLogRequest log) {
@@ -166,6 +174,13 @@ public class LogDispatcher {
         AppendEntryRequest appendEntryRequest) {
       this.appendEntryRequest = appendEntryRequest;
     }
+
+    @Override
+    public String toString() {
+      return "SendLogRequest{" +
+          "log=" + log +
+          '}';
+    }
   }
 
   class DispatcherThread implements Runnable {
@@ -189,13 +204,16 @@ public class LogDispatcher {
       try {
         while (!Thread.interrupted()) {
           SendLogRequest poll = logBlockingDeque.take();
-          // do serialization here to avoid taking LogManager for too long
-          poll.getAppendEntryRequest().setEntry(poll.getLog().serialize());
           currBatch.add(poll);
           logBlockingDeque.drainTo(currBatch);
           if (logger.isDebugEnabled()) {
             logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
           }
+          for (SendLogRequest request : currBatch) {
+            // do serialization here to avoid taking LogManager for too long
+            request.getAppendEntryRequest().setEntry(request.getLog().serialize());
+          }
+
           if (currBatch.size() > 1) {
             sendLogs(currBatch);
           } else {
@@ -338,20 +356,19 @@ public class LogDispatcher {
           singleEntryHandler.onError(e);
         }
       }
+
+      private AppendNodeEntryHandler getAppendNodeEntryHandler(Log log, AtomicInteger voteCounter,
+          Node node, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, Peer peer) {
+        AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+        handler.setReceiver(node);
+        handler.setVoteCounter(voteCounter);
+        handler.setLeaderShipStale(leaderShipStale);
+        handler.setLog(log);
+        handler.setMember(member);
+        handler.setPeer(peer);
+        handler.setReceiverTerm(newLeaderTerm);
+        return handler;
+      }
     }
-  }
-
-
-  public AppendNodeEntryHandler getAppendNodeEntryHandler(Log log, AtomicInteger voteCounter,
-      Node node, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, Peer peer) {
-    AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-    handler.setReceiver(node);
-    handler.setVoteCounter(voteCounter);
-    handler.setLeaderShipStale(leaderShipStale);
-    handler.setLog(log);
-    handler.setMember(member);
-    handler.setPeer(peer);
-    handler.setReceiverTerm(newLeaderTerm);
-    return handler;
   }
 }

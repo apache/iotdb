@@ -17,30 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.common;
+package org.apache.iotdb.cluster.log;
 
-import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.manage.RaftLogManager;
-import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
+import static org.junit.Assert.*;
 
-import java.io.IOException;
-import org.junit.After;
+import org.apache.iotdb.cluster.common.TestMetaGroupMember;
+import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.junit.Test;
 
-public class TestLogManager extends RaftLogManager {
+public class CommitLogCallbackTest {
 
-  public TestLogManager(int nodeIdentifier) {
-    super(new SyncLogDequeSerializer(nodeIdentifier), new TestLogApplier(), "Test");
+  @Test
+  public void test() throws InterruptedException {
+    RaftMember raftMember = new TestMetaGroupMember();
+    CommitLogCallback commitLogCallback = new CommitLogCallback(raftMember);
+    synchronized (raftMember.getSyncLock()) {
+      new Thread(() -> {
+        commitLogCallback.onComplete(null);
+      }).start();
+      raftMember.getSyncLock().wait();
+    }
+    assertTrue(true);
   }
-
-  @Override
-  public Snapshot getSnapshot() {
-    return null;
-  }
-
-  @Override
-  public void takeSnapshot() throws IOException {
-
-  }
-
-
 }
