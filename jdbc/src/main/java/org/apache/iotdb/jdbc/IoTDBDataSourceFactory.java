@@ -74,7 +74,6 @@ public class IoTDBDataSourceFactory implements DataSourceFactory {
 
   @Override
   public Driver createDriver(Properties properties) throws SQLException {
-    IoTDBDriver driver = new IoTDBDriver();
-    return driver;
+    return new IoTDBDriver();
   }
 }
