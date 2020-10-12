@@ -541,9 +541,15 @@ public class IoTDBConfig {
   private int chunkMergePointThreshold = 20480;
 
   /**
-   * The limit of write throughput merge can reach per second
+   * The limit of hot compaction merge can reach per second
    */
   private int mergeWriteThroughputMbPerSec = 16;
+
+  /**
+   * How many thread will be set up to perform hot compaction, 30 by default. Set to 1 when less
+   * than or equal to 0.
+   */
+  private int hotCompactionThreadNum = 30;
 
   /**
    * The limit of read throughput merge can reach per second
@@ -889,11 +895,11 @@ public class IoTDBConfig {
   }
 
   public boolean isEnableDiscardOutOfOrderData() {
-    return enableDiscardOutOfOrderData ;
+    return enableDiscardOutOfOrderData;
   }
 
-  public void setEnableDiscardOutOfOrderData(boolean enableDiscardOutOfOrderData ) {
-    this.enableDiscardOutOfOrderData  =  enableDiscardOutOfOrderData ;
+  public void setEnableDiscardOutOfOrderData(boolean enableDiscardOutOfOrderData) {
+    this.enableDiscardOutOfOrderData = enableDiscardOutOfOrderData;
   }
 
   public int getFlushWalThreshold() {
@@ -1262,6 +1268,14 @@ public class IoTDBConfig {
 
   public void setChunkMergePointThreshold(int chunkMergePointThreshold) {
     this.chunkMergePointThreshold = chunkMergePointThreshold;
+  }
+
+  public int getHotCompactionThreadNum() {
+    return hotCompactionThreadNum;
+  }
+
+  public void setHotCompactionThreadNum(int hotCompactionThreadNum) {
+    this.hotCompactionThreadNum = hotCompactionThreadNum;
   }
 
   public int getMergeWriteThroughputMbPerSec() {
