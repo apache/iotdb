@@ -24,11 +24,38 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public interface RowWindow {
 
+  /**
+   * Returns the number of rows in this window.
+   *
+   * @return the number of rows in this window
+   */
   int windowSize();
 
+  /**
+   * Returns the row at the specified position in this window.
+   * <p>
+   * Note that the Row instance returned by this method each time is the same instance. In other
+   * words, calling this method will only change the member variables inside the Row instance, but
+   * will not generate a new Row instance.
+   *
+   * @param rowIndex index of the row to return
+   * @return the row at the specified position in this window
+   * @throws IOException if any I/O errors occur
+   */
   Row getRow(int rowIndex) throws IOException;
 
+  /**
+   * Returns the actual data type of the values at the specified column in this window.
+   *
+   * @param columnIndex index of the specified column
+   * @return the actual data type of the values at the specified column in this window
+   */
   TSDataType getDataType(int columnIndex);
 
+  /**
+   * Returns an iterator used to access this window.
+   *
+   * @return an iterator used to access this window
+   */
   RowIterator getRowIterator();
 }

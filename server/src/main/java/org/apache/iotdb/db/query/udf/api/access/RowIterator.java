@@ -23,9 +23,27 @@ import java.io.IOException;
 
 public interface RowIterator {
 
+  /**
+   * Returns {@code true} if the iteration has more rows.
+   *
+   * @return {@code true} if the iteration has more rows
+   */
   boolean hasNextRow();
 
+  /**
+   * Returns the next row in the iteration.
+   * <p>
+   * Note that the Row instance returned by this method each time is the same instance. In other
+   * words, calling {@code next()} will only change the member variables inside the Row instance,
+   * but will not generate a new Row instance.
+   *
+   * @return the next element in the iteration
+   * @throws IOException if any I/O errors occur
+   */
   Row next() throws IOException;
 
+  /**
+   * Resets the iteration.
+   */
   void reset();
 }

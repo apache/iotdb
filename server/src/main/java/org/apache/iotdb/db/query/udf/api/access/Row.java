@@ -24,23 +24,96 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public interface Row {
 
+  /**
+   * Returns the timestamp of this row.
+   *
+   * @return timestamp
+   */
   long getTime();
 
+  /**
+   * Returns the int value at the specified column in this row.
+   * <p>
+   * Users need to ensure that the data type of the specified column is {@code TSDataType.INT32}.
+   *
+   * @param columnIndex index of the specified column
+   * @return the int value at the specified column in this row
+   */
   int getInt(int columnIndex);
 
+  /**
+   * Returns the long value at the specified column in this row.
+   * <p>
+   * Users need to ensure that the data type of the specified column is {@code TSDataType.INT64}.
+   *
+   * @param columnIndex index of the specified column
+   * @return the long value at the specified column in this row
+   */
   long getLong(int columnIndex);
 
+  /**
+   * Returns the float value at the specified column in this row.
+   * <p>
+   * Users need to ensure that the data type of the specified column is {@code TSDataType.FLOAT}.
+   *
+   * @param columnIndex index of the specified column
+   * @return the float value at the specified column in this row
+   */
   float getFloat(int columnIndex);
 
+  /**
+   * Returns the double value at the specified column in this row.
+   * <p>
+   * Users need to ensure that the data type of the specified column is {@code TSDataType.DOUBLE}.
+   *
+   * @param columnIndex index of the specified column
+   * @return the double value at the specified column in this row
+   */
   double getDouble(int columnIndex);
 
+  /**
+   * Returns the boolean value at the specified column in this row.
+   * <p>
+   * Users need to ensure that the data type of the specified column is {@code TSDataType.BOOLEAN}.
+   *
+   * @param columnIndex index of the specified column
+   * @return the boolean value at the specified column in this row
+   */
   boolean getBoolean(int columnIndex);
 
+  /**
+   * Returns the Binary value at the specified column in this row.
+   * <p>
+   * Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT}.
+   *
+   * @param columnIndex index of the specified column
+   * @return the Binary value at the specified column in this row
+   */
   Binary getBinary(int columnIndex);
 
+  /**
+   * Returns the String value at the specified column in this row.
+   * <p>
+   * Users need to ensure that the data type of the specified column is {@code TSDataType.TEXT}.
+   *
+   * @param columnIndex index of the specified column
+   * @return the String value at the specified column in this row
+   */
   String getString(int columnIndex);
 
+  /**
+   * Returns the actual data type of the value at the specified column in this row.
+   *
+   * @param columnIndex index of the specified column
+   * @return the actual data type of the value at the specified column in this row
+   */
   TSDataType getDataType(int columnIndex);
 
+  /**
+   * Returns {@code true} if the value of the specified column is null.
+   *
+   * @param columnIndex index of the specified column
+   * @return {@code true} if the value of the specified column is null
+   */
   boolean isNull(int columnIndex);
 }
