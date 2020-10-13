@@ -27,9 +27,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 
 public class ElasticSerializableIntList implements IntList {
 
-  public static final float DEFAULT_MEMORY_USAGE_LIMIT = 100;
-  public static final int DEFAULT_CACHE_SIZE = 1;
-
   protected long queryId;
   protected String dataId;
   protected int internalIntListCapacity;

@@ -29,7 +29,8 @@ public interface UDFPlan {
   void constructUdfExecutors(List<UDFContext> udfContexts)
       throws QueryProcessException, MetadataException;
 
-  void initializeUdfExecutor(long queryId) throws QueryProcessException;
+  void initializeUdfExecutor(long queryId, float collectorMemoryBudgetInMb)
+      throws QueryProcessException;
 
   void finalizeUDFExecutors();
 }

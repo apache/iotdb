@@ -29,10 +29,10 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 public class InputLayerWithValueFilter extends InputLayer {
 
-  public InputLayerWithValueFilter(long queryId, List<Path> paths, List<TSDataType> dataTypes,
-      TimeGenerator timeGenerator, List<IReaderByTimestamp> readers, List<Boolean> cached)
-      throws QueryProcessException {
-    super(queryId,
+  public InputLayerWithValueFilter(long queryId, float memoryBudgetInMB, List<Path> paths,
+      List<TSDataType> dataTypes, TimeGenerator timeGenerator, List<IReaderByTimestamp> readers,
+      List<Boolean> cached) throws QueryProcessException {
+    super(queryId, memoryBudgetInMB,
         new RawQueryDataSetWithValueFilter(paths, dataTypes, timeGenerator, readers, cached));
   }
 }

@@ -47,7 +47,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public class InputLayer {
 
   private static final String DATA_ID_PREFIX = "input_layer_";
-  private int elasticSerializableIntListCount = 0;
+  private int elasticSerializableListCount = 0;
 
   private final long queryId;
 
@@ -57,14 +57,14 @@ public class InputLayer {
   private final ElasticSerializableRowRecordList rowRecordList;
   private final SafetyLine safetyLine;
 
-  public InputLayer(long queryId, QueryDataSet queryDataSet) throws QueryProcessException {
+  public InputLayer(long queryId, float memoryBudgetInMB, QueryDataSet queryDataSet)
+      throws QueryProcessException {
     this.queryId = queryId;
     this.queryDataSet = queryDataSet;
     dataTypes = queryDataSet.getDataTypes().toArray(new TSDataType[0]);
     rowRecordList = new ElasticSerializableRowRecordList(dataTypes, queryId,
-        DATA_ID_PREFIX + elasticSerializableIntListCount++,
-        ElasticSerializableRowRecordList.DEFAULT_MEMORY_USAGE_LIMIT,
-        ElasticSerializableRowRecordList.DEFAULT_CACHE_SIZE);
+        DATA_ID_PREFIX + elasticSerializableListCount++, memoryBudgetInMB,
+        1 + dataTypes.length / 2);
     safetyLine = new SafetyLine();
   }
 
@@ -80,15 +80,15 @@ public class InputLayer {
     return new InputLayerRowReader(columnIndexes);
   }
 
-  public LayerRowWindowReader constructRowWindowReader(int[] columnIndexes, AccessStrategy strategy)
-      throws QueryProcessException, IOException {
+  public LayerRowWindowReader constructRowWindowReader(int[] columnIndexes, AccessStrategy strategy,
+      float memoryBudgetInMB) throws QueryProcessException, IOException {
     switch (strategy.getAccessStrategyType()) {
       case SLIDING_TIME_WINDOW:
         return new InputLayerRowSlidingTimeWindowReader(columnIndexes,
-            (SlidingTimeWindowAccessStrategy) strategy);
+            (SlidingTimeWindowAccessStrategy) strategy, memoryBudgetInMB);
       case TUMBLING_WINDOW:
         return new InputLayerRowTumblingWindowReader(columnIndexes,
-            (TumblingWindowAccessStrategy) strategy);
+            (TumblingWindowAccessStrategy) strategy, memoryBudgetInMB);
       default:
         throw new IllegalStateException(
             "Unexpected access strategy: " + strategy.getAccessStrategyType());
@@ -294,7 +294,8 @@ public class InputLayer {
     private int maxIndexInLastWindow;
 
     private InputLayerRowTumblingWindowReader(int[] columnIndexes,
-        TumblingWindowAccessStrategy accessStrategy) throws QueryProcessException {
+        TumblingWindowAccessStrategy accessStrategy, float memoryBudgetInMB)
+        throws QueryProcessException {
       this.columnIndexes = columnIndexes;
       columnDataTypes = new TSDataType[columnIndexes.length];
       safetyPiles = new SafetyPile[columnIndexes.length];
@@ -304,13 +305,10 @@ public class InputLayer {
       }
 
       windowSize = accessStrategy.getWindowSize();
-      rowIndexes = windowSize < SerializableIntList
-          .calculateCapacity(ElasticSerializableIntList.DEFAULT_MEMORY_USAGE_LIMIT)
+      rowIndexes = windowSize < SerializableIntList.calculateCapacity(memoryBudgetInMB)
           ? new WrappedIntArray(windowSize)
           : new ElasticSerializableIntList(queryId,
-              DATA_ID_PREFIX + elasticSerializableIntListCount++,
-              ElasticSerializableIntList.DEFAULT_MEMORY_USAGE_LIMIT,
-              ElasticSerializableIntList.DEFAULT_CACHE_SIZE);
+              DATA_ID_PREFIX + elasticSerializableListCount++, memoryBudgetInMB, 2);
       rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes, rowIndexes);
 
       maxIndexInLastWindow = -1;
@@ -391,7 +389,8 @@ public class InputLayer {
     private final boolean hasAtLeastOneRow;
 
     private InputLayerRowSlidingTimeWindowReader(int[] columnIndexes,
-        SlidingTimeWindowAccessStrategy accessStrategy) throws QueryProcessException, IOException {
+        SlidingTimeWindowAccessStrategy accessStrategy, float memoryBudgetInMB)
+        throws QueryProcessException, IOException {
       this.columnIndexes = columnIndexes;
       columnDataTypes = new TSDataType[columnIndexes.length];
       safetyPiles = new SafetyPile[columnIndexes.length];
@@ -405,9 +404,7 @@ public class InputLayer {
       displayWindowEnd = accessStrategy.getDisplayWindowEnd();
 
       rowIndexes = new ElasticSerializableIntList(queryId,
-          DATA_ID_PREFIX + elasticSerializableIntListCount++,
-          ElasticSerializableIntList.DEFAULT_MEMORY_USAGE_LIMIT,
-          ElasticSerializableIntList.DEFAULT_CACHE_SIZE);
+          DATA_ID_PREFIX + elasticSerializableListCount++, memoryBudgetInMB, 2);
       rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes, rowIndexes);
 
       nextWindowTimeBegin = accessStrategy.getDisplayWindowBegin();

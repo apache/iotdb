@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,9 +66,12 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   @Override
-  public void initializeUdfExecutor(long queryId) throws QueryProcessException {
-    for (UDTFExecutor executor : columnName2Executor.values()) {
-      executor.initCollector(queryId);
+  public void initializeUdfExecutor(long queryId, float collectorMemoryBudgetInMB)
+      throws QueryProcessException {
+    Collection<UDTFExecutor> executors = columnName2Executor.values();
+    collectorMemoryBudgetInMB /= executors.size();
+    for (UDTFExecutor executor : executors) {
+      executor.initCollector(queryId, collectorMemoryBudgetInMB);
     }
   }
 

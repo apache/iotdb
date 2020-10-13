@@ -49,7 +49,9 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
   protected int[] alreadyReturnedRowNumArray;
   protected int[] offsetArray;
 
-  // execute with value filter
+  /**
+   * execute with value filter
+   */
   public UDTFNonAlignDataSet(QueryContext context, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
       List<TSDataType> deduplicatedDataTypes, TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries, List<Boolean> cached)
@@ -59,7 +61,9 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
     isInitialized = false;
   }
 
-  // execute without value filter
+  /**
+   * execute without value filter
+   */
   public UDTFNonAlignDataSet(QueryContext context, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
       List<TSDataType> deduplicatedDataTypes, List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException, IOException, InterruptedException {

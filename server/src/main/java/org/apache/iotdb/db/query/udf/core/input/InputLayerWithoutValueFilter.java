@@ -29,9 +29,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class InputLayerWithoutValueFilter extends InputLayer {
 
-  public InputLayerWithoutValueFilter(long queryId, List<Path> paths, List<TSDataType> dataTypes,
-      List<ManagedSeriesReader> readers)
+  public InputLayerWithoutValueFilter(long queryId, float memoryBudgetInMB, List<Path> paths,
+      List<TSDataType> dataTypes, List<ManagedSeriesReader> readers)
       throws QueryProcessException, IOException, InterruptedException {
-    super(queryId, new RawQueryDataSetWithoutValueFilter(paths, dataTypes, readers));
+    super(queryId, memoryBudgetInMB,
+        new RawQueryDataSetWithoutValueFilter(paths, dataTypes, readers));
   }
 }

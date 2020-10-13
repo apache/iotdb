@@ -96,7 +96,6 @@ public class IoTDBConfig {
    */
   private int mqttMaxMessageSize = 1048576;
 
-
   /**
    * Rpc binding address.
    */
@@ -118,12 +117,12 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /**
-   * Memory allocated for the read process
+   * Memory allocated for the write process
    */
   private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 6 / 10;
 
   /**
-   * Memory allocated for the write process
+   * Memory allocated for the read process
    */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
@@ -589,8 +588,9 @@ public class IoTDBConfig {
 
   /**
    * default TTL for storage groups that are not set TTL by statements, in ms
-   * Notice: if this property is changed, previous created storage group which are not set TTL
-   * will also be affected.
+   * <p>
+   * Notice: if this property is changed, previous created storage group which are not set TTL will
+   * also be affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -639,11 +639,74 @@ public class IoTDBConfig {
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
 
+  /**
+   * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
+   * value to be slightly larger than the average length of all text records.
+   */
+  private int udfInitialByteArrayLengthForMemoryControl = 48;
+
+  /**
+   * How much memory may be used in ONE UDF query (in MB).
+   * <p>
+   * The upper limit is 20% of allocated memory for read.
+   * <p>
+   * udfMemoryBudgetInMB = udfReaderMemoryBudgetInMB + udfTransformerMemoryBudgetInMB +
+   * udfCollectorMemoryBudgetInMB
+   */
+  private float udfMemoryBudgetInMB = (float) Math.min(300f, 0.2 * allocateMemoryForRead);
+
+  private float udfReaderMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
+
+  private float udfTransformerMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
+
+  private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
+
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
   public IoTDBConfig() {
     // empty constructor
+  }
+
+  public float getUdfMemoryBudgetInMB() {
+    return udfMemoryBudgetInMB;
+  }
+
+  public void setUdfMemoryBudgetInMB(float udfMemoryBudgetInMB) {
+    this.udfMemoryBudgetInMB = udfMemoryBudgetInMB;
+  }
+
+  public float getUdfReaderMemoryBudgetInMB() {
+    return udfReaderMemoryBudgetInMB;
+  }
+
+  public void setUdfReaderMemoryBudgetInMB(float udfReaderMemoryBudgetInMB) {
+    this.udfReaderMemoryBudgetInMB = udfReaderMemoryBudgetInMB;
+  }
+
+  public float getUdfTransformerMemoryBudgetInMB() {
+    return udfTransformerMemoryBudgetInMB;
+  }
+
+  public void setUdfTransformerMemoryBudgetInMB(float udfTransformerMemoryBudgetInMB) {
+    this.udfTransformerMemoryBudgetInMB = udfTransformerMemoryBudgetInMB;
+  }
+
+  public float getUdfCollectorMemoryBudgetInMB() {
+    return udfCollectorMemoryBudgetInMB;
+  }
+
+  public void setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
+    this.udfCollectorMemoryBudgetInMB = udfCollectorMemoryBudgetInMB;
+  }
+
+  public int getUdfInitialByteArrayLengthForMemoryControl() {
+    return udfInitialByteArrayLengthForMemoryControl;
+  }
+
+  public void setUdfInitialByteArrayLengthForMemoryControl(
+      int udfInitialByteArrayLengthForMemoryControl) {
+    this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
   }
 
   public int getConcurrentWritingTimePartition() {
@@ -1247,6 +1310,7 @@ public class IoTDBConfig {
   public void setMaxMergeChunkNumInTsFile(int maxMergeChunkNumInTsFile) {
     this.maxMergeChunkNumInTsFile = maxMergeChunkNumInTsFile;
   }
+
   public MergeFileStrategy getMergeFileStrategy() {
     return mergeFileStrategy;
   }

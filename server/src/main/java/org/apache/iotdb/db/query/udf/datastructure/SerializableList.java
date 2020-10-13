@@ -23,12 +23,14 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 public interface SerializableList {
 
-  int INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL = 32; // todo: parameterization
+  int INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL = IoTDBDescriptor.getInstance().getConfig()
+      .getUdfInitialByteArrayLengthForMemoryControl();
 
   void serialize(PublicBAOS outputStream) throws IOException;
 

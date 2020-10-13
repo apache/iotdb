@@ -192,12 +192,11 @@ public class IoTDBDescriptor {
       loadWALProps(properties);
 
       String systemDir = properties.getProperty("system_dir");
-      if(systemDir == null) {
+      if (systemDir == null) {
         systemDir = properties.getProperty("base_dir");
-        if(systemDir != null){
+        if (systemDir != null) {
           systemDir = FilePathUtils.regularizePath(systemDir) + IoTDBConstant.SYSTEM_FOLDER_NAME;
-        }
-        else {
+        } else {
           systemDir = conf.getSystemDir();
         }
       }
@@ -498,6 +497,9 @@ public class IoTDBDescriptor {
       // set tsfile-format config
       loadTsFileProps(properties);
 
+      // UDF
+      loadUDFProps(properties);
+
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -720,9 +722,46 @@ public class IoTDBDescriptor {
                 + " should be an integer, which is "
                 + queryMemoryAllocateProportion);
       }
+    }
+  }
 
+  private void loadUDFProps(Properties properties) {
+    String initialByteArrayLengthForMemoryControl = properties
+        .getProperty("udf_initial_byte_array_length_for_memory_control");
+    if (initialByteArrayLengthForMemoryControl != null) {
+      conf.setUdfInitialByteArrayLengthForMemoryControl(
+          Integer.parseInt(initialByteArrayLengthForMemoryControl));
     }
 
+    String memoryBudgetInMb = properties.getProperty("udf_memory_budget_in_mb");
+    if (memoryBudgetInMb != null) {
+      conf.setUdfMemoryBudgetInMB((float) Math
+          .min(Float.parseFloat(memoryBudgetInMb), 0.2 * conf.getAllocateMemoryForRead()));
+    }
+
+    String readerTransformerCollectorMemoryProportion = properties
+        .getProperty("udf_reader_transformer_collector_memory_proportion");
+    if (readerTransformerCollectorMemoryProportion != null) {
+      String[] proportions = readerTransformerCollectorMemoryProportion.split(":");
+      int proportionSum = 0;
+      for (String proportion : proportions) {
+        proportionSum += Integer.parseInt(proportion.trim());
+      }
+      float maxMemoryAvailable = conf.getUdfMemoryBudgetInMB();
+      try {
+        conf.setUdfReaderMemoryBudgetInMB(
+            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+        conf.setUdfTransformerMemoryBudgetInMB(
+            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+        conf.setUdfCollectorMemoryBudgetInMB(
+            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Each subsection of configuration item udf_reader_transformer_collector_memory_proportion"
+                + " should be an integer, which is "
+                + readerTransformerCollectorMemoryProportion);
+      }
+    }
   }
 
   private static class IoTDBDescriptorHolder {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -43,13 +44,22 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 public abstract class UDTFDataSet extends QueryDataSet {
 
+  protected static final float UDF_READER_MEMORY_BUDGET_IN_MB = IoTDBDescriptor.getInstance()
+      .getConfig().getUdfReaderMemoryBudgetInMB();
+  protected static final float UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB = IoTDBDescriptor.getInstance()
+      .getConfig().getUdfTransformerMemoryBudgetInMB();
+  protected static final float UDF_COLLECTOR_MEMORY_BUDGET_IN_MB = IoTDBDescriptor.getInstance()
+      .getConfig().getUdfCollectorMemoryBudgetInMB();
+
   protected final long queryId;
   protected final UDTFPlan udtfPlan;
   protected final InputLayer inputLayer;
 
   protected LayerPointReader[] transformers;
 
-  // execute with value filters
+  /**
+   * execute with value filters
+   */
   public UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
       List<TSDataType> deduplicatedDataTypes, TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries, List<Boolean> cached)
@@ -57,28 +67,50 @@ public abstract class UDTFDataSet extends QueryDataSet {
     super(deduplicatedPaths, deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    inputLayer = new InputLayerWithValueFilter(queryId, deduplicatedPaths, deduplicatedDataTypes,
-        timestampGenerator, readersOfSelectedSeries, cached);
-    udtfPlan.initializeUdfExecutor(queryId);
-    initTransformers();
+    inputLayer = new InputLayerWithValueFilter(queryId, UDF_READER_MEMORY_BUDGET_IN_MB,
+        deduplicatedPaths, deduplicatedDataTypes, timestampGenerator, readersOfSelectedSeries,
+        cached);
+    udtfPlan.initializeUdfExecutor(queryId, UDF_COLLECTOR_MEMORY_BUDGET_IN_MB);
+    initTransformers(UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB);
   }
 
-  // execute without value filters
+  /**
+   * execute without value filters
+   */
   public UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
       List<TSDataType> deduplicatedDataTypes, List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException, IOException, InterruptedException {
     super(deduplicatedPaths, deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    inputLayer = new InputLayerWithoutValueFilter(queryId, deduplicatedPaths, deduplicatedDataTypes,
-        readersOfSelectedSeries);
-    udtfPlan.initializeUdfExecutor(queryId);
-    initTransformers();
+    inputLayer = new InputLayerWithoutValueFilter(queryId, UDF_READER_MEMORY_BUDGET_IN_MB,
+        deduplicatedPaths, deduplicatedDataTypes, readersOfSelectedSeries);
+    udtfPlan.initializeUdfExecutor(queryId, UDF_COLLECTOR_MEMORY_BUDGET_IN_MB);
+    initTransformers(UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB);
   }
 
-  protected void initTransformers() throws QueryProcessException, IOException {
+  protected void initTransformers(float memoryBudgetInMB)
+      throws QueryProcessException, IOException {
     int size = udtfPlan.getPathToIndex().size();
     transformers = new Transformer[size];
+
+    int windowTransformerCount = 0;
+    for (int i = 0; i < size; ++i) {
+      if (udtfPlan.isUdfColumn(i)) {
+        AccessStrategy accessStrategy = udtfPlan.getExecutorByDataSetOutputColumnIndex(i)
+            .getConfigurations().getAccessStrategy();
+        switch (accessStrategy.getAccessStrategyType()) {
+          case TUMBLING_WINDOW:
+          case SLIDING_TIME_WINDOW:
+            ++windowTransformerCount;
+            break;
+          default:
+            break;
+        }
+      }
+    }
+    memoryBudgetInMB /= Math.max(windowTransformerCount, 1);
+
     for (int i = 0; i < size; ++i) {
       if (udtfPlan.isUdfColumn(i)) {
         UDTFExecutor executor = udtfPlan.getExecutorByDataSetOutputColumnIndex(i);
@@ -91,8 +123,9 @@ public abstract class UDTFDataSet extends QueryDataSet {
             break;
           case TUMBLING_WINDOW:
           case SLIDING_TIME_WINDOW:
-            transformers[i] = new UDFQueryRowWindowTransformer(
-                inputLayer.constructRowWindowReader(readerIndexes, accessStrategy), executor);
+            transformers[i] = new UDFQueryRowWindowTransformer(inputLayer
+                .constructRowWindowReader(readerIndexes, accessStrategy, memoryBudgetInMB),
+                executor);
             break;
           default:
             throw new UnsupportedOperationException("Unsupported transformer access strategy");

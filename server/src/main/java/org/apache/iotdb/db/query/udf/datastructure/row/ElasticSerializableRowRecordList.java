@@ -32,9 +32,6 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public class ElasticSerializableRowRecordList {
 
-  public static final float DEFAULT_MEMORY_USAGE_LIMIT = 100;
-  public static final int DEFAULT_CACHE_SIZE = 3;
-
   protected static final int MEMORY_CHECK_THRESHOLD = 1000;
 
   protected static final String UNIQUE_ID_MAGIC_STRING = "__ROW__";

@@ -42,9 +42,6 @@ public class ElasticSerializableTVList implements PointCollector {
     return new ElasticSerializableTVList(dataType, queryId, uniqueId, memoryLimitInMB, cacheSize);
   }
 
-  public static final float DEFAULT_MEMORY_USAGE_LIMIT = 100;
-  public static final int DEFAULT_CACHE_SIZE = 3;
-
   protected TSDataType dataType;
   protected long queryId;
   protected String uniqueId;
