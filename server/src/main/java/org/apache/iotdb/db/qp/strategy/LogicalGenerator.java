@@ -1297,10 +1297,15 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterSelectElement(SelectElementContext ctx) {
     super.enterSelectElement(ctx);
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    List<SuffixPathContext> suffixPaths = ctx.suffixPath();
-    for (SuffixPathContext suffixPath : suffixPaths) {
-      PartialPath path = parseSuffixPath(suffixPath);
-      selectOp.addSelectPath(path);
+    List<SqlBaseParser.SuffixPathOrConstantContext> suffixPathOrConstants = ctx.suffixPathOrConstant();
+    for (SqlBaseParser.SuffixPathOrConstantContext suffixPathOrConstant : suffixPathOrConstants) {
+      if (suffixPathOrConstant.suffixPath() != null) {
+        PartialPath path = parseSuffixPath(suffixPathOrConstant.suffixPath());
+        selectOp.addSelectPath(path);
+      } else {
+        PartialPath path = new PartialPath(new String[]{suffixPathOrConstant.SINGLE_QUOTE_STRING_LITERAL().getText()});
+        selectOp.addSelectPath(path);
+      }
     }
     queryOp.setSelectOperator(selectOp);
   }
