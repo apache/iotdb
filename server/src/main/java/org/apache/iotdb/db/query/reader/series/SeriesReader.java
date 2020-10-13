@@ -591,8 +591,11 @@ public class SeriesReader {
           unpackAllOverlappedUnseqPageReadersToMergeReader(timeValuePair.getTimestamp());
 
           if (firstPageReader != null) {
-            if (firstPageReader.getStatistics().getEndTime() < timeValuePair.getTimestamp()) {
-              return cachedBatchData.hasCurrent();
+            if ((orderUtils.getAscending() && timeValuePair.getTimestamp() > firstPageReader
+                .getStatistics().getEndTime()) || (!orderUtils.getAscending()
+                && timeValuePair.getTimestamp() < firstPageReader.getStatistics().getStartTime())) {
+              hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
+              return hasCachedNextOverlappedPage;
             } else {
               mergeReader
                   .addReader(firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending())
@@ -603,8 +606,12 @@ public class SeriesReader {
           }
 
           if (!seqPageReaders.isEmpty()) {
-            if (seqPageReaders.get(0).getStatistics().getEndTime() < timeValuePair.getTimestamp()) {
-              return cachedBatchData.hasCurrent();
+            if ((orderUtils.getAscending() && timeValuePair.getTimestamp() > seqPageReaders.get(0)
+                .getStatistics().getEndTime()) || (!orderUtils.getAscending()
+                && timeValuePair.getTimestamp() < seqPageReaders.get(0).getStatistics()
+                .getStartTime())) {
+              hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
+              return hasCachedNextOverlappedPage;
             } else {
               VersionPageReader pageReader = seqPageReaders.remove(0);
               mergeReader.addReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending())
@@ -631,7 +638,8 @@ public class SeriesReader {
         if (hasCachedNextOverlappedPage) {
           return true;
         } else if (mergeReader.hasNextTimeValuePair()) {
-          return false;
+          // TODO still bug here
+          return firstPageReader == null && seqPageReaders.isEmpty();
         }
       } else {
         return false;
