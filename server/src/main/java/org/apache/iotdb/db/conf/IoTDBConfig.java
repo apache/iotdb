@@ -136,7 +136,7 @@ public class IoTDBConfig {
   /**
    * Memory allocated for the mtree
    */
-  private long allocateMemoryForMTree = allocateMemoryForWrite * 2 / 10;
+  private long allocateMemoryForMTree = Runtime.getRuntime().maxMemory() * 1 / 10;
 
   /**
    * Is active timeseries counter enable.
@@ -258,6 +258,11 @@ public class IoTDBConfig {
   private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
 
   private ZoneId zoneID = ZoneId.systemDefault();
+
+  /**
+   * Is the write mem control for writing enable.
+   */
+  private boolean enableMemControl = true;
 
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
@@ -1296,6 +1301,14 @@ public class IoTDBConfig {
 
   public void setMergeThroughputMbPerSec(int mergeThroughputMbPerSec) {
     this.mergeThroughputMbPerSec = mergeThroughputMbPerSec;
+  }
+
+  public boolean isEnableMemControl() {
+    return enableMemControl;
+  }
+
+  public void setEnableMemControl(boolean enableMemControl) {
+    this.enableMemControl = enableMemControl;
   }
 
   public long getMemtableSizeThreshold() {

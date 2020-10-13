@@ -54,12 +54,13 @@ public class PrimitiveArrayManager {
   private static final Map<TSDataType, Double> bufferedArraysNumRatio = new EnumMap<>(
       TSDataType.class);
 
-  private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
-
-  public static final int ARRAY_SIZE =
-      IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
+  private final static Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final boolean ENABLE_MEM_CONTROL = config.isEnableMemControl();
+
+  public static final int ARRAY_SIZE = config.getPrimitiveArraySize();
 
   /**
    * threshold total size of arrays for all data types
@@ -113,7 +114,12 @@ public class PrimitiveArrayManager {
       if (logger.isDebugEnabled()) {
         logger.debug("Apply out of buffer array from system module...");
       }
-      boolean applyResult = applyOOBArray(dataType, ARRAY_SIZE);
+      boolean applyResult;
+      if (ENABLE_MEM_CONTROL) {
+        applyResult = applyOOBArray(dataType, ARRAY_SIZE);
+      } else {
+        applyResult = true;
+      }
       if (!applyResult) {
         if (logger.isDebugEnabled()) {
           logger.debug("System module REFUSE to offer an out of buffer array");
@@ -130,12 +136,14 @@ public class PrimitiveArrayManager {
       // return a buffered array
       bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
       bufferedArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
-      if (bufferedArraysSize.get() - lastReportArraySize.get()
-          >= BUFFERED_ARRAY_SIZE_THRESHOLD * REPORT_BUFFERED_ARRAYS_THRESHOLD) {
-        // report current buffered array size to system
-        SystemInfo.getInstance()
-            .reportIncreasingArraySize(bufferedArraysSize.get() - lastReportArraySize.get());
-        lastReportArraySize.set(bufferedArraysSize.get());
+      if (ENABLE_MEM_CONTROL) {
+        if (bufferedArraysSize.get() - lastReportArraySize.get()
+            >= BUFFERED_ARRAY_SIZE_THRESHOLD * REPORT_BUFFERED_ARRAYS_THRESHOLD) {
+          // report current buffered array size to system
+          SystemInfo.getInstance()
+              .reportIncreasingArraySize(bufferedArraysSize.get() - lastReportArraySize.get());
+          lastReportArraySize.set(bufferedArraysSize.get());
+        }
       }
       Object dataArray = bufferedArraysMap.get(dataType).poll();
       if (dataArray != null) {
@@ -318,7 +326,9 @@ public class PrimitiveArrayManager {
       logger.debug("Bring back out of buffer array of {} to system module...", dataType);
     }
     outOfBufferArraysSize.addAndGet(-size * dataType.getDataTypeSize());
-    SystemInfo.getInstance().reportReleaseOOBArray(dataType, size);
+    if (ENABLE_MEM_CONTROL) {
+      SystemInfo.getInstance().reportReleaseOOBArray(dataType, size);
+    }
   }
 
   public static void updateSchemaDataTypeNum(Map<TSDataType, Integer> schemaDataTypeNumMap) {

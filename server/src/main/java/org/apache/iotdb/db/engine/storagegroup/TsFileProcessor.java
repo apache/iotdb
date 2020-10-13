@@ -28,6 +28,8 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
@@ -50,7 +52,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -70,8 +71,11 @@ import org.slf4j.LoggerFactory;
 public class TsFileProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
+
   private final String storageGroupName;
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final boolean enableMemControl = config.isEnableMemControl();
   private StorageGroupInfo storageGroupInfo;
   private TsFileProcessorInfo tsFileProcessorInfo;
 
@@ -118,12 +122,14 @@ public class TsFileProcessor {
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
-    this.storageGroupInfo = storageGroupInfo;
-    this.tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-    this.storageGroupInfo.reportTsFileProcessorInfo(this);
     this.tsFileResource = new TsFileResource(tsfile, this);
-    this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
-    SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+    if (enableMemControl) {
+      this.storageGroupInfo = storageGroupInfo;
+      this.tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+      this.storageGroupInfo.reportTsFileProcessorInfo(this);
+      this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
+      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+    }
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.closeTsFileCallback = closeTsFileCallback;
@@ -141,11 +147,13 @@ public class TsFileProcessor {
       RestorableTsFileIOWriter writer) {
     this.storageGroupName = storageGroupName;
     this.storageGroupInfo = storageGroupInfo;
-    this.tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-    this.storageGroupInfo.reportTsFileProcessorInfo(this);
     this.tsFileResource = tsFileResource;
-    this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
-    SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo); 
+    if (enableMemControl) {
+      this.tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+      this.storageGroupInfo.reportTsFileProcessorInfo(this);
+      this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
+      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+    }
     this.versionController = versionController;
     this.writer = writer;
     this.closeTsFileCallback = closeUnsealedTsFileProcessor;
@@ -161,23 +169,26 @@ public class TsFileProcessor {
    */
   public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
-    long startTime = System.currentTimeMillis();
-    while (SystemInfo.getInstance().isRejected()) {
-      try {
-        TimeUnit.MILLISECONDS.sleep(100);
-        logger.debug("System rejected, waiting for memory releasing... "
-            + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
-            .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
-        if (System.currentTimeMillis() - startTime > 6000) {
-          throw new WriteProcessException("System rejected over 6000ms");
+    boolean needToReport = false;
+    if (enableMemControl) {
+      long startTime = System.currentTimeMillis();
+      while (SystemInfo.getInstance().isRejected()) {
+        try {
+          TimeUnit.MILLISECONDS.sleep(100);
+          logger.debug("System rejected, waiting for memory releasing... "
+              + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
+              .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
+          if (System.currentTimeMillis() - startTime > 6000) {
+            throw new WriteProcessException("System rejected over 6000ms");
+          }
+        } catch (InterruptedException e) {
+          logger.error("Failed when waiting for getting memory for insertion ", e);
+          Thread.currentThread().interrupt();
         }
-      } catch (InterruptedException e) {
-        logger.error("Failed when waiting for getting memory for insertion ", e);
-        Thread.currentThread().interrupt();
       }
+      needToReport = checkMemCostAndAddToTspInfo(insertRowPlan);
     }
-
-    boolean needToReport = checkMemCostAndAddToTspInfo(insertRowPlan);
+    
     workMemTable.insert(insertRowPlan);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
@@ -195,7 +206,7 @@ public class TsFileProcessor {
     if (!sequence) {
       tsFileResource.updateEndTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
-    if (needToReport) {
+    if (enableMemControl && needToReport) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
     }
   }
@@ -212,23 +223,27 @@ public class TsFileProcessor {
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
 
-    long startTime = System.currentTimeMillis();
-    while (SystemInfo.getInstance().isRejected()) {
-      try {
-        TimeUnit.MILLISECONDS.sleep(100);
-        logger.debug("System rejected, waiting for memory releasing... "
-            + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
-            .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
-        if (System.currentTimeMillis() - startTime > 12000) {
-          throw new WriteProcessException("System rejected over 12000ms");
+    boolean needToReport = false;
+    if (enableMemControl) {
+      long startTime = System.currentTimeMillis();
+      while (SystemInfo.getInstance().isRejected()) {
+        try {
+          TimeUnit.MILLISECONDS.sleep(100);
+          logger.debug("System rejected, waiting for memory releasing... "
+              + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
+              .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
+          if (System.currentTimeMillis() - startTime > 12000) {
+            throw new WriteProcessException("System rejected over 12000ms");
+          }
+        } catch (InterruptedException e) {
+          logger.error("Failed when waiting for getting memory for insertion ", e);
+          Thread.currentThread().interrupt();
         }
-      } catch (InterruptedException e) {
-        logger.error("Failed when waiting for getting memory for insertion ", e);
-        Thread.currentThread().interrupt();
       }
+      needToReport = checkMemCostAndAddToTspInfo(insertTabletPlan);
     }
 
-    boolean needToReport = checkMemCostAndAddToTspInfo(insertTabletPlan);
+    
     try {
       workMemTable.insertTablet(insertTabletPlan, start, end);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -256,7 +271,7 @@ public class TsFileProcessor {
           .updateEndTime(
               insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
-    if (needToReport) {
+    if (enableMemControl && needToReport) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
     }
   }
@@ -342,6 +357,11 @@ public class TsFileProcessor {
       return false;
     }
 
+    if (workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
+      logger.info("The memtable size {} of tsfile {} reaches the threshold",
+          workMemTable.memSize(), tsFileResource.getTsFile().getAbsolutePath());
+      return true;
+    }
     if (shouldFlush) {
       return true;
     }
@@ -349,9 +369,13 @@ public class TsFileProcessor {
       logger.info("The avg series points num {} of tsfile {} reaches the threshold",
           workMemTable.getTotalPointsNum() / workMemTable.getSeriesNumber(),
           tsFileResource.getTsFile().getAbsolutePath());
-      shouldFlush = true;
+      return true;
     }
-    return shouldFlush;
+    return false;
+  }
+
+  private long getMemtableSizeThresholdBasedOnSeriesNum() {
+    return config.getMemtableSizeThreshold();
   }
 
   public boolean shouldClose() {
@@ -582,13 +606,8 @@ public class TsFileProcessor {
             tsFileResource.getTsFile().getName(),
             memTable.isSignalMemTable(), flushingMemTables.size());
       }
-      logger.debug("before release a memtable, current Array cost {}, sg cost {}",
-          SystemInfo.getInstance().getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
       memTable.release();
-      logger.debug("after release a memtable, current Buffered Array cost {}, oob {}, sg cost {}",
-          PrimitiveArrayManager.getBufferedArraysSize(), PrimitiveArrayManager.getOOBSize(), 
-          SystemInfo.getInstance().getTotalSgMemCost());
-      if (tsFileProcessorInfo.getBytesMemCost() > 0) {
+      if (enableMemControl && tsFileProcessorInfo.getBytesMemCost() > 0) {
         // For text type data, reset the mem cost in tsFileProcessorInfo
         tsFileProcessorInfo.clearBytesMemCost();
         // report to System
@@ -728,8 +747,11 @@ public class TsFileProcessor {
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
     closeTsFileCallback.call(this);
-    tsFileProcessorInfo.clear();
-    storageGroupInfo.closeTsFileProcessorAndReportToSystem(this);
+
+    if (enableMemControl) {
+      tsFileProcessorInfo.clear();
+      storageGroupInfo.closeTsFileProcessorAndReportToSystem(this);
+    }
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
       logger.info("Storage group {} close the file {}, TsFile size is {}, "
