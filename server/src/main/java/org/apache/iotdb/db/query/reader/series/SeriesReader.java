@@ -383,22 +383,14 @@ public class SeriesReader {
       /*
        * first chunk metadata is already unpacked, consume cached pages
        */
-      if (!seqPageReaders.isEmpty() && !unseqPageReaders.isEmpty()) {
-        if (seqPageReaders.get(0).getStatistics().getStartTime() < unseqPageReaders.peek()
-            .getStatistics().getStartTime()) {
-          firstPageReader = seqPageReaders.remove(0);
-        } else {
-          firstPageReader = unseqPageReaders.poll();
-        }
-      } else if (!seqPageReaders.isEmpty()) {
-        firstPageReader = seqPageReaders.remove(0);
-      } else {
-        firstPageReader = unseqPageReaders.poll();
+      // TODO Desc
+      initFirstPageReader();
+      if (firstPageReader != null) {
+        long endpointTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
+        unpackAllOverlappedTsFilesToTimeSeriesMetadata(endpointTime);
+        unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(endpointTime, false);
+        unpackAllOverlappedChunkMetadataToCachedPageReaders(endpointTime, false);
       }
-      long endpointTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
-      unpackAllOverlappedTsFilesToTimeSeriesMetadata(endpointTime);
-      unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(endpointTime, false);
-      unpackAllOverlappedChunkMetadataToCachedPageReaders(endpointTime, false);
     }
 
     if (firstPageReader != null && ((!unseqPageReaders.isEmpty() && orderUtils
@@ -420,18 +412,7 @@ public class SeriesReader {
     // make sure firstPageReader won't be null while cachedPageReaders has more cached page readers
     while (firstPageReader == null && (!seqPageReaders.isEmpty() || !unseqPageReaders.isEmpty())) {
 
-      if (!seqPageReaders.isEmpty() && !unseqPageReaders.isEmpty()) {
-        if (seqPageReaders.get(0).getStatistics().getStartTime() < unseqPageReaders.peek()
-            .getStatistics().getStartTime()) {
-          firstPageReader = seqPageReaders.remove(0);
-        } else {
-          firstPageReader = unseqPageReaders.poll();
-        }
-      } else if (!seqPageReaders.isEmpty()) {
-        firstPageReader = seqPageReaders.remove(0);
-      } else {
-        firstPageReader = unseqPageReaders.poll();
-      }
+      initFirstPageReader();
 
       if ((!seqPageReaders.isEmpty() && orderUtils
           .isOverlapped(firstPageReader.getStatistics(), seqPageReaders.get(0).getStatistics()))
@@ -464,20 +445,10 @@ public class SeriesReader {
       unpackOneChunkMetaData(firstChunkMetadata);
       firstChunkMetadata = null;
     }
-    if (init && firstPageReader == null && (!seqPageReaders.isEmpty() || !unseqPageReaders.isEmpty())) {
+    if (init && firstPageReader == null && (!seqPageReaders.isEmpty() || !unseqPageReaders
+        .isEmpty())) {
       // TODO think over desc
-      if (!seqPageReaders.isEmpty() && !unseqPageReaders.isEmpty()) {
-        if (seqPageReaders.get(0).getStatistics().getStartTime() < unseqPageReaders.peek()
-            .getStatistics().getStartTime()) {
-          firstPageReader = seqPageReaders.remove(0);
-        } else {
-          firstPageReader = unseqPageReaders.poll();
-        }
-      } else if (!seqPageReaders.isEmpty()) {
-        firstPageReader = seqPageReaders.remove(0);
-      } else {
-        firstPageReader = unseqPageReaders.poll();
-      }
+      initFirstPageReader();
     }
   }
 
@@ -581,7 +552,7 @@ public class SeriesReader {
       return true;
     }
 
-    tryToPutAllDirectlyOverlappedPageReadersIntoMergeReader();
+    tryToPutAllDirectlyOverlappedUnseqPageReadersIntoMergeReader();
 
     while (true) {
 
@@ -589,6 +560,7 @@ public class SeriesReader {
 
         cachedBatchData = BatchDataFactory.createBatchData(dataType);
         long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
+        // TODO desc
         if (firstPageReader != null) {
           currentPageEndPointTime = Math
               .min(currentPageEndPointTime, firstPageReader.getStatistics().getEndTime());
@@ -613,11 +585,6 @@ public class SeriesReader {
               timeValuePair.getTimestamp(), false);
           unpackAllOverlappedChunkMetadataToCachedPageReaders(timeValuePair.getTimestamp(), false);
           unpackAllOverlappedUnseqPageReadersToMergeReader(timeValuePair.getTimestamp());
-
-          /*
-           * get the latest first point in mergeReader
-           */
-          timeValuePair = mergeReader.currentTimeValuePair();
 
           if (firstPageReader != null) {
             if (firstPageReader.getStatistics().getEndTime() < timeValuePair.getTimestamp()) {
@@ -647,9 +614,8 @@ public class SeriesReader {
            */
           timeValuePair = mergeReader.nextTimeValuePair();
 
-          if (valueFilter == null
-              || valueFilter.satisfy(
-              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+          if (valueFilter == null || valueFilter
+              .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
             cachedBatchData.putAnObject(
                 timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
           }
@@ -660,6 +626,8 @@ public class SeriesReader {
          */
         if (hasCachedNextOverlappedPage) {
           return true;
+        } else if (mergeReader.currentTimeValuePair().getTimestamp() > currentPageEndPointTime) {
+          return false;
         }
       } else {
         return false;
@@ -667,7 +635,7 @@ public class SeriesReader {
     }
   }
 
-  private void tryToPutAllDirectlyOverlappedPageReadersIntoMergeReader() throws IOException {
+  private void tryToPutAllDirectlyOverlappedUnseqPageReadersIntoMergeReader() throws IOException {
 
     /*
      * no cached page readers
@@ -679,20 +647,9 @@ public class SeriesReader {
     /*
      * init firstPageReader
      */
-    // TODO
+    // TODO desc
     if (firstPageReader == null) {
-      if (!seqPageReaders.isEmpty() && !unseqPageReaders.isEmpty()) {
-        if (seqPageReaders.get(0).getStatistics().getStartTime() < unseqPageReaders.peek()
-            .getStatistics().getStartTime()) {
-          firstPageReader = seqPageReaders.remove(0);
-        } else {
-          firstPageReader = unseqPageReaders.poll();
-        }
-      } else if (!seqPageReaders.isEmpty()) {
-        firstPageReader = seqPageReaders.remove(0);
-      } else {
-        firstPageReader = unseqPageReaders.poll();
-      }
+      initFirstPageReader();
     }
 
     long currentPageEndpointTime;
@@ -706,6 +663,21 @@ public class SeriesReader {
      * put all currently directly overlapped unseq page reader to merge reader
      */
     unpackAllOverlappedUnseqPageReadersToMergeReader(currentPageEndpointTime);
+  }
+
+  private void initFirstPageReader() {
+    if (!seqPageReaders.isEmpty() && !unseqPageReaders.isEmpty()) {
+      if (seqPageReaders.get(0).getStatistics().getStartTime() < unseqPageReaders.peek()
+          .getStatistics().getStartTime()) {
+        firstPageReader = seqPageReaders.remove(0);
+      } else {
+        firstPageReader = unseqPageReaders.poll();
+      }
+    } else if (!seqPageReaders.isEmpty()) {
+      firstPageReader = seqPageReaders.remove(0);
+    } else if (!unseqPageReaders.isEmpty()) {
+      firstPageReader = unseqPageReaders.poll();
+    }
   }
 
   private void unpackAllOverlappedUnseqPageReadersToMergeReader(long endpointTime)
