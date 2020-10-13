@@ -240,16 +240,9 @@ public class TsFileProcessor {
     }
     try {
       if (workMemTable != null) {
-        MManager manager = MManager.getInstance();
         for (PartialPath device : devicePaths) {
-          MNode node = manager.getDeviceNode(device);
-          for (MNode measurementNode : node.getChildren().values()) {
-            PartialPath fullPath = measurementNode.getPartialPath();
-            if (deletion.getPath().matchFullPath(fullPath)) {
-              workMemTable.delete(fullPath.getDevice(), fullPath.getMeasurement(),
-                  deletion.getStartTime(), deletion.getEndTime());
-            }
-          }
+          workMemTable.delete(deletion.getPath(), device, deletion.getStartTime(),
+              deletion.getEndTime());
         }
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query

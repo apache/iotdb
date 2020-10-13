@@ -109,6 +109,13 @@ public class PartialPath extends Path implements Comparable<Path> {
     return nodes.length;
   }
 
+  public String getTailNode() {
+    if (nodes.length <= 0) {
+      return "";
+    }
+    return nodes[nodes.length - 1];
+  }
+
   /**
    * Construct a new PartialPath by resetting the prefix nodes to prefixPath
    * @param prefixPath the prefix path used to replace current nodes

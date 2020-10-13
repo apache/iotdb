@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -117,12 +118,14 @@ public class LogReplayer {
     tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
   }
 
-  private void replayDelete(DeletePlan deletePlan) throws IOException {
+  private void replayDelete(DeletePlan deletePlan) throws IOException, MetadataException {
     List<PartialPath> paths = deletePlan.getPaths();
     for (PartialPath path : paths) {
-      recoverMemTable
-          .delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteStartTime(),
-              deletePlan.getDeleteEndTime());
+      for (PartialPath device : IoTDB.metaManager.getDevices(path)) {
+        recoverMemTable
+            .delete(path, device, deletePlan.getDeleteStartTime(),
+                deletePlan.getDeleteEndTime());
+      }
       modFile
           .write(
               new Deletion(path, versionController.nextVersion(), deletePlan.getDeleteStartTime(),
