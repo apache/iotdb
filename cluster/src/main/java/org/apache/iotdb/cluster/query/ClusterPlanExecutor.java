@@ -326,7 +326,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private List<PartialPath> getNodesList(PartitionGroup group, PartialPath schemaPattern,
-      int level) throws CheckConsistencyException {
+      int level) throws CheckConsistencyException, MetadataException {
     if (group.contains(metaGroupMember.getThisNode())) {
       return getLocalNodesList(group, schemaPattern, level);
     } else {
@@ -335,7 +335,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private List<PartialPath> getLocalNodesList(PartitionGroup group, PartialPath schemaPattern,
-      int level) throws CheckConsistencyException {
+      int level) throws CheckConsistencyException, MetadataException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeaderWithConsistencyCheck();
@@ -346,7 +346,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     } catch (MetadataException e) {
       logger
           .error("Cannot not get node list of {}@{} from {} locally", schemaPattern, level, group);
-      return Collections.emptyList();
+      throw e;
     }
   }
 
