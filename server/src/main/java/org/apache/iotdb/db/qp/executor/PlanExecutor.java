@@ -708,21 +708,8 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void delete(DeletePlan deletePlan) throws QueryProcessException {
-    try {
-      Set<PartialPath> existingPaths = new HashSet<>();
-      for (PartialPath p : deletePlan.getPaths()) {
-        if (!getPathsName(p).isEmpty()) {
-          existingPaths.add(p);
-        }
-      }
-      if (existingPaths.isEmpty()) {
-        throw new QueryProcessException("TimeSeries does not exist and its data cannot be deleted");
-      }
-      for (PartialPath path : existingPaths) {
-        delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
-      }
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+    for (PartialPath path : deletePlan.getPaths()) {
+      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
     }
   }
 

@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -50,12 +51,13 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -229,7 +231,7 @@ public class TsFileProcessor {
    * <p>
    * Delete data in both working MemTable and flushing MemTables.
    */
-  public void deleteDataInMemory(Deletion deletion, List<PartialPath> fullPaths)
+  public void deleteDataInMemory(Deletion deletion, Set<PartialPath> devicePaths)
           throws MetadataException {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
@@ -238,9 +240,16 @@ public class TsFileProcessor {
     }
     try {
       if (workMemTable != null) {
-        for (PartialPath p : fullPaths) {
-          workMemTable.delete(p.getDevice(), p.getMeasurement(), deletion.getStartTime(),
-              deletion.getEndTime());
+        MManager manager = MManager.getInstance();
+        for (PartialPath device : devicePaths) {
+          MNode node = manager.getDeviceNode(device);
+          for (MNode measurementNode : node.getChildren().values()) {
+            PartialPath fullPath = measurementNode.getPartialPath();
+            if (deletion.getPath().matchFullPath(fullPath)) {
+              workMemTable.delete(fullPath.getDevice(), fullPath.getMeasurement(),
+                  deletion.getStartTime(), deletion.getEndTime());
+            }
+          }
         }
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
