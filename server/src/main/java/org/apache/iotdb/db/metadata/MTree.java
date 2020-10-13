@@ -174,7 +174,6 @@ public class MTree implements Serializable {
 
   /**
    * combine multiple metadata in string format
-   *
    */
   @TestOnly
   static JsonObject combineMetadataInStrings(String[] metadataStrs) {
@@ -187,7 +186,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < jsonObjects.length; i++) {
       root = combineJsonObjects(root, jsonObjects[i]);
     }
-    
+
     return root;
   }
 
@@ -776,7 +775,7 @@ public class MTree implements Serializable {
     }
     try {
       return getCount(root, nodes, 1);
-    }catch (PathNotExistException e){
+    } catch (PathNotExistException e) {
       throw new PathNotExistException(prefixPath.getFullPath());
     }
   }
