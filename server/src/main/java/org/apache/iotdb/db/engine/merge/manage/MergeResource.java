@@ -179,7 +179,7 @@ public class MergeResource {
     // copy from TsFileResource so queries are not affected
     List<Modification> modifications = modificationCache.computeIfAbsent(tsFileResource,
         resource -> new LinkedList<>(resource.getModFile().getModifications()));
-    Set<Modification> pathModifications = new HashSet<>();
+    List<Modification> pathModifications = new ArrayList<>();
     Iterator<Modification> modificationIterator = modifications.iterator();
     while (modificationIterator.hasNext()) {
       Modification modification = modificationIterator.next();
@@ -187,7 +187,7 @@ public class MergeResource {
         pathModifications.add(modification);
       }
     }
-    return new ArrayList<>(pathModifications);
+    return pathModifications;
   }
 
   /**
