@@ -230,7 +230,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       }
       logBuffer.clear();
       bufferedLogNum = 0;
-      logger.debug("Log node {} ends sync.", identifier);
+      logger.trace("Log node {} ends sync.", identifier);
     } finally {
       lock.writeLock().unlock();
     }
