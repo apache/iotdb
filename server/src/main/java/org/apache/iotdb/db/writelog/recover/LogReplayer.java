@@ -88,10 +88,16 @@ public class LogReplayer {
         logNodePrefix + FSFactoryProducer.getFSFactory().getFile(insertFilePath).getName());
 
     ILogReader logReader = logNode.getLogReader();
+    long readLogTime = 0;
+    long replayLogTime = 0;
     try {
       while (logReader.hasNext()) {
         try {
+          long start = System.nanoTime();
           PhysicalPlan plan = logReader.next();
+          readLogTime += System.nanoTime() - start;
+
+          start = System.nanoTime();
           if (plan instanceof InsertPlan) {
             replayInsert((InsertPlan) plan);
           } else if (plan instanceof DeletePlan) {
@@ -99,6 +105,7 @@ public class LogReplayer {
           } else if (plan instanceof UpdatePlan) {
             replayUpdate((UpdatePlan) plan);
           }
+          replayLogTime += System.nanoTime() - start;
         } catch (Exception e) {
           logger.error("recover wal of {} failed", insertFilePath, e);
         }
@@ -113,6 +120,9 @@ public class LogReplayer {
         logger.error("Canno close the modifications file {}", modFile.getFilePath(), e);
       }
     }
+    readLogTime = readLogTime / 1_000_000L;
+    replayLogTime = replayLogTime / 1_000_000L;
+    logger.debug("Read logs costs {}ms, replay logs costs {}ms", readLogTime, replayLogTime);
     tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateStartTime(k, v));
     tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
   }
