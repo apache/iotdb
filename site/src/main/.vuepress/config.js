@@ -42,7 +42,7 @@ var config = {
     themeConfig: {
 
         // 项目的 github 地址
-        repo: 'https://github.com/apache/incubator-iotdb.git',
+        repo: 'https://github.com/apache/iotdb.git',
     
         // github 地址的链接名
         repoLabel: 'gitHub',

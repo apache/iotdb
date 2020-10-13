@@ -33,11 +33,11 @@ As an Apache project, we are using mailing list, JIRA, and Github Issues to obta
 
 * JIRA issue: https://issues.apache.org/jira/projects/IOTDB/issues
 
-* Github issue: https://github.com/apache/incubator-iotdb/issues
+* Github issue: https://github.com/apache/iotdb/issues
 
 * Twitter: https://twitter.com/apacheiotdb
 
-* We look forward to you sharing the experience of using IoTDB: [Survey](https://github.com/apache/incubator-iotdb/issues/748)
+* We look forward to you sharing the experience of using IoTDB: [Survey](https://github.com/apache/iotdb/issues/748)
 
 * For Chinese users, we have a Wechat Public Account. For more details, read [交流](../zh/Community/Feedback.md)
 

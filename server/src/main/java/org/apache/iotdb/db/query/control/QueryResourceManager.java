@@ -59,13 +59,12 @@ public class QueryResourceManager {
   private QueryFileManager filePathsManager;
   private static final Logger logger = LoggerFactory.getLogger(QueryResourceManager.class);
   // record the total number and size of chunks for each query id
-  private Map<Long, Long> chunkNumMap = new ConcurrentHashMap<>();
+  private Map<Long, Integer> chunkNumMap = new ConcurrentHashMap<>();
   // chunk size represents the number of time-value points in the chunk
   private Map<Long, Long> chunkSizeMap = new ConcurrentHashMap<>();
   // record the distinct tsfiles for each query id
-  // Just store weak references here in case GC failed for those objects
-  private Map<Long, Set<WeakReference<TsFileResource>>> seqFileNumMap = new ConcurrentHashMap<>();
-  private Map<Long, Set<WeakReference<TsFileResource>>> unseqFileNumMap = new ConcurrentHashMap<>();
+  private Map<Long, Set<TsFileResource>> seqFileNumMap = new ConcurrentHashMap<>();
+  private Map<Long, Set<TsFileResource>> unseqFileNumMap = new ConcurrentHashMap<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   /**
    * Record temporary files used for external sorting.
@@ -94,7 +93,7 @@ public class QueryResourceManager {
     return queryId;
   }
 
-  public Map<Long, Long> getChunkNumMap() {
+  public Map<Long, Integer> getChunkNumMap() {
     return chunkNumMap;
   }
 
@@ -124,11 +123,9 @@ public class QueryResourceManager {
     // calculate the distinct number of seq and unseq tsfiles
     if (config.isEnablePerformanceTracing()) {
       seqFileNumMap.computeIfAbsent(context.getQueryId(), k -> new HashSet<>())
-          .addAll((queryDataSource.getSeqResources().stream().map(r -> new WeakReference<>(r))
-                  .collect(Collectors.toSet())));
+          .addAll((queryDataSource.getSeqResources()));
       unseqFileNumMap.computeIfAbsent(context.getQueryId(), k -> new HashSet<>())
-          .addAll((queryDataSource.getUnseqResources().stream().map(r -> new WeakReference<>(r))
-              .collect(Collectors.toSet())));
+          .addAll((queryDataSource.getUnseqResources()));
     }
     return queryDataSource;
   }

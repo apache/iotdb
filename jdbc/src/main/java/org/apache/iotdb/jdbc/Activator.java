@@ -19,22 +19,21 @@ package org.apache.iotdb.jdbc;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.jdbc.DataSourceFactory;
-import org.apache.iotdb.jdbc.IoTDBDriver;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
 public class Activator implements BundleActivator {
 
-    public void start(BundleContext context) {
-        IoTDbDataSourceFactory dsf = new IoTDbDataSourceFactory();
-        Dictionary<String, String> props = new Hashtable<String, String>();
-        props.put(DataSourceFactory.OSGI_JDBC_DRIVER_CLASS, IoTDBDriver.class.getName());
-        props.put(DataSourceFactory.OSGI_JDBC_DRIVER_NAME, "iotdb");
-        context.registerService(DataSourceFactory.class.getName(), dsf, props);
-    }
+  public void start(BundleContext context) {
+    IoTDBDataSourceFactory dsf = new IoTDBDataSourceFactory();
+    Dictionary<String, String> props = new Hashtable<String, String>();
+    props.put(DataSourceFactory.OSGI_JDBC_DRIVER_CLASS, IoTDBDriver.class.getName());
+    props.put(DataSourceFactory.OSGI_JDBC_DRIVER_NAME, "iotdb");
+    context.registerService(DataSourceFactory.class.getName(), dsf, props);
+  }
 
-    public void stop(BundleContext context) {
-        // EMPTY
-    }
+  public void stop(BundleContext context) {
+    // EMPTY
+  }
 
 }

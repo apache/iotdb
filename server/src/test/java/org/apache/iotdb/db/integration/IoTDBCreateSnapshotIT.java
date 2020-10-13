@@ -30,6 +30,9 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -74,25 +77,29 @@ public class IoTDBCreateSnapshotIT {
       Assert.assertTrue(snapshotFile.exists());
 
       // test snapshot content correct
-      String[] exp = new String[]{
-          "2,s0,,1,2,1,,-1,0",
-          "2,s1,,2,2,1,,-1,0",
-          "2,s2,,3,2,1,,-1,0",
-          "2,s3,,5,0,1,,-1,0",
-          "2,s4,,0,0,1,,-1,0",
-          "1,d0,9223372036854775807,5",
-          "2,s0,,1,2,1,,-1,0",
-          "2,s1,,5,0,1,,-1,0",
-          "2,s2,,0,0,1,,-1,0",
-          "1,d1,9223372036854775807,3",
-          "0,vehicle,2",
-          "0,root,1"
-      };
+      Set<String> e1 = new HashSet<>(Arrays.asList("2,s0,,1,2,1,,-1,0", "2,s1,,2,2,1,,-1,0",
+          "2,s2,,3,2,1,,-1,0", "2,s3,,5,0,1,,-1,0", "2,s4,,0,0,1,,-1,0"));
+      Set<String> e2 = new HashSet<>(Arrays.asList("2,s0,,1,2,1,,-1,0", "2,s1,,5,0,1,,-1,0",
+          "2,s2,,0,0,1,,-1,0"));
 
       try (BufferedReader br = new BufferedReader(new FileReader(snapshotFile))) {
-        for (String line : exp) {
-          Assert.assertEquals(line, br.readLine());
+        for (int i = 0; i < 5; ++i) {
+          String actual = br.readLine();
+          Assert.assertTrue(e1.removeIf(candidate -> candidate.equals(actual)));
         }
+        Assert.assertTrue(e1.isEmpty());
+
+        Assert.assertEquals("1,d0,9223372036854775807,5", br.readLine());
+
+        for (int i = 0; i < 3; ++i) {
+          String actual = br.readLine();
+          Assert.assertTrue(e2.removeIf(candidate -> candidate.equals(actual)));
+        }
+        Assert.assertTrue(e2.isEmpty());
+
+        Assert.assertEquals("1,d1,9223372036854775807,3", br.readLine());
+        Assert.assertEquals("0,vehicle,2", br.readLine());
+        Assert.assertEquals("0,root,1", br.readLine());
       }
     } catch (Exception e) {
       e.printStackTrace();
