@@ -54,7 +54,7 @@ public class PrimitiveArrayManager {
   private static final Map<TSDataType, Double> bufferedArraysNumRatio = new EnumMap<>(
       TSDataType.class);
 
-  private final static Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -136,14 +136,12 @@ public class PrimitiveArrayManager {
       // return a buffered array
       bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
       bufferedArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
-      if (ENABLE_MEM_CONTROL) {
-        if (bufferedArraysSize.get() - lastReportArraySize.get()
-            >= BUFFERED_ARRAY_SIZE_THRESHOLD * REPORT_BUFFERED_ARRAYS_THRESHOLD) {
-          // report current buffered array size to system
-          SystemInfo.getInstance()
-              .reportIncreasingArraySize(bufferedArraysSize.get() - lastReportArraySize.get());
-          lastReportArraySize.set(bufferedArraysSize.get());
-        }
+      if (ENABLE_MEM_CONTROL && bufferedArraysSize.get() - lastReportArraySize.get()
+          >= BUFFERED_ARRAY_SIZE_THRESHOLD * REPORT_BUFFERED_ARRAYS_THRESHOLD) {
+        // report current buffered array size to system
+        SystemInfo.getInstance()
+            .reportIncreasingArraySize(bufferedArraysSize.get() - lastReportArraySize.get());
+        lastReportArraySize.set(bufferedArraysSize.get());
       }
       Object dataArray = bufferedArraysMap.get(dataType).poll();
       if (dataArray != null) {
@@ -185,7 +183,7 @@ public class PrimitiveArrayManager {
    * Get primitive data lists according to data type and size
    *
    * @param dataType data type
-   * @param size needed capacity
+   * @param size     needed capacity
    * @return an array of primitive data arrays
    */
   public static synchronized Object getDataListsByType(TSDataType dataType, int size) {
@@ -294,7 +292,7 @@ public class PrimitiveArrayManager {
    * Apply out of buffer array from system module according to data type and size
    *
    * @param dataType data type
-   * @param size needed capacity
+   * @param size     needed capacity
    * @return true if successfully applied and false if rejected
    */
   private static boolean applyOOBArray(TSDataType dataType, int size) {
@@ -304,7 +302,7 @@ public class PrimitiveArrayManager {
   /**
    * Bring back a buffered array
    *
-   * @param dataType data type
+   * @param dataType  data type
    * @param dataArray data array
    */
   private static void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
@@ -319,7 +317,7 @@ public class PrimitiveArrayManager {
    * Return out of buffered array to system module
    *
    * @param dataType data type
-   * @param size capacity
+   * @param size     capacity
    */
   private static void bringBackOOBArray(TSDataType dataType, int size) {
     if (logger.isDebugEnabled()) {
@@ -358,7 +356,7 @@ public class PrimitiveArrayManager {
     for (int num : bufferedArraysNumMap.values()) {
       total += num;
     }
-    return total != 0 && bufferedArraysNumMap.getOrDefault(dataType, 0) / total >
+    return total != 0 && (double) bufferedArraysNumMap.getOrDefault(dataType, 0) / total >
         bufferedArraysNumRatio.getOrDefault(dataType, 0.0);
   }
 

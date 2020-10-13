@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -41,7 +40,6 @@ public class SystemInfo {
 
   private long totalSgMemCost;
   private long arrayPoolMemCost;
-  private long mTreeMemCost = config.getAllocateMemoryForMTree();
   private volatile boolean rejected = false;
 
   private Map<StorageGroupInfo, Long> reportedSgMemCostMap = new HashMap<>();
@@ -64,7 +62,6 @@ public class SystemInfo {
       arrayPoolMemCost += dataType.getDataTypeSize() * size;
       logger.debug("Current total mem cost is {}", getTotalMemCost());
       rejected = false;
-      return true;
     } else if (getTotalMemCost() + dataType.getDataTypeSize() * size
         < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
       arrayPoolMemCost += dataType.getDataTypeSize() * size;
@@ -73,29 +70,27 @@ public class SystemInfo {
           + "Current total mem cost is {}", getTotalMemCost());
       rejected = false;
       flush();
-      return true;
     } else {
       logger.debug("Out of buffer arraies are too large, call for flushing "
-          + "and change system to rejected status...Current total mem cost is {}", 
+              + "and change system to rejected status...Current total mem cost is {}",
           getTotalMemCost());
       rejected = true;
       flush();
-      return true;
     }
+    return true;
   }
 
   /**
    * Report current mem cost of storage group to system.
    *
    * @param storageGroupInfo storage group
-   * @param delta mem cost
    */
   public synchronized void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo) {
-    long delta = storageGroupInfo.getSgMemCost() - 
+    long delta = storageGroupInfo.getSgMemCost() -
         reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L);
     totalSgMemCost += delta;
     logger.debug("Report Storage Group Status to system. "
-        + "Current array pool mem cost is {}, sg mem cost is {}.", arrayPoolMemCost,
+            + "Current array pool mem cost is {}, sg mem cost is {}.", arrayPoolMemCost,
         totalSgMemCost);
     reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
 
@@ -115,13 +110,13 @@ public class SystemInfo {
   /**
    * Calculate new Sg report threshold. The maximum value is 
    * 
-   * @param storageGroupInfo
+   * @param storageGroupInfo storage group info
    * @return new sgReportThreshold
    */
   private long calculateNewSgReportThreshold(StorageGroupInfo storageGroupInfo) {
     long newSgReportThreshold =
         (storageGroupInfo.getSgMemCost() / config.getStorageGroupMemBlockSize() + 1)
-        * config.getStorageGroupMemBlockSize();
+            * config.getStorageGroupMemBlockSize();
     return Math.min(newSgReportThreshold,
         (long) (config.getAllocateMemoryForWrite() * (0.3)));
   }
@@ -134,7 +129,7 @@ public class SystemInfo {
   public synchronized void reportIncreasingArraySize(int increasingArraySize) {
     this.arrayPoolMemCost += increasingArraySize;
     logger.debug("Report Array Pool size to system. "
-        + "Current total array pool mem cost is {}, sg mem cost is {}.",
+            + "Current total array pool mem cost is {}, sg mem cost is {}.",
         arrayPoolMemCost, totalSgMemCost);
   }
 
@@ -153,8 +148,7 @@ public class SystemInfo {
     if (getTotalMemCost() < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
       logger.debug("OOB array released, change system to normal status. "
           + "Current total array cost {}.", arrayPoolMemCost);
-    }
-    else {
+    } else {
       logger.debug("OOB array released, but system is still in reject status. "
           + "Current array cost {}.", arrayPoolMemCost);
     }
@@ -170,29 +164,30 @@ public class SystemInfo {
       this.totalSgMemCost -= reportedSgMemCostMap.get(storageGroupInfo)
           - storageGroupInfo.getSgMemCost();
       if (getTotalMemCost() > config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
-        logger.info("Some sg memery released, call flush "
-            + "Current array cost is {}, Sg cost is {}",
-            arrayPoolMemCost, totalSgMemCost);
+        logger.info("Some sg memery released, call flush.");
+        logCost();
         forceFlush();
       }
       if (getTotalMemCost() < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
-        logger.debug("Some sg memery released, set system to normal status. "
-            + "Current array cost is {}, Sg cost is {}",
-            arrayPoolMemCost, totalSgMemCost);
+        logger.debug("Some sg memery released, set system to normal status.");
+        logCost();
         rejected = false;
-      }
-      else {
-        logger.warn("Some sg memery released, but system is still in reject status. "
-            + "Current array cost is {}, Sg cost is {}", arrayPoolMemCost, totalSgMemCost);
+      } else {
+        logger.warn("Some sg memery released, but system is still in reject status.");
+        logCost();
         rejected = true;
       }
       reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
     }
   }
 
+  private void logCost() {
+    logger.info("Current array cost is {}, Sg cost is {}", arrayPoolMemCost, totalSgMemCost);
+  }
+
   /**
-   * Flush the tsfileProcessor in SG with the max mem cost. If the queue size of flushing > threshold,
-   * it's identified as flushing is in progress.
+   * Flush the tsfileProcessor in SG with the max mem cost. If the queue size of flushing >
+   * threshold, it's identified as flushing is in progress.
    */
   public void flush() {
 
@@ -207,7 +202,7 @@ public class SystemInfo {
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
     for (TsFileProcessor processor : processors) {
       if (processor != null) {
-        logger.debug("Start flushing TSP in SG. Current buffed array size {}, OOB size {}",
+        logger.debug("Start flushing TSP in SG {}. Current buffed array size {}, OOB size {}",
             processor.getStorageGroupName(),
             PrimitiveArrayManager.getBufferedArraysSize(),
             PrimitiveArrayManager.getOOBSize());
@@ -223,14 +218,13 @@ public class SystemInfo {
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
     for (TsFileProcessor processor : processors) {
       if (processor != null) {
-        logger.debug("Start flushing TSP in SG. Current buffed array size {}, OOB size {}",
+        logger.debug("Start flushing TSP in SG {}. Current buffed array size {}, OOB size {}",
             processor.getStorageGroupName(),
             PrimitiveArrayManager.getBufferedArraysSize(),
             PrimitiveArrayManager.getOOBSize());
         if (processor.shouldClose()) {
           processor.startClose();
-        }
-        else {
+        } else {
           processor.asyncFlush();
         }
       }
@@ -276,7 +270,6 @@ public class SystemInfo {
     reportedSgMemCostMap.clear();
     totalSgMemCost = 0;
     arrayPoolMemCost = 0;
-    mTreeMemCost = 0;
     rejected = false;
   }
 

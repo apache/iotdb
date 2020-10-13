@@ -282,9 +282,8 @@ public class TsFileProcessor {
 
   private boolean checkMemCostAndAddToTspInfo(InsertPlan insertPlan) {
     long bytesCost = 0L;
-    long unsealedResourceCost = 0L;
     long chunkMetadataCost = 0L;
-    unsealedResourceCost = tsFileResource.estimateRamIncrement(insertPlan.getDeviceId().getFullPath());
+    long unsealedResourceCost = tsFileResource.estimateRamIncrement(insertPlan.getDeviceId().getFullPath());
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable();
     }
@@ -296,7 +295,7 @@ public class TsFileProcessor {
       // String array cost
       if (insertPlan.getDataTypes()[i] == TSDataType.TEXT) {
         if (insertPlan instanceof InsertRowPlan) {
-          bytesCost += RamUsageEstimator.sizeOf((Binary) ((InsertRowPlan) insertPlan).getValues()[i]);
+          bytesCost += RamUsageEstimator.sizeOf(((InsertRowPlan) insertPlan).getValues()[i]);
         }
         else {
           for (Binary bytes : (Binary[]) ((InsertTabletPlan) insertPlan).getColumns()[i]) {
@@ -314,10 +313,7 @@ public class TsFileProcessor {
     tsFileProcessorInfo.addBytesMemCost(bytesCost);
     tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
     tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
-    if (bytesCost != 0 && storageGroupInfo.checkIfNeedToReportStatusToSystem()) {
-      return true;
-    }
-    return false;
+    return bytesCost != 0 && storageGroupInfo.checkIfNeedToReportStatusToSystem();
   }
 
   /**
