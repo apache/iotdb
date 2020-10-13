@@ -143,7 +143,7 @@ public class IoTDBConfig {
   /**
    * Is dynamic parameter adapter enable.
    */
-  private boolean enableParameterAdapter = true;
+  private boolean enableParameterAdapter = false;
 
   /**
    * Is the write ahead log enable.

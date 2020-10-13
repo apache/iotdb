@@ -26,4 +26,10 @@ public class PathNumOverLimitException extends QueryProcessException {
         "Too many paths in one query! Currently allowed max deduplicated path number is %d, this query contains %d deduplicated path",
         maxDeduplicatedPathNum, deduplicatedPathNum));
   }
+
+  public PathNumOverLimitException(long maxDeduplicatedPathNum) {
+    super(String.format(
+        "Too many paths in one query! Currently allowed max deduplicated path number is %d, this query contains unknown deduplicated path",
+        maxDeduplicatedPathNum));
+  }
 }

@@ -726,8 +726,8 @@ public class MManager {
   /**
    * Similar to method getAllTimeseriesPath(), but return Path with alias alias.
    */
-  public List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath) throws MetadataException {
-    return mtree.getAllTimeseriesPathWithAlias(prefixPath);
+  public List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath, int limit, int offset) throws MetadataException {
+    return mtree.getAllTimeseriesPathWithAlias(prefixPath, limit, offset);
   }
 
   /**

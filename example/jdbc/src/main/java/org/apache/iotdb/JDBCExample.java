@@ -28,33 +28,29 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class JDBCExample {
+
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-    try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-      Statement statement = connection.createStatement()) {
+    try (Connection connection = DriverManager
+        .getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      int total = 10_000_000;
       try {
         statement.execute("SET STORAGE GROUP TO root.sg1");
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        for (int i = 0; i < total; i++) {
+          statement.execute(
+              "CREATE TIMESERIES root.sg1.d1.s" + i
+                  + " WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+          if (i % 10_000 == 0) {
+            System.out.println((double) i / total * 100 + "%");
+          }
+        }
       } catch (IoTDBSQLException e) {
         System.out.println(e.getMessage());
       }
 
-      for (int i = 0; i <= 100; i++) {
-        statement.addBatch("insert into root.sg1.d1(timestamp, s1, s2, s3) values("+ i + "," + 1 + "," + 1 + "," + 1 + ")");
-      }
-      statement.executeBatch();
-      statement.clearBatch();
-
-      ResultSet resultSet = statement.executeQuery("select * from root where time <= 10");
-      outputResult(resultSet);
-      resultSet = statement.executeQuery("select count(*) from root");
-      outputResult(resultSet);
-      resultSet = statement.executeQuery("select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
-      outputResult(resultSet);
-    } catch (IoTDBSQLException e){
-        System.out.println(e.getMessage());
+    } catch (IoTDBSQLException e) {
+      System.out.println(e.getMessage());
     }
   }
 

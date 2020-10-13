@@ -749,9 +749,10 @@ public class MTree implements Serializable {
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
    */
-  List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath) throws MetadataException {
+  List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath, int limit, int offset) throws MetadataException {
     PartialPath prePath = new PartialPath(prefixPath.getNodes());
     ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(prefixPath);
+    plan.setLimit(limit);
     List<Pair<PartialPath, String[]>> res = getAllMeasurementSchema(plan);
     List<PartialPath> paths = new ArrayList<>();
     for (Pair<PartialPath, String[]> p : res) {
