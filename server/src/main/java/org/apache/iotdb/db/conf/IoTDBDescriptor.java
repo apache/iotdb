@@ -263,6 +263,10 @@ public class IoTDBDescriptor {
       conf.setBatchSize(Integer.parseInt(properties.getProperty("batch_size",
           Integer.toString(conf.getBatchSize()))));
 
+      conf.setEnableMemControl((Boolean
+          .parseBoolean(properties.getProperty("enable_mem_control",
+              Boolean.toString(conf.isEnableMemControl())))));
+
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());
@@ -714,7 +718,7 @@ public class IoTDBDescriptor {
   }
 
   private void initMemoryAllocate(Properties properties) {
-    String memoryAllocateProportion = properties.getProperty("write_read_free_memory_proportion");
+    String memoryAllocateProportion = properties.getProperty("write_read_mtree_free_memory_proportion");
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -724,14 +728,17 @@ public class IoTDBDescriptor {
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
       if (proportionSum != 0) {
         conf.setAllocateMemoryForWrite(
-                maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setAllocateMemoryForRead(
-                maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+        conf.setAllocateMemoryForMTree(
+            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
       }
     }
 
     logger.info("allocateMemoryForRead = " + conf.getAllocateMemoryForRead());
     logger.info("allocateMemoryForWrite = " + conf.getAllocateMemoryForWrite());
+    logger.info("allocateMemoryForMTree = " + conf.getAllocateMemoryForMTree());
 
     if (!conf.isMetaDataCacheEnable()) {
       return;

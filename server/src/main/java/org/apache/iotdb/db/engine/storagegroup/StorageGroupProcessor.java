@@ -599,15 +599,18 @@ public class StorageGroupProcessor {
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
-        for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
-          for (List<ChunkMetadata> metadatas : metaMap.values()) {
-            for (ChunkMetadata chunkMetadata: metadatas) {
-              tsFileProcessor.getTsFileProcessorInfo().addChunkMetadataMemCost(
-                  chunkMetadata.calculateRamSize());
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableMemControl()) {
+          // get chunkMetadata size
+          for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
+            for (List<ChunkMetadata> metadatas : metaMap.values()) {
+              for (ChunkMetadata chunkMetadata: metadatas) {
+                tsFileProcessor.getTsFileProcessorInfo().addChunkMetadataMemCost(
+                    chunkMetadata.calculateRamSize());
+              }
             }
           }
+          SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
         }
-        SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       }
       tsFileManagement.add(tsFileResource, isSeq);
     }

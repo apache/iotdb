@@ -262,7 +262,7 @@ public class IoTDBConfig {
   /**
    * Is the write mem control for writing enable.
    */
-  private boolean enableMemControl = true;
+  private boolean enableMemControl = false;
 
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.

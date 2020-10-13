@@ -188,7 +188,9 @@ public class TsFileProcessor {
       }
       needToReport = checkMemCostAndAddToTspInfo(insertRowPlan);
     }
-    
+    if (workMemTable == null) {
+      workMemTable = new PrimitiveMemTable();
+    }
     workMemTable.insert(insertRowPlan);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
@@ -243,7 +245,9 @@ public class TsFileProcessor {
       needToReport = checkMemCostAndAddToTspInfo(insertTabletPlan);
     }
 
-    
+    if (workMemTable == null) {
+      workMemTable = new PrimitiveMemTable();
+    }
     try {
       workMemTable.insertTablet(insertTabletPlan, start, end);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
