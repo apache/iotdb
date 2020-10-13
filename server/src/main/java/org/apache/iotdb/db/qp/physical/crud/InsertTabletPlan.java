@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,13 +28,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -230,38 +224,15 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void serializeTimes(ByteBuffer buffer) {
-    byte[] bytes = serializeTimesToArray();
-    buffer.putInt(bytes.length);
-    buffer.put(bytes);
+    for (int i = start; i < end; i++) {
+      buffer.putLong(times[i]);
+    }
   }
 
   private void serializeTimes(DataOutputStream stream) throws IOException {
-    byte[] bytes = serializeTimesToArray();
-    stream.writeInt(bytes.length);
-    stream.write(bytes);
-  }
-
-  private byte[] serializeTimesToArray() {
-    Encoder timeEncoder = getTimeEncoder();
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-
     for (int i = start; i < end; i++) {
-      timeEncoder.encode(times[i], byteArrayOutputStream);
+      stream.writeLong(times[i]);
     }
-    try {
-      timeEncoder.flush(byteArrayOutputStream);
-    } catch (IOException e) {
-      logger.error("Cannot encode time of {}", this);
-    }
-    return byteArrayOutputStream.toByteArray();
-  }
-
-  public Encoder getTimeEncoder() {
-    TSEncoding timeEncoding = TSEncoding
-        .valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
-    TSDataType timeType = TSDataType
-        .valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
-    return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
   }
 
   private void serializeValues(DataOutputStream outputStream) throws IOException {
@@ -405,21 +376,8 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void deserializeTimes(ByteBuffer buffer, int number) {
-    Decoder defaultTimeDecoder = Decoder.getDecoderByType(
-        TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-        TSDataType.INT64);
-    int timeSize = buffer.getInt();
-    byte[] bytes = new byte[timeSize];
-    buffer.get(bytes);
-    ByteBuffer tBuffer = ByteBuffer.wrap(bytes);
-
-    int i = 0;
-    try {
-      while (defaultTimeDecoder.hasNext(tBuffer) && i < number) {
-        times[i++] = defaultTimeDecoder.readLong(tBuffer);
-      }
-    } catch (IOException e) {
-      logger.error("Cannot decode time of {}", this);
+    for (int i = 0; i < number; i++) {
+      times[i] = buffer.getLong();
     }
   }
 
