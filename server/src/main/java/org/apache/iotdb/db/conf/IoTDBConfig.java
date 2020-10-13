@@ -133,6 +133,9 @@ public class IoTDBConfig {
    */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
+  /**
+   * Memory allocated for the read process besides cache
+   */
   private long allocateMemoryForReadWithoutCache = Runtime.getRuntime().maxMemory() * 9 / 100;
 
   private int maxQueryDeduplicatedPathNum = 1000;

@@ -51,7 +51,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public Operator transform(Operator operator, int maxDeduplicatedPathNum) throws LogicalOptimizeException {
+  public Operator transform(Operator operator) throws LogicalOptimizeException {
     if (!(operator instanceof SFWOperator)) {
       logger.warn("given operator isn't SFWOperator, cannot concat seriesPath");
       return operator;
@@ -88,7 +88,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if (operator instanceof QueryOperator) {
       if (!((QueryOperator) operator).isAlignByDevice() || ((QueryOperator) operator)
           .isLastQuery()) {
-        concatSelect(prefixPaths, select, maxDeduplicatedPathNum); // concat and remove star
+        concatSelect(prefixPaths, select); // concat and remove star
 
         if (((QueryOperator) operator).hasSlimit()) {
           int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
@@ -159,7 +159,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
    * Extract paths from select&from cql, expand them into complete versions, and reassign them to
    * selectOperator's suffixPathList. Treat aggregations similarly.
    */
-  private void concatSelect(List<PartialPath> fromPaths, SelectOperator selectOperator, int maxDeduplicatedPathNum)
+  private void concatSelect(List<PartialPath> fromPaths, SelectOperator selectOperator)
       throws LogicalOptimizeException {
     List<PartialPath> suffixPaths = judgeSelectOperator(selectOperator);
 
@@ -287,7 +287,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     HashSet<PartialPath> pathSet = new HashSet<>();
     try {
       for (PartialPath path : paths) {
-        List<PartialPath> all = removeWildcard(path, 0);
+        List<PartialPath> all = removeWildcard(path);
         for (PartialPath subPath : all) {
           if (!pathSet.contains(subPath)) {
             pathSet.add(subPath);
@@ -307,7 +307,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<String> newAggregations = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       try {
-        List<PartialPath> actualPaths = removeWildcard(paths.get(i), 0);
+        List<PartialPath> actualPaths = removeWildcard(paths.get(i));
         if (paths.get(i).getTsAlias() != null) {
           if (actualPaths.size() == 1) {
             actualPaths.get(0).setTsAlias(paths.get(i).getTsAlias());
@@ -330,7 +330,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     selectOperator.setAggregations(newAggregations);
   }
 
-  protected List<PartialPath> removeWildcard(PartialPath path, int limit) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, limit);
+  protected List<PartialPath> removeWildcard(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path);
   }
 }

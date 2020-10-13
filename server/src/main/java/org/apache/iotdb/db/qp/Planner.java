@@ -76,7 +76,7 @@ public class Planner {
     Operator operator = parseDriver.parse(sqlStr, zoneId);
     int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
         .getMaxDeduplicatedPathNum(fetchSize);
-    operator = logicalOptimize(operator, maxDeduplicatedPathNum);
+    operator = logicalOptimize(operator);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
   }
@@ -121,9 +121,7 @@ public class Planner {
 
     queryOp.setFilterOperator(filterOp);
 
-    int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
-        .getMaxDeduplicatedPathNum(rawDataQueryReq.fetchSize);
-    SFWOperator op = (SFWOperator) logicalOptimize(queryOp, maxDeduplicatedPathNum);
+    SFWOperator op = (SFWOperator) logicalOptimize(queryOp);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(op, rawDataQueryReq.fetchSize);
   }
@@ -135,7 +133,7 @@ public class Planner {
    * @return optimized logical operator
    * @throws LogicalOptimizeException exception in logical optimizing
    */
-  protected Operator logicalOptimize(Operator operator, int maxDeduplicatedPathNum)
+  protected Operator logicalOptimize(Operator operator)
       throws LogicalOperatorException {
     switch (operator.getType()) {
       case AUTHOR:
@@ -170,7 +168,7 @@ public class Planner {
       case UPDATE:
       case DELETE:
         SFWOperator root = (SFWOperator) operator;
-        return optimizeSFWOperator(root, maxDeduplicatedPathNum);
+        return optimizeSFWOperator(root);
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
@@ -183,10 +181,10 @@ public class Planner {
    * @return optimized select-from-where operator
    * @throws LogicalOptimizeException exception in SFW optimizing
    */
-  private SFWOperator optimizeSFWOperator(SFWOperator root, int maxDeduplicatedPathNum)
+  private SFWOperator optimizeSFWOperator(SFWOperator root)
       throws LogicalOperatorException {
     ConcatPathOptimizer concatPathOptimizer = getConcatPathOptimizer();
-    root = (SFWOperator) concatPathOptimizer.transform(root, maxDeduplicatedPathNum);
+    root = (SFWOperator) concatPathOptimizer.transform(root);
     FilterOperator filter = root.getFilterOperator();
     if (filter == null) {
       return root;
