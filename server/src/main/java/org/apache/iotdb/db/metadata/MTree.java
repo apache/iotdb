@@ -840,7 +840,6 @@ public class MTree implements Serializable {
         }
       } else {
         throw new PathNotExistException(node.getName() + "." + nodeReg);
-//        throw new MetadataException(node.getName() + " does not have the child node " + nodeReg);
       }
     } else {
       int cnt = 0;
