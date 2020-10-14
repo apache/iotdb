@@ -311,6 +311,11 @@ public class IoTDBConfig {
   private long allocateMemoryForChunkCache = allocateMemoryForRead / 10;
 
   /**
+   * Whether to enable Last cache
+   */
+  private boolean lastCacheEnable = true;
+
+  /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
    * value is 5s.
    */
@@ -1396,6 +1401,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForChunkCache(long allocateMemoryForChunkCache) {
     this.allocateMemoryForChunkCache = allocateMemoryForChunkCache;
+  }
+
+  public boolean isLastCacheEnabled() {
+    return lastCacheEnable;
+  }
+
+  public void setEnableLastCache(boolean lastCacheEnable) {
+    this.lastCacheEnable = lastCacheEnable;
   }
 
   public boolean isEnableWatermark() {

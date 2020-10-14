@@ -113,8 +113,6 @@
             <level>DEBUG</level>
         </filter>
     </appender>
-    <logger level="info" name="org.apache.iotdb.db.service"/>
-    <logger level="info" name="org.apache.iotdb.db.conf"/>
     <!-- a log appender that collect all log records whose level is greather than debug-->
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEALL">
         <file>${IOTDB_HOME}/logs/log_all.log</file>
@@ -196,6 +194,8 @@
         <appender-ref ref="FILEALL"/>
         <appender-ref ref="stdout"/>
     </root>
+    <logger level="info" name="org.apache.iotdb.db.service"/>
+    <logger level="info" name="org.apache.iotdb.db.conf"/>
     <logger level="info" name="org.apache.iotdb.db.cost.statistic">
         <appender-ref ref="FILE_COST_MEASURE"/>
     </logger>
