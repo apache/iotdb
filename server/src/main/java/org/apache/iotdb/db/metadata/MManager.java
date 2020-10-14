@@ -1739,8 +1739,8 @@ public class MManager {
         if (measurementMNode.getSchema().getType() != insertDataType) {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
               measurementList[i], insertDataType, measurementMNode.getSchema().getType());
-          DataTypeMismatchException mismatchException = new DataTypeMismatchException(measurementList[i],
-                  insertDataType, measurementMNode.getSchema().getType());
+          DataTypeMismatchException mismatchException = new DataTypeMismatchException(
+              measurementList[i], insertDataType, measurementMNode.getSchema().getType());
           if (!config.isEnablePartialInsert()) {
             throw mismatchException;
           } else {
@@ -1784,8 +1784,9 @@ public class MManager {
           Collections.emptyMap());
     } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
       if (logger.isDebugEnabled()) {
-        logger.debug("Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
-            + " a non-exist time series {}", path);
+        logger.debug(
+            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
+                + " a non-exist time series {}", path);
       }
     }
   }

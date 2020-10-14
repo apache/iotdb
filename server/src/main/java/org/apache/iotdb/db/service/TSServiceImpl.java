@@ -351,8 +351,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "ALL_COLUMNS":
-          resp.setColumnsList(getPaths(new PartialPath(req.getColumnPath())).stream().map(PartialPath::getFullPath).collect(
-              Collectors.toList()));
+          resp.setColumnsList(
+              getPaths(new PartialPath(req.getColumnPath())).stream().map(PartialPath::getFullPath)
+                  .collect(Collectors.toList()));
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         default:
@@ -682,7 +683,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           logger.error("Error happened while releasing query resource: ", ex);
         }
       }
-      return RpcUtils.getTSExecuteStatementResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      Throwable cause = e;
+      while (cause.getCause() != null) {
+        cause = cause.getCause();
+      }
+      return RpcUtils
+          .getTSExecuteStatementResp(TSStatusCode.INTERNAL_SERVER_ERROR, cause.getMessage());
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, startTime);
     }
@@ -816,7 +822,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (PartialPath path : paths) {
           String column = path.getTsAlias();
           if (column == null) {
-            column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.getFullPath();
+            column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias()
+                : path.getFullPath();
           }
           respColumns.add(column);
           seriesTypes.add(getSeriesTypeByPath(path));
@@ -1024,7 +1031,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
       IOException, MetadataException, SQLException, TException, InterruptedException {
-
     QueryContext context = genQueryContext(queryId);
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryId2DataSet.put(queryId, queryDataSet);
@@ -1372,7 +1378,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       }
 
-      InsertTabletPlan insertTabletPlan = new InsertTabletPlan(new PartialPath(req.deviceId), req.measurements);
+      InsertTabletPlan insertTabletPlan = new InsertTabletPlan(new PartialPath(req.deviceId),
+          req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
           QueryDataSetUtils.readValuesFromBuffer(
@@ -1406,7 +1413,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       List<TSStatus> statusList = new ArrayList<>();
       for (int i = 0; i < req.deviceIds.size(); i++) {
-        InsertTabletPlan insertTabletPlan = new InsertTabletPlan(new PartialPath(req.deviceIds.get(i)),
+        InsertTabletPlan insertTabletPlan = new InsertTabletPlan(
+            new PartialPath(req.deviceIds.get(i)),
             req.measurementsList.get(i));
         insertTabletPlan.setTimes(
             QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
@@ -1656,7 +1664,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
   }
 
-  protected List<TSDataType> getSeriesTypesByPaths(List<PartialPath> paths, List<String> aggregations)
+  protected List<TSDataType> getSeriesTypesByPaths(List<PartialPath> paths,
+      List<String> aggregations)
       throws MetadataException {
     return SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
   }

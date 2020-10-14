@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
@@ -173,7 +174,6 @@ public class MTree implements Serializable {
 
   /**
    * combine multiple metadata in string format
-   *
    */
   @TestOnly
   static JsonObject combineMetadataInStrings(String[] metadataStrs) {
@@ -186,7 +186,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < jsonObjects.length; i++) {
       root = combineJsonObjects(root, jsonObjects[i]);
     }
-    
+
     return root;
   }
 
@@ -773,7 +773,11 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    return getCount(root, nodes, 1);
+    try {
+      return getCount(root, nodes, 1);
+    } catch (PathNotExistException e) {
+      throw new PathNotExistException(prefixPath.getFullPath());
+    }
   }
 
   /**
@@ -835,7 +839,7 @@ public class MTree implements Serializable {
           return getCount(next, nodes, idx + 1);
         }
       } else {
-        throw new MetadataException(node.getName() + " does not have the child node " + nodeReg);
+        throw new PathNotExistException(node.getName() + "." + nodeReg);
       }
     } else {
       int cnt = 0;

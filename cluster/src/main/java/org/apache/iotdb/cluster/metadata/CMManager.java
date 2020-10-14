@@ -131,6 +131,7 @@ public class CMManager extends MManager {
 
   /**
    * we should not use this function in other place, but only in IoTDB class
+   *
    * @return
    */
   public static CMManager getInstance() {
@@ -178,7 +179,8 @@ public class CMManager extends MManager {
           .pullMeasurementSchemas(Collections.singletonList(path));
       if (!schemas.isEmpty()) {
         MeasurementSchema measurementSchema = schemas.get(0);
-        MeasurementMNode measurementMNode = new MeasurementMNode(null, measurementSchema.getMeasurementId(),
+        MeasurementMNode measurementMNode = new MeasurementMNode(null,
+            measurementSchema.getMeasurementId(),
             measurementSchema, null);
         cacheMeta(path, measurementMNode);
         return schemas.get(0).getType();
@@ -190,15 +192,17 @@ public class CMManager extends MManager {
   }
 
   /**
-   *  the org.apache.iotdb.db.writelog.recover.logReplayer will call this to get schema after restart
-   *  we should retry to get schema util we get the schema
+   * the org.apache.iotdb.db.writelog.recover.logReplayer will call this to get schema after restart
+   * we should retry to get schema util we get the schema
+   *
    * @param deviceId
    * @param measurements
    * @return
    * @throws MetadataException
    */
   @Override
-  public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements) throws MetadataException {
+  public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
+      throws MetadataException {
     try {
       return super.getMNodes(deviceId, measurements);
     } catch (MetadataException e) {
@@ -217,14 +221,13 @@ public class CMManager extends MManager {
       failedMeasurementIndex = getMNodesLocally(deviceId, measurements, measurementMNodes);
       if (failedMeasurementIndex != -1) {
         throw new MetadataException(deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR
-          + measurements[failedMeasurementIndex] + " is not found");
+            + measurements[failedMeasurementIndex] + " is not found");
       }
       return measurementMNodes;
     }
   }
 
   /**
-   *
    * @return -1 if all schemas are found, or the first index of the non-exist schema
    */
   private int getMNodesLocally(PartialPath deviceId, String[] measurements,
@@ -248,7 +251,7 @@ public class CMManager extends MManager {
   }
 
   private void pullSeriesSchemas(PartialPath deviceId, String[] measurementList)
-    throws MetadataException {
+      throws MetadataException {
     List<PartialPath> schemasToPull = new ArrayList<>();
     for (String s : measurementList) {
       schemasToPull.add(deviceId.concatNode(s));
@@ -303,7 +306,8 @@ public class CMManager extends MManager {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
     MNode deviceNode = getDeviceNode(plan.getDeviceId());
 
-    int nonExistSchemaIndex = getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
+    int nonExistSchemaIndex = getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(),
+        measurementMNodes);
     if (nonExistSchemaIndex == -1) {
       plan.setMeasurementMNodes(measurementMNodes);
       return deviceNode;
@@ -314,7 +318,8 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public MeasurementSchema getSeriesSchema(PartialPath device, String measurement) throws MetadataException {
+  public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
+      throws MetadataException {
     try {
       MeasurementSchema measurementSchema = super.getSeriesSchema(device, measurement);
       if (measurementSchema != null) {
@@ -508,7 +513,7 @@ public class CMManager extends MManager {
         } else {
           SyncDataClient syncDataClient =
               metaGroupMember.getClientProvider().getSyncDataClient(node,
-              RaftServer.getReadOperationTimeoutMS());
+                  RaftServer.getReadOperationTimeoutMS());
           result = syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
           ClientUtils.putBackSyncClient(syncDataClient);
         }
@@ -535,9 +540,10 @@ public class CMManager extends MManager {
    * contain a storage group. The pulled schemas will be cache in CMManager.
    *
    * @param ignoredGroup do not pull schema from the group to avoid backward dependency. If a user
-   * send an insert request before registering schemas, then this method may pull schemas from the
-   * same groups. If this method is called by an applier, it holds the lock of LogManager, while the
-   * pulling thread may want this lock too, resulting in a deadlock.
+   *                     send an insert request before registering schemas, then this method may
+   *                     pull schemas from the same groups. If this method is called by an applier,
+   *                     it holds the lock of LogManager, while the pulling thread may want this
+   *                     lock too, resulting in a deadlock.
    */
   public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths,
       Node ignoredGroup)
@@ -559,7 +565,8 @@ public class CMManager extends MManager {
 
     // pull timeseries schema from every group involved
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: pulling schemas of {} and other {} paths from {} groups", metaGroupMember.getName(),
+      logger.debug("{}: pulling schemas of {} and other {} paths from {} groups",
+          metaGroupMember.getName(),
           prefixPaths.get(0), prefixPaths.size() - 1,
           partitionGroupPathMap.size());
     }
@@ -687,7 +694,8 @@ public class CMManager extends MManager {
     }
   }
 
-  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathsLocally(List<PartialPath> pathStrs,
+  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathsLocally(
+      List<PartialPath> pathStrs,
       String aggregation) throws MetadataException {
     List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(pathStrs,
         (String) null);
@@ -793,7 +801,7 @@ public class CMManager extends MManager {
    * Split the paths by the data group they belong to and query them from the groups separately.
    *
    * @param sgPathMap the key is the storage group name and the value is the path to be queried with
-   * storage group added
+   *                  storage group added
    * @return a collection of all queried paths
    */
   private List<PartialPath> getMatchedPaths(Map<String, String> sgPathMap)
@@ -805,7 +813,8 @@ public class CMManager extends MManager {
       String storageGroupName = sgPathEntry.getKey();
       PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
       // find the data group that should hold the timeseries schemas of the storage group
-      PartitionGroup partitionGroup = metaGroupMember.getPartitionTable().route(storageGroupName, 0);
+      PartitionGroup partitionGroup = metaGroupMember.getPartitionTable()
+          .route(storageGroupName, 0);
       if (partitionGroup.contains(metaGroupMember.getThisNode())) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
@@ -899,7 +908,7 @@ public class CMManager extends MManager {
    * Split the paths by the data group they belong to and query them from the groups separately.
    *
    * @param sgPathMap the key is the storage group name and the value is the path to be queried with
-   * storage group added
+   *                  storage group added
    * @return a collection of all queried devices
    */
   private Set<PartialPath> getMatchedDevices(Map<String, String> sgPathMap)
@@ -911,7 +920,8 @@ public class CMManager extends MManager {
       String storageGroupName = sgPathEntry.getKey();
       PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
       // find the data group that should hold the timeseries schemas of the storage group
-      PartitionGroup partitionGroup = metaGroupMember.getPartitionTable().route(storageGroupName, 0);
+      PartitionGroup partitionGroup = metaGroupMember.getPartitionTable()
+          .route(storageGroupName, 0);
       if (partitionGroup.contains(metaGroupMember.getThisNode())) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
@@ -1087,8 +1097,8 @@ public class CMManager extends MManager {
    */
   public List<String> getNodeList(String path, int nodeLevel)
       throws MetadataException {
-    return getNodesList(new PartialPath(path), nodeLevel).stream().map(PartialPath::getFullPath).collect(
-        Collectors.toList());
+    return getNodesList(new PartialPath(path), nodeLevel).stream().map(PartialPath::getFullPath)
+        .collect(Collectors.toList());
   }
 
   public Set<String> getChildNodePathInNextLevel(String path)
@@ -1188,7 +1198,8 @@ public class CMManager extends MManager {
   }
 
   private void showTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet, QueryContext context) throws CheckConsistencyException {
+      Set<ShowTimeSeriesResult> resultSet, QueryContext context)
+      throws CheckConsistencyException, MetadataException {
     if (group.contains(metaGroupMember.getThisNode())) {
       showLocalTimeseries(group, plan, resultSet, context);
     } else {
@@ -1197,7 +1208,8 @@ public class CMManager extends MManager {
   }
 
   private void showLocalTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet, QueryContext context) throws CheckConsistencyException {
+      Set<ShowTimeSeriesResult> resultSet, QueryContext context)
+      throws CheckConsistencyException, MetadataException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeaderWithConsistencyCheck();
@@ -1208,6 +1220,7 @@ public class CMManager extends MManager {
     } catch (MetadataException e) {
       logger
           .error("Cannot execute show timeseries plan  {} from {} locally.", plan, group);
+      throw e;
     }
   }
 
@@ -1217,7 +1230,6 @@ public class CMManager extends MManager {
     for (Node node : group) {
       try {
         resultBinary = showRemoteTimeseries(node, group, plan);
-
         if (resultBinary != null) {
           break;
         }
