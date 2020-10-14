@@ -21,8 +21,21 @@ package org.apache.iotdb.db.query.udf.api.customizer.parameter;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.query.udf.api.UDTF;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.tsfile.read.common.Path;
 
+/**
+ * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
+ * <p>
+ * This class is used to parse the parameters in the UDF entered by the user.
+ * <p>
+ * The input parameters of UDF have two parts. The first part is the paths (measurements) of the
+ * time series that the UDF needs to process, and the second part is the key-value pair attributes
+ * for customization. The parameters of both parts can be empty.
+ * <p>
+ * Note that the user must enter the paths (measurements) part before entering the attributes part.
+ */
 public class UDFParameters {
 
   private final List<Path> paths;

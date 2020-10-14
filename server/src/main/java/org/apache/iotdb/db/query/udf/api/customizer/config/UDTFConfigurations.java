@@ -21,10 +21,31 @@ package org.apache.iotdb.db.query.udf.api.customizer.config;
 
 import java.time.ZoneId;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.api.UDTF;
+import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.db.query.udf.api.access.RowWindow;
+import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.OneByOneAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.TumblingWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+/**
+ * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
+ * <p>
+ * Supports calling methods in a chain.
+ * <p>
+ * Sample code:
+ * <pre>{@code
+ * @Override
+ * public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+ *   configurations
+ *       .setOutputDataType(TSDataType.INT64)
+ *       .setAccessStrategy(new OneByOneAccessStrategy());
+ * }</pre>
+ */
 public class UDTFConfigurations extends UDFConfigurations {
 
   protected final ZoneId zoneId;
@@ -33,6 +54,15 @@ public class UDTFConfigurations extends UDFConfigurations {
     this.zoneId = zoneId;
   }
 
+  /**
+   * Used to specify the output data type of the UDTF. In other words, the data type you set here
+   * determines the type of data that the PointCollector in {@link UDTF#transform(Row,
+   * PointCollector)} or {@link UDTF#transform(RowWindow, PointCollector)} can receive.
+   *
+   * @param outputDataType the output data type of the UDTF
+   * @return this
+   * @see PointCollector
+   */
   public UDTFConfigurations setOutputDataType(TSDataType outputDataType) {
     this.outputDataType = outputDataType;
     return this;
@@ -44,6 +74,16 @@ public class UDTFConfigurations extends UDFConfigurations {
     return accessStrategy;
   }
 
+  /**
+   * Used to specify the strategy for accessing raw query data in UDTF.
+   *
+   * @param accessStrategy the specified access strategy. it should be an instance of {@link
+   *                       AccessStrategy}.
+   * @return this
+   * @see OneByOneAccessStrategy
+   * @see SlidingTimeWindowAccessStrategy
+   * @see TumblingWindowAccessStrategy
+   */
   public UDTFConfigurations setAccessStrategy(AccessStrategy accessStrategy) {
     this.accessStrategy = accessStrategy;
     if (accessStrategy instanceof SlidingTimeWindowAccessStrategy
