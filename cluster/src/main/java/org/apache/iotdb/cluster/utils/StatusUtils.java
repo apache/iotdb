@@ -43,6 +43,7 @@ public class StatusUtils {
   public static final TSStatus NO_STORAGE_GROUP = getStatus(TSStatusCode.STORAGE_GROUP_ERROR);
   public static final TSStatus NODE_READ_ONLY = getStatus(TSStatusCode.NODE_READ_ONLY);
   public static final TSStatus CONSISTENCY_FAILURE = getStatus(TSStatusCode.CONSISTENCY_FAILURE);
+  public static final TSStatus TIMESERIES_NOT_EXIST_ERROR = getStatus(TSStatusCode.TIMESERIES_NOT_EXIST);
 
 
   private static TSStatus getStatus(TSStatusCode statusCode) {
@@ -78,6 +79,7 @@ public class StatusUtils {
         status.setMessage("Path already exist. ");
         break;
       case PATH_NOT_EXIST_ERROR:
+      case TIMESERIES_NOT_EXIST:
         status.setMessage("Path does not exist. ");
         break;
       case UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR:
