@@ -24,10 +24,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -37,7 +35,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
-import org.apache.iotdb.db.engine.cache.FileChunkPointSizeCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
@@ -649,26 +646,6 @@ public class TsFileProcessor {
         flushingMemTables.notifyAll();
       }
     }
-  }
-
-  private void updateDeviceChunkPointSizeCache() {
-    Map<String, Map<String, List<ChunkMetadata>>> deviceMeasurementChunkMetadataMap = writer
-        .getMetadatasForQuery();
-    Map<String, Long> deviceChunkPointMap = new HashMap<>();
-    for (Entry<String, Map<String, List<ChunkMetadata>>> deviceMeasurementChunkMetadataEntry : deviceMeasurementChunkMetadataMap
-        .entrySet()) {
-      String device = deviceMeasurementChunkMetadataEntry.getKey();
-      long chunkPointNum = 0;
-      for (Entry<String, List<ChunkMetadata>> measurementChunkMetadataEntry : deviceMeasurementChunkMetadataEntry
-          .getValue().entrySet()) {
-        for (ChunkMetadata chunkMetadata : measurementChunkMetadataEntry.getValue()) {
-          chunkPointNum += chunkMetadata.getNumOfPoints();
-        }
-      }
-      deviceChunkPointMap.put(device, chunkPointNum);
-    }
-    FileChunkPointSizeCache.getInstance()
-        .put(tsFileResource.getTsFile().getAbsolutePath(), deviceChunkPointMap);
   }
 
   private void endFile() throws IOException, TsFileProcessorException {
