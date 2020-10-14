@@ -25,7 +25,7 @@ IoTDB集群版为您提供了NodeTool Shell工具用于监控指定集群的工�
 下面具体介绍每个指令的使用方式及示例，其中$IOTDB_CLUSTER_HOME表示IoTDB分布式的安装目录所在路径。
 # 使用说明
 ## 运行方式
-NodeTool Shell工具启动脚本位于$IOTDB_CLUSTER_HOME/bin文件夹下，启动时可以指定集群运行的IP和PORT。
+NodeTool Shell工具启动脚本位于$IOTDB_CLUSTER_HOME/sbin文件夹下，启动时可以指定集群运行的IP和PORT。
 
 其中IP为您期望连接的节点的IP，PORT为IoTDB集群启动时指定的JMX服务端口号，分别默认为127.0.0.1和31999。
 

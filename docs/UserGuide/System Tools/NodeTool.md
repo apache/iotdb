@@ -28,7 +28,7 @@ where $IOTDB_CLUSTER_HOME indicates the path of the distributed IoTDB installati
 
 # Instructions
 ## Get Started
-The nodetool shell tool startup script is located at $IOTDB_CLUSTER_HOME/bin folder, 
+The nodetool shell tool startup script is located at $IOTDB_CLUSTER_HOME/sbin folder,
 you can specify the IP address and port of the cluster during startup.
 
 IP is the IP (or hostname) of the node that you expect to connect to,
