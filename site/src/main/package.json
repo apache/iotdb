@@ -4,7 +4,7 @@
   "description": "Apache IoTDB Website",
   "main": "index.js",
   "scripts": {
-  	"fix-memory-limit": "cross-env LIMIT=2048 increase-memory-limit"
+  	"fix-memory-limit": "cross-env LIMIT=8000 increase-memory-limit"
     "dev": "node --max-old-space-size=8000 ./node_modules/vuepress/cli.js dev src",
     "build": "node --max-old-space-size=8000 ./node_modules/vuepress/cli.js build src",
     "deploy": "node --max-old-space-size=8000 deploy.js"
