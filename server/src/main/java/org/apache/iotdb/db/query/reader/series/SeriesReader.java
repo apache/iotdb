@@ -581,7 +581,9 @@ public class SeriesReader {
           TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
 
           if (orderUtils.isExcessEndpoint(timeValuePair.getTimestamp(), currentPageEndPointTime)) {
-            break;
+            if (cachedBatchData.hasCurrent() || firstPageReader != null || !seqPageReaders.isEmpty()) {
+              break;
+            }
           }
 
           unpackAllOverlappedTsFilesToTimeSeriesMetadata(timeValuePair.getTimestamp());
@@ -637,9 +639,9 @@ public class SeriesReader {
          */
         if (hasCachedNextOverlappedPage) {
           return true;
+          // condition: seqPage.endTime < mergeReader.currentTime
         } else if (mergeReader.hasNextTimeValuePair()) {
-          // TODO still bug here
-          return firstPageReader == null && seqPageReaders.isEmpty();
+          return false;
         }
       } else {
         return false;
@@ -769,7 +771,6 @@ public class SeriesReader {
     long endTime = -1L;
     if (!seqTimeSeriesMetadata.isEmpty() && unSeqTimeSeriesMetadata.isEmpty()) {
       // only has seq
-
       endTime = orderUtils.getOverlapCheckTime(seqTimeSeriesMetadata.get(0).getStatistics());
     } else if (seqTimeSeriesMetadata.isEmpty() && !unSeqTimeSeriesMetadata.isEmpty()) {
       // only has unseq
@@ -816,6 +817,7 @@ public class SeriesReader {
               unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
       if (timeseriesMetadata != null) {
         timeseriesMetadata.setModified(true);
+        timeseriesMetadata.setSeq(false);
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }
@@ -827,6 +829,7 @@ public class SeriesReader {
               orderUtils.getNextSeqFileResource(seqFileResource, true), seriesPath, context,
               getAnyFilter(), allSensors);
       if (timeseriesMetadata != null) {
+        timeseriesMetadata.setSeq(true);
         seqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }
