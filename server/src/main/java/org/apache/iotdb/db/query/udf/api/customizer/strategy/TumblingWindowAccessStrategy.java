@@ -20,11 +20,45 @@
 package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.api.UDTF;
+import org.apache.iotdb.db.query.udf.api.access.RowWindow;
+import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 
+/**
+ * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
+ * <p>
+ * When the access strategy of a UDTF is set to an instance of this class, the method {@link
+ * UDTF#transform(RowWindow, PointCollector)} of the UDTF will be called to transform the original
+ * data. You need to override the method in your own UDTF class.
+ * <p>
+ * Tumbling window is a kind of size-based window. Except for the last call, each call of the method
+ * {@link UDTF#transform(RowWindow, PointCollector)} processes a window with {@code windowSize} rows
+ * (aligned by time) of the original data and can generate any number of data points.
+ * <p>
+ * Sample code:
+ * <pre>{@code
+ * @Override
+ * public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+ *   configurations
+ *       .setOutputDataType(TSDataType.INT32)
+ *       .setAccessStrategy(new TumblingWindowAccessStrategy(10000)); // window size
+ * }</pre>
+ *
+ * @see UDTF
+ * @see UDTFConfigurations
+ */
 public class TumblingWindowAccessStrategy implements AccessStrategy {
 
   private final int windowSize;
 
+  /**
+   * Constructor. You need to specify the number of rows in each tumbling window (except for the
+   * last window).
+   *
+   * @param windowSize the number of rows in each tumbling window (0 < windowSize)
+   */
   public TumblingWindowAccessStrategy(int windowSize) {
     this.windowSize = windowSize;
   }
