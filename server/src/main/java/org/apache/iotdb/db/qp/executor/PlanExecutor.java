@@ -1069,12 +1069,21 @@ public class PlanExecutor implements IPlanExecutor {
     List<PartialPath> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
       List<String> failedNames = new LinkedList<>();
+      List<String> nonExistPaths = new ArrayList<>();
       for (PartialPath path : deletePathList) {
+        String failedTimeseries = "";
         StorageEngine.getInstance().deleteTimeseries(path.getDevicePath(), path.getMeasurement());
-        String failedTimeseries = IoTDB.metaManager.deleteTimeseries(path);
+        try {
+          failedTimeseries = IoTDB.metaManager.deleteTimeseries(path);
+        }catch (PathNotExistException e){
+          nonExistPaths.add(path.getFullPath());
+        }
         if (!failedTimeseries.isEmpty()) {
           failedNames.add(failedTimeseries);
         }
+      }
+      if(!nonExistPaths.isEmpty()){
+        throw new PathNotExistException(nonExistPaths);
       }
       if (!failedNames.isEmpty()) {
         throw new DeleteFailedException(String.join(",", failedNames));

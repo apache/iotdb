@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -451,6 +452,9 @@ public class MManager {
     }
     try {
       List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
+      if(allTimeseries.isEmpty()){
+        throw new PathNotExistException(prefixPath.getFullPath());
+      }
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.getStatStorageGroupPrefixArray()));
 
