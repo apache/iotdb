@@ -874,7 +874,7 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr1);
     Assert.assertFalse(plan.isQuery());
     Assert.assertEquals(plan.getPaths(), Collections.singletonList(new PartialPath("root.vehicle.d1")));
-    Assert.assertEquals(((DeletePlan) plan).getDeleteStartTime(), 1);
-    Assert.assertEquals(((DeletePlan) plan).getDeleteEndTime(), 2);
+    Assert.assertEquals(1, ((DeletePlan) plan).getDeleteStartTime());
+    Assert.assertEquals(2, ((DeletePlan) plan).getDeleteEndTime());
   }
 }
