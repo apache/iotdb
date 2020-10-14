@@ -584,6 +584,7 @@ public class SeriesReader {
             if (cachedBatchData.hasCurrent() || firstPageReader != null || !seqPageReaders.isEmpty()) {
               break;
             }
+            currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
           }
 
           unpackAllOverlappedTsFilesToTimeSeriesMetadata(timeValuePair.getTimestamp());
