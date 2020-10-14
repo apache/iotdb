@@ -317,14 +317,17 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void flushSpecifiedStorageGroups(FlushPlan plan) throws StorageGroupNotSetException {
-    Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupMap = plan.getStorageGroupPartitionIds();
+    Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupMap = plan
+        .getStorageGroupPartitionIds();
     for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupMap.entrySet()) {
       PartialPath storageGroupName = entry.getKey();
       // normal flush
       if (entry.getValue() == null) {
         if (plan.isSeq() == null) {
-          StorageEngine.getInstance().closeStorageGroupProcessor(storageGroupName, true, plan.isSync());
-          StorageEngine.getInstance().closeStorageGroupProcessor(storageGroupName, false, plan.isSync());
+          StorageEngine.getInstance()
+              .closeStorageGroupProcessor(storageGroupName, true, plan.isSync());
+          StorageEngine.getInstance()
+              .closeStorageGroupProcessor(storageGroupName, false, plan.isSync());
         } else {
           StorageEngine.getInstance()
               .closeStorageGroupProcessor(storageGroupName, plan.isSeq(), plan.isSync());
@@ -1075,14 +1078,14 @@ public class PlanExecutor implements IPlanExecutor {
         StorageEngine.getInstance().deleteTimeseries(path.getDevicePath(), path.getMeasurement());
         try {
           failedTimeseries = IoTDB.metaManager.deleteTimeseries(path);
-        }catch (PathNotExistException e){
+        } catch (PathNotExistException e) {
           nonExistPaths.add(path.getFullPath());
         }
         if (!failedTimeseries.isEmpty()) {
           failedNames.add(failedTimeseries);
         }
       }
-      if(!nonExistPaths.isEmpty()){
+      if (!nonExistPaths.isEmpty()) {
         throw new PathNotExistException(nonExistPaths);
       }
       if (!failedNames.isEmpty()) {
