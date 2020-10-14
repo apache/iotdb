@@ -42,14 +42,16 @@ public class IoTDBMergeTest {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMergeTest.class);
   private long prevPartitionInterval;
+  private TsFileManagementStrategy prevTsFileManagementStrategy;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    prevTsFileManagementStrategy = IoTDBDescriptor.getInstance().getConfig().getTsFileManagementStrategy();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1);
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
+        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
@@ -59,7 +61,7 @@ public class IoTDBMergeTest {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
+        .setTsFileManagementStrategy(prevTsFileManagementStrategy);
   }
 
   @Test
@@ -294,7 +296,7 @@ public class IoTDBMergeTest {
       }
       // it is uncertain whether the sub tasks are created at this time point, and we are only
       // sure that the main task is created
-      assertEquals(2, cnt);
+      assertEquals(5, cnt);
     }
   }
 }
