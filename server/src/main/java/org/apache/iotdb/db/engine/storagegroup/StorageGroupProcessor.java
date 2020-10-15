@@ -1487,8 +1487,7 @@ public class StorageGroupProcessor {
       return;
     }
     try {
-      MManager manager = MManager.getInstance();
-      MNode node = manager.getDeviceNode(deviceId);
+      MNode node = IoTDB.metaManager.getDeviceNode(deviceId);
 
       for (MNode measurementNode : node.getChildren().values()) {
         if (measurementNode != null && originalPath.matchFullPath(measurementNode.getPartialPath())) {

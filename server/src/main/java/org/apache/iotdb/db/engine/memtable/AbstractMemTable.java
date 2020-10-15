@@ -238,8 +238,9 @@ public abstract class AbstractMemTable implements IMemTable {
     if (deviceMap == null) {
       return;
     }
-    if (originalPath.getNodes().length <= devicePath.getNodes().length ||
-        originalPath.getTailNode().equals(IoTDBConstant.PATH_WILDCARD)) {
+    if ((originalPath.getNodes().length <= devicePath.getNodes().length ||
+        originalPath.getTailNode().equals(IoTDBConstant.PATH_WILDCARD)) &&
+        (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE)) {
       deviceMap.clear();
     } else {
       Iterator<Entry<String, IWritableMemChunk>> iter = deviceMap.entrySet().iterator();
