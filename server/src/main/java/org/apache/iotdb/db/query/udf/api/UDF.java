@@ -21,6 +21,9 @@ package org.apache.iotdb.db.query.udf.api;
 
 public interface UDF {
 
+  /**
+   * This method is mainly used to release the resources used in the UDF.
+   */
   default void beforeDestroy() {
   }
 }

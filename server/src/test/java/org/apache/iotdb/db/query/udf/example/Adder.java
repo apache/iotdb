@@ -28,7 +28,7 @@ import org.apache.iotdb.db.query.udf.api.customizer.strategy.OneByOneAccessStrat
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class Adder extends UDTF {
+public class Adder implements UDTF {
 
   private double addend;
 

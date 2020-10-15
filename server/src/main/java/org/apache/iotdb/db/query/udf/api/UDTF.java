@@ -24,15 +24,78 @@ import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.OneByOneAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.TumblingWindowAccessStrategy;
 
-public abstract class UDTF implements UDF {
+/**
+ * User-defined Time-series Generating Function (UDTF)
+ * <p>
+ * New UDTF classes need to inherit from this UDTF class.
+ * <p>
+ * Generates a variable number of output data points for a single input row or a single input window
+ * (time-based or size-based).
+ * <p>
+ * A complete UDTF needs to override at least the following methods:
+ * <ul>
+ * <li>{@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}
+ * <li>{@link UDTF#transform(RowWindow, PointCollector)} or {@link UDTF#transform(Row,
+ * PointCollector)}
+ * </ul>
+ * <p>
+ * The query engine will instantiate an independent UDTF instance for each udf query column, and
+ * different UDTF instances will not affect each other.
+ */
+public interface UDTF extends UDF {
 
-  public abstract void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
-      throws Exception;
+  /**
+   * This method is mainly used to customize UDTF. In this method, the user can do the following
+   * things:
+   * <ul>
+   * <li> Use UDFParameters to get the time series paths and parse key-value pair attributes entered
+   * by the user.
+   * <li> Set the strategy to access the original data and set the output data type in
+   * UDTFConfigurations.
+   * <li> Create resources, such as establishing external connections, opening files, etc.
+   * </ul>
+   * <p>
+   * This method is called after the UDTF is instantiated and before the beginning of the
+   * transformation process.
+   *
+   * @param parameters     used to parse the input parameters entered by the user
+   * @param configurations used to set the required properties in the UDTF
+   * @throws Exception the user can throw errors if necessary
+   */
+  @SuppressWarnings("squid:S112")
+  void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception;
 
-  public void transform(Row row, PointCollector collector) throws Exception {
+  /**
+   * When the user specifies {@link OneByOneAccessStrategy} to access the original data in {@link
+   * UDTFConfigurations}, this method will be called to process the transformation. In a single UDF
+   * query, this method may be called multiple times.
+   *
+   * @param row       original input data row (aligned by time)
+   * @param collector used to collect output data points
+   * @throws Exception the user can throw errors if necessary
+   * @see OneByOneAccessStrategy
+   */
+  @SuppressWarnings("squid:S112")
+  default void transform(Row row, PointCollector collector) throws Exception {
   }
 
-  public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
+  /**
+   * When the user specifies {@link TumblingWindowAccessStrategy} or {@link
+   * SlidingTimeWindowAccessStrategy} to access the original data in {@link UDTFConfigurations},
+   * this method will be called to process the transformation. In a single UDF query, this method
+   * may be called multiple times.
+   *
+   * @param rowWindow original input data window (rows inside the window are aligned by time)
+   * @param collector used to collect output data points
+   * @throws Exception the user can throw errors if necessary
+   * @see TumblingWindowAccessStrategy
+   * @see SlidingTimeWindowAccessStrategy
+   */
+  @SuppressWarnings("squid:S112")
+  default void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
   }
 }

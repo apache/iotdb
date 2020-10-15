@@ -33,7 +33,7 @@ import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAc
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.TumblingWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class Counter extends UDTF {
+public class Counter implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
