@@ -187,9 +187,7 @@ public class Timer {
      * set now time as the operation's start time
      */
     public void setStartTime() {
-      if (ENABLE_INSTRUMENTING) {
-        startTime = System.nanoTime();
-      }
+      setStartTime(System.nanoTime());
     }
 
     public void setStartTime(long startTime) {

@@ -29,9 +29,6 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 
 public class ClusterPlanner extends Planner {
 
-  public ClusterPlanner() {
-  }
-
   @Override
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
       throws QueryProcessException {
