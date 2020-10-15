@@ -29,7 +29,7 @@ fi
 MAIN_CLASS=org.apache.iotdb.cli.Cli
 
 
-CLASSPATH="."
+CLASSPATH=""
 for f in ${IOTDB_CLI_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
@@ -48,10 +48,39 @@ fi
 
 PARAMETERS="$@"
 
-if [ $# -eq 0 ]
+# if [ $# -eq 0 ]
+# then
+# 	PARAMETERS="-h 127.0.0.1 -p 6667 -u root -pw root"
+# fi
+
+# Added parameters when default parameters are missing
+if [[ $PARAMETERS =~ "-h" ]]
 then
-	PARAMETERS="-h 127.0.0.1 -p 6667 -u root -pw root"
+  PARAMETERS=$PARAMETERS
+else
+  PARAMETERS="-h 127.0.0.1 $PARAMETERS"
 fi
+if [[ $PARAMETERS =~ "-p" ]]
+then
+  PARAMETERS=$PARAMETERS
+else
+  PARAMETERS="-p 6667 $PARAMETERS"
+fi
+if [[ $PARAMETERS =~ "-u" ]]
+then
+  PARAMETERS=$PARAMETERS
+else
+  PARAMETERS="-u root $PARAMETERS"
+fi
+if [[ $PARAMETERS =~ "-pw" ]]
+then
+  PARAMETERS=$PARAMETERS
+else
+  PARAMETERS="-pw root $PARAMETERS"
+fi
+
+# echo $PARAMETERS
+
 exec "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
 
 
