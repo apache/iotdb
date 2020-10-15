@@ -37,7 +37,7 @@ public class ClusterPlannerTest extends BaseQueryTest {
   @Before
   public void setUp() throws Exception {
     super.setUp();
-    parser = new ClusterPlanner(testMetaMember);
+    parser = new ClusterPlanner();
   }
 
   @Test

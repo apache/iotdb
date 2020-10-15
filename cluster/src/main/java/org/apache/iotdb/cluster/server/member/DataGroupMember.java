@@ -514,8 +514,8 @@ public class DataGroupMember extends RaftMember {
           descriptor.getSlots().get(0), descriptor.getSlots().size() - 1);
     }
 
-    pullSnapshotService
-        .submit(new PullSnapshotTask(descriptor, this, FileSnapshot::new, snapshotSave));
+    pullSnapshotService.submit(new PullSnapshotTask(descriptor, this, FileSnapshot::new,
+        snapshotSave));
   }
 
   /**
@@ -661,40 +661,32 @@ public class DataGroupMember extends RaftMember {
    * @param plan a non-query plan.
    * @return
    */
+  @Override
   TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     TSStatus status = executeNonQueryPlanWithKnownLeader(plan);
     if (!StatusUtils.NO_LEADER.equals(status)) {
       return status;
     }
 
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.setStartTime();
     waitLeader();
-    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.addNanoFromStart(start);
+    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.calCostTime();
 
     return executeNonQueryPlanWithKnownLeader(plan);
   }
 
   private TSStatus executeNonQueryPlanWithKnownLeader(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
-      long start;
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.setStartTime();
       TSStatus status = processPlanLocally(plan);
-      Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.addNanoFromStart(start);
+      Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.calCostTime();
       if (status != null) {
         return status;
       }
     } else if (leader != null) {
-      long start;
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
-      TSStatus result =  forwardPlan(plan, leader, getHeader());
-      Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.addNanoFromStart(start);
+      Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.setStartTime();
+      TSStatus result = forwardPlan(plan, leader, getHeader());
+      Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.calCostTime();
       if (!StatusUtils.NO_LEADER.equals(result)) {
         result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
         return result;
@@ -758,7 +750,8 @@ public class DataGroupMember extends RaftMember {
           }
         }
       }
-      List<Integer> slotsToPull = ((SlotNodeRemovalResult) removalResult).getNewSlotOwners().get(getHeader());
+      List<Integer> slotsToPull = ((SlotNodeRemovalResult) removalResult).getNewSlotOwners()
+          .get(getHeader());
       if (slotsToPull != null) {
         // pull the slots that should be taken over
         PullSnapshotTaskDescriptor taskDescriptor = new PullSnapshotTaskDescriptor(

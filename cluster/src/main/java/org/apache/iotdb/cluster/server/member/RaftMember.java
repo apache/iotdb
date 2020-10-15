@@ -235,7 +235,7 @@ public abstract class RaftMember {
   public RaftMember() {
   }
 
-  RaftMember(String name, AsyncClientPool asyncPool, SyncClientPool syncPool,
+  protected RaftMember(String name, AsyncClientPool asyncPool, SyncClientPool syncPool,
       AsyncClientPool asyncHeartbeatPool, SyncClientPool syncHeartbeatPool) {
     this.name = name;
     this.asyncClientPool = asyncPool;
@@ -245,7 +245,7 @@ public abstract class RaftMember {
     this.asyncSendLogClientPool = asyncClientPool;
   }
 
-  RaftMember(String name, AsyncClientPool asyncPool, SyncClientPool syncPool,
+  protected RaftMember(String name, AsyncClientPool asyncPool, SyncClientPool syncPool,
       AsyncClientPool asyncHeartbeatPool, SyncClientPool syncHeartbeatPool,
       AsyncClientPool asyncSendLogClientPool) {
     this.name = name;
@@ -487,12 +487,9 @@ public abstract class RaftMember {
       return checkResult;
     }
 
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.setStartTime();
     Log log = LogParser.getINSTANCE().parse(request.entry);
-    Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.addNanoFromStart(start);
+    Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.calCostTime();
 
     long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
         log);
@@ -515,10 +512,7 @@ public abstract class RaftMember {
 
     long response;
     List<Log> logs = new ArrayList<>();
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.setStartTime();
     for (ByteBuffer buffer : request.getEntries()) {
       buffer.mark();
       Log log;
@@ -532,7 +526,7 @@ public abstract class RaftMember {
       logs.add(log);
     }
 
-    Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.addNanoFromStart(start);
+    Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.calCostTime();
 
     response = appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
         logs);
@@ -865,10 +859,7 @@ public abstract class RaftMember {
     if (readOnly) {
       return StatusUtils.NODE_READ_ONLY;
     }
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    Timer.Statistic.RAFT_SENDER_APPEND_LOG.setStartTime();
     PhysicalPlanLog log = new PhysicalPlanLog();
     // assign term and index to the new log and append it
     synchronized (logManager) {
@@ -878,7 +869,7 @@ public abstract class RaftMember {
       log.setPlan(plan);
       logManager.append(log);
     }
-    Timer.Statistic.RAFT_SENDER_APPEND_LOG.addNanoFromStart(start);
+    Timer.Statistic.RAFT_SENDER_APPEND_LOG.calCostTime();
 
     try {
       if (appendLogInGroup(log)) {
@@ -898,51 +889,41 @@ public abstract class RaftMember {
     PhysicalPlanLog log = new PhysicalPlanLog();
     // assign term and index to the new log and append it
     SendLogRequest sendLogRequest;
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+
+    Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.setStartTime();
     synchronized (logManager) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.addNanoFromStart(start);
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calCostTime();
 
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
       log.setPlan(plan);
 
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.setStartTime();
       logManager.append(log);
-      Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.addNanoFromStart(start);
+      Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calCostTime();
 
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.setStartTime();
       sendLogRequest = buildSendLogRequest(log);
-      Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.addNanoFromStart(start);
+      Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calCostTime();
 
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      Statistic.RAFT_SENDER_OFFER_LOG.setStartTime();
       log.setCreateTime(System.nanoTime());
       getLogDispatcher().offer(sendLogRequest);
-      Statistic.RAFT_SENDER_OFFER_LOG.addNanoFromStart(start);
+      Statistic.RAFT_SENDER_OFFER_LOG.calCostTime();
     }
-    
+
     try {
       AppendLogResult appendLogResult = waitAppendResult(sendLogRequest.getVoteCounter(),
           sendLogRequest.getLeaderShipStale(),
           sendLogRequest.getNewLeaderTerm());
       Timer.Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT
-          .addNanoFromStart(sendLogRequest.getLog().getCreateTime());
+          .calCostTime(sendLogRequest.getLog().getCreateTime());
       switch (appendLogResult) {
         case OK:
           logger.debug("{}: log {} is accepted", name, log);
-          if (Timer.ENABLE_INSTRUMENTING) {
-            start = System.nanoTime();
-          }
+          Timer.Statistic.RAFT_SENDER_COMMIT_LOG_V2.setStartTime();
           commitLog(log);
-          Timer.Statistic.RAFT_SENDER_COMMIT_LOG_V2.addNanoFromStart(start);
+          Timer.Statistic.RAFT_SENDER_COMMIT_LOG_V2.calCostTime();
           return StatusUtils.OK;
         case TIME_OUT:
           logger.debug("{}: log {} timed out...", name, log);
@@ -963,12 +944,9 @@ public abstract class RaftMember {
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(term.get());
 
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    Statistic.RAFT_SENDER_BUILD_APPEND_REQUEST.setStartTime();
     AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(log, false);
-    Statistic.RAFT_SENDER_BUILD_APPEND_REQUEST.addNanoFromStart(start);
+    Statistic.RAFT_SENDER_BUILD_APPEND_REQUEST.calCostTime();
 
     return new SendLogRequest(log, voteCounter, leaderShipStale, newLeaderTerm, appendEntryRequest);
   }
@@ -1281,10 +1259,7 @@ public abstract class RaftMember {
   private AppendLogResult waitAppendResult(AtomicInteger voteCounter,
       AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm) {
     // wait for the followers to vote
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.setStartTime();
     synchronized (voteCounter) {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
@@ -1298,7 +1273,7 @@ public abstract class RaftMember {
         alreadyWait = System.currentTimeMillis() - waitStart;
       }
     }
-    Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.addNanoFromStart(start);
+    Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.calCostTime();
 
     // a node has a larger term than the local node, so this node is no longer a valid leader
     if (leaderShipStale.get()) {
@@ -1321,24 +1296,17 @@ public abstract class RaftMember {
 
   @SuppressWarnings("java:S2445")
   void commitLog(Log log) throws LogExecutionException {
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT_V2.setStartTime();
     synchronized (logManager) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT_V2.addNanoFromStart(start);
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT_V2.calCostTime();
 
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER_V2.setStartTime();
       logManager.commitTo(log.getCurrLogIndex());
     }
-    Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER_V2.addNanoFromStart(start);
+    Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER_V2.calCostTime();
     // when using async applier, the log here may not be applied. To return the execution
     // result, we must wait until the log is applied.
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    Statistic.RAFT_SENDER_COMMIT_WAIT_LOG_APPLY_V2.setStartTime();
     synchronized (log) {
       while (!log.isApplied()) {
         // wait until the log is applied
@@ -1350,7 +1318,7 @@ public abstract class RaftMember {
         }
       }
     }
-    Statistic.RAFT_SENDER_COMMIT_WAIT_LOG_APPLY_V2.addNanoFromStart(start);
+    Statistic.RAFT_SENDER_COMMIT_WAIT_LOG_APPLY_V2.calCostTime();
     if (log.getException() != null) {
       throw new LogExecutionException(log.getException());
     }
@@ -1475,21 +1443,16 @@ public abstract class RaftMember {
 
     int retryTime = 0;
     while (true) {
-      long start;
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.setStartTime();
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
       AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
-      Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.addNanoFromStart(start);
+      Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.calCostTime();
       switch (result) {
         case OK:
-          if (Timer.ENABLE_INSTRUMENTING) {
-            start = System.nanoTime();
-          }
+          Timer.Statistic.RAFT_SENDER_COMMIT_LOG.setStartTime();
           logger.debug("{}: log {} is accepted", name, log);
           commitLog(log);
-          Timer.Statistic.RAFT_SENDER_COMMIT_LOG.addNanoFromStart(start);
+          Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calCostTime();
           return true;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
@@ -1590,16 +1553,13 @@ public abstract class RaftMember {
      * if the peer's log progress is too stale, wait until it catches up, otherwise, there may be
      * too many waiting requests on the peer's side.
      */
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.setStartTime();
     Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
     if (!waitForPrevLog(peer, log)) {
       logger.warn("{}: node {} timed out when appending {}", name, node, log);
       return;
     }
-    Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.addNanoFromStart(start);
+    Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.calCostTime();
 
     if (character != NodeCharacter.LEADER) {
       return;
@@ -1608,11 +1568,9 @@ public abstract class RaftMember {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       sendLogAsync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
     } else {
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      Timer.Statistic.RAFT_SENDER_SEND_LOG.setStartTime();
       sendLogSync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
-      Timer.Statistic.RAFT_SENDER_SEND_LOG.addNanoFromStart(start);
+      Timer.Statistic.RAFT_SENDER_SEND_LOG.calCostTime();
     }
   }
 
@@ -1702,12 +1660,9 @@ public abstract class RaftMember {
     }
 
     synchronized (logManager) {
-      long start;
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.setStartTime();
       long success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
-      Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.addNanoFromStart(start);
+      Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calCostTime();
       if (success != -1) {
         logger.debug("{} append a new log {}", name, log);
         resp = Response.RESPONSE_AGREE;
@@ -1744,10 +1699,7 @@ public abstract class RaftMember {
 
   private long checkPrevLogIndex(long prevLogIndex) {
     long lastLogIndex = logManager.getLastLogIndex();
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    Timer.Statistic.RAFT_RECEIVER_WAIT_FOR_PREV_LOG.setStartTime();
     if (lastLogIndex < prevLogIndex && !waitForPrevLog(prevLogIndex)) {
       // there are logs missing between the incoming log and the local last log, and such logs
       // did not come within a timeout, report a mismatch to the sender and it shall fix this
@@ -1755,7 +1707,7 @@ public abstract class RaftMember {
       Timer.Statistic.RAFT_RECEIVER_INDEX_DIFF.add(prevLogIndex - lastLogIndex);
       return Response.RESPONSE_LOG_MISMATCH;
     }
-    Timer.Statistic.RAFT_RECEIVER_WAIT_FOR_PREV_LOG.addNanoFromStart(start);
+    Timer.Statistic.RAFT_RECEIVER_WAIT_FOR_PREV_LOG.calCostTime();
     return Response.RESPONSE_AGREE;
   }
 
@@ -1779,12 +1731,9 @@ public abstract class RaftMember {
     }
 
     synchronized (logManager) {
-      long start;
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.setStartTime();
       resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, logs);
-      Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.addNanoFromStart(start);
+      Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calCostTime();
       if (resp != -1) {
         if (logger.isDebugEnabled()) {
           logger.debug("{} append a new log list {}, commit to {}", name, logs, leaderCommit);

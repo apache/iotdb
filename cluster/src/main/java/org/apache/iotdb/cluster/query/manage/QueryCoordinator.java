@@ -88,45 +88,46 @@ public class QueryCoordinator {
     }
 
     long currTime = System.currentTimeMillis();
-    if (currTime - nodeStatus.getLastUpdateTime() > NODE_STATUS_UPDATE_INTERVAL_MS
-        || nodeStatus.getStatus() == null) {
+    if (nodeStatus.getStatus() != null
+        && currTime - nodeStatus.getLastUpdateTime() <= NODE_STATUS_UPDATE_INTERVAL_MS) {
+      return nodeStatus;
+    }
 
-      try {
-        long startTime;
-        long responseTime;
-        TNodeStatus status;
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncMetaClient asyncMetaClient = (AsyncMetaClient) metaGroupMember.getAsyncClient(node);
-          if (asyncMetaClient == null) {
-            nodeStatus.setLastResponseLatency(Long.MAX_VALUE);
-            return nodeStatus;
-          }
-          startTime = System.nanoTime();
-          status = SyncClientAdaptor.queryNodeStatus(asyncMetaClient);
-          responseTime = System.nanoTime() - startTime;
-        } else {
-          SyncMetaClient syncMetaClient = (SyncMetaClient) metaGroupMember.getSyncClient(node);
-          startTime = System.nanoTime();
-          status = syncMetaClient.queryNodeStatus();
-          responseTime = System.nanoTime() - startTime;
-          ClientUtils.putBackSyncClient(syncMetaClient);
-        }
-
-        if (status != null) {
-          nodeStatus.setStatus(status);
-          nodeStatus.setLastUpdateTime(System.currentTimeMillis());
-          nodeStatus.setLastResponseLatency(responseTime);
-        } else {
+    try {
+      long startTime;
+      long responseTime;
+      TNodeStatus status;
+      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+        AsyncMetaClient asyncMetaClient = (AsyncMetaClient) metaGroupMember.getAsyncClient(node);
+        if (asyncMetaClient == null) {
           nodeStatus.setLastResponseLatency(Long.MAX_VALUE);
+          return nodeStatus;
         }
-        logger.warn("NodeStatus of {} is updated, status: {}, response time: {}", node,
-            nodeStatus.getStatus(), nodeStatus.getLastResponseLatency());
-      } catch (TException e) {
-        logger.error("Cannot query the node status of {}", node, e);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error("Cannot query the node status of {}", node, e);
+        startTime = System.nanoTime();
+        status = SyncClientAdaptor.queryNodeStatus(asyncMetaClient);
+        responseTime = System.nanoTime() - startTime;
+      } else {
+        SyncMetaClient syncMetaClient = (SyncMetaClient) metaGroupMember.getSyncClient(node);
+        startTime = System.nanoTime();
+        status = syncMetaClient.queryNodeStatus();
+        responseTime = System.nanoTime() - startTime;
+        ClientUtils.putBackSyncClient(syncMetaClient);
       }
+
+      if (status != null) {
+        nodeStatus.setStatus(status);
+        nodeStatus.setLastUpdateTime(System.currentTimeMillis());
+        nodeStatus.setLastResponseLatency(responseTime);
+      } else {
+        nodeStatus.setLastResponseLatency(Long.MAX_VALUE);
+      }
+      logger.warn("NodeStatus of {} is updated, status: {}, response time: {}", node,
+          nodeStatus.getStatus(), nodeStatus.getLastResponseLatency());
+    } catch (TException e) {
+      logger.error("Cannot query the node status of {}", node, e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Cannot query the node status of {}", node, e);
     }
     return nodeStatus;
   }

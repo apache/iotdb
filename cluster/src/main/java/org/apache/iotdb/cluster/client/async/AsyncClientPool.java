@@ -46,8 +46,8 @@ public class AsyncClientPool {
   private Map<ClusterNode, Integer> nodeErrorClientCountMap = new ConcurrentHashMap<>();
   private AsyncClientFactory asyncClientFactory;
   private ScheduledExecutorService cleanErrorClientExecutorService;
-  private static final int maxErrorCount = 3;
-  private static final int probeNodeStatusPeriodSecond = 60;
+  private static final int MAX_ERROR_COUNT = 3;
+  private static final int PROBE_NODE_STATUS_PERIOD_SECOND = 60;
 
   public AsyncClientPool(AsyncClientFactory asyncClientFactory) {
     this.asyncClientFactory = asyncClientFactory;
@@ -57,8 +57,8 @@ public class AsyncClientPool {
         new BasicThreadFactory.Builder().namingPattern("clean-error-client-%d").daemon(true)
             .build());
     this.cleanErrorClientExecutorService
-        .scheduleAtFixedRate(this::cleanErrorClients, probeNodeStatusPeriodSecond,
-            probeNodeStatusPeriodSecond,
+        .scheduleAtFixedRate(this::cleanErrorClients, PROBE_NODE_STATUS_PERIOD_SECOND,
+            PROBE_NODE_STATUS_PERIOD_SECOND,
             TimeUnit.SECONDS);
   }
 
@@ -72,7 +72,7 @@ public class AsyncClientPool {
   public AsyncClient getClient(Node node) throws IOException {
     ClusterNode clusterNode = new ClusterNode(node);
     if (nodeErrorClientCountMap.containsKey(clusterNode)
-        && nodeErrorClientCountMap.get(clusterNode) > maxErrorCount) {
+        && nodeErrorClientCountMap.get(clusterNode) > MAX_ERROR_COUNT) {
       throw new IOException(String.format("connect node failed, maybe the node is down, %s", node));
     }
     AsyncClient client;

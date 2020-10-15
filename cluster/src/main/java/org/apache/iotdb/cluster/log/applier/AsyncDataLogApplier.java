@@ -70,7 +70,7 @@ public class AsyncDataLogApplier implements LogApplier {
   @Override
   // synchronized: when a log is draining consumers, avoid other threads adding more logs so that
   // the consumers will never be drained
-  public synchronized void apply(Log log)  {
+  public synchronized void apply(Log log) {
 
     PartialPath logKey;
     try {
@@ -84,24 +84,17 @@ public class AsyncDataLogApplier implements LogApplier {
 
     if (logKey != null) {
       // this plan only affects one sg, so we can run it with other plans in parallel
-      long start;
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      Statistic.RAFT_SENDER_COMMIT_TO_CONSUMER_LOGS.setStartTime();
       provideLogToConsumers(logKey, log);
-      Statistic.RAFT_SENDER_COMMIT_TO_CONSUMER_LOGS.addNanoFromStart(start);
+      Statistic.RAFT_SENDER_COMMIT_TO_CONSUMER_LOGS.calCostTime();
       return;
     }
 
-    // TODO-Cluster: change to debug
-    logger.info("{}: {} is waiting for consumers to drain", name, log);
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    logger.debug("{}: {} is waiting for consumers to drain", name, log);
+    Statistic.RAFT_SENDER_COMMIT_EXCLUSIVE_LOGS.setStartTime();
     drainConsumers();
     applyInternal(log);
-    Statistic.RAFT_SENDER_COMMIT_EXCLUSIVE_LOGS.addNanoFromStart(start);
+    Statistic.RAFT_SENDER_COMMIT_EXCLUSIVE_LOGS.calCostTime();
   }
 
   private PartialPath getLogKey(Log log) throws StorageGroupNotSetException {
@@ -127,17 +120,6 @@ public class AsyncDataLogApplier implements LogApplier {
 
   private PartialPath getPlanKey(PhysicalPlan plan) throws StorageGroupNotSetException {
     return getPlanSG(plan);
-  }
-
-  private PartialPath getPlanDevice(PhysicalPlan plan) {
-    PartialPath planKey = null;
-    if (plan instanceof InsertPlan) {
-      planKey = ((InsertPlan) plan).getDeviceId();
-    } else if (plan instanceof CreateTimeSeriesPlan) {
-      PartialPath path = ((CreateTimeSeriesPlan) plan).getPath();
-      planKey = path.getDevicePath();
-    }
-    return planKey;
   }
 
   private PartialPath getPlanSG(PhysicalPlan plan) throws StorageGroupNotSetException {
@@ -190,13 +172,10 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   private void applyInternal(Log log) {
-    long applyStart;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      applyStart = System.nanoTime();
-    }
+    Statistic.RAFT_SENDER_DATA_LOG_APPLY.setStartTime();
     embeddedApplier.apply(log);
     if (Timer.ENABLE_INSTRUMENTING) {
-      Statistic.RAFT_SENDER_DATA_LOG_APPLY.addNanoFromStart(applyStart);
+      Statistic.RAFT_SENDER_DATA_LOG_APPLY.calCostTime();
     }
   }
 
@@ -225,7 +204,7 @@ public class AsyncDataLogApplier implements LogApplier {
       while (!Thread.currentThread().isInterrupted()) {
         try {
           Log log = logQueue.take();
-          Statistic.RAFT_SENDER_IN_APPLY_QUEUE.addNanoFromStart(log.getEnqueueTime());
+          Statistic.RAFT_SENDER_IN_APPLY_QUEUE.calCostTime(log.getEnqueueTime());
           try {
             applyInternal(log);
           } finally {

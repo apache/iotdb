@@ -36,7 +36,6 @@ import java.util.concurrent.Callable;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -49,9 +48,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * When a new node joins the cluster, a new data group is formed and some partitions are assigned
- * to the group. All members of the group should pull snapshots from the previous holders to
- * proceed the data transition.
+ * When a new node joins the cluster, a new data group is formed and some partitions are assigned to
+ * the group. All members of the group should pull snapshots from the previous holders to proceed
+ * the data transition.
  */
 public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
 
@@ -68,12 +67,11 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
   private Random random = new Random();
 
   /**
-   *
    * @param descriptor
    * @param newMember
    * @param snapshotFactory
-   * @param snapshotSave if the task is resumed from a disk file, this should that file,
-   *                     otherwise it should bu null
+   * @param snapshotSave    if the task is resumed from a disk file, this should that file,
+   *                        otherwise it should bu null
    */
   public PullSnapshotTask(PullSnapshotTaskDescriptor descriptor,
       DataGroupMember newMember, SnapshotFactory<T> snapshotFactory, File snapshotSave) {
@@ -109,7 +107,8 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
       }
 
       if (logger.isInfoEnabled()) {
-        logger.info("Received a snapshot {} from {}", result, descriptor.getPreviousHolders().get(nodeIndex));
+        logger.info("Received a snapshot {} from {}", result,
+            descriptor.getPreviousHolders().get(nodeIndex));
       }
       try {
         Snapshot snapshot = result.values().iterator().next();
@@ -160,7 +159,6 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
     request.setRequiredSlots(descriptor.getSlots());
     request.setRequireReadOnly(descriptor.isRequireReadOnly());
 
-
     boolean finished = false;
     int nodeIndex = -1;
     while (!finished) {
@@ -169,7 +167,8 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
         nodeIndex = (nodeIndex + 1) % descriptor.getPreviousHolders().size();
         finished = pullSnapshot(nodeIndex);
         if (!finished) {
-          Thread.sleep(ClusterDescriptor.getInstance().getConfig().getPullSnapshotRetryIntervalMs());
+          Thread
+              .sleep(ClusterDescriptor.getInstance().getConfig().getPullSnapshotRetryIntervalMs());
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

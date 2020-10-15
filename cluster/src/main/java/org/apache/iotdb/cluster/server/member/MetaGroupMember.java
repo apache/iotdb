@@ -804,9 +804,9 @@ public class MetaGroupMember extends RaftMember {
    * immediately. If the identifier of "node" conflicts with an existing node, the request will be
    * turned down.
    *
-   * @param node cannot be the local node
+   * @param node          cannot be the local node
    * @param startUpStatus the start up status of the new node
-   * @param response the response that will be sent to "node"
+   * @param response      the response that will be sent to "node"
    * @return true if the process is over, false if the request should be forwarded
    */
   private boolean processAddNodeLocally(Node node, StartUpStatus startUpStatus,
@@ -1292,10 +1292,7 @@ public class MetaGroupMember extends RaftMember {
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     TSStatus result;
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.setStartTime();
     if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
       result = executeNonQueryLocally(plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
@@ -1309,7 +1306,7 @@ public class MetaGroupMember extends RaftMember {
         return StatusUtils.getStatus(StatusUtils.UNSUPPORTED_OPERATION, e.getMessage());
       }
     }
-    Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.addNanoFromStart(start);
+    Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.calCostTime();
     return result;
   }
 
@@ -1576,25 +1573,19 @@ public class MetaGroupMember extends RaftMember {
     TSStatus result;
     if (entry.getValue().contains(thisNode)) {
       // the query should be handled by a group the local node is in, handle it with in the group
-      long start;
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP.setStartTime();
       logger.debug("Execute {} in a local group of {}", entry.getKey(),
           entry.getValue().getHeader());
       result = getLocalDataMember(entry.getValue().getHeader())
           .executeNonQueryPlan(entry.getKey());
-      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP.addNanoFromStart(start);
+      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP.calCostTime();
     } else {
       // forward the query to the group that should handle it
-      long start;
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_REMOTE_GROUP.setStartTime();
       logger.debug("Forward {} to a remote group of {}", entry.getKey(),
           entry.getValue().getHeader());
       result = forwardPlan(entry.getKey(), entry.getValue());
-      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_REMOTE_GROUP.addNanoFromStart(start);
+      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_REMOTE_GROUP.calCostTime();
     }
     return result;
   }
@@ -1710,7 +1701,7 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Forward a non-query plan to the data port of "receiver"
    *
-   * @param plan a non-query plan
+   * @param plan   a non-query plan
    * @param header to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
@@ -2026,9 +2017,9 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Get a local DataGroupMember that is in the group of "header" and should process "request".
    *
-   * @param header the header of the group which the local node is in
+   * @param header  the header of the group which the local node is in
    * @param request the toString() of this parameter should explain what the request is and it is
-   * only used in logs for tracing
+   *                only used in logs for tracing
    */
   public DataGroupMember getLocalDataMember(Node header, Object request) {
     return dataClusterServer.getDataMember(header, null, request);

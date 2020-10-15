@@ -44,7 +44,6 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.StableEntryManager;
-import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.Timer.Statistic;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
@@ -125,7 +124,7 @@ public abstract class RaftLogManager {
 
   private ExecutorService logApplierExecutor;
 
-  public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
+  protected RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
     this.name = name;
     this.setCommittedEntryManager(new CommittedEntryManager(maxNumOfLogsInMem));
@@ -540,68 +539,60 @@ public abstract class RaftLogManager {
    *
    * @param newCommitIndex request commitIndex
    */
-  public void commitTo(long newCommitIndex)
-      throws LogExecutionException {
+  public void commitTo(long newCommitIndex) throws LogExecutionException {
     if (commitIndex >= newCommitIndex) {
       return;
     }
-    long start;
-    if (Timer.ENABLE_INSTRUMENTING) {
-      start = System.nanoTime();
-    }
+    Statistic.RAFT_SENDER_COMMIT_GET_LOGS.setStartTime();
     long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
     long hi = newCommitIndex + 1;
     List<Log> entries = new ArrayList<>(getUnCommittedEntryManager()
         .getEntries(lo, hi));
-    Statistic.RAFT_SENDER_COMMIT_GET_LOGS.addNanoFromStart(start);
+    Statistic.RAFT_SENDER_COMMIT_GET_LOGS.calCostTime();
 
-    if (!entries.isEmpty()) {
-      long commitLogIndex = getCommitLogIndex();
-      long firstLogIndex = entries.get(0).getCurrLogIndex();
-      if (commitLogIndex >= firstLogIndex) {
-        logger.warn("Committing logs that has already been committed: {} >= {}", commitLogIndex,
-            firstLogIndex);
-        entries.subList(0,
-            (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
-            .clear();
+    if (entries.isEmpty()) {
+      return;
+    }
+
+    long commitLogIndex = getCommitLogIndex();
+    long firstLogIndex = entries.get(0).getCurrLogIndex();
+    if (commitLogIndex >= firstLogIndex) {
+      logger.warn("Committing logs that has already been committed: {} >= {}", commitLogIndex,
+          firstLogIndex);
+      entries.subList(0,
+          (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
+          .clear();
+    }
+    try {
+      int currentSize = (int) committedEntryManager.getTotalSize();
+      int deltaSize = entries.size();
+      if (currentSize + deltaSize > maxNumOfLogsInMem) {
+        int sizeToReserveForNew = maxNumOfLogsInMem - deltaSize;
+        int sizeToReserveForConfig = minNumOfLogsInMem;
+        Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.setStartTime();
+        synchronized (this) {
+          innerDeleteLog(Math.min(sizeToReserveForConfig, sizeToReserveForNew));
+        }
+        Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.calCostTime();
       }
-      try {
-        int currentSize = (int) committedEntryManager.getTotalSize();
-        int deltaSize = entries.size();
-        if (currentSize + deltaSize > maxNumOfLogsInMem) {
-          int sizeToReserveForNew = maxNumOfLogsInMem - deltaSize;
-          int sizeToReserveForConfig = minNumOfLogsInMem;
-          if (Timer.ENABLE_INSTRUMENTING) {
-            start = System.nanoTime();
-          }
-          synchronized (this) {
-            innerDeleteLog(Math.min(sizeToReserveForConfig, sizeToReserveForNew));
-          }
-          Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.addNanoFromStart(start);
-        }
 
-        if (Timer.ENABLE_INSTRUMENTING) {
-          start = System.nanoTime();
-        }
-        getCommittedEntryManager().append(entries);
-        if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
-          getStableEntryManager().append(entries);
-        }
-        Log lastLog = entries.get(entries.size() - 1);
-        getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
-        Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.addNanoFromStart(start);
-
-        commitIndex = lastLog.getCurrLogIndex();
-        if (Timer.ENABLE_INSTRUMENTING) {
-          start = System.nanoTime();
-        }
-        applyEntries(entries);
-        Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.addNanoFromStart(start);
-      } catch (TruncateCommittedEntryException e) {
-        logger.error("{}: Unexpected error:", name, e);
-      } catch (IOException e) {
-        throw new LogExecutionException(e);
+      Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.setStartTime();
+      getCommittedEntryManager().append(entries);
+      if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+        getStableEntryManager().append(entries);
       }
+      Log lastLog = entries.get(entries.size() - 1);
+      getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
+      Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.calCostTime();
+
+      commitIndex = lastLog.getCurrLogIndex();
+      Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.setStartTime();
+      applyEntries(entries);
+      Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.calCostTime();
+    } catch (TruncateCommittedEntryException e) {
+      logger.error("{}: Unexpected error:", name, e);
+    } catch (IOException e) {
+      throw new LogExecutionException(e);
     }
   }
 
@@ -690,7 +681,7 @@ public abstract class RaftLogManager {
   }
 
   @TestOnly
-  public RaftLogManager(CommittedEntryManager committedEntryManager,
+  protected RaftLogManager(CommittedEntryManager committedEntryManager,
       StableEntryManager stableEntryManager,
       LogApplier applier) {
     this.setCommittedEntryManager(committedEntryManager);

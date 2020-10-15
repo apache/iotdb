@@ -132,18 +132,48 @@ public class CatchUpTask implements Runnable {
       return false;
     }
 
-    boolean matched;
+    boolean matched = checkLogIsMatch(prevLogIndex, prevLogTerm);
+    raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
+    logger.debug("{} check {}'s matchIndex {} with log [{}]", raftMember.getName(), node,
+        matched ? "succeed" : "failed", log);
+    if (!matched) {
+      return false;
+    }
+    // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
+    logs.subList(0, index).clear();
+    if (isLogDebug) {
+      if (logs.isEmpty()) {
+        logger.debug("{}: {} has caught up by previous catch up", raftMember.getName(), node);
+      } else {
+        logger.debug("{}: makes {} catch up with {} and other {} logs", raftMember.getName(),
+            node, logs.get(0), logs.size());
+      }
+    }
+    return true;
+  }
+
+  /**
+   * @param logIndex the log index needs to check
+   * @param logTerm  the log term need to check
+   * @return true if the log's index and term matches a log in the remote node, false if the
+   * corresponding log cannot be found
+   * @throws TException
+   * @throws InterruptedException
+   */
+  private boolean checkLogIsMatch(long logIndex, long logTerm)
+      throws TException, InterruptedException {
+    boolean matched = false;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       RaftService.AsyncClient client = raftMember.getAsyncClient(node);
       if (client == null) {
         return false;
       }
       matched = SyncClientAdaptor
-          .matchTerm(client, node, prevLogIndex, prevLogTerm, raftMember.getHeader());
+          .matchTerm(client, node, logIndex, logTerm, raftMember.getHeader());
     } else {
       Client client = raftMember.getSyncClient(node);
       try {
-        matched = client.matchTerm(prevLogIndex, prevLogTerm, raftMember.getHeader());
+        matched = client.matchTerm(logIndex, logTerm, raftMember.getHeader());
       } catch (TException e) {
         client.getInputProtocol().getTransport().close();
         throw e;
@@ -151,24 +181,7 @@ public class CatchUpTask implements Runnable {
         ClientUtils.putBackSyncClient(client);
       }
     }
-
-    raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-    logger.debug("{} check {}'s matchIndex {} with log [{}]", raftMember.getName(), node,
-        matched ? "succeed" : "failed", log);
-    if (matched) {
-      // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
-      logs.subList(0, index).clear();
-      if (isLogDebug) {
-        if (logs.isEmpty()) {
-          logger.debug("{}: {} has caught up by previous catch up", raftMember.getName(), node);
-        } else {
-          logger.debug("{}: makes {} catch up with {} and other {} logs", raftMember.getName(),
-              node, logs.get(0), logs.size());
-        }
-      }
-      return true;
-    }
-    return false;
+    return matched;
   }
 
   private long getPrevLogTerm(int index) {
