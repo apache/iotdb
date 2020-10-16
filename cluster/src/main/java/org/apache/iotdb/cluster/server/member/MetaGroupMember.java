@@ -1292,7 +1292,7 @@ public class MetaGroupMember extends RaftMember {
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     TSStatus result;
-    Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.setStartTime();
+    long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.getOperationStartTime();
     if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
       result = executeNonQueryLocally(plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
@@ -1306,7 +1306,7 @@ public class MetaGroupMember extends RaftMember {
         return StatusUtils.getStatus(StatusUtils.UNSUPPORTED_OPERATION, e.getMessage());
       }
     }
-    Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.calCostTime();
+    Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
     return result;
   }
 
@@ -1573,19 +1573,23 @@ public class MetaGroupMember extends RaftMember {
     TSStatus result;
     if (entry.getValue().contains(thisNode)) {
       // the query should be handled by a group the local node is in, handle it with in the group
-      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP.setStartTime();
+      long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
+          .getOperationStartTime();
       logger.debug("Execute {} in a local group of {}", entry.getKey(),
           entry.getValue().getHeader());
       result = getLocalDataMember(entry.getValue().getHeader())
           .executeNonQueryPlan(entry.getKey());
-      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP.calCostTime();
+      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
+          .calOperationCostTimeFromStart(startTime);
     } else {
       // forward the query to the group that should handle it
-      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_REMOTE_GROUP.setStartTime();
+      long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_REMOTE_GROUP
+          .getOperationStartTime();
       logger.debug("Forward {} to a remote group of {}", entry.getKey(),
           entry.getValue().getHeader());
       result = forwardPlan(entry.getKey(), entry.getValue());
-      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_REMOTE_GROUP.calCostTime();
+      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_REMOTE_GROUP
+          .calOperationCostTimeFromStart(startTime);
     }
     return result;
   }

@@ -69,7 +69,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
   @Override
   public void onComplete(Long response) {
     if (Timer.ENABLE_INSTRUMENTING) {
-      Statistic.RAFT_SENDER_SEND_LOG.calCostTime(sendStart);
+      Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(sendStart);
     }
     logger.debug("{}: Append response {} from {}", member.getName(), response, receiver);
     if (leaderShipStale.get()) {

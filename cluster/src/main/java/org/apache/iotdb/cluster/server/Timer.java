@@ -160,7 +160,6 @@ public class Timer {
     int level;
     Statistic parent;
     List<Statistic> children = new ArrayList<>();
-    private long startTime;
 
     Statistic(String className, String blockName, double scale, boolean valid, Statistic parent) {
       this.className = className;
@@ -184,31 +183,20 @@ public class Timer {
     }
 
     /**
-     * set now time as the operation's start time
+     * @return System.nanoTime() if the ENABLE_INSTRUMENTING is true, else zero
      */
-    public void setStartTime() {
-      setStartTime(System.nanoTime());
-    }
-
-    public void setStartTime(long startTime) {
+    public long getOperationStartTime() {
       if (ENABLE_INSTRUMENTING) {
-        this.startTime = startTime;
+        return System.nanoTime();
       }
+      return 0;
     }
 
     /**
-     * IMPORTANT!!! make sure when call this method, the {@link Statistic#setStartTime()} method
-     * should be called first. This method equals `add(System.nanoTime() - start)`. We wrap
-     * `System.nanoTime()` in this method to avoid unnecessary calls when instrumenting is
-     * disabled.
+     * This method equals `add(System.nanoTime() - start)`. We wrap `System.nanoTime()` in this
+     * method to avoid unnecessary calls when instrumenting is disabled.
      */
-    public void calCostTime() {
-      if (ENABLE_INSTRUMENTING) {
-        add(System.nanoTime() - startTime);
-      }
-    }
-
-    public void calCostTime(long startTime) {
+    public void calOperationCostTimeFromStart(long startTime) {
       if (ENABLE_INSTRUMENTING) {
         add(System.nanoTime() - startTime);
       }

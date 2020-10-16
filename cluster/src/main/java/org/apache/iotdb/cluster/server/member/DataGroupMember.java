@@ -668,25 +668,25 @@ public class DataGroupMember extends RaftMember {
       return status;
     }
 
-    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.setStartTime();
+    long startTime = Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.getOperationStartTime();
     waitLeader();
-    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.calCostTime();
+    Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.calOperationCostTimeFromStart(startTime);
 
     return executeNonQueryPlanWithKnownLeader(plan);
   }
 
   private TSStatus executeNonQueryPlanWithKnownLeader(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
-      Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.setStartTime();
+      long startTime = Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.getOperationStartTime();
       TSStatus status = processPlanLocally(plan);
-      Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.calCostTime();
+      Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.calOperationCostTimeFromStart(startTime);
       if (status != null) {
         return status;
       }
     } else if (leader != null) {
-      Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.setStartTime();
+      long startTime = Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.getOperationStartTime();
       TSStatus result = forwardPlan(plan, leader, getHeader());
-      Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.calCostTime();
+      Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.calOperationCostTimeFromStart(startTime);
       if (!StatusUtils.NO_LEADER.equals(result)) {
         result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
         return result;

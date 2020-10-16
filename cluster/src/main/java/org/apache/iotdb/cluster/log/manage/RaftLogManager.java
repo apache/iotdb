@@ -543,12 +543,12 @@ public abstract class RaftLogManager {
     if (commitIndex >= newCommitIndex) {
       return;
     }
-    Statistic.RAFT_SENDER_COMMIT_GET_LOGS.setStartTime();
+    long startTime = Statistic.RAFT_SENDER_COMMIT_GET_LOGS.getOperationStartTime();
     long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
     long hi = newCommitIndex + 1;
     List<Log> entries = new ArrayList<>(getUnCommittedEntryManager()
         .getEntries(lo, hi));
-    Statistic.RAFT_SENDER_COMMIT_GET_LOGS.calCostTime();
+    Statistic.RAFT_SENDER_COMMIT_GET_LOGS.calOperationCostTimeFromStart(startTime);
 
     if (entries.isEmpty()) {
       return;
@@ -569,26 +569,26 @@ public abstract class RaftLogManager {
       if (currentSize + deltaSize > maxNumOfLogsInMem) {
         int sizeToReserveForNew = maxNumOfLogsInMem - deltaSize;
         int sizeToReserveForConfig = minNumOfLogsInMem;
-        Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.setStartTime();
+        startTime = Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.getOperationStartTime();
         synchronized (this) {
           innerDeleteLog(Math.min(sizeToReserveForConfig, sizeToReserveForNew));
         }
-        Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.calCostTime();
+        Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.calOperationCostTimeFromStart(startTime);
       }
 
-      Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.setStartTime();
+      startTime = Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.getOperationStartTime();
       getCommittedEntryManager().append(entries);
       if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
         getStableEntryManager().append(entries);
       }
       Log lastLog = entries.get(entries.size() - 1);
       getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
-      Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.calCostTime();
+      Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.calOperationCostTimeFromStart(startTime);
 
       commitIndex = lastLog.getCurrLogIndex();
-      Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.setStartTime();
+      startTime = Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.getOperationStartTime();
       applyEntries(entries);
-      Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.calCostTime();
+      Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.calOperationCostTimeFromStart(startTime);
     } catch (TruncateCommittedEntryException e) {
       logger.error("{}: Unexpected error:", name, e);
     } catch (IOException e) {

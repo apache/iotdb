@@ -244,20 +244,20 @@ public class LogDispatcher {
     private void appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request,
         List<SendLogRequest> currBatch) {
 
-      Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.setStartTime();
+      long startTime = Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.getOperationStartTime();
       if (!member.waitForPrevLog(peer, currBatch.get(0).getLog())) {
         logger.warn("{}: node {} timed out when appending {}", member.getName(), receiver,
             currBatch.get(0).getLog());
         return;
       }
-      Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.calCostTime();
+      Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
 
       Client client = member.getSyncClient(receiver);
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
-      Timer.Statistic.RAFT_SENDER_SEND_LOG.setStartTime();
+      startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
       try {
         long result = client.appendEntries(request);
-        Timer.Statistic.RAFT_SENDER_SEND_LOG.calCostTime();
+        Timer.Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
         if (result != -1 && logger.isInfoEnabled()) {
           logger.info("{}: Append {} logs to {}, resp: {}", member.getName(), logList.size(),
               receiver, result);
@@ -300,7 +300,7 @@ public class LogDispatcher {
       List<ByteBuffer> logList = new ArrayList<>();
       for (SendLogRequest request : currBatch) {
         Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE
-            .calCostTime(request.getLog().getCreateTime());
+            .calOperationCostTimeFromStart(request.getLog().getCreateTime());
         logList.add(request.getAppendEntryRequest().entry);
       }
 
@@ -312,18 +312,18 @@ public class LogDispatcher {
       }
       for (SendLogRequest batch : currBatch) {
         Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END
-            .calCostTime(batch.getLog().getCreateTime());
+            .calOperationCostTimeFromStart(batch.getLog().getCreateTime());
       }
     }
 
     private void sendLog(SendLogRequest logRequest) {
       Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE
-          .calCostTime(logRequest.getLog().getCreateTime());
+          .calOperationCostTimeFromStart(logRequest.getLog().getCreateTime());
       member.sendLogToFollower(logRequest.getLog(), logRequest.getVoteCounter(), receiver,
           logRequest.getLeaderShipStale(), logRequest.getNewLeaderTerm(),
           logRequest.getAppendEntryRequest());
       Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END
-          .calCostTime(logRequest.getLog().getCreateTime());
+          .calOperationCostTimeFromStart(logRequest.getLog().getCreateTime());
     }
 
     class AppendEntriesHandler implements AsyncMethodCallback<Long> {

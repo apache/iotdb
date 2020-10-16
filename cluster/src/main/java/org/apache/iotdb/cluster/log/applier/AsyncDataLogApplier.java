@@ -84,17 +84,17 @@ public class AsyncDataLogApplier implements LogApplier {
 
     if (logKey != null) {
       // this plan only affects one sg, so we can run it with other plans in parallel
-      Statistic.RAFT_SENDER_COMMIT_TO_CONSUMER_LOGS.setStartTime();
+      long startTime = Statistic.RAFT_SENDER_COMMIT_TO_CONSUMER_LOGS.getOperationStartTime();
       provideLogToConsumers(logKey, log);
-      Statistic.RAFT_SENDER_COMMIT_TO_CONSUMER_LOGS.calCostTime();
+      Statistic.RAFT_SENDER_COMMIT_TO_CONSUMER_LOGS.calOperationCostTimeFromStart(startTime);
       return;
     }
 
     logger.debug("{}: {} is waiting for consumers to drain", name, log);
-    Statistic.RAFT_SENDER_COMMIT_EXCLUSIVE_LOGS.setStartTime();
+    long startTime = Statistic.RAFT_SENDER_COMMIT_EXCLUSIVE_LOGS.getOperationStartTime();
     drainConsumers();
     applyInternal(log);
-    Statistic.RAFT_SENDER_COMMIT_EXCLUSIVE_LOGS.calCostTime();
+    Statistic.RAFT_SENDER_COMMIT_EXCLUSIVE_LOGS.calOperationCostTimeFromStart(startTime);
   }
 
   private PartialPath getLogKey(Log log) throws StorageGroupNotSetException {
@@ -172,10 +172,10 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   private void applyInternal(Log log) {
-    Statistic.RAFT_SENDER_DATA_LOG_APPLY.setStartTime();
+    long startTime = Statistic.RAFT_SENDER_DATA_LOG_APPLY.getOperationStartTime();
     embeddedApplier.apply(log);
     if (Timer.ENABLE_INSTRUMENTING) {
-      Statistic.RAFT_SENDER_DATA_LOG_APPLY.calCostTime();
+      Statistic.RAFT_SENDER_DATA_LOG_APPLY.calOperationCostTimeFromStart(startTime);
     }
   }
 
@@ -204,7 +204,7 @@ public class AsyncDataLogApplier implements LogApplier {
       while (!Thread.currentThread().isInterrupted()) {
         try {
           Log log = logQueue.take();
-          Statistic.RAFT_SENDER_IN_APPLY_QUEUE.calCostTime(log.getEnqueueTime());
+          Statistic.RAFT_SENDER_IN_APPLY_QUEUE.calOperationCostTimeFromStart(log.getEnqueueTime());
           try {
             applyInternal(log);
           } finally {
