@@ -9,17 +9,16 @@ import static org.apache.iotdb.db.writelog.node.DifferentialWriteLogNode.WINDOW_
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
-import java.util.Queue;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.datastructure.RandomAccessArrayDeque;
 
 public class DifferentialSingleFileLogReader extends SingleFileLogReader {
 
-  private Queue<PhysicalPlan> planWindow;
+  private RandomAccessArrayDeque<PhysicalPlan> planWindow;
 
   public DifferentialSingleFileLogReader(File logFile) throws FileNotFoundException {
     super(logFile);
-    this.planWindow = new ArrayDeque<>(WINDOW_LENGTH);
+    this.planWindow = new RandomAccessArrayDeque<>(WINDOW_LENGTH);
   }
 
   @Override

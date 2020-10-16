@@ -21,14 +21,13 @@ package org.apache.iotdb.db.writelog.node;
 
 import java.io.File;
 import java.nio.BufferOverflowException;
-import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Queue;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.datastructure.RandomAccessArrayDeque;
 import org.apache.iotdb.db.writelog.io.DifferentialSingleFileLogReader;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.io.MultiFileLogReader;
@@ -48,7 +47,7 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
   private static final Logger logger = LoggerFactory.getLogger(DifferentialWriteLogNode.class);
   // we can only use a linear search now, so the window length should not be too large
   public static final int WINDOW_LENGTH = 2000;
-  private Queue<PhysicalPlan> planWindow;
+  private RandomAccessArrayDeque<PhysicalPlan> planWindow;
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -57,7 +56,7 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
    */
   public DifferentialWriteLogNode(String identifier) {
     super(identifier);
-    planWindow = new ArrayDeque<>(WINDOW_LENGTH);
+    planWindow = new RandomAccessArrayDeque<>(WINDOW_LENGTH);
   }
 
   @Override
@@ -111,12 +110,10 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
   }
 
   private Pair<PhysicalPlan, Short> findSimilarPlan(PhysicalPlan plan) {
-    short index = -1;
-    // linear search, is there any way better?
-    for (PhysicalPlan next : planWindow) {
-      index++;
+    for (short i = 0; i < planWindow.size(); i++) {
+      PhysicalPlan next = planWindow.get(i);
       if (isPlanSimilarEnough(plan, next)) {
-        return new Pair<>(plan, index);
+        return new Pair<>(plan, i);
       }
     }
     return null;

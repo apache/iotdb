@@ -41,6 +41,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.utils.datastructure.RandomAccessArrayDeque;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -303,7 +304,7 @@ public abstract class PhysicalPlan {
     }
 
     public static PhysicalPlan create(ByteBuffer buffer,
-        Queue<PhysicalPlan> planWindow) throws IOException,
+        RandomAccessArrayDeque<PhysicalPlan> planWindow) throws IOException,
         IllegalPathException {
       short baseIndex = buffer.getShort();
       int typeNum = buffer.get();
@@ -337,14 +338,8 @@ public abstract class PhysicalPlan {
       return plan;
     }
 
-    private static PhysicalPlan getPlan(Queue<PhysicalPlan> planWindow, int index) {
-      Iterator<PhysicalPlan> iterator = planWindow.iterator();
-      PhysicalPlan physicalPlan = null;
-      while (iterator.hasNext() && index >= 0) {
-        physicalPlan = iterator.next();
-        index --;
-      }
-      return physicalPlan;
+    private static PhysicalPlan getPlan(RandomAccessArrayDeque<PhysicalPlan> planWindow, int index) {
+      return planWindow.get(index);
     }
   }
 

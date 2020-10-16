@@ -31,15 +31,16 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.Factory;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.datastructure.RandomAccessArrayDeque;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DifferentialBatchLogReader extends BatchLogReader {
 
   private static final Logger logger = LoggerFactory.getLogger(DifferentialBatchLogReader.class);
-  private Queue<PhysicalPlan> planWindow;
+  private RandomAccessArrayDeque<PhysicalPlan> planWindow;
 
-  public DifferentialBatchLogReader(ByteBuffer buffer, Queue<PhysicalPlan> planWindow) {
+  public DifferentialBatchLogReader(ByteBuffer buffer, RandomAccessArrayDeque<PhysicalPlan> planWindow) {
     this.planWindow = planWindow;
     List<PhysicalPlan> logs = readLogs(buffer);
     this.planIterator = logs.iterator();
