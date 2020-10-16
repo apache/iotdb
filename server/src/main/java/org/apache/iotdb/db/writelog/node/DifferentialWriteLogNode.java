@@ -28,7 +28,6 @@ import java.util.Queue;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.writelog.io.DifferentialSingleFileLogReader;
 import org.apache.iotdb.db.writelog.io.ILogReader;
@@ -37,10 +36,17 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * DifferentialWriteLogNode maintains a reduced plan window (reduced means the plans do not
+ * contain unnecessary fields for differentiation, e.g., values and timestamps in InsertPlan).
+ * When a plan is to be serialized, if a similar log can be found with in the window, identical
+ * fields (like deviceId, measurementIds, dataTypes) will be referenced from the similar log and
+ * remove the necessity of serializing them more than once.
+ */
 public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
 
   private static final Logger logger = LoggerFactory.getLogger(DifferentialWriteLogNode.class);
-  // TODO: make WINDOW_LENGTH a config
+  // we can only use a linear search now, so the window length should not be too large
   public static final int WINDOW_LENGTH = 2000;
   private Queue<PhysicalPlan> planWindow;
 
@@ -57,7 +63,7 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
   @Override
   void putLog(PhysicalPlan plan) {
     logBuffer.mark();
-    Pair<PhysicalPlan, Integer> similarPlanIndex = findSimilarPlan(plan);
+    Pair<PhysicalPlan, Short> similarPlanIndex = findSimilarPlan(plan);
     try {
       serialize(plan, similarPlanIndex);
     } catch (BufferOverflowException e) {
@@ -76,7 +82,7 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
     planWindow.clear();
   }
 
-  private void serialize(PhysicalPlan plan, Pair<PhysicalPlan, Integer> similarPlanIndex) {
+  private void serialize(PhysicalPlan plan, Pair<PhysicalPlan, Short> similarPlanIndex) {
     if (similarPlanIndex == null) {
       serializeNonDifferentially(plan);
     } else {
@@ -85,12 +91,12 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
   }
 
   private void serializeNonDifferentially(PhysicalPlan plan) {
-    logBuffer.putInt(-1);
+    logBuffer.putShort((short) -1);
     plan.serialize(logBuffer);
   }
 
   private void serializeDifferentially(PhysicalPlan plan,
-      Pair<PhysicalPlan, Integer> similarPlanIndex) {
+      Pair<PhysicalPlan, Short> similarPlanIndex) {
     if (plan instanceof InsertPlan) {
       serializeDifferentially(((InsertPlan) plan), ((InsertPlan) similarPlanIndex.left),
           similarPlanIndex.right);
@@ -99,13 +105,14 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
     }
   }
 
-  private void serializeDifferentially(InsertPlan plan, InsertPlan base, int index) {
-    logBuffer.putInt(index);
+  private void serializeDifferentially(InsertPlan plan, InsertPlan base, short index) {
+    logBuffer.putShort(index);
     plan.serialize(logBuffer, base);
   }
 
-  private Pair<PhysicalPlan, Integer> findSimilarPlan(PhysicalPlan plan) {
-    int index = -1;
+  private Pair<PhysicalPlan, Short> findSimilarPlan(PhysicalPlan plan) {
+    short index = -1;
+    // linear search, is there any way better?
     for (PhysicalPlan next : planWindow) {
       index++;
       if (isPlanSimilarEnough(plan, next)) {
@@ -119,13 +126,16 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
     if (!planA.getClass().equals(planB.getClass())) {
       return false;
     }
-    if (planA instanceof InsertTabletPlan && planB instanceof InsertTabletPlan) {
-      return isPlanSimilarEnough(((InsertTabletPlan) planA), ((InsertTabletPlan) planB));
+    // we only do differentiation for InsertPlans now, as they are the majority
+    if (planA instanceof InsertPlan && planB instanceof InsertPlan) {
+      return isPlanSimilarEnough(((InsertPlan) planA), ((InsertPlan) planB));
     }
     return false;
   }
 
   private boolean isPlanSimilarEnough(InsertPlan planA, InsertPlan planB) {
+    // data types are also compared because the timeseries may be deleted and recreated with
+    // different types between two insertions
     return planA.getDeviceId().equals(planB.getDeviceId()) &&
         Arrays.equals(planA.getMeasurements(), planB.getMeasurements()) &&
         Arrays.equals(planA.getDataTypes(), planB.getDataTypes());
@@ -137,5 +147,15 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
     Arrays.sort(logFiles,
         Comparator.comparingInt(f -> Integer.parseInt(f.getName().replace(WAL_FILE_NAME, ""))));
     return new MultiFileLogReader(logFiles, DifferentialSingleFileLogReader::new);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return super.equals(o);
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
   }
 }

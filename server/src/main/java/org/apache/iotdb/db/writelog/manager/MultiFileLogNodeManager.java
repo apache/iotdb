@@ -30,7 +30,6 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.writelog.node.DifferentialWriteLogNode;
-import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +46,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   private ScheduledExecutorService executorService;
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final void forceTask() {
+  private void forceTask() {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       logger.warn("system mode is read-only, the force flush WAL task is stopped");
       return;

@@ -305,7 +305,7 @@ public abstract class PhysicalPlan {
     public static PhysicalPlan create(ByteBuffer buffer,
         Queue<PhysicalPlan> planWindow) throws IOException,
         IllegalPathException {
-      int baseIndex = buffer.getInt();
+      short baseIndex = buffer.getShort();
       int typeNum = buffer.get();
       if (typeNum >= PhysicalPlanType.values().length) {
         throw new IOException("unrecognized log type " + typeNum);
