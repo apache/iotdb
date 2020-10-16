@@ -125,6 +125,7 @@ import org.slf4j.LoggerFactory;
 public class StorageGroupProcessor {
 
   private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
+  private static final String FAIL_TO_UPGRADE_FOLDER = "Failed to move {} to upgrade folder";
 
   /**
    * All newly generated chunks after merge have version number 0, so we set merged Modification
@@ -154,11 +155,6 @@ public class StorageGroupProcessor {
    */
   private final Object closeStorageGroupCondition = new Object();
   /**
-   * hotCompactionMergeWorking is used to wait for last hot compaction to be done.
-   */
-  private volatile boolean hotCompactionMergeWorking = false;
-
-  /**
    * avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a query is executed.
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
@@ -170,7 +166,10 @@ public class StorageGroupProcessor {
    * time partition id in the storage group -> tsFileProcessor for this time partition
    */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
-
+  /**
+   * hotCompactionMergeWorking is used to wait for last hot compaction to be done.
+   */
+  private volatile boolean hotCompactionMergeWorking = false;
   // upgrading sequence TsFile resource list
   private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
 
@@ -478,19 +477,19 @@ public class StorageGroupProcessor {
         // move .tsfile to upgrade folder
         for (File file : oldTsfileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error("Failed to move {} to upgrade folder", file);
+            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
           }
         }
         // move .resource to upgrade folder
         for (File file : oldResourceFileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error("Failed to move {} to upgrade folder", file);
+            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
           }
         }
         // move .mods to upgrade folder
         for (File file : oldModificationFileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error("Failed to move {} to upgrade folder", file);
+            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
           }
         }
 
@@ -629,11 +628,13 @@ public class StorageGroupProcessor {
       partitionLatestFlushedTimeForEachDevice
           .computeIfAbsent(timePartitionId, id -> new HashMap<>());
 
-      boolean isSequence = insertRowPlan.getTime() > partitionLatestFlushedTimeForEachDevice.get(timePartitionId)
-          .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+      boolean isSequence =
+          insertRowPlan.getTime() > partitionLatestFlushedTimeForEachDevice.get(timePartitionId)
+              .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
 
       //is unsequence and user set config to discard out of order data
-      if (!isSequence && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+      if (!isSequence && IoTDBDescriptor.getInstance().getConfig()
+          .isEnableDiscardOutOfOrderData()) {
         return;
       }
 
@@ -696,7 +697,8 @@ public class StorageGroupProcessor {
         // start next partition
         if (curTimePartition != beforeTimePartition) {
           // insert last time partition
-          if (isSequence || !IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+          if (isSequence || !IoTDBDescriptor.getInstance().getConfig()
+              .isEnableDiscardOutOfOrderData()) {
             noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
                 results,
                 beforeTimePartition) && noFailure;
@@ -727,11 +729,10 @@ public class StorageGroupProcessor {
       }
 
       // do not forget last part
-      if (before < loc) {
-        if (isSequence || !IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
-          noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
-              results, beforeTimePartition) && noFailure;
-        }
+      if (before < loc && (isSequence || !IoTDBDescriptor.getInstance().getConfig()
+          .isEnableDiscardOutOfOrderData())) {
+        noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
+            results, beforeTimePartition) && noFailure;
       }
       long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
           insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
@@ -757,11 +758,11 @@ public class StorageGroupProcessor {
    * inserted are in the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param sequence whether is sequence
-   * @param start start index of rows to be inserted in insertTabletPlan
-   * @param end end index of rows to be inserted in insertTabletPlan
-   * @param results result array
-   * @param timePartitionId time partition id
+   * @param sequence         whether is sequence
+   * @param start            start index of rows to be inserted in insertTabletPlan
+   * @param end              end index of rows to be inserted in insertTabletPlan
+   * @param results          result array
+   * @param timePartitionId  time partition id
    * @return false if any failure occurs when inserting the tablet, true otherwise
    */
   private boolean insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
@@ -907,9 +908,9 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId time partition range
+   * @param timeRangeId            time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param sequence whether is sequence or not
+   * @param sequence               whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -1364,10 +1365,10 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param deviceId      the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param startTime the startTime of delete range.
-   * @param endTime the endTime of delete range.
+   * @param startTime     the startTime of delete range.
+   * @param endTime       the endTime of delete range.
    */
   public void delete(PartialPath deviceId, String measurementId, long startTime, long endTime)
       throws IOException {
@@ -1477,12 +1478,11 @@ public class StorageGroupProcessor {
 
   private void tryToDeleteLastCache(PartialPath deviceId, String measurementId, long startTime,
       long endTime) throws WriteProcessException {
-    MNode node = null;
     try {
       MManager manager = MManager.getInstance();
-      node = manager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      MNode node = manager.getDeviceNodeWithAutoCreate(deviceId);
 
-      MNode measurementNode = manager.getChild(node, measurementId);
+      MNode measurementNode = node.getChild(measurementId);
       if (measurementNode != null) {
         TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
         if (lastPair != null && startTime <= lastPair.getTimestamp()
@@ -1492,10 +1492,6 @@ public class StorageGroupProcessor {
       }
     } catch (MetadataException e) {
       throw new WriteProcessException(e);
-    } finally {
-      if (node != null) {
-        node.readUnlock();
-      }
     }
   }
 
@@ -2170,9 +2166,9 @@ public class StorageGroupProcessor {
    * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
    * version number is the version number in the tsfile with a larger timestamp.
    *
-   * @param tsfileName origin tsfile name
+   * @param tsfileName  origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
-   * 1]
+   *                    1]
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
@@ -2236,8 +2232,8 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type load type
-   * @param tsFileResource tsfile resource to be loaded
+   * @param type            load type
+   * @param tsFileResource  tsfile resource to be loaded
    * @param filePartitionId the partition id of the new file
    * @return load the file successfully
    * @UsedBy sync module, load external tsfile module.
@@ -2491,34 +2487,6 @@ public class StorageGroupProcessor {
     return partitionFileVersions.containsAll(tsFileResource.getHistoricalVersions());
   }
 
-  private enum LoadTsFileType {
-    LOAD_SEQUENCE, LOAD_UNSEQUENCE
-  }
-
-  @FunctionalInterface
-  public interface CloseTsFileCallBack {
-
-    void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
-  }
-
-  @FunctionalInterface
-  public interface UpdateEndTimeCallBack {
-
-    boolean call(TsFileProcessor caller);
-  }
-
-  @FunctionalInterface
-  public interface UpgradeTsFileResourceCallBack {
-
-    void call(TsFileResource caller);
-  }
-
-  @FunctionalInterface
-  public interface CloseHotCompactionMergeCallBack {
-
-    void call();
-  }
-
   /**
    * remove all partitions that satisfy a filter.
    */
@@ -2571,6 +2539,34 @@ public class StorageGroupProcessor {
 
   public boolean isHotCompactionMergeWorking() {
     return hotCompactionMergeWorking;
+  }
+
+  private enum LoadTsFileType {
+    LOAD_SEQUENCE, LOAD_UNSEQUENCE
+  }
+
+  @FunctionalInterface
+  public interface CloseTsFileCallBack {
+
+    void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
+  }
+
+  @FunctionalInterface
+  public interface UpdateEndTimeCallBack {
+
+    boolean call(TsFileProcessor caller);
+  }
+
+  @FunctionalInterface
+  public interface UpgradeTsFileResourceCallBack {
+
+    void call(TsFileResource caller);
+  }
+
+  @FunctionalInterface
+  public interface CloseHotCompactionMergeCallBack {
+
+    void call();
   }
 
   @FunctionalInterface

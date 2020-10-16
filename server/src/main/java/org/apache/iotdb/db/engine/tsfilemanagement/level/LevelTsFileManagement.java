@@ -65,8 +65,6 @@ public class LevelTsFileManagement extends TsFileManagement {
 
   private static final Logger logger = LoggerFactory.getLogger(LevelTsFileManagement.class);
   private final int maxLevelNum = IoTDBDescriptor.getInstance().getConfig().getMaxLevelNum();
-  private final int maxFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
-      .getMaxFileNumInEachLevel();
   private final int maxChunkPointNum = IoTDBDescriptor.getInstance().getConfig()
       .getMergeChunkPointNumberThreshold();
   // First map is partition list; Second list is level list; Third list is file list in level;

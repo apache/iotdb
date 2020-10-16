@@ -193,6 +193,16 @@ Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* Show Specific Storage Group Statement
+
+```
+SHOW STORAGE GROUP <PrefixPath>
+Eg: IoTDB > SHOW STORAGE GROUP root.*
+Eg: IoTDB > SHOW STORAGE GROUP root.ln
+Note: The path can be prefix path or star path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
 * Show Merge Status Statement
 
 ```

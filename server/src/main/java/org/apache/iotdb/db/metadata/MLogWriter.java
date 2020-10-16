@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 public class MLogWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogWriter.class);
+  private static final String STRING_TYPE = "%s,%s,%s"; 
   private File logFile;
   private BufferedWriter writer;
   private int lineNumber;
@@ -104,17 +105,17 @@ public class MLogWriter {
   }
 
   public void setTTL(String storageGroup, long ttl) throws IOException {
-    writer.write(String.format("%s,%s,%s", MetadataOperationType.SET_TTL, storageGroup, ttl));
+    writer.write(String.format(STRING_TYPE, MetadataOperationType.SET_TTL, storageGroup, ttl));
     newLine();
   }
 
   public void changeOffset(String path, long offset) throws IOException {
-    writer.write(String.format("%s,%s,%s", MetadataOperationType.CHANGE_OFFSET, path, offset));
+    writer.write(String.format(STRING_TYPE, MetadataOperationType.CHANGE_OFFSET, path, offset));
     newLine();
   }
 
   public void changeAlias(String path, String alias) throws IOException {
-    writer.write(String.format("%s,%s,%s", MetadataOperationType.CHANGE_ALIAS, path, alias));
+    writer.write(String.format(STRING_TYPE, MetadataOperationType.CHANGE_ALIAS, path, alias));
     newLine();
   }
 
@@ -132,10 +133,8 @@ public class MLogWriter {
     }
 
     // if both old mlog and mlog.tmp exist, delete mlog tmp, then do upgrading
-    if (tmpLogFile.exists()) {
-      if (!tmpLogFile.delete()) {
-        throw new IOException("Deleting " + tmpLogFile + "failed.");
-      }
+    if (tmpLogFile.exists() && !tmpLogFile.delete()) {
+      throw new IOException("Deleting " + tmpLogFile + "failed.");
     }
     // upgrading
     try (BufferedReader reader = new BufferedReader(new FileReader(logFile));
