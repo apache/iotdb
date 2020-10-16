@@ -56,6 +56,10 @@ public interface IMemTable {
    */
   long memSize();
 
+  void addRamCost(long cost);
+
+  long getRamCost();
+
   /**
    * @return whether the average number of points in each WritableChunk reaches the threshold
    */
@@ -120,5 +124,9 @@ public interface IMemTable {
   void release();
 
   boolean checkIfNeedStartNewChunk(String deviceId, String measurement);
+
+  boolean checkIfNeedToGetDataList(String deviceId, String measurement, int lengthToBeAdded);
+
+  int getCurrentTVListSize(String deviceId, String measurement);
 
 }

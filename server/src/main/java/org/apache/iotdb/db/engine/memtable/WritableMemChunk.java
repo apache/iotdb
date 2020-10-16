@@ -93,8 +93,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public boolean checkIfArrayIsEnough() {
-    return list.checkIfArrayIsEnough();
+  public boolean checkIfDataListIsEnough(int lengthToBeAdded) {
+    return list.checkIfDataListIsEnough(lengthToBeAdded);
   }
 
   @Override

@@ -159,11 +159,6 @@ public class IoTDBConfig {
   private double rejectProportion = 0.8;
 
   /**
-   * Report buffered arrays threshold
-   */
-  private double reportBufferedArraysThreshold = 0.125;
-
-  /**
    * Is the write ahead log enable.
    */
   private boolean enableWal = true;
@@ -262,7 +257,7 @@ public class IoTDBConfig {
   /**
    * Is the write mem control for writing enable.
    */
-  private boolean enableMemControl = false;
+  private boolean enableMemControl = true;
 
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
@@ -300,8 +295,6 @@ public class IoTDBConfig {
    * Work when tsfile_manage_strategy is level_strategy. The max num of level.
    */
   private int maxLevelNum = 2;
-
-  private long storageGroupMemBlockSize = 4 * 1024 * 1024L;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -1196,14 +1189,6 @@ public class IoTDBConfig {
     this.rejectProportion = rejectProportion;
   }
 
-  public double getReportBufferedArraysThreshold() {
-    return reportBufferedArraysThreshold;
-  }
-
-  public void setReportBufferedArraysThreshold(double reportBufferedArraysThreshold) {
-    this.reportBufferedArraysThreshold = reportBufferedArraysThreshold;
-  }
-
   public long getAllocateMemoryForWrite() {
     return allocateMemoryForWrite;
   }
@@ -1322,14 +1307,6 @@ public class IoTDBConfig {
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
-  }
-
-  public long getStorageGroupMemBlockSize() {
-    return storageGroupMemBlockSize;
-  }
-
-  public void setStorageGroupMemBlockSize(long storageGroupMemBlockSize) {
-    this.storageGroupMemBlockSize = storageGroupMemBlockSize;
   }
 
   public int getAvgSeriesPointNumberThreshold() {

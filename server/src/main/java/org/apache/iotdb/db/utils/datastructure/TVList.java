@@ -265,8 +265,8 @@ public abstract class TVList {
       try {
         TimeUnit.MILLISECONDS.sleep(100);
         newList = PrimitiveArrayManager.getDataListByType(dataType);
-        logger.debug("Still waiting for memory releasing... Array Pool mem cost {}, sg mem cost {}.",
-            SystemInfo.getInstance().getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
+        logger.debug("Still waiting for memory releasing... sg mem cost {}.",
+            SystemInfo.getInstance().getTotalSgMemCost());
       } catch (InterruptedException e) {
         logger.error("Interrupted...", e);
         Thread.currentThread().interrupt();
@@ -275,8 +275,8 @@ public abstract class TVList {
     return newList;
   }
 
-  public boolean checkIfArrayIsEnough() {
-    return size % ARRAY_SIZE != 0;
+  public boolean checkIfDataListIsEnough(int lengthToBeAdded) {
+    return (size + lengthToBeAdded - 1) % ARRAY_SIZE != 0;
   }
 
   protected long[] cloneTime(long[] array) {

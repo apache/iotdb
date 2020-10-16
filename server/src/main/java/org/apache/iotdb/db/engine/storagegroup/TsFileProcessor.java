@@ -48,11 +48,12 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -63,7 +64,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -169,15 +169,16 @@ public class TsFileProcessor {
    */
   public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
-    boolean needToReport = false;
+    if (workMemTable == null) {
+      workMemTable = new PrimitiveMemTable();
+    }
     if (enableMemControl) {
       long startTime = System.currentTimeMillis();
       while (SystemInfo.getInstance().isRejected()) {
         try {
           TimeUnit.MILLISECONDS.sleep(100);
           logger.debug("System rejected, waiting for memory releasing... "
-              + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
-              .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
+              + "Current sg cost {}", SystemInfo.getInstance().getTotalSgMemCost());
           if (System.currentTimeMillis() - startTime > 6000) {
             throw new WriteProcessException("System rejected over 6000ms");
           }
@@ -186,7 +187,7 @@ public class TsFileProcessor {
           Thread.currentThread().interrupt();
         }
       }
-      needToReport = checkMemCostAndAddToTspInfo(insertRowPlan);
+      checkMemCostAndAddToTspInfo(insertRowPlan);
     }
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable();
@@ -208,9 +209,6 @@ public class TsFileProcessor {
     if (!sequence) {
       tsFileResource.updateEndTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
-    if (enableMemControl && needToReport) {
-      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-    }
   }
 
   /**
@@ -225,15 +223,16 @@ public class TsFileProcessor {
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
 
-    boolean needToReport = false;
+    if (workMemTable == null) {
+      workMemTable = new PrimitiveMemTable();
+    }
     if (enableMemControl) {
       long startTime = System.currentTimeMillis();
       while (SystemInfo.getInstance().isRejected()) {
         try {
           TimeUnit.MILLISECONDS.sleep(100);
           logger.debug("System rejected, waiting for memory releasing... "
-              + "Current array pool cost{}, sg cost {}", SystemInfo.getInstance()
-              .getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
+              + "Current sg cost {}", SystemInfo.getInstance().getTotalSgMemCost());
           if (System.currentTimeMillis() - startTime > 12000) {
             throw new WriteProcessException("System rejected over 12000ms");
           }
@@ -242,12 +241,9 @@ public class TsFileProcessor {
           Thread.currentThread().interrupt();
         }
       }
-      needToReport = checkMemCostAndAddToTspInfo(insertTabletPlan);
+      checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
     }
 
-    if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable();
-    }
     try {
       workMemTable.insertTablet(insertTabletPlan, start, end);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -275,49 +271,121 @@ public class TsFileProcessor {
           .updateEndTime(
               insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
-    if (enableMemControl && needToReport) {
-      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-    }
   }
 
-  private boolean checkMemCostAndAddToTspInfo(InsertPlan insertPlan) {
-    long bytesCost = 0L;
+  private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan) throws WriteProcessException {
+    long memTableIncrement = 0L;
     long unsealedResourceCost = 0L;
-    long chunkMetadataCost = 0L;
-    unsealedResourceCost = tsFileResource.estimateRamIncrement(insertPlan.getDeviceId().getFullPath());
-    if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable();
-    }
-    for (int i = 0; i < insertPlan.getDataTypes().length; i++) {
+    long chunkMetadataCost = 
+        tsFileResource.estimateRamIncrement(insertRowPlan.getDeviceId().getFullPath());
+    for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
       // skip failed Measurements
-      if (insertPlan.getDataTypes()[i] == null) {
+      if (insertRowPlan.getDataTypes()[i] == null) {
         continue;
       }
-      // String array cost
-      if (insertPlan.getDataTypes()[i] == TSDataType.TEXT) {
-        if (insertPlan instanceof InsertRowPlan) {
-          bytesCost += RamUsageEstimator.sizeOf((Binary) ((InsertRowPlan) insertPlan).getValues()[i]);
-        }
-        else {
-          for (Binary bytes : (Binary[]) ((InsertTabletPlan) insertPlan).getColumns()[i]) {
-            bytesCost += RamUsageEstimator.sizeOf(bytes);
-          }
-        }
+      if (workMemTable.checkIfNeedStartNewChunk(insertRowPlan.getDeviceId().getFullPath(),
+          insertRowPlan.getMeasurements()[i])) {
+        // ChunkMetadataCost
+        chunkMetadataCost += ChunkMetadata.calculateRamSize(insertRowPlan.getMeasurements()[i],
+            insertRowPlan.getDataTypes()[i]);
+        // time size
+        memTableIncrement += timeValueSize(insertRowPlan.getDataTypes()[i]);
       }
-      // ChunkMetadataCost
-      if (workMemTable.checkIfNeedStartNewChunk(insertPlan.getDeviceId().getFullPath(),
-          insertPlan.getMeasurements()[i])) {
-        chunkMetadataCost += ChunkMetadata.calculateRamSize(insertPlan.getMeasurements()[i],
-            insertPlan.getDataTypes()[i]);
+      else if (workMemTable.checkIfNeedToGetDataList(insertRowPlan.getDeviceId().getFullPath(),
+            insertRowPlan.getMeasurements()[i], 1)) {
+        // time column
+        memTableIncrement += timeValueSize(insertRowPlan.getDataTypes()[i]);
+      }
+      // add string data size
+      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
+        memTableIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     }
-    tsFileProcessorInfo.addBytesMemCost(bytesCost);
+    tsFileProcessorInfo.addMemTableCost(memTableIncrement);
     tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
     tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
-    if (bytesCost != 0 && storageGroupInfo.checkIfNeedToReportStatusToSystem()) {
-      return true;
+    SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+    long startTime = System.currentTimeMillis();
+    while (SystemInfo.getInstance().isRejected()) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(100);
+        if (System.currentTimeMillis() - startTime > 12000) {
+          throw new WriteProcessException("System rejected over 12000ms");
+        }
+      } catch (InterruptedException e) {
+        logger.error("Failed when waiting for getting memory for insertion ", e);
+        Thread.currentThread().interrupt();
+      }
     }
-    return false;
+    workMemTable.addRamCost(memTableIncrement);
+  }
+
+  private void checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
+      throws WriteProcessException {
+    if (start >= end) {
+      return;
+    }
+    long memTableIncrement = 0L;
+    long unsealedResourceCost = 0L;
+    long chunkMetadataCost = 0L;
+    unsealedResourceCost = tsFileResource.estimateRamIncrement(insertTabletPlan.getDeviceId().getFullPath());
+    for (int i = 0; i < insertTabletPlan.getDataTypes().length; i++) {
+      // skip failed Measurements
+      if (insertTabletPlan.getDataTypes()[i] == null) {
+        continue;
+      }
+      // ChunkMetadataCost
+      if (workMemTable.checkIfNeedStartNewChunk(insertTabletPlan.getDeviceId().getFullPath(),
+          insertTabletPlan.getMeasurements()[i])) {
+        chunkMetadataCost += ChunkMetadata.calculateRamSize(insertTabletPlan.getMeasurements()[i],
+            insertTabletPlan.getDataTypes()[i]);
+        memTableIncrement += ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
+            * timeValueSize(insertTabletPlan.getDataTypes()[i]);
+      }
+      else if (workMemTable.checkIfNeedToGetDataList(insertTabletPlan.getDeviceId().getFullPath(),
+          insertTabletPlan.getMeasurements()[i], end - start)) {
+        int tvListSize = workMemTable.getCurrentTVListSize(insertTabletPlan.getDeviceId().getFullPath(),
+            insertTabletPlan.getMeasurements()[i]);
+        memTableIncrement += ((end - start - (tvListSize % PrimitiveArrayManager.ARRAY_SIZE))
+            / PrimitiveArrayManager.ARRAY_SIZE + 1)
+            * timeValueSize(insertTabletPlan.getDataTypes()[i]);
+      }
+      // TEXT data size
+      if (insertTabletPlan.getDataTypes()[i] == TSDataType.TEXT) {
+        for (int j = start; j < end; j++) {
+          Binary binary = ((Binary[]) insertTabletPlan.getColumns()[i])[j];
+          memTableIncrement += MemUtils.getBinarySize(binary);
+        }
+      }
+    }
+    tsFileProcessorInfo.addMemTableCost(memTableIncrement);
+    tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
+    tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+    SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+    long startTime = System.currentTimeMillis();
+    while (SystemInfo.getInstance().isRejected()) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(100);
+        if (System.currentTimeMillis() - startTime > 12000) {
+          throw new WriteProcessException("System rejected over 12000ms");
+        }
+      } catch (InterruptedException e) {
+        logger.error("Failed when waiting for getting memory for insertion ", e);
+        Thread.currentThread().interrupt();
+      }
+    }
+    workMemTable.addRamCost(memTableIncrement);
+  }
+
+  private long timeValueSize(TSDataType type) {
+    long size = 0;
+    // time size
+    size +=
+        PrimitiveArrayManager.ARRAY_SIZE * TSDataType.INT64.getDataTypeSize();
+    // value size
+    size +=
+        PrimitiveArrayManager.ARRAY_SIZE * type.getDataTypeSize();
+    return size;
   }
 
   /**
@@ -611,9 +679,9 @@ public class TsFileProcessor {
             memTable.isSignalMemTable(), flushingMemTables.size());
       }
       memTable.release();
-      if (enableMemControl && tsFileProcessorInfo.getBytesMemCost() > 0) {
+      if (enableMemControl) {
         // For text type data, reset the mem cost in tsFileProcessorInfo
-        tsFileProcessorInfo.clearBytesMemCost();
+        tsFileProcessorInfo.resetMemTableCost(memTable.getRamCost());
         // report to System
         SystemInfo.getInstance().resetStorageGroupInfoStatus(storageGroupInfo);
       }
@@ -709,13 +777,9 @@ public class TsFileProcessor {
           logger
               .debug("{}: {} flushingMemtables is empty and will close the file", storageGroupName,
                   tsFileResource.getTsFile().getName());
-          logger.debug("before end memtable, current Array cost {}, sg cost {}",
-              SystemInfo.getInstance().getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
         }
         endFile();
         if (logger.isDebugEnabled()) {
-          logger.debug("after end memtable, current Array cost {}, sg cost {}",
-              SystemInfo.getInstance().getArrayPoolMemCost(), SystemInfo.getInstance().getTotalSgMemCost());
           logger.debug("{} flushingMemtables is clear", storageGroupName);
         }
       } catch (Exception e) {

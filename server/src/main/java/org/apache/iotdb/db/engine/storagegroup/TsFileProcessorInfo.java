@@ -36,9 +36,9 @@ public class TsFileProcessorInfo {
   private long unsealedResourceMemCost;
   
   /**
-   * The memory cost of TEXT data of this TSP
+   * The memory cost of memTable of this TSP
    */
-  private long bytesMemCost;
+  private long memTableCost;
 
   /**
    * The memory cost of ChunkMetadata of this TSP
@@ -53,7 +53,7 @@ public class TsFileProcessorInfo {
   public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
     this.storageGroupInfo = storageGroupInfo;
     this.unsealedResourceMemCost = 0;
-    this.bytesMemCost = 0;
+    this.memTableCost = 0;
     this.chunkMetadataMemCost = 0;
     this.walMemCost = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
   }
@@ -68,8 +68,8 @@ public class TsFileProcessorInfo {
     storageGroupInfo.addChunkMetadataMemCost(cost);
   }
 
-  public void addBytesMemCost(long cost) {
-    bytesMemCost += cost;
+  public void addMemTableCost(long cost) {
+    memTableCost += cost;
     storageGroupInfo.addBytesMemCost(cost);
   }
 
@@ -88,16 +88,16 @@ public class TsFileProcessorInfo {
   /**
    * call this method when a memTable contains TEXT data flushed
    */
-  public void clearBytesMemCost() {
-    storageGroupInfo.resetBytesMemCost(bytesMemCost);
-    bytesMemCost = 0;
+  public void resetMemTableCost(long cost) {
+    storageGroupInfo.resetMemTableCost(cost);
+    memTableCost -= cost;
   }
 
   public long getTsFileProcessorMemCost() {
-    return unsealedResourceMemCost + bytesMemCost + chunkMetadataMemCost + walMemCost;
+    return unsealedResourceMemCost + memTableCost + chunkMetadataMemCost + walMemCost;
   }
 
-  public long getBytesMemCost() {
-    return bytesMemCost;
+  public long getMemTableCost() {
+    return memTableCost;
   }
 }

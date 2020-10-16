@@ -53,6 +53,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long memSize = 0;
 
+  private long ramCost = 0;
+
   private int seriesNumber = 0;
 
   private long totalPointsNum = 0;
@@ -156,6 +158,20 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
     return !memSeries.containsKey(measurement);
+  }
+
+  @Override
+  public boolean checkIfNeedToGetDataList(String deviceId, String measurement, int lengthToBeAdded) {
+    Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
+    IWritableMemChunk memChunk = memSeries.get(measurement);
+    return !memChunk.checkIfDataListIsEnough(lengthToBeAdded);
+  }
+
+  @Override
+  public int getCurrentTVListSize(String deviceId, String measurement) {
+    Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
+    IWritableMemChunk memChunk = memSeries.get(measurement);
+    return memChunk.getTVList().size();
   }
 
   public int getSeriesNumber() {
@@ -266,6 +282,16 @@ public abstract class AbstractMemTable implements IMemTable {
 
   public void setVersion(long version) {
     this.version = version;
+  }
+
+  @Override
+  public void addRamCost(long cost) {
+    this.ramCost += cost;
+  }
+
+  @Override
+  public long getRamCost() {
+    return ramCost;
   }
 
   @Override

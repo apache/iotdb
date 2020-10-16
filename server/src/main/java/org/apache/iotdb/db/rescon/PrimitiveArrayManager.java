@@ -58,8 +58,6 @@ public class PrimitiveArrayManager {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final boolean ENABLE_MEM_CONTROL = config.isEnableMemControl();
-
   public static final int ARRAY_SIZE = config.getPrimitiveArraySize();
 
   /**
@@ -69,20 +67,9 @@ public class PrimitiveArrayManager {
       config.getAllocateMemoryForWrite() * config.getBufferedArraysMemoryProportion();
 
   /**
-   * Report buffered arrays threshold, 0.125 by default
-   */
-  private static final double REPORT_BUFFERED_ARRAYS_THRESHOLD =
-      config.getReportBufferedArraysThreshold();
-
-  /**
    * total size of buffered arrays
    */
   private static AtomicInteger bufferedArraysSize = new AtomicInteger();
-
-  /**
-   * last reported size of arrays
-   */
-  private static AtomicInteger lastReportArraySize = new AtomicInteger();
 
   /**
    * total size of out of buffer arrays
@@ -111,40 +98,15 @@ public class PrimitiveArrayManager {
     // check buffered array num
     if (bufferedArraysSize.get() + ARRAY_SIZE * dataType.getDataTypeSize()
         > BUFFERED_ARRAY_SIZE_THRESHOLD) {
-      if (logger.isDebugEnabled()) {
-        logger.debug("Apply out of buffer array from system module...");
-      }
-      boolean applyResult;
-      if (ENABLE_MEM_CONTROL) {
-        applyResult = applyOOBArray(dataType, ARRAY_SIZE);
-      } else {
-        applyResult = true;
-      }
-      if (!applyResult) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("System module REFUSE to offer an out of buffer array");
-        }
-        return null;
-      } else {
-        // return an out of buffer array
-        outOfBufferArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
-        return getDataList(dataType);
-      }
+      // return an out of buffer array
+      outOfBufferArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
+      return getDataList(dataType);
     }
 
     synchronized (bufferedArraysMap.get(dataType)) {
       // return a buffered array
       bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
       bufferedArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
-      if (ENABLE_MEM_CONTROL) {
-        if (bufferedArraysSize.get() - lastReportArraySize.get()
-            >= BUFFERED_ARRAY_SIZE_THRESHOLD * REPORT_BUFFERED_ARRAYS_THRESHOLD) {
-          // report current buffered array size to system
-          SystemInfo.getInstance()
-              .reportIncreasingArraySize(bufferedArraysSize.get() - lastReportArraySize.get());
-          lastReportArraySize.set(bufferedArraysSize.get());
-        }
-      }
       Object dataArray = bufferedArraysMap.get(dataType).poll();
       if (dataArray != null) {
         return dataArray;
@@ -291,17 +253,6 @@ public class PrimitiveArrayManager {
   }
 
   /**
-   * Apply out of buffer array from system module according to data type and size
-   *
-   * @param dataType data type
-   * @param size needed capacity
-   * @return true if successfully applied and false if rejected
-   */
-  private static boolean applyOOBArray(TSDataType dataType, int size) {
-    return SystemInfo.getInstance().applyNewOOBArray(dataType, size);
-  }
-
-  /**
    * Bring back a buffered array
    *
    * @param dataType data type
@@ -322,13 +273,7 @@ public class PrimitiveArrayManager {
    * @param size capacity
    */
   private static void bringBackOOBArray(TSDataType dataType, int size) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("Bring back out of buffer array of {} to system module...", dataType);
-    }
     outOfBufferArraysSize.addAndGet(-size * dataType.getDataTypeSize());
-    if (ENABLE_MEM_CONTROL) {
-      SystemInfo.getInstance().reportReleaseOOBArray(dataType, size);
-    }
   }
 
   public static void updateSchemaDataTypeNum(Map<TSDataType, Integer> schemaDataTypeNumMap) {
@@ -380,6 +325,5 @@ public class PrimitiveArrayManager {
 
     bufferedArraysSize.set(0);
     outOfBufferArraysSize.set(0);
-    lastReportArraySize.set(0);
   }
 }

@@ -30,11 +30,6 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 public class StorageGroupInfo {
 
   private StorageGroupProcessor storageGroupProcessor;
-  /**
-   * Report the SG memory cost to SystemInfo if the memory cost increasing more
-   * than this threshold.
-   */
-  private long storageGroupReportThreshold;
 
   /**
    * The total memory cost of the unsealed TsFileResources in this SG
@@ -63,8 +58,6 @@ public class StorageGroupInfo {
 
   public StorageGroupInfo(StorageGroupProcessor storageGroupProcessor) {
     this.storageGroupProcessor = storageGroupProcessor;
-    storageGroupReportThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getStorageGroupMemBlockSize();
     unsealedResourceMemCost = 0;
     bytesMemCost = 0;
     chunkMetadataMemCost = 0;
@@ -113,7 +106,7 @@ public class StorageGroupInfo {
   /**
    * called by TSPInfo when a memTable contains TEXT data flushed
    */
-  public void resetBytesMemCost(long cost) {
+  public void resetMemTableCost(long cost) {
     bytesMemCost -= cost;
   }
 
@@ -124,16 +117,8 @@ public class StorageGroupInfo {
     walMemCost -= cost;
   }
 
-  public boolean checkIfNeedToReportStatusToSystem() {
-    return getSgMemCost() >= storageGroupReportThreshold;
-  }
-
   public long getSgMemCost() {
     return unsealedResourceMemCost + bytesMemCost + chunkMetadataMemCost + walMemCost;
-  }
-
-  public void setStorageGroupReportThreshold(long value) {
-    storageGroupReportThreshold = value;
   }
 
   public Set<TsFileProcessor> getAllReportedTsp() {
