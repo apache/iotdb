@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.Factory;
@@ -52,8 +51,8 @@ public class DifferentialBatchLogReader extends BatchLogReader {
     while (buffer.position() != buffer.limit()) {
       try {
         PhysicalPlan physicalPlan = Factory.create(buffer, planWindow);
-        plans.add(physicalPlan);
         CommonUtils.updatePlanWindow(physicalPlan, WINDOW_LENGTH, planWindow);
+        plans.add(physicalPlan);
       } catch (IOException | IllegalPathException e) {
         logger.error("Cannot deserialize PhysicalPlans from ByteBuffer, ignore remaining logs", e);
         fileCorrupted = true;

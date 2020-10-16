@@ -147,7 +147,7 @@ public class CommonUtils {
   public static void updatePlanWindow(PhysicalPlan plan, int windowLength,
       Queue<PhysicalPlan> planWindow) {
     if (planWindow.size() >= windowLength) {
-      planWindow.remove();
+      planWindow.poll();
     }
     // remove unnecessary fields as bases to reduce memory footprint
     if (plan instanceof InsertRowPlan) {

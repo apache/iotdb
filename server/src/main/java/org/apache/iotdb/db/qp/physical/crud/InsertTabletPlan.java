@@ -485,4 +485,12 @@ public class InsertTabletPlan extends InsertPlan {
     columns[index] = null;
   }
 
+  @Override
+  public String toString() {
+    return "InsertTabletPlan{" +
+        "maxTime=" + maxTime +
+        ", minTime=" + minTime +
+        ", deviceId=" + deviceId +
+        '}';
+  }
 }

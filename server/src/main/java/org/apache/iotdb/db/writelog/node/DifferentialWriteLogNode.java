@@ -76,9 +76,15 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
   }
 
   @Override
-  void nextFileWriter() {
-    super.nextFileWriter();
-    planWindow.clear();
+  public void notifyStartFlush() {
+    lock.writeLock().lock();
+    try {
+      close();
+      nextFileWriter();
+      planWindow.clear();
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   private void serialize(PhysicalPlan plan, Pair<PhysicalPlan, Short> similarPlanIndex) {

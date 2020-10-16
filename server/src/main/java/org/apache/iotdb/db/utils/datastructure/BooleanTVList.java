@@ -92,6 +92,10 @@ public class BooleanTVList extends TVList {
   }
 
   public void sort() {
+    if (sorted) {
+      return;
+    }
+
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps = (long[][]) PrimitiveArrayPool
           .getInstance().getDataListsByType(TSDataType.INT64, size);
