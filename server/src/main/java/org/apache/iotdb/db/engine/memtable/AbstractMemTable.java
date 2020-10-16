@@ -238,22 +238,18 @@ public abstract class AbstractMemTable implements IMemTable {
     if (deviceMap == null) {
       return;
     }
-    if ((originalPath.getNodes().length <= devicePath.getNodes().length ||
-        originalPath.getTailNode().equals(IoTDBConstant.PATH_WILDCARD)) &&
-        (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE)) {
-      deviceMap.clear();
-    } else {
-      Iterator<Entry<String, IWritableMemChunk>> iter = deviceMap.entrySet().iterator();
-      while (iter.hasNext()) {
-        Entry<String, IWritableMemChunk> entry = iter.next();
-        IWritableMemChunk chunk = entry.getValue();
-        if (entry.getKey().equals(originalPath.getTailNode())) {
-          if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
-            iter.remove();
-          }
-          int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
-          totalPointsNum -= deletedPointsNumber;
+
+    Iterator<Entry<String, IWritableMemChunk>> iter = deviceMap.entrySet().iterator();
+    while (iter.hasNext()) {
+      Entry<String, IWritableMemChunk> entry = iter.next();
+      IWritableMemChunk chunk = entry.getValue();
+      PartialPath fullPath = devicePath.concatNode(entry.getKey());
+      if (originalPath.matchFullPath(fullPath)) {
+        if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
+          iter.remove();
         }
+        int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
+        totalPointsNum -= deletedPointsNumber;
       }
     }
   }
