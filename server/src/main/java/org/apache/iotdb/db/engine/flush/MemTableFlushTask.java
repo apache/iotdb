@@ -88,7 +88,9 @@ public class MemTableFlushTask {
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = series.getSchema();
         TVList tvList = series.getSortedTVList();
-        sortTime += System.currentTimeMillis() - startTime;
+        long seriesSortTime = System.currentTimeMillis() - startTime;
+        sortTime += seriesSortTime;
+        logger.debug("{}.{} sort costs {}", deviceId, measurementId, seriesSortTime);
         encodingTaskQueue.add(new Pair<>(tvList, desc));
         // register active time series to the ActiveTimeSeriesCounter
         if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
