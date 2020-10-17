@@ -368,6 +368,8 @@ public class IoTDBDescriptor {
           Boolean.toString(conf.isForceFullMerge()))));
       conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
           "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
+      conf.setHotCompactionThreadNum(Integer.parseInt(properties.getProperty(
+          "hot_compaction_thread_num", Integer.toString(conf.getHotCompactionThreadNum()))));
       conf.setMergeWriteThroughputMbPerSec(Integer.parseInt(properties.getProperty(
           "merge_write_throughput_mb_per_sec", Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
       conf.setMergeReadThroughputMbPerSec(Integer.parseInt(properties.getProperty(
