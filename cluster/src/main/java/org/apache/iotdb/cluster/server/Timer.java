@@ -183,14 +183,22 @@ public class Timer {
     }
 
     /**
+     * @return System.nanoTime() if the ENABLE_INSTRUMENTING is true, else zero
+     */
+    public long getOperationStartTime() {
+      if (ENABLE_INSTRUMENTING) {
+        return System.nanoTime();
+      }
+      return 0;
+    }
+
+    /**
      * This method equals `add(System.nanoTime() - start)`. We wrap `System.nanoTime()` in this
      * method to avoid unnecessary calls when instrumenting is disabled.
-     *
-     * @param start
      */
-    public void addNanoFromStart(long start) {
+    public void calOperationCostTimeFromStart(long startTime) {
       if (ENABLE_INSTRUMENTING) {
-        add(System.nanoTime() - start);
+        add(System.nanoTime() - startTime);
       }
     }
 

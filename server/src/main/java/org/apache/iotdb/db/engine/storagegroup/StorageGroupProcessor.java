@@ -1952,11 +1952,12 @@ public class StorageGroupProcessor {
    * Finally, update the latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
    *
    * @param newTsFileResource tsfile resource
-   * @param preserveVersion if true, the version of the file will be set to its
-   *                        maxHistoricalVersion, or a new version will be assigned to it
+   * @param preserveVersion   if true, the version of the file will be set to its
+   *                          maxHistoricalVersion, or a new version will be assigned to it
    * @UsedBy load external tsfile module
    */
-  public void loadNewTsFile(TsFileResource newTsFileResource, boolean preserveVersion) throws LoadFileException {
+  public void loadNewTsFile(TsFileResource newTsFileResource, boolean preserveVersion)
+      throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock();
@@ -2185,10 +2186,10 @@ public class StorageGroupProcessor {
    * based on the file name and ensure the correctness of the order, so there are three cases.
    * <p>
    * 1. The tsfile is to be inserted in the first place of the list. If the timestamp in the file
-   * name is less than the timestamp in the file name of the first tsfile  in the list, then the
-   * file name is legal and the file name is returned directly. Otherwise, its timestamp can be set
-   * to half of the timestamp value in the file name of the first tsfile in the list , and the
-   * version number is the version number in the file name of the first tsfile in the list.
+   * name is less than the timestamp in the file name of the first tsfile in the list, then the file
+   * name is legal and the file name is returned directly. Otherwise, its timestamp can be set to
+   * half of the timestamp value in the file name of the first tsfile in the list , and the version
+   * number is the version number in the file name of the first tsfile in the list.
    * <p>
    * 2. The tsfile is to be inserted in the last place of the list. If the timestamp in the file
    * name is lager than the timestamp in the file name of the last tsfile  in the list, then the
@@ -2202,9 +2203,9 @@ public class StorageGroupProcessor {
    *
    * @param tsfileName  origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
-   * 1]
-   * @param version the specified version number of the new file if not -1, else use a new
-   *                version number from the version controller
+   *                    1]
+   * @param version     the specified version number of the new file if not -1, else use a new
+   *                    version number from the version controller
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
@@ -2226,23 +2227,23 @@ public class StorageGroupProcessor {
       } else {
         return getNewTsFileName(System.currentTimeMillis(), version, 0);
       }
+    }
+
+    String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
+    long subsequenceTime = Long
+        .parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[0]);
+    long subsequenceVersion = Long
+        .parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[1]);
+    if (preTime < currentTsFileTime && currentTsFileTime < subsequenceTime) {
+      return tsfileName;
+    }
+
+    if (version == -1) {
+      return getNewTsFileName(preTime + ((subsequenceTime - preTime) >> 1), subsequenceVersion,
+          0);
     } else {
-      String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
-      long subsequenceTime = Long
-          .parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[0]);
-      long subsequenceVersion = Long
-          .parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[1]);
-      if (preTime < currentTsFileTime && currentTsFileTime < subsequenceTime) {
-        return tsfileName;
-      } else {
-        if (version == -1) {
-          return getNewTsFileName(preTime + ((subsequenceTime - preTime) >> 1), subsequenceVersion,
-              0);
-        } else {
-          return getNewTsFileName(preTime + ((subsequenceTime - preTime) >> 1), version,
-              0);
-        }
-      }
+      return getNewTsFileName(preTime + ((subsequenceTime - preTime) >> 1), version,
+          0);
     }
   }
 

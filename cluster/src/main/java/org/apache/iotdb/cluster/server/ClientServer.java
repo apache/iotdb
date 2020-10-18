@@ -113,7 +113,7 @@ public class ClientServer extends TSServiceImpl {
   public ClientServer(MetaGroupMember metaGroupMember) throws QueryProcessException {
     super();
     this.metaGroupMember = metaGroupMember;
-    this.processor = new ClusterPlanner(metaGroupMember);
+    this.processor = new ClusterPlanner();
     this.executor = new ClusterPlanExecutor(metaGroupMember);
   }
 

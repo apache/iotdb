@@ -21,17 +21,15 @@ package org.apache.iotdb.cluster.log;
 
 
 import java.nio.ByteBuffer;
-import java.util.Map;
 import org.apache.iotdb.cluster.log.snapshot.SnapshotInstaller;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 
 /**
  * As we can only hold a certain amount of logs in memory, when the logs' size exceed the memory
- * capacity, they will be deleted or compressed, and a snapshot of current system will be
- * generated. If a node need to catch up but its next log is deleted, it will catch up based on
- * the latest snapshot and the logs still in memory.
- * The snapshot could be a file recording the list of current system files, or the compressed all
- * historical logs, depending on the implementation.
+ * capacity, they will be deleted or compressed, and a snapshot of current system will be generated.
+ * If a node need to catch up but its next log is deleted, it will catch up based on the latest
+ * snapshot and the logs still in memory. The snapshot could be a file recording the list of current
+ * system files, or the compressed all historical logs, depending on the implementation.
  */
 public abstract class Snapshot {
 

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,20 +18,9 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool;
 
-import static org.apache.iotdb.cluster.utils.nodetool.Printer.errPrintln;
-import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 
-import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
-import io.airlift.airline.Cli;
 import io.airlift.airline.Help;
-import io.airlift.airline.ParseArgumentsMissingException;
-import io.airlift.airline.ParseArgumentsUnexpectedException;
-import io.airlift.airline.ParseCommandMissingException;
-import io.airlift.airline.ParseCommandUnrecognizedException;
-import io.airlift.airline.ParseOptionConversionException;
-import io.airlift.airline.ParseOptionMissingException;
-import io.airlift.airline.ParseOptionMissingValueException;
 import java.util.List;
 import org.apache.iotdb.cluster.utils.nodetool.function.Host;
 import org.apache.iotdb.cluster.utils.nodetool.function.LogView;

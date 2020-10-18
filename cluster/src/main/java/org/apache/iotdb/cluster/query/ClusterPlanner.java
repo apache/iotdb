@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.query;
 
 import java.time.ZoneId;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -29,12 +28,6 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 
 public class ClusterPlanner extends Planner {
-
-  private MetaGroupMember metaGroupMember;
-
-  public ClusterPlanner(MetaGroupMember metaGroupMember) {
-    this.metaGroupMember = metaGroupMember;
-  }
 
   @Override
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)

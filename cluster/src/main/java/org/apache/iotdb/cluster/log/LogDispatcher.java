@@ -244,25 +244,20 @@ public class LogDispatcher {
     private void appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request,
         List<SendLogRequest> currBatch) {
 
-      long start;
-      if (Timer.ENABLE_INSTRUMENTING) {
-        start = System.nanoTime();
-      }
+      long startTime = Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.getOperationStartTime();
       if (!member.waitForPrevLog(peer, currBatch.get(0).getLog())) {
         logger.warn("{}: node {} timed out when appending {}", member.getName(), receiver,
             currBatch.get(0).getLog());
         return;
       }
-      Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.addNanoFromStart(start);
+      Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
 
       Client client = member.getSyncClient(receiver);
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
+      startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
       try {
-        if (Timer.ENABLE_INSTRUMENTING) {
-          start = System.nanoTime();
-        }
         long result = client.appendEntries(request);
-        Timer.Statistic.RAFT_SENDER_SEND_LOG.addNanoFromStart(start);
+        Timer.Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
         if (result != -1 && logger.isInfoEnabled()) {
           logger.info("{}: Append {} logs to {}, resp: {}", member.getName(), logList.size(),
               receiver, result);
@@ -304,7 +299,8 @@ public class LogDispatcher {
     private void sendLogs(List<SendLogRequest> currBatch) throws TException {
       List<ByteBuffer> logList = new ArrayList<>();
       for (SendLogRequest request : currBatch) {
-        Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.addNanoFromStart(request.getLog().getCreateTime());
+        Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE
+            .calOperationCostTimeFromStart(request.getLog().getCreateTime());
         logList.add(request.getAppendEntryRequest().entry);
       }
 
@@ -315,17 +311,19 @@ public class LogDispatcher {
         appendEntriesSync(logList, appendEntriesReques, currBatch);
       }
       for (SendLogRequest batch : currBatch) {
-        Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.addNanoFromStart(batch.getLog().getCreateTime());
+        Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END
+            .calOperationCostTimeFromStart(batch.getLog().getCreateTime());
       }
     }
 
     private void sendLog(SendLogRequest logRequest) {
-      Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.addNanoFromStart(logRequest.getLog().getCreateTime());
+      Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE
+          .calOperationCostTimeFromStart(logRequest.getLog().getCreateTime());
       member.sendLogToFollower(logRequest.getLog(), logRequest.getVoteCounter(), receiver,
           logRequest.getLeaderShipStale(), logRequest.getNewLeaderTerm(),
           logRequest.getAppendEntryRequest());
       Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END
-          .addNanoFromStart(logRequest.getLog().getCreateTime());
+          .calOperationCostTimeFromStart(logRequest.getLog().getCreateTime());
     }
 
     class AppendEntriesHandler implements AsyncMethodCallback<Long> {

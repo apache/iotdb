@@ -18,15 +18,14 @@
  */
 package org.apache.iotdb.cluster.log;
 
-import com.google.common.collect.Comparators;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
 import java.util.Objects;
 
 /**
- * Log records operations that are made on this cluster. Each log records 2 longs: currLogIndex, currLogTerm, so that the
- * logs in a cluster will form a log chain and abnormal operations can thus be distinguished and
- * removed.
+ * Log records operations that are made on this cluster. Each log records 2 longs: currLogIndex,
+ * currLogTerm, so that the logs in a cluster will form a log chain and abnormal operations can thus
+ * be distinguished and removed.
  */
 public abstract class Log implements Comparable<Log> {
 

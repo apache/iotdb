@@ -37,7 +37,6 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -46,12 +45,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ShowTimeseriesDataSet extends QueryDataSet {
-
-  private static final Logger logger = LoggerFactory.getLogger(ShowTimeseriesDataSet.class);
 
   private final ShowTimeSeriesPlan plan;
   private List<RowRecord> result = new ArrayList<>();

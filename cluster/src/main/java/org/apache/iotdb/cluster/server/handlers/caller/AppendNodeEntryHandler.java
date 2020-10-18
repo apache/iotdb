@@ -69,7 +69,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
   @Override
   public void onComplete(Long response) {
     if (Timer.ENABLE_INSTRUMENTING) {
-      Statistic.RAFT_SENDER_SEND_LOG.addNanoFromStart(sendStart);
+      Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(sendStart);
     }
     logger.debug("{}: Append response {} from {}", member.getName(), response, receiver);
     if (leaderShipStale.get()) {
@@ -83,7 +83,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
         logger.debug("{}: Received an agreement from {} for {}, remaining votes to succeed: {}",
             member.getName(), receiver, log, remaining);
         if (remaining == 0) {
-          logger.debug("{}: Log [{}] {} is accepted by the quorum", member.getName(), log.getCurrLogIndex(), log);
+          logger.debug("{}: Log [{}] {} is accepted by the quorum", member.getName(),
+              log.getCurrLogIndex(), log);
           voteCounter.notifyAll();
         }
         peer.setMatchIndex(Math.max(log.getCurrLogIndex(), peer.getMatchIndex()));

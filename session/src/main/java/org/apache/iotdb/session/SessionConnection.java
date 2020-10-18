@@ -95,13 +95,14 @@ public class SessionConnection {
 
       RpcUtils.verifySuccess(openResp.getStatus());
 
-      if (session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
+      if (Session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn("Protocol differ, Client version is {}}, but Server version is {}",
-            session.protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue());
-        if (openResp.getServerProtocolVersion().getValue() == 0) {// less than 0.10
+            Session.protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue());
+        // less than 0.10
+        if (openResp.getServerProtocolVersion().getValue() == 0) {
           throw new TException(String
               .format("Protocol not supported, Client version is %s, but Server version is %s",
-                  session.protocolVersion.getValue(),
+                  Session.protocolVersion.getValue(),
                   openResp.getServerProtocolVersion().getValue()));
         }
       }

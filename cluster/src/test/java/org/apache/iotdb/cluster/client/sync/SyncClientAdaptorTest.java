@@ -112,7 +112,6 @@ public class SyncClientAdaptorTest {
     lastResult = ByteBuffer.wrap("last".getBytes());
     paths = Arrays.asList("1", "2", "3", "4");
 
-
     metaClient = new AsyncMetaClient(null, null, null) {
       @Override
       public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
@@ -291,11 +290,25 @@ public class SyncClientAdaptorTest {
   }
 
   @Test
-  public void test() throws TException, InterruptedException, IOException, IllegalPathException {
+  public void testMetaClient()
+      throws TException, InterruptedException, IOException, IllegalPathException {
     assertEquals(Response.RESPONSE_AGREE, (long) SyncClientAdaptor.removeNode(metaClient,
         TestUtils.getNode(0)));
     assertTrue(SyncClientAdaptor.matchTerm(metaClient, TestUtils.getNode(0), 1, 1,
         TestUtils.getNode(0)));
+    assertEquals(nodeStatus, SyncClientAdaptor.queryNodeStatus(metaClient));
+    assertEquals(checkStatusResponse,
+        SyncClientAdaptor.checkStatus(metaClient, new StartUpStatus()));
+    assertEquals(addNodeResponse, SyncClientAdaptor.addNode(metaClient, TestUtils.getNode(0),
+        new StartUpStatus()));
+    assertEquals(StatusUtils.OK, SyncClientAdaptor.executeNonQuery(metaClient, new FlushPlan(),
+        TestUtils.getNode(0), TestUtils.getNode(1)));
+  }
+
+
+  @Test
+  public void testDataClient()
+      throws TException, InterruptedException, IOException, IllegalPathException {
     assertEquals(1L, (long) SyncClientAdaptor.querySingleSeriesByTimestamp(dataClient,
         new SingleSeriesQueryRequest()));
     assertEquals(1L, (long) SyncClientAdaptor.querySingleSeries(dataClient,
@@ -307,16 +320,12 @@ public class SyncClientAdaptorTest {
     assertEquals(getAllMeasurementSchemaResult,
         SyncClientAdaptor.getAllMeasurementSchema(dataClient, TestUtils.getNode(0),
             new ShowTimeSeriesPlan(new PartialPath("root"))));
-    assertEquals(nodeStatus, SyncClientAdaptor.queryNodeStatus(metaClient));
-    assertEquals(checkStatusResponse, SyncClientAdaptor.checkStatus(metaClient, new StartUpStatus()));
-    assertEquals(addNodeResponse, SyncClientAdaptor.addNode(metaClient, TestUtils.getNode(0),
-        new StartUpStatus()));
     assertEquals(measurementSchemas, SyncClientAdaptor.pullMeasurementSchema(dataClient,
         new PullSchemaRequest()));
     assertEquals(timeseriesSchemas, SyncClientAdaptor.pullTimeseriesSchema(dataClient,
         new PullSchemaRequest()));
     assertEquals(aggregateResults, SyncClientAdaptor.getAggrResult(dataClient
-    , new GetAggrResultRequest()));
+        , new GetAggrResultRequest()));
     assertEquals(paths.subList(0, paths.size() / 2),
         SyncClientAdaptor.getUnregisteredMeasurements(dataClient, TestUtils.getNode(0), paths));
     assertEquals(paths, SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getNode(0), paths));
@@ -327,8 +336,6 @@ public class SyncClientAdaptorTest {
         TestUtils.getNode(0), paths));
     assertEquals(1L, (long) SyncClientAdaptor.getGroupByExecutor(dataClient, new GroupByRequest()));
     assertEquals(fillResult, SyncClientAdaptor.previousFill(dataClient, new PreviousFillRequest()));
-    assertEquals(StatusUtils.OK, SyncClientAdaptor.executeNonQuery(metaClient, new FlushPlan(),
-        TestUtils.getNode(0), TestUtils.getNode(1)));
     assertEquals(readFileResult, SyncClientAdaptor.readFile(dataClient, "a file", 0, 1000));
     assertEquals(aggregateResults, SyncClientAdaptor.getGroupByResult(dataClient,
         TestUtils.getNode(0), 1, 1, 2));

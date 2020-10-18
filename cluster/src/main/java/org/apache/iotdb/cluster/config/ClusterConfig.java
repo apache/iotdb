@@ -125,7 +125,7 @@ public class ClusterConfig {
 
   private long joinClusterTimeOutMs = 5000L;
 
-  public int pullSnapshotRetryIntervalMs = 5 * 1000;
+  private int pullSnapshotRetryIntervalMs = 5 * 1000;
 
 
   public int getSelectorNumOfClientPool() {
