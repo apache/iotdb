@@ -174,7 +174,6 @@ public class MTree implements Serializable {
 
   /**
    * combine multiple metadata in string format
-   *
    */
   @TestOnly
   static JsonObject combineMetadataInStrings(String[] metadataStrs) {
@@ -187,7 +186,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < jsonObjects.length; i++) {
       root = combineJsonObjects(root, jsonObjects[i]);
     }
-    
+
     return root;
   }
 
@@ -812,14 +811,18 @@ public class MTree implements Serializable {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
     MNode node = root;
-    for (int i = 1; i < nodes.length; i++) {
+    int i;
+    for (i = 1; i < nodes.length; i++) {
+      if (nodes[i].equals("*")) {
+        break;
+      }
       if (node.getChild(nodes[i]) != null) {
         node = node.getChild(nodes[i]);
       } else {
         throw new MetadataException(nodes[i - 1] + NO_CHILDNODE_MSG + nodes[i]);
       }
     }
-    return getCountInGivenLevel(node, level - (nodes.length - 1));
+    return getCountInGivenLevel(node, level - (i - 1));
   }
 
   /**
