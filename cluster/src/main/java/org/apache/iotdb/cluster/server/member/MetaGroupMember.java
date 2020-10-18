@@ -1384,7 +1384,7 @@ public class MetaGroupMember extends RaftMember {
         // has already been deleted
         ((CMManager) IoTDB.metaManager).convertToFullPaths(plan);
       } catch (PathNotExistException e) {
-        return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
+        return StatusUtils.getStatus(StatusUtils.TIMESERIES_NOT_EXIST_ERROR, e.getMessage());
       }
     }
     try {
