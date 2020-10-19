@@ -424,7 +424,7 @@ public class BatchData implements Serializable {
     return this.booleanRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
-  public void setBoolean(int idx, boolean v) {
+  public void setBoolean(boolean v) {
     this.booleanRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
@@ -432,7 +432,7 @@ public class BatchData implements Serializable {
     return this.intRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
-  public void setInt(int idx, int v) {
+  public void setInt(int v) {
     this.intRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
@@ -440,7 +440,7 @@ public class BatchData implements Serializable {
     return this.longRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
-  public void setLong(int idx, long v) {
+  public void setLong(long v) {
     this.longRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
@@ -448,7 +448,7 @@ public class BatchData implements Serializable {
     return this.floatRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
-  public void setFloat(int idx, float v) {
+  public void setFloat(float v) {
     this.floatRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
@@ -456,7 +456,7 @@ public class BatchData implements Serializable {
     return this.doubleRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
-  public void setDouble(int idx, double v) {
+  public void setDouble(double v) {
     this.doubleRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
@@ -464,11 +464,11 @@ public class BatchData implements Serializable {
     return this.binaryRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
-  public void setBinary(int idx, Binary v) {
+  public void setBinary(Binary v) {
     this.binaryRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
-  public void setTime(int idx, long v) {
+  public void setTime(long v) {
     this.timeRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 

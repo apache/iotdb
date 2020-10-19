@@ -372,7 +372,7 @@ public class Session {
       buffersList.add(buffer);
     }
     request.setValuesList(buffersList);
-    return  request;
+    return request;
   }
 
   /**
@@ -397,7 +397,8 @@ public class Session {
     }
   }
 
-  private TSInsertStringRecordsReq genTSInsertStringRecordsReq(List<String> deviceIds, List<Long> times,
+  private TSInsertStringRecordsReq genTSInsertStringRecordsReq(List<String> deviceIds,
+      List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList) {
     // check params size
     int len = deviceIds.size();
@@ -433,7 +434,8 @@ public class Session {
     }
   }
 
-  private TSInsertRecordReq genTSInsertRecordReq(String deviceId, long time, List<String> measurements,
+  private TSInsertRecordReq genTSInsertRecordReq(String deviceId, long time,
+      List<String> measurements,
       List<TSDataType> types,
       List<Object> values) throws IoTDBConnectionException {
     TSInsertRecordReq request = new TSInsertRecordReq();
@@ -445,7 +447,7 @@ public class Session {
     putValues(types, values, buffer);
     buffer.flip();
     request.setValues(buffer);
-    return  request;
+    return request;
   }
 
   /**
@@ -458,7 +460,8 @@ public class Session {
   public void insertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
 
-    TSInsertStringRecordReq request = genTSInsertStringRecordReq(deviceId, time, measurements, values);
+    TSInsertStringRecordReq request = genTSInsertStringRecordReq(deviceId, time, measurements,
+        values);
     try {
       RpcUtils.verifySuccess(client.insertStringRecord(request));
     } catch (TException e) {
@@ -660,7 +663,8 @@ public class Session {
    */
   public void testInsertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertStringRecordReq request = genTSInsertStringRecordReq(deviceId, time, measurements, values);
+    TSInsertStringRecordReq request = genTSInsertStringRecordReq(deviceId, time, measurements,
+        values);
 
     try {
       RpcUtils.verifySuccess(client.testInsertStringRecord(request));
@@ -674,7 +678,8 @@ public class Session {
    * this method should be used to test other time cost in client
    */
   public void testInsertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values) throws IoTDBConnectionException, StatementExecutionException {
+      List<TSDataType> types, List<Object> values)
+      throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
 
     try {
@@ -726,7 +731,7 @@ public class Session {
   /**
    * delete data <= time in multiple timeseries
    *
-   * @param paths data in which time series to delete
+   * @param paths   data in which time series to delete
    * @param endTime data with time stamp less than or equal to time will be deleted
    */
   public void deleteData(List<String> paths, long endTime)
@@ -737,9 +742,9 @@ public class Session {
   /**
    * delete data >= startTime and data <= endTime in multiple timeseries
    *
-   * @param paths   data in which time series to delete
+   * @param paths     data in which time series to delete
    * @param startTime delete range start time
-   * @param endTime delete range end time
+   * @param endTime   delete range end time
    */
   public void deleteData(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -931,11 +936,12 @@ public class Session {
   }
 
   /**
-   * query eg. select * from paths where time >= startTime and time < endTime
-   * time interval include startTime and exclude endTime
+   * query eg. select * from paths where time >= startTime and time < endTime time interval include
+   * startTime and exclude endTime
+   *
    * @param paths
    * @param startTime included
-   * @param endTime excluded
+   * @param endTime   excluded
    * @return
    * @throws StatementExecutionException
    * @throws IoTDBConnectionException
@@ -943,7 +949,8 @@ public class Session {
 
   public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException {
-    TSRawDataQueryReq execReq = new TSRawDataQueryReq(sessionId, paths, startTime, endTime);
+    TSRawDataQueryReq execReq = new TSRawDataQueryReq(sessionId, paths, startTime, endTime,
+        statementId);
     execReq.setFetchSize(fetchSize);
 
     TSExecuteStatementResp execResp;

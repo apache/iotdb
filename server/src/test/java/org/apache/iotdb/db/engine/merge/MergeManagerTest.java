@@ -39,8 +39,7 @@ public class MergeManagerTest extends MergeTest {
     long elapsed = System.currentTimeMillis() - startTime;
     assertTrue(elapsed <= 1000);
     MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, 16 * 1024 * 1024L);
-    elapsed = System.currentTimeMillis() - startTime;
-    assertTrue(elapsed >= 9000);
+    assertTrue((System.currentTimeMillis() - startTime) > 1000);
   }
 
 
