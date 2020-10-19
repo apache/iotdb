@@ -962,7 +962,15 @@ public class Session {
     try {
       execResp = client.executeQueryStatement(execReq);
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          execResp = client.executeQueryStatement(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+      }
     }
 
     RpcUtils.verifySuccess(execResp.getStatus());
@@ -980,12 +988,21 @@ public class Session {
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
+    TSExecuteStatementResp execResp;
     try {
-      TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
-      RpcUtils.verifySuccess(execResp.getStatus());
+      execResp = client.executeUpdateStatement(execReq);
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          execResp = client.executeUpdateStatement(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+      }
     }
+    RpcUtils.verifySuccess(execResp.getStatus());
   }
 
   /**
@@ -1010,7 +1027,15 @@ public class Session {
     try {
       execResp = client.executeRawDataQuery(execReq);
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          execResp = client.executeRawDataQuery(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+      }
     }
 
     RpcUtils.verifySuccess(execResp.getStatus());
