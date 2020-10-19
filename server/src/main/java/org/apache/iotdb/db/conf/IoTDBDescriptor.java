@@ -23,7 +23,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.time.ZoneId;
 import java.util.Properties;
@@ -123,7 +122,7 @@ public class IoTDBDescriptor {
 
     // If the url doesn't start with "file:" or "classpath:", it's provided as a normal path.
     // So we need to add it to make it a real URL.
-    if(!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
+    if (!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
       urlString = "file:" + urlString;
     }
     try {
@@ -208,7 +207,7 @@ public class IoTDBDescriptor {
               Boolean.toString(conf.isMetaDataCacheEnable()))));
 
       conf.setEnableLastCache(Boolean.parseBoolean(properties.getProperty("enable_last_cache",
-              Boolean.toString(conf.isLastCacheEnabled()))));
+          Boolean.toString(conf.isLastCacheEnabled()))));
 
       initMemoryAllocate(properties);
 
@@ -546,7 +545,7 @@ public class IoTDBDescriptor {
 
     conf.setEnableDiscardOutOfOrderData(Boolean.parseBoolean(
         properties.getProperty("enable_discard_out_of_order_data",
-        Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
+            Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
 
   }
 
@@ -678,6 +677,10 @@ public class IoTDBDescriptor {
 
       // update tsfile-format config
       loadTsFileProps(properties);
+
+      // update max_deduplicated_path_num
+      conf.setMaxQueryDeduplicatedPathNum(
+          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
 
     } catch (Exception e) {
       throw new QueryProcessException(

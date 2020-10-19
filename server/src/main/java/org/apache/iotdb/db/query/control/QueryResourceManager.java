@@ -19,17 +19,15 @@
 package org.apache.iotdb.db.query.control;
 
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.io.File;
-import java.lang.ref.WeakReference;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -84,8 +82,7 @@ public class QueryResourceManager {
   // estimated size for one point memory size, the unit is byte
   private static final long POINT_ESTIMATED_SIZE = 16L;
 
-  private static final int MAX_COLUMN_SUM = IoTDBDescriptor.getInstance().getConfig()
-      .getMaxQueryDeduplicatedPathNum();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private QueryResourceManager() {
     filePathsManager = new QueryFileManager();
@@ -101,7 +98,7 @@ public class QueryResourceManager {
 
   public int getMaxDeduplicatedPathNum(int fetchSize) {
     return Math.min((int) ((totalFreeMemoryForRead.get() / fetchSize) / POINT_ESTIMATED_SIZE),
-        MAX_COLUMN_SUM);
+        CONFIG.getMaxQueryDeduplicatedPathNum());
   }
 
   /**

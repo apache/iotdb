@@ -138,7 +138,7 @@ public class IoTDBConfig {
    */
   private long allocateMemoryForReadWithoutCache = Runtime.getRuntime().maxMemory() * 9 / 100;
 
-  private int maxQueryDeduplicatedPathNum = 1000;
+  private volatile int maxQueryDeduplicatedPathNum = 1000;
 
   /**
    * Is dynamic parameter adapter enable.
