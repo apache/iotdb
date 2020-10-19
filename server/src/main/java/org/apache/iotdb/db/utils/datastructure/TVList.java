@@ -276,7 +276,7 @@ public abstract class TVList {
   }
 
   public boolean checkIfDataListIsEnough(int lengthToBeAdded) {
-    return (size + lengthToBeAdded - 1) % ARRAY_SIZE != 0;
+    return size + lengthToBeAdded < ARRAY_SIZE;
   }
 
   protected long[] cloneTime(long[] array) {
@@ -493,6 +493,17 @@ public abstract class TVList {
 
   public IPointReader getIterator(int floatPrecision, TSEncoding encoding) {
     return new Ite(floatPrecision, encoding);
+  }
+
+  public static long tvListArrayMemSize(TSDataType type) {
+    long size = 0;
+    // time size
+    size +=
+        PrimitiveArrayManager.ARRAY_SIZE * TSDataType.INT64.getDataTypeSize();
+    // value size
+    size +=
+        PrimitiveArrayManager.ARRAY_SIZE * type.getDataTypeSize();
+    return size;
   }
 
   private class Ite implements IPointReader {

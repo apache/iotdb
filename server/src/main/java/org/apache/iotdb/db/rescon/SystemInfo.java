@@ -56,8 +56,8 @@ public class SystemInfo {
     long delta = storageGroupInfo.getSgMemCost() - 
         reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L);
     totalSgMemCost += delta;
-    logger.debug("Report Storage Group Status to system. "
-        + "Current sg mem cost is {}.", totalSgMemCost);
+    logger.info("Report Storage Group Status to system. "
+        + "Current sg mem cost is {}, delta is {}.", totalSgMemCost, delta);
     reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
     if (getTotalMemCost() >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       logger.info("The total storage group mem costs are too large, call for flushing. "
@@ -115,7 +115,7 @@ public class SystemInfo {
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
     for (TsFileProcessor processor : processors) {
       if (processor != null) {
-        logger.debug("Start flushing TSP in SG. Current buffed array size {}, OOB size {}",
+        logger.info("Start flushing TSP in SG. Current buffed array size {}, OOB size {}",
             processor.getStorageGroupName(),
             PrimitiveArrayManager.getBufferedArraysSize(),
             PrimitiveArrayManager.getOOBSize());
@@ -131,7 +131,7 @@ public class SystemInfo {
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
     for (TsFileProcessor processor : processors) {
       if (processor != null) {
-        logger.debug("Start flushing TSP in SG. Current buffed array size {}, OOB size {}",
+        logger.info("Start flushing TSP in SG. Current buffed array size {}, OOB size {}",
             processor.getStorageGroupName(),
             PrimitiveArrayManager.getBufferedArraysSize(),
             PrimitiveArrayManager.getOOBSize());
@@ -147,18 +147,18 @@ public class SystemInfo {
 
   private List<TsFileProcessor> getTsFileProcessorsToFlush() {
     PriorityQueue<TsFileProcessor> tsps = new PriorityQueue<>(
-        (o1, o2) -> Long.compare(o2.getWorkMemTableSize(), o1.getWorkMemTableSize()));
+        (o1, o2) -> Long.compare(o2.getWorkMemTableRamCost(), o1.getWorkMemTableRamCost()));
     for (StorageGroupInfo sgInfo : reportedSgMemCostMap.keySet()) {
       tsps.addAll(sgInfo.getAllReportedTsp());
     }
     List<TsFileProcessor> processors = new ArrayList<>();
     long memCost = 0;
     while (getTotalMemCost() - memCost > config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
-      if (tsps.isEmpty() || tsps.peek().getWorkMemTableSize() == 0) {
+      if (tsps.isEmpty() || tsps.peek().getWorkMemTableRamCost() == 0) {
         return processors;
       }
       processors.add(tsps.peek());
-      memCost += tsps.peek().getWorkMemTableSize();
+      memCost += tsps.peek().getWorkMemTableRamCost();
       tsps.poll();
     }
     return processors;

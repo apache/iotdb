@@ -55,6 +55,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -289,12 +290,12 @@ public class TsFileProcessor {
         chunkMetadataCost += ChunkMetadata.calculateRamSize(insertRowPlan.getMeasurements()[i],
             insertRowPlan.getDataTypes()[i]);
         // time size
-        memTableIncrement += timeValueSize(insertRowPlan.getDataTypes()[i]);
+        memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
       }
       else if (workMemTable.checkIfNeedToGetDataList(insertRowPlan.getDeviceId().getFullPath(),
             insertRowPlan.getMeasurements()[i], 1)) {
         // time column
-        memTableIncrement += timeValueSize(insertRowPlan.getDataTypes()[i]);
+        memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
       }
       // add string data size
       if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
@@ -340,15 +341,15 @@ public class TsFileProcessor {
         chunkMetadataCost += ChunkMetadata.calculateRamSize(insertTabletPlan.getMeasurements()[i],
             insertTabletPlan.getDataTypes()[i]);
         memTableIncrement += ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-            * timeValueSize(insertTabletPlan.getDataTypes()[i]);
+            * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
       }
       else if (workMemTable.checkIfNeedToGetDataList(insertTabletPlan.getDeviceId().getFullPath(),
           insertTabletPlan.getMeasurements()[i], end - start)) {
         int tvListSize = workMemTable.getCurrentTVListSize(insertTabletPlan.getDeviceId().getFullPath(),
             insertTabletPlan.getMeasurements()[i]);
-        memTableIncrement += ((end - start - (tvListSize % PrimitiveArrayManager.ARRAY_SIZE))
+        memTableIncrement += ((end - start + (tvListSize % PrimitiveArrayManager.ARRAY_SIZE))
             / PrimitiveArrayManager.ARRAY_SIZE + 1)
-            * timeValueSize(insertTabletPlan.getDataTypes()[i]);
+            * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
       }
       // TEXT data size
       if (insertTabletPlan.getDataTypes()[i] == TSDataType.TEXT) {
@@ -375,17 +376,6 @@ public class TsFileProcessor {
       }
     }
     workMemTable.addRamCost(memTableIncrement);
-  }
-
-  private long timeValueSize(TSDataType type) {
-    long size = 0;
-    // time size
-    size +=
-        PrimitiveArrayManager.ARRAY_SIZE * TSDataType.INT64.getDataTypeSize();
-    // value size
-    size +=
-        PrimitiveArrayManager.ARRAY_SIZE * type.getDataTypeSize();
-    return size;
   }
 
   /**
@@ -429,7 +419,7 @@ public class TsFileProcessor {
       return false;
     }
 
-    if (workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
+    if (!enableMemControl && workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
       logger.info("The memtable size {} of tsfile {} reaches the threshold",
           workMemTable.memSize(), tsFileResource.getTsFile().getAbsolutePath());
       return true;
@@ -963,8 +953,8 @@ public class TsFileProcessor {
     return tsFileProcessorInfo;
   }
 
-  public long getWorkMemTableSize() {
-    return workMemTable != null ? workMemTable.memSize() : 0;
+  public long getWorkMemTableRamCost() {
+    return workMemTable != null ? workMemTable.getRamCost() : 0;
   }
 
   public boolean isSequence() {
