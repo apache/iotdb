@@ -25,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -474,5 +475,25 @@ public class MTreeTest {
           "The storage group name can only be characters, numbers and underscores. root.\"sg.ln\" is not a legal path",
           e.getMessage());
     }
+  }
+
+  @Test
+  public void testSearchStorageGroup() throws MetadataException {
+    MTree root = new MTree();
+    String path1 = "root";
+    String sgPath1 = "root.vehicle";
+    root.setStorageGroup(new PartialPath(sgPath1));
+    assertTrue(root.isPathExist(new PartialPath(path1)));
+    try {
+      root.createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+      root.createTimeseries(new PartialPath("root.vehicle.d1.s2"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+    } catch (MetadataException e1) {
+      fail(e1.getMessage());
+    }
+
+    assertEquals(root.searchAllRelatedStorageGroups(new PartialPath("root.vehicle.d1.s1")),
+        Arrays.asList(new PartialPath(sgPath1)));
   }
 }
