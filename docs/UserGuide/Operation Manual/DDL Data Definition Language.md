@@ -41,14 +41,15 @@ Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.Me
 
 ## Show Storage Group
 
-After the storage group is created, we can use the [SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md) statement to view all the storage groups. The SQL statement is as follows:
+After the storage group is created, we can use the [SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md) statement and [SHOW STORAGE GROUP \<PrefixPath>](../Operation%20Manual/SQL%20Reference.md) to view the storage groups. The SQL statements are as follows:
 
 ```
 IoTDB> show storage group
+IoTDB> show storage group root.ln
 ```
 
 The result is as follows:
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/67779101/92545299-6c029400-f282-11ea-80ea-b672a57f4b13.png"></center>
 
 ## Delete Storage Group
 
@@ -310,6 +311,20 @@ IoTDB> unset ttl to root.ln
 ```
 
 After unset TTL, all data will be accepted in `root.ln`
+
+## Show TTL
+
+To Show TTL, we can use follwing SQL statement:
+
+```
+IoTDB> SHOW ALL TTL
+IoTDB> SHOW TTL ON StorageGroupNames
+```
+
+The SHOW ALL TTL example gives the TTL for all storage groups.
+The SHOW TTL ON  root.group1 , root.group2 , root.group3 example shows the TTL for the three storage 
+groups specified.
+Note: the TTL for storage groups that do not have a TTL set will display as null.
 
 ## FLUSH
 

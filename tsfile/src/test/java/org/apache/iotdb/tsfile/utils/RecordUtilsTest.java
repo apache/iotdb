@@ -66,36 +66,36 @@ public class RecordUtilsTest {
   public void testParseSimpleTupleRecordInt() {
     String testString = "d1,1471522347000,s1,1";
     TSRecord record = RecordUtils.parseSimpleTupleRecord(testString, schema);
-    assertEquals(record.time, 1471522347000l);
-    assertEquals(record.deviceId, "d1");
+    assertEquals(1471522347000l, record.time);
+    assertEquals("d1", record.deviceId);
     List<DataPoint> tuples = record.dataPointList;
     assertEquals(1, tuples.size());
     DataPoint tuple = tuples.get(0);
-    assertEquals(tuple.getMeasurementId(), "s1");
-    assertEquals(tuple.getType(), TSDataType.INT32);
-    assertEquals(tuple.getValue(), 1);
+    assertEquals("s1", tuple.getMeasurementId());
+    assertEquals(TSDataType.INT32, tuple.getType());
+    assertEquals(1, tuple.getValue());
 
     testString = "d1,1471522347000,s1,1,";
     record = RecordUtils.parseSimpleTupleRecord(testString, schema);
-    assertEquals(record.time, 1471522347000l);
-    assertEquals(record.deviceId, "d1");
+    assertEquals(1471522347000l, record.time);
+    assertEquals("d1", record.deviceId);
     tuples = record.dataPointList;
     assertEquals(1, tuples.size());
     tuple = tuples.get(0);
-    assertEquals(tuple.getMeasurementId(), "s1");
-    assertEquals(tuple.getType(), TSDataType.INT32);
-    assertEquals(tuple.getValue(), 1);
+    assertEquals("s1", tuple.getMeasurementId());
+    assertEquals(TSDataType.INT32, tuple.getType());
+    assertEquals(1, tuple.getValue());
 
     testString = "d1,1471522347000,s1,1,s2";
     record = RecordUtils.parseSimpleTupleRecord(testString, schema);
-    assertEquals(record.time, 1471522347000l);
-    assertEquals(record.deviceId, "d1");
+    assertEquals(1471522347000l, record.time);
+    assertEquals("d1", record.deviceId);
     tuples = record.dataPointList;
     assertEquals(1, tuples.size());
     tuple = tuples.get(0);
-    assertEquals(tuple.getMeasurementId(), "s1");
-    assertEquals(tuple.getType(), TSDataType.INT32);
-    assertEquals(tuple.getValue(), 1);
+    assertEquals("s1", tuple.getMeasurementId());
+    assertEquals(TSDataType.INT32, tuple.getType());
+    assertEquals(1, tuple.getValue());
 
   }
 
@@ -103,81 +103,81 @@ public class RecordUtilsTest {
   public void testParseSimpleTupleRecordNull() {
     String testString = "d1,1471522347000,s1,1,s2,,s3,";
     TSRecord record = RecordUtils.parseSimpleTupleRecord(testString, schema);
-    assertEquals(record.time, 1471522347000l);
+    assertEquals(1471522347000l, record.time);
     List<DataPoint> tuples = record.dataPointList;
-    assertEquals(tuples.size(), 1);
+    assertEquals(1, tuples.size());
     DataPoint tuple = tuples.get(0);
-    assertEquals(tuple.getMeasurementId(), "s1");
-    assertEquals(tuple.getType(), TSDataType.INT32);
-    assertEquals(tuple.getValue(), 1);
+    assertEquals("s1", tuple.getMeasurementId());
+    assertEquals(TSDataType.INT32, tuple.getType());
+    assertEquals(1, tuple.getValue());
   }
 
   @Test
   public void testParseSimpleTupleRecordAll() {
     String testString = "d1,1471522347000,s1,1,s2,134134287192587,s3,1.4,s4,1.128794817,s5,true";
     TSRecord record = RecordUtils.parseSimpleTupleRecord(testString, schema);
-    assertEquals(record.time, 1471522347000l);
-    assertEquals(record.deviceId, "d1");
+    assertEquals(1471522347000l, record.time);
+    assertEquals("d1", record.deviceId);
     List<DataPoint> tuples = record.dataPointList;
     assertEquals(5, tuples.size());// enum type is omitted.
     DataPoint tuple = tuples.get(0);
-    assertEquals(tuple.getMeasurementId(), "s1");
-    assertEquals(tuple.getType(), TSDataType.INT32);
-    assertEquals(tuple.getValue(), 1);
+    assertEquals("s1", tuple.getMeasurementId());
+    assertEquals(TSDataType.INT32, tuple.getType());
+    assertEquals(1, tuple.getValue());
     tuple = tuples.get(1);
-    assertEquals(tuple.getMeasurementId(), "s2");
-    assertEquals(tuple.getType(), TSDataType.INT64);
-    assertEquals(tuple.getValue(), 134134287192587l);
+    assertEquals("s2", tuple.getMeasurementId());
+    assertEquals(TSDataType.INT64, tuple.getType());
+    assertEquals(134134287192587l, tuple.getValue());
     tuple = tuples.get(2);
-    assertEquals(tuple.getMeasurementId(), "s3");
-    assertEquals(tuple.getType(), TSDataType.FLOAT);
-    assertEquals(tuple.getValue(), 1.4f);
+    assertEquals("s3", tuple.getMeasurementId());
+    assertEquals(TSDataType.FLOAT, tuple.getType());
+    assertEquals(1.4f, tuple.getValue());
     tuple = tuples.get(3);
-    assertEquals(tuple.getMeasurementId(), "s4");
-    assertEquals(tuple.getType(), TSDataType.DOUBLE);
-    assertEquals(tuple.getValue(), 1.128794817d);
+    assertEquals("s4", tuple.getMeasurementId());
+    assertEquals(TSDataType.DOUBLE, tuple.getType());
+    assertEquals(1.128794817d, tuple.getValue());
     tuple = tuples.get(4);
-    assertEquals(tuple.getMeasurementId(), "s5");
-    assertEquals(tuple.getType(), TSDataType.BOOLEAN);
-    assertEquals(tuple.getValue(), true);
+    assertEquals("s5", tuple.getMeasurementId());
+    assertEquals(TSDataType.BOOLEAN, tuple.getType());
+    assertEquals(true, tuple.getValue());
   }
 
   @Test
   public void testError() {
     String testString = "d1,1471522347000,s1,1,s2,s123";
     TSRecord record = RecordUtils.parseSimpleTupleRecord(testString, schema);
-    assertEquals(record.time, 1471522347000l);
+    assertEquals(1471522347000l, record.time);
     List<DataPoint> tuples = record.dataPointList;
-    assertEquals(tuples.size(), 1);
+    assertEquals(1, tuples.size());
     DataPoint tuple = tuples.get(0);
-    assertEquals(tuple.getMeasurementId(), "s1");
-    assertEquals(tuple.getType(), TSDataType.INT32);
-    assertEquals(tuple.getValue(), 1);
+    assertEquals("s1", tuple.getMeasurementId());
+    assertEquals(TSDataType.INT32, tuple.getType());
+    assertEquals(1, tuple.getValue());
   }
 
   @Test
   public void testErrorMeasurementAndTimeStamp() {
     String testString = "d1,1471522347000,s1,1,s123,1";
     TSRecord record = RecordUtils.parseSimpleTupleRecord(testString, schema);
-    assertEquals(record.time, 1471522347000l);
+    assertEquals(1471522347000l, record.time);
     List<DataPoint> tuples = record.dataPointList;
-    assertEquals(tuples.size(), 1);
+    assertEquals(1, tuples.size());
     DataPoint tuple = tuples.get(0);
-    assertEquals(tuple.getMeasurementId(), "s1");
-    assertEquals(tuple.getType(), TSDataType.INT32);
-    assertEquals(tuple.getValue(), 1);
+    assertEquals("s1", tuple.getMeasurementId());
+    assertEquals(TSDataType.INT32, tuple.getType());
+    assertEquals(1, tuple.getValue());
 
     testString = "d1,1dsjhk,s1,1,s123,1";
     record = RecordUtils.parseSimpleTupleRecord(testString, schema);
     assertEquals(record.time, -1);
     tuples = record.dataPointList;
-    assertEquals(tuples.size(), 0);
+    assertEquals(0, tuples.size());
 
     testString = "d1,1471522347000,s8,1";
     record = RecordUtils.parseSimpleTupleRecord(testString, schema);
-    assertEquals(record.time, 1471522347000l);
+    assertEquals(1471522347000l, record.time);
     tuples = record.dataPointList;
-    assertEquals(tuples.size(), 0);
+    assertEquals(0, tuples.size());
 
   }
 

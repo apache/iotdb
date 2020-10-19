@@ -29,19 +29,17 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 /**
  * A tablet data of one device, the tablet contains multiple measurements of this device that share
  * the same time column.
- *
+ * <p>
  * for example:  device root.sg1.d1
- *
- * time, m1, m2, m3
- *    1,  1,  2,  3
- *    2,  1,  2,  3
- *    3,  1,  2,  3
- *
+ * <p>
+ * time, m1, m2, m3 1,  1,  2,  3 2,  1,  2,  3 3,  1,  2,  3
+ * <p>
  * Notice: The tablet should not have empty cell
  */
 public class Tablet {
 
   private static final int DEFAULT_SIZE = 1024;
+  private static final String NOT_SUPPORT_DATATYPE = "Data type %s is not supported.";
 
   /**
    * deviceId of this tablet
@@ -80,8 +78,8 @@ public class Tablet {
    * should be the same size).
    *
    * @param deviceId the name of the device specified to be written in
-   * @param schemas  the list of measurement schemas for creating the tablet,
-   *                 only measurementId and type take effects
+   * @param schemas  the list of measurement schemas for creating the tablet, only measurementId and
+   *                 type take effects
    */
   public Tablet(String deviceId, List<MeasurementSchema> schemas) {
     this(deviceId, schemas, DEFAULT_SIZE);
@@ -92,8 +90,8 @@ public class Tablet {
    * directly for testing purposes. Tablet should normally always be default size.
    *
    * @param deviceId     the name of the device specified to be written in
-   * @param schemas   the list of measurement schemas for creating the row
-   *                  batch, only measurementId and type take effects
+   * @param schemas      the list of measurement schemas for creating the row batch, only
+   *                     measurementId and type take effects
    * @param maxRowNumber the maximum number of rows for this tablet
    */
   public Tablet(String deviceId, List<MeasurementSchema> schemas, int maxRowNumber) {
@@ -152,7 +150,7 @@ public class Tablet {
       }
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", measurementSchema.getType()));
+            String.format(NOT_SUPPORT_DATATYPE, measurementSchema.getType()));
     }
   }
 
@@ -201,8 +199,7 @@ public class Tablet {
           values[i] = new Binary[maxRowNumber];
           break;
         default:
-          throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", dataType));
+          throw new UnSupportedDataTypeException(String.format(NOT_SUPPORT_DATATYPE, dataType));
       }
     }
   }
@@ -244,7 +241,7 @@ public class Tablet {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Data type %s is not supported.", schemas.get(i).getType()));
+              String.format(NOT_SUPPORT_DATATYPE, schemas.get(i).getType()));
       }
     }
     return valueOccupation;

@@ -44,6 +44,8 @@ public class IoTDBStatement implements Statement {
   private int queryTimeout = 10;
   protected TSIService.Iface client;
   private List<String> batchSQLList;
+  private static final String NOT_SUPPORT_EXECUTE = "Not support execute";
+  private static final String NOT_SUPPORT_EXECUTE_UPDATE = "Not support executeUpdate";
   /**
    * Keep state so we can fail certain calls made after close().
    */
@@ -191,17 +193,17 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean execute(String arg0, int arg1) throws SQLException {
-    throw new SQLException("Not support execute");
+    throw new SQLException(NOT_SUPPORT_EXECUTE);
   }
 
   @Override
   public boolean execute(String arg0, int[] arg1) throws SQLException {
-    throw new SQLException("Not support execute");
+    throw new SQLException(NOT_SUPPORT_EXECUTE);
   }
 
   @Override
   public boolean execute(String arg0, String[] arg1) throws SQLException {
-    throw new SQLException("Not support execute");
+    throw new SQLException(NOT_SUPPORT_EXECUTE);
   }
 
   /**
@@ -355,17 +357,17 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int executeUpdate(String arg0, int arg1) throws SQLException {
-    throw new SQLException("Not support executeUpdate");
+    throw new SQLException(NOT_SUPPORT_EXECUTE_UPDATE);
   }
 
   @Override
   public int executeUpdate(String arg0, int[] arg1) throws SQLException {
-    throw new SQLException("Not support executeUpdate");
+    throw new SQLException(NOT_SUPPORT_EXECUTE_UPDATE);
   }
 
   @Override
   public int executeUpdate(String arg0, String[] arg1) throws SQLException {
-    throw new SQLException("Not support executeUpdate");
+    throw new SQLException(NOT_SUPPORT_EXECUTE_UPDATE);
   }
 
   private int executeUpdateSQL(String sql) throws TException, IoTDBSQLException {

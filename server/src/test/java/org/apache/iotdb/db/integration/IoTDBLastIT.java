@@ -183,7 +183,7 @@ public class IoTDBLastIT {
 
       // Last cache is updated with above insert sql
       long time = node.getCachedLast().getTimestamp();
-      Assert.assertEquals(time, 700);
+      Assert.assertEquals(700, time);
 
       hasResultSet = statement.execute("select last temperature,status,id from root.ln.wf01.wt01");
       assertTrue(hasResultSet);
@@ -202,7 +202,7 @@ public class IoTDBLastIT {
 
       // Last cache is not updated with above insert sql
       time = node.getCachedLast().getTimestamp();
-      Assert.assertEquals(time, 700);
+      Assert.assertEquals(700, time);
 
       hasResultSet = statement.execute("select last temperature,status,id from root.ln.wf01.wt01");
       assertTrue(hasResultSet);
@@ -310,7 +310,7 @@ public class IoTDBLastIT {
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(cnt, 1);
+        Assert.assertEquals(1, cnt);
       }
     }
   }
@@ -356,7 +356,7 @@ public class IoTDBLastIT {
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(cnt, 1);
+        Assert.assertEquals(1, cnt);
       }
     }
   }
@@ -398,7 +398,7 @@ public class IoTDBLastIT {
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(cnt, 1);
+        Assert.assertEquals(1, cnt);
       }
 
       statement
