@@ -908,6 +908,9 @@ public class SeriesReader {
 
     boolean isExcessEndpoint(long time, long endpointTime);
 
+    /**
+     *  Return true if taking first page reader from seq readers
+     */
     boolean isTakeSeqAsFirst(Statistics<? extends Object> seqStatistics,
         Statistics<? extends Object> unseqStatistics);
 
