@@ -37,9 +37,9 @@ public class StorageGroupInfo {
   private long unsealedResourceMemCost;
 
   /**
-   * The total memory cost of TEXT data in this SG
+   * The total memtable memory cost in this SG
    */
-  private long bytesMemCost;
+  private long memTableCost;
 
   /**
    * The total memory cost of ChunkMetadata in this SG
@@ -59,7 +59,7 @@ public class StorageGroupInfo {
   public StorageGroupInfo(StorageGroupProcessor storageGroupProcessor) {
     this.storageGroupProcessor = storageGroupProcessor;
     unsealedResourceMemCost = 0;
-    bytesMemCost = 0;
+    memTableCost = 0;
     chunkMetadataMemCost = 0;
     walMemCost = 0;
   }
@@ -85,8 +85,8 @@ public class StorageGroupInfo {
     chunkMetadataMemCost += cost;
   }
 
-  public void addBytesMemCost(long cost) {
-    bytesMemCost += cost;
+  public void addMemTableCost(long cost) {
+    memTableCost += cost;
   }
 
   /**
@@ -107,7 +107,7 @@ public class StorageGroupInfo {
    * called by TSPInfo when a memTable contains TEXT data flushed
    */
   public void resetMemTableCost(long cost) {
-    bytesMemCost -= cost;
+    memTableCost -= cost;
   }
 
   /**
@@ -118,7 +118,7 @@ public class StorageGroupInfo {
   }
 
   public long getSgMemCost() {
-    return unsealedResourceMemCost + bytesMemCost + chunkMetadataMemCost + walMemCost;
+    return unsealedResourceMemCost + memTableCost + chunkMetadataMemCost + walMemCost;
   }
 
   public Set<TsFileProcessor> getAllReportedTsp() {

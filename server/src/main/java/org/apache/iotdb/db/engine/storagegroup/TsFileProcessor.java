@@ -263,15 +263,13 @@ public class TsFileProcessor {
         // ChunkMetadataCost
         chunkMetadataCost += ChunkMetadata.calculateRamSize(insertRowPlan.getMeasurements()[i],
             insertRowPlan.getDataTypes()[i]);
-        // time size
         memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
       }
       else if (workMemTable.checkIfNeedToGetDataList(insertRowPlan.getDeviceId().getFullPath(),
             insertRowPlan.getMeasurements()[i], 1)) {
-        // time column
         memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
       }
-      // add string data size
+      // TEXT data size
       if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
         memTableIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }

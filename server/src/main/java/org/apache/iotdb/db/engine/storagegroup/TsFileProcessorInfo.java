@@ -70,7 +70,7 @@ public class TsFileProcessorInfo {
 
   public void addMemTableCost(long cost) {
     memTableCost += cost;
-    storageGroupInfo.addBytesMemCost(cost);
+    storageGroupInfo.addMemTableCost(cost);
   }
 
   /**
