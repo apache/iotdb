@@ -442,6 +442,8 @@ public class MTreeTest {
 
       assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop"), 2));
       assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop"), 3));
+      assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*"), 2));
+      assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*"), 3));
       assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.d1"), 3));
       assertEquals(0, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.d1"), 4));
     } catch (MetadataException e) {
