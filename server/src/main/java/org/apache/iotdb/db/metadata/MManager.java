@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -120,7 +121,7 @@ public class MManager {
   private int reportedDataTypeTotalNum;
 
   // storage group name -> the series number
-  private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
+  private Map<String, Integer> seriesNumberInStorageGroups = new ConcurrentHashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
   private long totalSeriesNumber = 0L;
   private boolean initialized;
