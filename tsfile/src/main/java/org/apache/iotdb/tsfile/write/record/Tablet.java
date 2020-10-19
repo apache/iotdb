@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 public class Tablet {
 
   private static final int DEFAULT_SIZE = 1024;
+  private static final String NOT_SUPPORT_DATATYPE= "Data type %s is not supported.";
 
   /**
    * deviceId of this tablet
@@ -154,7 +155,7 @@ public class Tablet {
       }
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", measurementSchema.getType()));
+            String.format(NOT_SUPPORT_DATATYPE, measurementSchema.getType()));
     }
   }
 
@@ -203,7 +204,7 @@ public class Tablet {
         values[i] = new Binary[maxRowNumber];
         break;
       default:
-        throw new UnSupportedDataTypeException(String.format("Data type %s is not supported.", dataType));
+        throw new UnSupportedDataTypeException(String.format(NOT_SUPPORT_DATATYPE, dataType));
       }
     }
   }
@@ -245,7 +246,7 @@ public class Tablet {
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", schemas.get(i).getType()));
+            String.format(NOT_SUPPORT_DATATYPE, schemas.get(i).getType()));
       }
     }
     return valueOccupation;

@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
 /**
@@ -60,10 +61,10 @@ public class QueryContext {
    * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
-  public List<Modification> getPathModifications(ModificationFile modFile, String path) {
+  public List<Modification> getPathModifications(ModificationFile modFile, PartialPath path) {
     Map<String, List<Modification>> fileModifications =
         filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new ConcurrentHashMap<>());
-    return fileModifications.computeIfAbsent(path, k -> {
+    return fileModifications.computeIfAbsent(path.getFullPath(), k -> {
       List<Modification> allModifications = fileModCache.get(modFile.getFilePath());
       if (allModifications == null) {
         allModifications = (List<Modification>) modFile.getModifications();
@@ -72,7 +73,7 @@ public class QueryContext {
       List<Modification> finalPathModifications = new ArrayList<>();
       if (!allModifications.isEmpty()) {
         allModifications.forEach(modification -> {
-          if (modification.getPathString().equals(path)) {
+          if (modification.getPath().matchFullPath(path)) {
             finalPathModifications.add(modification);
           }
         });

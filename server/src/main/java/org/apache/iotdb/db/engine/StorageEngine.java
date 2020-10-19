@@ -447,15 +447,16 @@ public class StorageEngine implements IService {
     // TODO
   }
 
-  /**
-   * delete data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
-   */
-  public void delete(PartialPath deviceId, String measurementId, long startTime, long endTime)
-      throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
+  public void delete(PartialPath path, long startTime, long endTime)
+          throws StorageEngineException {
     try {
-      storageGroupProcessor.delete(deviceId, measurementId, startTime, endTime);
-    } catch (IOException e) {
+      List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
+      for (PartialPath storageGroupPath : sgPaths) {
+        StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
+        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
+        storageGroupProcessor.delete(newPath, startTime, endTime);
+      }
+    } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
     }
   }
@@ -463,12 +464,15 @@ public class StorageEngine implements IService {
   /**
    * delete data of timeseries "{deviceId}.{measurementId}"
    */
-  public void deleteTimeseries(PartialPath deviceId, String measurementId)
+  public void deleteTimeseries(PartialPath path)
       throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     try {
-      storageGroupProcessor.delete(deviceId, measurementId, Long.MIN_VALUE, Long.MAX_VALUE);
-    } catch (IOException e) {
+      for (PartialPath storageGroupPath : IoTDB.metaManager.searchAllRelatedStorageGroups(path)) {
+        StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
+        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
+        storageGroupProcessor.delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE);
+      }
+    } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
     }
   }

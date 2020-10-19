@@ -42,9 +42,9 @@
 
 环境配置项主要用于对IoTDB Server运行的Java环境相关参数进行配置，如JVM相关配置。IoTDB Server启动时，此部分配置会被传给JVM。用户可以通过查看 `iotdb-env.sh`(或`iotdb-env.bat`)文件查看环境配置项内容。详细配置项说明如下：
 
-* LOCAL\_JMX
+* JMX\_LOCAL
 
-|名字|LOCAL\_JMX|
+|名字|JMX\_LOCAL|
 |:---:|:---|
 |描述|JMX监控模式，配置为yes表示仅允许本地监控，设置为no的时候表示允许远程监控|
 |类型|枚举String : “yes”, “no”|

@@ -41,14 +41,15 @@ Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.excepti
 
 ## 查看存储组
 
-在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句来查看所有的存储组，SQL语句如下所示：
+在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句和[SHOW STORAGE GROUP \<PrefixPath>](../Operation%20Manual/SQL%20Reference.md)来查看存储组，SQL语句如下所示：
 
 ```
 IoTDB> show storage group
+IoTDB> show storage group root.ln
 ```
 
 执行结果为：
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/67779101/92545299-6c029400-f282-11ea-80ea-b672a57f4b13.png"></center>
 
 ## 删除存储组
 
@@ -246,7 +247,7 @@ IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
 
 ## 统计节点数
 
-IoTDB支持使用`COUNT NODES <Path> LEVEL=<INTEGER>`来统计当前Metadata树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
+IoTDB支持使用`COUNT NODES <PrefixPath> LEVEL=<INTEGER>`来统计当前Metadata树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
 
 ```
 IoTDB > COUNT NODES root LEVEL=2
@@ -258,6 +259,7 @@ IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 <center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792060-c73a2d00-1200-11ea-8ec4-be7145fd6c8c.png"></center>
 
 > 注意：时间序列的路径只是过滤条件，与level的定义无关。
+其中`PrefixPath`可以包含`*`，但是`*`及其后的所有节点将被忽略，仅在`*`前的前缀路径有效。
 
 ## 删除时间序列
 
