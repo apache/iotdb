@@ -431,14 +431,18 @@ public class LevelTsFileManagement extends TsFileManagement {
 
   @Override
   public void forkCurrentFileList(long timePartition) {
-    forkTsFileList(
+    Pair<Double, Double> seqStatisticsPair = forkTsFileList(
         forkedSequenceTsFileResources,
         sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources),
         maxLevelNum);
-    forkTsFileList(
+    forkedSeqListPointNum = seqStatisticsPair.left;
+    forkedSeqListMeasurementSize = seqStatisticsPair.right;
+    Pair<Double, Double> unSeqStatisticsPair = forkTsFileList(
         forkedUnSequenceTsFileResources,
         unSequenceTsFileResources
             .computeIfAbsent(timePartition, this::newUnSequenceTsFileResources), maxUnseqLevelNum);
+    forkedUnSeqListPointNum = unSeqStatisticsPair.left;
+    forkedUnSeqListMeasurementSize = unSeqStatisticsPair.right;
   }
 
   private Pair<Double, Double> forkTsFileList(
@@ -538,6 +542,7 @@ public class LevelTsFileManagement extends TsFileManagement {
       } else {
         for (int i = 0; i < currMaxLevel - 1; i++) {
           if (currMaxFileNumInEachLevel <= mergeResources.get(i).size()) {
+            //level is numbered from 0
             if (!sequence && i == currMaxLevel - 2) {
               // do not merge current unseq file level to upper level and just merge all of them to seq file
               merge(isForceFullMerge, getTsFileList(true), mergeResources.get(i), Long.MAX_VALUE);
