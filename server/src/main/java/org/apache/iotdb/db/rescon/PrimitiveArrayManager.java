@@ -92,7 +92,7 @@ public class PrimitiveArrayManager {
    * Get primitive data lists according to type
    *
    * @param dataType data type
-   * @return an array, or null if the system module refuse to offer an out of buffer array
+   * @return an array
    */
   public static Object getDataListByType(TSDataType dataType) {
     // check buffered array num
@@ -267,7 +267,7 @@ public class PrimitiveArrayManager {
   }
 
   /**
-   * Return out of buffered array to system module
+   * Bring back out of buffered array
    *
    * @param dataType data type
    * @param size     capacity

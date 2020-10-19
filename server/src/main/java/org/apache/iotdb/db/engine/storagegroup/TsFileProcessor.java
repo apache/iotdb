@@ -250,8 +250,8 @@ public class TsFileProcessor {
 
   private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan) throws WriteProcessException {
     long memTableIncrement = 0L;
-    long unsealedResourceCost = 0L;
-    long chunkMetadataCost = 
+    long chunkMetadataCost = 0L;
+    long unsealedResourceCost = 
         tsFileResource.estimateRamIncrement(insertRowPlan.getDeviceId().getFullPath());
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
       // skip failed Measurements
@@ -288,9 +288,9 @@ public class TsFileProcessor {
       return;
     }
     long memTableIncrement = 0L;
-    long unsealedResourceCost = 0L;
     long chunkMetadataCost = 0L;
-    unsealedResourceCost = tsFileResource.estimateRamIncrement(insertTabletPlan.getDeviceId().getFullPath());
+    long unsealedResourceCost = 
+        tsFileResource.estimateRamIncrement(insertTabletPlan.getDeviceId().getFullPath());
     for (int i = 0; i < insertTabletPlan.getDataTypes().length; i++) {
       // skip failed Measurements
       if (insertTabletPlan.getDataTypes()[i] == null) {

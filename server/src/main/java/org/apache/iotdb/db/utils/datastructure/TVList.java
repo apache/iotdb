@@ -24,22 +24,16 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
-import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public abstract class TVList {
-
-  private static final Logger logger = LoggerFactory.getLogger(TVList.class);
 
   private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
 
@@ -260,19 +254,7 @@ public abstract class TVList {
   }
 
   protected Object getDataListByType(TSDataType dataType) {
-    Object newList = PrimitiveArrayManager.getDataListByType(dataType);
-    while (newList == null) {
-      try {
-        TimeUnit.MILLISECONDS.sleep(100);
-        newList = PrimitiveArrayManager.getDataListByType(dataType);
-        logger.debug("Still waiting for memory releasing... sg mem cost {}.",
-            SystemInfo.getInstance().getTotalSgMemCost());
-      } catch (InterruptedException e) {
-        logger.error("Interrupted...", e);
-        Thread.currentThread().interrupt();
-      }
-    }
-    return newList;
+    return PrimitiveArrayManager.getDataListByType(dataType);
   }
 
   public boolean checkIfDataListIsEnough(int lengthToBeAdded) {

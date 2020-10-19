@@ -168,10 +168,6 @@ public class SystemInfo {
     return rejected;
   }
 
-  public long getTotalSgMemCost() {
-    return totalSgMemCost;
-  }
-
   public long getTotalMemCost() {
     return totalSgMemCost;
   }
