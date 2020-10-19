@@ -392,10 +392,7 @@ public class SeriesReader {
       }
     }
 
-    if (firstPageReader != null && ((!unSeqPageReaders.isEmpty() && orderUtils
-        .isOverlapped(firstPageReader.getStatistics(), unSeqPageReaders.peek().getStatistics()))
-        || (!seqPageReaders.isEmpty() && orderUtils
-        .isOverlapped(firstPageReader.getStatistics(), seqPageReaders.get(0).getStatistics())))) {
+    if (firstPageOverlapped()) {
       /*
        * next page is overlapped, read overlapped data and cache it
        */
@@ -413,11 +410,7 @@ public class SeriesReader {
 
       initFirstPageReader();
 
-      if ((!seqPageReaders.isEmpty() && orderUtils
-          .isOverlapped(firstPageReader.getStatistics(), seqPageReaders.get(0).getStatistics()))
-          || (!unSeqPageReaders.isEmpty() && orderUtils
-          .isOverlapped(firstPageReader.getStatistics(),
-              unSeqPageReaders.peek().getStatistics()))) {
+      if (firstPageOverlapped()) {
         /*
          * next page is overlapped, read overlapped data and cache it
          */
@@ -431,6 +424,13 @@ public class SeriesReader {
       }
     }
     return firstPageReader != null;
+  }
+
+  private boolean firstPageOverlapped() {
+    return firstPageReader != null && (!seqPageReaders.isEmpty() && orderUtils
+        .isOverlapped(firstPageReader.getStatistics(), seqPageReaders.get(0).getStatistics())) || (
+        !unSeqPageReaders.isEmpty() && orderUtils.isOverlapped(firstPageReader.getStatistics(),
+            unSeqPageReaders.peek().getStatistics()));
   }
 
   private void unpackAllOverlappedChunkMetadataToCachedPageReaders(long endpointTime, boolean init)
@@ -697,7 +697,7 @@ public class SeriesReader {
         && orderUtils.isOverlapped(endpointTime, unSeqPageReaders.peek().data.getStatistics())) {
       putPageReaderToMergeReader(unSeqPageReaders.poll());
     }
-    if (firstPageReader != null && !firstPageReader.isSeq &&
+    if (firstPageReader != null && !firstPageReader.isSeq() &&
         orderUtils.isOverlapped(endpointTime, firstPageReader.getStatistics())) {
       putPageReaderToMergeReader(firstPageReader);
       firstPageReader = null;
@@ -978,10 +978,7 @@ public class SeriesReader {
     @Override
     public boolean isTakeSeqAsFirst(Statistics<? extends Object> seqStatistics,
         Statistics<? extends Object> unseqStatistics) {
-      if (seqStatistics.getEndTime() > unseqStatistics.getEndTime()) {
-        return true;
-      }
-      return false;
+      return seqStatistics.getEndTime() > unseqStatistics.getEndTime();
     }
 
     @Override
@@ -1058,10 +1055,7 @@ public class SeriesReader {
     @Override
     public boolean isTakeSeqAsFirst(Statistics<? extends Object> seqStatistics,
         Statistics<? extends Object> unseqStatistics) {
-      if (seqStatistics.getStartTime() < unseqStatistics.getStartTime()) {
-        return true;
-      }
-      return false;
+      return seqStatistics.getStartTime() < unseqStatistics.getStartTime();
     }
 
     @Override
