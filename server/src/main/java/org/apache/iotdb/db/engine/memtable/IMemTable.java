@@ -88,10 +88,10 @@ public interface IMemTable {
 
   /**
    * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries
-   * deviceId.measurementId. Only called for non-flushing MemTable.
+   * path. Only called for non-flushing MemTable.
    *
-   * @param deviceId the deviceId of the timeseries to be deleted.
-   * @param measurementId the measurementId of the timeseries to be deleted.
+   * @param path the PartialPath the timeseries to be deleted.
+   * @param devicePath the device path of the timeseries to be deleted.
    * @param startTimestamp the lower-bound of deletion time.
    * @param endTimestamp the upper-bound of deletion time
    */
