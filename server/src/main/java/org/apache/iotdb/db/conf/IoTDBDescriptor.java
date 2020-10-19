@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -205,6 +206,9 @@ public class IoTDBDescriptor {
       conf.setMetaDataCacheEnable(
           Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
               Boolean.toString(conf.isMetaDataCacheEnable()))));
+
+      conf.setEnableLastCache(Boolean.parseBoolean(properties.getProperty("enable_last_cache",
+              Boolean.toString(conf.isLastCacheEnabled()))));
 
       initMemoryAllocate(properties);
 
@@ -540,6 +544,10 @@ public class IoTDBDescriptor {
         .parseLong(properties.getProperty("force_wal_period_in_ms",
             Long.toString(conf.getForceWalPeriodInMs()))));
 
+    conf.setEnableDiscardOutOfOrderData(Boolean.parseBoolean(
+        properties.getProperty("enable_discard_out_of_order_data",
+        Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
+
   }
 
   private void loadAutoCreateSchemaProps(Properties properties) {
@@ -747,6 +755,28 @@ public class IoTDBDescriptor {
 
     }
 
+  }
+
+  /**
+   * Get default encode algorithm by data type
+   * @param dataType
+   * @return
+   */
+  public TSEncoding getDefualtEncodingByType(TSDataType dataType) {
+    switch (dataType) {
+      case BOOLEAN:
+        return conf.getDefaultBooleanEncoding();
+      case INT32:
+        return conf.getDefaultInt32Encoding();
+      case INT64:
+        return conf.getDefaultInt64Encoding();
+      case FLOAT:
+        return conf.getDefaultFloatEncoding();
+      case DOUBLE:
+        return conf.getDefaultDoubleEncoding();
+      default:
+        return conf.getDefaultTextEncoding();
+    }
   }
 
   private static class IoTDBDescriptorHolder {

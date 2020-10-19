@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -117,12 +118,14 @@ public class LogReplayer {
     tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
   }
 
-  private void replayDelete(DeletePlan deletePlan) throws IOException {
+  private void replayDelete(DeletePlan deletePlan) throws IOException, MetadataException {
     List<PartialPath> paths = deletePlan.getPaths();
     for (PartialPath path : paths) {
-      recoverMemTable
-          .delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteStartTime(),
-              deletePlan.getDeleteEndTime());
+      for (PartialPath device : IoTDB.metaManager.getDevices(path.getDevicePath())) {
+        recoverMemTable
+            .delete(path, device, deletePlan.getDeleteStartTime(),
+                deletePlan.getDeleteEndTime());
+      }
       modFile
           .write(
               new Deletion(path, versionController.nextVersion(), deletePlan.getDeleteStartTime(),
@@ -162,21 +165,14 @@ public class LogReplayer {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
+    //set measurementMNodes, WAL already serializes the real data type, so no need to infer type
+    plan.setMeasurementMNodes(mNodes);
+    //mark failed plan manually
+    checkDataTypeAndMarkFailed(mNodes, plan);
     if (plan instanceof InsertRowPlan) {
-      InsertRowPlan tPlan = (InsertRowPlan) plan;
-      //only infer type when users pass a String value
-      //WAL already serializes the real data type, so no need to infer type
-      tPlan.setMeasurementMNodes(mNodes);
-      ((InsertRowPlan) plan).setNeedInferType(false);
-      tPlan.transferType();
-      //mark failed plan manually 
-      checkDataTypeAndMarkFailed(mNodes, tPlan);
-      recoverMemTable.insert(tPlan);
+      recoverMemTable.insert((InsertRowPlan) plan);
     } else {
-      InsertTabletPlan tPlan = (InsertTabletPlan) plan;
-      tPlan.setMeasurementMNodes(mNodes);
-      checkDataTypeAndMarkFailed(mNodes, tPlan);
-      recoverMemTable.insertTablet(tPlan, 0, tPlan.getRowCount());
+      recoverMemTable.insertTablet((InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
     }
   }
 

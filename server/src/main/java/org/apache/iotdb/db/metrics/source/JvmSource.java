@@ -26,7 +26,7 @@ import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 
 public class JvmSource implements Source {
 
-  public String sourceName = "jvm";
+  public static final String SOURCE_NAME = "jvm";
   public MetricRegistry metricRegistry;
 
   public JvmSource(MetricRegistry metricRegistry) {
@@ -34,15 +34,17 @@ public class JvmSource implements Source {
   }
 
   public void registerInfo() {
-    metricRegistry.register(MetricRegistry.name(sourceName, "gc"), new GarbageCollectorMetricSet());
-    metricRegistry.register(MetricRegistry.name(sourceName, "memory"), new MemoryUsageGaugeSet());
-    metricRegistry.register(MetricRegistry.name(sourceName, "buffer-pool"),
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "gc"), new GarbageCollectorMetricSet());
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "memory"), new MemoryUsageGaugeSet());
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "buffer-pool"),
         new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()));
   }
 
   @Override
   public String sourceName() {
-    return this.sourceName;
+    return JvmSource.SOURCE_NAME;
   }
+
+
 
 }

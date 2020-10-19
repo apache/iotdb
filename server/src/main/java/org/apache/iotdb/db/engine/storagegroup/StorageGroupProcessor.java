@@ -125,6 +125,7 @@ import org.slf4j.LoggerFactory;
 public class StorageGroupProcessor {
 
   private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
+  private static final String FAIL_TO_UPGRADE_FOLDER = "Failed to move {} to upgrade folder";
 
   /**
    * All newly generated chunks after merge have version number 0, so we set merged Modification
@@ -154,11 +155,6 @@ public class StorageGroupProcessor {
    */
   private final Object closeStorageGroupCondition = new Object();
   /**
-   * hotCompactionMergeWorking is used to wait for last hot compaction to be done.
-   */
-  private volatile boolean hotCompactionMergeWorking = false;
-
-  /**
    * avoid some tsfileResource is changed (e.g., from unsealed to sealed) when a query is executed.
    */
   private final ReadWriteLock closeQueryLock = new ReentrantReadWriteLock();
@@ -170,7 +166,10 @@ public class StorageGroupProcessor {
    * time partition id in the storage group -> tsFileProcessor for this time partition
    */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
-
+  /**
+   * hotCompactionMergeWorking is used to wait for last hot compaction to be done.
+   */
+  private volatile boolean hotCompactionMergeWorking = false;
   // upgrading sequence TsFile resource list
   private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
 
@@ -478,19 +477,19 @@ public class StorageGroupProcessor {
         // move .tsfile to upgrade folder
         for (File file : oldTsfileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error("Failed to move {} to upgrade folder", file);
+            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
           }
         }
         // move .resource to upgrade folder
         for (File file : oldResourceFileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error("Failed to move {} to upgrade folder", file);
+            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
           }
         }
         // move .mods to upgrade folder
         for (File file : oldModificationFileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error("Failed to move {} to upgrade folder", file);
+            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
           }
         }
 
@@ -626,14 +625,22 @@ public class StorageGroupProcessor {
       // init map
       long timePartitionId = StorageEngine.getTimePartition(insertRowPlan.getTime());
 
-      latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
       partitionLatestFlushedTimeForEachDevice
           .computeIfAbsent(timePartitionId, id -> new HashMap<>());
 
-      // insert to sequence or unSequence file
-      insertToTsFileProcessor(insertRowPlan,
+      boolean isSequence =
           insertRowPlan.getTime() > partitionLatestFlushedTimeForEachDevice.get(timePartitionId)
-              .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE));
+              .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+
+      //is unsequence and user set config to discard out of order data
+      if (!isSequence && IoTDBDescriptor.getInstance().getConfig()
+          .isEnableDiscardOutOfOrderData()) {
+        return;
+      }
+
+      latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
+      // insert to sequence or unSequence file
+      insertToTsFileProcessor(insertRowPlan, isSequence);
 
     } finally {
       writeUnlock();
@@ -690,9 +697,12 @@ public class StorageGroupProcessor {
         // start next partition
         if (curTimePartition != beforeTimePartition) {
           // insert last time partition
-          noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
-              results,
-              beforeTimePartition) && noFailure;
+          if (isSequence || !IoTDBDescriptor.getInstance().getConfig()
+              .isEnableDiscardOutOfOrderData()) {
+            noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
+                results,
+                beforeTimePartition) && noFailure;
+          }
           // re initialize
           before = loc;
           beforeTimePartition = curTimePartition;
@@ -706,8 +716,11 @@ public class StorageGroupProcessor {
           // judge if we should insert sequence
           if (!isSequence && time > lastFlushTime) {
             // insert into unsequence and then start sequence
-            noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, false, results,
-                beforeTimePartition) && noFailure;
+            if (!IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
+              noFailure =
+                  insertTabletToTsFileProcessor(insertTabletPlan, before, loc, false, results,
+                      beforeTimePartition) && noFailure;
+            }
             before = loc;
             isSequence = true;
           }
@@ -716,7 +729,8 @@ public class StorageGroupProcessor {
       }
 
       // do not forget last part
-      if (before < loc) {
+      if (before < loc && (isSequence || !IoTDBDescriptor.getInstance().getConfig()
+          .isEnableDiscardOutOfOrderData())) {
         noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
             results, beforeTimePartition) && noFailure;
       }
@@ -744,11 +758,11 @@ public class StorageGroupProcessor {
    * inserted are in the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param sequence whether is sequence
-   * @param start start index of rows to be inserted in insertTabletPlan
-   * @param end end index of rows to be inserted in insertTabletPlan
-   * @param results result array
-   * @param timePartitionId time partition id
+   * @param sequence         whether is sequence
+   * @param start            start index of rows to be inserted in insertTabletPlan
+   * @param end              end index of rows to be inserted in insertTabletPlan
+   * @param results          result array
+   * @param timePartitionId  time partition id
    * @return false if any failure occurs when inserting the tablet, true otherwise
    */
   private boolean insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
@@ -791,6 +805,9 @@ public class StorageGroupProcessor {
   }
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+      return;
+    }
     MeasurementMNode[] mNodes = plan.getMeasurementMNodes();
     for (int i = 0; i < mNodes.length; i++) {
       if (plan.getColumns()[i] == null) {
@@ -843,6 +860,9 @@ public class StorageGroupProcessor {
   }
 
   private void tryToUpdateInsertLastCache(InsertRowPlan plan, Long latestFlushedTime) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+      return;
+    }
     MeasurementMNode[] mNodes = plan.getMeasurementMNodes();
     for (int i = 0; i < mNodes.length; i++) {
       if (plan.getValues()[i] == null) {
@@ -888,9 +908,9 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId time partition range
+   * @param timeRangeId            time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param sequence whether is sequence or not
+   * @param sequence               whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -1340,18 +1360,15 @@ public class StorageGroupProcessor {
     return true;
   }
 
-
   /**
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId the deviceId of the timeseries to be deleted.
-   * @param measurementId the measurementId of the timeseries to be deleted.
+   * @param path the timeseries path of the to be deleted.
    * @param startTime the startTime of delete range.
    * @param endTime the endTime of delete range.
    */
-  public void delete(PartialPath deviceId, String measurementId, long startTime, long endTime)
-      throws IOException {
+  public void delete(PartialPath path, long startTime, long endTime) throws IOException {
     // TODO: how to avoid partial deletion?
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
@@ -1363,33 +1380,35 @@ public class StorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Long lastUpdateTime = null;
-      for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
-        Long curTime = latestTimeMap.get(deviceId.getFullPath());
-        if (curTime != null && (lastUpdateTime == null || lastUpdateTime < curTime)) {
-          lastUpdateTime = curTime;
+      Set<PartialPath> devicePaths = IoTDB.metaManager.getDevices(path.getDevicePath());
+      for (PartialPath device : devicePaths) {
+        Long lastUpdateTime = null;
+        for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
+          Long curTime = latestTimeMap.get(device.getFullPath());
+          if (curTime != null && (lastUpdateTime == null || lastUpdateTime < curTime)) {
+            lastUpdateTime = curTime;
+          }
         }
-      }
-
-      // There is no tsfile data, the delete operation is invalid
-      if (lastUpdateTime == null) {
-        logger.debug("No device {} in SG {}, deletion invalid", deviceId, storageGroupName);
-        return;
+        // There is no tsfile data, the delete operation is invalid
+        if (lastUpdateTime == null) {
+          logger.debug("No device {} in SG {}, deletion invalid", device, storageGroupName);
+          return;
+        }
+        // delete Last cache record if necessary
+        tryToDeleteLastCache(device, path, startTime, endTime);
       }
 
       // write log to impacted working TsFileProcessors
-      logDeletion(startTime, endTime, deviceId, measurementId);
-      // delete Last cache record if necessary
-      tryToDeleteLastCache(deviceId, measurementId, startTime, endTime);
-      Deletion deletion = new Deletion(deviceId.concatNode(measurementId),
-          MERGE_MOD_START_VERSION_NUM, startTime, endTime);
+      logDeletion(startTime, endTime, path);
+
+      Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
       if (mergingModification != null) {
         mergingModification.write(deletion);
         updatedModFiles.add(mergingModification);
       }
 
-      deleteDataInFiles(tsFileManagement.getTsFileList(true), deletion, updatedModFiles);
-      deleteDataInFiles(tsFileManagement.getTsFileList(false), deletion, updatedModFiles);
+      deleteDataInFiles(tsFileManagement.getTsFileList(true), deletion, devicePaths, updatedModFiles);
+      deleteDataInFiles(tsFileManagement.getTsFileList(false), deletion, devicePaths, updatedModFiles);
 
     } catch (Exception e) {
       // roll back
@@ -1404,13 +1423,12 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void logDeletion(long startTime, long endTime, PartialPath deviceId, String measurementId)
+  private void logDeletion(long startTime, long endTime, PartialPath path)
       throws IOException {
     long timePartitionStartId = StorageEngine.getTimePartition(startTime);
     long timePartitionEndId = StorageEngine.getTimePartition(endTime);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      DeletePlan deletionPlan = new DeletePlan(startTime, endTime,
-          deviceId.concatNode(measurementId));
+      DeletePlan deletionPlan = new DeletePlan(startTime, endTime, path);
       for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
         if (timePartitionStartId <= entry.getKey() && entry.getKey() <= timePartitionEndId) {
           entry.getValue().getLogNode().write(deletionPlan);
@@ -1425,15 +1443,23 @@ public class StorageGroupProcessor {
     }
   }
 
+  private boolean canSkipDelete(TsFileResource tsFileResource, Set<PartialPath> devicePaths,
+       long deleteStart, long deleteEnd) {
+    for (PartialPath device : devicePaths) {
+      if (tsFileResource.containsDevice(device.getFullPath()) &&
+              (deleteEnd >= tsFileResource.getStartTime(device.getFullPath()) &&
+               deleteStart <= tsFileResource.getOrDefaultEndTime(device.getFullPath(), Long.MAX_VALUE))) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
-      List<ModificationFile> updatedModFiles)
-      throws IOException {
-    String deviceId = deletion.getDevice();
+      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles)
+          throws IOException, MetadataException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      if (!tsFileResource.containsDevice(deviceId) ||
-          deletion.getEndTime() < tsFileResource.getStartTime(deviceId) ||
-          deletion.getStartTime() > tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE)) {
+      if (canSkipDelete(tsFileResource, devicePaths, deletion.getStartTime(), deletion.getEndTime())) {
         continue;
       }
 
@@ -1448,7 +1474,7 @@ public class StorageGroupProcessor {
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
         TsFileProcessor tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
-        tsfileProcessor.deleteDataInMemory(deletion);
+        tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
       }
 
       // add a record in case of rollback
@@ -1456,27 +1482,25 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void tryToDeleteLastCache(PartialPath deviceId, String measurementId, long startTime,
-      long endTime) throws WriteProcessException {
-    MNode node = null;
+  private void tryToDeleteLastCache(PartialPath deviceId, PartialPath originalPath,
+      long startTime, long endTime) throws WriteProcessException {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+      return;
+    }
     try {
-      MManager manager = MManager.getInstance();
-      node = manager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      MNode node = IoTDB.metaManager.getDeviceNode(deviceId);
 
-      MNode measurementNode = manager.getChild(node, measurementId);
-      if (measurementNode != null) {
-        TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
-        if (lastPair != null && startTime <= lastPair.getTimestamp()
-            && lastPair.getTimestamp() <= endTime) {
-          ((MeasurementMNode) measurementNode).resetCache();
+      for (MNode measurementNode : node.getChildren().values()) {
+        if (measurementNode != null && originalPath.matchFullPath(measurementNode.getPartialPath())) {
+          TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
+          if (lastPair != null && startTime <= lastPair.getTimestamp()
+              && lastPair.getTimestamp() <= endTime) {
+            ((MeasurementMNode) measurementNode).resetCache();
+          }
         }
       }
     } catch (MetadataException e) {
       throw new WriteProcessException(e);
-    } finally {
-      if (node != null) {
-        node.readUnlock();
-      }
     }
   }
 
@@ -2151,9 +2175,9 @@ public class StorageGroupProcessor {
    * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
    * version number is the version number in the tsfile with a larger timestamp.
    *
-   * @param tsfileName origin tsfile name
+   * @param tsfileName  origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
-   * 1]
+   *                    1]
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
@@ -2217,8 +2241,8 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type load type
-   * @param tsFileResource tsfile resource to be loaded
+   * @param type            load type
+   * @param tsFileResource  tsfile resource to be loaded
    * @param filePartitionId the partition id of the new file
    * @return load the file successfully
    * @UsedBy sync module, load external tsfile module.
@@ -2472,34 +2496,6 @@ public class StorageGroupProcessor {
     return partitionFileVersions.containsAll(tsFileResource.getHistoricalVersions());
   }
 
-  private enum LoadTsFileType {
-    LOAD_SEQUENCE, LOAD_UNSEQUENCE
-  }
-
-  @FunctionalInterface
-  public interface CloseTsFileCallBack {
-
-    void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
-  }
-
-  @FunctionalInterface
-  public interface UpdateEndTimeCallBack {
-
-    boolean call(TsFileProcessor caller);
-  }
-
-  @FunctionalInterface
-  public interface UpgradeTsFileResourceCallBack {
-
-    void call(TsFileResource caller);
-  }
-
-  @FunctionalInterface
-  public interface CloseHotCompactionMergeCallBack {
-
-    void call();
-  }
-
   /**
    * remove all partitions that satisfy a filter.
    */
@@ -2552,6 +2548,34 @@ public class StorageGroupProcessor {
 
   public boolean isHotCompactionMergeWorking() {
     return hotCompactionMergeWorking;
+  }
+
+  private enum LoadTsFileType {
+    LOAD_SEQUENCE, LOAD_UNSEQUENCE
+  }
+
+  @FunctionalInterface
+  public interface CloseTsFileCallBack {
+
+    void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
+  }
+
+  @FunctionalInterface
+  public interface UpdateEndTimeCallBack {
+
+    boolean call(TsFileProcessor caller);
+  }
+
+  @FunctionalInterface
+  public interface UpgradeTsFileResourceCallBack {
+
+    void call(TsFileResource caller);
+  }
+
+  @FunctionalInterface
+  public interface CloseHotCompactionMergeCallBack {
+
+    void call();
   }
 
   @FunctionalInterface
