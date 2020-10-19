@@ -174,20 +174,7 @@ public class TsFileProcessor {
       workMemTable = new PrimitiveMemTable();
     }
     if (enableMemControl) {
-      long startTime = System.currentTimeMillis();
-      while (SystemInfo.getInstance().isRejected()) {
-        try {
-          TimeUnit.MILLISECONDS.sleep(100);
-          logger.debug("System rejected, waiting for memory releasing... "
-              + "Current sg cost {}", SystemInfo.getInstance().getTotalSgMemCost());
-          if (System.currentTimeMillis() - startTime > 6000) {
-            throw new WriteProcessException("System rejected over 6000ms");
-          }
-        } catch (InterruptedException e) {
-          logger.error("Failed when waiting for getting memory for insertion ", e);
-          Thread.currentThread().interrupt();
-        }
-      }
+      blockInsertionIfReject();
       checkMemCostAndAddToTspInfo(insertRowPlan);
     }
     if (workMemTable == null) {
@@ -228,20 +215,7 @@ public class TsFileProcessor {
       workMemTable = new PrimitiveMemTable();
     }
     if (enableMemControl) {
-      long startTime = System.currentTimeMillis();
-      while (SystemInfo.getInstance().isRejected()) {
-        try {
-          TimeUnit.MILLISECONDS.sleep(100);
-          logger.debug("System rejected, waiting for memory releasing... "
-              + "Current sg cost {}", SystemInfo.getInstance().getTotalSgMemCost());
-          if (System.currentTimeMillis() - startTime > 12000) {
-            throw new WriteProcessException("System rejected over 12000ms");
-          }
-        } catch (InterruptedException e) {
-          logger.error("Failed when waiting for getting memory for insertion ", e);
-          Thread.currentThread().interrupt();
-        }
-      }
+      blockInsertionIfReject();
       checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
     }
 
@@ -306,18 +280,7 @@ public class TsFileProcessor {
     tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
     tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
     SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-    long startTime = System.currentTimeMillis();
-    while (SystemInfo.getInstance().isRejected()) {
-      try {
-        TimeUnit.MILLISECONDS.sleep(100);
-        if (System.currentTimeMillis() - startTime > 12000) {
-          throw new WriteProcessException("System rejected over 12000ms");
-        }
-      } catch (InterruptedException e) {
-        logger.error("Failed when waiting for getting memory for insertion ", e);
-        Thread.currentThread().interrupt();
-      }
-    }
+    blockInsertionIfReject();
     workMemTable.addRamCost(memTableIncrement);
   }
 
@@ -363,19 +326,23 @@ public class TsFileProcessor {
     tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
     tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
     SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+    blockInsertionIfReject();
+    workMemTable.addRamCost(memTableIncrement);
+  }
+
+  private void blockInsertionIfReject() throws WriteProcessException {
     long startTime = System.currentTimeMillis();
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(100);
-        if (System.currentTimeMillis() - startTime > 12000) {
-          throw new WriteProcessException("System rejected over 12000ms");
+        if (System.currentTimeMillis() - startTime > 6000) {
+          throw new WriteProcessException("System rejected over 6000ms");
         }
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
         Thread.currentThread().interrupt();
       }
     }
-    workMemTable.addRamCost(memTableIncrement);
   }
 
   /**
