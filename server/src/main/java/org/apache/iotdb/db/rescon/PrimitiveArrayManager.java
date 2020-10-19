@@ -54,7 +54,7 @@ public class PrimitiveArrayManager {
   private static final Map<TSDataType, Double> bufferedArraysNumRatio = new EnumMap<>(
       TSDataType.class);
 
-  private final static Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -147,7 +147,7 @@ public class PrimitiveArrayManager {
    * Get primitive data lists according to data type and size
    *
    * @param dataType data type
-   * @param size needed capacity
+   * @param size     needed capacity
    * @return an array of primitive data arrays
    */
   public static synchronized Object getDataListsByType(TSDataType dataType, int size) {
@@ -255,7 +255,7 @@ public class PrimitiveArrayManager {
   /**
    * Bring back a buffered array
    *
-   * @param dataType data type
+   * @param dataType  data type
    * @param dataArray data array
    */
   private static void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
@@ -270,7 +270,7 @@ public class PrimitiveArrayManager {
    * Return out of buffered array to system module
    *
    * @param dataType data type
-   * @param size capacity
+   * @param size     capacity
    */
   private static void bringBackOOBArray(TSDataType dataType, int size) {
     outOfBufferArraysSize.addAndGet(-size * dataType.getDataTypeSize());
@@ -303,7 +303,7 @@ public class PrimitiveArrayManager {
     for (int num : bufferedArraysNumMap.values()) {
       total += num;
     }
-    return total != 0 && bufferedArraysNumMap.getOrDefault(dataType, 0) / total >
+    return total != 0 && (double) bufferedArraysNumMap.getOrDefault(dataType, 0) / total >
         bufferedArraysNumRatio.getOrDefault(dataType, 0.0);
   }
 

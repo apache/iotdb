@@ -736,9 +736,9 @@ public class IoTDBDescriptor {
       }
     }
 
-    logger.info("allocateMemoryForRead = " + conf.getAllocateMemoryForRead());
-    logger.info("allocateMemoryForWrite = " + conf.getAllocateMemoryForWrite());
-    logger.info("allocateMemoryForMTree = " + conf.getAllocateMemoryForMTree());
+    logger.info("allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
+    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
+    logger.info("allocateMemoryForMTree = {}", conf.getAllocateMemoryForMTree());
 
     if (!conf.isMetaDataCacheEnable()) {
       return;

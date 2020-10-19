@@ -124,7 +124,7 @@ public class MManager {
   private long maxSeriesNumberAmongStorageGroup;
   private long totalSeriesNumber = 0L;
   private boolean initialized;
-  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();;
+  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private File logFile;
   private ScheduledExecutorService timedCreateMTreeSnapshotThread;
@@ -148,7 +148,6 @@ public class MManager {
   }
 
   protected MManager() {
-    config = IoTDBDescriptor.getInstance().getConfig();
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
     mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
     String schemaDir = config.getSchemaDir();
@@ -455,8 +454,6 @@ public class MManager {
    * @param dataType   the dateType {@code DataType} of the timeseries
    * @param encoding   the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
-   * @return whether the measurement occurs for the first time in this storage group (if true, the
-   * measurement should be registered to the StorageEngine too)
    */
   public void createTimeseries(PartialPath path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) throws MetadataException {
@@ -1023,7 +1020,7 @@ public class MManager {
    */
   public MNode getDeviceNodeWithAutoCreate(
       PartialPath path, boolean autoCreateSchema, int sgLevel) throws MetadataException {
-    MNode node = null;
+    MNode node;
     boolean shouldSetStorageGroup;
     try {
       node = mNodeCache.get(path);

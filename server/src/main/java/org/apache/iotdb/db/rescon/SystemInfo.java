@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -50,17 +49,16 @@ public class SystemInfo {
    * Report current mem cost of storage group to system.
    *
    * @param storageGroupInfo storage group
-   * @param delta mem cost
    */
   public synchronized void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo) {
-    long delta = storageGroupInfo.getSgMemCost() - 
+    long delta = storageGroupInfo.getSgMemCost() -
         reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L);
     totalSgMemCost += delta;
-    logger.info("Report Storage Group Status to system. "
-        + "Current sg mem cost is {}, delta is {}.", totalSgMemCost, delta);
+    logger.debug("Report Storage Group Status to system. "
+          + "Current sg mem cost is {}, delta is {}.", totalSgMemCost, delta);
     reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
     if (getTotalMemCost() >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
-      logger.info("The total storage group mem costs are too large, call for flushing. "
+      logger.debug("The total storage group mem costs are too large, call for flushing. "
           + "Current sg cost is {}", totalSgMemCost);
       flush();
     }
@@ -80,27 +78,30 @@ public class SystemInfo {
       this.totalSgMemCost -= reportedSgMemCostMap.get(storageGroupInfo)
           - storageGroupInfo.getSgMemCost();
       if (getTotalMemCost() > config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
-        logger.info("Some sg memery released, call flush "
-            + "Current Sg cost is {}", totalSgMemCost);
+        logger.info("Some sg memery released, call flush.");
+        logCost();
         forceFlush();
       }
       if (getTotalMemCost() < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
-        logger.debug("Some sg memery released, set system to normal status. "
-            + "Current Sg cost is {}", totalSgMemCost);
+        logger.debug("Some sg memery released, set system to normal status.");
+        logCost();
         rejected = false;
-      }
-      else {
-        logger.warn("Some sg memery released, but system is still in reject status. "
-            + "Current Sg cost is {}", totalSgMemCost);
+      } else {
+        logger.warn("Some sg memery released, but system is still in reject status.");
+        logCost();
         rejected = true;
       }
       reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
     }
   }
 
+  private void logCost() {
+    logger.info("Current Sg cost is {}", totalSgMemCost);
+  }
+
   /**
-   * Flush the tsfileProcessor in SG with the max mem cost. If the queue size of flushing > threshold,
-   * it's identified as flushing is in progress.
+   * Flush the tsfileProcessor in SG with the max mem cost. If the queue size of flushing >
+   * threshold, it's identified as flushing is in progress.
    */
   public void flush() {
 
@@ -115,7 +116,7 @@ public class SystemInfo {
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
     for (TsFileProcessor processor : processors) {
       if (processor != null) {
-        logger.info("Start flushing TSP in SG. Current buffed array size {}, OOB size {}",
+        logger.debug("Start flushing TSP in SG {}. Current buffed array size {}, OOB size {}",
             processor.getStorageGroupName(),
             PrimitiveArrayManager.getBufferedArraysSize(),
             PrimitiveArrayManager.getOOBSize());
@@ -131,14 +132,13 @@ public class SystemInfo {
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
     for (TsFileProcessor processor : processors) {
       if (processor != null) {
-        logger.info("Start flushing TSP in SG. Current buffed array size {}, OOB size {}",
+        logger.debug("Start flushing TSP in SG {}. Current buffed array size {}, OOB size {}",
             processor.getStorageGroupName(),
             PrimitiveArrayManager.getBufferedArraysSize(),
             PrimitiveArrayManager.getOOBSize());
         if (processor.shouldClose()) {
           processor.startClose();
-        }
-        else {
+        } else {
           processor.asyncFlush();
         }
       }
