@@ -38,6 +38,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -762,6 +763,28 @@ public class IoTDBDescriptor {
           Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
     }
 
+  }
+
+  /**
+   * Get default encode algorithm by data type
+   * @param dataType
+   * @return
+   */
+  public TSEncoding getDefualtEncodingByType(TSDataType dataType) {
+    switch (dataType) {
+      case BOOLEAN:
+        return conf.getDefaultBooleanEncoding();
+      case INT32:
+        return conf.getDefaultInt32Encoding();
+      case INT64:
+        return conf.getDefaultInt64Encoding();
+      case FLOAT:
+        return conf.getDefaultFloatEncoding();
+      case DOUBLE:
+        return conf.getDefaultDoubleEncoding();
+      default:
+        return conf.getDefaultTextEncoding();
+    }
   }
 
   private static class IoTDBDescriptorHolder {

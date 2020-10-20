@@ -31,14 +31,17 @@ public class Constant {
   public static final String IOTDB_CONNECTION_PASSWORD = "root";
   public static final String[] STORAGE_GROUP = {"root.vehicle", "root.test"};
   public static final String ADDITIONAL_STORAGE_GROUP = "root.addition";
+  public static final String INT32 = "INT32";
+  public static final String PLAIN = "PLAIN";
+  public static final String SNAPPY = "SNAPPY";
   public static final String[][] CREATE_TIMESERIES = {
-      {"root.vehicle.d0.s0", "INT32", "PLAIN", "SNAPPY"},
-      {"root.vehicle.d0.s1", "TEXT", "PLAIN", "SNAPPY"},
-      {"root.vehicle.d1.s2", "FLOAT", "PLAIN", "SNAPPY"},
-      {"root.vehicle.d1.s3", "BOOLEAN", "PLAIN", "SNAPPY"},
-      {"root.test.d0.s0", "INT32", "PLAIN", "SNAPPY"},
-      {"root.test.d0.s1", "TEXT", "PLAIN", "SNAPPY"},
-      {"root.test.d1.s0", "INT32", "PLAIN", "SNAPPY"},
+      {"root.vehicle.d0.s0", INT32, PLAIN, SNAPPY},
+      {"root.vehicle.d0.s1", "TEXT", PLAIN, SNAPPY},
+      {"root.vehicle.d1.s2", "FLOAT", PLAIN, SNAPPY},
+      {"root.vehicle.d1.s3", "BOOLEAN", PLAIN, SNAPPY},
+      {"root.test.d0.s0", INT32, PLAIN, SNAPPY},
+      {"root.test.d0.s1", "TEXT", PLAIN, SNAPPY},
+      {"root.test.d1.s0", INT32, PLAIN, SNAPPY},
   };
   public static final String[] ALL_DATA = {
       "root.vehicle.d0,10,s0,INT32,100",

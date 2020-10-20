@@ -288,7 +288,7 @@ public abstract class BasicUserManager implements IUserManager {
   public boolean isUserUseWaterMark(String username) throws AuthException {
     User user = getUser(username);
     if (user == null) {
-      throw new AuthException(String.format("No such user %s", username));
+      throw new AuthException(String.format(NO_SUCH_USER_ERROR, username));
     }
     return user.isUseWaterMark();
   }
@@ -297,7 +297,7 @@ public abstract class BasicUserManager implements IUserManager {
   public void setUserUseWaterMark(String username, boolean useWaterMark) throws AuthException {
     User user = getUser(username);
     if (user == null) {
-      throw new AuthException(String.format("No such user %s", username));
+      throw new AuthException(String.format(NO_SUCH_USER_ERROR, username));
     }
     boolean oldFlag = user.isUseWaterMark();
     if (oldFlag == useWaterMark) {

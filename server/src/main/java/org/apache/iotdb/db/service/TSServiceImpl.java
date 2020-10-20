@@ -146,11 +146,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 20;
-  private static final int FETCH_SIZE = 10000;
+  private static final int DEFAULT_FETCH_SIZE = 10000;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
+  private static final String SERVER_INTERNAL_ERROR = "{}: server Internal Error: ";
+  private static final String CHECK_METADATA_ERROR = "check metadata error: ";
 
-  private static final int DEFAULT_FETCH_SIZE = 1024;
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
   protected Planner processor;
   protected IPlanExecutor executor;
@@ -416,7 +417,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return RpcUtils.getStatus(result);
       }
     } catch (Exception e) {
-      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils
           .getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     } finally {
@@ -465,7 +466,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               "query statement not allowed: " + statement));
       return false;
     } catch (Exception e) {
-      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       result.add(RpcUtils.getStatus(
           TSStatusCode.INTERNAL_SERVER_ERROR, "server Internal Error: " + e.getMessage()));
     }
@@ -495,16 +496,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.warn(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
     } catch (SQLParserException e) {
-      logger.error("check metadata error: ", e);
+      logger.error(CHECK_METADATA_ERROR, e);
       return RpcUtils.getTSExecuteStatementResp(
-          TSStatusCode.METADATA_ERROR, "Check metadata error: " + e.getMessage());
+          TSStatusCode.METADATA_ERROR, CHECK_METADATA_ERROR + e.getMessage());
     } catch (QueryProcessException e) {
       logger.info(ERROR_PARSING_SQL, e.getMessage());
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR,
               "Meet error in query process: " + e.getMessage()));
     } catch (Exception e) {
-      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
   }
@@ -541,11 +542,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR,
           ERROR_PARSING_SQL + e.getMessage());
     } catch (SQLParserException e) {
-      logger.error("check metadata error: ", e);
+      logger.error(CHECK_METADATA_ERROR, e);
       return RpcUtils.getTSExecuteStatementResp(
-          TSStatusCode.METADATA_ERROR, "Check metadata error: " + e.getMessage());
+          TSStatusCode.METADATA_ERROR, CHECK_METADATA_ERROR + e.getMessage());
     } catch (Exception e) {
-      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
     }
@@ -581,11 +582,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR,
           ERROR_PARSING_SQL + e.getMessage());
     } catch (SQLParserException e) {
-      logger.error("check metadata error: ", e);
+      logger.error(CHECK_METADATA_ERROR, e);
       return RpcUtils.getTSExecuteStatementResp(
-          TSStatusCode.METADATA_ERROR, "Check metadata error: " + e.getMessage());
+          TSStatusCode.METADATA_ERROR, CHECK_METADATA_ERROR + e.getMessage());
     } catch (Exception e) {
-      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
     }
@@ -606,7 +607,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       // In case users forget to set this field in query, use the default value
       if (fetchSize == 0) {
-        fetchSize = FETCH_SIZE;
+        fetchSize = DEFAULT_FETCH_SIZE;
       }
 
       if (plan instanceof ShowTimeSeriesPlan) {
@@ -1072,7 +1073,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       String statement = req.getStatement();
       return executeUpdateStatement(statement, req.getSessionId());
     } catch (Exception e) {
-      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
     }
@@ -1701,7 +1702,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.error("meet error while checking authorization.", e);
       return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
     } catch (Exception e) {
-      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
     return null;
@@ -1717,7 +1718,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.error("meet error while processing non-query. ", e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (Exception e) {
-      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
 
