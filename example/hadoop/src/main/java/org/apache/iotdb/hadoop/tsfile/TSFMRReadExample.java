@@ -43,7 +43,6 @@ public class TSFMRReadExample {
       System.out.println("Please give hdfs url, input path, output path");
       return;
     }
-    String HDFSURL = args[0];
     Path inputPath = new Path(args[1]);
     Path outputPath = new Path(args[2]);
 

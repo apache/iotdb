@@ -86,6 +86,7 @@ public class MTree implements Serializable {
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
   private static final long serialVersionUID = -4200394435237291964L;
   private static final Logger logger = LoggerFactory.getLogger(MTree.class);
+  private static final String NO_CHILDNODE_MSG = " does not have the child node ";
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> count = new ThreadLocal<>();
@@ -173,7 +174,6 @@ public class MTree implements Serializable {
 
   /**
    * combine multiple metadata in string format
-   *
    */
   @TestOnly
   static JsonObject combineMetadataInStrings(String[] metadataStrs) {
@@ -186,7 +186,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < jsonObjects.length; i++) {
       root = combineJsonObjects(root, jsonObjects[i]);
     }
-    
+
     return root;
   }
 
@@ -629,7 +629,27 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all storage group under give path
+   * Get the storage group that given path belonged to or under given path
+   * All related storage groups refer two cases:
+   * 1. Storage groups with a prefix that is identical to path, e.g. given path "root.sg1",
+   *    storage group "root.sg1.sg2" and "root.sg1.sg3" will be added into result list.
+   * 2. Storage group that this path belongs to, e.g. given path "root.sg1.d1", and it is in
+   *    storage group "root.sg1". Then we adds "root.sg1" into result list.
+   *
+   * @return a list contains all storage groups related to given path
+   */
+  List<PartialPath> searchAllRelatedStorageGroups(PartialPath path) throws MetadataException {
+    String[] nodes = path.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+    List<PartialPath> storageGroupPaths = new ArrayList<>();
+    findStorageGroupPaths(root, nodes, 1, "", storageGroupPaths, false);
+    return storageGroupPaths;
+  }
+
+  /**
+   * Get all storage group under given path
    *
    * @return a list contains all storage group names under give path
    */
@@ -639,22 +659,29 @@ public class MTree implements Serializable {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
     List<PartialPath> storageGroupPaths = new ArrayList<>();
-    findStorageGroupPaths(root, nodes, 1, "", storageGroupPaths);
+    findStorageGroupPaths(root, nodes, 1, "", storageGroupPaths, true);
     return storageGroupPaths;
   }
 
   /**
    * Traverse the MTree to match all storage group with prefix path.
+   * When trying to find storage groups via a path, we divide into two cases:
+   * 1. This path is only regarded as a prefix, in other words, this path is part of the result
+   *    storage groups.
+   * 2. This path is a full path and we use this method to find its belonged storage group.
+   * When prefixOnly is set to true, storage group paths in 1 is only added into result,
+   * otherwise, both 1 and 2 are returned.
    *
    * @param node              the current traversing node
    * @param nodes             split the prefix path with '.'
    * @param idx               the current index of array nodes
    * @param parent            current parent path
    * @param storageGroupPaths store all matched storage group names
+   * @param prefixOnly        only return storage groups that start with this prefix path
    */
   private void findStorageGroupPaths(MNode node, String[] nodes, int idx, String parent,
-      List<PartialPath> storageGroupPaths) {
-    if (node instanceof StorageGroupMNode && idx >= nodes.length) {
+      List<PartialPath> storageGroupPaths, boolean prefixOnly) {
+    if (node instanceof StorageGroupMNode && (!prefixOnly || idx >= nodes.length)) {
       storageGroupPaths.add(node.getPartialPath());
       return;
     }
@@ -662,13 +689,14 @@ public class MTree implements Serializable {
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       MNode next = node.getChild(nodeReg);
       if (next != null) {
-        findStorageGroupPaths(next, nodes, idx + 1,
-            parent + node.getName() + PATH_SEPARATOR, storageGroupPaths);
+        findStorageGroupPaths(node.getChild(nodeReg), nodes, idx + 1,
+            parent + node.getName() + PATH_SEPARATOR, storageGroupPaths, prefixOnly);
       }
     } else {
       for (MNode child : node.getChildren().values()) {
         findStorageGroupPaths(
-            child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, storageGroupPaths);
+            child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, storageGroupPaths,
+            prefixOnly);
       }
     }
   }
@@ -811,14 +839,18 @@ public class MTree implements Serializable {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
     MNode node = root;
-    for (int i = 1; i < nodes.length; i++) {
+    int i;
+    for (i = 1; i < nodes.length; i++) {
+      if (nodes[i].equals("*")) {
+        break;
+      }
       if (node.getChild(nodes[i]) != null) {
         node = node.getChild(nodes[i]);
       } else {
-        throw new MetadataException(nodes[i - 1] + " does not have the child node " + nodes[i]);
+        throw new MetadataException(nodes[i - 1] + NO_CHILDNODE_MSG + nodes[i]);
       }
     }
-    return getCountInGivenLevel(node, level - (nodes.length - 1));
+    return getCountInGivenLevel(node, level - (i - 1));
   }
 
   /**
@@ -835,7 +867,7 @@ public class MTree implements Serializable {
           return getCount(next, nodes, idx + 1);
         }
       } else {
-        throw new MetadataException(node.getName() + " does not have the child node " + nodeReg);
+        throw new MetadataException(node.getName() + NO_CHILDNODE_MSG + nodeReg);
       }
     } else {
       int cnt = 0;
@@ -1028,10 +1060,8 @@ public class MTree implements Serializable {
           continue;
         }
         findPath(child, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast, queryContext);
-        if (hasLimit) {
-          if (count.get().intValue() == limit.get().intValue()) {
-            return;
-          }
+        if (hasLimit && count.get().intValue() == limit.get().intValue()) {
+          return;
         }
       }
     }
@@ -1169,7 +1199,7 @@ public class MTree implements Serializable {
           return res;
         }
       } else {
-        throw new MetadataException(nodes[i - 1] + " does not have the child node " + nodes[i]);
+        throw new MetadataException(nodes[i - 1] + NO_CHILDNODE_MSG + nodes[i]);
       }
     }
     findNodes(node, path, res, nodeLevel - (nodes.length - 1), filter);
