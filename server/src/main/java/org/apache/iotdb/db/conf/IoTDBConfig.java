@@ -158,7 +158,10 @@ public class IoTDBConfig {
    */
   private double rejectProportion = 0.8;
 
-  private long storageGroupSizeReportThreshold = 16 * 1024 * 1024;
+  /**
+   * If storage group increased more than this threshold, report to system.
+   */
+  private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
 
   /**
    * Is the write ahead log enable.
