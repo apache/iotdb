@@ -42,7 +42,7 @@ public class DiskChunkLoader implements IChunkLoader {
   @Override
   public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
     TsFileSequenceReader tsFileSequenceReader =
-        FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
+        FileReaderManager.getInstance().get(resource.getTsFilePath(), resource.isClosed());
     return ChunkCache.getInstance().get(chunkMetaData, tsFileSequenceReader);
   }
 

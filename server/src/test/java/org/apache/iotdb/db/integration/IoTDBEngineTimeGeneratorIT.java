@@ -33,13 +33,15 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
@@ -180,10 +182,11 @@ public class IoTDBEngineTimeGeneratorIT {
    * value >= 14 && time > 500
    */
   @Test
-  public void testOneSeriesWithValueAndTimeFilter() throws IOException, StorageEngineException {
+  public void testOneSeriesWithValueAndTimeFilter()
+      throws IOException, StorageEngineException, IllegalPathException {
     //System.out.println("Test >>> root.vehicle.d0.s0 >= 14 && time > 500");
 
-    Path pd0s0 = new Path(TestConstant.d0s0);
+    PartialPath pd0s0 = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(14);
     TimeFilter.TimeGt timeGt = TimeFilter.gt(500);
 
@@ -206,15 +209,16 @@ public class IoTDBEngineTimeGeneratorIT {
    * root.vehicle.d1.s0 >= 5, and d1.s0 has no data
    */
   @Test
-  public void testEmptySeriesWithValueFilter() throws IOException, StorageEngineException {
+  public void testEmptySeriesWithValueFilter()
+      throws IOException, StorageEngineException, IllegalPathException {
     //System.out.println("Test >>> root.vehicle.d1.s0 >= 5");
 
-    Path pd1s0 = new Path(TestConstant.d1s0);
+    PartialPath pd1s0 = new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(5);
 
     IExpression singleSeriesExpression = new SingleSeriesExpression(pd1s0, valueGtEq);
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    List<Path> paths = new ArrayList<>();
+    List<PartialPath> paths = new ArrayList<>();
     paths.add(pd1s0);
     queryPlan.setDeduplicatedPaths(paths);
 
@@ -233,12 +237,12 @@ public class IoTDBEngineTimeGeneratorIT {
    */
   @Test
   public void testMultiSeriesWithValueFilterAndTimeFilter()
-      throws IOException, StorageEngineException {
+      throws IOException, StorageEngineException, IllegalPathException {
     System.out
         .println("Test >>> root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11.5 || time > 900");
 
-    Path pd0s0 = new Path(TestConstant.d0s0);
-    Path pd0s2 = new Path(TestConstant.d0s2);
+    PartialPath pd0s0 = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
+    PartialPath pd0s2 = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2);
 
     ValueFilter.ValueGtEq valueGtEq5 = ValueFilter.gtEq(5);
     ValueFilter.ValueGtEq valueGtEq11 = ValueFilter.gtEq(11.5f);
@@ -252,7 +256,7 @@ public class IoTDBEngineTimeGeneratorIT {
         .and(singleSeriesExpression1, singleSeriesExpression2);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    List<Path> paths = new ArrayList<>();
+    List<PartialPath> paths = new ArrayList<>();
     paths.add(pd0s0);
     paths.add(pd0s2);
     queryPlan.setDeduplicatedPaths(paths);

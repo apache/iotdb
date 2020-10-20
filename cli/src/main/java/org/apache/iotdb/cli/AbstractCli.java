@@ -189,6 +189,7 @@ public abstract class AbstractCli {
     return options;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
       long timestamp, ZoneId zoneid, String timestampPrecision) {
     if (timestampPrecision.equals("ms")) {
@@ -327,6 +328,7 @@ public abstract class AbstractCli {
     return args;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   static String[] processExecuteArgs(String[] args) {
     int index = -1;
     for (int i = 0; i < args.length; i++) {
@@ -465,6 +467,13 @@ public abstract class AbstractCli {
     println("Time display type has set to " + cmd.split("=")[1].trim());
   }
 
+  /**
+   * if cli has not specified a zondId, it will be set to cli's system timezone by default
+   * otherwise for insert and query accuracy cli should set timezone the same for all sessions
+   * @param specialCmd
+   * @param cmd
+   * @param connection
+   */
   private static void setTimeZone(String specialCmd, String cmd, IoTDBConnection connection) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
@@ -597,6 +606,7 @@ public abstract class AbstractCli {
    * @return List<List<String>> result
    * @throws SQLException throw exception
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
       int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId) throws SQLException {
     List<List<String>> lists = new ArrayList<>(columnCount);

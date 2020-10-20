@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -64,8 +65,10 @@ public class CommonUtils {
 
   public static long getOccupiedSpace(String folderPath) throws IOException {
     Path folder = Paths.get(folderPath);
-    return Files.walk(folder).filter(p -> p.toFile().isFile())
-        .mapToLong(p -> p.toFile().length()).sum();
+    try (Stream<Path> s = Files.walk(folder)) {
+      return s.filter(p -> p.toFile().isFile())
+              .mapToLong(p -> p.toFile().length()).sum();
+    }
   }
 
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {

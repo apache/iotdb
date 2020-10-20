@@ -74,13 +74,13 @@ public class TimeGeneratorReadEmptyTest {
     IExpression timeExpression = new GlobalTimeExpression(timeFilter);
 
     IExpression valueExpression = BinaryExpression
-        .or(new SingleSeriesExpression(new Path("d1.s1"), ValueFilter.gt(1.0f)),
-            new SingleSeriesExpression(new Path("d1.s2"), ValueFilter.lt(22)));
+        .or(new SingleSeriesExpression(new Path("d1", "s1"), ValueFilter.gt(1.0f)),
+            new SingleSeriesExpression(new Path("d1", "s2"), ValueFilter.lt(22)));
 
     IExpression finalExpression = BinaryExpression.and(valueExpression, timeExpression);
 
-    QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1.s1"))
-        .addSelectedPath(new Path("d1.s2")).setExpression(finalExpression);
+    QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1", "s1"))
+        .addSelectedPath(new Path("d1", "s2")).setExpression(finalExpression);
 
     try (TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath)) {
       ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);

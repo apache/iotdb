@@ -36,7 +36,7 @@ It should be noted that, in the following query documents, we tend to use `seq f
 
 ## General query process
 
-The multi-level structure of TsFile is introduced in [TsFile](../TsFile/TsFile.html). 
+The multi-level structure of TsFile is introduced in [TsFile](../TsFile/TsFile.md). 
 For each timeseries, we always follow the query routine across 5 levels: TsFileResource -> TimeseriesMetadata -> ChunkMetadata -> IPageReader -> BatchData
 
 The file access utility methods are in `org.apache.iotdb.db.utils.FileLoaderUtils`
@@ -85,13 +85,48 @@ Modification file: org.apache.iotdb.db.engine.modification.ModificationFile
 
 Deletion operation: org.apache.iotdb.db.engine.modification.Modification
 
+Deletion interval: org.apache.iotdb.tsfile.read.common.TimeRange
+
+### Modification File
+Data deletion in IoTDB is accomplished by writing Modification files for related TsFiles.
+
+In IoTDB version 0.11.0, the deletion format in Modification file has been changed. Now each line contains a start time and end time representing a delete range for a timeseries path. 
+For Modification files generated in past version of IoTDB with only a "deleteAt" timestamp, they could still be recognized, interpreting the "deleteAt" field as end time.
+
+### TimeRange  
+Correspondingly, TimeRange is the medium that deletions exist within memory.
+
+All deletion TimeRanges are both left-close and right-close intervals. We use Long.MIN_VALUE and Long.MAX_VALUE to refer to infinity and negative infinity timestamp.
+
+### Query chunks with delete intervals
+When querying a TVList, the TimeRanges are sorted and merged before a TVList tries to access them. 
+For example, we have [1,10], [5,12], [15,20], [16,21] in the original list, then they will be preprocessed to [1,12] and [15,21].
+For cases when there are a large number of deletion operations, it would be helpful to exclude deleted data.
+
+More specifically, since the TVList stores ordered timestamp data, using a sorted TimeRange list is easy to filter out deleted data.
+We use a cursor to mark which TimeRange in the list is currently in use. Intervals before the current one are no longer needed to be traversed.
+```
+private boolean isPointDeleted(long timestamp) {
+  while (deletionList != null && deleteCursor < deletionList.size()) {
+    if (deletionList.get(deleteCursor).contains(timestamp)) {
+      return true;
+    } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
+      deleteCursor++;
+    } else {
+      return false;
+    }
+  }
+  return false;
+}
+```
+
+
 ### Query with Modifications
 
 For any TsFile data units, their metadata structures including TimeseriesMetadata, ChunkMetadata and PageHeader use a `modified` flag to indicate whether this data unit is modified or not.
 Upon setting this `modified` flag to "true", the integrity of this data unit is supposed to be damaged and some statistics turns invalid. 
 
-
-![](https://user-images.githubusercontent.com/7240743/78339324-deca5d80-75c6-11ea-8fa8-dbd94232b756.png)
+![](https://user-images.githubusercontent.com/59866276/87266560-27fc4880-c4f8-11ea-9c8f-6794a9c599cb.jpg)
 
 Modifications affects timeseries reading process in the 5 levels mentioned before:
 * TsFileResource -> TimeseriesMetadata
@@ -110,9 +145,7 @@ FileLoaderUtils.loadChunkMetadataList()
 ```
 
 E.g., the got ChunkMetadatas are:
-
-![](https://user-images.githubusercontent.com/7240743/78339335-e427a800-75c6-11ea-815f-16dc5b6ebfa3.png)
-
+![](https://user-images.githubusercontent.com/59866276/87266976-0b144500-c4f9-11ea-95b3-15d60d2b7416.jpg)
 * ChunkMetadata -> List\<IPageReader\>
 
 ```

@@ -51,9 +51,9 @@ public class ForceAppendTsFileWriterTest {
   public void test() throws Exception {
     File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
-    writer.registerTimeseries(new Path("d1.s1"),
+    writer.registerTimeseries(new Path("d1", "s1"),
         new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
-    writer.registerTimeseries(new Path("d1.s2"),
+    writer.registerTimeseries(new Path("d1", "s2"),
         new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(new TSRecord(1, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
@@ -69,9 +69,9 @@ public class ForceAppendTsFileWriterTest {
 
     // write more data into this TsFile
     writer = new TsFileWriter(fwriter);
-    writer.registerTimeseries(new Path("d1.s1"),
+    writer.registerTimeseries(new Path("d1", "s1"),
         new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
-    writer.registerTimeseries(new Path("d1.s2"),
+    writer.registerTimeseries(new Path("d1", "s2"),
         new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(new TSRecord(3, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));

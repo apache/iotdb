@@ -111,8 +111,7 @@ public class QueryFileManager {
    * must not return null.
    */
   void addFilePathToMap(long queryId, TsFileResource tsFile, boolean isClosed) {
-    Map<Long, Set<TsFileResource>> pathMap = isClosed ? unsealedFilePathsMap :
-        sealedFilePathsMap;
+    Map<Long, Set<TsFileResource>> pathMap = isClosed ? sealedFilePathsMap : unsealedFilePathsMap;
     //TODO this is not an atomic operation, is there concurrent problem?
     if (!pathMap.get(queryId).contains(tsFile)) {
       pathMap.get(queryId).add(tsFile);

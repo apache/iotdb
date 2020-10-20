@@ -45,8 +45,8 @@ public class SessionDataSet {
       Map<String, Integer> columnNameIndex,
       long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
       boolean ignoreTimeStamp) {
-    this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList,
-        columnNameIndex, ignoreTimeStamp, queryId, client, sessionId, queryDataSet, 1024);
+    this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList, columnNameIndex,
+        ignoreTimeStamp, queryId, client, sessionId, queryDataSet, Config.DEFAULT_FETCH_SIZE);
   }
 
   public int getFetchSize() {
@@ -129,10 +129,8 @@ public class SessionDataSet {
 
 
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {
-    if (!ioTDBRpcDataSet.hasCachedRecord) {
-      if (!hasNext()) {
-        return null;
-      }
+    if (!ioTDBRpcDataSet.hasCachedRecord && !hasNext()) {
+      return null;
     }
     ioTDBRpcDataSet.hasCachedRecord = false;
 

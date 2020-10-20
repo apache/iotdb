@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.engine.flush;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ThreadPoolExecutor;
-
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
@@ -83,7 +81,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     return FlushSubTaskPoolManager.getInstance().getWaitingTasksNumber();
   }
 
-  class FlushThread extends WrappedRunnable{
+  class FlushThread extends WrappedRunnable {
 
     @Override
     public void runMayThrow() {
@@ -92,7 +90,7 @@ public class FlushManager implements FlushManagerMBean, IService {
       tsFileProcessor.setManagedByFlushManager(false);
       if (logger.isDebugEnabled()) {
         logger.debug("Flush Thread re-register TSProcessor {} to the queue.",
-            tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
+            tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
       registerTsFileProcessor(tsFileProcessor);
     }
@@ -110,7 +108,7 @@ public class FlushManager implements FlushManagerMBean, IService {
         if (logger.isDebugEnabled()) {
           logger.debug(
               "{} begin to submit a flush thread, flushing memtable size: {}, queue size: {}",
-              tsFileProcessor.getTsFileResource().getFile().getAbsolutePath(),
+              tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath(),
               tsFileProcessor.getFlushingMemTableSize(), tsFileProcessorQueue.size());
         }
         tsFileProcessor.setManagedByFlushManager(true);
@@ -119,13 +117,13 @@ public class FlushManager implements FlushManagerMBean, IService {
         if (tsFileProcessor.isManagedByFlushManager()) {
           logger.debug(
               "{} is already in the flushPool, the first one: {}, the given processor flushMemtable number = {}",
-              tsFileProcessor.getTsFileResource().getFile().getAbsolutePath(),
+              tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath(),
               tsFileProcessorQueue.isEmpty() ? "empty now"
                   : tsFileProcessorQueue.getFirst().getStorageGroupName(),
               tsFileProcessor.getFlushingMemTableSize());
         } else {
           logger.debug("No flushing memetable to do, register TsProcessor {} failed.",
-              tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
+              tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
         }
       }
     }

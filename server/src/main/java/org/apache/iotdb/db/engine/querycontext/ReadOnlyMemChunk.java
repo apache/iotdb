@@ -40,7 +40,6 @@ public class ReadOnlyMemChunk {
   private TSEncoding encoding;
 
   private long version;
-  Map<String, String> props;
 
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
 
@@ -57,8 +56,7 @@ public class ReadOnlyMemChunk {
     this.dataType = dataType;
     this.encoding = encoding;
     this.version = version;
-    this.props = props;
-    if (props.containsKey(Encoder.MAX_POINT_NUMBER)) {
+    if (props != null && props.containsKey(Encoder.MAX_POINT_NUMBER)) {
       this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
     }
     tvList.sort();

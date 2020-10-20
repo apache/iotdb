@@ -57,6 +57,7 @@ public class QueryDataSetUtils {
     return convertQueryDataSetByFetchSize(queryDataSet, fetchSize, null);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
       int fetchSize, WatermarkEncoder watermarkEncoder) throws IOException {
     List<TSDataType> dataTypes = queryDataSet.getDataTypes();
@@ -198,6 +199,7 @@ public class QueryDataSetUtils {
    * @param columns column number
    * @param size    value count in each column
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Object[] readValuesFromBuffer(ByteBuffer buffer, TSDataType[] types,
       int columns, int size) {
     Object[] values = new Object[columns];

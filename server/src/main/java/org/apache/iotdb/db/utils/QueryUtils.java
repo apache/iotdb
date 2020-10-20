@@ -19,14 +19,13 @@
 
 package org.apache.iotdb.db.utils;
 
+import java.util.List;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-
-import java.util.List;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 public class QueryUtils {
@@ -37,15 +36,16 @@ public class QueryUtils {
 
   /**
    * modifyChunkMetaData iterates the chunkMetaData and applies all available modifications on it to
-   * generate a ModifiedChunkMetadata.
-   * <br/>
-   * the caller should guarantee that chunkMetaData and modifications refer to the same time series
-   * paths.
+   * generate a ModifiedChunkMetadata. <br/> the caller should guarantee that chunkMetaData and
+   * modifications refer to the same time series paths.
+   *
    * @param chunkMetaData the original chunkMetaData.
    * @param modifications all possible modifications.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(List<ChunkMetadata> chunkMetaData,
-                                         List<Modification> modifications) {
+      List<Modification> modifications) {
+    int modIndex = 0;
     for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
       ChunkMetadata metaData = chunkMetaData.get(metaIndex);
       for (Modification modification : modifications) {
@@ -80,7 +80,8 @@ public class QueryUtils {
   }
 
   // remove files that do not satisfy the filter
-  public static void filterQueryDataSource(QueryDataSource queryDataSource, TsFileFilter fileFilter) {
+  public static void filterQueryDataSource(QueryDataSource queryDataSource,
+      TsFileFilter fileFilter) {
     if (fileFilter == null) {
       return;
     }

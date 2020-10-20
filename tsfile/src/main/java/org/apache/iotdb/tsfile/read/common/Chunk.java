@@ -60,6 +60,15 @@ public class Chunk implements Accountable {
     this.deleteIntervalList = list;
   }
 
+  public void mergeChunk(Chunk chunk) {
+    chunkHeader.mergeChunkHeader(chunk.chunkHeader);
+    ByteBuffer newChunkData = ByteBuffer
+        .allocate(chunkData.array().length + chunk.chunkData.array().length);
+    newChunkData.put(chunkData.array());
+    newChunkData.put(chunk.chunkData.array());
+    chunkData = newChunkData;
+  }
+
   @Override
   public void setRamSize(long size) {
     this.ramSize = size;

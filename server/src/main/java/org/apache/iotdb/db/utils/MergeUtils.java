@@ -28,6 +28,7 @@ import java.util.PriorityQueue;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -72,22 +73,25 @@ public class MergeUtils {
     }
   }
 
-  private static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader) throws IOException {
+  private static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader)
+      throws IOException {
     return sequenceReader.getAllPaths();
   }
 
-  public static long collectFileSizes(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  public static long collectFileSizes(List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles) {
     long totalSize = 0;
     for (TsFileResource tsFileResource : seqFiles) {
-      totalSize += tsFileResource.getFileSize();
+      totalSize += tsFileResource.getTsFileSize();
     }
     for (TsFileResource tsFileResource : unseqFiles) {
-      totalSize += tsFileResource.getFileSize();
+      totalSize += tsFileResource.getTsFileSize();
     }
     return totalSize;
   }
 
-  public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter) throws IOException {
+  public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter)
+      throws IOException {
     ChunkReader chunkReader = new ChunkReader(chunk, null);
     int ptWritten = 0;
     while (chunkReader.hasNextSatisfiedPage()) {
@@ -140,24 +144,21 @@ public class MergeUtils {
     }
     logger.debug("In file {}, total chunk num {}, series max chunk num {}", tsFileResource,
         totalChunkNum, maxChunkNum);
-    return new long[] {totalChunkNum, maxChunkNum};
+    return new long[]{totalChunkNum, maxChunkNum};
   }
 
   public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) {
-    return seqFile.getFileSize() - sequenceReader.getFileMetadataPos();
+    return seqFile.getTsFileSize() - sequenceReader.getFileMetadataPos();
   }
 
   /**
-   * Reads chunks of paths in unseqResources and put them in separated lists. When reading a
-   * file, this method follows the order of positions of chunks instead of the order of
-   * timeseries, which reduce disk seeks.
+   * Reads chunks of paths in unseqResources and put them in separated lists. When reading a file,
+   * this method follows the order of positions of chunks instead of the order of timeseries, which
+   * reduce disk seeks.
+   *
    * @param paths names of the timeseries
-   * @param unseqResources
-   * @param mergeResource
-   * @return
-   * @throws IOException
    */
-  public static List<Chunk>[] collectUnseqChunks(List<Path> paths,
+  public static List<Chunk>[] collectUnseqChunks(List<PartialPath> paths,
       List<TsFileResource> unseqResources, MergeResource mergeResource) throws IOException {
     List<Chunk>[] ret = new List[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
@@ -177,11 +178,12 @@ public class MergeUtils {
     return ret;
   }
 
-  private static void buildMetaHeap(List<Path> paths, TsFileSequenceReader tsFileReader,
-      MergeResource resource, TsFileResource tsFileResource, PriorityQueue<MetaListEntry> chunkMetaHeap)
+  private static void buildMetaHeap(List<PartialPath> paths, TsFileSequenceReader tsFileReader,
+      MergeResource resource, TsFileResource tsFileResource,
+      PriorityQueue<MetaListEntry> chunkMetaHeap)
       throws IOException {
     for (int i = 0; i < paths.size(); i++) {
-      Path path = paths.get(i);
+      PartialPath path = paths.get(i);
       List<ChunkMetadata> metaDataList = tsFileReader.getChunkMetadataList(path);
       if (metaDataList.isEmpty()) {
         continue;
@@ -220,20 +222,21 @@ public class MergeUtils {
 
   public static boolean isChunkTooSmall(int ptWritten, ChunkMetadata chunkMetaData,
       boolean isLastChunk, int minChunkPointNum) {
-    return ptWritten > 0 || (minChunkPointNum >= 0 && chunkMetaData.getNumOfPoints() < minChunkPointNum
+    return ptWritten > 0 || (minChunkPointNum >= 0
+        && chunkMetaData.getNumOfPoints() < minChunkPointNum
         && !isLastChunk);
   }
 
-  public static List<List<Path>> splitPathsByDevice(List<Path> paths) {
+  public static List<List<PartialPath>> splitPathsByDevice(List<PartialPath> paths) {
     if (paths.isEmpty()) {
       return Collections.emptyList();
     }
-    paths.sort(Comparator.comparing(Path::getDevice));
+    paths.sort(Comparator.comparing(PartialPath::getDevice));
 
     String currDevice = null;
-    List<Path> currList = null;
-    List<List<Path>> ret = new ArrayList<>();
-    for (Path path : paths) {
+    List<PartialPath> currList = null;
+    List<List<PartialPath>> ret = new ArrayList<>();
+    for (PartialPath path : paths) {
       if (currDevice == null) {
         currDevice = path.getDevice();
         currList = new ArrayList<>();
@@ -251,7 +254,8 @@ public class MergeUtils {
     return ret;
   }
 
-  public static class MetaListEntry implements Comparable<MetaListEntry>{
+  public static class MetaListEntry implements Comparable<MetaListEntry> {
+
     private int pathId;
     private int listIdx;
     private List<ChunkMetadata> chunkMetadataList;

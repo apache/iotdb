@@ -64,20 +64,20 @@ public class TsFileLock {
 
   public void writeLock() {
     synchronized (this) {
-      while (writeCnt > 0 || readCnt > 0) {
         try {
-          this.wait(1);
+          while (writeCnt > 0 || readCnt > 0) {
+            this.wait(1);
+          }
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           // ignore
-        }
       }
 
-      writeCnt ++;
+      writeCnt++;
     }
   }
 
-  public void writUnlock() {
+  public void writeUnlock() {
     synchronized (this) {
       if (writeCnt > 0) {
         writeCnt --;

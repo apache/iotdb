@@ -43,7 +43,6 @@ public class TSFMRReadExample {
       System.out.println("Please give hdfs url, input path, output path");
       return;
     }
-    String HDFSURL = args[0];
     Path inputPath = new Path(args[1]);
     Path outputPath = new Path(args[2]);
 
@@ -88,7 +87,8 @@ public class TSFMRReadExample {
     try {
       isSuccess = job.waitForCompletion(true);
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      Thread.currentThread().interrupt();
+      throw new IOException(e.getMessage());
     }
     if (isSuccess) {
       System.out.println("Execute successfully");

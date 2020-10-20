@@ -32,6 +32,7 @@ if %JMX_LOCAL% == "false" (
   #you may have no permission to run chmod. If so, contact your system administrator.
   set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote"
   set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.port=%JMX_PORT%"
+  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.rmi.port=%JMX_PORT%"
   set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Djava.rmi.server.randomIDs=true"
   set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.authenticate=true"
   set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.ssl=false"
@@ -43,14 +44,19 @@ if %JMX_LOCAL% == "false" (
   echo "setting local JMX..."
 )
 
+@REM Maximum heap size
+set MAX_HEAP_SIZE=2G
+@REM Minimum heap size
+set HEAP_NEWSIZE=2G
+
 IF ["%IOTDB_HEAP_OPTS%"] EQU [""] (
 	rem detect Java 8 or 11
 	IF "%JAVA_VERSION%" == "8" (
 		java -d64 -version >nul 2>&1
 		IF NOT ERRORLEVEL 1 (
 			rem 64-bit Java
-			echo Detect 64-bit Java, maximum memory allocation pool = 2GB, initial memory allocation pool = 2GB
-			set IOTDB_HEAP_OPTS=-Xmx2G -Xms2G -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
+			echo Detect 64-bit Java, maximum memory allocation pool = %MAX_HEAP_SIZE%B, initial memory allocation pool = %HEAP_NEWSIZE%B
+			set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
 		) ELSE (
 			rem 32-bit Java
 			echo Detect 32-bit Java, maximum memory allocation pool = 512MB, initial memory allocation pool = 512MB
@@ -71,8 +77,8 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 )
 IF "%BIT_VERSION%" == "64-Bit" (
 	rem 64-bit Java
-	echo Detect 64-bit Java, maximum memory allocation pool = 2GB, initial memory allocation pool = 2GB
-	set IOTDB_HEAP_OPTS=-Xmx2G -Xms2G
+	echo Detect 64-bit Java, maximum memory allocation pool = %MAX_HEAP_SIZE%B, initial memory allocation pool = %HEAP_NEWSIZE%B
+	set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE%
 ) ELSE (
 	rem 32-bit Java
 	echo Detect 32-bit Java, maximum memory allocation pool = 512MB, initial memory allocation pool = 512MB

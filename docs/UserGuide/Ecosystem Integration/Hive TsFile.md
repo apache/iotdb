@@ -52,7 +52,7 @@ With this connector, you can
 |-------------  |------------ | ------------ |------------ |
 | `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.10.0`|
 
-> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
+> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
 
 ## Data Type Correspondence
 
@@ -75,10 +75,10 @@ After downloading the code of iotdb from <https://github.com/apache/incubator-io
 Then in hive, use the command of `add jar XXX` to add the dependency. For example:
 
 ```
-hive> add jar /Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar;
+hive> add jar /Users/hive/iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar;
 
-Added [/Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar] to class path
-Added resources: [/Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar]
+Added [/Users/hive/iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar] to class path
+Added resources: [/Users/hive/iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar]
 ```
 
 

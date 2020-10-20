@@ -23,9 +23,9 @@
 
 ## 数据接入
 
-IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](../Client/Command%20Line%20Interface.html)中直接输入插入数据的INSERT语句，或使用Java API（标准[Java JDBC](../Client/Programming%20-%20JDBC.html)接口）单条或批量执行插入数据的INSERT语句。
+IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](../Client/Command%20Line%20Interface.md)中直接输入插入数据的INSERT语句，或使用Java API（标准[Java JDBC](../Client/Programming%20-%20JDBC.md)接口）单条或批量执行插入数据的INSERT语句。
 
-本节主要为您介绍实时数据接入的INSERT语句在场景中的实际使用示例，有关INSERT SQL语句的详细语法请参见本文[INSERT语句](../Operation%20Manual/SQL%20Reference.html)节。
+本节主要为您介绍实时数据接入的INSERT语句在场景中的实际使用示例，有关INSERT SQL语句的详细语法请参见本文[INSERT语句](../Operation%20Manual/SQL%20Reference.md)节。
 
 ### 使用INSERT语句
 
@@ -89,7 +89,7 @@ error: The TEXT data type should be covered by " or '
 
 ### 时间切片查询
 
-本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](../Operation%20Manual/SQL%20Reference.html)。同时，您也可以使用[Java JDBC](../Client/Programming%20-%20JDBC.html)标准接口来执行相关的查询语句。
+本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](../Operation%20Manual/SQL%20Reference.md)。同时，您也可以使用[Java JDBC](../Client/Programming%20-%20JDBC.md)标准接口来执行相关的查询语句。
 
 #### 根据一个时间区间选择一列数据
 
@@ -101,7 +101,7 @@ select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 
 其含义为：
 
-被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](../Concept/Data%20Model%20and%20Terminology.html)）时间点以前的所有温度传感器的值。
+被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](../Concept/Data%20Model%20and%20Terminology.md)）时间点以前的所有温度传感器的值。
 
 该SQL语句的执行结果如下：
 
@@ -155,6 +155,14 @@ select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01
 
 该SQL语句的执行结果如下：
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
+
+#### 根据时间降序返回
+IoTDB 在 0.11 版本开始支持 'order by time' 语句, 用于对结果按照时间进行降序展示。例如，SQL语句为：
+```sql
+select * from root.ln where time > 1 order by time desc limit 10;
+```
+
+更多语法请参照 [SQL REFERENCE](../Operation%20Manual/SQL%20Reference.md).
 
 #### 其他结果返回形式
 
@@ -216,12 +224,10 @@ select count(status) from root.ln.wf01.wt01 group by level=2;
 ### 降频聚合查询
 
 本章节主要介绍降频聚合查询的相关示例，
-主要使用的是IoTDB SELECT语句的[GROUP BY子句](../Operation%20Manual/SQL%20Reference.html)，
+主要使用的是IoTDB SELECT语句的[GROUP BY子句](../Operation%20Manual/SQL%20Reference.md)，
 该子句是IoTDB中用于根据用户给定划分条件对结果集进行划分，并对已划分的结果集进行聚合计算的语句。
 IoTDB支持根据时间间隔和自定义的滑动步长（默认值与时间间隔相同，自定义的值必须大于等于时间间隔）对结果集进行划分，默认结果按照时间升序排列。
 同时，您也可以使用Java JDBC标准接口来执行相关的查询语句。
-
-Group By 语句不支持 limit 和 offset。
 
 GROUP BY语句为用户提供三类指定参数：
 
@@ -574,12 +580,12 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 ### 对查询结果的行和列控制
 
-IoTDB提供 [LIMIT/SLIMIT](../Operation%20Manual/SQL%20Reference.html) 子句和 [OFFSET/SOFFSET](../Operation%20Manual/SQL%20Reference.html) 子句，以使用户可以更好地控制查询结果。使用LIMIT和SLIMIT子句可让用户控制查询结果的行数和列数，
+IoTDB提供 [LIMIT/SLIMIT](../Operation%20Manual/SQL%20Reference.md) 子句和 [OFFSET/SOFFSET](../Operation%20Manual/SQL%20Reference.md) 子句，以使用户可以更好地控制查询结果。使用LIMIT和SLIMIT子句可让用户控制查询结果的行数和列数，
 并且使用OFFSET和SOFSET子句允许用户设置结果显示的起始位置。
 
 请注意，按组查询不支持LIMIT和OFFSET。
 
-本章主要介绍查询结果的行和列控制的相关示例。你还可以使用 [Java JDBC](../Client/Programming%20-%20JDBC.html) 标准接口执行查询。
+本章主要介绍查询结果的行和列控制的相关示例。你还可以使用 [Java JDBC](../Client/Programming%20-%20JDBC.md) 标准接口执行查询。
 
 #### 查询结果的行控制
 
@@ -755,6 +761,22 @@ select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
 
+### 使用别名
+
+由于 IoTDB 独特的数据模型，在每个传感器前都附带有设备等诸多额外信息。有时，我们只针对某个具体设备查询，而这些前缀信息频繁显示造成了冗余，影响了结果集的显示与分析。这时我们可以使用 IoTDB 提供的 AS 函数，将查询中出现的时间序列给定一个别名。
+
+例如：
+
+```
+select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
+```
+
+则结果集将显示为：
+
+| Time | temperature | speed |
+| ---- | ----------- | ----- |
+| ...  | ...         | ...   |
+
 #### 其他结果集格式
 
 此外，IoTDB支持两种其他结果集格式：“按设备对齐”和“禁用对齐”。
@@ -764,7 +786,7 @@ select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
 SQL语句是：
 
 ```
-select s1,s2 from root.sg1.* GROUP BY DEVICE
+select s1,s2 from root.sg1.* ALIGN BY DEVICE
 
 ```
 
@@ -829,7 +851,7 @@ SQL语句将不会执行，并且相应的错误提示如下：
 
 ### 数据删除
 
-用户使用[DELETE语句](../Operation%20Manual/SQL%20Reference.html)可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带\*路径对某一个时间区间内的数据进行删除。
+用户使用[DELETE语句](../Operation%20Manual/SQL%20Reference.md)可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带\*路径对某一个时间区间内的数据进行删除。
 
 在JAVA编程环境中，您可以使用JDBC API单条或批量执行DELETE语句。
 
@@ -868,7 +890,7 @@ expressions like : time > XXX, time <= XXX, or two atomic expressions connected 
 
 #### 多传感器时间序列值删除    
 
-当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](../Concept/Data%20Model%20and%20Terminology.html)进行删除操作，进行此操作的SQL语句为：
+当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](../Concept/Data%20Model%20and%20Terminology.md)进行删除操作，进行此操作的SQL语句为：
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;

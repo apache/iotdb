@@ -147,8 +147,7 @@ public class EnvironmentUtils {
     // delete system info
     cleanDir(config.getSystemDir());
     // delete wal
-    cleanDir(config.getWalFolder());
-    cleanDir(config.getBaseDir());
+    cleanDir(config.getWalDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -209,7 +208,7 @@ public class EnvironmentUtils {
     // create storage group
     createDir(config.getSystemDir());
     // create wal
-    createDir(config.getWalFolder());
+    createDir(config.getWalDir());
     // create data
     for (String dataDir: config.getDataDirs()) {
       createDir(dataDir);

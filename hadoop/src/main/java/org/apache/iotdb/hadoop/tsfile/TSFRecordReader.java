@@ -18,13 +18,24 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
+import static java.util.stream.Collectors.toList;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.*;
+import org.apache.hadoop.io.BooleanWritable;
+import org.apache.hadoop.io.DoubleWritable;
+import org.apache.hadoop.io.FloatWritable;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.MapWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -34,12 +45,6 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import static java.util.stream.Collectors.toList;
 
 public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> implements IReaderSet {
 
@@ -97,17 +102,17 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
     readerSet.setReadDeviceId(TSFInputFormat.getReadDeviceId(configuration));
     readerSet.setReadTime(TSFInputFormat.getReadTime(configuration));
 
-    ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(reader);
-    for (String deviceId : deviceIds) {
-      List<Path> paths = measurementIds.stream()
-              .map(
-                      measurementId -> new Path(deviceId + TsFileConstant.PATH_SEPARATOR + measurementId))
-              .collect(toList());
-      QueryExpression queryExpression = QueryExpression.create(paths, null);
-      QueryDataSet dataSet = queryEngine.query(queryExpression,
-              split.getStart(), split.getStart() + split.getLength());
-      dataSetList.add(dataSet);
-      deviceIdList.add(deviceId);
+    try (ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(reader)) {
+      for (String deviceId : deviceIds) {
+        List<Path> paths = measurementIds.stream()
+                .map(measurementId -> new Path(deviceId, measurementId))
+                .collect(toList());
+        QueryExpression queryExpression = QueryExpression.create(paths, null);
+        QueryDataSet dataSet = queryEngine.query(queryExpression,
+                split.getStart(), split.getStart() + split.getLength());
+        dataSetList.add(dataSet);
+        deviceIdList.add(deviceId);
+      }
     }
   }
 

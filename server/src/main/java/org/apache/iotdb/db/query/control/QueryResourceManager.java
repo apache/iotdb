@@ -37,9 +37,9 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
@@ -59,13 +59,12 @@ public class QueryResourceManager {
   private QueryFileManager filePathsManager;
   private static final Logger logger = LoggerFactory.getLogger(QueryResourceManager.class);
   // record the total number and size of chunks for each query id
-  private Map<Long, Long> chunkNumMap = new ConcurrentHashMap<>();
+  private Map<Long, Integer> chunkNumMap = new ConcurrentHashMap<>();
   // chunk size represents the number of time-value points in the chunk
   private Map<Long, Long> chunkSizeMap = new ConcurrentHashMap<>();
   // record the distinct tsfiles for each query id
-  // Just store weak references here in case GC failed for those objects
-  private Map<Long, Set<WeakReference<TsFileResource>>> seqFileNumMap = new ConcurrentHashMap<>();
-  private Map<Long, Set<WeakReference<TsFileResource>>> unseqFileNumMap = new ConcurrentHashMap<>();
+  private Map<Long, Set<TsFileResource>> seqFileNumMap = new ConcurrentHashMap<>();
+  private Map<Long, Set<TsFileResource>> unseqFileNumMap = new ConcurrentHashMap<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   /**
    * Record temporary files used for external sorting.
@@ -94,7 +93,7 @@ public class QueryResourceManager {
     return queryId;
   }
 
-  public Map<Long, Long> getChunkNumMap() {
+  public Map<Long, Integer> getChunkNumMap() {
     return chunkNumMap;
   }
 
@@ -113,21 +112,20 @@ public class QueryResourceManager {
     externalSortFileMap.computeIfAbsent(queryId, x -> new ArrayList<>()).add(deserializer);
   }
 
-  public QueryDataSource getQueryDataSource(Path selectedPath,
+  public QueryDataSource getQueryDataSource(PartialPath selectedPath,
       QueryContext context, Filter filter) throws StorageEngineException, QueryProcessException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath,
         filter);
-    QueryDataSource queryDataSource = StorageEngine.getInstance()
+    QueryDataSource queryDataSource;
+    queryDataSource = StorageEngine.getInstance()
         .query(singleSeriesExpression, context, filePathsManager);
     // calculate the distinct number of seq and unseq tsfiles
     if (config.isEnablePerformanceTracing()) {
       seqFileNumMap.computeIfAbsent(context.getQueryId(), k -> new HashSet<>())
-          .addAll((queryDataSource.getSeqResources().stream().map(r -> new WeakReference<>(r))
-                  .collect(Collectors.toSet())));
+          .addAll((queryDataSource.getSeqResources()));
       unseqFileNumMap.computeIfAbsent(context.getQueryId(), k -> new HashSet<>())
-          .addAll((queryDataSource.getUnseqResources().stream().map(r -> new WeakReference<>(r))
-              .collect(Collectors.toSet())));
+          .addAll((queryDataSource.getUnseqResources()));
     }
     return queryDataSource;
   }
@@ -136,6 +134,7 @@ public class QueryResourceManager {
    * Whenever the jdbc request is closed normally or abnormally, this method must be invoked. All
    * query tokens created by this jdbc request must be cleared.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endQuery(long queryId) throws StorageEngineException {
     try {
       if (config.isEnablePerformanceTracing()) {

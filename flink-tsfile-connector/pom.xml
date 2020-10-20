@@ -73,5 +73,12 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- Load LocalExecutorFactory when testing -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-clients_2.11</artifactId>
+            <version>${flink.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
