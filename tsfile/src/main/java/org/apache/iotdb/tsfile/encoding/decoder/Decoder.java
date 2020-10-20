@@ -84,12 +84,12 @@ public abstract class Decoder {
           throw new TsFileDecodingException(
               String.format(ERROR_MSG, type, dataType));
       }
-    } else if (type == TSEncoding.GORILLA) {
+    } else if (type == TSEncoding.GORILLA_V1) {
       switch (dataType) {
         case FLOAT:
-          return new SinglePrecisionDecoder();
+          return new SinglePrecisionDecoderV1();
         case DOUBLE:
-          return new DoublePrecisionDecoder();
+          return new DoublePrecisionDecoderV1();
         default:
           throw new TsFileDecodingException(
               String.format(ERROR_MSG, type, dataType));

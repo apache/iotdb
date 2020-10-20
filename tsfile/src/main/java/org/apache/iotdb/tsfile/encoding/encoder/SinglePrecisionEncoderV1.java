@@ -27,11 +27,11 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 /**
  * Encoder for int value using gorilla encoding.
  */
-public class SinglePrecisionEncoder extends GorillaEncoder {
+public class SinglePrecisionEncoderV1 extends GorillaEncoderV1 {
 
   private int preValue;
 
-  public SinglePrecisionEncoder() {
+  public SinglePrecisionEncoderV1() {
     // allowed do nothing
   }
 

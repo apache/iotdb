@@ -18,9 +18,29 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public enum TSEncoding {
 
-  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA, REGULAR;
+  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA_V1, REGULAR;
+
+  private static final Map<String, String> ALIAS_FORMAL_NAME_MAP = new HashMap<>();
+
+  static {
+    ALIAS_FORMAL_NAME_MAP.put("GORILLA", "GORILLA_V1");
+  }
+
+  /**
+   * returns the formal name of the input encoding name.
+   *
+   * @param encodingName the input encoding name in uppercase
+   * @return the formal name of the input encoding name
+   */
+  public static String formalNameOf(String encodingName) {
+    String formalName = ALIAS_FORMAL_NAME_MAP.get(encodingName);
+    return formalName == null ? encodingName : formalName;
+  }
 
   /**
    * judge the encoding deserialize type.
@@ -55,7 +75,7 @@ public enum TSEncoding {
       case 5:
         return BITMAP;
       case 6:
-        return GORILLA;
+        return GORILLA_V1;
       case 7:
         return REGULAR;
       default:
@@ -101,7 +121,7 @@ public enum TSEncoding {
         return 4;
       case BITMAP:
         return 5;
-      case GORILLA:
+      case GORILLA_V1:
         return 6;
       case REGULAR:
         return 7;

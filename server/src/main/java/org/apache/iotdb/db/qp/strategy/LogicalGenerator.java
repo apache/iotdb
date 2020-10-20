@@ -1181,7 +1181,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     TSEncoding encoding = ioTDBDescriptor.getDefualtEncodingByType(tsDataType);
     if (Objects.nonNull(ctx.encoding())) {
       String encodingString = ctx.encoding().getChild(0).getText().toUpperCase();
-      encoding = TSEncoding.valueOf(encodingString);
+      encoding = TSEncoding.valueOf(TSEncoding.formalNameOf(encodingString));
     }
     createTimeSeriesOperator.setEncoding(encoding);
 

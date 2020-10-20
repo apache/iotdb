@@ -62,8 +62,8 @@ public abstract class TSEncodingBuilder {
         return new RLE();
       case TS_2DIFF:
         return new TS_2DIFF();
-      case GORILLA:
-        return new GORILLA();
+      case GORILLA_V1:
+        return new GORILLA_V1();
       case REGULAR:
         return new REGULAR();
       default:
@@ -218,23 +218,22 @@ public abstract class TSEncodingBuilder {
     public String toString() {
       return JsonFormatConstant.MAX_POINT_NUMBER + ":" + maxPointNumber;
     }
-
   }
 
   /**
    * for ENUMS.
    */
-  public static class GORILLA extends TSEncodingBuilder {
+  public static class GORILLA_V1 extends TSEncodingBuilder {
 
     @Override
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case FLOAT:
-          return new SinglePrecisionEncoder();
+          return new SinglePrecisionEncoderV1();
         case DOUBLE:
-          return new DoublePrecisionEncoder();
+          return new DoublePrecisionEncoderV1();
         default:
-          throw new UnSupportedDataTypeException("GORILLA doesn't support data type: " + type);
+          throw new UnSupportedDataTypeException("GORILLA_V1 doesn't support data type: " + type);
       }
     }
 
@@ -242,7 +241,6 @@ public abstract class TSEncodingBuilder {
     public void initFromProps(Map<String, String> props) {
       // allowed do nothing
     }
-
   }
 
   /**

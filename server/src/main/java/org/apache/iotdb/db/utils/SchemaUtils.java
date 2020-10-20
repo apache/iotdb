@@ -62,7 +62,7 @@ public class SchemaUtils {
     floatSet.add(TSEncoding.PLAIN);
     floatSet.add(TSEncoding.RLE);
     floatSet.add(TSEncoding.TS_2DIFF);
-    floatSet.add(TSEncoding.GORILLA);
+    floatSet.add(TSEncoding.GORILLA_V1);
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
     Set<TSEncoding> textSet = new HashSet<>();

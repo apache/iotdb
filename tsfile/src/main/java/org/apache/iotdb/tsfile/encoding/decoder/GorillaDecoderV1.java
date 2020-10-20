@@ -27,10 +27,10 @@ import org.slf4j.LoggerFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public abstract class GorillaDecoder extends Decoder {
+public abstract class GorillaDecoderV1 extends Decoder {
 
   protected static final int EOF = -1;
-  private static final Logger logger = LoggerFactory.getLogger(GorillaDecoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(GorillaDecoderV1.class);
   // flag to indicate whether the first value is read from stream
   protected boolean flag;
   protected int leadingZeroNum;
@@ -44,8 +44,8 @@ public abstract class GorillaDecoder extends Decoder {
   protected boolean nextFlag1;
   protected boolean nextFlag2;
 
-  public GorillaDecoder() {
-    super(TSEncoding.GORILLA);
+  public GorillaDecoderV1() {
+    super(TSEncoding.GORILLA_V1);
     reset();
   }
 

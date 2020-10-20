@@ -463,7 +463,7 @@ public class IoTDBMultiSeriesIT {
 
       ResultSet scoreRs = statement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt01.score");
       scoreRs.next();
-      Assert.assertTrue(TSEncoding.GORILLA.name().equalsIgnoreCase(scoreRs.getString(5)));
+      Assert.assertTrue(TSEncoding.GORILLA_V1.name().equalsIgnoreCase(scoreRs.getString(5)));
     }
   }
 }
