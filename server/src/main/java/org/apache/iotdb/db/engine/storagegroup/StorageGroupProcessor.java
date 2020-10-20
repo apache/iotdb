@@ -200,7 +200,7 @@ public class StorageGroupProcessor {
   private File storageGroupSysDir;
 
   // manage seqFileList and unSeqFileList
-  public TsFileManagement tsFileManagement;
+  private TsFileManagement tsFileManagement;
 
   /**
    * time partition id -> version controller which assigns a version for each MemTable and
@@ -2324,6 +2324,10 @@ public class StorageGroupProcessor {
         iterator.remove();
       }
     }
+  }
+
+  public TsFileManagement getTsFileManagement() {
+    return tsFileManagement;
   }
 
   private enum LoadTsFileType {

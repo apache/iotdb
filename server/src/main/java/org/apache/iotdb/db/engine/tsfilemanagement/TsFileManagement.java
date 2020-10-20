@@ -23,6 +23,7 @@ import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERG
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -54,7 +55,7 @@ public abstract class TsFileManagement {
    * mergeLock is to be used in the merge process. Concurrent queries, deletions and merges may
    * result in losing some deletion in the merged new file, so a lock is necessary.
    */
-  public ReentrantReadWriteLock mergeLock = new ReentrantReadWriteLock();
+  public final ReentrantReadWriteLock mergeLock = new ReentrantReadWriteLock();
   /**
    * hotCompactionMergeLock is used to wait for TsFile list change in hot compaction merge
    * processor.
@@ -67,7 +68,7 @@ public abstract class TsFileManagement {
    * be invisible at this moment, without this, deletion/update during merge could be lost.
    */
   public ModificationFile mergingModification;
-  public long mergeStartTime;
+  private long mergeStartTime;
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -372,8 +373,11 @@ public abstract class TsFileManagement {
           //FIXME if there is an exception, the the modification file will be not closed.
           removeMergingModification();
           isUnseqMerging = false;
-          mergeLog.delete();
+          Files.delete(mergeLog.toPath());
         }
+      } catch (IOException e) {
+        logger.error("{} a merge task ends but cannot delete log {}", storageGroupName,
+            mergeLog.toPath());
       } finally {
         doubleWriteUnlock(seqFile);
       }

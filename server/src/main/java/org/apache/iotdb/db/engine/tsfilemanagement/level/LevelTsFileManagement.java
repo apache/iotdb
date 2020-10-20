@@ -26,6 +26,8 @@ import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLog
 import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.TARGET_NAME;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
+import com.clearspring.analytics.stream.cardinality.HyperLogLog;
+import com.clearspring.analytics.stream.cardinality.ICardinality;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,22 +41,13 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-
-import com.clearspring.analytics.stream.cardinality.HyperLogLog;
-import com.clearspring.analytics.stream.cardinality.ICardinality;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
-import org.apache.iotdb.db.engine.merge.manage.MergeManager;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagement;
 import org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger;
 import org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionUtils;
-import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -234,20 +227,24 @@ public class LevelTsFileManagement extends TsFileManagement {
     int level = getMergeLevel(tsFileResource.getTsFile());
     if (sequence) {
       if (level <= maxLevelNum - 1) {
+        // current file has too high level
         sequenceTsFileResources
             .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources).get(level)
             .add(tsFileResource);
       } else {
+        // current file has normal level
         sequenceTsFileResources
             .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources).get(maxLevelNum - 1)
             .add(tsFileResource);
       }
     } else {
       if (level <= maxUnseqLevelNum - 1) {
+        // current file has too high level
         unSequenceTsFileResources
             .computeIfAbsent(timePartitionId, this::newUnSequenceTsFileResources).get(level)
             .add(tsFileResource);
       } else {
+        // current file has normal level
         unSequenceTsFileResources
             .computeIfAbsent(timePartitionId, this::newUnSequenceTsFileResources)
             .get(maxUnseqLevelNum - 1).add(tsFileResource);

@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
 public class HotCompactionUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(HotCompactionUtils.class);
-  private static final int mergePagePointNum = IoTDBDescriptor.getInstance().getConfig()
+  private static final int MERGE_PAGE_POINT_NUM = IoTDBDescriptor.getInstance().getConfig()
       .getMergePagePointNumberThreshold();
 
   private HotCompactionUtils() {
@@ -125,7 +125,7 @@ public class HotCompactionUtils {
       maxVersion = Math.max(newChunkMetadata.getVersion(), maxVersion);
       // wait for limit write
       MergeManager.mergeRateLimiterAcquire(compactionWriteRateLimiter,
-          newChunk.getHeader().getDataSize() + newChunk.getData().position());
+          (long) newChunk.getHeader().getDataSize() + newChunk.getData().position());
       writer.writeChunk(newChunk, newChunkMetadata);
       targetResource.updateStartTime(device, newChunkMetadata.getStartTime());
       targetResource.updateEndTime(device, newChunkMetadata.getEndTime());
@@ -146,7 +146,7 @@ public class HotCompactionUtils {
       return maxVersion;
     }
     List<ChunkMetadata> chunkMetadataList = chunkMetadataListIterator.next();
-    if (chunkMetadataList.size() <= 0) {
+    if (chunkMetadataList.isEmpty()) {
       return maxVersion;
     }
     IChunkWriter chunkWriter = new ChunkWriterImpl(
@@ -247,9 +247,6 @@ public class HotCompactionUtils {
         }
         writer.endChunkGroup();
         writer.writeVersion(maxVersion);
-        if (hotCompactionLogger != null) {
-          hotCompactionLogger.logDevice(device, writer.getPos());
-        }
       } else {
         long maxVersion = Long.MIN_VALUE;
         for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry : measurementChunkMetadataMap
@@ -258,7 +255,7 @@ public class HotCompactionUtils {
           boolean isPageEnoughLarge = true;
           for (List<ChunkMetadata> chunkMetadatas : readerChunkMetadatasMap.values()) {
             for (ChunkMetadata chunkMetadata : chunkMetadatas) {
-              if (chunkMetadata.getNumOfPoints() < mergePagePointNum) {
+              if (chunkMetadata.getNumOfPoints() < MERGE_PAGE_POINT_NUM) {
                 isPageEnoughLarge = false;
                 break;
               }
@@ -266,12 +263,14 @@ public class HotCompactionUtils {
           }
           if (isPageEnoughLarge) {
             logger.info("{} [Hot Compaction] page enough large, use append merge", storageGroup);
+            // append page in chunks, so we do not have to deserialize a chunk
             maxVersion = writeByAppendMerge(maxVersion, device, compactionWriteRateLimiter,
                 compactionReadRateLimiter,
                 readerChunkMetadatasMap, targetResource, writer);
           } else {
             logger
                 .info("{} [Hot Compaction] page enough large, use deserialize merge", storageGroup);
+            // we have to deserialize chunks to merge pages
             maxVersion = writeByDeserializeMerge(maxVersion, device, compactionWriteRateLimiter,
                 compactionReadRateLimiter,
                 entry,
@@ -280,9 +279,9 @@ public class HotCompactionUtils {
         }
         writer.endChunkGroup();
         writer.writeVersion(maxVersion);
-        if (hotCompactionLogger != null) {
-          hotCompactionLogger.logDevice(device, writer.getPos());
-        }
+      }
+      if (hotCompactionLogger != null) {
+        hotCompactionLogger.logDevice(device, writer.getPos());
       }
     }
 
