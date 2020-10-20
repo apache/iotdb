@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.metrics.sink;
 
-import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.db.metrics.server.JettyUtil;
-import org.eclipse.jetty.servlet.ServletContextHandler;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.json.MetricsModule;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.concurrent.TimeUnit;
+import org.apache.iotdb.db.metrics.server.JettyUtil;
+import org.eclipse.jetty.servlet.ServletContextHandler;
 
 public class MetricsServletSink implements Sink {
 

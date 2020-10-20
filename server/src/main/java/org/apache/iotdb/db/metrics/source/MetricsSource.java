@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metrics.source;
 
-import org.apache.iotdb.db.metrics.server.ServerArgument;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
+import org.apache.iotdb.db.metrics.server.ServerArgument;
 
 public class MetricsSource implements Source {
 

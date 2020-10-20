@@ -40,7 +40,6 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseHotCompactionMergeCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.tsfilemanagement.level.LevelTsFileManagement;
 import org.apache.iotdb.db.exception.MergeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
