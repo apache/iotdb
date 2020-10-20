@@ -238,6 +238,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 COUNT NODES <Path> LEVEL=<INTEGER>
 Eg: IoTDB > COUNT NODES root LEVEL=2
 Eg: IoTDB > COUNT NODES root.ln LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln.* LEVEL=3
 Eg: IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 Note: The path can be prefix path or timeseries path.
 Note: This statement can be used in IoTDB Client and JDBC.

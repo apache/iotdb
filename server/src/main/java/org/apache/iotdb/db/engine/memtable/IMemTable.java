@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -87,14 +88,14 @@ public interface IMemTable {
 
   /**
    * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries
-   * deviceId.measurementId. Only called for non-flushing MemTable.
+   * path. Only called for non-flushing MemTable.
    *
-   * @param deviceId the deviceId of the timeseries to be deleted.
-   * @param measurementId the measurementId of the timeseries to be deleted.
+   * @param path the PartialPath the timeseries to be deleted.
+   * @param devicePath the device path of the timeseries to be deleted.
    * @param startTimestamp the lower-bound of deletion time.
    * @param endTimestamp the upper-bound of deletion time
    */
-  void delete(String deviceId, String measurementId, long startTimestamp, long endTimestamp);
+  void delete(PartialPath path, PartialPath devicePath, long startTimestamp, long endTimestamp);
 
   /**
    * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries
