@@ -25,12 +25,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -203,7 +203,7 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       TSEncoding encoding, Map<String, String> props, long timeLowerBound)
-      throws IOException, QueryProcessException {
+      throws IOException, QueryProcessException, MetadataException {
     if (!checkPath(deviceId, measurement)) {
       return null;
     }
@@ -216,13 +216,13 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   private List<TimeRange> constructDeletionList(String deviceId, String measurement,
-      long timeLowerBound) {
+      long timeLowerBound) throws MetadataException {
     List<TimeRange> deletionList = new ArrayList<>();
     deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
     for (Modification modification : modifications) {
       if (modification instanceof Deletion) {
         Deletion deletion = (Deletion) modification;
-        if (deletion.getDevice().equals(deviceId) && deletion.getMeasurement().equals(measurement)
+        if (deletion.getPath().matchFullPath(new PartialPath(deviceId, measurement))
             && deletion.getEndTime() > timeLowerBound) {
           long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
           deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
