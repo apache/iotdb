@@ -50,9 +50,7 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -282,8 +280,10 @@ public class TsFileProcessor {
     tsFileProcessorInfo.addMemTableCost(memTableIncrement);
     tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
     tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
-    SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-    blockInsertionIfReject();
+    if (storageGroupInfo.needToReportToSystem()) {
+      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+      blockInsertionIfReject();
+    }
     workMemTable.addRamCost(memTableIncrement);
   }
 
@@ -301,9 +301,10 @@ public class TsFileProcessor {
       if (insertTabletPlan.getDataTypes()[i] == null) {
         continue;
       }
-      // ChunkMetadataCost
+
       if (workMemTable.checkIfNeedStartNewChunk(insertTabletPlan.getDeviceId().getFullPath(),
           insertTabletPlan.getMeasurements()[i])) {
+        // ChunkMetadataCost
         chunkMetadataCost += ChunkMetadata.calculateRamSize(insertTabletPlan.getMeasurements()[i],
             insertTabletPlan.getDataTypes()[i]);
         memTableIncrement += ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
@@ -328,8 +329,10 @@ public class TsFileProcessor {
     tsFileProcessorInfo.addMemTableCost(memTableIncrement);
     tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
     tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
-    SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-    blockInsertionIfReject();
+    if (storageGroupInfo.needToReportToSystem()) {
+      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+      blockInsertionIfReject();
+    }
     workMemTable.addRamCost(memTableIncrement);
   }
 
@@ -338,8 +341,8 @@ public class TsFileProcessor {
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(100);
-        if (System.currentTimeMillis() - startTime > 6000) {
-          throw new WriteProcessException("System rejected over 6000ms");
+        if (System.currentTimeMillis() - startTime > 12000) {
+          throw new WriteProcessException("System rejected over 12000ms");
         }
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);

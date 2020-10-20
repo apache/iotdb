@@ -52,6 +52,14 @@ public class StorageGroupInfo {
   private long walMemCost;
 
   /**
+   * The threshold of reporting it's size to SystemInfo
+   */
+  private long storageGroupSizeReportThreshold = 
+      IoTDBDescriptor.getInstance().getConfig().getStorageGroupSizeReportThreshold();
+
+  private long lastReportedSize = 0;
+
+  /**
    * A set of all unclosed TsFileProcessors in this SG
    */
   private Set<TsFileProcessor> reportedTsps = new HashSet<>();
@@ -104,10 +112,11 @@ public class StorageGroupInfo {
   }
 
   /**
-   * called by TSPInfo when a memTable contains TEXT data flushed
+   * called by TSPInfo when a memTable flushed
    */
   public void resetMemTableCost(long cost) {
     memTableCost -= cost;
+    lastReportedSize -= cost;
   }
 
   /**
@@ -123,6 +132,14 @@ public class StorageGroupInfo {
 
   public Set<TsFileProcessor> getAllReportedTsp() {
     return reportedTsps;
+  }
+
+  public boolean needToReportToSystem() {
+    return getSgMemCost() - lastReportedSize > storageGroupSizeReportThreshold;
+  }
+
+  public void setLastReportedSize(long size) {
+    lastReportedSize = size;
   }
 
   /**

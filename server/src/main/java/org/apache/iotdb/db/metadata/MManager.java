@@ -31,7 +31,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -121,8 +120,7 @@ public class MManager {
   private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new HashMap<>();
 
   // data type -> number
-  private Map<TSDataType, Integer> schemaDataTypeNumMap = new EnumMap<>(
-      TSDataType.class);
+  private Map<TSDataType, Integer> schemaDataTypeNumMap = new ConcurrentHashMap<>();
   // reported total series number
   private int reportedDataTypeTotalNum;
 

@@ -57,6 +57,7 @@ public class SystemInfo {
     logger.debug("Report Storage Group Status to system. "
           + "Current sg mem cost is {}, delta is {}.", totalSgMemCost, delta);
     reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
+    storageGroupInfo.setLastReportedSize(storageGroupInfo.getSgMemCost());
     if (getTotalMemCost() >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       logger.debug("The total storage group mem costs are too large, call for flushing. "
           + "Current sg cost is {}", totalSgMemCost);
@@ -77,8 +78,9 @@ public class SystemInfo {
     if (reportedSgMemCostMap.containsKey(storageGroupInfo)) {
       this.totalSgMemCost -= reportedSgMemCostMap.get(storageGroupInfo)
           - storageGroupInfo.getSgMemCost();
+      storageGroupInfo.setLastReportedSize(storageGroupInfo.getSgMemCost());
       if (getTotalMemCost() > config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
-        logger.info("Some sg memery released, call flush.");
+        logger.debug("Some sg memery released, call flush.");
         logCost();
         forceFlush();
       }
@@ -96,7 +98,7 @@ public class SystemInfo {
   }
 
   private void logCost() {
-    logger.info("Current Sg cost is {}", totalSgMemCost);
+    logger.debug("Current Sg cost is {}", totalSgMemCost);
   }
 
   /**

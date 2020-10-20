@@ -158,6 +158,8 @@ public class IoTDBConfig {
    */
   private double rejectProportion = 0.8;
 
+  private long storageGroupSizeReportThreshold = 16 * 1024 * 1024;
+
   /**
    * Is the write ahead log enable.
    */
@@ -1187,6 +1189,14 @@ public class IoTDBConfig {
 
   public void setRejectProportion(double rejectProportion) {
     this.rejectProportion = rejectProportion;
+  }
+
+  public long getStorageGroupSizeReportThreshold() {
+    return storageGroupSizeReportThreshold;
+  }
+
+  public void setStorageGroupSizeReportThreshold(long storageGroupSizeReportThreshold) {
+    this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
   }
 
   public long getAllocateMemoryForWrite() {

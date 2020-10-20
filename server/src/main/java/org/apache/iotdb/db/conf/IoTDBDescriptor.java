@@ -212,6 +212,10 @@ public class IoTDBDescriptor {
       conf.setRejectProportion(Double.parseDouble(properties.getProperty("reject_proportion",
           Double.toString(conf.getRejectProportion()))));
 
+      conf.setStorageGroupSizeReportThreshold(
+          Long.parseLong(properties.getProperty("storage_group_report_threshold",
+              Long.toString(conf.getStorageGroupSizeReportThreshold()))));
+
       conf.setMetaDataCacheEnable(
           Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
               Boolean.toString(conf.isMetaDataCacheEnable()))));

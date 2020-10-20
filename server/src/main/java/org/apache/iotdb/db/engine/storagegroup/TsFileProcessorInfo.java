@@ -86,7 +86,7 @@ public class TsFileProcessorInfo {
   }
 
   /**
-   * call this method when a memTable contains TEXT data flushed
+   * call this method when a memTable flushed
    */
   public void resetMemTableCost(long cost) {
     storageGroupInfo.resetMemTableCost(cost);
