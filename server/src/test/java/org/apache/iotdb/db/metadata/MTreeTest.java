@@ -442,6 +442,8 @@ public class MTreeTest {
 
       assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop"), 2));
       assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop"), 3));
+      assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*"), 2));
+      assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*"), 3));
       assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.d1"), 3));
       assertEquals(0, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.d1"), 4));
     } catch (MetadataException e) {
@@ -475,5 +477,25 @@ public class MTreeTest {
           "The storage group name can only be characters, numbers and underscores. root.\"sg.ln\" is not a legal path",
           e.getMessage());
     }
+  }
+
+  @Test
+  public void testSearchStorageGroup() throws MetadataException {
+    MTree root = new MTree();
+    String path1 = "root";
+    String sgPath1 = "root.vehicle";
+    root.setStorageGroup(new PartialPath(sgPath1));
+    assertTrue(root.isPathExist(new PartialPath(path1)));
+    try {
+      root.createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+      root.createTimeseries(new PartialPath("root.vehicle.d1.s2"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+    } catch (MetadataException e1) {
+      fail(e1.getMessage());
+    }
+
+    assertEquals(root.searchAllRelatedStorageGroups(new PartialPath("root.vehicle.d1.s1")),
+        Arrays.asList(new PartialPath(sgPath1)));
   }
 }

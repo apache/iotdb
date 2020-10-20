@@ -120,12 +120,14 @@ public class LogReplayer {
     tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
   }
 
-  private void replayDelete(DeletePlan deletePlan) throws IOException {
+  private void replayDelete(DeletePlan deletePlan) throws IOException, MetadataException {
     List<PartialPath> paths = deletePlan.getPaths();
     for (PartialPath path : paths) {
-      recoverMemTable
-          .delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteStartTime(),
-              deletePlan.getDeleteEndTime());
+      for (PartialPath device : IoTDB.metaManager.getDevices(path.getDevicePath())) {
+        recoverMemTable
+            .delete(path, device, deletePlan.getDeleteStartTime(),
+                deletePlan.getDeleteEndTime());
+      }
       modFile
           .write(
               new Deletion(path, versionController.nextVersion(), deletePlan.getDeleteStartTime(),

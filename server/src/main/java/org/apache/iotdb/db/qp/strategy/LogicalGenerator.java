@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -1172,10 +1173,18 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterAttributeClauses(AttributeClausesContext ctx) {
     super.enterAttributeClauses(ctx);
-    String dataType = ctx.dataType().getChild(0).getText().toUpperCase();
-    String encoding = ctx.encoding().getChild(0).getText().toUpperCase();
-    createTimeSeriesOperator.setDataType(TSDataType.valueOf(dataType));
-    createTimeSeriesOperator.setEncoding(TSEncoding.valueOf(encoding));
+    final String dataType = ctx.dataType().getChild(0).getText().toUpperCase();
+    final TSDataType tsDataType = TSDataType.valueOf(dataType);
+    createTimeSeriesOperator.setDataType(tsDataType);
+
+    final IoTDBDescriptor ioTDBDescriptor = IoTDBDescriptor.getInstance();
+    TSEncoding encoding = ioTDBDescriptor.getDefualtEncodingByType(tsDataType);
+    if (Objects.nonNull(ctx.encoding())) {
+      String encodingString = ctx.encoding().getChild(0).getText().toUpperCase();
+      encoding = TSEncoding.valueOf(encodingString);
+    }
+    createTimeSeriesOperator.setEncoding(encoding);
+
     CompressionType compressor;
     List<PropertyContext> properties = ctx.property();
     if (ctx.compressor() != null) {
