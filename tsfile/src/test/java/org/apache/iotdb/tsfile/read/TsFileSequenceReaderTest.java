@@ -142,5 +142,7 @@ public class TsFileSequenceReaderTest {
         Assert.assertEquals(expectedChunkStrings, actualChunkStrings);
       }
     }
+
+    reader.close();
   }
 }
