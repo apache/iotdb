@@ -117,6 +117,7 @@ import org.slf4j.LoggerFactory;
 public class StorageGroupProcessor {
 
   public static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
+  private static final String FAIL_TO_UPGRADE_FOLDER = "Failed to move {} to upgrade folder";
 
   /**
    * All newly generated chunks after merge have version number 0, so we set merged Modification
@@ -458,19 +459,19 @@ public class StorageGroupProcessor {
         // move .tsfile to upgrade folder
         for (File file : oldTsfileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error("Failed to move {} to upgrade folder", file);
+            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
           }
         }
         // move .resource to upgrade folder
         for (File file : oldResourceFileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error("Failed to move {} to upgrade folder", file);
+            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
           }
         }
         // move .mods to upgrade folder
         for (File file : oldModificationFileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error("Failed to move {} to upgrade folder", file);
+            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
           }
         }
 
@@ -1342,18 +1343,15 @@ public class StorageGroupProcessor {
     return true;
   }
 
-
   /**
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId the deviceId of the timeseries to be deleted.
-   * @param measurementId the measurementId of the timeseries to be deleted.
+   * @param path the timeseries path of the to be deleted.
    * @param startTime the startTime of delete range.
    * @param endTime the endTime of delete range.
    */
-  public void delete(PartialPath deviceId, String measurementId, long startTime, long endTime)
-      throws IOException {
+  public void delete(PartialPath path, long startTime, long endTime) throws IOException {
     // TODO: how to avoid partial deletion?
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
@@ -1365,33 +1363,35 @@ public class StorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Long lastUpdateTime = null;
-      for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
-        Long curTime = latestTimeMap.get(deviceId.getFullPath());
-        if (curTime != null && (lastUpdateTime == null || lastUpdateTime < curTime)) {
-          lastUpdateTime = curTime;
+      Set<PartialPath> devicePaths = IoTDB.metaManager.getDevices(path.getDevicePath());
+      for (PartialPath device : devicePaths) {
+        Long lastUpdateTime = null;
+        for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
+          Long curTime = latestTimeMap.get(device.getFullPath());
+          if (curTime != null && (lastUpdateTime == null || lastUpdateTime < curTime)) {
+            lastUpdateTime = curTime;
+          }
         }
-      }
-
-      // There is no tsfile data, the delete operation is invalid
-      if (lastUpdateTime == null) {
-        logger.debug("No device {} in SG {}, deletion invalid", deviceId, storageGroupName);
-        return;
+        // There is no tsfile data, the delete operation is invalid
+        if (lastUpdateTime == null) {
+          logger.debug("No device {} in SG {}, deletion invalid", device, storageGroupName);
+          return;
+        }
+        // delete Last cache record if necessary
+        tryToDeleteLastCache(device, path, startTime, endTime);
       }
 
       // write log to impacted working TsFileProcessors
-      logDeletion(startTime, endTime, deviceId, measurementId);
-      // delete Last cache record if necessary
-      tryToDeleteLastCache(deviceId, measurementId, startTime, endTime);
-      Deletion deletion = new Deletion(deviceId.concatNode(measurementId),
-          MERGE_MOD_START_VERSION_NUM, startTime, endTime);
+      logDeletion(startTime, endTime, path);
+
+      Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
       if (tsFileManagement.mergingModification != null) {
         tsFileManagement.mergingModification.write(deletion);
         updatedModFiles.add(tsFileManagement.mergingModification);
       }
 
-      deleteDataInFiles(tsFileManagement.getTsFileList(true), deletion, updatedModFiles);
-      deleteDataInFiles(tsFileManagement.getTsFileList(false), deletion, updatedModFiles);
+      deleteDataInFiles(tsFileManagement.getTsFileList(true), deletion, devicePaths, updatedModFiles);
+      deleteDataInFiles(tsFileManagement.getTsFileList(false), deletion, devicePaths, updatedModFiles);
 
     } catch (Exception e) {
       // roll back
@@ -1406,13 +1406,12 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void logDeletion(long startTime, long endTime, PartialPath deviceId, String measurementId)
+  private void logDeletion(long startTime, long endTime, PartialPath path)
       throws IOException {
     long timePartitionStartId = StorageEngine.getTimePartition(startTime);
     long timePartitionEndId = StorageEngine.getTimePartition(endTime);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      DeletePlan deletionPlan = new DeletePlan(startTime, endTime,
-          deviceId.concatNode(measurementId));
+      DeletePlan deletionPlan = new DeletePlan(startTime, endTime, path);
       for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
         if (timePartitionStartId <= entry.getKey() && entry.getKey() <= timePartitionEndId) {
           entry.getValue().getLogNode().write(deletionPlan);
@@ -1427,15 +1426,23 @@ public class StorageGroupProcessor {
     }
   }
 
+  private boolean canSkipDelete(TsFileResource tsFileResource, Set<PartialPath> devicePaths,
+       long deleteStart, long deleteEnd) {
+    for (PartialPath device : devicePaths) {
+      if (tsFileResource.containsDevice(device.getFullPath()) &&
+              (deleteEnd >= tsFileResource.getStartTime(device.getFullPath()) &&
+               deleteStart <= tsFileResource.getOrDefaultEndTime(device.getFullPath(), Long.MAX_VALUE))) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
-      List<ModificationFile> updatedModFiles)
-      throws IOException {
-    String deviceId = deletion.getDevice();
+      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles)
+          throws IOException, MetadataException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      if (!tsFileResource.containsDevice(deviceId) ||
-          deletion.getEndTime() < tsFileResource.getStartTime(deviceId) ||
-          deletion.getStartTime() > tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE)) {
+      if (canSkipDelete(tsFileResource, devicePaths, deletion.getStartTime(), deletion.getEndTime())) {
         continue;
       }
 
@@ -1450,7 +1457,7 @@ public class StorageGroupProcessor {
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
         TsFileProcessor tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
-        tsfileProcessor.deleteDataInMemory(deletion);
+        tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
       }
 
       // add a record in case of rollback
@@ -1458,18 +1465,21 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void tryToDeleteLastCache(PartialPath deviceId, String measurementId, long startTime,
-      long endTime) throws WriteProcessException {
+  private void tryToDeleteLastCache(PartialPath deviceId, PartialPath originalPath,
+      long startTime, long endTime) throws WriteProcessException {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+      return;
+    }
     try {
-      MManager manager = MManager.getInstance();
-      MNode node = manager.getDeviceNodeWithAutoCreate(deviceId);
+      MNode node = IoTDB.metaManager.getDeviceNode(deviceId);
 
-      MNode measurementNode = node.getChild(measurementId);
-      if (measurementNode != null) {
-        TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
-        if (lastPair != null && startTime <= lastPair.getTimestamp()
-            && lastPair.getTimestamp() <= endTime) {
-          ((MeasurementMNode) measurementNode).resetCache();
+      for (MNode measurementNode : node.getChildren().values()) {
+        if (measurementNode != null && originalPath.matchFullPath(measurementNode.getPartialPath())) {
+          TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
+          if (lastPair != null && startTime <= lastPair.getTimestamp()
+              && lastPair.getTimestamp() <= endTime) {
+            ((MeasurementMNode) measurementNode).resetCache();
+          }
         }
       }
     } catch (MetadataException e) {

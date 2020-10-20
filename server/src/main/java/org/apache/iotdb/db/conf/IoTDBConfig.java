@@ -60,8 +60,6 @@ public class IoTDBConfig {
   // for path like: root.sg1.d1."1.2.3", root.sg.d1."1.2.3"
   private static final String NODE_MATCHER =
       "[" + PATH_SEPARATOR + "]([\"])?" + ID_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*([\"])?";
-  public static final Pattern PATH_PATTERN = Pattern
-      .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_MATCHER + ")?");
 
   public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
 
