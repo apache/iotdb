@@ -458,12 +458,12 @@ public class IoTDBConfig {
   /**
    * FLOAT encoding when creating schema automatically is enabled
    */
-  private TSEncoding defaultFloatEncoding = TSEncoding.GORILLA_V1;
+  private TSEncoding defaultFloatEncoding = TSEncoding.GORILLA_V2;
 
   /**
    * DOUBLE encoding when creating schema automatically is enabled
    */
-  private TSEncoding defaultDoubleEncoding = TSEncoding.GORILLA_V1;
+  private TSEncoding defaultDoubleEncoding = TSEncoding.GORILLA_V2;
 
   /**
    * TEXT encoding when creating schema automatically is enabled

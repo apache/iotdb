@@ -23,12 +23,12 @@ import java.util.Map;
 
 public enum TSEncoding {
 
-  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA_V1, REGULAR;
+  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA_V1, REGULAR, GORILLA_V2;
 
   private static final Map<String, String> ALIAS_FORMAL_NAME_MAP = new HashMap<>();
 
   static {
-    ALIAS_FORMAL_NAME_MAP.put("GORILLA", "GORILLA_V1");
+    ALIAS_FORMAL_NAME_MAP.put("GORILLA", "GORILLA_V2");
   }
 
   /**
@@ -53,14 +53,14 @@ public enum TSEncoding {
   }
 
   public static byte deserializeToByte(short encoding) {
-    if (encoding >= 8 || encoding < 0) {
+    if (encoding < 0 || 8 < encoding) {
       throw new IllegalArgumentException("Invalid input: " + encoding);
     }
     return (byte) encoding;
   }
 
   private static TSEncoding getTsEncoding(short encoding) {
-    if (encoding >= 8 || encoding < 0) {
+    if (encoding < 0 || 8 < encoding) {
       throw new IllegalArgumentException("Invalid input: " + encoding);
     }
     switch (encoding) {
@@ -78,6 +78,8 @@ public enum TSEncoding {
         return GORILLA_V1;
       case 7:
         return REGULAR;
+      case 8:
+        return GORILLA_V2;
       default:
         return PLAIN;
     }
@@ -125,6 +127,8 @@ public enum TSEncoding {
         return 6;
       case REGULAR:
         return 7;
+      case GORILLA_V2:
+        return 8;
       default:
         return 0;
     }

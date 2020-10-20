@@ -44,27 +44,35 @@ public class SchemaUtils {
 
   }
 
-  private static Map<TSDataType, Set<TSEncoding>> schemaChecker = new EnumMap<>(TSDataType.class);
+  private static final Map<TSDataType, Set<TSEncoding>> schemaChecker = new EnumMap<>(
+      TSDataType.class);
 
   static {
     Set<TSEncoding> booleanSet = new HashSet<>();
     booleanSet.add(TSEncoding.PLAIN);
     booleanSet.add(TSEncoding.RLE);
     schemaChecker.put(TSDataType.BOOLEAN, booleanSet);
+
     Set<TSEncoding> int32Set = new HashSet<>();
     int32Set.add(TSEncoding.PLAIN);
     int32Set.add(TSEncoding.RLE);
     int32Set.add(TSEncoding.TS_2DIFF);
     int32Set.add(TSEncoding.REGULAR);
     schemaChecker.put(TSDataType.INT32, int32Set);
-    schemaChecker.put(TSDataType.INT64, int32Set);
+
+    Set<TSEncoding> int64Set = new HashSet<>(int32Set);
+    int64Set.add(TSEncoding.GORILLA_V2);
+    schemaChecker.put(TSDataType.INT64, int64Set);
+
     Set<TSEncoding> floatSet = new HashSet<>();
     floatSet.add(TSEncoding.PLAIN);
     floatSet.add(TSEncoding.RLE);
     floatSet.add(TSEncoding.TS_2DIFF);
     floatSet.add(TSEncoding.GORILLA_V1);
+    floatSet.add(TSEncoding.GORILLA_V2);
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
+
     Set<TSEncoding> textSet = new HashSet<>();
     textSet.add(TSEncoding.PLAIN);
     schemaChecker.put(TSDataType.TEXT, textSet);
@@ -166,7 +174,7 @@ public class SchemaUtils {
       throws MetadataException {
     if (!schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(String
-          .format("encoding %s does not support %s", dataType.toString(), encoding.toString()));
+          .format("encoding %s does not support %s", encoding.toString(), dataType.toString()));
     }
   }
 }

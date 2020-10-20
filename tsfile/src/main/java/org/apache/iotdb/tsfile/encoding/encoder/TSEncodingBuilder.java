@@ -66,6 +66,8 @@ public abstract class TSEncodingBuilder {
         return new GORILLA_V1();
       case REGULAR:
         return new REGULAR();
+      case GORILLA_V2:
+        return new GORILLA_V2();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -221,7 +223,7 @@ public abstract class TSEncodingBuilder {
   }
 
   /**
-   * for ENUMS.
+   * for FLOAT, DOUBLE.
    */
   public static class GORILLA_V1 extends TSEncodingBuilder {
 
@@ -257,6 +259,31 @@ public abstract class TSEncodingBuilder {
           return new RegularDataEncoder.LongRegularEncoder();
         default:
           throw new UnSupportedDataTypeException("REGULAR doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // allowed do nothing
+    }
+  }
+
+  /**
+   * for FLOAT, DOUBLE, LONG.
+   */
+  public static class GORILLA_V2 extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case FLOAT:
+          return null;
+        case DOUBLE:
+          return null;
+        case INT64:
+          return null;
+        default:
+          throw new UnSupportedDataTypeException("GORILLA_V2 doesn't support data type: " + type);
       }
     }
 
