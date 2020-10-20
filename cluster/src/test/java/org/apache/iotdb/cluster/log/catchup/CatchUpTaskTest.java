@@ -31,10 +31,10 @@ import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestSyncClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
-import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
@@ -49,8 +49,10 @@ import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -265,7 +267,8 @@ public class CatchUpTaskTest {
       }
       sender.getLogManager().append(logList);
       sender.getLogManager().commitTo(9);
-      sender.getLogManager().setMaxHaveAppliedCommitIndex(sender.getLogManager().getCommitLogIndex());
+      sender.getLogManager()
+          .setMaxHaveAppliedCommitIndex(sender.getLogManager().getCommitLogIndex());
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
       Peer peer = new Peer(10);
@@ -328,5 +331,65 @@ public class CatchUpTaskTest {
 
     assertEquals(logList, receivedLogs.subList(1, receivedLogs.size()));
     assertEquals(9, leaderCommit);
+  }
+
+  @Test
+  public void testFindLastMatchIndex() throws LogExecutionException {
+    List<Log> logList = new ArrayList<>();
+    int lastMatchedIndex = 6;
+    for (int i = 0; i < 10; i++) {
+      Log log = new EmptyContentLog();
+      log.setCurrLogIndex(i);
+      log.setCurrLogTerm(i);
+      logList.add(log);
+
+      if (i < lastMatchedIndex) {
+        receivedLogs.add(log);
+      }
+    }
+    sender.getLogManager().append(logList);
+    sender.getLogManager().commitTo(9);
+    sender.getLogManager()
+        .setMaxHaveAppliedCommitIndex(sender.getLogManager().getCommitLogIndex());
+    Node receiver = new Node();
+    sender.setCharacter(NodeCharacter.LEADER);
+    Peer peer = new Peer(10);
+    peer.setCatchUp(false);
+    peer.setMatchIndex(0);
+    peer.setNextIndex(0);
+
+    CatchUpTask task = new CatchUpTask(receiver, peer, sender);
+    task.setLogs(logList);
+    try {
+      // 1. case 1: the matched index is in the middle of the logs interval
+      int resultMatchIndex = task.findLastMatchIndex(logList);
+      assertEquals(lastMatchedIndex, resultMatchIndex);
+
+      // 2. case 2: no matched index case
+      lastMatchedIndex = -1;
+      receivedLogs.subList(1, receivedLogs.size()).clear();
+      resultMatchIndex = task.findLastMatchIndex(logList);
+      assertEquals(lastMatchedIndex, resultMatchIndex);
+
+      // 3. case 3: the matched index is at the last index of the logs
+      logList.clear();
+      receivedLogs.subList(1, receivedLogs.size()).clear();
+      lastMatchedIndex = 9;
+      for (int i = 0; i < 10; i++) {
+        Log log = new EmptyContentLog();
+        log.setCurrLogIndex(i);
+        log.setCurrLogTerm(i);
+        logList.add(log);
+
+        if (i < lastMatchedIndex) {
+          receivedLogs.add(log);
+        }
+      }
+      resultMatchIndex = task.findLastMatchIndex(logList);
+      assertEquals(lastMatchedIndex, resultMatchIndex);
+
+    } catch (LeaderUnknownException | TException | InterruptedException e) {
+      Assert.fail(e.getMessage());
+    }
   }
 }
