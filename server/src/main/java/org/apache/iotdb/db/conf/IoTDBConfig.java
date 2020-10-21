@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.conf;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 import java.io.File;
@@ -141,7 +140,7 @@ public class IoTDBConfig {
   /**
    * Is dynamic parameter adapter enable.
    */
-  private boolean enableParameterAdapter = false;
+  private boolean enableParameterAdapter = true;
 
   /**
    * Is the write ahead log enable.

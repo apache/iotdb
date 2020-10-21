@@ -776,6 +776,9 @@ public class MTree implements Serializable {
    * Get all timeseries paths under the given path
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
+   *
+   * @return Pair.left  contains all the satisfied paths
+   *         Pair.right means the current offset or zero if we don't set offset.
    */
   Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(PartialPath prefixPath, int limit, int offset) throws MetadataException {
     PartialPath prePath = new PartialPath(prefixPath.getNodes());
