@@ -594,9 +594,6 @@ public class IoTDBSessionComplexIT {
 
     int result = asyncInsertRecordsTimeout("root.sg1.d1", 0, 1000, 5000);
     Assert.assertEquals(0, result);
-
-    result = asyncInsertRecordsTimeout("root.sg1.d1", 0, 1000, -1);
-    Assert.assertEquals(-1, result);
   }
 
   private void createTimeseries() throws StatementExecutionException, IoTDBConnectionException {
