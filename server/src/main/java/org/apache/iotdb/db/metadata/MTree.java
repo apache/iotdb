@@ -1153,6 +1153,7 @@ public class MTree implements Serializable {
   @SuppressWarnings("squid:S3776")
   private void findDevices(MNode node, String[] nodes, int idx, Set<PartialPath> res) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
+    // the node path doesn't contains '*'
     if (!nodeReg.contains(PATH_WILDCARD)) {
       MNode next = node.getChild(nodeReg);
       if (next != null) {
@@ -1162,9 +1163,11 @@ public class MTree implements Serializable {
           findDevices(next, nodes, idx + 1, res);
         }
       }
-    } else {
+    } else { // the node path contains '*'
       boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
+        // use '.*' to replace '*' to form a regex to match
+        // if the match failed, skip it.
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
           continue;
         }
