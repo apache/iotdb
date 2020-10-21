@@ -269,7 +269,7 @@ public abstract class TSEncodingBuilder {
   }
 
   /**
-   * for FLOAT, DOUBLE, LONG.
+   * for FLOAT, DOUBLE, INT, LONG.
    */
   public static class GORILLA_V2 extends TSEncodingBuilder {
 
@@ -279,6 +279,8 @@ public abstract class TSEncodingBuilder {
         case FLOAT:
           return null;
         case DOUBLE:
+          return null;
+        case INT32:
           return null;
         case INT64:
           return null;

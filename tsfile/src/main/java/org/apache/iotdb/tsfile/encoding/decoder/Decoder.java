@@ -100,6 +100,8 @@ public abstract class Decoder {
             return null;
           case DOUBLE:
             return null;
+          case INT32:
+            return null;
           case INT64:
             return null;
           default:

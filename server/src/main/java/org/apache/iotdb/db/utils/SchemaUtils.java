@@ -53,16 +53,14 @@ public class SchemaUtils {
     booleanSet.add(TSEncoding.RLE);
     schemaChecker.put(TSDataType.BOOLEAN, booleanSet);
 
-    Set<TSEncoding> int32Set = new HashSet<>();
-    int32Set.add(TSEncoding.PLAIN);
-    int32Set.add(TSEncoding.RLE);
-    int32Set.add(TSEncoding.TS_2DIFF);
-    int32Set.add(TSEncoding.REGULAR);
-    schemaChecker.put(TSDataType.INT32, int32Set);
-
-    Set<TSEncoding> int64Set = new HashSet<>(int32Set);
-    int64Set.add(TSEncoding.GORILLA_V2);
-    schemaChecker.put(TSDataType.INT64, int64Set);
+    Set<TSEncoding> intSet = new HashSet<>();
+    intSet.add(TSEncoding.PLAIN);
+    intSet.add(TSEncoding.RLE);
+    intSet.add(TSEncoding.TS_2DIFF);
+    intSet.add(TSEncoding.REGULAR);
+    intSet.add(TSEncoding.GORILLA_V2);
+    schemaChecker.put(TSDataType.INT32, intSet);
+    schemaChecker.put(TSDataType.INT64, intSet);
 
     Set<TSEncoding> floatSet = new HashSet<>();
     floatSet.add(TSEncoding.PLAIN);
