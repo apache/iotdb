@@ -1150,6 +1150,7 @@ public class MTree implements Serializable {
    * @param idx   the current index of array nodes
    * @param res   store all matched device names
    */
+  @SuppressWarnings("squid:S3776")
   private void findDevices(MNode node, String[] nodes, int idx, Set<PartialPath> res) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!nodeReg.contains(PATH_WILDCARD)) {
