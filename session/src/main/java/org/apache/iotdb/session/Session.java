@@ -32,9 +32,6 @@ import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
@@ -43,12 +40,16 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionUtils.TimeOutCanceller;
@@ -71,7 +72,6 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 public class Session {
 
@@ -89,6 +89,8 @@ public class Session {
   private long statementId;
   private int fetchSize;
   private SessionThreadPool asyncThreadPool;
+  private boolean enableRPCCompression;
+  private int connectionTimeoutInMs;
 
   public Session(String host, int rpcPort) {
     this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
@@ -139,6 +141,9 @@ public class Session {
     if (!isClosed) {
       return;
     }
+
+    this.enableRPCCompression = enableRPCCompression;
+    this.connectionTimeoutInMs = connectionTimeoutInMs;
 
     transport = new TFastFramedTransport(new TSocket(host, rpcPort, connectionTimeoutInMs));
 
@@ -256,7 +261,15 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.insertTablet(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.insertTablet(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+      }
     }
   }
 
@@ -342,7 +355,15 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.insertTablets(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.insertTablets(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+      }
     }
   }
 
@@ -430,7 +451,15 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.insertRecords(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.insertRecords(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+      }
     }
   }
 
@@ -516,7 +545,15 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.insertStringRecords(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.insertStringRecords(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+      }
     }
   }
 
@@ -588,7 +625,15 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.insertRecord(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.insertRecord(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+      }
     }
   }
 
@@ -656,7 +701,15 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.insertStringRecord(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.insertStringRecord(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+      }
     }
   }
 
@@ -1153,7 +1206,15 @@ public class Session {
     try {
       execResp = client.executeQueryStatement(execReq);
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          execResp = client.executeQueryStatement(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+      }
     }
 
     RpcUtils.verifySuccess(execResp.getStatus());
@@ -1171,12 +1232,21 @@ public class Session {
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
+    TSExecuteStatementResp execResp;
     try {
-      TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
-      RpcUtils.verifySuccess(execResp.getStatus());
+      execResp = client.executeUpdateStatement(execReq);
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          execResp = client.executeUpdateStatement(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+      }
     }
+    RpcUtils.verifySuccess(execResp.getStatus());
   }
 
   /**
@@ -1201,7 +1271,15 @@ public class Session {
     try {
       execResp = client.executeRawDataQuery(execReq);
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          execResp = client.executeRawDataQuery(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+      }
     }
 
     RpcUtils.verifySuccess(execResp.getStatus());
@@ -1299,6 +1377,27 @@ public class Session {
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
+  }
+
+  private boolean reconnect() {
+    boolean flag = false;
+    for (int i = 1; i <= Config.RETRY_NUM; i++) {
+      try {
+        if (transport != null) {
+          close();
+          open(enableRPCCompression, connectionTimeoutInMs);
+          flag = true;
+        }
+      } catch (Exception e) {
+        try {
+          Thread.sleep(Config.RETRY_INTERVAL_MS);
+        } catch (InterruptedException e1) {
+          logger.error("reconnect is interrupted.", e1);
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
+    return flag;
   }
 
   @FunctionalInterface

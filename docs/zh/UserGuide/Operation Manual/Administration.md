@@ -103,7 +103,6 @@ INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 |:---|:---|
 |SET\_STORAGE\_GROUP|创建时间序列。包含设置存储组的权限。路径相关|
 |INSERT\_TIMESERIES|插入数据。路径相关|
-|UPDATE\_TIMESERIES|更新数据。路径相关|
 |READ\_TIMESERIES|查询数据。路径相关|
 |DELETE\_TIMESERIES|删除数据或时间序列。路径相关|
 |CREATE\_USER|创建用户。路径无关|
