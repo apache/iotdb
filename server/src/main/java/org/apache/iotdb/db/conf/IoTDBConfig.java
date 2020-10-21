@@ -266,7 +266,7 @@ public class IoTDBConfig {
   /**
    * TsFile manage strategy, define use which hot compaction strategy
    */
-  private TsFileManagementStrategy tsFileManagementStrategy = TsFileManagementStrategy.NORMAL_STRATEGY;
+  private TsFileManagementStrategy tsFileManagementStrategy = TsFileManagementStrategy.LEVEL_STRATEGY;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max seq file num of each level. When
@@ -277,13 +277,13 @@ public class IoTDBConfig {
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max num of seq level.
    */
-  private int maxLevelNum = 4;
+  private int maxLevelNum = 3;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max unseq file num of each level. When
    * file num exceeds this, the files in one level will merge to one.
    */
-  private int maxUnseqFileNumInEachLevel = 10;
+  private int maxUnseqFileNumInEachLevel = 3;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max num of unseq level.
@@ -546,7 +546,7 @@ public class IoTDBConfig {
    * How many thread will be set up to perform hot compaction, 30 by default. Set to 1 when less
    * than or equal to 0.
    */
-  private int hotCompactionThreadNum = 30;
+  private int hotCompactionThreadNum = 10;
 
   /**
    * The limit of read throughput merge can reach per second
