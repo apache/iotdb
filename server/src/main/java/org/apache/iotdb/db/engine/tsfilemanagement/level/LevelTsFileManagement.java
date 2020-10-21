@@ -458,9 +458,8 @@ public class LevelTsFileManagement extends TsFileManagement {
         for (TsFileResource tsFileResource : levelRawTsFileResources) {
           if (tsFileResource.isClosed()) {
             String path = tsFileResource.getTsFile().getAbsolutePath();
-            try {
-              if (tsFileResource.getTsFile().exists()) {
-                TsFileSequenceReader reader = new TsFileSequenceReader(path);
+            if (tsFileResource.getTsFile().exists()) {
+              try (TsFileSequenceReader reader = new TsFileSequenceReader(path)) {
                 List<Path> pathList = reader.getAllPaths();
                 for (Path sensorPath : pathList) {
                   measurementSet.offer(sensorPath.getFullPath());
@@ -469,13 +468,12 @@ public class LevelTsFileManagement extends TsFileManagement {
                     pointNum += chunkMetadata.getNumOfPoints();
                   }
                 }
-                reader.close();
-              } else {
-                logger.info("{} tsfile does not exist", path);
+              } catch (IOException e) {
+                logger.error(
+                    "{} tsfile reader creates error", path, e);
               }
-            } catch (IOException e) {
-              logger.error(
-                  "{} tsfile reader creates error", path, e);
+            } else {
+              logger.info("{} tsfile does not exist", path);
             }
           }
           if (measurementSet.cardinality() > 0
