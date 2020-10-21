@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.engine.tsfilemanagement;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagement.HotCompactionMergeTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -48,7 +50,9 @@ public class HotCompactionMergeTaskPoolManager implements IService {
   public void start() {
     if (pool == null) {
       this.pool = IoTDBThreadPoolFactory
-          .newCachedThreadPool(ThreadName.HOT_COMPACTION_SERVICE.getName());
+          .newScheduledThreadPool(
+              IoTDBDescriptor.getInstance().getConfig().getHotCompactionThreadNum(),
+              ThreadName.HOT_COMPACTION_SERVICE.getName());
     }
     logger.info("Hot compaction merge task manager started.");
   }
@@ -100,7 +104,8 @@ public class HotCompactionMergeTaskPoolManager implements IService {
     return ServiceType.HOT_COMPACTION_SERVICE;
   }
 
-  public void submitTask(HotCompactionMergeTask hotCompactionMergeTask) {
+  public void submitTask(HotCompactionMergeTask hotCompactionMergeTask)
+      throws RejectedExecutionException {
     if (pool != null && !pool.isTerminated()) {
       pool.submit(hotCompactionMergeTask);
     }
