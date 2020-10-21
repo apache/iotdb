@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.db.engine.fileSystem;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.tsfile.fileSystem.FSType;
-
 import java.io.File;
 import java.net.URI;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 public enum SystemFileFactory {
 

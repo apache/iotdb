@@ -700,6 +700,11 @@ public class MManager {
     return mtree.getAllStorageGroupPaths();
   }
 
+  public List<PartialPath> searchAllRelatedStorageGroups(PartialPath path)
+      throws MetadataException {
+      return mtree.searchAllRelatedStorageGroups(path);
+  }
+
   /**
    * Get all storage group under given prefixPath.
    *

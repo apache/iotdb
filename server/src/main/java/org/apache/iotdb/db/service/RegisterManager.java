@@ -21,7 +21,6 @@ package org.apache.iotdb.db.service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.slf4j.Logger;

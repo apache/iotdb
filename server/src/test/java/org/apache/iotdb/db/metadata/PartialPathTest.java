@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import java.util.Arrays;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -68,7 +69,31 @@ public class PartialPathTest {
     arr1[0] = "root";
     arr1[1] = "sg1";
     PartialPath a = new PartialPath(arr1);
-    Assert.assertEquals("[root, sg1, d1]", Arrays.toString(a.concatNode("d1").getNodes()));
+    String[] arr2 = new String[1];
+    arr2[0] = "d1";
+    a.concatPath(arr2);
+    Assert.assertEquals("[root, sg1, d1]", Arrays.toString(a.getNodes()));
+    Assert.assertEquals("root.sg1.d1", a.getFullPath());
+  }
+
+  @Test
+  public void testAlterPrefixPath() throws IllegalPathException {
+    PartialPath p1 = new PartialPath("root.sg1.d1.s1");
+    PartialPath p2 = p1.alterPrefixPath(new PartialPath("root.sg2"));
+    PartialPath p3 = p1.alterPrefixPath(new PartialPath("root.sg2.d1.d2.s3"));
+
+    Assert.assertEquals("root.sg2.d1.s1", p2.getFullPath());
+    Assert.assertEquals("root.sg2.d1.d2.s3", p3.getFullPath());
+  }
+
+  @Test
+  public void testMatchPath() throws IllegalPathException {
+    PartialPath p1 = new PartialPath("root.sg1.d1.*");
+
+    Assert.assertTrue(p1.matchFullPath(new PartialPath("root.sg1.d1.s2")));
+    Assert.assertFalse(p1.matchFullPath(new PartialPath("root.sg1.d1")));
+    Assert.assertFalse(p1.matchFullPath(new PartialPath("root.sg2.d1.*")));
+    Assert.assertFalse(p1.matchFullPath(new PartialPath("")));
   }
 
 }
