@@ -48,7 +48,8 @@ public class IoTDBMergeTest {
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    prevTsFileManagementStrategy = IoTDBDescriptor.getInstance().getConfig().getTsFileManagementStrategy();
+    prevTsFileManagementStrategy = IoTDBDescriptor.getInstance().getConfig()
+        .getTsFileManagementStrategy();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1);
     IoTDBDescriptor.getInstance().getConfig()
         .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
@@ -280,6 +281,11 @@ public class IoTDBMergeTest {
       }
       statement.execute("FLUSH");
       statement.execute("MERGE");
+      try {
+        Thread.sleep(10000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SHOW MERGE")) {
