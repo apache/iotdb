@@ -802,7 +802,7 @@ public class MTree implements Serializable {
    */
   private void findDevices(MNode node, String[] nodes, int idx, String parent, Set<String> res) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (!(PATH_WILDCARD).equals(nodeReg)) {
+    if (!nodeReg.contains(PATH_WILDCARD)) {
       if (node.hasChild(nodeReg)) {
         if (node.getChild(nodeReg) instanceof LeafMNode) {
           res.add(parent + node.getName());
@@ -814,6 +814,9 @@ public class MTree implements Serializable {
     } else {
       boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
+        if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
+          continue;
+        }
         if (child instanceof LeafMNode && !deviceAdded) {
           res.add(parent + node.getName());
           deviceAdded = true;
