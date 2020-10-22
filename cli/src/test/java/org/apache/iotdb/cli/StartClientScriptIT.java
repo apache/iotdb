@@ -55,6 +55,13 @@ public class StartClientScriptIT extends AbstractScript {
         "-h",
         "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
     testOutput(builder, output);
+
+    final String[] output2 = {
+            "Msg: The statement is executed successfully."};
+    ProcessBuilder builder2 = new ProcessBuilder("cmd.exe", "/c",
+            dir + File.separator + "sbin" + File.separator + "start-cli.bat",
+            "-e", "\"flush\"");
+    testOutput(builder2, output2);
   }
 
   @Override
@@ -67,5 +74,12 @@ public class StartClientScriptIT extends AbstractScript {
         "-h",
         "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
     testOutput(builder, output);
+
+    final String[] output2 = {
+            "Msg: The statement is executed successfully."};
+    ProcessBuilder builder2 = new ProcessBuilder("sh",
+            dir + File.separator + "sbin" + File.separator + "start-cli.sh",
+            "-e", "\"flush\"");
+    testOutput(builder2, output2);
   }
 }
