@@ -632,9 +632,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       queryId = generateQueryId(true);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
-          TracingManager.getInstance().writeQueryInfo(queryId, statement, plan.getPaths().size());
+          TracingManager.getInstance().writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
         } else {
-          TracingManager.getInstance().writeQueryInfo(queryId, statement);
+          TracingManager.getInstance().writeQueryInfo(queryId, statement, startTime);
         }
       }
       // put it into the corresponding Set
@@ -642,7 +642,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       statementId2QueryId.computeIfAbsent(statementId, k -> new HashSet<>()).add(queryId);
 
       if (plan instanceof AuthorPlan) {
-        ((AuthorPlan) plan).setLoginUserName(username);
+        plan.setLoginUserName(username);
       }
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
