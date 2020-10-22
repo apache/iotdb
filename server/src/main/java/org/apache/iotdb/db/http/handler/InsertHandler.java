@@ -42,8 +42,7 @@ public class InsertHandler extends Handler{
       JsonArray measurements = (JsonArray) object.get(HttpConstant.MEASUREMENTS);
       long timestamps = object.get(HttpConstant.TIMESTAMP).getAsLong();
       JsonArray values  = (JsonArray) object.get(HttpConstant.VALUES);
-      boolean isNeedInferType = object.get(HttpConstant.IS_NEED_INFER_TYPE).getAsBoolean();
-      if (!insertByRow(deviceID, timestamps, getListString(measurements), values, isNeedInferType)) {
+      if (!insertByRow(deviceID, timestamps, getListString(measurements), values)) {
           throw new QueryProcessException(
               String.format("%s can't be inserted successfully", deviceID));
         }
@@ -53,39 +52,19 @@ public class InsertHandler extends Handler{
     return jsonObject;
   }
 
-  private boolean insertByRow(String deviceId, long time, List<String> measurements,
-      JsonArray values, boolean isNeedInferType)
+  private boolean insertByRow(String deviceId, long time, List<String> measurements, JsonArray values)
       throws IllegalPathException, QueryProcessException, StorageEngineException, StorageGroupNotSetException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setDeviceId(new PartialPath(deviceId));
     plan.setTime(time);
     plan.setMeasurements(measurements.toArray(new String[0]));
     plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
-    List<Object> valueList = new ArrayList<>();
-    if(isNeedInferType) {
-      plan.setNeedInferType(true);
-    } else {
-      TSDataType[] dataTypes = new TSDataType[measurements.size()];
-      for(int i = 0; i < measurements.size(); i++) {
-        JsonPrimitive value = values.get(i).getAsJsonPrimitive();
-        if(value.isNumber()) {
-          Number number = value.getAsNumber();
-          valueList.add(number.doubleValue());
-          dataTypes[i] = TSDataType.DOUBLE;
-        } else if(value.isString()) {
-          valueList.add(value.getAsString());
-          dataTypes[i] = TSDataType.TEXT;
-        } else if(value.isBoolean()) {
-          valueList.add(value.getAsBoolean());
-          dataTypes[i] = TSDataType.BOOLEAN;
-        } else {
-          throw new QueryProcessException("Unsupported json data type:" + dataTypes[i]);
-        }
-      }
-      plan.setDataTypes(dataTypes);
-      plan.setNeedInferType(false);
+    List<String> valueList = new ArrayList<>();
+    for(JsonElement value: values) {
+      valueList.add(value.getAsString());
     }
-    plan.setValues(valueList.toArray(new Object[0]));
+    plan.setNeedInferType(true);
+    plan.setValues(valueList.toArray(new String[0]));
     return executor.processNonQuery(plan);
   }
 
