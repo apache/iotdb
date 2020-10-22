@@ -150,7 +150,7 @@ public class SessionPool {
       if (logger.isDebugEnabled()) {
         logger.debug("Create a new Session {}, {}, {}, {}", ip, port, user, password);
       }
-      session = new Session(ip, port, user, password, fetchSize, timezone);
+      session = new Session(ip, port, user, password, fetchSize, timeZone);
       try {
         session.open(enableCompression);
       } catch (IoTDBConnectionException e) {
