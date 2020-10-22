@@ -579,7 +579,7 @@ public class IoTDBSimpleQueryIT {
             .execute("CREATE TIMESERIES root.sg1.d1.s1 with datatype=BOOLEAN, encoding=TS_2DIFF");
       } catch (Exception e) {
         Assert.assertEquals(
-            "303: org.apache.iotdb.db.exception.metadata.MetadataException: encoding BOOLEAN does not support TS_2DIFF",
+            "303: encoding BOOLEAN does not support TS_2DIFF",
             e.getMessage());
       }
 
@@ -587,7 +587,7 @@ public class IoTDBSimpleQueryIT {
         statement.execute("CREATE TIMESERIES root.sg1.d1.s2 with datatype=INT32, encoding=GORILLA");
       } catch (Exception e) {
         Assert.assertEquals(
-            "303: org.apache.iotdb.db.exception.metadata.MetadataException: encoding INT32 does not support GORILLA",
+            "303: encoding INT32 does not support GORILLA",
             e.getMessage());
       }
 
@@ -596,7 +596,7 @@ public class IoTDBSimpleQueryIT {
             .execute("CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
       } catch (Exception e) {
         Assert.assertEquals(
-            "303: org.apache.iotdb.db.exception.metadata.MetadataException: encoding DOUBLE does not support REGULAR",
+            "303: encoding DOUBLE does not support REGULAR",
             e.getMessage());
       }
 
@@ -604,7 +604,7 @@ public class IoTDBSimpleQueryIT {
         statement.execute("CREATE TIMESERIES root.sg1.d1.s4 with datatype=TEXT, encoding=TS_2DIFF");
       } catch (Exception e) {
         Assert.assertEquals(
-            "303: org.apache.iotdb.db.exception.metadata.MetadataException: encoding TEXT does not support TS_2DIFF",
+            "303: encoding TEXT does not support TS_2DIFF",
             e.getMessage());
       }
 

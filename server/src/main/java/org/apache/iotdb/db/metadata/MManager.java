@@ -439,6 +439,7 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
+   * TODO: directly return the failed string set
    * @return The String is the deletion failed Timeseries
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
@@ -478,7 +479,7 @@ public class MManager {
           failedNames.add(e.getName());
         }
       }
-      return String.join(",", failedNames);
+      return failedNames.isEmpty() ? null : String.join(",", failedNames);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }

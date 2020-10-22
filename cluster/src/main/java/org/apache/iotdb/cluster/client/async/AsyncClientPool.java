@@ -166,8 +166,10 @@ public class AsyncClientPool {
         nodeErrorClientCountMap.put(clusterNode, 1);
       }
     }
-    logger.debug("the node={}, connect error times={}", clusterNode,
-        nodeErrorClientCountMap.get(clusterNode));
+    if (logger.isDebugEnabled()) {
+      logger.debug("the node={}, connect error times={}", clusterNode,
+          nodeErrorClientCountMap.get(clusterNode));
+    }
   }
 
   void onComplete(Node node) {

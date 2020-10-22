@@ -79,7 +79,6 @@ public class AsyncDataClient extends AsyncClient {
       pool.recreateClient(node);
       pool.onError(node);
     }
-
   }
 
   public static class FactoryAsync extends AsyncClientFactory {
