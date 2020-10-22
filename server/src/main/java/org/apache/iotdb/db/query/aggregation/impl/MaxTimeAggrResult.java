@@ -38,7 +38,7 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return hasResult() ? getLongValue() : null;
+    return hasCandidateResult() ? getLongValue() : null;
   }
 
   @Override
@@ -79,7 +79,7 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
+  public boolean hasFinalResult() {
     return false;
   }
 
@@ -102,7 +102,7 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   protected void updateMaxTimeResult(long value) {
-    if (!hasResult() || value >= getLongValue()) {
+    if (!hasCandidateResult() || value >= getLongValue()) {
       setLongValue(value);
     }
   }

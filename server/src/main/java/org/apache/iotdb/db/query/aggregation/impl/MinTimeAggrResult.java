@@ -38,12 +38,12 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return hasResult() ? getLongValue() : null;
+    return hasCandidateResult() ? getLongValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     long time = statistics.getStartTime();
@@ -57,7 +57,7 @@ public class MinTimeAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     if (dataInThisPage.hasCurrent()
@@ -70,7 +70,7 @@ public class MinTimeAggrResult extends AggregateResult {
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     for (int i = 0; i < length; i++) {
@@ -83,18 +83,18 @@ public class MinTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
-    return hasResult();
+  public boolean hasFinalResult() {
+    return hasCandidateResult;
   }
 
   @Override
   public void merge(AggregateResult another) {
     MinTimeAggrResult anotherMinTime = (MinTimeAggrResult) another;
-    if (!hasResult() && anotherMinTime.hasResult()) {
+    if (!hasCandidateResult() && anotherMinTime.hasCandidateResult()) {
       setLongValue(anotherMinTime.getResult());
       return;
     }
-    if (hasResult() && anotherMinTime.hasResult() && getResult() > anotherMinTime.getResult()) {
+    if (hasCandidateResult() && anotherMinTime.hasCandidateResult() && getResult() > anotherMinTime.getResult()) {
       setLongValue(anotherMinTime.getResult());
     }
   }

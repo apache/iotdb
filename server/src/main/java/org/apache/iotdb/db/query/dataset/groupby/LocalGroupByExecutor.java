@@ -84,7 +84,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
 
   private boolean isEndCalc() {
     for (AggregateResult result : results) {
-      if (!result.isCalculatedAggregationResult()) {
+      if (!result.hasFinalResult()) {
         return false;
       }
     }
@@ -112,7 +112,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
 
     for (AggregateResult result : results) {
       // current agg method has been calculated
-      if (result.isCalculatedAggregationResult()) {
+      if (result.hasFinalResult()) {
         continue;
       }
       // lazy reset batch data for calculation
@@ -160,7 +160,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private void calcFromStatistics(Statistics pageStatistics) throws QueryProcessException {
     for (AggregateResult result : results) {
       // cacl is compile
-      if (result.isCalculatedAggregationResult()) {
+      if (result.hasFinalResult()) {
         continue;
       }
       result.updateResultFromStatistics(pageStatistics);
