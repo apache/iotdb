@@ -82,6 +82,7 @@ public class TracingManager {
 
   // for align by device query
   public void writeQueryInfo(long queryId, String statement, long startTime) throws IOException {
+    queryStartTime.put(queryId, startTime);
     StringBuilder builder = new StringBuilder();
     builder.append(QUERY_ID).append(queryId)
         .append(" - Query Statement: ").append(statement)
