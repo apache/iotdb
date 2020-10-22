@@ -46,10 +46,8 @@ public class TsFileWriteWithTablet {
     try {
       String path = "test.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
-      if (f.exists()) {
-        if (!f.delete()) {
-          throw new RuntimeException("can not delete " + f.getAbsolutePath());
-        }
+      if (f.exists() && !f.delete()) {
+        throw new RuntimeException("can not delete " + f.getAbsolutePath());
       }
 
       Schema schema = new Schema();

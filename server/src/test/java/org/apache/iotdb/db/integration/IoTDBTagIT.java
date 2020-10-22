@@ -26,7 +26,10 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -47,10 +50,10 @@ public class IoTDBTagIT {
     EnvironmentUtils.cleanEnv();
   }
 
-
   @Test
   public void createOneTimeseriesTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
+    List<String> ret = Arrays.asList("root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}");
     String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -70,17 +73,15 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
-          assertEquals(ret[count], ans);
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
+          assertTrue(ret.contains(ans));
           count++;
         }
       } finally {
         resultSet.close();
       }
-      assertEquals(ret.length, count);
+      assertEquals(ret.size(), count);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -89,10 +90,12 @@ public class IoTDBTagIT {
 
   @Test
   public void createMultiTimeseriesTest() throws ClassNotFoundException {
-    String[] ret = {
-            "root.turbine.d2.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,a1,a2,null,null,t1,t2,null",
-            "root.turbine.d2.s2,status,root.turbine,INT32,RLE,SNAPPY,null,null,a3,a4,null,t2,t3"
-    };
+    List<String> ret = Arrays.asList(
+            "root.turbine.d2.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"tag1\":\"t1\","
+                + "\"tag2\":\"t2\"},{\"attr2\":\"a2\",\"attr1\":\"a1\"}",
+            "root.turbine.d2.s2,status,root.turbine,INT32,RLE,SNAPPY,{\"tag2\":\"t2\","
+                + "\"tag3\":\"t3\"},{\"attr4\":\"a4\",\"attr3\":\"a3\"}"
+    );
     String sql1 = "create timeseries root.turbine.d2.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=t1, tag2=t2) attributes(attr1=a1, attr2=a2)";
     String sql2 = "create timeseries root.turbine.d2.s2(status) with datatype=INT32, encoding=RLE " +
@@ -115,21 +118,61 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("attr3")
-                  + "," + resultSet.getString("attr4")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2")
-                  + "," + resultSet.getString("tag3");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
-          assertEquals(ret[count], ans);
+          assertTrue(ret.contains(ans));
           count++;
         }
       } finally {
         resultSet.close();
       }
-      assertEquals(ret.length, count);
+      assertEquals(ret.size(), count);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void showTimeseriesTest() throws ClassNotFoundException {
+    List<String> ret = Arrays.asList(
+        "root.turbine.d2.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"tag1\":\"t1\",\""
+            + "tag2\":\"t2\"},{\"attr2\":\"a2\",\"attr1\":\"a1\"}",
+        "root.turbine.d2.s2,status,root.turbine,INT32,RLE,SNAPPY,{\"tag2\":\"t2\",\"tag3\""
+            + ":\"t3\"},{\"attr4\":\"a4\",\"attr3\":\"a3\"}"
+    );
+    String sql1 = "create timeseries root.turbine.d2.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
+        "tags(tag1=t1, tag2=t2) attributes(attr1=a1, attr2=a2)";
+    String sql2 = "create timeseries root.turbine.d2.s2(status) with datatype=INT32, encoding=RLE " +
+        "tags(tag2=t2, tag3=t3) attributes(attr3=a3, attr4=a4)";
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql1);
+      statement.execute(sql2);
+      boolean hasResult = statement.execute("show timeseries");
+      assertTrue(hasResult);
+      ResultSet resultSet = statement.getResultSet();
+      int count = 0;
+      try {
+        while (resultSet.next()) {
+          String ans = resultSet.getString("timeseries")
+              + "," + resultSet.getString("alias")
+              + "," + resultSet.getString("storage group")
+              + "," + resultSet.getString("dataType")
+              + "," + resultSet.getString("encoding")
+              + "," + resultSet.getString("compression")
+              + "," + resultSet.getString("tags")
+              + "," + resultSet.getString("attributes");
+          assertTrue(ret.contains(ans));
+          count++;
+        }
+      } finally {
+        resultSet.close();
+      }
+      assertEquals(ret.size(), count);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -201,12 +244,14 @@ public class IoTDBTagIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
-      fail();    }
+      fail();
+    }
   }
 
   @Test
   public void queryWithAliasTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d6.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
+    List<String> ret = Arrays.asList("root.turbine.d6.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}");
     String sql = "create timeseries root.turbine.d6.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -225,26 +270,25 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
-          assertEquals(ret[count], ans);
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
+          assertTrue(ret.contains(ans));
           count++;
         }
       }
-      assertEquals(ret.length, count);
+      assertEquals(ret.size(), count);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
   }
 
-
   @Test
   public void queryWithLimitTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s2,temperature2,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2",
-        "root.turbine.d1.s3,temperature3,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
+    List<String> ret = Arrays.asList("root.turbine.d1.s2,temperature2,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}",
+        "root.turbine.d1.s3,temperature3,root.turbine,FLOAT,RLE,SNAPPY,"
+            + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}");
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -267,15 +311,13 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
-          assertEquals(ret[count], ans);
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
+          assertTrue(ret.contains(ans));
           count++;
         }
       }
-      assertEquals(ret.length, count);
+      assertEquals(ret.size(), count);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -284,11 +326,14 @@ public class IoTDBTagIT {
 
   @Test
   public void deleteTest() throws ClassNotFoundException {
-    String[] ret1 = {
-            "root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,a1,a2,null,null,t1,t2,null",
-            "root.turbine.d7.s2,status,root.turbine,INT32,RLE,SNAPPY,null,null,a3,a4,null,t2,t3"
-    };
-    String[] ret2 = {"root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,a1,a2,t1,t2"};
+    List<String> ret1 = Arrays.asList(
+            "root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+                + "{\"tag1\":\"t1\",\"tag2\":\"t2\"},{\"attr2\":\"a2\",\"attr1\":\"a1\"}",
+            "root.turbine.d7.s2,status,root.turbine,INT32,RLE,SNAPPY,{\"tag2\""
+                + ":\"t2\",\"tag3\":\"t3\"},{\"attr4\":\"a4\",\"attr3\":\"a3\"}"
+    );
+    List<String> ret2 = Arrays.asList("root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"t1\",\"tag2\":\"t2\"},{\"attr2\":\"a2\",\"attr1\":\"a1\"}");
 
     String sql1 = "create timeseries root.turbine.d7.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=t1, tag2=t2) attributes(attr1=a1, attr2=a2)";
@@ -311,19 +356,14 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("attr3")
-                  + "," + resultSet.getString("attr4")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2")
-                  + "," + resultSet.getString("tag3");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
-          assertEquals(ret1[count], ans);
+          assertTrue(ret1.contains(ans));
           count++;
         }
       }
-      assertEquals(ret1.length, count);
+      assertEquals(ret1.size(), count);
 
       statement.execute("delete timeseries root.turbine.d7.s2");
       hasResult = statement.execute("show timeseries");
@@ -337,17 +377,14 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
-          assertEquals(ret2[count], ans);
+          assertTrue(ret2.contains(ans));
           count++;
         }
       }
-      assertEquals(ret2.length, count);
-
+      assertEquals(ret2.size(), count);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -356,11 +393,14 @@ public class IoTDBTagIT {
 
   @Test
   public void deleteWithAliasTest() throws ClassNotFoundException {
-    String[] ret1 = {
-            "root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,a1,a2,null,null,t1,t2,null",
-            "root.turbine.d7.s2,status,root.turbine,INT32,RLE,SNAPPY,null,null,a3,a4,null,t2,t3"
-    };
-    String[] ret2 = {"root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,a1,a2,t1,t2"};
+    List<String> ret1 = Arrays.asList(
+        "root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+            + "{\"tag1\":\"t1\",\"tag2\":\"t2\"},{\"attr2\":\"a2\",\"attr1\":\"a1\"}",
+        "root.turbine.d7.s2,status,root.turbine,INT32,RLE,SNAPPY,"
+            + "{\"tag2\":\"t2\",\"tag3\":\"t3\"},{\"attr4\":\"a4\",\"attr3\":\"a3\"}"
+    );
+    List<String> ret2 = Arrays.asList("root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+        + "{\"tag1\":\"t1\",\"tag2\":\"t2\"},{\"attr2\":\"a2\",\"attr1\":\"a1\"}");
 
     String sql1 = "create timeseries root.turbine.d7.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=t1, tag2=t2) attributes(attr1=a1, attr2=a2)";
@@ -383,19 +423,14 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("attr3")
-                  + "," + resultSet.getString("attr4")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2")
-                  + "," + resultSet.getString("tag3");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
-          assertEquals(ret1[count], ans);
+          assertTrue(ret1.contains(ans));
           count++;
         }
       }
-      assertEquals(ret1.length, count);
+      assertEquals(ret1.size(), count);
 
       statement.execute("delete timeseries root.turbine.d7.status");
       hasResult = statement.execute("show timeseries");
@@ -409,41 +444,47 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
-          assertEquals(ret2[count], ans);
+          assertTrue(ret2.contains(ans));
           count++;
         }
       }
-      assertEquals(ret2.length, count);
-
+      assertEquals(ret2.size(), count);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
   }
 
-
   @Test
   public void queryWithWhereTest1() throws ClassNotFoundException {
-    String[] ret1 = {
-            "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test1,100,50,null,null,f",
-            "root.turbine.d0.s1,power,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test2,99.9,44.4,null,null,kw",
-            "root.turbine.d1.s0,status,root.turbine,INT32,RLE,SNAPPY,turbine this is a test3,9,5,null,null,null",
-            "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test1,null,null,100,1,f",
-            "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test2,null,null,99.9,44.4,kw",
-            "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,turbine d2 this is a test3,null,null,9,5,null",
-            "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,ln this is a test1,1000,500,null,null,c",
-            "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,ln this is a test2,9.9,4.4,null,null,w",
-            "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,ln this is a test3,90,50,null,null,null",
-    };
+    List<String> ret1 = Arrays.asList(
+            "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
+                + "this is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"100\",\"M_Alarm\":\"50\"}",
+            "root.turbine.d0.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this "
+                + "is a test2\",\"unit\":\"kw\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+            "root.turbine.d1.s0,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine this "
+                + "is a test3\"},{\"H_Alarm\":\"9\",\"M_Alarm\":\"5\"}",
+            "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
+                + "d2 this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}",
+            "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 this"
+                + " is a test2\",\"unit\":\"kw\"},{\"MinValue\":\"44.4\",\"MaxValue\":\"99.9\"}",
+            "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine d2 "
+                + "this is a test3\"},{\"MinValue\":\"5\",\"MaxValue\":\"9\"}",
+            "root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a "
+                + "test1\",\"unit\":\"c\"},{\"H_Alarm\":\"1000\",\"M_Alarm\":\"500\"}",
+            "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a "
+                + "test2\",\"unit\":\"w\"},{\"H_Alarm\":\"9.9\",\"M_Alarm\":\"4.4\"}",
+            "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,{\"description\":\"ln this is a test3\"},"
+                + "{\"H_Alarm\":\"90\",\"M_Alarm\":\"50\"}");
 
     Set<String> ret2 = new HashSet<>();
-    ret2.add("root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test1,100,50,null,null,f");
-    ret2.add("root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test1,null,null,100,1,f");
+    ret2.add("root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
+        + "d2 this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}");
+    ret2.add("root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\""
+        + "turbine this is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"100\",\"M_Alarm\":\"50\"}");
 
     String[] sqls = {
             "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
@@ -491,17 +532,13 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("description")
-                  + "," + resultSet.getString("H_Alarm")
-                  + "," + resultSet.getString("M_Alarm")
-                  + "," + resultSet.getString("MaxValue")
-                  + "," + resultSet.getString("MinValue")
-                  + "," + resultSet.getString("unit");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
-          assertEquals(ret1[count], ans);
+          assertTrue(ret1.contains(ans));
           count++;
         }
-        assertEquals(ret1.length, count);
+        assertEquals(ret1.size(), count);
       }
       hasResult = statement.execute("show timeseries where unit=f");
       assertTrue(hasResult);
@@ -516,12 +553,8 @@ public class IoTDBTagIT {
                           + "," + resultSet.getString("dataType")
                           + "," + resultSet.getString("encoding")
                           + "," + resultSet.getString("compression")
-                          + "," + resultSet.getString("description")
-                          + "," + resultSet.getString("H_Alarm")
-                          + "," + resultSet.getString("M_Alarm")
-                          + "," + resultSet.getString("MaxValue")
-                          + "," + resultSet.getString("MinValue")
-                          + "," + resultSet.getString("unit");
+                          + "," + resultSet.getString("tags")
+                          + "," + resultSet.getString("attributes");
           res.add(ans);
           count++;
         }
@@ -537,8 +570,10 @@ public class IoTDBTagIT {
   @Test
   public void queryWithWhereTest2() throws ClassNotFoundException {
     Set<String> ret = new HashSet<>();
-    ret.add("root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test1,100,50,null,null,f");
-    ret.add("root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test1,null,null,100,1,f");
+    ret.add("root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
+        + "d2 this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}");
+    ret.add("root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
+        + "this is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"100\",\"M_Alarm\":\"50\"}");
 
     String[] sqls = {
             "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
@@ -589,12 +624,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("description")
-                  + "," + resultSet.getString("H_Alarm")
-                  + "," + resultSet.getString("M_Alarm")
-                  + "," + resultSet.getString("MaxValue")
-                  + "," + resultSet.getString("MinValue")
-                  + "," + resultSet.getString("unit");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           res.add(ans);
           count++;
@@ -616,12 +647,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("description")
-                  + "," + resultSet.getString("H_Alarm")
-                  + "," + resultSet.getString("M_Alarm")
-                  + "," + resultSet.getString("MaxValue")
-                  + "," + resultSet.getString("MinValue")
-                  + "," + resultSet.getString("unit");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           res.add(ans);
           count++;
@@ -648,8 +675,10 @@ public class IoTDBTagIT {
   @Test
   public void queryWithWhereAndDeleteTest() throws ClassNotFoundException {
     Set<String> ret = new HashSet<>();
-    ret.add("root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test1,100,50,f");
-    ret.add("root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,ln this is a test1,1000,500,f");
+    ret.add("root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\""
+        + "turbine this is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"100\",\"M_Alarm\":\"50\"}");
+    ret.add("root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this "
+        + "is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"1000\",\"M_Alarm\":\"500\"}");
 
     String[] sqls = {
             "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
@@ -702,10 +731,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("description")
-                  + "," + resultSet.getString("H_Alarm")
-                  + "," + resultSet.getString("M_Alarm")
-                  + "," + resultSet.getString("unit");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           res.add(ans);
           count++;
@@ -723,12 +750,16 @@ public class IoTDBTagIT {
   @Test
   public void queryWithWhereContainsTest() throws ClassNotFoundException {
     Set<String> ret = new HashSet<>();
-    ret.add("root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine this is a test1,100,50,null,null,f");
-    ret.add("root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,turbine d2 this is a test1,null,null,100,1,f");
-    ret.add("root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,ln this is a test1,1000,500,null,null,f");
+    ret.add("root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
+        + "d2 this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}");
+    ret.add("root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine "
+        + "this is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"100\",\"M_Alarm\":\"50\"}");
+    ret.add("root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this "
+        + "is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"1000\",\"M_Alarm\":\"500\"}");
 
     Set<String> ret2 = new HashSet<>();
-    ret2.add("root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,ln this is a test1,1000,500,f");
+    ret2.add("root.ln.d0.s0,temperature,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this"
+        + " is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"1000\",\"M_Alarm\":\"500\"}");
 
     String[] sqls = {
             "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
@@ -778,12 +809,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("description")
-                  + "," + resultSet.getString("H_Alarm")
-                  + "," + resultSet.getString("M_Alarm")
-                  + "," + resultSet.getString("MaxValue")
-                  + "," + resultSet.getString("MinValue")
-                  + "," + resultSet.getString("unit");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           System.out.println(ans);
           res.add(ans);
@@ -805,10 +832,8 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("description")
-                  + "," + resultSet.getString("H_Alarm")
-                  + "," + resultSet.getString("M_Alarm")
-                  + "," + resultSet.getString("unit");
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
 
           res.add(ans);
           count++;
@@ -890,7 +915,9 @@ public class IoTDBTagIT {
 
   @Test
   public void deleteStorageGroupTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
+    List<String> ret = Collections
+        .singletonList("root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+            + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}");
 
     String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
         "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
@@ -910,15 +937,13 @@ public class IoTDBTagIT {
                   + "," + resultSet.getString("dataType")
                   + "," + resultSet.getString("encoding")
                   + "," + resultSet.getString("compression")
-                  + "," + resultSet.getString("attr1")
-                  + "," + resultSet.getString("attr2")
-                  + "," + resultSet.getString("tag1")
-                  + "," + resultSet.getString("tag2");
-          assertEquals(ret[count], ans);
+                  + "," + resultSet.getString("tags")
+                  + "," + resultSet.getString("attributes");
+          assertTrue(ret.contains(ans));
           count++;
         }
       }
-      assertEquals(ret.length, count);
+      assertEquals(ret.size(), count);
 
       statement.execute("delete storage group root.turbine");
       try {
@@ -935,7 +960,7 @@ public class IoTDBTagIT {
 
   @Test
   public void insertWithAliasTest() throws ClassNotFoundException {
-    String[] ret = {"1,36.5,36.5"};
+    List<String> ret = Collections.singletonList("1,36.5,36.5");
     String[] sqls = {
         "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY",
         "insert into root.turbine.d1(timestamp, temperature) values(1,36.5)"
@@ -956,13 +981,13 @@ public class IoTDBTagIT {
           String ans = resultSet.getString("Time")
                   + "," + resultSet.getString("root.turbine.d1.s1")
                   + "," + resultSet.getString("root.turbine.d1.s1");
-          assertEquals(ret[count], ans);
+          assertTrue(ret.contains(ans));
           count++;
         }
       } finally {
         resultSet.close();
       }
-      assertEquals(ret.length, count);
+      assertEquals(ret.size(), count);
     } catch (Exception e) {
       e.printStackTrace();
       fail();

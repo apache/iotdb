@@ -25,11 +25,11 @@ For non-Chinese users, please read https://cwiki.apache.org/confluence/display/I
 
 ## 下载投票的 版本/rc 下的所有内容
 
-https://dist.apache.org/repos/dist/dev/incubator/iotdb/
+https://dist.apache.org/repos/dist/dev/iotdb/
 
 ## 导入发布经理的公钥
 
-https://dist.apache.org/repos/dist/dev/incubator/iotdb/KEYS
+https://dist.apache.org/repos/dist/dev/iotdb/KEYS
 
 最下边有 Release Manager (RM) 的公钥
 
@@ -75,9 +75,7 @@ gpg2 --import key.asc
 
 ## 验证源码发布版
 
-* （孵化阶段）验证是否名字中有 ```incubating```
-
-* 验证是否有 DISCLAIMER、NOTICE、LICENSE，以及内容是否正确。
+* 验证是否有 NOTICE、LICENSE，以及内容是否正确。
 
 * 验证 README、RELEASE_NOTES
 
@@ -109,9 +107,7 @@ mvnw.sh install
 
 ## 验证二进制发布版
 
-* （孵化阶段）验证是否名字中有 ```incubating```
-
-* 验证是否有 DISCLAIMER、NOTICE、LICENSE，以及内容是否正确。
+* 验证是否有 NOTICE、LICENSE，以及内容是否正确。
 
 * 验证 README、RELEASE_NOTES
 
@@ -162,16 +158,12 @@ Hi,
 +1 (PMC could binding)
 
 The source release:
-Incubating in name [ok]
-Has DISCLAIMER [ok]
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 All files have ASF header [ok]
 could compile from source: ./mvnw.sh clean install [ok]
 
 The binary distribution:
-Incubating in name [ok]
-Has DISCLAIMER [ok]
 LICENSE and NOTICE [ok]
 signatures and hashes [ok]
 Could run with the following statements [ok]

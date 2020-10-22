@@ -19,62 +19,66 @@
 
 grammar SqlBase;
 
-@parser::members {public static boolean hasSingleQuoteString;}
-
 singleStatement
     : statement EOF
     ;
 
+/*
+ * According to The Definitive ANTLR 4 Reference, 11. Altering the Parse with Semantic Predicates, Altering the Parse with Semantic Predicates.
+ * "It s a good idea to avoid embedding predicates in the parser when possible for efficiency and clarity reasons."
+ * So if unnecessary, don't use embedding predicates.
+ */
+
 statement
-    : {hasSingleQuoteString = false;} CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
-    | {hasSingleQuoteString = false;} DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
-    | {hasSingleQuoteString = false;} ALTER TIMESERIES fullPath alterClause #alterTimeseries
-    | {hasSingleQuoteString = false;} INSERT INTO prefixPath insertColumnSpec VALUES insertValuesSpec #insertStatement
-    | {hasSingleQuoteString = false;} UPDATE prefixPath setClause whereClause? #updateStatement
-    | {hasSingleQuoteString = false;} DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
-    | {hasSingleQuoteString = false;} SET STORAGE GROUP TO prefixPath #setStorageGroup
-    | {hasSingleQuoteString = false;} DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
+    : CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
+    | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
+    | ALTER TIMESERIES fullPath alterClause #alterTimeseries
+    | INSERT INTO prefixPath insertColumnSpec VALUES insertValuesSpec #insertStatement
+    | UPDATE prefixPath setClause whereClause? #updateStatement
+    | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
+    | SET STORAGE GROUP TO prefixPath #setStorageGroup
+    | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
     | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
     | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
     | MERGE #merge
-    | {hasSingleQuoteString = false;}FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
+    | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
     | FULL MERGE #fullMerge
     | CLEAR CACHE #clearcache
-    | {hasSingleQuoteString = true;} CREATE USER userName=ID password= stringLiteral#createUser
-    | {hasSingleQuoteString = true;} ALTER USER userName=(ROOT|ID) SET PASSWORD password=stringLiteral #alterUser
+    | CREATE USER userName=ID password= stringLiteral#createUser
+    | ALTER USER userName=(ROOT|ID) SET PASSWORD password=stringLiteral #alterUser
     | DROP USER userName=ID #dropUser
     | CREATE ROLE roleName=ID #createRole
     | DROP ROLE roleName=ID #dropRole
-    | GRANT USER userName=ID PRIVILEGES privileges ON {hasSingleQuoteString = false;} prefixPath #grantUser
-    | GRANT ROLE roleName=ID PRIVILEGES privileges ON {hasSingleQuoteString = false;} prefixPath #grantRole
-    | REVOKE USER userName=ID PRIVILEGES privileges ON {hasSingleQuoteString = false;} prefixPath #revokeUser
-    | REVOKE ROLE roleName=ID PRIVILEGES privileges ON {hasSingleQuoteString = false;} prefixPath #revokeRole
+    | GRANT USER userName=ID PRIVILEGES privileges ON prefixPath #grantUser
+    | GRANT ROLE roleName=ID PRIVILEGES privileges ON prefixPath #grantRole
+    | REVOKE USER userName=ID PRIVILEGES privileges ON prefixPath #revokeUser
+    | REVOKE ROLE roleName=ID PRIVILEGES privileges ON prefixPath #revokeRole
     | GRANT roleName=ID TO userName=ID #grantRoleToUser
     | REVOKE roleName = ID FROM userName = ID #revokeRoleFromUser
-    | {hasSingleQuoteString = true;} LOAD TIMESERIES (fileName=stringLiteral) prefixPath#loadStatement
+    | LOAD TIMESERIES (fileName=stringLiteral) prefixPath#loadStatement
     | GRANT WATERMARK_EMBEDDING TO rootOrId (COMMA rootOrId)* #grantWatermarkEmbedding
     | REVOKE WATERMARK_EMBEDDING FROM rootOrId (COMMA rootOrId)* #revokeWatermarkEmbedding
     | LIST USER #listUser
     | LIST ROLE #listRole
-    | LIST PRIVILEGES USER username=rootOrId ON {hasSingleQuoteString = false;} prefixPath #listPrivilegesUser
-    | LIST PRIVILEGES ROLE roleName=ID ON {hasSingleQuoteString = false;} prefixPath #listPrivilegesRole
+    | LIST PRIVILEGES USER username=rootOrId ON prefixPath #listPrivilegesUser
+    | LIST PRIVILEGES ROLE roleName=ID ON prefixPath #listPrivilegesRole
     | LIST USER PRIVILEGES username =rootOrId #listUserPrivileges
     | LIST ROLE PRIVILEGES roleName = ID #listRolePrivileges
     | LIST ALL ROLE OF USER username = rootOrId #listAllRoleOfUser
     | LIST ALL USER OF ROLE roleName = ID #listAllUserOfRole
-    | {hasSingleQuoteString = false;} SET TTL TO path=prefixPath time=INT #setTTLStatement
-    | {hasSingleQuoteString = false;} UNSET TTL TO path=prefixPath #unsetTTLStatement
-    | {hasSingleQuoteString = false;} SHOW TTL ON prefixPath (COMMA prefixPath)* #showTTLStatement
+    | SET TTL TO path=prefixPath time=INT #setTTLStatement
+    | UNSET TTL TO path=prefixPath #unsetTTLStatement
+    | SHOW TTL ON prefixPath (COMMA prefixPath)* #showTTLStatement
     | SHOW ALL TTL #showAllTTLStatement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
-    | {hasSingleQuoteString = false;} SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
-    | {hasSingleQuoteString = false;} SHOW STORAGE GROUP prefixPath? #showStorageGroup
-    | {hasSingleQuoteString = false;} SHOW CHILD PATHS prefixPath? #showChildPaths
-    | {hasSingleQuoteString = false;} SHOW DEVICES prefixPath? #showDevices
+    | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
+    | SHOW STORAGE GROUP prefixPath? #showStorageGroup
+    | SHOW CHILD PATHS prefixPath? #showChildPaths
+    | SHOW DEVICES prefixPath? #showDevices
     | SHOW MERGE #showMergeStatus
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
@@ -83,10 +87,10 @@ statement
     | COUNT STORAGE GROUP prefixPath? #countStorageGroup
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
-    | {hasSingleQuoteString = true;} LOAD stringLiteral autoCreateSchema?#loadFiles
-    | {hasSingleQuoteString = true;} REMOVE stringLiteral #removeFile
-    | {hasSingleQuoteString = true;} MOVE stringLiteral stringLiteral #moveFile
-    | {hasSingleQuoteString = false;} DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
+    | LOAD stringLiteral autoCreateSchema?#loadFiles
+    | REMOVE stringLiteral #removeFile
+    | MOVE stringLiteral stringLiteral #moveFile
+    | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
@@ -96,7 +100,7 @@ statement
     fromClause
     whereClause?
     specialClause? #selectIndexStatement
-    | {hasSingleQuoteString = true;} SELECT selectElements
+    | SELECT selectElements
     fromClause
     whereClause?
     specialClause? #selectStatement
@@ -104,10 +108,15 @@ statement
 
 selectElements
     : functionCall (COMMA functionCall)* #functionElement
-    | suffixPath (COMMA suffixPath)* #selectElement
+    | suffixPathOrConstant (COMMA suffixPathOrConstant)* #selectElement
     | lastClause #lastElement
     | asClause (COMMA asClause)* #asElement
     | functionAsClause (COMMA functionAsClause)* #functionAsElement
+    ;
+
+suffixPathOrConstant
+    : suffixPath
+    | SINGLE_QUOTE_STRING_LITERAL
     ;
 
 functionCall
@@ -157,7 +166,7 @@ aliasClause
     ;
 
 attributeClauses
-    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
+    : DATATYPE OPERATOR_EQ dataType (COMMA ENCODING OPERATOR_EQ encoding)?
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor)?
     (COMMA property)*
     tagClause
@@ -216,7 +225,7 @@ inClause
     ;
 
 fromClause
-    : {hasSingleQuoteString = false;} FROM prefixPath (COMMA prefixPath)*
+    : FROM prefixPath (COMMA prefixPath)*
     ;
 
 specialClause
@@ -339,12 +348,12 @@ comparisonOperator
     ;
 
 insertColumnSpec
-    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)* RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)+ RR_BRACKET
     ;
 
 insertValuesSpec
-    : LR_BRACKET dateFormat (COMMA constant)* RR_BRACKET
-    | LR_BRACKET INT (COMMA constant)* RR_BRACKET
+    : LR_BRACKET dateFormat (COMMA constant)+ RR_BRACKET
+    | LR_BRACKET INT (COMMA constant)+ RR_BRACKET
     ;
 
 setCol
@@ -352,7 +361,7 @@ setCol
     ;
 
 privileges
-    : {hasSingleQuoteString = true;} stringLiteral (COMMA stringLiteral)*
+    : stringLiteral (COMMA stringLiteral)*
     ;
 
 rootOrId
@@ -374,7 +383,7 @@ timeValue
 propertyValue
     : INT
     | ID
-    | {hasSingleQuoteString = true;} stringLiteral
+    | stringLiteral
     | constant
     ;
 
@@ -393,7 +402,7 @@ suffixPath
 nodeName
     : ID
     | STAR
-    | stringLiteral
+    | DOUBLE_QUOTE_STRING_LITERAL
     | ID STAR
     | DURATION
     | encoding
@@ -504,7 +513,7 @@ nodeName
 
 nodeNameWithoutStar
     : ID
-    | stringLiteral
+    | DOUBLE_QUOTE_STRING_LITERAL
     | DURATION
     | encoding
     | dataType
@@ -626,7 +635,7 @@ constant
     | NaN
     | MINUS? realLiteral
     | MINUS? INT
-    | {hasSingleQuoteString = true;} stringLiteral
+    | stringLiteral
     | booleanClause
     ;
 
@@ -1241,7 +1250,7 @@ UNDERLINE : '_';
 NaN : 'NaN';
 
 stringLiteral
-   : {hasSingleQuoteString}? SINGLE_QUOTE_STRING_LITERAL
+   : SINGLE_QUOTE_STRING_LITERAL
    | DOUBLE_QUOTE_STRING_LITERAL
    ;
 

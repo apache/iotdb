@@ -39,6 +39,12 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 public class SessionExample {
 
   private static Session session;
+  private static final String ROOT_SG1_D1_S1 = "root.sg1.d1.s1";
+  private static final String ROOT_SG1_D1_S2 = "root.sg1.d1.s2";
+  private static final String ROOT_SG1_D1_S3 = "root.sg1.d1.s3";
+  private static final String ROOT_SG1_D1_S4 = "root.sg1.d1.s4";
+  private static final String ROOT_SG1_D1 = "root.sg1.d1";
+
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -70,26 +76,26 @@ public class SessionExample {
   private static void createTimeseries()
       throws IoTDBConnectionException, StatementExecutionException {
 
-    if (!session.checkTimeseriesExists("root.sg1.d1.s1")) {
-      session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
+    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S1)) {
+      session.createTimeseries(ROOT_SG1_D1_S1, TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
     }
-    if (!session.checkTimeseriesExists("root.sg1.d1.s2")) {
-      session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE,
+    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S2)) {
+      session.createTimeseries(ROOT_SG1_D1_S2, TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
     }
-    if (!session.checkTimeseriesExists("root.sg1.d1.s3")) {
-      session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE,
+    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S3)) {
+      session.createTimeseries(ROOT_SG1_D1_S3, TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
     }
 
     // create timeseries with tags and attributes
-    if (!session.checkTimeseriesExists("root.sg1.d1.s4")) {
+    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S4)) {
       Map<String, String> tags = new HashMap<>();
       tags.put("tag1", "v1");
       Map<String, String> attributes = new HashMap<>();
       tags.put("description", "v1");
-      session.createTimeseries("root.sg1.d1.s4", TSDataType.INT64, TSEncoding.RLE,
+      session.createTimeseries(ROOT_SG1_D1_S4, TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY, null, tags, attributes, "temperature");
     }
   }
@@ -136,7 +142,7 @@ public class SessionExample {
   }
 
   private static void insertRecord() throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = "root.sg1.d1";
+    String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
@@ -156,7 +162,7 @@ public class SessionExample {
   }
 
   private static void insertStrRecord() throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = "root.sg1.d1";
+    String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -173,7 +179,7 @@ public class SessionExample {
 
   private static void insertRecordInObject()
       throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = "root.sg1.d1";
+    String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
@@ -189,7 +195,7 @@ public class SessionExample {
   }
 
   private static void insertRecords() throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = "root.sg1.d1";
+    String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -247,7 +253,7 @@ public class SessionExample {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
-    Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
+    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
 
     //Method 1 to add tablet data
     long timestamp = System.currentTimeMillis();
@@ -302,12 +308,12 @@ public class SessionExample {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
-    Tablet tablet1 = new Tablet("root.sg1.d1", schemaList, 100);
+    Tablet tablet1 = new Tablet(ROOT_SG1_D1, schemaList, 100);
     Tablet tablet2 = new Tablet("root.sg1.d2", schemaList, 100);
     Tablet tablet3 = new Tablet("root.sg1.d3", schemaList, 100);
 
     Map<String, Tablet> tabletMap = new HashMap<>();
-    tabletMap.put("root.sg1.d1", tablet1);
+    tabletMap.put(ROOT_SG1_D1, tablet1);
     tabletMap.put("root.sg1.d2", tablet2);
     tabletMap.put("root.sg1.d3", tablet3);
 
@@ -383,7 +389,7 @@ public class SessionExample {
   }
 
   private static void deleteData() throws IoTDBConnectionException, StatementExecutionException {
-    String path = "root.sg1.d1.s1";
+    String path = ROOT_SG1_D1_S1;
     long deleteTime = 99;
     session.deleteData(path, deleteTime);
   }
@@ -391,9 +397,9 @@ public class SessionExample {
   private static void deleteTimeseries()
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = new ArrayList<>();
-    paths.add("root.sg1.d1.s1");
-    paths.add("root.sg1.d1.s2");
-    paths.add("root.sg1.d1.s3");
+    paths.add(ROOT_SG1_D1_S1);
+    paths.add(ROOT_SG1_D1_S2);
+    paths.add(ROOT_SG1_D1_S3);
     session.deleteTimeseries(paths);
   }
 
@@ -411,9 +417,9 @@ public class SessionExample {
 
   private static void rawDataQuery() throws IoTDBConnectionException, StatementExecutionException {
     List<String> paths = new ArrayList<>();
-    paths.add("root.sg1.d1.s1");
-    paths.add("root.sg1.d1.s2");
-    paths.add("root.sg1.d1.s3");
+    paths.add(ROOT_SG1_D1_S1);
+    paths.add(ROOT_SG1_D1_S2);
+    paths.add(ROOT_SG1_D1_S3);
     long startTime = 10L;
     long endTime = 200L;
 
@@ -446,8 +452,8 @@ public class SessionExample {
       }
 
       // get third column
-      if (!iterator.isNull("root.sg1.d1.s2")) {
-        builder.append(iterator.getLong("root.sg1.d1.s2")).append(",");
+      if (!iterator.isNull(ROOT_SG1_D1_S2)) {
+        builder.append(iterator.getLong(ROOT_SG1_D1_S2)).append(",");
       } else {
         builder.append("null").append(",");
       }
@@ -460,8 +466,8 @@ public class SessionExample {
       }
 
       // get fifth column
-      if (!iterator.isNull("root.sg1.d1.s4")) {
-        builder.append(iterator.getObject("root.sg1.d1.s4"));
+      if (!iterator.isNull(ROOT_SG1_D1_S4)) {
+        builder.append(iterator.getObject(ROOT_SG1_D1_S4));
       } else {
         builder.append("null");
       }

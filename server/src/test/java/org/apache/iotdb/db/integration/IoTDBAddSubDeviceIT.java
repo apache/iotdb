@@ -116,9 +116,9 @@ public class IoTDBAddSubDeviceIT {
   @Test
   public void showTimeseries() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "root.sg1.d1.s1,null,root.sg1,INT32,RLE,SNAPPY,",
-        "root.sg1.d1.s1.s1,null,root.sg1,INT32,RLE,SNAPPY,",
-        "root.sg1.d1.s1.s2,null,root.sg1,INT32,RLE,SNAPPY,",
+        "root.sg1.d1.s1,null,root.sg1,INT32,RLE,SNAPPY,null,null,",
+        "root.sg1.d1.s1.s1,null,root.sg1,INT32,RLE,SNAPPY,null,null,",
+        "root.sg1.d1.s1.s2,null,root.sg1,INT32,RLE,SNAPPY,null,null,",
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -135,7 +135,8 @@ public class IoTDBAddSubDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("timeseries,alias,storage group,dataType,encoding,compression,", header.toString());
+        Assert.assertEquals("timeseries,alias,storage group,dataType,encoding,compression,tags,attributes,",
+            header.toString());
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(1));
 
         int cnt = 0;

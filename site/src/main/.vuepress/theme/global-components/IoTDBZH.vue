@@ -30,7 +30,7 @@
     text-align: center;"
       >物联网数据库</p>
       <p style="font-size: 20px;margin: 50px 0 10px 0;text-align:justify!important;">
-Apache IoTDB （incubating）（物联网数据库）是一体化收集、存储、管理与分析物联网时序数据的软件系统。
+Apache IoTDB（物联网数据库）是一体化收集、存储、管理与分析物联网时序数据的软件系统。
 Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与Apache Hadoop、Spark和Flink等进行了深度集成，可以满足工业物联网领域的海量数据存储、高速数据读取和复杂数据分析需求。
       </p>
       <el-row style="margin-top:40px;text-align: center;">
@@ -72,7 +72,7 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
             title="高吞吐量读写"
             width="350"
             trigger="hover"
-            content="Apache IoTDB（孵化中）可以支持数百万个低功耗和智能联网设备的高速写访问。 它还提供数据快速读取访问以查询。"
+            content="Apache IoTDB中可以支持数百万个低功耗和智能联网设备的高速写访问。 它还提供数据快速读取访问以查询。"
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
               <img src="/img/home-icon1.png" style="width:40px;height:40px;">
@@ -86,7 +86,7 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
             title="高效的目录结构"
             width="350"
             trigger="hover"
-            content="Apache IoTDB（孵化中）可以对拥有复杂组织关系的物联网设备进行树形结构管理，并使用通配符对这些元数据进行模糊匹配。"
+            content="Apache IoTDB可以对拥有复杂组织关系的物联网设备进行树形结构管理，并使用通配符对这些元数据进行模糊匹配。"
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
               <img src="/img/home-icon2.png" style="width:40px;height:40px;">
@@ -99,7 +99,7 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
             title="丰富的查询语义"
             width="400"
             trigger="hover"
-            content="Apache IoTDB（孵化中）可以支持跨设备和传感器的时间对齐查询，在时间维度上的聚合（降采样）等。"
+            content="Apache IoTDB可以支持跨设备和传感器的时间对齐查询，在时间维度上的聚合（降采样）等。"
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon3.png" style="width:40px;height:40px;">
@@ -115,7 +115,7 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
             title="硬件成本低"
             width="400"
             trigger="hover"
-            content="Apache IoTDB（孵化中）可以实现磁盘存储的高压缩率。"
+            content="Apache IoTDB可以实现磁盘存储的高压缩率。"
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon4.png" style="width:40px;height:40px;">
@@ -128,7 +128,7 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
             title="灵活的部署"
             width="400"
             trigger="hover"
-            content="Apache IoTDB（孵化中）可以为用户提供云上的一键式安装、终端访问工具以及边-云之间的协同（数据同步工具）。"
+            content="Apache IoTDB可以为用户提供云上的一键式安装、终端访问工具以及边-云之间的协同（数据同步工具）。"
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon5.png" style="width:40px;height:40px;">
@@ -141,7 +141,7 @@ Apache IoTDB 采用轻量式架构，具有高性能和丰富的功能，并与A
             title="与开源生态系统的紧密集成"
             width="400"
             trigger="hover"
-            content="Apache IoTDB（孵化中）支持许多大数据软件生态系统，例如Hadoop、Spark、Flink和Grafana（可视化工具）。"
+            content="Apache IoTDB支持许多大数据软件生态系统，例如Hadoop、Spark、Flink和Grafana（可视化工具）。"
             >
             <el-button slot="reference" style="text-align:center;width:100%;">
              <img src="/img/home-icon6.png" style="width:40px;height:40px;">
@@ -185,7 +185,7 @@ export default {
       this.$router.push("/zh/Download/");
     },
     addRoutes2() {
-      this.$router.push("/zh/UserGuide/V0.9.x/1-Overview/1-What%20is%20IoTDB.html");
+      this.$router.push("/zh/UserGuide/V0.10.x/Get%20Started/QuickStart.html");
     }
   }
 };

@@ -18,20 +18,19 @@
  */
 package org.apache.iotdb.db.query.externalsort;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
-import org.apache.iotdb.db.query.externalsort.adapter.ByTimestampReaderAdapter;
-import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.chunk.ChunkReaderWrap;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
+import org.apache.iotdb.db.query.externalsort.adapter.ByTimestampReaderAdapter;
+import org.apache.iotdb.db.query.reader.chunk.ChunkReaderWrap;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class SimpleExternalSortEngine implements ExternalSortJobEngine {
