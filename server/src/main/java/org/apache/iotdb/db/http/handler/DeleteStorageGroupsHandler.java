@@ -35,24 +35,24 @@ import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 
-public class DeleteStorageGroupsHandler extends Handler{
-  public JsonElement handle(JsonArray json)
-      throws IllegalPathException, AuthException,
-      QueryProcessException, StorageEngineException, StorageGroupNotSetException {
-    List<PartialPath> storageGroups = new ArrayList<>();
-    for(JsonElement object : json) {
-      String storageGroup = object.getAsString();
-      storageGroups.add(new PartialPath(storageGroup));
+public class DeleteStorageGroupsHandler extends Handler {
+    public JsonElement handle(JsonArray json)
+            throws IllegalPathException, AuthException,
+            QueryProcessException, StorageEngineException, StorageGroupNotSetException {
+        List<PartialPath> storageGroups = new ArrayList<>();
+        for (JsonElement object : json) {
+            String storageGroup = object.getAsString();
+            storageGroups.add(new PartialPath(storageGroup));
+        }
+        DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(storageGroups);
+        if (!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
+            throw new AuthException(String.format("%s can't be delete by %s", storageGroups, username));
+        }
+        if (!executor.processNonQuery(plan)) {
+            throw new QueryProcessException(String.format("%s can't be deleted successfully", storageGroups));
+        }
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
+        return jsonObject;
     }
-    DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(storageGroups);
-    if(!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
-      throw new AuthException(String.format("%s can't be delete by %s", storageGroups, username));
-    }
-    if(!executor.processNonQuery(plan)) {
-      throw new QueryProcessException(String.format("%s can't be deleted successfully", storageGroups));
-    }
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
-    return jsonObject;
-  }
 }

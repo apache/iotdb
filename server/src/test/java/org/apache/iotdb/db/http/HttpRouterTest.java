@@ -99,7 +99,10 @@ public class HttpRouterTest extends HttpPrepData{
     buildMetaDataForGetTimeSeries();
     JsonArray jsonArray = new JsonArray();
     jsonArray.add("root.laptop.*");
-    Assert.assertEquals("[[\"root.laptop.d1.s1\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"],[\"root.laptop.d1.1_2\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"],[\"root.laptop.d1.\\\"1.2.3\\\"\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"]]",
+    Assert.assertEquals("[" +
+                    "[\"root.laptop.d1.1_2\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"]," +
+                    "[\"root.laptop.d1.\\\"1.2.3\\\"\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"]," +
+                    "[\"root.laptop.d1.s1\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"]]",
         router.route(HttpMethod.POST, HttpConstant.ROUTING_GET_TIME_SERIES, jsonArray).toString());
   }
 
@@ -116,9 +119,46 @@ public class HttpRouterTest extends HttpPrepData{
     prepareData();
     JsonObject query = queryJsonExample();
     Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, LOGIN_URI, null).toString());
-    Assert.assertEquals("[{\"timestamp\":\"timestamp\",\"values\":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}," +
-                    "{\"timeSeries\":\"root.test.m0\",\"values\":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0]}," +
-                    "{\"timeSeries\":\"root.test.m9\",\"values\":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0]}]"
+    Assert.assertEquals("[{\"name\":\"root.test.m0\"," +
+                    "\"series\":[{\"Time\":2,\"Value\":1}," +
+                    "{\"Time\":3,\"Value\":1}," +
+                    "{\"Time\":4,\"Value\":1}," +
+                    "{\"Time\":5,\"Value\":1}," +
+                    "{\"Time\":6,\"Value\":1}," +
+                    "{\"Time\":7,\"Value\":1}," +
+                    "{\"Time\":8,\"Value\":1}," +
+                    "{\"Time\":9,\"Value\":1}," +
+                    "{\"Time\":10,\"Value\":1}," +
+                    "{\"Time\":11,\"Value\":1}," +
+                    "{\"Time\":12,\"Value\":1}," +
+                    "{\"Time\":13,\"Value\":1}," +
+                    "{\"Time\":14,\"Value\":1}," +
+                    "{\"Time\":15,\"Value\":1}," +
+                    "{\"Time\":16,\"Value\":1}," +
+                    "{\"Time\":17,\"Value\":1}," +
+                    "{\"Time\":18,\"Value\":1}," +
+                    "{\"Time\":19,\"Value\":1}," +
+                    "{\"Time\":20,\"Value\":0}]}," +
+                    "{\"name\":\"root.test.m9\"," +
+                    "\"series\":[{\"Time\":2,\"Value\":1}," +
+                    "{\"Time\":3,\"Value\":1}," +
+                    "{\"Time\":4,\"Value\":1}," +
+                    "{\"Time\":5,\"Value\":1}," +
+                    "{\"Time\":6,\"Value\":1}," +
+                    "{\"Time\":7,\"Value\":1}," +
+                    "{\"Time\":8,\"Value\":1}," +
+                    "{\"Time\":9,\"Value\":1}," +
+                    "{\"Time\":10,\"Value\":1}," +
+                    "{\"Time\":11,\"Value\":1}," +
+                    "{\"Time\":12,\"Value\":1}," +
+                    "{\"Time\":13,\"Value\":1}," +
+                    "{\"Time\":14,\"Value\":1}," +
+                    "{\"Time\":15,\"Value\":1}," +
+                    "{\"Time\":16,\"Value\":1}," +
+                    "{\"Time\":17,\"Value\":1}," +
+                    "{\"Time\":18,\"Value\":1}," +
+                    "{\"Time\":19,\"Value\":1}," +
+                    "{\"Time\":20,\"Value\":0}]}]"
         , router.route(HttpMethod.POST, HttpConstant.ROUTING_QUERY, query).toString());
   }
 

@@ -22,7 +22,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.netty.handler.codec.http.HttpMethod;
+
 import java.util.List;
+
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -38,44 +40,44 @@ import org.apache.iotdb.db.service.IoTDB;
 
 public class StorageGroupsHandlers extends Handler {
 
-  public JsonElement handle(HttpMethod httpMethod, JsonElement json)
-      throws QueryProcessException, StorageEngineException
-      , StorageGroupNotSetException, AuthException
-      , IllegalPathException, UnsupportedHttpMethod {
-    checkLogin();
-    if (HttpMethod.GET.equals(httpMethod)) {
-      List<StorageGroupMNode> storageGroupMNodes = IoTDB.metaManager.getAllStorageGroupNodes();
-      JsonArray result = new JsonArray();
-      for (StorageGroupMNode storageGroupMNode : storageGroupMNodes) {
-        if (storageGroupMNode.getDataTTL() > 0 && storageGroupMNode.getDataTTL() < Long.MAX_VALUE) {
-          JsonObject jsonObject = new JsonObject();
-          jsonObject.addProperty(HttpConstant.STORAGE_GROUP, storageGroupMNode.getFullPath());
-          jsonObject.addProperty(HttpConstant.TTL, storageGroupMNode.getDataTTL());
-          result.add(jsonObject);
+    public JsonElement handle(HttpMethod httpMethod, JsonElement json)
+            throws QueryProcessException, StorageEngineException
+            , StorageGroupNotSetException, AuthException
+            , IllegalPathException, UnsupportedHttpMethod {
+        checkLogin();
+        if (HttpMethod.GET.equals(httpMethod)) {
+            List<StorageGroupMNode> storageGroupMNodes = IoTDB.metaManager.getAllStorageGroupNodes();
+            JsonArray result = new JsonArray();
+            for (StorageGroupMNode storageGroupMNode : storageGroupMNodes) {
+                if (storageGroupMNode.getDataTTL() > 0 && storageGroupMNode.getDataTTL() < Long.MAX_VALUE) {
+                    JsonObject jsonObject = new JsonObject();
+                    jsonObject.addProperty(HttpConstant.STORAGE_GROUP, storageGroupMNode.getFullPath());
+                    jsonObject.addProperty(HttpConstant.TTL, storageGroupMNode.getDataTTL());
+                    result.add(jsonObject);
+                } else {
+                    JsonObject jsonObject = new JsonObject();
+                    jsonObject.addProperty(HttpConstant.STORAGE_GROUP, storageGroupMNode.getFullPath());
+                    result.add(jsonObject);
+                }
+            }
+            return result;
+        } else if (HttpMethod.POST.equals(httpMethod)) {
+            JsonArray jsonArray = json.getAsJsonArray();
+            for (JsonElement object : jsonArray) {
+                String storageGroup = object.getAsString();
+                SetStorageGroupPlan plan = new SetStorageGroupPlan(new PartialPath(storageGroup));
+                if (!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
+                    throw new AuthException(String.format("%s can't be set by %s", storageGroup, username));
+                }
+                if (!executor.processNonQuery(plan)) {
+                    throw new QueryProcessException(String.format("%s can't be set successfully", storageGroup));
+                }
+            }
+            JsonObject jsonObject = new JsonObject();
+            jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
+            return jsonObject;
         } else {
-          JsonObject jsonObject = new JsonObject();
-          jsonObject.addProperty(HttpConstant.STORAGE_GROUP, storageGroupMNode.getFullPath());
-          result.add(jsonObject);
+            throw new UnsupportedHttpMethod(httpMethod.toString());
         }
-      }
-      return result;
-    } else if (HttpMethod.POST.equals(httpMethod)) {
-      JsonArray jsonArray = json.getAsJsonArray();
-      for(JsonElement object : jsonArray) {
-        String storageGroup = object.getAsString();
-        SetStorageGroupPlan plan = new SetStorageGroupPlan(new PartialPath(storageGroup));
-        if(!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
-          throw new AuthException(String.format("%s can't be set by %s", storageGroup, username));
-        }
-        if(!executor.processNonQuery(plan)) {
-          throw new QueryProcessException(String.format("%s can't be set successfully", storageGroup));
-        }
-      }
-      JsonObject jsonObject = new JsonObject();
-      jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
-      return jsonObject;
-    } else {
-      throw new UnsupportedHttpMethod(httpMethod.toString());
     }
-  }
 }

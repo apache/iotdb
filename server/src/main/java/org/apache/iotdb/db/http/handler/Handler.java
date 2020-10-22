@@ -27,27 +27,26 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 abstract class Handler {
-  protected static final Logger logger = LoggerFactory.getLogger(Handler.class);
-  protected static String username;
-  protected IPlanExecutor executor;
-  protected Planner processor;
+    protected static final Logger logger = LoggerFactory.getLogger(Handler.class);
+    protected static String username;
+    protected IPlanExecutor executor;
+    protected Planner processor;
 
-  Handler() {
-    try {
-      processor = new Planner();
-      executor = new PlanExecutor();
-    } catch (QueryProcessException e) {
-      logger.error(e.getMessage());
+    Handler() {
+        try {
+            processor = new Planner();
+            executor = new PlanExecutor();
+        } catch (QueryProcessException e) {
+            logger.error(e.getMessage());
+        }
     }
-  }
 
-  /**
-   * Check whether current user has logged in.
-   *
-   */
-  void checkLogin() throws AuthException{
-    if(username == null) {
-      throw new AuthException("didn't log in iotdb");
+    /**
+     * Check whether current user has logged in.
+     */
+    void checkLogin() throws AuthException {
+        if (username == null) {
+            throw new AuthException("didn't log in iotdb");
+        }
     }
-  }
 }

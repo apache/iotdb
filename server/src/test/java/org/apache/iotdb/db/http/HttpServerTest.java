@@ -86,7 +86,7 @@ public class HttpServerTest extends HttpPrepData {
     login();
     JsonArray jsonArray = postStorageGroupsJsonExample();
     Response response1 = client.target(STORAGE_GROUPS_URI)
-        .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray, MediaType.APPLICATION_JSON));
+        .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray.toString(), MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response1.readEntity(String.class));
     Assert.assertEquals("[root.ln, root.sg]",mmanager.getAllStorageGroupPaths().toString());
   }
@@ -107,7 +107,7 @@ public class HttpServerTest extends HttpPrepData {
     prepareData();
     JsonArray jsonArray = deleteStorageGroupsJsonExample();
     Response response = client.target(STORAGE_GROUPS_DELETE_URI)
-        .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray, MediaType.APPLICATION_JSON));
+        .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray.toString(), MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
     Assert.assertEquals(0, mmanager.getAllStorageGroupPaths().size());
   }
@@ -117,7 +117,7 @@ public class HttpServerTest extends HttpPrepData {
     login();
     JsonArray jsonArray = createTimeSeriesJsonExample();
     Response response = client.target(TIME_SERIES_URI)
-        .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray, MediaType.APPLICATION_JSON));
+        .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray.toString(), MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
     List<PartialPath> paths = mmanager.getAllTimeseriesPathWithAlias(new PartialPath("root.sg.*"));
     Assert.assertEquals("root.sg.d1.s1" ,paths.get(0).getFullPath());
@@ -131,10 +131,12 @@ public class HttpServerTest extends HttpPrepData {
     JsonArray jsonArray = new JsonArray();
     jsonArray.add("root.laptop.*");
     Response response = client.target(GET_TIME_SERIES_URI)
-        .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray, MediaType.APPLICATION_JSON));
-    Assert.assertEquals("[[\"root.laptop.d1.s1\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\"]"
-        + ",[\"root.laptop.d1.1_2\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\"]"
-        + ",[\"root.laptop.d1.\\\"1.2.3\\\"\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\"]]", response.readEntity(String.class));
+        .request(MediaType.APPLICATION_JSON).post(Entity.entity(jsonArray.toString(), MediaType.APPLICATION_JSON));
+    Assert.assertEquals("[" +
+                    "[\"root.laptop.d1.1_2\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"]," +
+                    "[\"root.laptop.d1.\\\"1.2.3\\\"\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"]," +
+                    "[\"root.laptop.d1.s1\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"]]",
+            response.readEntity(String.class));
   }
 
   @Test
@@ -143,7 +145,7 @@ public class HttpServerTest extends HttpPrepData {
     prepareData();
     JsonArray timeSeries = deleteTimeSeriesJsonExample();
     Response response = client.target(TIME_SERIES_DELETE_URI)
-        .request(MediaType.APPLICATION_JSON).post(Entity.entity(timeSeries, MediaType.APPLICATION_JSON));
+        .request(MediaType.APPLICATION_JSON).post(Entity.entity(timeSeries.toString(), MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
     checkDataAfterDeletingTimeSeries();
   }
@@ -153,7 +155,7 @@ public class HttpServerTest extends HttpPrepData {
     login();
     JsonArray inserts = insertJsonExample(1);
     Response response = client.target(INSERT_URI)
-        .request(MediaType.APPLICATION_JSON).post(Entity.entity(inserts, MediaType.APPLICATION_JSON));
+        .request(MediaType.APPLICATION_JSON).post(Entity.entity(inserts.toString(), MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
     checkDataAfterInserting(1);
   }
@@ -164,10 +166,47 @@ public class HttpServerTest extends HttpPrepData {
     prepareData();
     JsonObject query = queryJsonExample();
     Response response = client.target(QUERY_URI)
-        .request(MediaType.APPLICATION_JSON).post(Entity.entity(query, MediaType.APPLICATION_JSON));
-    Assert.assertEquals("[{\"values\":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],\"timestamp\":\"timestamp\"}," +
-                    "{\"timeSeries\":\"root.test.m0\",\"values\":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0]}," +
-                    "{\"timeSeries\":\"root.test.m9\",\"values\":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0]}]"
+        .request(MediaType.APPLICATION_JSON).post(Entity.entity(query.toString(), MediaType.APPLICATION_JSON));
+    Assert.assertEquals("[{\"name\":\"root.test.m0\"," +
+                    "\"series\":[{\"Time\":2,\"Value\":1}," +
+                    "{\"Time\":3,\"Value\":1}," +
+                    "{\"Time\":4,\"Value\":1}," +
+                    "{\"Time\":5,\"Value\":1}," +
+                    "{\"Time\":6,\"Value\":1}," +
+                    "{\"Time\":7,\"Value\":1}," +
+                    "{\"Time\":8,\"Value\":1}," +
+                    "{\"Time\":9,\"Value\":1}," +
+                    "{\"Time\":10,\"Value\":1}," +
+                    "{\"Time\":11,\"Value\":1}," +
+                    "{\"Time\":12,\"Value\":1}," +
+                    "{\"Time\":13,\"Value\":1}," +
+                    "{\"Time\":14,\"Value\":1}," +
+                    "{\"Time\":15,\"Value\":1}," +
+                    "{\"Time\":16,\"Value\":1}," +
+                    "{\"Time\":17,\"Value\":1}," +
+                    "{\"Time\":18,\"Value\":1}," +
+                    "{\"Time\":19,\"Value\":1}," +
+                    "{\"Time\":20,\"Value\":0}]}," +
+                    "{\"name\":\"root.test.m9\"," +
+                    "\"series\":[{\"Time\":2,\"Value\":1}," +
+                    "{\"Time\":3,\"Value\":1}," +
+                    "{\"Time\":4,\"Value\":1}," +
+                    "{\"Time\":5,\"Value\":1}," +
+                    "{\"Time\":6,\"Value\":1}," +
+                    "{\"Time\":7,\"Value\":1}," +
+                    "{\"Time\":8,\"Value\":1}," +
+                    "{\"Time\":9,\"Value\":1}," +
+                    "{\"Time\":10,\"Value\":1}," +
+                    "{\"Time\":11,\"Value\":1}," +
+                    "{\"Time\":12,\"Value\":1}," +
+                    "{\"Time\":13,\"Value\":1}," +
+                    "{\"Time\":14,\"Value\":1}," +
+                    "{\"Time\":15,\"Value\":1}," +
+                    "{\"Time\":16,\"Value\":1}," +
+                    "{\"Time\":17,\"Value\":1}," +
+                    "{\"Time\":18,\"Value\":1}," +
+                    "{\"Time\":19,\"Value\":1}," +
+                    "{\"Time\":20,\"Value\":0}]}]"
         , response.readEntity(String.class));
   }
 
@@ -180,7 +219,7 @@ public class HttpServerTest extends HttpPrepData {
       service.submit(() -> {
         JsonArray inserts = insertJsonExample(finalI);
         Response response = client.target(INSERT_URI)
-            .request(MediaType.APPLICATION_JSON).post(Entity.entity(inserts, MediaType.APPLICATION_JSON));
+            .request(MediaType.APPLICATION_JSON).post(Entity.entity(inserts.toString(), MediaType.APPLICATION_JSON));
         Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
         try {
           checkDataAfterInserting(finalI);

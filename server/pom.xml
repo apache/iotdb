@@ -197,6 +197,11 @@
             <version>2.30</version>
         </dependency>
         <dependency>
+            <groupId>org.glassfish.jersey.media</groupId>
+            <artifactId>jersey-media-json-jackson</artifactId>
+            <version>2.30</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.tomcat.embed</groupId>
             <artifactId>tomcat-embed-core</artifactId>
             <version>8.5.15</version>

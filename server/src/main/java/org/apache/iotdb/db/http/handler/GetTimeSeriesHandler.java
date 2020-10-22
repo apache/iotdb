@@ -42,35 +42,35 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
 
 public class GetTimeSeriesHandler extends Handler {
-  public JsonElement handle(JsonArray json)
-      throws AuthException, MetadataException, TException, StorageEngineException,
-      QueryFilterOptimizationException, IOException, InterruptedException, SQLException, QueryProcessException {
-    checkLogin();
-    JsonArray result = new JsonArray();
-    for(JsonElement object : json) {
-      String path = object.getAsString();
-      PartialPath partialPath = new PartialPath(path);
-      ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(partialPath);
-      plan.setHasLimit(true);
-      if(!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
-        throw new AuthException(String.format("%s can't be gotten by %s", path, username));
-      }
-      long queryID = QueryResourceManager.getInstance().assignQueryId(false);
-      QueryDataSet dataSet = executor.processQuery(plan, new QueryContext(queryID));
-      while(dataSet.hasNext()) {
-        JsonArray row = new JsonArray();
-        RowRecord rowRecord = dataSet.next();
-        List<Field> fields = rowRecord.getFields();
-        for(Field field : fields) {
-          if(field != null) {
-            row.add(field.getStringValue());
-          } else {
-            row.add(HttpConstant.NULL);
-          }
+    public JsonElement handle(JsonArray json)
+            throws AuthException, MetadataException, TException, StorageEngineException,
+            QueryFilterOptimizationException, IOException, InterruptedException, SQLException, QueryProcessException {
+        checkLogin();
+        JsonArray result = new JsonArray();
+        for (JsonElement object : json) {
+            String path = object.getAsString();
+            PartialPath partialPath = new PartialPath(path);
+            ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(partialPath);
+            plan.setHasLimit(true);
+            if (!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
+                throw new AuthException(String.format("%s can't be gotten by %s", path, username));
+            }
+            long queryID = QueryResourceManager.getInstance().assignQueryId(false);
+            QueryDataSet dataSet = executor.processQuery(plan, new QueryContext(queryID));
+            while (dataSet.hasNext()) {
+                JsonArray row = new JsonArray();
+                RowRecord rowRecord = dataSet.next();
+                List<Field> fields = rowRecord.getFields();
+                for (Field field : fields) {
+                    if (field != null) {
+                        row.add(field.getStringValue());
+                    } else {
+                        row.add(HttpConstant.NULL);
+                    }
+                }
+                result.add(row);
+            }
         }
-        result.add(row);
-      }
+        return result;
     }
-    return result;
-  }
 }

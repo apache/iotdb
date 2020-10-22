@@ -157,46 +157,52 @@ public class QueryHandler extends Handler{
     JsonArray result = new JsonArray();
     QueryDataSet dataSet = executor.processQuery(plan, new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
     List<PartialPath> paths = plan.getPaths();
-    JsonObject timeColumn = new JsonObject();
-    timeColumn.addProperty(HttpConstant.NAME, HttpConstant.TIMESTAMP);
-    JsonArray timeValues = new JsonArray();
-    timeColumn.add(HttpConstant.VALUES, timeValues);
-    result.add(timeColumn);
+
     for(PartialPath path : paths) {
-      JsonObject column = new JsonObject();
-      JsonArray values = new JsonArray();
-      column.addProperty(HttpConstant.NAME, path.toString());
-      column.add(HttpConstant.VALUES, values);
-      result.add(column);
+      JsonObject dataFrame = new JsonObject();
+      JsonArray series = new JsonArray();
+      dataFrame.addProperty(HttpConstant.NAME, path.toString());
+      dataFrame.add(HttpConstant.SERIES, series);
+      result.add(dataFrame);
     }
 
     while(dataSet.hasNext()) {
       RowRecord rowRecord = dataSet.next();
-      JsonObject timeCol = result.get(0).getAsJsonObject();
-      JsonArray timeVal = timeCol.getAsJsonArray(HttpConstant.VALUES);
-      timeVal.add(rowRecord.getTimestamp());
       List<Field> fields = rowRecord.getFields();
       for(int i = 0; i < fields.size(); i ++ ) {
-        JsonObject column = result.get(i + 1).getAsJsonObject();
-        JsonArray values = column.getAsJsonArray(HttpConstant.VALUES);
+        JsonObject dataFrame = result.get(i).getAsJsonObject();
+        JsonArray series = dataFrame.getAsJsonArray(HttpConstant.SERIES);
+        JsonObject timeAndValues = new JsonObject();
         switch(fields.get(i).getDataType()) {
           case TEXT:
-            values.add(fields.get(i).getBinaryV().toString());
+            timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
+            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getBinaryV().getStringValue());
+            series.add(timeAndValues);
             break;
           case FLOAT:
-            values.add(fields.get(i).getFloatV());
+            timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
+            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getFloatV());
+            series.add(timeAndValues);
             break;
           case INT32:
-            values.add(fields.get(i).getIntV());
+            timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
+            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getIntV());
+            series.add(timeAndValues);
             break;
           case INT64:
-            values.add(fields.get(i).getLongV());
+            timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
+            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getLongV());
+            series.add(timeAndValues);
             break;
           case BOOLEAN:
-            values.add(fields.get(i).getBoolV());
+            timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
+            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getBoolV());
+            series.add(timeAndValues);
             break;
           case DOUBLE:
-            values.add(fields.get(i).getDoubleV());
+            timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
+            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getDoubleV());
+            series.add(timeAndValues);
             break;
           default:
             throw new QueryProcessException("didn't support this datatype");
