@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metrics.server;
 
+import com.sun.management.OperatingSystemMXBean;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
@@ -30,7 +31,6 @@ import java.util.List;
 import java.util.StringTokenizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.sun.management.OperatingSystemMXBean;
 
 public class ServerArgument {
 

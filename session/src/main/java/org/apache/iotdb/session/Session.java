@@ -70,14 +70,13 @@ public class Session {
 
   private EndPoint defaultEndPoint;
   private SessionConnection defaultSessionConnection;
-  private boolean isClosed = true;
+  protected boolean isClosed = true;
 
   // Cluster version cache
   private SessionConnection metaSessionConnection;
   private Map<String, EndPoint> deviceIdToEndpoint;
   private Map<EndPoint, SessionConnection> endPointToSessionConnection;
   private AtomicReference<IoTDBConnectionException> tmp = new AtomicReference<>();
-
 
   public Session(String host, int rpcPort) {
     this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
@@ -111,6 +110,7 @@ public class Session {
     if (!isClosed) {
       return;
     }
+
     this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     defaultSessionConnection = new SessionConnection(this, defaultEndPoint);

@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.metrics.source;
 
-import java.lang.management.ManagementFactory;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.jvm.BufferPoolMetricSet;
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import java.lang.management.ManagementFactory;
 
 public class JvmSource implements Source {
 

@@ -58,15 +58,18 @@ import org.slf4j.LoggerFactory;
 public class SessionConnection {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
+  public static final String MSG_RECONNECTION_FAIL = "Fail to reconnect to server. Please check server status";
   private Session session;
   private TTransport transport;
   private TSIService.Iface client;
   private long sessionId;
   private long statementId;
   private ZoneId zoneId;
+  private EndPoint endPoint;
 
   public SessionConnection(Session session, EndPoint endPoint) throws IoTDBConnectionException {
     this.session = session;
+    this.endPoint = endPoint;
     init(endPoint);
   }
 
@@ -144,7 +147,16 @@ public class SessionConnection {
     try {
       resp = client.setTimeZone(req);
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          resp = client.setTimeZone(req);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+            MSG_RECONNECTION_FAIL);
+      }
     }
     RpcUtils.verifySuccess(resp);
     this.zoneId = ZoneId.of(zoneId);
@@ -159,7 +171,15 @@ public class SessionConnection {
     try {
       resp = client.getTimeZone(sessionId);
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          resp = client.getTimeZone(sessionId);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
     RpcUtils.verifySuccess(resp.getStatus());
     return resp.getTimeZone();
@@ -170,7 +190,15 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccessWithRedirection(client.setStorageGroup(sessionId, storageGroup));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.setStorageGroup(sessionId, storageGroup));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -179,7 +207,15 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccessWithRedirection(client.deleteStorageGroups(sessionId, storageGroups));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.deleteStorageGroups(sessionId, storageGroups));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -189,7 +225,15 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccess(client.createTimeseries(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.createTimeseries(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -199,7 +243,16 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccess(client.createMultiTimeseries(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.createMultiTimeseries(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+            MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -224,7 +277,16 @@ public class SessionConnection {
     try {
       execResp = client.executeQueryStatement(execReq);
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          execResp = client.executeUpdateStatement(execReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+            MSG_RECONNECTION_FAIL);
+      }
     }
 
     RpcUtils.verifySuccess(execResp.getStatus());
@@ -241,7 +303,16 @@ public class SessionConnection {
       TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.executeUpdateStatement(execReq).status);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+            MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -253,7 +324,15 @@ public class SessionConnection {
     try {
       execResp = client.executeRawDataQuery(request);
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          execResp = client.executeRawDataQuery(request);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
 
     RpcUtils.verifySuccess(execResp.getStatus());
@@ -269,7 +348,16 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertRecord(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.insertRecord(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+            MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -279,7 +367,16 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertStringRecord(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.insertStringRecord(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+            MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -289,7 +386,15 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertRecords(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.insertRecords(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -299,7 +404,16 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertStringRecords(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.insertStringRecords(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+            MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -309,7 +423,15 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertTablet(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccessWithRedirection(client.insertTablet(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -319,7 +441,15 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccessWithRedirection(client.insertTablets(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.insertTablets(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -328,7 +458,15 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccess(client.deleteTimeseries(sessionId, paths));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.deleteTimeseries(sessionId, paths));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -338,7 +476,16 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccess(client.deleteData(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.deleteData(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+            MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -348,7 +495,15 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccess(client.testInsertStringRecord(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.testInsertStringRecord(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -358,7 +513,15 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccess(client.testInsertRecord(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.testInsertRecord(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -368,7 +531,15 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccess(client.testInsertStringRecords(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.testInsertStringRecords(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -378,7 +549,15 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccess(client.testInsertRecords(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.testInsertRecords(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -388,7 +567,15 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccess(client.testInsertTablet(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.testInsertTablet(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
   }
 
@@ -398,8 +585,37 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccess(client.testInsertTablets(request));
     } catch (TException e) {
-      throw new IoTDBConnectionException(e);
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.testInsertTablets(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
+  }
+
+  private boolean reconnect() {
+    boolean flag = false;
+    for (int i = 1; i <= Config.RETRY_NUM; i++) {
+      try {
+        if (transport != null) {
+          close();
+          init(endPoint);
+          flag = true;
+        }
+      } catch (Exception e) {
+        try {
+          Thread.sleep(Config.RETRY_INTERVAL_MS);
+        } catch (InterruptedException e1) {
+          logger.error("reconnect is interrupted.", e1);
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
+    return flag;
   }
 
 }
