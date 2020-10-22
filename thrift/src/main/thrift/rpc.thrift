@@ -21,7 +21,7 @@ namespace java org.apache.iotdb.service.rpc.thrift
 // The return status code and message in each response.
 struct TSStatus {
   1: required i32 code
-  2: optional string messageS
+  2: optional string message
   3: optional list<TSStatus> subStatus
 }
 

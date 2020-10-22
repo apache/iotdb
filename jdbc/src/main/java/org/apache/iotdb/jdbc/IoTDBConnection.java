@@ -481,7 +481,7 @@ public class IoTDBConnection implements Connection {
         }
       } catch (Exception e) {
         try {
-          Thread.sleep(Config.RETRY_INTERVAL);
+          Thread.sleep(Config.RETRY_INTERVAL_MS);
         } catch (InterruptedException e1) {
           logger.error("reconnect is interrupted.", e1);
           Thread.currentThread().interrupt();
