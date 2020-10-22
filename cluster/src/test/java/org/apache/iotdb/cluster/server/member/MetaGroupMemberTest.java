@@ -796,6 +796,7 @@ public class MetaGroupMemberTest extends MemberTest {
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    RaftServer.setReadOperationTimeoutMS(1000);
 
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
