@@ -58,8 +58,8 @@ The four encodings described in the previous sections are applicable to differen
 |Data Type	|Supported Encoding|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, REGULAR|
-|INT64	|PLAIN, RLE, TS_2DIFF, REGULAR|
+|INT32	|PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA|
+|INT64	|PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA|
 |FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |TEXT	|PLAIN|

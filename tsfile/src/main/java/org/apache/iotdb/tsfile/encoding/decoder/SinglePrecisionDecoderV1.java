@@ -88,18 +88,20 @@ public class SinglePrecisionDecoderV1 extends GorillaDecoderV1 {
     if (!nextFlag2) {
       // case: '10'
       int tmp = 0;
-      for (int i = 0; i < TSFileConfig.FLOAT_LENGTH - leadingZeroNum - tailingZeroNum; i++) {
+      for (int i = 0; i < TSFileConfig.VALUE_BITS_LENGTH_32BIT - leadingZeroNum - tailingZeroNum;
+          i++) {
         int bit = readBit(buffer) ? 1 : 0;
-        tmp |= bit << (TSFileConfig.FLOAT_LENGTH - 1 - leadingZeroNum - i);
+        tmp |= bit << (TSFileConfig.VALUE_BITS_LENGTH_32BIT - 1 - leadingZeroNum - i);
       }
       tmp ^= preValue;
       preValue = tmp;
     } else {
       // case: '11'
-      int leadingZeroNumTmp = readIntFromStream(buffer, TSFileConfig.FLAOT_LEADING_ZERO_LENGTH);
+      int leadingZeroNumTmp = readIntFromStream(buffer,
+          TSFileConfig.LEADING_ZERO_BITS_LENGTH_32BIT);
       int lenTmp = readIntFromStream(buffer, TSFileConfig.FLOAT_VALUE_LENGTH);
       int tmp = readIntFromStream(buffer, lenTmp);
-      tmp <<= (TSFileConfig.FLOAT_LENGTH - leadingZeroNumTmp - lenTmp);
+      tmp <<= (TSFileConfig.VALUE_BITS_LENGTH_32BIT - leadingZeroNumTmp - lenTmp);
       tmp ^= preValue;
       preValue = tmp;
     }
@@ -109,5 +111,4 @@ public class SinglePrecisionDecoderV1 extends GorillaDecoderV1 {
       isEnd = true;
     }
   }
-
 }

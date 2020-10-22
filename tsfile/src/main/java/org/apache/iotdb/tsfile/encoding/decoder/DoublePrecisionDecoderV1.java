@@ -92,18 +92,20 @@ public class DoublePrecisionDecoderV1 extends GorillaDecoderV1 {
     if (!nextFlag2) {
       // case: '10'
       long tmp = 0;
-      for (int i = 0; i < TSFileConfig.DOUBLE_LENGTH - leadingZeroNum - tailingZeroNum; i++) {
+      for (int i = 0; i < TSFileConfig.VALUE_BITS_LENGTH_64BIT - leadingZeroNum - tailingZeroNum;
+          i++) {
         long bit = readBit(buffer) ? 1 : 0;
-        tmp |= (bit << (TSFileConfig.DOUBLE_LENGTH - 1 - leadingZeroNum - i));
+        tmp |= (bit << (TSFileConfig.VALUE_BITS_LENGTH_64BIT - 1 - leadingZeroNum - i));
       }
       tmp ^= preValue;
       preValue = tmp;
     } else {
       // case: '11'
-      int leadingZeroNumTmp = readIntFromStream(buffer, TSFileConfig.DOUBLE_LEADING_ZERO_LENGTH);
+      int leadingZeroNumTmp = readIntFromStream(buffer,
+          TSFileConfig.LEADING_ZERO_BITS_LENGTH_64BIT);
       int lenTmp = readIntFromStream(buffer, TSFileConfig.DOUBLE_VALUE_LENGTH);
       long tmp = readLongFromStream(buffer, lenTmp);
-      tmp <<= (TSFileConfig.DOUBLE_LENGTH - leadingZeroNumTmp - lenTmp);
+      tmp <<= (TSFileConfig.VALUE_BITS_LENGTH_64BIT - leadingZeroNumTmp - lenTmp);
       tmp ^= preValue;
       preValue = tmp;
     }

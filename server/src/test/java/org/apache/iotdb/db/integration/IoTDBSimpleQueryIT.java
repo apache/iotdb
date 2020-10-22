@@ -571,13 +571,6 @@ public class IoTDBSimpleQueryIT {
       }
 
       try {
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s2 with datatype=INT32, encoding=GORILLA");
-      } catch (Exception e) {
-        Assert.assertTrue(e.getMessage().contains(
-            "303: org.apache.iotdb.db.exception.metadata.MetadataException: encoding INT32 does not support GORILLA"));
-      }
-
-      try {
         statement
             .execute("CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
       } catch (Exception e) {

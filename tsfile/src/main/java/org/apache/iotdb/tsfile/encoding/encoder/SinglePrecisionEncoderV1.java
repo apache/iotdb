@@ -60,16 +60,18 @@ public class SinglePrecisionEncoderV1 extends GorillaEncoderV1 {
           // last tailingZeroNum '0'
           writeBit(true, out);
           writeBit(false, out);
-          writeBits(tmp, out, TSFileConfig.FLOAT_LENGTH - 1 - leadingZeroNum, tailingZeroNum);
+          writeBits(tmp, out, TSFileConfig.VALUE_BITS_LENGTH_32BIT - 1 - leadingZeroNum,
+              tailingZeroNum);
         } else {
           // case: write '11', leading zero num of value, effective bits len and effective
           // bit value
           writeBit(true, out);
           writeBit(true, out);
-          writeBits(leadingZeroNumTmp, out, TSFileConfig.FLAOT_LEADING_ZERO_LENGTH - 1, 0);
-          writeBits(TSFileConfig.FLOAT_LENGTH - leadingZeroNumTmp - tailingZeroNumTmp, out,
-              TSFileConfig.FLOAT_VALUE_LENGTH - 1, 0);
-          writeBits(tmp, out, TSFileConfig.FLOAT_LENGTH - 1 - leadingZeroNumTmp, tailingZeroNumTmp);
+          writeBits(leadingZeroNumTmp, out, TSFileConfig.LEADING_ZERO_BITS_LENGTH_32BIT - 1, 0);
+          writeBits(TSFileConfig.VALUE_BITS_LENGTH_32BIT - leadingZeroNumTmp - tailingZeroNumTmp,
+              out, TSFileConfig.FLOAT_VALUE_LENGTH - 1, 0);
+          writeBits(tmp, out, TSFileConfig.VALUE_BITS_LENGTH_32BIT - 1 - leadingZeroNumTmp,
+              tailingZeroNumTmp);
         }
       }
       preValue = nextValue;

@@ -277,13 +277,13 @@ public abstract class TSEncodingBuilder {
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case FLOAT:
-          return null;
+          return new SinglePrecisionEncoderV2();
         case DOUBLE:
-          return null;
+          return new DoublePrecisionEncoderV2();
         case INT32:
-          return null;
+          return new IntGorillaEncoder();
         case INT64:
-          return null;
+          return new LongGorillaEncoder();
         default:
           throw new UnSupportedDataTypeException("GORILLA_V2 doesn't support data type: " + type);
       }
