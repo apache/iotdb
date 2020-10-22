@@ -18,6 +18,7 @@
 @REM
 
 @echo off
+setlocal enabledelayedexpansion
 @REM true or false
 @REM DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (%IOTDB_CONF%\jmx.password and %{IOTDB_CONF%\jmx.access)
 set JMX_LOCAL="true"
@@ -44,24 +45,51 @@ if %JMX_LOCAL% == "false" (
   echo "setting local JMX..."
 )
 
-@REM Maximum heap size
-set MAX_HEAP_SIZE=2G
-@REM Minimum heap size
-set HEAP_NEWSIZE=2G
+set line=0
+for /f  %%a in ('wmic cpu get numberofcores') do (
+	set /a line+=1
+	if !line!==2 set system_cpu_cores=%%a
+)
+set as=%system_cpu_cores%
+
+if ["%system_cpu_cores%"] LSS ["1"] set system_cpu_cores="1"
+
+set liner=0
+for /f  %%b in ('wmic memorychip get capacity') do (
+	set /a liner+=1
+	if !liner!==2 set system_memory=%%b
+)
+
+echo wsh.echo FormatNumber(cdbl(%system_memory%)/(1024*1024), 0) > %temp%\tmp.vbs
+for /f "tokens=*" %%a in ('cscript //nologo %temp%\tmp.vbs') do set system_memory_in_mb=%%a
+del %temp%\tmp.vbs
+set system_memory_in_mb=%system_memory_in_mb:,=%
+
+set /a half_=%system_memory_in_mb%/2
+set /a quarter_=%half_%/2
+
+if ["%half_%"] GTR ["1024"] set half_=1024
+if ["%quarter_%"] GTR ["8192"] set quarter_=8192
+
+if ["%half_%"] GTR ["quarter_"] (
+	set max_heap_size_in_mb=%half_%
+) else set max_heap_size_in_mb=%quarter_%
+
+set MAX_HEAP_SIZE=%max_heap_size_in_mb%M
+set max_sensible_yg_per_core_in_mb=100
+set /a max_sensible_yg_in_mb=%max_sensible_yg_per_core_in_mb%*%system_cpu_cores%
+set /a desired_yg_in_mb=%max_heap_size_in_mb%/4
+
+if ["%desired_yg_in_mb%"] GTR ["%max_sensible_yg_in_mb%"] (
+	set HEAP_NEWSIZE=%max_sensible_yg_in_mb%M
+) else set HEAP_NEWSIZE=%desired_yg_in_mb%M
 
 IF ["%IOTDB_HEAP_OPTS%"] EQU [""] (
 	rem detect Java 8 or 11
 	IF "%JAVA_VERSION%" == "8" (
 		java -d64 -version >nul 2>&1
-		IF NOT ERRORLEVEL 1 (
-			rem 64-bit Java
-			echo Detect 64-bit Java, maximum memory allocation pool = %MAX_HEAP_SIZE%B, initial memory allocation pool = %HEAP_NEWSIZE%B
-			set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
-		) ELSE (
-			rem 32-bit Java
-			echo Detect 32-bit Java, maximum memory allocation pool = 512MB, initial memory allocation pool = 512MB
-			set IOTDB_HEAP_OPTS=-Xmx512M -Xms512M -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
-		)
+		echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
+		set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
 		goto end_config_setting
 	) ELSE (
 		goto detect_jdk11_bit_version
@@ -75,15 +103,8 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 	@rem echo %%l
 	set BIT_VERSION=%%l
 )
-IF "%BIT_VERSION%" == "64-Bit" (
-	rem 64-bit Java
-	echo Detect 64-bit Java, maximum memory allocation pool = %MAX_HEAP_SIZE%B, initial memory allocation pool = %HEAP_NEWSIZE%B
-	set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE%
-) ELSE (
-	rem 32-bit Java
-	echo Detect 32-bit Java, maximum memory allocation pool = 512MB, initial memory allocation pool = 512MB
-	set IOTDB_HEAP_OPTS=-Xmx512M -Xms512M
-)
+echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
+set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
@@ -100,3 +121,6 @@ IF "%1" equ "printgc" (
 	)
 )
 echo If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).
+
+@REM Maximum heap size
+@REM set MAX_HEAP_SIZE=2G
