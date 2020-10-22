@@ -222,9 +222,9 @@ commons-io:commons-io:2.5
 org.apache.commons:commons-lang3:3.8.1
 commons-lang:commons-lang:2.6
 com.nimbusds:content-type:2.0
-com.alibaba:fastjson:1.2.70
+com.google.code.gson:gson:2.8.6
 it.unimi.dsi:fastutil:7.0.6
-com.google.guava.guava:21.0
+com.google.guava.guava:24.1.1
 com.fasterxml.jackson.core:jackson-annotations:2.10.0
 com.fasterxml.jackson.core:jackson-core:2.10.0
 com.fasterxml.jackson.core:jackson-databind:2.10.0

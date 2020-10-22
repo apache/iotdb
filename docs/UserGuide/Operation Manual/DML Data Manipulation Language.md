@@ -146,6 +146,15 @@ The selected timeseries are "the power supply status of ln group wf01 plant wt01
 The execution result of this SQL statement is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
 
+
+#### Order By Time Query
+IoTDB supports the 'order by time' statement since 0.11, it's used to display results in descending order by time.
+For example, the SQL statement is:
+
+```sql
+select * from root.ln where time > 1 order by time desc limit 10;
+```
+
 ### Aggregate Query
 This section mainly introduces the related examples of aggregate query.
 
@@ -363,6 +372,7 @@ The SQL statement is:
 
 ```
 SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST])
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST, 3m])
 ```
 which means:
 

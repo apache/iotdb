@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metrics.ui;
 
+import com.codahale.metrics.MetricRegistry;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.codahale.metrics.MetricRegistry;
 
 public class MetricsPage {
 

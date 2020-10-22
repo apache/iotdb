@@ -41,6 +41,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VERSION;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -104,6 +105,10 @@ class StaticResps {
       Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
 
   static final TSExecuteStatementResp COUNT_DEVICES = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_COUNT),
+      Collections.singletonList(TSDataType.INT32.toString()));
+
+  static final TSExecuteStatementResp COUNT_STORAGE_GROUP = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_COUNT),
       Collections.singletonList(TSDataType.INT32.toString()));
 

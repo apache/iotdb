@@ -25,6 +25,8 @@ import io.moquette.broker.config.IConfig;
 import io.moquette.broker.config.MemoryConfig;
 import io.moquette.broker.security.IAuthenticator;
 import io.moquette.interception.InterceptHandler;
+import java.util.List;
+import java.util.Properties;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
@@ -32,9 +34,6 @@ import org.apache.iotdb.db.mqtt.BrokerAuthenticator;
 import org.apache.iotdb.db.mqtt.PublishHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
-import java.util.Properties;
 
 /**
  * The IoTDB MQTT Service.

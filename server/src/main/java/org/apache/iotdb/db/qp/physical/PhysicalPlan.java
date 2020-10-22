@@ -55,6 +55,9 @@ public abstract class PhysicalPlan {
   //for cluster mode, whether the plan may be splitted into several sub plans
   protected boolean canBeSplit = true;
 
+  //login username, corresponding to cli/session login user info
+  private String loginUserName;
+
   /**
    * whether the plan can be split into more than one Plans. Only used in the cluster mode.
    */
@@ -149,6 +152,14 @@ public abstract class PhysicalPlan {
       return null;
     }
     return ReadWriteIOUtils.readStringWithLength(buffer, valueLen);
+  }
+
+  public String getLoginUserName() {
+    return loginUserName;
+  }
+
+  public void setLoginUserName(String loginUserName) {
+    this.loginUserName = loginUserName;
   }
 
   public static class Factory {
@@ -266,9 +277,10 @@ public abstract class PhysicalPlan {
   }
 
   public enum PhysicalPlanType {
-    INSERT, DELETE, BATCHINSERT, SET_STORAGE_GROUP, CREATE_TIMESERIES, TTL, GRANT_WATERMARK_EMBEDDING, REVOKE_WATERMARK_EMBEDDING,
-    CREATE_ROLE, DELETE_ROLE, CREATE_USER, REVOKE_USER_ROLE, REVOKE_ROLE_PRIVILEGE, REVOKE_USER_PRIVILEGE, GRANT_ROLE_PRIVILEGE, GRANT_USER_PRIVILEGE, GRANT_USER_ROLE, MODIFY_PASSWORD, DELETE_USER,
-    DELETE_STORAGE_GROUP, SHOW_TIMESERIES, DELETE_TIMESERIES, LOAD_CONFIGURATION
+    INSERT, DELETE, BATCHINSERT, SET_STORAGE_GROUP, CREATE_TIMESERIES, TTL, GRANT_WATERMARK_EMBEDDING,
+    REVOKE_WATERMARK_EMBEDDING, CREATE_ROLE, DELETE_ROLE, CREATE_USER, REVOKE_USER_ROLE, REVOKE_ROLE_PRIVILEGE,
+    REVOKE_USER_PRIVILEGE, GRANT_ROLE_PRIVILEGE, GRANT_USER_PRIVILEGE, GRANT_USER_ROLE, MODIFY_PASSWORD, DELETE_USER,
+    DELETE_STORAGE_GROUP, SHOW_TIMESERIES, DELETE_TIMESERIES, LOAD_CONFIGURATION, MULTI_CREATE_TIMESERIES
   }
 
 

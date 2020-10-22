@@ -160,7 +160,12 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public BigDecimal getBigDecimal(String columnName) throws SQLException {
-    return new BigDecimal(Objects.requireNonNull(getValueByName(columnName)));
+    String value = getValueByName(columnName);
+    if (value != null) {
+      return new BigDecimal(value);
+    } else {
+      return null;
+    }
   }
 
   @Override
@@ -323,7 +328,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   @Override
   public float getFloat(int columnIndex) throws SQLException {
     try {
-      return getInt(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
+      return getFloat(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -480,16 +485,12 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public short getShort(int columnIndex) throws SQLException {
-    try {
-      return getShort(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
-    } catch (StatementExecutionException e) {
-      throw new SQLException(e.getMessage());
-    }
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public short getShort(String columnName) throws SQLException {
-    return Short.parseShort(Objects.requireNonNull(getValueByName(columnName)));
+    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
@@ -1099,8 +1100,8 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   }
 
   @Override
-  public boolean wasNull() throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public boolean wasNull() {
+    return ioTDBRpcDataSet.lastReadWasNull;
   }
 
   abstract void checkRecord() throws SQLException;

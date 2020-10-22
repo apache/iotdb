@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public abstract class AbstractScript {
@@ -45,9 +44,12 @@ public abstract class AbstractScript {
     r.close();
     p.destroy();
 
-    for (int i = 0; i < output.length; i++) {
-      assertTrue(actualOutput.get(i).startsWith(output[i]));
+    System.out.println("actualOutput:");
+    for (String out : actualOutput) {
+      System.out.println(out);
     }
+
+    assertTrue(actualOutput.get(actualOutput.size() - 1).startsWith(output[output.length - 1]));
   }
 
   protected String getCliPath() {

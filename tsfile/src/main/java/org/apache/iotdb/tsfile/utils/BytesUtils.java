@@ -135,8 +135,20 @@ public class BytesUtils {
    * @return integer
    */
   public static int bytesToInt(byte[] bytes) {
-    return bytes[3] & 0xFF | (bytes[2] & 0xFF) << 8 | (bytes[1] & 0xFF) << 16
-        | (bytes[0] & 0xFF) << 24;
+    //compatible to long
+
+    int length = bytes.length;
+    long r = 0;
+    for (int i = 0; i < length; i++) {
+      r += ((bytes[length - 1 - i] & 0xFF) << (i * 8));
+    }
+
+    if (r > Integer.MAX_VALUE) {
+      throw new RuntimeException("Row count is larger than Integer.MAX_VALUE");
+    }
+
+    return (int) r;
+
   }
 
   /**
@@ -499,10 +511,7 @@ public class BytesUtils {
    * @return long
    */
   public static long bytesToLong(byte[] byteNum) {
-    if (byteNum.length != 8) {
-      throw new IllegalArgumentException("Invalid input: byteNum.length != 8");
-    }
-    return bytesToLong(byteNum, 8);
+    return bytesToLong(byteNum, byteNum.length);
   }
 
   /**

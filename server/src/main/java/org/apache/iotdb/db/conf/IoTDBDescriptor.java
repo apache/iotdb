@@ -38,6 +38,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,9 +119,10 @@ public class IoTDBDescriptor {
     else if(!urlString.endsWith(".properties")) {
       urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
-    // If the url doesn't start with "file:" it's provided as a normal path.
+
+    // If the url doesn't start with "file:" or "classpath:", it's provided as a normal path.
     // So we need to add it to make it a real URL.
-    if(!urlString.startsWith("file:")) {
+    if(!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
       urlString = "file:" + urlString;
     }
     try {
@@ -204,6 +206,9 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
               Boolean.toString(conf.isMetaDataCacheEnable()))));
 
+      conf.setEnableLastCache(Boolean.parseBoolean(properties.getProperty("enable_last_cache",
+              Boolean.toString(conf.isLastCacheEnabled()))));
+
       initMemoryAllocate(properties);
 
       loadWALProps(properties);
@@ -270,6 +275,10 @@ public class IoTDBDescriptor {
           .getProperty("merge_chunk_point_number",
               Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
 
+      conf.setMergePagePointNumberThreshold(Integer.parseInt(properties
+          .getProperty("merge_page_point_number",
+              Integer.toString(conf.getMergePagePointNumberThreshold()))));
+
       conf.setTsFileManagementStrategy(TsFileManagementStrategy.valueOf(properties
           .getProperty("tsfile_manage_strategy",
               conf.getTsFileManagementStrategy().toString())));
@@ -281,6 +290,14 @@ public class IoTDBDescriptor {
       conf.setMaxFileNumInEachLevel(Integer.parseInt(properties
           .getProperty("max_file_num_in_each_level",
               Integer.toString(conf.getMaxFileNumInEachLevel()))));
+
+      conf.setMaxUnseqLevelNum(Integer.parseInt(properties
+          .getProperty("max_unseq_level_num",
+              Integer.toString(conf.getMaxUnseqLevelNum()))));
+
+      conf.setMaxUnseqFileNumInEachLevel(Integer.parseInt(properties
+          .getProperty("max_unseq_file_num_in_each_level",
+              Integer.toString(conf.getMaxUnseqFileNumInEachLevel()))));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
@@ -352,6 +369,12 @@ public class IoTDBDescriptor {
           Boolean.toString(conf.isForceFullMerge()))));
       conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
           "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
+      conf.setHotCompactionThreadNum(Integer.parseInt(properties.getProperty(
+          "hot_compaction_thread_num", Integer.toString(conf.getHotCompactionThreadNum()))));
+      conf.setMergeWriteThroughputMbPerSec(Integer.parseInt(properties.getProperty(
+          "merge_write_throughput_mb_per_sec", Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
+      conf.setMergeReadThroughputMbPerSec(Integer.parseInt(properties.getProperty(
+          "merge_read_throughput_mb_per_sec", Integer.toString(conf.getMergeReadThroughputMbPerSec()))));
 
       conf.setEnablePartialInsert(
           Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
@@ -537,6 +560,10 @@ public class IoTDBDescriptor {
     conf.setForceWalPeriodInMs(Long
         .parseLong(properties.getProperty("force_wal_period_in_ms",
             Long.toString(conf.getForceWalPeriodInMs()))));
+
+    conf.setEnableDiscardOutOfOrderData(Boolean.parseBoolean(
+        properties.getProperty("enable_discard_out_of_order_data",
+        Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
 
   }
 
@@ -745,6 +772,28 @@ public class IoTDBDescriptor {
 
     }
 
+  }
+
+  /**
+   * Get default encode algorithm by data type
+   * @param dataType
+   * @return
+   */
+  public TSEncoding getDefualtEncodingByType(TSDataType dataType) {
+    switch (dataType) {
+      case BOOLEAN:
+        return conf.getDefaultBooleanEncoding();
+      case INT32:
+        return conf.getDefaultInt32Encoding();
+      case INT64:
+        return conf.getDefaultInt64Encoding();
+      case FLOAT:
+        return conf.getDefaultFloatEncoding();
+      case DOUBLE:
+        return conf.getDefaultDoubleEncoding();
+      default:
+        return conf.getDefaultTextEncoding();
+    }
   }
 
   private static class IoTDBDescriptorHolder {

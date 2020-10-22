@@ -30,7 +30,7 @@
     <artifactId>iotdb-parent</artifactId>
     <version>0.11.0-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>Apache IoTDB (incubating) Project Parent POM</name>
+    <name>Apache IoTDB Project Parent POM</name>
     <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration libs.</description>
     <licenses>
         <license>
@@ -39,16 +39,16 @@
         </license>
     </licenses>
     <scm>
-        <connection>scm:git:ssh://git@github.com/apache/incubator-iotdb.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com/apache/incubator-iotdb.git</developerConnection>
-        <url>ssh://git@github.com:apache/incubator-iotdb.git</url>
+        <connection>scm:git:ssh://git@github.com/apache/iotdb.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/apache/iotdb.git</developerConnection>
+        <url>ssh://git@github.com:apache/iotdb.git</url>
         <tag>rel/0.10</tag>
     </scm>
     <!-- Only configure the site distribution as the rest is handled by the apache parent -->
     <distributionManagement>
         <site>
             <id>apache.website</id>
-            <url>scm:git:https://gitbox.apache.org/repos/asf/incubator-iotdb-website.git</url>
+            <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url>
         </site>
     </distributionManagement>
     <issueManagement>
@@ -125,8 +125,7 @@
         <common.lang.version>2.6</common.lang.version>
         <common.lang3.version>3.8.1</common.lang3.version>
         <common.logging.version>1.1.3</common.logging.version>
-        <guava.version>21.0</guava.version>
-        <fastjson.version>1.2.70</fastjson.version>
+        <guava.version>24.1.1</guava.version>
         <jline.version>2.14.5</jline.version>
         <jetty.version>9.4.24.v20191120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
@@ -138,6 +137,7 @@
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
         <!-- By default, the argLine is empty-->
+        <gson.version>2.8.6</gson.version>
         <argLine/>
     </properties>
     <!--
@@ -155,11 +155,6 @@
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
                 <version>${logback.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.alibaba</groupId>
-                <artifactId>fastjson</artifactId>
-                <version>${fastjson.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
@@ -189,7 +184,7 @@
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>${guava.version}</version>
+                <version>[${guava.version},)</version>
             </dependency>
             <dependency>
                 <groupId>commons-lang</groupId>
@@ -466,6 +461,11 @@
                 <!-- spark uses the lastest version than hive, flink and hadoop-->
                 <version>3.0.2</version>
             </dependency>
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>${gson.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -692,8 +692,6 @@
                             <resourceBundles>
                                 <!-- Will generate META-INF/{DEPENDENCIES,LICENSE,NOTICE} -->
                                 <resourceBundle>org.apache:apache-jar-resource-bundle:1.4</resourceBundle>
-                                <!-- Will generate META-INF/DISCLAIMER  -->
-                                <resourceBundle>org.apache:apache-incubator-disclaimer-resource-bundle:1.1</resourceBundle>
                             </resourceBundles>
                             <!-- Content in this directory will be appended to generated resources -->
                             <appendedResourcesDirectory>${basedir}/src/remote-resources</appendedResourcesDirectory>
@@ -735,6 +733,21 @@
                                 <include>src/test/**/*IT.java</include>
                             </includes>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Also package the sources as jar -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>create-source-package</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
@@ -1230,7 +1243,7 @@
             </build>
         </profile>
         <!-- upload code coverage report to coveralls.io-->
-        <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/incubator-iotdb.
+        <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/iotdb.
              use `mvn post-integration-test -Pcode-coverage -DrepoToken=TOKEN`-->
         <!-- enable site-->
         <!-- use `mvn package -P site -pl site` to compile the site module only -->

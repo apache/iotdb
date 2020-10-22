@@ -36,7 +36,7 @@ With this connector, you can
 |------------- | ------------- | ------------ |------------ |
 | `2.4.3`        | `2.11.8`        | `1.8`        | `0.10.0`|
 
-> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
+> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
 
 ## 3. Quick Start
 ### Local Mode
@@ -51,7 +51,7 @@ Note:
 
 * \<spark-shell-path\> is the real path of your spark-shell.
 * Multiple jar packages are separated by commas without any spaces.
-* See https://github.com/apache/incubator-iotdb/tree/master/tsfile for how to get TsFile.
+* See https://github.com/apache/iotdb/tree/master/tsfile for how to get TsFile.
 
 
 ### Distributed Mode
@@ -66,7 +66,7 @@ Note:
 
 * \<spark-shell-path\> is the real path of your spark-shell.
 * Multiple jar packages are separated by commas without any spaces.
-* See https://github.com/apache/incubator-iotdb/tree/master/tsfile for how to get TsFile.
+* See https://github.com/apache/iotdb/tree/master/tsfile for how to get TsFile.
 
 ## 4. Data Type Correspondence
 

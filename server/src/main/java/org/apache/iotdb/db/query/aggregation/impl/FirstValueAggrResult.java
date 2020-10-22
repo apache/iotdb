@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -75,11 +74,14 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
+      throws IOException {
     if (hasResult()) {
       return;
     }
-    if (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+    if (dataInThisPage.hasCurrent()
+        && dataInThisPage.currentTime() < maxBound
+        && dataInThisPage.currentTime() >= minBound) {
       setValue(dataInThisPage.currentValue());
       timestamp = dataInThisPage.currentTime();
       dataInThisPage.next();
@@ -111,7 +113,7 @@ public class FirstValueAggrResult extends AggregateResult {
   @Override
   public void merge(AggregateResult another) {
     FirstValueAggrResult anotherFirst = (FirstValueAggrResult) another;
-    if(this.getValue() == null || this.timestamp > anotherFirst.timestamp){
+    if (this.getValue() == null || this.timestamp > anotherFirst.timestamp) {
       setValue(anotherFirst.getValue());
       timestamp = anotherFirst.timestamp;
     }

@@ -242,6 +242,9 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_COUNT_DEVICES:
             return new CountPlan(
                 ShowContentType.COUNT_DEVICES, ((CountOperator) operator).getPath());
+          case SQLConstant.TOK_COUNT_STORAGE_GROUP:
+            return new CountPlan(
+                ShowContentType.COUNT_STORAGE_GROUP, ((CountOperator) operator).getPath());
           case SQLConstant.TOK_COUNT_NODE_TIMESERIES:
             return new CountPlan(
                 ShowContentType.COUNT_NODE_TIMESERIES,
@@ -588,6 +591,7 @@ public class PhysicalGenerator {
 
     queryPlan.setRowLimit(queryOperator.getRowLimit());
     queryPlan.setRowOffset(queryOperator.getRowOffset());
+    queryPlan.setAscending(queryOperator.isAscending());
 
     return queryPlan;
   }

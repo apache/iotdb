@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
-
-import java.io.IOException;
 
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
@@ -51,17 +51,27 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
    * groupBy query.
    */
   public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
-    super(new ArrayList<>(groupByTimePlan.getDeduplicatedPaths()), groupByTimePlan.getDeduplicatedDataTypes());
+    super(new ArrayList<>(groupByTimePlan.getDeduplicatedPaths()),
+        groupByTimePlan.getDeduplicatedDataTypes(), groupByTimePlan.isAscending());
     this.queryId = context.getQueryId();
     this.interval = groupByTimePlan.getInterval();
     this.slidingStep = groupByTimePlan.getSlidingStep();
     this.startTime = groupByTimePlan.getStartTime();
     this.endTime = groupByTimePlan.getEndTime();
     this.leftCRightO = groupByTimePlan.isLeftCRightO();
-    // init group by time partition
-    this.hasCachedTimeInterval = false;
-    this.curStartTime = this.startTime - slidingStep;
-    this.curEndTime = -1;
+    this.ascending = groupByTimePlan.isAscending();
+
+    // find the startTime of the first aggregation interval
+    if (ascending) {
+      curStartTime = startTime;
+    } else {
+      long queryRange = endTime - startTime;
+      // calculate the total interval number
+      long intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
+      curStartTime = slidingStep * (intervalNum - 1) + startTime;
+    }
+    curEndTime = Math.min(curStartTime + interval, endTime);
+    this.hasCachedTimeInterval = true;
   }
 
   @Override
@@ -71,15 +81,23 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       return true;
     }
 
-    curStartTime += slidingStep;
-    //This is an open interval , [0-100)
-    if (curStartTime < endTime) {
-      hasCachedTimeInterval = true;
-      curEndTime = Math.min(curStartTime + interval, endTime);
-      return true;
+    // check if the next interval out of range
+    if (ascending) {
+      curStartTime += slidingStep;
+      //This is an open interval , [0-100)
+      if (curStartTime >= endTime) {
+        return false;
+      }
     } else {
-      return false;
+      curStartTime -= slidingStep;
+      if (curStartTime < startTime) {
+        return false;
+      }
     }
+
+    hasCachedTimeInterval = true;
+    curEndTime = Math.min(curStartTime + interval, endTime);
+    return true;
   }
 
   @Override
@@ -94,4 +112,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     hasCachedTimeInterval = false;
     return new Pair<>(curStartTime, curEndTime);
   }
+
+  public abstract Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException;
 }

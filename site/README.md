@@ -62,6 +62,8 @@ run `mvn package scm-publish:publish-scm`.
 
 Apache ID and passwored is needed.
 
+Or run `mvn package scm-publish:publish-scm -Dusername={YOUR_APACHE_ID} -Dpassword={YOUR_APACHE_PASSWORD}`
+
 ## FAQ
 
 If you get an error on your MacOS:

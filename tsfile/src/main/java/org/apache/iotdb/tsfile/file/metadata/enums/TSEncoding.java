@@ -25,13 +25,25 @@ public enum TSEncoding {
   /**
    * judge the encoding deserialize type.
    *
-   * @param i -use to determine encoding type
+   * @param encoding -use to determine encoding type
    * @return -encoding type
    */
-  public static TSEncoding deserialize(short i) {
-    switch (i) {
-      case 0:
-        return PLAIN;
+  public static TSEncoding deserialize(short encoding) {
+    return getTsEncoding(encoding);
+  }
+
+  public static byte deserializeToByte(short encoding) {
+    if (encoding >= 8 || encoding < 0) {
+      throw new IllegalArgumentException("Invalid input: " + encoding);
+    }
+    return (byte) encoding;
+  }
+
+  private static TSEncoding getTsEncoding(short encoding) {
+    if (encoding >= 8 || encoding < 0) {
+      throw new IllegalArgumentException("Invalid input: " + encoding);
+    }
+    switch (encoding) {
       case 1:
         return PLAIN_DICTIONARY;
       case 2:
@@ -51,6 +63,16 @@ public enum TSEncoding {
     }
   }
 
+  /**
+   * give an byte to return a encoding type.
+   *
+   * @param encoding byte number
+   * @return encoding type
+   */
+  public static TSEncoding byteToEnum(byte encoding) {
+    return getTsEncoding(encoding);
+  }
+
   public static int getSerializedSize() {
     return Short.BYTES;
   }
@@ -61,9 +83,14 @@ public enum TSEncoding {
    * @return -encoding type
    */
   public short serialize() {
+    return enumToByte();
+  }
+
+  /**
+   * @return byte number
+   */
+  public byte enumToByte() {
     switch (this) {
-      case PLAIN:
-        return 0;
       case PLAIN_DICTIONARY:
         return 1;
       case RLE:

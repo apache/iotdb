@@ -32,7 +32,7 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
 	* 编译源码生成 jar 包
 	
 		```
-		git clone https://github.com/apache/incubator-iotdb.git
+		git clone https://github.com/apache/iotdb.git
 		cd tsfile/
 		mvn clean package -Dmaven.test.skip=true
 		```
@@ -45,7 +45,7 @@ TsFile 是在 IoTDB 中使用的时间序列的文件格式。在这个章节中
   * 下载源码
 
   	```
-  	git clone https://github.com/apache/incubator-iotdb.git
+  	git clone https://github.com/apache/iotdb.git
   	```
   * 编译源码和部署到本地仓库
   	
