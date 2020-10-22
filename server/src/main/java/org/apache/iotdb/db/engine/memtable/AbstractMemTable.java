@@ -25,7 +25,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -56,7 +55,12 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long memSize = 0;
 
-  private long ramCost = 0;
+  protected boolean enableMemControl = false;
+
+  /**
+   * memory usage of all TVLists memory usage regardless of whether these TVLists are full
+   */
+  private long tvListRamCost = 0;
 
   private int seriesNumber = 0;
 
@@ -111,7 +115,8 @@ public abstract class AbstractMemTable implements IMemTable {
       }
 
       Object value = insertRowPlan.getValues()[i];
-      memSize += MemUtils.getRecordSize(insertRowPlan.getMeasurementMNodes()[i].getSchema().getType(), value);
+      memSize += MemUtils.getRecordSize(insertRowPlan.getMeasurementMNodes()[i].getSchema().getType(), value,
+          !enableMemControl);
 
       write(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getMeasurements()[i],
           insertRowPlan.getMeasurementMNodes()[i].getSchema(), insertRowPlan.getTime(), value);
@@ -125,7 +130,7 @@ public abstract class AbstractMemTable implements IMemTable {
       throws WriteProcessException {
     try {
       write(insertTabletPlan, start, end);
-      memSize += MemUtils.getRecordSize(insertTabletPlan, start, end);
+      memSize += MemUtils.getRecordSize(insertTabletPlan, start, end, !enableMemControl);
       totalPointsNum += (insertTabletPlan.getMeasurements().length - insertTabletPlan.getFailedMeasurementNumber())
         * (end - start);
     } catch (RuntimeException e) {
@@ -217,6 +222,7 @@ public abstract class AbstractMemTable implements IMemTable {
     seriesNumber = 0;
     totalPointsNum = 0;
     totalPointsNumThreshold = 0;
+    tvListRamCost = 0;
   }
 
   @Override
@@ -292,13 +298,18 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void addRamCost(long cost) {
-    this.ramCost += cost;
+  public void addTVListRamCost(long cost) {
+    this.tvListRamCost += cost;
   }
 
   @Override
-  public long getRamCost() {
-    return ramCost;
+  public long getTVListsRamCost() {
+    return tvListRamCost;
+  }
+
+  @Override
+  public void addTextDataSize(long testDataSize) {
+    this.memSize += testDataSize;
   }
 
   @Override

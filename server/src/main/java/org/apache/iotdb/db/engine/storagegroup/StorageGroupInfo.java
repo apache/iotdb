@@ -150,6 +150,6 @@ public class StorageGroupInfo {
    */
   public void closeTsFileProcessorAndReportToSystem(TsFileProcessor tsFileProcessor) {
     reportedTsps.remove(tsFileProcessor);
-    SystemInfo.getInstance().resetStorageGroupInfoStatus(this);
+    SystemInfo.getInstance().resetStorageGroupStatus(this);
   }
 }

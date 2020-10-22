@@ -57,11 +57,18 @@ public interface IMemTable {
    */
   long memSize();
 
-  void addRamCost(long cost);
-
-  long getRamCost();
+  /**
+   * only used when mem control enabled
+   */
+  void addTVListRamCost(long cost);
 
   /**
+   * only used when mem control enabled
+   */
+  long getTVListsRamCost();
+
+  /**
+   * only used when mem control enabled
    * @return whether the average number of points in each WritableChunk reaches the threshold
    */
   boolean reachTotalPointNumThreshold();
@@ -124,10 +131,24 @@ public interface IMemTable {
 
   void release();
 
+  /**
+   * only used when mem control enabled
+   */
   boolean checkIfNeedStartNewChunk(String deviceId, String measurement);
 
+  /**
+   * only used when mem control enabled
+   */
   boolean checkIfNeedToGetDataList(String deviceId, String measurement, int lengthToBeAdded);
 
+  /**
+   * only used when mem control enabled
+   */
   int getCurrentTVListSize(String deviceId, String measurement);
+
+  /**
+   * only used when mem control enabled
+   */
+  void addTextDataSize(long textDataIncrement);
 
 }

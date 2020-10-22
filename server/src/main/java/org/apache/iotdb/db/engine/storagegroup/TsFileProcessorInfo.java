@@ -93,6 +93,16 @@ public class TsFileProcessorInfo {
     memTableCost -= cost;
   }
 
+  public void resetUnsealedResourceMemCost(long cost) {
+    storageGroupInfo.resetUnsealedResourceMemCost(cost);
+    unsealedResourceMemCost -= cost;
+  }
+
+  public void resetChunkMetadataMemCost(long cost) {
+    storageGroupInfo.resetChunkMetadataMemCost(cost);
+    chunkMetadataMemCost -= cost;
+  }
+
   public long getTsFileProcessorMemCost() {
     return unsealedResourceMemCost + memTableCost + chunkMetadataMemCost + walMemCost;
   }

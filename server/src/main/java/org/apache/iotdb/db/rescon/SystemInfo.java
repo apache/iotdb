@@ -74,7 +74,7 @@ public class SystemInfo {
    *
    * @param storageGroupInfo storage group
    */
-  public synchronized void resetStorageGroupInfoStatus(StorageGroupInfo storageGroupInfo) {
+  public synchronized void resetStorageGroupStatus(StorageGroupInfo storageGroupInfo) {
     if (reportedSgMemCostMap.containsKey(storageGroupInfo)) {
       this.totalSgMemCost -= reportedSgMemCostMap.get(storageGroupInfo)
           - storageGroupInfo.getSgMemCost();

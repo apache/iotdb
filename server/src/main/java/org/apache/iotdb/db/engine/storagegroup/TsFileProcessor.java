@@ -150,9 +150,9 @@ public class TsFileProcessor {
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
       RestorableTsFileIOWriter writer) {
     this.storageGroupName = storageGroupName;
-    this.storageGroupInfo = storageGroupInfo;
     this.tsFileResource = tsFileResource;
     if (enableMemControl) {
+      this.storageGroupInfo = storageGroupInfo;
       this.tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
       this.storageGroupInfo.reportTsFileProcessorInfo(this);
       this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
@@ -174,7 +174,7 @@ public class TsFileProcessor {
   public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
     if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable();
+      workMemTable = new PrimitiveMemTable(enableMemControl);
     }
     if (enableMemControl) {
       blockInsertionIfReject();
@@ -215,7 +215,7 @@ public class TsFileProcessor {
       TSStatus[] results) throws WriteProcessException {
 
     if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable();
+      workMemTable = new PrimitiveMemTable(enableMemControl);
     }
     if (enableMemControl) {
       blockInsertionIfReject();
@@ -253,6 +253,7 @@ public class TsFileProcessor {
 
   private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan) throws WriteProcessException {
     long memTableIncrement = 0L;
+    long textDataIncrement = 0L;
     long chunkMetadataCost = 0L;
     long unsealedResourceCost = 
         tsFileResource.estimateRamIncrement(insertRowPlan.getDeviceId().getFullPath());
@@ -274,17 +275,29 @@ public class TsFileProcessor {
       }
       // TEXT data size
       if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
-        memTableIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
+        textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     }
+    memTableIncrement += textDataIncrement;
     tsFileProcessorInfo.addMemTableCost(memTableIncrement);
     tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
     tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
     if (storageGroupInfo.needToReportToSystem()) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-      blockInsertionIfReject();
+      try {
+        blockInsertionIfReject();
+      } catch (WriteProcessException e) {
+        tsFileProcessorInfo.resetMemTableCost(memTableIncrement);
+        tsFileProcessorInfo.resetUnsealedResourceMemCost(unsealedResourceCost);
+        tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
+        throw e;
+      }
     }
-    workMemTable.addRamCost(memTableIncrement);
+    workMemTable.addTVListRamCost(memTableIncrement);
+    if (textDataIncrement != 0) {
+      workMemTable.addTextDataSize(textDataIncrement);
+    }
   }
 
   private void checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
@@ -293,6 +306,7 @@ public class TsFileProcessor {
       return;
     }
     long memTableIncrement = 0L;
+    long textDataIncrement = 0L;
     long chunkMetadataCost = 0L;
     long unsealedResourceCost = 
         tsFileResource.estimateRamIncrement(insertTabletPlan.getDeviceId().getFullPath());
@@ -322,18 +336,30 @@ public class TsFileProcessor {
       if (insertTabletPlan.getDataTypes()[i] == TSDataType.TEXT) {
         for (int j = start; j < end; j++) {
           Binary binary = ((Binary[]) insertTabletPlan.getColumns()[i])[j];
-          memTableIncrement += MemUtils.getBinarySize(binary);
+          textDataIncrement += MemUtils.getBinarySize(binary);
         }
       }
     }
+    memTableIncrement += textDataIncrement;
     tsFileProcessorInfo.addMemTableCost(memTableIncrement);
     tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
     tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
     if (storageGroupInfo.needToReportToSystem()) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-      blockInsertionIfReject();
+      try {
+        blockInsertionIfReject();
+      } catch (WriteProcessException e) {
+        tsFileProcessorInfo.resetMemTableCost(memTableIncrement);
+        tsFileProcessorInfo.resetUnsealedResourceMemCost(unsealedResourceCost);
+        tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
+        throw e;
+      }
     }
-    workMemTable.addRamCost(memTableIncrement);
+    workMemTable.addTVListRamCost(memTableIncrement);
+    if (textDataIncrement != 0) {
+      workMemTable.addTextDataSize(textDataIncrement);
+    }
   }
 
   private void blockInsertionIfReject() throws WriteProcessException {
@@ -341,8 +367,8 @@ public class TsFileProcessor {
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(100);
-        if (System.currentTimeMillis() - startTime > 12000) {
-          throw new WriteProcessException("System rejected over 12000ms");
+        if (System.currentTimeMillis() - startTime > 30000) {
+          throw new WriteProcessException("System rejected over 30000ms");
         }
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
@@ -387,7 +413,6 @@ public class TsFileProcessor {
   public TsFileResource getTsFileResource() {
     return tsFileResource;
   }
-
 
   public boolean shouldFlush() {
     if (workMemTable == null) {
@@ -646,9 +671,9 @@ public class TsFileProcessor {
       memTable.release();
       if (enableMemControl) {
         // For text type data, reset the mem cost in tsFileProcessorInfo
-        tsFileProcessorInfo.resetMemTableCost(memTable.getRamCost());
+        tsFileProcessorInfo.resetMemTableCost(memTable.getTVListsRamCost());
         // report to System
-        SystemInfo.getInstance().resetStorageGroupInfoStatus(storageGroupInfo);
+        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
       }
       memTable = null;
       if (logger.isDebugEnabled()) {
@@ -929,7 +954,7 @@ public class TsFileProcessor {
   }
 
   public long getWorkMemTableRamCost() {
-    return workMemTable != null ? workMemTable.getRamCost() : 0;
+    return workMemTable != null ? workMemTable.getTVListsRamCost() : 0;
   }
 
   public boolean isSequence() {
