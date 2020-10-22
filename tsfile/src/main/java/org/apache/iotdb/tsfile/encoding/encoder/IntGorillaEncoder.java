@@ -31,10 +31,7 @@ public class IntGorillaEncoder extends GorillaEncoderV2 {
       (2 + LEADING_ZERO_BITS_LENGTH_32BIT + MEANINGFUL_XOR_BITS_LENGTH_32BIT
           + VALUE_BITS_LENGTH_32BIT) / Byte.SIZE + 1;
 
-  private boolean firstValueWasWritten = false;
   private int storedValue = 0;
-  private int storedLeadingZeros = Integer.MAX_VALUE;
-  private int storedTrailingZeros = 0;
 
   @Override
   public final void encode(int value, ByteArrayOutputStream out) {
@@ -57,20 +54,20 @@ public class IntGorillaEncoder extends GorillaEncoderV2 {
   }
 
   private void compressValue(int value, ByteArrayOutputStream out) {
-    int diff = storedValue ^ value;
+    int xor = storedValue ^ value;
     storedValue = value;
 
-    if (diff == 0) {
+    if (xor == 0) {
       skipBit(out);
     } else {
       writeBit(out);
 
-      int leadingZeros = Integer.numberOfLeadingZeros(diff);
-      int trailingZeros = Integer.numberOfTrailingZeros(diff);
+      int leadingZeros = Integer.numberOfLeadingZeros(xor);
+      int trailingZeros = Integer.numberOfTrailingZeros(xor);
       if (leadingZeros >= storedLeadingZeros && trailingZeros >= storedTrailingZeros) {
-        writeExistingLeading(diff, out);
+        writeExistingLeading(xor, out);
       } else {
-        writeNewLeading(diff, leadingZeros, trailingZeros, out);
+        writeNewLeading(xor, leadingZeros, trailingZeros, out);
       }
     }
   }

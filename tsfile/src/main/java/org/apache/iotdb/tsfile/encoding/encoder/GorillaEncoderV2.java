@@ -24,12 +24,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public abstract class GorillaEncoderV2 extends Encoder {
 
-  private byte buffer;
-  private int bitsLeft;
+  protected boolean firstValueWasWritten = false;
+  protected int storedLeadingZeros = Integer.MAX_VALUE;
+  protected int storedTrailingZeros = 0;
+
+  private byte buffer = 0;
+  private int bitsLeft = Byte.SIZE;
 
   public GorillaEncoderV2() {
     super(TSEncoding.GORILLA_V2);
-    bitsLeft = Byte.SIZE;
   }
 
   @Override

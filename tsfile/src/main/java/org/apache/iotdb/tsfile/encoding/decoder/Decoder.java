@@ -97,13 +97,13 @@ public abstract class Decoder {
       case GORILLA_V2:
         switch (dataType) {
           case FLOAT:
-            return null;
+            return new SinglePrecisionDecoderV2();
           case DOUBLE:
-            return null;
+            return new DoublePrecisionDecoderV2();
           case INT32:
-            return null;
+            return new IntGorillaDecoder();
           case INT64:
-            return null;
+            return new LongGorillaDecoder();
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
