@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.http.constant.HttpConstant;
-import org.apache.iotdb.db.http.router.Router;
+import org.apache.iotdb.db.http.router.HttpRouter;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -65,7 +65,7 @@ public abstract class HttpPrepData {
   protected TSDataType dataType = TSDataType.DOUBLE;
   protected TSEncoding encoding = TSEncoding.PLAIN;
   protected static MManager mmanager = IoTDB.metaManager;
-  static Router router;
+  static HttpRouter router;
   static final String SUCCESSFUL_RESPONSE = "{\"result\":\"successful operation\"}";
   private final QueryRouter queryRouter = new QueryRouter();
   static final String LOGIN_URI = "/user/login?username=root&password=root";

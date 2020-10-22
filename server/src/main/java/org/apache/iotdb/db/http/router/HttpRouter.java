@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.http.router;
 
 import com.google.gson.*;
-import com.librato.metrics.client.Json;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.QueryStringDecoder;
 
@@ -28,7 +27,7 @@ import java.sql.SQLException;
 
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.UnsupportedHttpMethod;
+import org.apache.iotdb.db.exception.UnsupportedHttpMethodException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.http.constant.HttpConstant;
@@ -47,7 +46,7 @@ import org.apache.thrift.TException;
 /**
  * Router that contains information about both route matching and return json.
  */
-public class Router {
+public class HttpRouter {
 
     /**
      * matching url and return JSON
@@ -59,7 +58,7 @@ public class Router {
      */
     public JsonElement route(HttpMethod method, String uri, JsonElement json)
             throws AuthException, MetadataException, QueryProcessException
-            , StorageEngineException, UnsupportedHttpMethod, SQLException, InterruptedException, QueryFilterOptimizationException, IOException, TException {
+            , StorageEngineException, UnsupportedHttpMethodException, SQLException, InterruptedException, QueryFilterOptimizationException, IOException, TException {
         QueryStringDecoder decoder = new QueryStringDecoder(uri);
         uri = URIUtils.removeParameter(uri);
         switch (uri) {
@@ -105,7 +104,7 @@ public class Router {
                 result.addProperty(HttpConstant.RESULT, "Hello, IoTDB");
                 return result;
             default:
-                throw new UnsupportedHttpMethod(String.format("%s can't be found", uri));
+                throw new UnsupportedHttpMethodException(String.format("%s can't be found", uri));
         }
     }
 

@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.http.constant.HttpConstant;
-import org.apache.iotdb.db.http.router.Router;
+import org.apache.iotdb.db.http.router.HttpRouter;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
@@ -38,7 +38,7 @@ public class HttpRouterTest extends HttpPrepData{
   @Before
   public void before() {
     EnvironmentUtils.envSetUp();
-    router = new Router();
+    router = new HttpRouter();
   }
 
   @After

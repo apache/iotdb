@@ -29,7 +29,7 @@ import java.util.Map;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.UnsupportedHttpMethod;
+import org.apache.iotdb.db.exception.UnsupportedHttpMethodException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.http.constant.HttpConstant;
@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 public class TimeSeriesHandler extends Handler {
     public JsonElement handle(HttpMethod httpMethod, JsonElement json)
             throws AuthException, MetadataException, QueryProcessException,
-            StorageEngineException, UnsupportedHttpMethod {
+            StorageEngineException, UnsupportedHttpMethodException {
         checkLogin();
         if (HttpMethod.POST.equals(httpMethod)) {
             JsonArray jsonArray = json.getAsJsonArray();
@@ -79,7 +79,7 @@ public class TimeSeriesHandler extends Handler {
             result.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
             return result;
         } else {
-            throw new UnsupportedHttpMethod(httpMethod.toString());
+            throw new UnsupportedHttpMethodException(httpMethod.toString());
         }
     }
 

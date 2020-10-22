@@ -27,7 +27,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
 import org.apache.iotdb.db.http.constant.HttpConstant;
-import org.apache.iotdb.db.http.router.Router;
+import org.apache.iotdb.db.http.router.HttpRouter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +39,7 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
 
     private FullHttpRequest request;
 
-    private final Router router = new Router();
+    private final HttpRouter httpRouter = new HttpRouter();
 
     private static final Logger logger = LoggerFactory.getLogger(HttpSnoopServerHandler.class);
 
@@ -55,7 +55,7 @@ public class HttpSnoopServerHandler extends SimpleChannelInboundHandler<Object> 
             this.request = (FullHttpRequest) msg;
             JsonElement result;
             try {
-                result = router.route(request.method(), request.uri(),
+                result = httpRouter.route(request.method(), request.uri(),
                         JsonParser.parseString(request.content().toString(CharsetUtil.UTF_8)));
                 status = OK;
             } catch (Exception e) {

@@ -28,7 +28,7 @@ import java.util.List;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.UnsupportedHttpMethod;
+import org.apache.iotdb.db.exception.UnsupportedHttpMethodException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -43,7 +43,7 @@ public class StorageGroupsHandlers extends Handler {
     public JsonElement handle(HttpMethod httpMethod, JsonElement json)
             throws QueryProcessException, StorageEngineException
             , StorageGroupNotSetException, AuthException
-            , IllegalPathException, UnsupportedHttpMethod {
+            , IllegalPathException, UnsupportedHttpMethodException {
         checkLogin();
         if (HttpMethod.GET.equals(httpMethod)) {
             List<StorageGroupMNode> storageGroupMNodes = IoTDB.metaManager.getAllStorageGroupNodes();
@@ -77,7 +77,7 @@ public class StorageGroupsHandlers extends Handler {
             jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
             return jsonObject;
         } else {
-            throw new UnsupportedHttpMethod(httpMethod.toString());
+            throw new UnsupportedHttpMethodException(httpMethod.toString());
         }
     }
 }
