@@ -1317,7 +1317,8 @@ public class RaftLogManagerTest {
     for (Log log : testLogs1) {
       while (!log.isApplied()) {
         if ((System.currentTimeMillis() - startTime) > 60_000) {
-          fail("apply log time out");
+          fail(String.format("apply log %s time out after %d", log,
+              (System.currentTimeMillis() - startTime)));
         }
       }
     }
