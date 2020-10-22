@@ -73,19 +73,26 @@ public class SessionPool {
   private long timeout; //ms
   private static int FINAL_RETRY = RETRY - 1;
   private boolean enableCompression = false;
+  private String timeZone;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, null);
   }
 
   public SessionPool(String ip, int port, String user, String password, int maxSize,
       boolean enableCompression) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression,
+        null);
+  }
+
+  public SessionPool(String ip, int port, String user, String password, int maxSize,
+      String timeZone) {
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, timeZone);
   }
 
   @SuppressWarnings("squid:S107")
   public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize,
-      long timeout, boolean enableCompression) {
+      long timeout, boolean enableCompression, String timeZone) {
     this.maxSize = maxSize;
     this.ip = ip;
     this.port = port;
@@ -94,6 +101,7 @@ public class SessionPool {
     this.fetchSize = fetchSize;
     this.timeout = timeout;
     this.enableCompression = enableCompression;
+    this.timeZone = timeZone;
   }
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
@@ -121,7 +129,8 @@ public class SessionPool {
                 logger.warn(
                     "the SessionPool has wait for {} seconds to get a new connection: {}:{} with {}, {}",
                     (System.currentTimeMillis() - start) / 1000, ip, port, user, password);
-                logger.warn("current occupied size {}, queue size {}, considered size {} ",occupied.size(), queue.size(), size);
+                logger.warn("current occupied size {}, queue size {}, considered size {} ",
+                    occupied.size(), queue.size(), size);
                 if (System.currentTimeMillis() - start > timeout) {
                   throw new IoTDBConnectionException(
                       String.format("timeout to get a connection from %s:%s", ip, port));
@@ -141,14 +150,14 @@ public class SessionPool {
       if (logger.isDebugEnabled()) {
         logger.debug("Create a new Session {}, {}, {}, {}", ip, port, user, password);
       }
-      session = new Session(ip, port, user, password, fetchSize);
+      session = new Session(ip, port, user, password, fetchSize, timeZone);
       try {
         session.open(enableCompression);
       } catch (IoTDBConnectionException e) {
         //if exception, we will throw the exception.
         //Meanwhile, we have to set size--
         synchronized (this) {
-          size --;
+          size--;
         }
         throw e;
       }
@@ -229,7 +238,8 @@ public class SessionPool {
     }
   }
 
-  private void cleanSessionAndMayThrowConnectionException(Session session, int times, IoTDBConnectionException e) throws IoTDBConnectionException {
+  private void cleanSessionAndMayThrowConnectionException(Session session, int times,
+      IoTDBConnectionException e) throws IoTDBConnectionException {
     closeSession(session);
     removeSession();
     if (times == FINAL_RETRY) {
@@ -241,15 +251,11 @@ public class SessionPool {
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
-   *
-   *  a Tablet example:
-   *
-   *        device1
-   *     time s1, s2, s3
-   *     1,   1,  1,  1
-   *     2,   2,  2,  2
-   *     3,   3,  3,  3
-   *
+   * <p>
+   * a Tablet example:
+   * <p>
+   * device1 time s1, s2, s3 1,   1,  1,  1 2,   2,  2,  2 3,   3,  3,  3
+   * <p>
    * times in Tablet may be not in ascending order
    *
    * @param tablet data batch
@@ -261,15 +267,11 @@ public class SessionPool {
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
-   *
+   * <p>
    * a Tablet example:
-   *
-   *      device1
-   * time s1, s2, s3
-   * 1,   1,  1,  1
-   * 2,   2,  2,  2
-   * 3,   3,  3,  3
-   *
+   * <p>
+   * device1 time s1, s2, s3 1,   1,  1,  1 2,   2,  2,  2 3,   3,  3,  3
+   * <p>
    * Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
    *
    * @param tablet a tablet data of one device
@@ -550,7 +552,8 @@ public class SessionPool {
    * this method should be used to test other time cost in client
    */
   public void testInsertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values) throws IoTDBConnectionException, StatementExecutionException {
+      List<TSDataType> types, List<Object> values)
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
