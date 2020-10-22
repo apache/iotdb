@@ -916,8 +916,7 @@ public class Session {
     return result;
   }
 
-  private synchronized String getTimeZone()
-      throws StatementExecutionException, IoTDBConnectionException {
+  private synchronized String getTimeZone() {
     if (zoneId != null) {
       return zoneId.toString();
     }
