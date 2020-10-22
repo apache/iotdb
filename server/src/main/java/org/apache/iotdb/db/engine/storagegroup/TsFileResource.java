@@ -63,7 +63,8 @@ import org.slf4j.LoggerFactory;
 public class TsFileResource {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileResource.class);
-  private static Map<String, String> cachedDevicePool = CachedStringPool.getInstance().getCachedPool();
+  private static Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
+      .getCachedPool();
 
   // tsfile
   private File file;
@@ -784,7 +785,8 @@ public class TsFileResource {
     }
 
     while (true) {
-      String hardlinkSuffix = TsFileConstant.PATH_SEPARATOR + System.currentTimeMillis() + "_" + random.nextLong();
+      String hardlinkSuffix =
+          TsFileConstant.PATH_SEPARATOR + System.currentTimeMillis() + "_" + random.nextLong();
       File hardlink = new File(file.getAbsolutePath() + hardlinkSuffix);
 
       try {

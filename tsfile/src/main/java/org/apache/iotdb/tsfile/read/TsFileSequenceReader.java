@@ -686,6 +686,34 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
+   * read all Chunks of given device.
+   * <p>
+   * note that this method loads all the chunks into memory, so it needs to be invoked carefully.
+   *
+   * @param device name
+   * @return measurement -> chunks list
+   */
+  public Map<String, List<Chunk>> readChunksInDevice(String device) throws IOException {
+    List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
+    Map<String, List<ChunkMetadata>> chunkMetadataInDevice = readChunkMetadataInDevice(device);
+    for (List<ChunkMetadata> chunkMetadataListInDevice : chunkMetadataInDevice.values()) {
+      chunkMetadataList.addAll(chunkMetadataListInDevice);
+    }
+
+    Map<String, List<Chunk>> chunksInDevice = new HashMap<>();
+    chunkMetadataList.sort(Comparator.comparing(ChunkMetadata::getOffsetOfChunkHeader));
+    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+      Chunk chunk = readMemChunk(chunkMetadata);
+      String measurement = chunk.getHeader().getMeasurementID();
+      if (!chunksInDevice.containsKey(measurement)) {
+        chunksInDevice.put(measurement, new ArrayList<>());
+      }
+      chunksInDevice.get(measurement).add(chunk);
+    }
+    return chunksInDevice;
+  }
+
+  /**
    * not thread safe.
    *
    * @param type given tsfile data type

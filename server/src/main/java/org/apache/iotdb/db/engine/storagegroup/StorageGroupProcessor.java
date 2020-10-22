@@ -50,15 +50,8 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.merge.task.RecoverMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.tsfilemanagement.HotCompactionMergeTaskPoolManager;
@@ -68,14 +61,12 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -126,7 +117,7 @@ import org.slf4j.LoggerFactory;
  */
 public class StorageGroupProcessor {
 
-  private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
+  public static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
   private static final String FAIL_TO_UPGRADE_FOLDER = "Failed to move {} to upgrade folder";
 
   /**
@@ -219,18 +210,7 @@ public class StorageGroupProcessor {
    * updates can be re-determined.
    */
   private HashMap<Long, VersionController> timePartitionIdVersionControllerMap = new HashMap<>();
-  /**
-   * mergeLock is to be used in the merge process. Concurrent queries, deletions and merges may
-   * result in losing some deletion in the merged new file, so a lock is necessary.
-   */
-  private ReentrantReadWriteLock mergeLock = new ReentrantReadWriteLock();
-  /**
-   * This is the modification file of the result of the current merge. Because the merged file may
-   * be invisible at this moment, without this, deletion/update during merge could be lost.
-   */
-  private ModificationFile mergingModification;
-  private volatile boolean isMerging = false;
-  private long mergeStartTime;
+
   /**
    * when the data in a storage group is older than dataTTL, it is considered invalid and will be
    * eventually removed.
@@ -334,11 +314,12 @@ public class StorageGroupProcessor {
       File mergingMods = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir,
           MERGING_MODIFICATION_FILE_NAME);
       if (mergingMods.exists()) {
-        mergingModification = new ModificationFile(mergingMods.getPath());
+        this.tsFileManagement.mergingModification = new ModificationFile(mergingMods.getPath());
       }
       RecoverMergeTask recoverMergeTask = new RecoverMergeTask(
           new ArrayList<>(tsFileManagement.getTsFileList(true)),
-          tsFileManagement.getTsFileList(false), storageGroupSysDir.getPath(), this::mergeEndAction,
+          tsFileManagement.getTsFileList(false), storageGroupSysDir.getPath(),
+          tsFileManagement::mergeEndAction,
           taskName,
           IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), storageGroupName);
       logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
@@ -774,11 +755,11 @@ public class StorageGroupProcessor {
    * inserted are in the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param sequence         whether is sequence
-   * @param start            start index of rows to be inserted in insertTabletPlan
-   * @param end              end index of rows to be inserted in insertTabletPlan
-   * @param results          result array
-   * @param timePartitionId  time partition id
+   * @param sequence whether is sequence
+   * @param start start index of rows to be inserted in insertTabletPlan
+   * @param end end index of rows to be inserted in insertTabletPlan
+   * @param results result array
+   * @param timePartitionId time partition id
    * @return false if any failure occurs when inserting the tablet, true otherwise
    */
   private boolean insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
@@ -924,9 +905,9 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId            time partition range
+   * @param timeRangeId time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param sequence               whether is sequence or not
+   * @param sequence whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -1091,11 +1072,12 @@ public class StorageGroupProcessor {
     syncCloseAllWorkingTsFileProcessors();
     //normally, mergingModification is just need to be closed by after a merge task is finished.
     //we close it here just for IT test.
-    if (this.mergingModification != null) {
+    if (this.tsFileManagement.mergingModification != null) {
       try {
-        mergingModification.close();
+        this.tsFileManagement.mergingModification.close();
       } catch (IOException e) {
-        logger.error("Cannot close the mergingMod file {}", mergingModification.getFilePath(), e);
+        logger.error("Cannot close the mergingMod file {}",
+            this.tsFileManagement.mergingModification.getFilePath(), e);
       }
 
     }
@@ -1263,7 +1245,7 @@ public class StorageGroupProcessor {
   public QueryDataSource query(PartialPath deviceId, String measurementId, QueryContext context,
       QueryFileManager filePathsManager, Filter timeFilter) throws QueryProcessException {
     insertLock.readLock().lock();
-    mergeLock.readLock().lock();
+    tsFileManagement.mergeLock.readLock().lock();
     tsFileManagement.readLock();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(
@@ -1286,7 +1268,7 @@ public class StorageGroupProcessor {
       throw new QueryProcessException(e);
     } finally {
       tsFileManagement.readUnLock();
-      mergeLock.readLock().unlock();
+      tsFileManagement.mergeLock.readLock().unlock();
       insertLock.readLock().unlock();
     }
   }
@@ -1389,7 +1371,7 @@ public class StorageGroupProcessor {
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
     writeLock();
-    mergeLock.writeLock().lock();
+    tsFileManagement.mergeLock.writeLock().lock();
     tsFileManagement.writeLock();
 
     // record files which are updated so that we can roll back them in case of exception
@@ -1418,9 +1400,9 @@ public class StorageGroupProcessor {
       logDeletion(startTime, endTime, path);
 
       Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
-      if (mergingModification != null) {
-        mergingModification.write(deletion);
-        updatedModFiles.add(mergingModification);
+      if (tsFileManagement.mergingModification != null) {
+        tsFileManagement.mergingModification.write(deletion);
+        updatedModFiles.add(tsFileManagement.mergingModification);
       }
 
       deleteDataInFiles(tsFileManagement.getTsFileList(true), deletion, devicePaths, updatedModFiles);
@@ -1434,7 +1416,7 @@ public class StorageGroupProcessor {
       throw new IOException(e);
     } finally {
       tsFileManagement.writeUnlock();
-      mergeLock.writeLock().unlock();
+      tsFileManagement.mergeLock.writeLock().unlock();
       writeUnlock();
     }
   }
@@ -1604,7 +1586,7 @@ public class StorageGroupProcessor {
             .submitTask(
                 tsFileManagement.new HotCompactionMergeTask(this::closeHotCompactionMergeCallBack,
                     tsFileProcessor.getTimeRangeId()));
-      } catch (RejectedExecutionException | IOException e) {
+      } catch (IOException | RejectedExecutionException e) {
         this.closeHotCompactionMergeCallBack();
         logger.error("{} hot compaction submit task failed", storageGroupName);
       }
@@ -1660,7 +1642,7 @@ public class StorageGroupProcessor {
       );
     }
     insertLock.writeLock().lock();
-    mergeLock.writeLock().lock();
+    tsFileManagement.mergeLock.writeLock().lock();
     tsFileManagement.writeLock();
     if (tsFileResource.isSeq()) {
       tsFileManagement.addAll(upgradedResources, true);
@@ -1670,7 +1652,7 @@ public class StorageGroupProcessor {
       upgradeUnseqFileList.remove(tsFileResource);
     }
     tsFileManagement.writeUnlock();
-    mergeLock.writeLock().unlock();
+    tsFileManagement.mergeLock.writeLock().unlock();
     insertLock.writeLock().unlock();
 
     // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
@@ -1698,204 +1680,11 @@ public class StorageGroupProcessor {
   public void merge(boolean fullMerge) {
     writeLock();
     try {
-      if (isMerging) {
-        if (logger.isInfoEnabled()) {
-          logger.info("{} Last merge is ongoing, currently consumed time: {}ms", storageGroupName,
-              (System.currentTimeMillis() - mergeStartTime));
-        }
-        return;
-      }
-      logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
-          fullMerge);
-
-      List<TsFileResource> seqMergeList = tsFileManagement.getStableTsFileList(true);
-      List<TsFileResource> unSeqMergeList = tsFileManagement.getStableTsFileList(false);
-      if (seqMergeList.isEmpty() || unSeqMergeList.isEmpty()) {
-        logger.info("{} no files to be merged", storageGroupName);
-        return;
-      }
-
-      long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
-      long timeLowerBound = System.currentTimeMillis() - dataTTL;
-      MergeResource mergeResource = new MergeResource(seqMergeList, unSeqMergeList, timeLowerBound);
-
-      IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
-      try {
-        List[] mergeFiles = fileSelector.select();
-        if (mergeFiles.length == 0) {
-          logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
-              budget);
-          return;
-        }
-        // avoid pending tasks holds the metadata and streams
-        mergeResource.clear();
-        String taskName = storageGroupName + "-" + System.currentTimeMillis();
-        // do not cache metadata until true candidates are chosen, or too much metadata will be
-        // cached during selection
-        mergeResource.setCacheDeviceMeta(true);
-
-        for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
-          tsFileResource.setMerging(true);
-        }
-        for (TsFileResource tsFileResource : mergeResource.getUnseqFiles()) {
-          tsFileResource.setMerging(true);
-        }
-
-        MergeTask mergeTask = new MergeTask(mergeResource, storageGroupSysDir.getPath(),
-            this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(),
-            storageGroupName);
-        mergingModification = new ModificationFile(
-            storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
-        MergeManager.getINSTANCE().submitMainTask(mergeTask);
-        if (logger.isInfoEnabled()) {
-          logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
-              storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
-        }
-        isMerging = true;
-        mergeStartTime = System.currentTimeMillis();
-
-      } catch (MergeException | IOException e) {
-        logger.error("{} cannot select file for merge", storageGroupName, e);
-      }
+      this.tsFileManagement.merge(fullMerge, tsFileManagement.getTsFileList(true),
+          tsFileManagement.getTsFileList(false), dataTTL);
     } finally {
       writeUnlock();
     }
-  }
-
-  private IMergeFileSelector getMergeFileSelector(long budget, MergeResource resource) {
-    MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
-    switch (strategy) {
-      case MAX_FILE_NUM:
-        return new MaxFileMergeFileSelector(resource, budget);
-      case MAX_SERIES_NUM:
-        return new MaxSeriesMergeFileSelector(resource, budget);
-      default:
-        throw new UnsupportedOperationException("Unknown MergeFileStrategy " + strategy);
-    }
-  }
-
-  private void removeUnseqFiles(List<TsFileResource> unseqFiles) {
-    mergeLock.writeLock().lock();
-    tsFileManagement.writeLock();
-    try {
-      tsFileManagement.removeAll(unseqFiles, false);
-    } finally {
-      tsFileManagement.writeUnlock();
-      mergeLock.writeLock().unlock();
-    }
-
-    for (TsFileResource unseqFile : unseqFiles) {
-      unseqFile.writeLock();
-      try {
-        unseqFile.remove();
-      } finally {
-        unseqFile.writeUnlock();
-      }
-    }
-  }
-
-  @SuppressWarnings("squid:S1141")
-  private void updateMergeModification(TsFileResource seqFile) {
-    try {
-      // remove old modifications and write modifications generated during merge
-      seqFile.removeModFile();
-      if (mergingModification != null) {
-        for (Modification modification : mergingModification.getModifications()) {
-          seqFile.getModFile().write(modification);
-        }
-        try {
-          seqFile.getModFile().close();
-        } catch (IOException e) {
-          logger
-              .error("Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
-        }
-      }
-    } catch (IOException e) {
-      logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
-          seqFile.getTsFile(), e);
-    }
-  }
-
-  private void removeMergingModification() {
-    try {
-      if (mergingModification != null) {
-        mergingModification.remove();
-        mergingModification = null;
-      }
-    } catch (IOException e) {
-      logger.error("{} cannot remove merging modification ", storageGroupName, e);
-    }
-  }
-
-  protected void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-      File mergeLog) {
-    logger.info("{} a merge task is ending...", storageGroupName);
-
-    if (unseqFiles.isEmpty()) {
-      // merge runtime exception arose, just end this merge
-      isMerging = false;
-      logger.info("{} a merge task abnormally ends", storageGroupName);
-      return;
-    }
-
-    removeUnseqFiles(unseqFiles);
-
-    for (int i = 0; i < seqFiles.size(); i++) {
-      TsFileResource seqFile = seqFiles.get(i);
-      // get both seqFile lock and merge lock
-      doubleWriteLock(seqFile);
-
-      try {
-        updateMergeModification(seqFile);
-        if (i == seqFiles.size() - 1) {
-          //FIXME if there is an exception, the the modification file will be not closed.
-          removeMergingModification();
-          isMerging = false;
-          mergeLog.delete();
-        }
-      } finally {
-        doubleWriteUnlock(seqFile);
-      }
-    }
-    logger.info("{} a merge task ends", storageGroupName);
-  }
-
-  /**
-   * acquire the write locks of the resource , the merge lock and the hot compaction lock
-   */
-  private void doubleWriteLock(TsFileResource seqFile) {
-    boolean fileLockGot;
-    boolean mergeLockGot;
-    boolean hotCompactionLockGot;
-    while (true) {
-      fileLockGot = seqFile.tryWriteLock();
-      mergeLockGot = mergeLock.writeLock().tryLock();
-      hotCompactionLockGot = tsFileManagement.tryWriteLock();
-
-      if (fileLockGot && mergeLockGot && hotCompactionLockGot) {
-        break;
-      } else {
-        // did not get all of them, release the gotten one and retry
-        if (hotCompactionLockGot) {
-          tsFileManagement.writeUnlock();
-        }
-        if (mergeLockGot) {
-          mergeLock.writeLock().unlock();
-        }
-        if (fileLockGot) {
-          seqFile.writeUnlock();
-        }
-      }
-    }
-  }
-
-  /**
-   * release the write locks of the resource , the merge lock and the hot compaction lock
-   */
-  private void doubleWriteUnlock(TsFileResource seqFile) {
-    tsFileManagement.writeUnlock();
-    mergeLock.writeLock().unlock();
-    seqFile.writeUnlock();
   }
 
   /**
@@ -1914,7 +1703,7 @@ public class StorageGroupProcessor {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock();
-    mergeLock.writeLock().lock();
+    tsFileManagement.mergeLock.writeLock().lock();
     tsFileManagement.writeLock();
     try {
       if (loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
@@ -1929,7 +1718,7 @@ public class StorageGroupProcessor {
       throw new LoadFileException(e);
     } finally {
       tsFileManagement.writeUnlock();
-      mergeLock.writeLock().unlock();
+      tsFileManagement.mergeLock.writeLock().unlock();
       writeUnlock();
     }
   }
@@ -1952,7 +1741,7 @@ public class StorageGroupProcessor {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock();
-    mergeLock.writeLock().lock();
+    tsFileManagement.mergeLock.writeLock().lock();
     tsFileManagement.writeLock();
     try {
       List<TsFileResource> sequenceList = tsFileManagement.getTsFileList(true);
@@ -1998,7 +1787,7 @@ public class StorageGroupProcessor {
       throw new LoadFileException(e);
     } finally {
       tsFileManagement.writeUnlock();
-      mergeLock.writeLock().unlock();
+      tsFileManagement.mergeLock.writeLock().unlock();
       writeUnlock();
     }
   }
@@ -2191,9 +1980,9 @@ public class StorageGroupProcessor {
    * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
    * version number is the version number in the tsfile with a larger timestamp.
    *
-   * @param tsfileName  origin tsfile name
+   * @param tsfileName origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
-   *                    1]
+   * 1]
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
@@ -2257,8 +2046,8 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type            load type
-   * @param tsFileResource  tsfile resource to be loaded
+   * @param type load type
+   * @param tsFileResource tsfile resource to be loaded
    * @param filePartitionId the partition id of the new file
    * @return load the file successfully
    * @UsedBy sync module, load external tsfile module.
@@ -2349,7 +2138,7 @@ public class StorageGroupProcessor {
    */
   public boolean deleteTsfile(File tsfieToBeDeleted) {
     writeLock();
-    mergeLock.writeLock().lock();
+    tsFileManagement.mergeLock.writeLock().lock();
     tsFileManagement.writeLock();
     TsFileResource tsFileResourceToBeDeleted = null;
     try {
@@ -2375,7 +2164,7 @@ public class StorageGroupProcessor {
       }
     } finally {
       tsFileManagement.writeUnlock();
-      mergeLock.writeLock().unlock();
+      tsFileManagement.mergeLock.writeLock().unlock();
       writeUnlock();
     }
     if (tsFileResourceToBeDeleted == null) {
@@ -2409,7 +2198,7 @@ public class StorageGroupProcessor {
    */
   public boolean moveTsfile(File fileToBeMoved, File targetDir) {
     writeLock();
-    mergeLock.writeLock().lock();
+    tsFileManagement.mergeLock.writeLock().lock();
     tsFileManagement.writeLock();
     TsFileResource tsFileResourceToBeMoved = null;
     try {
@@ -2435,7 +2224,7 @@ public class StorageGroupProcessor {
       }
     } finally {
       tsFileManagement.writeUnlock();
-      mergeLock.writeLock().unlock();
+      tsFileManagement.mergeLock.writeLock().unlock();
       writeUnlock();
     }
     if (tsFileResourceToBeMoved == null) {
@@ -2522,7 +2311,7 @@ public class StorageGroupProcessor {
   public void removePartitions(TimePartitionFilter filter) {
     // this requires blocking all other activities
     insertLock.writeLock().lock();
-    mergeLock.writeLock().lock();
+    tsFileManagement.mergeLock.writeLock().lock();
     try {
       // abort ongoing merges
       MergeManager.getINSTANCE().abortMerge(storageGroupName);
@@ -2536,7 +2325,7 @@ public class StorageGroupProcessor {
 
     } finally {
       insertLock.writeLock().unlock();
-      mergeLock.writeLock().unlock();
+      tsFileManagement.mergeLock.writeLock().unlock();
     }
   }
 
@@ -2566,8 +2355,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  public boolean isHotCompactionMergeWorking() {
-    return hotCompactionMergeWorking;
+  public TsFileManagement getTsFileManagement() {
+    return tsFileManagement;
   }
 
   private enum LoadTsFileType {
