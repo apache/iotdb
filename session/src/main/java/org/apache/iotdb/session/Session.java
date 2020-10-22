@@ -87,27 +87,19 @@ public class Session {
   private int connectionTimeoutInMs;
 
   public Session(String host, int rpcPort) {
-    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, Config.DEFAULT_FETCH_SIZE);
+    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, Config.DEFAULT_FETCH_SIZE, null);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
-    this(host, Integer.parseInt(rpcPort), username, password, Config.DEFAULT_FETCH_SIZE);
+    this(host, Integer.parseInt(rpcPort), username, password, Config.DEFAULT_FETCH_SIZE, null);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
-    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE);
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null);
   }
 
   public Session(String host, int rpcPort, String username, String password, String timeZone) {
     this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, timeZone);
-  }
-
-  public Session(String host, int rpcPort, String username, String password, int fetchSize) {
-    this.host = host;
-    this.rpcPort = rpcPort;
-    this.username = username;
-    this.password = password;
-    this.fetchSize = fetchSize;
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize, String timeZone) {

@@ -150,7 +150,7 @@ public class SessionPool {
       if (logger.isDebugEnabled()) {
         logger.debug("Create a new Session {}, {}, {}, {}", ip, port, user, password);
       }
-      session = new Session(ip, port, user, password, fetchSize, timeZone);
+      session = new Session(ip, port, user, password, fetchSize, timezone);
       try {
         session.open(enableCompression);
       } catch (IoTDBConnectionException e) {
@@ -251,12 +251,14 @@ public class SessionPool {
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
-   * <p>
-   * a Tablet example:
-   * <p>
-   * device1 time s1, s2, s3 1,   1,  1,  1 2,   2,  2,  2 3,   3,  3,  3
-   * <p>
-   * times in Tablet may be not in ascending order
+   *
+   *  a Tablet example:
+   *
+   *        device1
+   *     time s1, s2, s3
+   *     1,   1,  1,  1
+   *     2,   2,  2,  2
+   *     3,   3,  3,  3
    *
    * @param tablet data batch
    */
@@ -267,11 +269,15 @@ public class SessionPool {
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
-   * <p>
+   *
    * a Tablet example:
-   * <p>
-   * device1 time s1, s2, s3 1,   1,  1,  1 2,   2,  2,  2 3,   3,  3,  3
-   * <p>
+   *
+   *      device1
+   * time s1, s2, s3
+   * 1,   1,  1,  1
+   * 2,   2,  2,  2
+   * 3,   3,  3,  3
+   *
    * Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
    *
    * @param tablet a tablet data of one device
