@@ -104,6 +104,7 @@ public class RaftLogManagerTest {
     ClusterDescriptor.getInstance().getConfig().setCatchUpTimeoutMS(100);
     ClusterDescriptor.getInstance().getConfig().setEnableRaftLogPersistence(true);
     appliedLogs = new ConcurrentHashMap<>();
+    blocked = false;
   }
 
   @After
@@ -1316,8 +1317,7 @@ public class RaftLogManagerTest {
     for (Log log : testLogs1) {
       while (!log.isApplied()) {
         if ((System.currentTimeMillis() - startTime) > 60_000) {
-          System.out.println("apply log time out");
-          assertTrue(false);
+          fail("apply log time out");
         }
       }
     }
