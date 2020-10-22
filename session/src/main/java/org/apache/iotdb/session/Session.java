@@ -921,15 +921,7 @@ public class Session {
     if (zoneId != null) {
       return zoneId.toString();
     }
-
-    TSGetTimeZoneResp resp;
-    try {
-      resp = client.getTimeZone(sessionId);
-    } catch (TException e) {
-      throw new IoTDBConnectionException(e);
-    }
-    RpcUtils.verifySuccess(resp.getStatus());
-    return resp.getTimeZone();
+    return ZoneId.systemDefault().getId();
   }
 
   private synchronized void setTimeZone(String zoneId)
