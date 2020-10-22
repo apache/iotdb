@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session.pool;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -73,7 +74,7 @@ public class SessionPool {
   private long timeout; //ms
   private static int FINAL_RETRY = RETRY - 1;
   private boolean enableCompression = false;
-  private String timeZone;
+  private ZoneId zoneId;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
     this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, null);
@@ -86,13 +87,13 @@ public class SessionPool {
   }
 
   public SessionPool(String ip, int port, String user, String password, int maxSize,
-      String timeZone) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, timeZone);
+      ZoneId zoneId) {
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, zoneId);
   }
 
   @SuppressWarnings("squid:S107")
   public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize,
-      long timeout, boolean enableCompression, String timeZone) {
+      long timeout, boolean enableCompression, ZoneId zoneId) {
     this.maxSize = maxSize;
     this.ip = ip;
     this.port = port;
@@ -101,7 +102,7 @@ public class SessionPool {
     this.fetchSize = fetchSize;
     this.timeout = timeout;
     this.enableCompression = enableCompression;
-    this.timeZone = timeZone;
+    this.zoneId = zoneId;
   }
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
@@ -150,7 +151,7 @@ public class SessionPool {
       if (logger.isDebugEnabled()) {
         logger.debug("Create a new Session {}, {}, {}, {}", ip, port, user, password);
       }
-      session = new Session(ip, port, user, password, fetchSize, timeZone);
+      session = new Session(ip, port, user, password, fetchSize, zoneId);
       try {
         session.open(enableCompression);
       } catch (IoTDBConnectionException e) {

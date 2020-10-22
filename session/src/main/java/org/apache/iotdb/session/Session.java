@@ -35,7 +35,6 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -98,23 +97,17 @@ public class Session {
     this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null);
   }
 
-  public Session(String host, int rpcPort, String username, String password, String timeZone) {
-    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, timeZone);
+  public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId);
   }
 
-  public Session(String host, int rpcPort, String username, String password, int fetchSize, String timeZone) {
+  public Session(String host, int rpcPort, String username, String password, int fetchSize, ZoneId zoneId) {
     this.host = host;
     this.rpcPort = rpcPort;
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
-    if (timeZone != null) {
-      try {
-        this.setTimeZone(timeZone);
-      } catch (StatementExecutionException | IoTDBConnectionException e) {
-        logger.error("Error setting time zone to " + timeZone, e.getMessage());
-      }
-    }
+    this.zoneId = zoneId;
   }
 
   public synchronized void open() throws IoTDBConnectionException {
