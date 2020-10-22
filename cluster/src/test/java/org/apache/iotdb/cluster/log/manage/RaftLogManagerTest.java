@@ -1245,6 +1245,8 @@ public class RaftLogManagerTest {
         ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     RaftLogManager raftLogManager = new TestRaftLogManager(committedEntryManager,
         syncLogDequeSerializer, logApplier);
+    // prevent the commit checker thread from modifying max applied index
+    blocked = true;
 
     int minNumberOfLogs = 100;
     List<Log> testLogs1;
@@ -1252,8 +1254,9 @@ public class RaftLogManagerTest {
     raftLogManager.setMinNumOfLogsInMem(minNumberOfLogs);
     testLogs1 = TestUtils.prepareNodeLogs(130);
     raftLogManager.append(testLogs1);
+    Log lastLog = testLogs1.get(testLogs1.size() - 1);
     try {
-      raftLogManager.commitTo(testLogs1.get(testLogs1.size() - 1).getCurrLogIndex());
+      raftLogManager.commitTo(lastLog.getCurrLogIndex());
     } catch (LogExecutionException e) {
       assertEquals("why failed?", e.toString());
     }
