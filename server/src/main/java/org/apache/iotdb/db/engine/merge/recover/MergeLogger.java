@@ -45,11 +45,7 @@ public class MergeLogger {
   static final String STR_MERGE_END = "merge end";
 
   private BufferedWriter logStream;
-
-  public MergeLogger(MergeLogger another) {
-    this.logStream = another.logStream;
-  }
-
+  
   public MergeLogger(String storageGroupDir) throws IOException {
     logStream = new BufferedWriter(new FileWriter(new File(storageGroupDir, MERGE_LOG_NAME), true));
   }
