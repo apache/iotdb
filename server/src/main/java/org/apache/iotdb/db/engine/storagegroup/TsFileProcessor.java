@@ -181,7 +181,7 @@ public class TsFileProcessor {
       checkMemCostAndAddToTspInfo(insertRowPlan);
     }
     if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable();
+      workMemTable = new PrimitiveMemTable(enableMemControl);
     }
     workMemTable.insert(insertRowPlan);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
