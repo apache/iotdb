@@ -98,7 +98,8 @@ public class IoTDBDescriptor {
     if (urlString == null) {
       urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
       if (urlString != null) {
-        urlString = urlString + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
+        urlString =
+            urlString + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
       } else {
         // If this too wasn't provided, try to find a default config in the root of the classpath.
         URL uri = IoTDBConfig.class.getResource("/" + IoTDBConfig.CONFIG_NAME);
@@ -116,13 +117,13 @@ public class IoTDBDescriptor {
     }
     // If a config location was provided, but it doesn't end with a properties file,
     // append the default location.
-    else if(!urlString.endsWith(".properties")) {
+    else if (!urlString.endsWith(".properties")) {
       urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
 
     // If the url doesn't start with "file:" or "classpath:", it's provided as a normal path.
     // So we need to add it to make it a real URL.
-    if(!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
+    if (!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
       urlString = "file:" + urlString;
     }
     try {
@@ -138,7 +139,7 @@ public class IoTDBDescriptor {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
     URL url = getPropsUrl();
-    if(url == null) {
+    if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
@@ -207,7 +208,7 @@ public class IoTDBDescriptor {
               Boolean.toString(conf.isMetaDataCacheEnable()))));
 
       conf.setEnableLastCache(Boolean.parseBoolean(properties.getProperty("enable_last_cache",
-              Boolean.toString(conf.isLastCacheEnabled()))));
+          Boolean.toString(conf.isLastCacheEnabled()))));
 
       initMemoryAllocate(properties);
 
@@ -560,7 +561,7 @@ public class IoTDBDescriptor {
 
     conf.setEnableDiscardOutOfOrderData(Boolean.parseBoolean(
         properties.getProperty("enable_discard_out_of_order_data",
-        Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
+            Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
 
   }
 
@@ -693,6 +694,10 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
+      // update max_deduplicated_path_num
+      conf.setMaxQueryDeduplicatedPathNum(
+          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
+
     } catch (Exception e) {
       throw new QueryProcessException(
           String.format("Fail to reload configuration because %s", e));
@@ -701,7 +706,7 @@ public class IoTDBDescriptor {
 
   public void loadHotModifiedProps() throws QueryProcessException {
     URL url = getPropsUrl();
-    if(url == null) {
+    if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
@@ -729,9 +734,9 @@ public class IoTDBDescriptor {
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
       if (proportionSum != 0) {
         conf.setAllocateMemoryForWrite(
-                maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setAllocateMemoryForRead(
-                maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
       }
     }
 
@@ -754,19 +759,23 @@ public class IoTDBDescriptor {
       if (proportionSum != 0) {
         try {
           conf.setAllocateMemoryForChunkMetaDataCache(
-                  maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+              maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
           conf.setAllocateMemoryForChunkCache(
-                  maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+              maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
           conf.setAllocateMemoryForTimeSeriesMetaDataCache(
-                  maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+              maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+          conf.setAllocateMemoryForReadWithoutCache(
+              maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
         } catch (Exception e) {
           throw new RuntimeException(
-                  "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
-                          + " should be an integer, which is "
-                          + queryMemoryAllocateProportion);
+              "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
+                  + " should be an integer, which is "
+                  + queryMemoryAllocateProportion);
         }
       }
 
+      conf.setMaxQueryDeduplicatedPathNum(
+          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
     }
 
   }

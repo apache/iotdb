@@ -66,14 +66,14 @@ public class IoTDBGroupByFillWithRangeIT {
 
   @Test
   public void previousFillTestWithTimeRange() {
-    String[] retArray = new String[] {
+    String[] retArray = new String[]{
         "5,null",
         "7,6",
         "9,6",
         "11,11",
     };
 
-    String[] retArray2 = new String[] {
+    String[] retArray2 = new String[]{
         "5,null",
         "7,6",
         "9,null",
@@ -137,6 +137,23 @@ public class IoTDBGroupByFillWithRangeIT {
         assertEquals(retArray2.length, cnt);
       }
 
+      hasResultSet = statement.execute(
+          "select last_value(temperature) from "
+              + "root.ln.wf01.wt01 "
+              + "GROUP BY ((3, 11], 2ms) FILL(ALL[previousUntilLast, 1ms]) order by time desc");
+
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
+              .getString(last_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray2[retArray2.length - cnt - 1], ans);
+          System.out.println(ans);
+          cnt++;
+        }
+        assertEquals(retArray2.length, cnt);
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

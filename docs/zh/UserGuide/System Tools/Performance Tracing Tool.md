@@ -37,8 +37,8 @@ IoTDB 支持使用 `TRACING` 语句来启用/禁用对查询语句的性能追�
 - Number of series paths
 - Number of sequence files
 - Statistics of each sequence file
-- Number of unsequence files
-- Statistics of each sequence file
+- Number of unSequence files
+- Statistics of each unSequence file
 - Number of chunks
 - Average size of chunks
 - Total cost time

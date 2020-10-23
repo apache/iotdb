@@ -37,8 +37,8 @@ Since the cost of an IoTDB query mainly depends on the number of time series que
 - Number of series paths
 - Number of sequence files
 - Statistics of each sequence file
-- Number of unsequence files
-- Statistics of each sequence file
+- Number of unSequence files
+- Statistics of each unSequence file
 - Number of chunks
 - Average size of chunks
 - Total cost time
