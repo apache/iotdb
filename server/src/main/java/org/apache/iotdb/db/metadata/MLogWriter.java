@@ -42,6 +42,7 @@ public class MLogWriter {
   private File logFile;
   private BufferedWriter writer;
   private FileOutputStream fileOutputStream;
+  private FileChannel channel;
   private int lineNumber;
 
   public MLogWriter(String schemaDir, String logFileName) throws IOException {
@@ -57,10 +58,14 @@ public class MLogWriter {
     logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
     FileWriter fileWriter = new FileWriter(logFile, true);
     writer = new BufferedWriter(fileWriter);
+    fileOutputStream = new FileOutputStream(logFile, true);
+    channel = fileOutputStream.getChannel();
   }
 
   public void close() throws IOException {
     writer.close();
+    channel.close();
+    fileOutputStream.close();
   }
 
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws IOException {
@@ -94,7 +99,8 @@ public class MLogWriter {
     final String newLine = System.getProperty("line.separator");
     buf.append(newLine);
 
-    writeTimeseries(ByteBuffer.wrap(buf.toString().getBytes()));
+    channel.write(ByteBuffer.wrap(buf.toString().getBytes()));
+    channel.force(true);
     ++lineNumber;
   }
 
@@ -164,9 +170,13 @@ public class MLogWriter {
 
   public void clear() throws IOException {
     writer.close();
+    channel.close();
+    fileOutputStream.close();
     Files.delete(logFile.toPath());
     FileWriter fileWriter = new FileWriter(logFile, true);
     writer = new BufferedWriter(fileWriter);
+    fileOutputStream = new FileOutputStream(logFile, true);
+    channel = fileOutputStream.getChannel();
     lineNumber = 0;
   }
 
@@ -174,14 +184,6 @@ public class MLogWriter {
     writer.newLine();
     writer.flush();
     ++lineNumber;
-  }
-
-  private synchronized void writeTimeseries(ByteBuffer buffer) throws IOException {
-    try (FileOutputStream fos = new FileOutputStream(logFile, true);
-         FileChannel channel = fos.getChannel()) {
-      channel.write(buffer);
-      channel.force(true);
-    }
   }
 
   int getLineNumber() {
