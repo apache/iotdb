@@ -21,6 +21,13 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.nio.ByteBuffer;
 
+/**
+ * <p> This class includes code modified from Michael Burman's gorilla-tsc project.
+ *
+ * <p> Copyright: 2016-2018 Michael Burman and/or other contributors
+ * <p> Project page: https://github.com/burmanm/gorilla-tsc
+ * <p> License: http://www.apache.org/licenses/LICENSE-2.0
+ */
 public class DoublePrecisionDecoderV2 extends LongGorillaDecoder {
 
   @Override

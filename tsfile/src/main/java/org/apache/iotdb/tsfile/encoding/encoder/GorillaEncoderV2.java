@@ -22,6 +22,13 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import java.io.ByteArrayOutputStream;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+/**
+ * <p> This class includes code modified from Michael Burman's gorilla-tsc project.
+ *
+ * <p> Copyright: 2016-2018 Michael Burman and/or other contributors
+ * <p> Project page: https://github.com/burmanm/gorilla-tsc
+ * <p> License: http://www.apache.org/licenses/LICENSE-2.0
+ */
 public abstract class GorillaEncoderV2 extends Encoder {
 
   protected boolean firstValueWasWritten = false;
