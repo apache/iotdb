@@ -177,9 +177,12 @@ public class MLogWriter {
   }
 
   private synchronized void writeSeries(ByteBuffer buffer) throws IOException {
-    FileChannel channel = new FileOutputStream(logFile, true).getChannel();
+    FileOutputStream fos = new FileOutputStream(logFile, true);
+    FileChannel channel = fos.getChannel();
     channel.write(buffer);
     channel.force(true);
+    channel.close();
+    fos.close();
   }
 
   int getLineNumber() {
