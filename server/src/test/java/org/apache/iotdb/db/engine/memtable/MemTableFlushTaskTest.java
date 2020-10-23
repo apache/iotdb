@@ -27,7 +27,6 @@ import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -63,7 +62,7 @@ public class MemTableFlushTaskTest {
   }
 
   @Test
-  public void testFlushMemTable() throws ExecutionException, InterruptedException, IOException, WriteProcessException {
+  public void testFlushMemTable() throws ExecutionException, InterruptedException, IOException {
     MemTableTestUtils.produceData(memTable, startTime, endTime, MemTableTestUtils.deviceId0,
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);

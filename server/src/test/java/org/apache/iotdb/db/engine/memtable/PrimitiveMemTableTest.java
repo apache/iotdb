@@ -51,7 +51,7 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void memSeriesSortIteratorTest() throws IOException, WriteProcessException {
+  public void memSeriesSortIteratorTest() throws IOException {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series = new WritableMemChunk(new MeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
     int count = 1000;

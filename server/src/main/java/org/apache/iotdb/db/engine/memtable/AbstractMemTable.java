@@ -107,7 +107,7 @@ public abstract class AbstractMemTable implements IMemTable {
   protected abstract IWritableMemChunk genMemSeries(MeasurementSchema schema);
 
   @Override
-  public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
+  public void insert(InsertRowPlan insertRowPlan) {
     for (int i = 0; i < insertRowPlan.getValues().length; i++) {
 
       if (insertRowPlan.getValues()[i] == null) {
@@ -141,7 +141,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void write(String deviceId, String measurement, MeasurementSchema schema, long insertTime,
-      Object objectValue) throws WriteProcessException {
+      Object objectValue) {
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, schema);
     memSeries.write(insertTime, objectValue);
   }

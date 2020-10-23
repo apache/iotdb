@@ -818,6 +818,9 @@ public class TsFileResource {
     return maxVersion;
   }
 
+  /**
+   * @return initial resource map size
+   */
   public long calculateRamSize() {
     return RamUsageEstimator.sizeOf(deviceToIndex) + RamUsageEstimator.sizeOf(startTimes) + 
         RamUsageEstimator.sizeOf(endTimes);

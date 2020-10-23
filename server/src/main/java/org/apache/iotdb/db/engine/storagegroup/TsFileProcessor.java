@@ -237,7 +237,6 @@ public class TsFileProcessor {
       }
       throw new WriteProcessException(e);
     }
-    // if get buffered or OOB array successfully, estimate the memory cost
     for (int i = start; i < end; i++) {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
