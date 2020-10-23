@@ -113,8 +113,6 @@
             <level>DEBUG</level>
         </filter>
     </appender>
-    <logger level="info" name="org.apache.iotdb.db.service"/>
-    <logger level="info" name="org.apache.iotdb.db.conf"/>
     <!-- a log appender that collect all log records whose level is greather than debug-->
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEALL">
         <file>${IOTDB_HOME}/logs/log_all.log</file>
@@ -170,6 +168,24 @@
             <level>INFO</level>
         </filter>
     </appender>
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="ZY">
+        <file>${IOTDB_HOME}/logs/log_ZY.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-ZY-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>50MB</maxFileSize>
+                <maxBackupIndex>50</maxBackupIndex>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
     <root level="info">
         <appender-ref ref="FILEDEBUG"/>
         <appender-ref ref="FILEWARN"/>
@@ -183,5 +199,8 @@
     </logger>
     <logger level="info" name="org.apache.iotdb.db.sync">
         <appender-ref ref="SYNC"/>
+    </logger>
+    <logger level="info" name="ZY-DEBUG">
+        <appender-ref ref="ZY"/>
     </logger>
 </configuration>
